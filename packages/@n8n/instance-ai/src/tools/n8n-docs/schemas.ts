@@ -16,28 +16,25 @@ const sharedLookupFields = {
 		.string()
 		.optional()
 		.describe(
-			'Docs lookup query. Include the product area, service, and task. Optional when credential or node context is provided.',
+			'Docs lookup query. Include product area, service, task. Optional when credential or node context given.',
 		),
-	intent: intentSchema.optional().describe('The kind of n8n docs answer needed.'),
+	intent: intentSchema.optional().describe('Kind of n8n docs answer needed.'),
 	credentialType: z
 		.string()
 		.optional()
 		.describe(
-			'n8n credential type name, for example "gmailOAuth2". Always pass it for an auth question (scopes, permissions, setup steps) — the tool resolves that type\'s own docs page from it, so you do not need to look the URL up first.',
+			'n8n credential type name, e.g. "gmailOAuth2". Always pass for auth questions (scopes, permissions, setup steps): tool resolves that type\'s own docs page from it, no URL lookup needed first.',
 		),
 	credentialDisplayName: z
 		.string()
 		.optional()
-		.describe('Human-readable credential name, for example "Gmail OAuth2 API".'),
+		.describe('Human-readable credential name, e.g. "Gmail OAuth2 API".'),
 	documentationUrl: z
 		.string()
 		.url()
 		.optional()
 		.describe('Known n8n docs URL from credential or node metadata.'),
-	nodeType: z
-		.string()
-		.optional()
-		.describe('n8n node type name, for example "n8n-nodes-base.gmail".'),
+	nodeType: z.string().optional().describe('n8n node type name, e.g. "n8n-nodes-base.gmail".'),
 };
 
 const maxContentLengthField = z
@@ -47,19 +44,19 @@ const maxContentLengthField = z
 	.max(MAX_CONTENT_LENGTH)
 	.default(DEFAULT_MAX_CONTENT_LENGTH)
 	.optional()
-	.describe(`Maximum content length in characters (default ${DEFAULT_MAX_CONTENT_LENGTH}).`);
+	.describe(`Max content length in characters (default ${DEFAULT_MAX_CONTENT_LENGTH}).`);
 
 const lookupAction = z.object({
 	action: z
 		.literal('lookup')
 		.describe(
-			'Search the n8n docs registry, read the best matching markdown pages, and return source material. When answering from returned documents, end with Source or Sources using the returned page titles and URLs.',
+			'Search n8n docs registry, read best matching markdown pages, return source material. When answering from returned documents, end with Source or Sources using returned page titles and URLs.',
 		),
 	...sharedLookupFields,
 	oauthRedirectUrl: z
 		.string()
 		.optional()
-		.describe('OAuth redirect URL currently shown in the n8n credential modal.'),
+		.describe('OAuth redirect URL currently shown in n8n credential modal.'),
 	maxPages: z
 		.number()
 		.int()
@@ -67,12 +64,12 @@ const lookupAction = z.object({
 		.max(MAX_PAGES)
 		.default(DEFAULT_MAX_PAGES)
 		.optional()
-		.describe(`Maximum docs pages to read (default ${DEFAULT_MAX_PAGES}, max ${MAX_PAGES}).`),
+		.describe(`Max docs pages to read (default ${DEFAULT_MAX_PAGES}, max ${MAX_PAGES}).`),
 	maxContentLength: maxContentLengthField,
 });
 
 const searchAction = z.object({
-	action: z.literal('search').describe('Search the n8n docs registry without reading pages.'),
+	action: z.literal('search').describe('Search n8n docs registry without reading pages.'),
 	...sharedLookupFields,
 	maxResults: z
 		.number()
@@ -82,7 +79,7 @@ const searchAction = z.object({
 		.default(DEFAULT_MAX_RESULTS)
 		.optional()
 		.describe(
-			`Maximum registry matches to return (default ${DEFAULT_MAX_RESULTS}, max ${MAX_RESULTS}).`,
+			`Max registry matches to return (default ${DEFAULT_MAX_RESULTS}, max ${MAX_RESULTS}).`,
 		),
 });
 
@@ -90,7 +87,7 @@ const readAction = z.object({
 	action: z
 		.literal('read')
 		.describe(
-			'Read one n8n docs markdown page from the registry. When answering from the returned document, end with Source using the returned page title and URL.',
+			'Read one n8n docs markdown page from registry. When answering from returned document, end with Source using returned page title and URL.',
 		),
 	url: z.string().url().describe('n8n docs page URL. Must resolve to a docs registry entry.'),
 	maxContentLength: maxContentLengthField,

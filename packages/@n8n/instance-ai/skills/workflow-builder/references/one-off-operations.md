@@ -18,136 +18,60 @@ recommended_tools:
   - workflow_builder_ask_user
   - workflow_builder_verify_built_workflow
 ---
-
 # One-Off Operations
 
-Use this skill when the request is a **one-off operation**: a concrete effect
-that needs to happen once, where a workflow is only the vehicle to make it
-happen. Typical shapes: "put this data in a spreadsheet", "copy these rows to
-X", "migrate/backfill/clean up Y".
+Use skill when request is **one-off operation**: concrete effect needed once, workflow only vehicle. Typical shapes: "put this data in a spreadsheet", "copy these rows to X", "migrate/backfill/clean up Y".
 
-These instructions are in English, but user-visible text you write while
-following them stays in the user's conversation language.
+Instructions in English, but user-visible text stays in user's conversation language.
 
 ## Recognizing a one-off
 
-Users rarely label a task "one-off" — **infer it from the task's shape**, not
-from explicit phrasing. It is a one-off when the deliverable is a *state
-change*, not an automation:
+Users rarely label "one-off" — **infer from task shape**, not explicit phrasing. One-off when deliverable is *state change*, not automation:
 
-- The user asks for an effect on data that **already exists and is bounded** —
-  pasted into the chat, sitting in a named node, table, file, or sheet — rather
-  than data that will keep arriving over time.
-- The request is imperative about the here-and-now ("add these rows", "export
-  what's in X", "clean out the duplicates"), with no trigger, schedule, or
-  event vocabulary — no "when", "every", "whenever", "daily", "each time".
-- Nothing suggests the user wants to keep and rerun the workflow; the workflow
-  is never mentioned as the thing they want, only the outcome is.
+- Effect on data that **already exists and is bounded** — pasted in chat, in named node, table, file, or sheet — not data that keeps arriving.
+- Imperative about here-and-now ("add these rows", "export what's in X", "clean out the duplicates"), no trigger/schedule/event vocabulary — no "when", "every", "whenever", "daily", "each time".
+- No hint user wants to keep/rerun workflow; only outcome mentioned, never workflow itself.
 
-Explicit markers ("just this once", "I won't need this again") confirm the
-classification but are not required — most one-offs arrive without them.
-Signals against: trigger/schedule vocabulary, "from now on", a named event
-source, or any hint the user wants the automation itself. **When in doubt,
-treat the request as reusable** and follow the normal build flow — a reusable
-workflow that runs once is harmless; a one-off flow applied to an automation
-skips verification the user would have wanted.
+Explicit markers ("just this once", "I won't need this again") confirm but not required — most one-offs lack them. Signals against: trigger/schedule vocabulary, "from now on", named event source, any hint user wants automation itself. **When in doubt, treat as reusable**, follow normal build flow — reusable workflow run once harmless; one-off flow applied to automation skips verification user wanted.
 
 ## Single-node one-offs: prefer direct node execution
 
-When the entire effect is **one node operation**, skip the workflow: execute
-the node directly with `execute_node`. It runs a single node with
-real credentials through the regular execution engine and returns its real
-output items — no workflow to build, set up, verify, or clean up afterwards.
+When whole effect is **one node operation**, skip workflow: run node directly with `execute_node`. Runs single node with real credentials through regular execution engine, returns real output items — nothing to build, set up, verify, or clean up.
 
-Direct execution is sufficient when ALL of these hold:
+Direct execution sufficient when ALL hold:
 
-- The effect is one node call (one write, one API operation). A read-back of
-  the destination may be a second `execute` call of a read operation.
-- The input items are already at hand — pasted into the chat or read earlier
-  in the conversation — so you can pass them literally as `input` items.
-  Parameters must not use expressions referencing other nodes; they cannot
-  resolve (the node runs alone).
-- The node runs standalone on `main` input alone — no required sub-node
-  connections (e.g. an AI Agent needs a language model attached; such nodes
-  need a workflow).
-- A usable credential already exists (`list_credentials`); the
-  action takes resolved `{ id, name }` references. If credentials must be
-  created first, route that through the credentials setup as usual.
-- The run fits the 60s cap and the input volume is modest.
+- Effect is one node call (one write, one API operation). Read-back of destination may be second `execute` call of read operation.
+- Input items already at hand — pasted in chat or read earlier — so pass literally as `input` items. Parameters must not use expressions referencing other nodes; they can't resolve (node runs alone).
+- Node runs standalone on `main` input alone — no required sub-node connections (e.g. AI Agent needs language model attached; such nodes need workflow).
+- Usable credential exists (`list_credentials`); action takes resolved `{ id, name }` references. If credentials must be created first, route through credentials setup as usual.
+- Run fits 60s cap, input volume modest.
 
-The run executes in the current conversation's project, so credentials shared
-with that project are usable. If it fails because a credential is not
-accessible there, fall back to the one-off workflow flow below.
+Run executes in current conversation's project, so credentials shared with that project usable. If fails because credential not accessible there, fall back to one-off workflow flow below.
 
-Call it with the same shape as a workflow-sdk node — `{ type, version,
-config: { parameters, credentials } }` plus `input` items. Read
-`get_node_types` first, as you would before configuring any
-node. Approval works exactly like `workflow_builder_executions(action="run")` — the same
-run-approval card, admin policy, and session grants — and for a one-off that
-prompt is the consent gate. The returned output items are
-real, so the read-back rule below is satisfied by reading what came back —
-report only from those items (binary content is returned as metadata only).
+Call with same shape as workflow-sdk node — `{ type, version,
+config: { parameters, credentials } }` plus `input` items. Read `get_node_types` first, as before configuring any node. Approval same as `workflow_builder_executions(action="run")` — same run-approval card, admin policy, session grants — for one-off, that prompt is consent gate. Returned output items real, so read-back rule below satisfied by reading what came back — report only from those items (binary content returned as metadata only).
 
-If the task needs more than that — several chained steps, branching, merges,
-non-trivial transformations, or data that must flow between nodes — build the
-workflow and use the flow below.
+If task needs more — several chained steps, branching, merges, non-trivial transformations, data flowing between nodes — build workflow, use flow below.
 
-A one-off that touches external systems is still anchored on n8n nodes (you
-cannot write to external services directly) — the intent changes the
-*post-build flow*, not the anchor.
+One-off touching external systems still anchored on n8n nodes (can't write to external services directly) — intent changes *post-build flow*, not anchor.
 
 ## The one-off flow (multi-node)
 
-1. **Build** the workflow with a **manual trigger** — always. A one-off is
-   never published, so an event trigger (webhook, form, schedule) would never
-   fire and only misleads. If the task genuinely needs an event source or a
-   future run time, it is not a one-off — reclassify it as a reusable
-   automation or a scheduled task and use the normal flow. Pass
-   `executionIntent: "one-off"` to `workflow_builder_build_workflow`. This marks verification
-   as optional in the build outcome — no verification follow-up is scheduled,
-   and the completion criterion becomes a live run whose output you read back.
-2. **Setup** is unchanged: if the build outcome requires credential or value
-   setup, route it through `workflow_builder_workflows(action="setup")` as usual. A one-off
-   still needs real credentials before it can run live.
-3. **Run live** with `workflow_builder_executions(action="run")`. The run-approval card is the
-   user's consent gate — for a one-off, the live run IS what the user asked
-   for, so the usual "reserve live runs for explicit user requests" rule is
-   satisfied by the request itself. Do not run before setup is complete.
-4. **Read back before reporting.** After the run, inspect the actual output of
-   the effect nodes with `workflow_builder_executions(action="get-node-output")` — the run
-   result data is truncated and not enough for quantitative claims. Check that
-   each write/effect node's input was the intended data (the rows you meant to
-   write), not an upstream node's API response. Report only numbers, columns,
-   and shapes you actually read. If the target system is cheap to read (e.g. a
-   read operation of the same node type), offer a read-back of the destination
-   as final confirmation.
-5. **Offer to clean up the workflow.** When the operation succeeded, ask whether
-   to keep the workflow for future reuse or delete it now that the job is done.
-   Never delete without asking. If the user keeps it, mention it stays
-   unpublished unless they say otherwise. This step is about the *workflow*: the
-   data a one-off wrote is the deliverable the user asked for, so never offer to
-   undo that. Test data left behind by a *test* run is the opposite case — see
-   "Cleaning up after a live test" in `post-build-flow`.
+1. **Build** workflow with **manual trigger** — always. One-off never published, so event trigger (webhook, form, schedule) never fires, only misleads. If task genuinely needs event source or future run time, not one-off — reclassify as reusable automation or scheduled task, use normal flow. Pass `executionIntent: "one-off"` to `workflow_builder_build_workflow`. Marks verification optional in build outcome — no verification follow-up scheduled; completion criterion becomes live run whose output you read back.
+2. **Setup** unchanged: if build outcome requires credential or value setup, route through `workflow_builder_workflows(action="setup")` as usual. One-off still needs real credentials before live run.
+3. **Run live** with `workflow_builder_executions(action="run")`. Run-approval card is user's consent gate — for one-off, live run IS what user asked for, so usual "reserve live runs for explicit user requests" rule satisfied by request itself. Don't run before setup complete.
+4. **Read back before reporting.** After run, inspect actual output of effect nodes with `workflow_builder_executions(action="get-node-output")` — run result data truncated, insufficient for quantitative claims. Check each write/effect node's input was intended data (rows you meant to write), not upstream node's API response. Report only numbers, columns, shapes actually read. If target system cheap to read (e.g. read operation of same node type), offer destination read-back as final confirmation.
+5. **Offer to clean up workflow.** On success, ask whether to keep workflow for reuse or delete now job done. Never delete without asking. If kept, mention it stays unpublished unless user says otherwise. Step is about *workflow*: data one-off wrote is deliverable user asked for, so never offer to undo it. Test data left by *test* run is opposite case — see "Cleaning up after a live test" in `post-build-flow`.
 
 ## Optional pre-flight verification
 
-`workflow_builder_verify_built_workflow` is available but **not required and never the
-completion criterion** for a one-off. Offer it before the live run only when
-the wiring is complex (branching, merges, non-trivial transformations) or the
-user is cautious about touching real data.
+`workflow_builder_verify_built_workflow` available but **not required, never completion criterion** for one-off. Offer before live run only when wiring complex (branching, merges, non-trivial transformations) or user cautious about touching real data.
 
-When you do run it, present results honestly:
+When run, present results honestly:
 
-- Say which nodes were **simulated** — external writes did not happen, and the
-  data flowing into simulated write nodes was NOT validated (their output is a
-  fabricated success fixture).
-- Never call the workflow "verified", "tested", or "working" from a simulated
-  pass alone, and never let it substitute for the live run and read-back.
+- Say which nodes **simulated** — external writes didn't happen, data flowing into simulated write nodes NOT validated (output is fabricated success fixture).
+- Never call workflow "verified", "tested", or "working" from simulated pass alone; never let it substitute for live run and read-back.
 
 ## Claiming success
 
-Do not make quantitative claims ("22 rows written", "columns matched") that
-you did not read back from actual execution output or the target system. A
-successful run status alone does not prove the *right data* was written — read
-the effect node's real output first. If you could not read it back, say so
-plainly and name what is unconfirmed.
+No quantitative claims ("22 rows written", "columns matched") not read back from actual execution output or target system. Successful run status alone doesn't prove *right data* written — read effect node's real output first. If couldn't read back, say so plainly, name what's unconfirmed.

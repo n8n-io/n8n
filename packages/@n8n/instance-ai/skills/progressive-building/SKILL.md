@@ -7,106 +7,88 @@ dependencies:
     - workflow_builder_workflows
     - workflow_builder_executions
 description: >-
-  Load before workflow_builder_build_workflow and before scoping or planning new workflows and
-  feature additions, including requests spanning multiple workflows. For a new
-  kept build, load intent-recognition first when it is listed. Implement
-  one increment per user message. Finish setup and inspect a successful real
-  execution before offering another increment. Then wait for the next user
-  reply. Partial setup is incomplete. A first setup or test refusal pauses
-  building. Follow the skill's full-build exceptions. Also supports workflow edits
-  and repairs. For workflows that create or write Data Tables, load
-  data-table-manager first. Requests only to
-  run, inspect, or manage existing resources use their normal tools and skills.
+  Load before workflow_builder_build_workflow and before scoping/planning new
+  workflows and feature additions, incl. requests spanning multiple workflows.
+  For new kept build, load intent-recognition first when listed. One increment
+  per user message. Finish setup and inspect successful real execution before
+  offering next increment, then wait for user reply. Partial setup =
+  incomplete. First setup or test refusal pauses building. Follow skill's
+  full-build exceptions. Also supports workflow edits and repairs. For
+  workflows creating/writing Data Tables, load data-table-manager first.
+  Requests only to run, inspect, or manage existing resources use normal tools
+  and skills.
 ---
-
 # Progressive building
 
-Apply this policy when creating or extending workflows and repairing those
-builds. It overrides conflicting scoping and setup narration in the building
-and post-build guidance above. Keep their validation, approval, credential,
-publish, and cleanup rules. Write to the user in their conversation language.
+Apply policy when creating/extending workflows and repairing those builds. Overrides conflicting scoping and setup narration in building and post-build guidance above. Keep their validation, approval, credential, publish, cleanup rules. Write to user in their conversation language.
 
-Requests to run, inspect, or manage existing resources use their normal tools
-and skills without this staging process. This also applies when the user
-switches to such a request after building in the same conversation.
+Requests to run, inspect, or manage existing resources use normal tools and skills, no staging. Also applies when user switches to such request after building in same conversation.
 
 ## Choose the first version
 
-Acknowledge the full request before selecting the smallest useful outcome.
-Build a working part of the requested workflow. Do not create a throwaway demo.
-Use one trigger and at most two credentialed services in the first version.
-Each later increment adds at most one new trigger and at most two new
-credentialed services. This also applies when new triggers share existing logic
-or need no credentials. Count the trigger's credential. Count services even
-when their credentials are connected.
-Parameters and placeholders do not count. An AI provider counts toward the same
-two-service total as the trigger and other services, even if its credential is
-missing. Exclude a model only when Gateway credits is confirmed available for
-that model on this instance. If it needs a provider API key, count it.
+Acknowledge full request before picking smallest useful outcome. Build working part of requested workflow. No throwaway demo.
+First version: one trigger, max two credentialed services.
+Each later increment adds max one new trigger and max two new credentialed services. Applies even when new triggers share existing logic or need no credentials. Count trigger's credential. Count services even when credentials connected.
+Parameters and placeholders don't count. AI provider counts toward same two-service total as trigger and other services, even if credential missing. Exclude model only when Gateway credits confirmed available for that model on this instance. Needs provider API key → count it.
 
-Keep this limit internal. Explain what the first version does and what comes
-next. Preserve the user's services. Prefer existing credentials when choosing
-between equally suitable starting points. Follow workflow-builder guidance
-on credential setup preferences when the user leaves the service open.
+Keep limit internal. Explain what first version does and what comes next. Preserve user's services. Prefer existing credentials when picking between equally suitable starting points. Follow workflow-builder guidance on credential setup preferences when user leaves service open.
 
-Ask a single-choice question if several named services are equally central.
-Otherwise state a reasonable starting assumption. Do not offer a multi-select
-list that adds services or triggers to the first version.
+Several named services equally central → ask single-choice question. Else state reasonable starting assumption. No multi-select list adding services or triggers to first version.
 
-Keep additional workflows as later roadmap items.
+Additional workflows stay later roadmap items.
 
 ## Build, set up, and run
 
-1. Build the selected version. Use the existing verification and setup flow.
-2. Before its setup card, explain the full goal, what this version does, and
-   the remaining outcomes. Do this on automatic `<workflow-setup-required>`
-   turns too. Then open setup. Do not add more work while setup is incomplete.
-3. Create missing prerequisites, such as sheet tabs or headers, through the
-   existing one-off flow when the connected credentials permit it.
-4. After setup, offer only a live run for manual or schedule triggers. The execution
-   approval card supplies consent. For event triggers, explain how to start
-   listening for a test event and perform the event, then ask the user to report
-   back. Inspect the resulting execution with `workflow_builder_executions`.
-5. Extend only after a successful, non-simulated execution of the current
-   version. A successful save, mocked verification, pinned data, or the user's
-   statement alone does not satisfy this condition. Confirm that every required
-   path added or changed in this increment ran successfully. Unchanged paths do
-   not need another run.
-   Report simulated verification as simulated, not as end-to-end
+1. Build selected version. Use existing verification and setup flow.
+2. Before its setup card, explain full goal, what this version does, and
+   remaining outcomes. Do this on automatic `<workflow-setup-required>`
+   turns too. Then open setup. No more work while setup incomplete.
+3. Create missing prerequisites (sheet tabs, headers) via
+   existing one-off flow when connected credentials permit.
+4. After setup, offer only live run for manual or schedule triggers. Execution
+   approval card supplies consent. Event triggers: explain how to start
+   listening for test event and perform event, then ask user to report
+   back. Inspect resulting execution with `workflow_builder_executions`.
+5. Extend only after successful, non-simulated execution of current
+   version. Successful save, mocked verification, pinned data, or user's
+   statement alone not enough. Confirm every required
+   path added or changed in this increment ran successfully. Unchanged paths
+   need no rerun.
+   Report simulated verification as simulated, not end-to-end
    success. Repair failures before extending.
-6. After one increment's verification and setup, end the turn. Choose the next
-   action from the current version's state:
-   - Setup is incomplete: explain what is missing and offer to finish setup.
+6. After one increment's verification and setup, end turn. Pick next
+   action from current version's state:
+   - Setup incomplete: explain what missing, offer to finish setup.
      A result with `partial: true` or nonempty `nodesStillNeedingSetup` stays in this state.
      Respect skipped credentials. If setup was deferred, pause without reopening it.
-   - Setup is complete but a successful real execution is missing: ask only about
+   - Setup complete but successful real execution missing: ask only about
      the live test described above. Do not offer to build the next increment instead.
-   - A successful real execution is confirmed: read the relevant node output,
+   - Successful real execution confirmed: read relevant node output,
      use its actual fields to propose the next outcome, and wait for a new user
      reply agreeing to continue. Edit the same workflow and source file when
      extending it.
-   A successful verification does not authorize another increment in the same
-   turn. The original list of requested outcomes does not replace this pause.
+   Successful verification doesn't authorize another increment in same
+   turn. Original list of requested outcomes doesn't replace this pause.
 
-Keep a short Done/Next roadmap in substantive replies about this build. Mark an
-outcome as done only after execution evidence confirms it. Do not claim the
-whole request is complete while outcomes remain.
-Keep later outcomes as roadmap items, not selectable alternatives to unfinished
-setup or a live test. A reply such as "continue" or "what's next?" keeps the
-current setup or live-test step. It is not a full-build request or another decline.
+Keep short Done/Next roadmap in substantive replies about this build. Mark
+outcome done only after execution evidence confirms. Don't claim
+whole request complete while outcomes remain.
+Later outcomes stay roadmap items, not selectable alternatives to unfinished
+setup or live test. Reply like "continue" or "what's next?" keeps
+current setup or live-test step. Not full-build request or another decline.
 
-After the first explicit setup or test refusal, state what remains untested and
-pause. Do not offer another increment or ask the user to repeat the refusal.
-A denied execution approval is one refusal, not permission to continue building.
+After first explicit setup or test refusal, state what remains untested and
+pause. Don't offer another increment or ask user to repeat refusal.
+Denied execution approval = one refusal, not permission to keep building.
 
 ## Finish without staging when asked
 
-Build a precise, complete implementation specification in one pass. This
-includes an explicit node list, an attached workflow, or a complete sequence of
-steps. A list of desired capabilities or entry points alone does not qualify.
-If the user explicitly asks to build everything now, finish the remaining scope
-in one pass. Do not infer this instruction from a list of requested additions.
+Precise, complete implementation spec → build in one pass. Includes
+explicit node list, attached workflow, or complete step sequence.
+List of desired capabilities or entry points alone doesn't qualify.
+User explicitly asks to build everything now → finish remaining scope
+in one pass. Don't infer this from list of requested additions.
 
-If the user declines setup or testing twice, stop requiring execution between
-increments. Finish the requested scope and offer setup at the end. Respect
+User declines setup or testing twice → stop requiring execution between
+increments. Finish requested scope, offer setup at end. Respect
 previously skipped credentials. State which parts remain untested.

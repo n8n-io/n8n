@@ -15,17 +15,17 @@
 
 /** How to write the `description` (the routing contract). */
 export const SKILL_DESCRIPTION_RULE =
-	'The description is the routing contract — the only text the agent sees when deciding whether ' +
-	'to load this skill, so it must be specific: state what the skill does AND the concrete ' +
-	'situations or keywords that should trigger it (e.g. "Use when the user asks to …"), plus when ' +
-	'NOT to use it where helpful. A vague description means the skill never loads.';
+	'Description is the routing contract — the only text the agent sees when deciding whether ' +
+	'to load this skill, so it must be specific: state what skill does AND concrete ' +
+	'situations or keywords that trigger it (e.g. "Use when the user asks to …"), plus when ' +
+	'NOT to use it where helpful. Vague description means skill never loads.';
 
 /** Rule that introduces the body template wherever it is shown to the model. */
 export const SKILL_BODY_FORMAT_RULE =
-	'The body is loaded only after the skill triggers, so it must be a self-contained, actionable ' +
+	'Body loads only after skill triggers, so it must be a self-contained, actionable ' +
 	'operating manual. Follow this exact Markdown structure, filling each applicable section with ' +
 	'concrete, specific content — no placeholders or angle-bracket text. Do NOT put "when to use" ' +
-	'triggers here; those belong in the description:';
+	'triggers here; those belong in description:';
 
 export const SKILL_BODY_TEMPLATE = `## Overview
 <1-2 sentences: what the agent should do when this skill is loaded, and the outcome it produces.>

@@ -39,7 +39,7 @@ async function isSameRegistrableDomainOverHttps(
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const webSearchAction = z.object({
-	action: z.literal('web-search').describe('Search the web for information'),
+	action: z.literal('web-search').describe('Search web for information'),
 	query: z
 		.string()
 		.describe('Search query. Be specific — include service names, API versions, error codes.'),
@@ -50,7 +50,7 @@ const webSearchAction = z.object({
 		.max(20)
 		.default(5)
 		.optional()
-		.describe('Maximum number of results to return (default 5, max 20)'),
+		.describe('Max results to return (default 5, max 20)'),
 	includeDomains: z
 		.array(z.string())
 		.optional()
@@ -58,8 +58,8 @@ const webSearchAction = z.object({
 });
 
 const fetchUrlAction = z.object({
-	action: z.literal('fetch-url').describe('Fetch a web page and extract its content as markdown'),
-	url: z.string().url().describe('URL of the page to fetch'),
+	action: z.literal('fetch-url').describe('Fetch web page, extract content as markdown'),
+	url: z.string().url().describe('URL of page to fetch'),
 	maxContentLength: z
 		.number()
 		.int()
@@ -67,7 +67,7 @@ const fetchUrlAction = z.object({
 		.max(100_000)
 		.default(30_000)
 		.optional()
-		.describe('Maximum content length in characters (default 30000)'),
+		.describe('Max content length in characters (default 30000)'),
 });
 
 const inputSchema = sanitizeInputSchema(
@@ -251,12 +251,11 @@ async function handleFetchUrl(
 export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
 		.description(
-			'Search the web or fetch page content for external (non-n8n) documentation. ' +
+			'Search web or fetch page content for external (non-n8n) documentation. ' +
 				'For n8n-specific questions — product behavior, node setup, credentials, hosting, ' +
-				'or feature docs, including which OAuth scopes a provider app needs — prefer the ' +
-				'sandbox knowledge base and `n8n-docs`, which is always loaded and takes one ' +
-				'call, over web search. Use this tool when those ' +
-				'sources and node type definitions are insufficient, or when researching a ' +
+				'or feature docs, including which OAuth scopes provider app needs — prefer ' +
+				'sandbox knowledge base and `n8n-docs` (always loaded, one call) over web search. ' +
+				'Use this tool when those sources and node type definitions are insufficient, or when researching ' +
 				'third-party API/service.',
 		)
 		.input(inputSchema)

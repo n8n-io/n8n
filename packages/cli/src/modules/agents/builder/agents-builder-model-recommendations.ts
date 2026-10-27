@@ -78,19 +78,19 @@ export function buildModelRecommendationsSection(catalog: ProviderCatalog): stri
 	return `\
 ### Recommended LLM Models
 
-These recommendations are derived from the live models.dev catalog exposed by the agents SDK.
-The provider lists are selected by newest release_date first, limited to
-tool-capable models when the catalog marks any models for that provider as
+Derived from live models.dev catalog exposed by agents SDK.
+Provider lists selected by newest release_date first, limited to
+tool-capable models when catalog marks any models for that provider as
 tool-capable.
 Treat this list as authoritative for model recommendations. Use these models
-when the user does not know what model to pick. Prefer a recommended model for
-a provider the user has credentials for; then call agent_builder_resolve_llm with that
-provider and model. During an initial build, if the user still needs to
-choose a provider or credential, do not ask: include the model choice in the
+when user does not know what model to pick. Prefer recommended model for
+provider user has credentials for; then call agent_builder_resolve_llm with that
+provider and model. During initial build, if user still needs to
+choose provider or credential, do not ask: include model choice in
 trailing agent_builder_finish_setup call instead.
-Do not mention models outside this list unless the user explicitly names one
-and agent_builder_resolve_llm validates it. Never write a non-empty model or credential
-without a agent_builder_resolve_llm result; drafts carry model "" while LLM setup is
+Do not mention models outside this list unless user explicitly names one
+and agent_builder_resolve_llm validates it. Never write non-empty model or credential
+without agent_builder_resolve_llm result; drafts carry model "" while LLM setup is
 pending.
 
 ${rows.join('\n')}`;

@@ -77,21 +77,21 @@ export interface GenerateSimulationFixturesInput {
 // batch on any mismatch).
 const FixturesResponseSchema = z.record(z.string(), z.array(z.unknown()));
 
-const SYSTEM_INSTRUCTIONS = `You generate realistic mock output for n8n workflow nodes whose real execution is being simulated (their operation would create, update, send, or delete data in an external system, would wait for an outside event, or would pause the workflow for user action).
+const SYSTEM_INSTRUCTIONS = `Generate realistic mock output for n8n workflow nodes whose real execution is simulated (operation would create, update, send, or delete data in external system, wait for outside event, or pause workflow for user action).
 
-For each node, return the output items the node would naturally emit after a SUCCESSFUL run of its operation — matching the response shape of the underlying service (e.g. a Slack message post returns "ok", "ts" and "channel"; a row insert returns the row including its new "id"). Base the field values on the node's parameters so the data is plausible in context, and keep values consistent across nodes (same fictional users, ids, timestamps).
+Per node, return output items node would emit after SUCCESSFUL run of its operation, matching underlying service's response shape (e.g. Slack message post returns "ok", "ts" and "channel"; row insert returns row including new "id"). Base field values on node's parameters so data is plausible. Keep values consistent across nodes (same fictional users, ids, timestamps).
 
-When a node block includes an "Output JSON Schema", it is the node's real recorded output shape — follow its structure exactly (field names and types); only invent fields the schema doesn't cover when the node's parameters clearly require them.
+If node block has "Output JSON Schema", it is node's real recorded output shape. Follow its structure exactly (field names and types). Invent fields schema doesn't cover only when node's parameters clearly require them.
 
-Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Fixtures feed a real verification run that compares values against the execution clock ($now, Date.now()); stale dates get silently filtered out downstream.
+Dates and timestamps MUST derive from "## Date anchors" block at end of prompt, never from training data. Fixtures feed real verification run comparing values against execution clock ($now, Date.now()); stale dates get silently filtered out downstream.
 
 Special node types:
-- Trigger nodes (marked as the workflow's simulated event source): emit the EVENT PAYLOAD the trigger delivers into the workflow — the received email/message/record object itself — never an API response envelope, acknowledgement, or request metadata.
-- Form nodes (a mid-workflow form page): emit the submitted field values — one key per field defined in the node's formFields, with plausible values, plus "submittedAt".
-- Pass-through nodes (a timer Wait, Text Classifier, Sentiment Analysis): their real output IS their input. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving — a timer Wait passes it through unchanged; Text Classifier does too, unless its parameters turn on includeConfidenceScores, when it also adds a "classification" object; Sentiment Analysis passes it through and adds a "sentimentAnalysis" object.
-- A Wait set to resume on a webhook call or a form submission does NOT pass its input through: emit what resumes it — the received request body, or one key per field in the node's own formFields plus "submittedAt".
+- Trigger nodes (marked as workflow's simulated event source): emit EVENT PAYLOAD trigger delivers into workflow (received email/message/record object itself), never API response envelope, acknowledgement, or request metadata.
+- Form nodes (mid-workflow form page): emit submitted field values: one key per field in node's formFields, plausible values, plus "submittedAt".
+- Pass-through nodes (timer Wait, Text Classifier, Sentiment Analysis): real output IS input. Emit data matching what listed upstream nodes would produce, so downstream expressions keep resolving. Timer Wait passes it through unchanged. Text Classifier too, unless parameters turn on includeConfidenceScores, then it also adds "classification" object. Sentiment Analysis passes it through and adds "sentimentAnalysis" object.
+- Wait set to resume on webhook call or form submission does NOT pass input through: emit what resumes it: received request body, or one key per field in node's own formFields plus "submittedAt".
 
-Output: a single JSON object whose keys are node names and whose values are arrays of n8n pin-data items in the form { "json": { ... } }. One item per node is enough.
+Output: single JSON object, keys = node names, values = arrays of n8n pin-data items shaped { "json": { ... } }. One item per node enough.
 
 Return only the JSON object. No prose, no markdown fences.`;
 
@@ -113,7 +113,7 @@ function formatNodeBlock(
 		`Node type: ${node.type}`,
 		`Simulated because: ${reason}`,
 		...(isTriggerNodeType(node.type)
-			? ["This node is the workflow's simulated event source — emit the event payload it delivers."]
+			? ["This node is workflow's simulated event source — emit the event payload it delivers."]
 			: []),
 		`Parameters: ${params}`,
 		...(schemaContext ? buildNodeSchemaSection(schemaContext) : []),
@@ -426,7 +426,7 @@ export async function generateSimulationFixtures(
 	);
 	const now = new Date();
 	const userText = [
-		'Generate realistic mock output (pin-data items) for the following simulated n8n nodes.',
+		'Generate realistic mock output (pin-data items) for these simulated n8n nodes.',
 		input.workflow.name ? `\nWorkflow: ${input.workflow.name}` : '',
 		'',
 		nodes
@@ -442,8 +442,8 @@ export async function generateSimulationFixtures(
 			)
 			.join('\n\n'),
 		'',
-		`Output a single JSON object with exactly these keys: ${nodeNames.map((n) => `"${n}"`).join(', ')}.`,
-		'Each value: an array with one item shaped like { "json": { ...fields } }.',
+		`Output single JSON object with exactly these keys: ${nodeNames.map((n) => `"${n}"`).join(', ')}.`,
+		'Each value: array with one item shaped like { "json": { ...fields } }.',
 		'',
 		'## Date anchors',
 		buildDateAnchors(now),

@@ -170,71 +170,71 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				'Full source to write to filePath before building. Use instead of separate workspace_write_file call when creating or fully rewriting source. Omit to build existing file content (preferred for targeted edits made with file tools, required before `workflow-sdk validate`).',
 			),
 		workflowId: z
 			.string()
 			.optional()
 			.describe(
-				'Real n8n workflow id from a prior workflow_builder_build_workflow or workflow_builder_workflows() tool result, used to bind this file on the first update. ' +
-					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
-					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflow_builder_workflows() before inventing one.',
+				'Real n8n workflow id from prior workflow_builder_build_workflow or workflow_builder_workflows() tool result, binds this file on first update. ' +
+					'Never pass first argument of workflow(slug, name). Once bound, omit on retries. ' +
+					'Omit to create new workflow. Missing and inaccessible ids look same — confirm with workflow_builder_workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		approvalSummary: approvalSummarySchema,
 		workItemId: z
 			.string()
 			.optional()
-			.describe('Optional workflow-loop work item ID when repairing a workflow.'),
+			.describe('Optional workflow-loop work item ID when repairing workflow.'),
 		isSupportingWorkflow: z
 			.boolean()
 			.optional()
 			.describe(
-				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-					'Save the main workflow later.',
+				'Set true when saving supporting sub-workflow referenced by main workflow. ' +
+					'Save main workflow later.',
 			),
 		preferNewCredentials: z
 			.array(z.string())
 			.optional()
 			.describe(
-				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
-					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
-					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
-					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
-					'credential setup can offer to create one. Pass the same list to workflow_builder_workflows(action="setup").',
+				'Credential types (e.g. ["slackApi"]) to route to fresh credential creation. Pass when user ' +
+					'explicitly asked ("create a new Slack credential") or needs to enter replacement for ' +
+					'credential whose secret is invalid or rotated, never as default. Those slots stay ' +
+					'unresolved instead of filled from existing credential or Gateway credits, so ' +
+					'credential setup can offer to create one. Pass same list to workflow_builder_workflows(action="setup").',
 			),
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
 			.optional()
 			.describe(
-				'How the user intends to use this workflow. Pass `one-off` when the user wants a concrete ' +
-					'effect once (an export, migration, backfill, or cleanup) and the workflow is only the ' +
-					'vehicle — verification becomes an optional pre-flight and completion is a live run whose ' +
-					'output was read back (see the one-off-operations skill). Omit or pass `reusable` for ' +
-					'anything the user may run again.',
+				'How user intends to use this workflow. Pass `one-off` when user wants concrete ' +
+					'effect once (export, migration, backfill, cleanup) and workflow is only the ' +
+					'vehicle — verification becomes optional pre-flight, completion is live run whose ' +
+					'output was read back (see one-off-operations skill). Omit or pass `reusable` for ' +
+					'anything user may run again.',
 			),
 		groupingDecision: z
 			.enum(['grouped', 'not_warranted'])
 			.optional()
 			.describe(
-				'Only for a canvas that will exceed the top-level ceiling with no node group: pass `not_warranted` ' +
-					'together with `groupingReason` to say why no valid group can hold the remaining nodes. ' +
-					'Never pass it to skip the grouping decision.',
+				'Only for canvas that will exceed top-level ceiling with no node group: pass `not_warranted` ' +
+					'with `groupingReason` saying why no valid group can hold remaining nodes. ' +
+					'Never pass it to skip grouping decision.',
 			),
 		groupingReason: z
 			.string()
 			.optional()
 			.describe(
-				'Required with `groupingDecision: not_warranted`: why these nodes cannot form a valid group.',
+				'Required with `groupingDecision: not_warranted`: why these nodes cannot form valid group.',
 			),
 	})
 	.strict();
 
 const FOLDER_PATH_PLACEMENT_DESCRIPTION =
-	'Folder to create the NEW workflow in, named the way the user named it — "Clients/Acme", "Acme". ' +
-	'Pass it whenever the workflow has a clear home: the user named a folder, or the related workflows you read live there. ' +
-	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: an unresolved folder fails the build before anything is saved and lists the real folders, so retry with one of those or ask the user. ' +
-	'New workflows only — to move an existing workflow use `workspace(action="move-workflow-to-folder")`.';
+	'Folder to create NEW workflow in, named as user named it — "Clients/Acme", "Acme". ' +
+	'Pass whenever workflow has clear home: user named folder, or related workflows you read live there. ' +
+	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: unresolved folder fails build before anything is saved and lists real folders, so retry with one of those or ask user. ' +
+	'New workflows only — to move existing workflow use `workspace(action="move-workflow-to-folder")`.';
 
 /** Same contract plus a folder target; advertised only while folder exploration is on for the run. */
 export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSchema
@@ -599,12 +599,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.BUILD_WORKFLOW)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.BUILD_WORKFLOW))
 		.description(
-			'Build and save a workflow from workflow source. ' +
+			'Build and save workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
-				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
+				'When workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
-				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
+				'Prefer writing file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+				'For one-shot create/rewrite, can pass `sourceCode` instead (tool writes filePath and builds).',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
 		.output(pickBuildWorkflowOutputSchema(context))

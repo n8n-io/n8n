@@ -22,42 +22,42 @@ import {
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 export const reportVerificationVerdictInputSchema = z.object({
-	workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
-	workflowId: z.string().describe('The workflow ID that was verified'),
+	workItemId: z.string().describe('Work item ID from build task (wi_XXXXXXXX)'),
+	workflowId: z.string().describe('Workflow ID that was verified'),
 	executionId: z
 		.string()
 		.optional()
-		.describe('The execution ID from `workflow_builder_executions(action="run")`, if available'),
+		.describe('Execution ID from `workflow_builder_executions(action="run")`, if available'),
 	verdict: verificationVerdictSchema.describe(
-		'Your assessment: "verified" if the workflow ran correctly, ' +
-			'"needs_patch" if a specific node needs fixing, ' +
-			'"needs_rebuild" if the workflow needs structural changes, ' +
-			'"trigger_only" if the workflow uses event triggers and cannot be test-run, ' +
-			'"needs_user_input" if user action is required (e.g. missing credentials), ' +
-			'"failed_terminal" if the failure cannot be fixed automatically',
+		'Your assessment: "verified" if workflow ran correctly, ' +
+			'"needs_patch" if specific node needs fixing, ' +
+			'"needs_rebuild" if workflow needs structural changes, ' +
+			'"trigger_only" if workflow uses event triggers and cannot be test-run, ' +
+			'"needs_user_input" if user action required (e.g. missing credentials), ' +
+			'"failed_terminal" if failure cannot be fixed automatically',
 	),
 	workflowInspection: z
 		.string()
 		.min(1)
 		.describe(
-			'Brief note from inspecting the persisted workflow JSON/code after save. Mention why the saved graph does or does not match the requested outcome.',
+			'Brief note from inspecting persisted workflow JSON/code after save. Mention why saved graph does or does not match requested outcome.',
 		),
 	failureSignature: z
 		.string()
 		.optional()
 		.describe(
-			'A short, stable identifier for the failure (e.g. "TypeError:undefined_is_not_iterable" or node error code). Used to detect repeated failures.',
+			'Short, stable failure identifier (e.g. "TypeError:undefined_is_not_iterable" or node error code). Detects repeated failures.',
 		),
 	failedNodeName: z
 		.string()
 		.optional()
-		.describe('The name of the node that failed (required for "needs_patch" verdict)'),
+		.describe('Name of failed node (required for "needs_patch" verdict)'),
 	diagnosis: z.string().optional().describe('Brief explanation of what went wrong and why'),
 	patch: z
 		.record(z.unknown())
 		.optional()
 		.describe(
-			'Node parameter patch object for "needs_patch" verdict — the specific parameters to change on the failed node',
+			'Node parameter patch object for "needs_patch" verdict — specific parameters to change on failed node',
 		),
 	remediation: z
 		.object({
@@ -72,7 +72,7 @@ export const reportVerificationVerdictInputSchema = z.object({
 		.describe(
 			'Remediation metadata returned by workflow_builder_verify_built_workflow, if available',
 		),
-	summary: z.string().describe('One-sentence summary of the verification result'),
+	summary: z.string().describe('One-sentence summary of verification result'),
 });
 
 function defaultRemediationForVerdict(
@@ -112,9 +112,9 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 	return new Tool(ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT))
 		.description(
-			'Report the result of verifying a workflow after building it. ' +
-				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +
-				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
+			'Report result of verifying workflow after building it. ' +
+				'Call after inspecting persisted workflow, running it, and (optionally) debugging failed execution. ' +
+				'Returns deterministic guidance on next step (done, rebuild, or blocked).',
 		)
 		.input(reportVerificationVerdictInputSchema)
 		.output(

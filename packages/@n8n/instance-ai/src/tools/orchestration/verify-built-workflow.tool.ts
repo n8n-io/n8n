@@ -71,36 +71,36 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The work item ID from the build (wi_XXXXXXXX). Optional for follow-up verification; when omitted, the latest build outcome for workflowId in this thread is used.',
+			'Work item ID from build (wi_XXXXXXXX). Optional for follow-up verification; when omitted, latest build outcome for workflowId in this thread is used.',
 		),
-	workflowId: z.string().describe('The workflow ID to verify'),
+	workflowId: z.string().describe('Workflow ID to verify'),
 	inputData: z
 		.record(z.unknown())
 		.optional()
 		.describe(
-			"Input data for the workflow trigger. Shape MUST match the trigger's real-world output: " +
+			"Input data for workflow trigger. Shape MUST match trigger's real-world output: " +
 				'Form Trigger -> flat field map like {name: "Alice", email: "a@b.c"} (do NOT wrap in formFields); ' +
-				'Webhook -> a flat payload like {event: "signup", userId: "..."} is placed under `body` and leaves ' +
+				'Webhook -> flat payload like {event: "signup", userId: "..."} is placed under `body` and leaves ' +
 				'`query`, `headers` and `params` EMPTY. When any expression reads $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope instead: {body: {...}, query: {caller: "+1555..."}, ' +
+				'$json.params.*, pass request envelope instead: {body: {...}, query: {caller: "+1555..."}, ' +
 				'headers: {"x-github-event": "issues"}, params: {...}}. A flat payload cannot exercise those fields, they resolve ' +
-				'empty, and a simulated downstream node still looks green; ' +
+				'empty, and simulated downstream node still looks green; ' +
 				'Chat Trigger -> {chatInput: "user message"}; ' +
 				'Schedule Trigger -> omit inputData. ' +
-				"If you wrap a form payload in {formFields: {...}} the adapter will reject the call; the builder's " +
-				'downstream expressions reference $json.<field>, matching the flat production shape.',
+				"Wrapping form payload in {formFields: {...}} makes adapter reject call; builder's " +
+				'downstream expressions reference $json.<field>, matching flat production shape.',
 		),
 	triggerNodeName: z
 		.string()
 		.min(1)
 		.optional()
 		.describe(
-			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +
-				'more than one trigger: without it a single trigger is auto-detected and the other ' +
+			'Trigger node name to start verification from. REQUIRED when workflow has ' +
+				'more than one trigger: without it a single trigger is auto-detected and other ' +
 				"triggers' branches are never verified. To cover every branch, call verify once per " +
 				"trigger. Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
-				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, reorder, or re-save a workflow — ' +
-				'and never build a throwaway copy — to reach a branch; use this instead.',
+				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, reorder, or re-save workflow — ' +
+				'and never build throwaway copy — to reach a branch; use this instead.',
 		),
 	timeout: z
 		.number()
@@ -112,37 +112,37 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 	includeData: z
 		.boolean()
 		.optional()
-		.describe('Set true only when you need the full execution data payload. Default false.'),
+		.describe('Set true only when full execution data payload needed. Default false.'),
 	maxDataChars: z
 		.number()
 		.int()
 		.min(0)
 		.max(20_000)
 		.optional()
-		.describe('Max characters per node preview in the compact response (default 600).'),
+		.describe('Max characters per node preview in compact response (default 600).'),
 	fixtureOverrides: z
 		.record(z.array(z.record(z.unknown())))
 		.optional()
 		.describe(
-			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input. ' +
-				'An empty array is rejected unless the node is also listed in `allowZeroItemFixtures`.',
+			'Optional per-run output fixtures keyed by node name. Only nodes classified as simulated in build outcome may be overridden. Use for alternate deterministic scenarios, not raw trigger input. ' +
+				'Empty array rejected unless node also listed in `allowZeroItemFixtures`.',
 		),
 	fixTargetNodeNames: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Node names this change is about — the node the user reported as failing, or the node ' +
-				'you just repaired. The verdict shown to the user is downgraded to "changed but ' +
-				'unverified" when any of these was never reached or had simulated output, so a green ' +
-				'run elsewhere cannot pass as proof for them. Pass these whenever you are fixing a ' +
+			'Node names this change is about — node user reported as failing, or node ' +
+				'you just repaired. Verdict shown to user is downgraded to "changed but ' +
+				'unverified" when any was never reached or had simulated output, so green ' +
+				'run elsewhere cannot pass as proof for them. Pass whenever fixing ' +
 				'specific node rather than building from scratch.',
 		),
 	allowZeroItemFixtures: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Node names whose `fixtureOverrides` entry may be an empty array. Zero items stop every node below, so the run reports success while verifying nothing. ' +
-				'List a node here only when the empty branch is what you are verifying, and say so in your report.',
+			'Node names whose `fixtureOverrides` entry may be empty array. Zero items stop every node below, so run reports success while verifying nothing. ' +
+				'List node here only when empty branch is what you verify, and say so in your report.',
 		),
 });
 
@@ -216,11 +216,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW))
 		.description(
-			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
+			'Standard post-build verifier: runs built workflow with sidecar verification context from build outcome ' +
 				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
 				'Use `workflow_builder_executions(action="run")` only for ad hoc runs outside build verification. ' +
-				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
-				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
+				'CRITICAL: `inputData` shape depends on trigger type (see field description) — wrong shape produces ' +
+				'null downstream values that look like expression bug; re-run verify with correct shape instead of patching workflow.',
 		)
 		.input(verifyBuiltWorkflowInputSchema)
 		.output(verifyBuiltWorkflowOutputSchema)

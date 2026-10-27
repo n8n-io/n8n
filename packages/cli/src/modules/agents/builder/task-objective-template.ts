@@ -32,12 +32,12 @@ export const TASK_OBJECTIVE_TEMPLATE = `## Objective
 
 /** One-line rule that introduces the template wherever it is shown to the model. */
 export const TASK_OBJECTIVE_FORMAT_RULE =
-	'The objective is the run-specific user message for each unattended run. Agent Instructions ' +
-	'still apply and configured Skills remain available, so do not repeat universal rules or copy ' +
-	'reusable procedures into the objective. The schedule is separate metadata in cronExpression and ' +
-	'must never be repeated in the objective. It must be self-contained from the current builder ' +
-	'chat and follow this exact Markdown structure, with every section filled in with concrete, ' +
-	'specific content — no placeholders or angle-bracket text:';
+	'Objective is the run-specific user message for each unattended run. Agent Instructions ' +
+	'still apply and configured Skills remain available; do not repeat universal rules or copy ' +
+	'reusable procedures into objective. Schedule is separate metadata in cronExpression; never ' +
+	'repeat it in objective. Objective must be self-contained from current builder chat and ' +
+	'follow this exact Markdown structure, every section filled with concrete, specific ' +
+	'content — no placeholders or angle-bracket text:';
 
 /** The rule followed by the template, for embedding in tool / field descriptions. */
 export const TASK_OBJECTIVE_GUIDANCE = `${TASK_OBJECTIVE_FORMAT_RULE}\n\n${TASK_OBJECTIVE_TEMPLATE}`;

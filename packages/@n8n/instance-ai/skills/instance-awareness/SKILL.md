@@ -1,10 +1,10 @@
 ---
 name: instance-awareness
 description: >-
-  Load when the request depends on what is already on this instance rather than
-  on what the user just typed: a short or ambiguous opener ("fix it", "carry on",
-  "what should I look at"), a reference to earlier work in a new conversation, or
-  any question about what has recently run or broken.
+  Load when request depends on what already exists on this instance, not on
+  what user just typed: short/ambiguous opener ("fix it", "carry on", "what
+  should I look at"), reference to earlier work in new conversation, or
+  question about what recently ran or broke.
 recommended_tools:
   - activity
   - workflow_builder_workflows
@@ -15,112 +15,71 @@ recommended_tools:
   - test_credential
   - delete_credential
 ---
-
 # Instance Awareness
 
-The conversation is not the only context you have. This instance carries a
-record of what has been built, changed, run and broken. Most of it is cheap to
-read, and reading it is usually better than asking.
+Conversation not only context. Instance carries record of what built, changed, run, broken. Mostly cheap to read; reading usually beats asking.
 
 ## The one rule
 
 **Ask about intent. Look up state.**
 
-What the user wants next is theirs to tell you. What already exists here is
-yours to find out. A question you could have answered by looking costs the user
-a turn and tells them you are not paying attention — and it is the most common
-complaint in reviewed conversations: the assistant re-asking for something it
-had, or restarting work it had already finished.
+What user wants next: theirs to tell. What exists here: yours to find. Question answerable by looking costs user a turn, signals inattention — most common complaint in reviewed conversations: assistant re-asking for what it had, or restarting finished work.
 
 ## Read in this order — cheapest first
 
-Each rung answers a narrower question at a higher cost. Stop at the first one
-that answers yours. Do not start at the bottom.
+Each rung answers narrower question at higher cost. Stop at first that answers. Don't start at bottom.
 
 ### 0. The block you were already given
 
-If an `<instance-context>` block is in this turn, you already have three things
-for free: which workflows exist here, what changed recently, and what has run
-or failed. Read it before your first tool call.
+If `<instance-context>` block in this turn, three things free: which workflows exist, what changed recently, what ran or failed. Read before first tool call.
 
-It is a set of pointers, not contents. Each change line ends with the resource
-it is about, and the bracketed number is a stable id. Run lines carry the
-execution id of the last failure, which is what `workflow_builder_executions` takes.
+Pointers, not contents. Each change line ends with its resource; bracketed number = stable id. Run lines carry execution id of last failure — what `workflow_builder_executions` takes.
 
-A later turn may bring a shorter block that says it is an addition. Those are
-extra entries, not a replacement — the earlier ones still stand.
+Later turn may bring shorter block marked as addition. Extra entries, not replacement — earlier ones still stand.
 
 ### 1. `activity(action="list")` and `activity(action="expand", id=N)`
 
-`list` looks further back than the block, or filters to one category or one
-resource. `expand` opens a single entry in full **and returns up to 20 more
-recent entries for the same resource** — which is how you see a workflow's
-recent change history in a single call. Twenty is a cap, not a total: an older
-history continues past it, and `list` with that `resourceId` reads further
-back.
+`list` looks further back than block, or filters to one category/resource. `expand` opens single entry in full **and returns up to 20 more recent entries for the same resource** — one call shows workflow's recent change history. Twenty = cap, not total: older history continues past it; `list` with that `resourceId` reads further back.
 
-Use `expand` when a line is interesting but thin: a save you want the detail of,
-or a workflow you want the history of. An id that no longer resolves is ordinary
-— entries are pruned — so carry on rather than treating it as an error.
+Use `expand` when line interesting but thin: save you want detail of, workflow you want history of. Id no longer resolving = ordinary — entries pruned — carry on, not error.
 
-The log covers workflow and credential changes. It does not record runs; those
-come from the block, and `workflow_builder_executions` has the detail.
+Log covers workflow and credential changes. No runs; those from block, detail in `workflow_builder_executions`.
 
 ### 2. One workflow, read in full
 
-`workflow_builder_workflows(action="get", workflowId, full=true)` on **one** example — the one
-the block points at, or the one the user named. This rung is for what an entry
-cannot express: parameter values, naming, retry settings, error-workflow
-wiring, how a prompt is structured.
+`workflow_builder_workflows(action="get", workflowId, full=true)` on **one** example — one block points at, or one user named. Rung for what entry can't express: parameter values, naming, retry settings, error-workflow wiring, prompt structure.
 
-Pass `full=true`. Without it a large workflow comes back as structure only,
-with its node parameters omitted — which is exactly what this rung is for.
+Pass `full=true`. Without it large workflow returns structure only, node parameters omitted — exactly what this rung is for.
 
-Read one, not several. If one example is not enough to see the pattern, there is
-probably no pattern to follow.
+Read one, not several. If one example not enough to see pattern, probably no pattern.
 
 ## What each surface can and cannot tell you
 
 | Question | Where it is answered |
 |---|---|
-| What already exists here? | the block, rung 0 |
-| What did they just change? | the block, rung 0 |
-| Which workflow do they mean by "it"? | the block — the most recent one they touched |
-| What is broken right now? | the block's run lines, then `workflow_builder_executions` for the detail |
-| Did the nightly job run? | the block, then `workflow_builder_executions` |
+| What already exists here? | block, rung 0 |
+| What did they just change? | block, rung 0 |
+| Which workflow do they mean by "it"? | block — most recent one they touched |
+| What is broken right now? | block's run lines, then `workflow_builder_executions` for detail |
+| Did the nightly job run? | block, then `workflow_builder_executions` |
 | Who changed this, and was it me? | `activity(action="expand")` — entries carry provenance |
 | How do they configure it? | one workflow, rung 2 |
 | Do they have a credential for X? | `list_credentials` |
 
 ## Resolving a vague opener
 
-"fix it", "carry on", "why is this broken", "what should I look at", or a new
-conversation about work from yesterday: the answer is nearly always the most
-recent thing in the block, and usually the most recent *failure*.
+"fix it", "carry on", "why is this broken", "what should I look at", or new conversation about yesterday's work: answer nearly always most recent thing in block, usually most recent *failure*.
 
-Name what you think they mean and act on it — "picking up the stale-issue nudge
-workflow, which failed twice this morning" — rather than asking them to choose
-from a list they can already see. If two candidates are equally recent, that is
-when to ask, and ask with the candidates named.
+Name what you think they mean, act — "picking up the stale-issue nudge workflow, which failed twice this morning" — not ask them to pick from list they can see. Two candidates equally recent → then ask, candidates named.
 
 ## Reusing what they changed by hand
 
-A save entry records which node types were added or removed, and whether the
-change came from the assistant or from the user. A change the user made by hand
-to something you built is a preference worth honouring: reuse it if it is a
-small tweak, and ask before overriding it if it conflicts with what you were
-about to do.
+Save entry records node types added/removed, and whether change from assistant or user. User's hand change to something you built = preference worth honouring: reuse if small tweak; ask before overriding if conflicts with your plan.
 
 ## Where this stops
 
-- **An entry is not the workflow.** It records that a save happened and which
-  node types moved, never the parameters. Anything about contents is rung 2.
-- **An entry can outlive its resource.** A deletion entry points at a workflow
-  that is gone; that is the entry doing its job.
-- **Runs end where retention ends.** The instance keeps executions for a bounded
-  window, so an older failure may be gone even though the workflow is not.
-- **Recent is not the same as typical.** The newest workflow may be the odd one
-  out.
-- **Do not narrate the block.** It is context for reading intent, not a status
-  report. Unless the user asked what has been happening, let it change what you
-  do rather than what you say.
+- **An entry is not the workflow.** Records save happened and which node types moved, never parameters. Contents = rung 2.
+- **An entry can outlive its resource.** Deletion entry points at gone workflow; entry doing its job.
+- **Runs end where retention ends.** Executions kept bounded window; older failure may be gone though workflow isn't.
+- **Recent is not the same as typical.** Newest workflow may be odd one out.
+- **Do not narrate the block.** Context for reading intent, not status report. Unless user asked what's been happening, let it change what you do, not what you say.

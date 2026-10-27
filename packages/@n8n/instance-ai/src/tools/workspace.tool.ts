@@ -27,7 +27,7 @@ const folderNameField = z.string().optional().describe('Folder name (for confirm
 // ── Action schemas ──────────────────────────────────────────────────────────
 
 const listProjectsAction = z.object({
-	action: z.literal('list-projects').describe('List all projects accessible to the current user'),
+	action: z.literal('list-projects').describe('List all projects accessible to current user'),
 });
 
 const listTagsAction = z.object({
@@ -37,16 +37,16 @@ const listTagsAction = z.object({
 const tagWorkflowAction = z.object({
 	action: z
 		.literal('tag-workflow')
-		.describe('Assign tags to a workflow, creating missing tags automatically'),
+		.describe('Assign tags to workflow, creating missing tags automatically'),
 	workflowId: workflowIdField,
 	workflowName: workflowNameField,
-	tags: z.array(z.string()).min(1).describe('Tag names to assign to the workflow'),
+	tags: z.array(z.string()).min(1).describe('Tag names to assign to workflow'),
 });
 
 const cleanupTestExecutionsAction = z.object({
 	action: z
 		.literal('cleanup-test-executions')
-		.describe('Delete manual/test execution records for a workflow'),
+		.describe('Delete manual/test execution records for workflow'),
 	workflowId: workflowIdField,
 	workflowName: workflowNameField,
 	olderThanHours: z
@@ -58,22 +58,22 @@ const cleanupTestExecutionsAction = z.object({
 });
 
 const listFoldersAction = z.object({
-	action: z.literal('list-folders').describe('List folders in a project'),
+	action: z.literal('list-folders').describe('List folders in project'),
 	projectId: projectIdField,
 });
 
 const createFolderAction = z.object({
-	action: z.literal('create-folder').describe('Create a new folder in a project'),
-	name: folderNameSchema.describe('Name for the new folder'),
+	action: z.literal('create-folder').describe('Create new folder in project'),
+	name: folderNameSchema.describe('Name for new folder'),
 	projectId: projectIdField,
 	parentFolderId: z
 		.string()
 		.optional()
-		.describe('ID of the parent folder for nesting. Omit for root-level folder.'),
+		.describe('Parent folder ID for nesting. Omit for root-level folder.'),
 });
 
 const deleteFolderAction = z.object({
-	action: z.literal('delete-folder').describe('Delete a folder from a project'),
+	action: z.literal('delete-folder').describe('Delete folder from project'),
 	folderId: folderIdField,
 	folderName: folderNameField,
 	projectId: projectIdField,
@@ -81,16 +81,16 @@ const deleteFolderAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'ID of a folder to move contents into before deletion. If omitted, contents are flattened to project root and archived.',
+			'Folder ID to move contents into before deletion. If omitted, contents flattened to project root and archived.',
 		),
 	transferToFolderName: z
 		.string()
 		.optional()
-		.describe('Name of the transfer folder (for confirmation message)'),
+		.describe('Transfer folder name (for confirmation message)'),
 });
 
 const moveWorkflowToFolderAction = z.object({
-	action: z.literal('move-workflow-to-folder').describe('Move a workflow into a folder'),
+	action: z.literal('move-workflow-to-folder').describe('Move workflow into folder'),
 	workflowId: workflowIdField,
 	workflowName: workflowNameField,
 	folderId: folderIdField,
@@ -398,7 +398,7 @@ export function createWorkspaceTool(context: InstanceAiContext) {
 	const inputSchema = buildInputSchema(context);
 
 	return new Tool('workspace')
-		.description('Manage workspace resources — projects, tags, folders, and execution cleanup.')
+		.description('Manage workspace resources: projects, tags, folders, execution cleanup.')
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(resumeSchema)

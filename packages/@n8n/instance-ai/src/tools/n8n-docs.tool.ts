@@ -48,7 +48,7 @@ export {
 };
 
 const SOURCE_ATTRIBUTION_INSTRUCTION =
-	'When answering from returned docs, end with `Source: [Page title](page URL)` for one page or `Sources:` for multiple pages, using only returned page titles and URLs.';
+	'When answering from returned docs, end with `Source: [Page title](page URL)` for one page or `Sources:` for multiple, using only returned page titles and URLs.';
 
 function clamp(value: number | undefined, fallback: number, max: number): number {
 	if (value === undefined) return fallback;
@@ -226,7 +226,7 @@ async function handleRead(
 export function createN8nDocsTool(context: N8nDocsToolContext) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			`Search and read current n8n documentation from docs.n8n.io. Always available — call it directly, no \`load_tool\` step. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions, and prefer it over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
+			`Search and read current n8n documentation from docs.n8n.io. Always available — call directly, no \`load_tool\` step. Use for n8n product, setup, credential, node, hosting, API, troubleshooting questions; prefer over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
 		.handler(async (input, ctx) => {

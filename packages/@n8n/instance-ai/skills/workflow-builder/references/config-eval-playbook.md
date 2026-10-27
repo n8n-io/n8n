@@ -5,33 +5,26 @@ description: >-
   config shapes, or worked examples to list, create, change, run, or remove a
   config evaluation.
 ---
-
 # Config Eval Playbook
 
-Recipes and worked examples for the `eval-config` tool. All actions are
-discriminated by `action` and always take a `workflowId`.
+Recipes + worked examples for `eval-config` tool. All actions discriminated by `action`, always take `workflowId`.
 
 ## Actions
 
 | Action   | Purpose                                  | Extra fields |
 | -------- | ---------------------------------------- | ------------ |
-| `list`   | List config evals on a workflow          | — |
+| `list`   | List config evals on workflow          | — |
 | `get`    | Read one config eval                     | `configId` |
-| `create` | Attach a new config eval                 | config fields |
-| `update` | Replace an existing config eval          | `configId` + config fields |
-| `delete` | Remove a config eval                     | `configId` |
+| `create` | Attach new config eval                 | config fields |
+| `update` | Replace existing config eval          | `configId` + config fields |
+| `delete` | Remove config eval                     | `configId` |
 
 Config fields (create/update): `name`, `startNodeName`, `endNodeName`,
 `dataTableId`, `metrics`.
 
-`startNodeName` must be a node **with an incoming connection** — the first node
-the trigger feeds into, never the trigger itself. An eval run replaces the
-trigger with a dataset-driven one, so naming the trigger as the start node fails
-to compile. For a single-agent workflow, `startNodeName` and `endNodeName` are
-usually the same agent node.
+`startNodeName` must be node **with incoming connection** — first node trigger feeds into, never trigger itself. Eval run replaces trigger with dataset-driven one, so trigger as start node fails compile. Single-agent workflow: `startNodeName` and `endNodeName` usually same agent node.
 
-`create`, `update`, and `delete` show an approval card automatically. Call the
-tool and act on the result; do not ask for chat approval beforehand.
+`create`, `update`, `delete` show approval card automatically. Call tool, act on result; no chat approval beforehand.
 
 ## Metric Fields
 
@@ -39,23 +32,21 @@ tool and act on the result; do not ask for chat approval beforehand.
 | -------------- | ----------------------- | ----- |
 | `name`         | always                  | e.g. `"Correctness"` |
 | `preset`       | always                  | `correctness` or `helpfulness` |
-| `credentialId` | always                  | credential id for the judge model; also determines the provider |
-| `model`        | always                  | model ID supported by the judge credential |
+| `credentialId` | always                  | judge model credential id; also determines provider |
+| `model`        | always                  | model ID supported by judge credential |
 | `outputType`   | defaults to `numeric`   | `numeric` or `boolean` |
-| `actualAnswer` | always                  | expression for the produced answer, e.g. `={{ $json.output }}` |
+| `actualAnswer` | always                  | expression for produced answer, e.g. `={{ $json.output }}` |
 | `expectedAnswer` | `correctness` preset  | expression for ground truth, e.g. `={{ $json.expected_output }}` |
-| `userQuery`    | `helpfulness` preset    | expression for the user's query, e.g. `={{ $json.input }}` |
-| `prompt`       | optional                | overrides the default judge prompt |
-| `provider`     | omit                    | chat-model node type; leave unset — derived from `credentialId`. Set only if you know it (e.g. `@n8n/n8n-nodes-langchain.lmChatOpenAi`) |
+| `userQuery`    | `helpfulness` preset    | expression for user query, e.g. `={{ $json.input }}` |
+| `prompt`       | optional                | overrides default judge prompt |
+| `provider`     | omit                    | chat-model node type; leave unset — derived from `credentialId`. Set only if known (e.g. `@n8n/n8n-nodes-langchain.lmChatOpenAi`) |
 
-`actualAnswer`, `expectedAnswer`, and `userQuery` are expressions and **must
-begin with `=`** (e.g. `={{ $json.output }}`). Without the `=` the value is stored
-as literal text and the judge scores `{{ $json.output }}` verbatim instead of the
-resolved output. Only omit `=` for a genuinely fixed constant string.
+`actualAnswer`, `expectedAnswer`, `userQuery` are expressions, **must
+begin with `=`** (e.g. `={{ $json.output }}`). Without `=` value stored as literal text; judge scores `{{ $json.output }}` verbatim, not resolved output. Omit `=` only for genuinely fixed constant string.
 
 ## Worked Example — correctness eval on an agent workflow
 
-1. Ensure a dataset exists with an input column and a ground-truth column:
+1. Ensure dataset exists with input column + ground-truth column:
 
    ```
    data_tables(action="list")
@@ -68,7 +59,7 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
      rows=[{ input: "...", expected_output: "..." }])
    ```
 
-2. Create the config eval, linking the dataset by id:
+2. Create config eval, link dataset by id:
 
    ```
    eval-config(
@@ -89,12 +80,11 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
    )
    ```
 
-3. Report: evaluation name, workflow, start/end nodes, dataset name + id, metric.
+3. Report: eval name, workflow, start/end nodes, dataset name + id, metric.
 
 ## Worked Example — helpfulness eval (no ground truth)
 
-Use `helpfulness` when there is no single correct answer. The dataset needs only
-the input column; no ground-truth column is required.
+Use `helpfulness` when no single correct answer. Dataset needs only input column; no ground-truth column.
 
 ```
 eval-config(
@@ -117,14 +107,11 @@ eval-config(
 
 ## Changing or Removing
 
-- To change metrics, nodes, or the dataset, use `update` with the `configId` from
-  `list`/`get`. `update` replaces the full config — resend every field you want
-  to keep, not only the changed ones.
-- To read current state before editing, use `get` with the `configId`.
-- To remove an eval, use `delete` with the `configId`.
+- Change metrics, nodes, or dataset: `update` with `configId` from
+  `list`/`get`. `update` replaces full config — resend every field to keep, not only changed ones.
+- Read current state before edit: `get` with `configId`.
+- Remove eval: `delete` with `configId`.
 
 ## Boundary Reminder
 
-This tool never touches the canvas. Do not add EvaluationTrigger or Evaluation
-nodes; config evals are attached through the evaluation-config API only. Build
-and seed datasets exclusively through the `data_tables` tool.
+Tool never touches canvas. No EvaluationTrigger or Evaluation nodes; config evals attached via evaluation-config API only. Build + seed datasets only via `data_tables` tool.

@@ -9,7 +9,7 @@ export { ASK_USER_TOOL_ID };
 
 const questionSchema = z.object({
 	id: z.string().describe('Unique question identifier'),
-	question: z.string().describe('The question text to display to the user'),
+	question: z.string().describe('Question text to display to user'),
 	type: z
 		.enum(['single', 'multi', 'text'])
 		.describe('single = pick one option, multi = pick many, text = free-form input'),
@@ -17,14 +17,11 @@ const questionSchema = z.object({
 		.array(z.string())
 		.optional()
 		.describe('Suggested answers (required for single/multi, ignored for text)'),
-	required: z
-		.boolean()
-		.optional()
-		.describe('true hides Skip: the user must answer before they can submit'),
+	required: z.boolean().optional().describe('true hides Skip: user must answer before submitting'),
 	freeTextLabel: z
 		.string()
 		.optional()
-		.describe('Label of the built-in free-text row, "Something else" by default'),
+		.describe('Label of built-in free-text row, "Something else" by default'),
 });
 
 const answerSchema = z.object({
@@ -38,8 +35,8 @@ export const askUserInputSchema = z.object({
 	questions: z
 		.array(questionSchema)
 		.min(1)
-		.describe('Questions to present to the user in a paginated wizard'),
-	introMessage: z.string().optional().describe('Brief intro text shown above the first question'),
+		.describe('Questions to present to user in a paginated wizard'),
+	introMessage: z.string().optional().describe('Brief intro text shown above first question'),
 });
 
 export const askUserResumeSchema = z.object({
@@ -51,22 +48,22 @@ export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_USER_TOOL_ID))
 		.description(
-			'Ask the user when only a human can decide; the run suspends until they respond. ' +
+			'Ask user when only a human can decide; run suspends until they respond. ' +
 				'Questions are single-select, multi-select, or free-text. ' +
-				'Before the first build, ask only about choices that change what you build, and do not ask for setup values ' +
+				'Before the first build, ask only about choices that change what you build; do not ask for setup values ' +
 				'(recipients, accounts, resources, channels, credentials, timezone); leave them for setup. ' +
-				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
-				'ask about the goal: the result the user wants, whether it happens once now or keeps running, and ' +
-				'whether people chat with it. Do not call it a workflow or an Agent yet, and do not ask about triggers or nodes. ' +
-				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
-				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
+				'When request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
+				'ask about the goal: result user wants, whether it happens once now or keeps running, and ' +
+				'whether people chat with it. Do not call it a workflow or an Agent yet; do not ask about triggers or nodes. ' +
+				'UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
+				'catch-all options ("Something else", "Other", "None of the above") in options array, and NEVER ' +
 				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +
 				"of each other's answers. A skip or dismissal (answered: false, or skipped: true) grants no additional permission. " +
-				'Choose defaults only for unspecified details within the requested task, or leave those details for setup. ' +
+				'Choose defaults only for unspecified details within requested task, or leave those details for setup. ' +
 				'If a skipped question seeks permission to change existing authentication, delete nodes, or expand scope, ' +
-				'preserve the existing state and report any remaining blocker. ' +
+				'preserve existing state and report any remaining blocker. ' +
 				'NEVER re-present an answered, deferred, or skipped question. ' +
-				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
+				'NEVER ask user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		)
 		.input(askUserInputSchema)
 		.output(

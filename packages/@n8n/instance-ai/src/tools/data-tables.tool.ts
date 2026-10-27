@@ -111,10 +111,10 @@ const projectIdDescribe =
 	"Project ID. Scopes list (defaults to this conversation's project); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.";
 
 const dataTableNameDescribe =
-	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
+	'Data table name for approval card. Pass whenever known so users see name instead of ID.';
 
 const columnNameForCardDescribe =
-	'Current column name for the approval card. Pass whenever known so users see a name instead of an ID.';
+	'Current column name for approval card. Pass whenever known so users see name instead of ID.';
 
 async function assertTableInThreadProject(
 	context: InstanceAiContext,
@@ -192,13 +192,11 @@ const schemaAction = z.object({
 	action: z
 		.literal('schema')
 		.describe(
-			'Get column definitions for a data table. Call before using a table in workflow code — column names are normalized to snake_case.',
+			'Get column definitions for a data table. Call before using table in workflow code; column names are normalized to snake_case.',
 		),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
@@ -207,14 +205,12 @@ const queryAction = z.object({
 	action: z
 		.literal('query')
 		.describe(
-			'Query rows from a data table. Prefer a column filter and a small limit over broad pulls; ' +
-				'results include the total matching `count`, so `limit: 1` is enough to check row existence.',
+			'Query rows from a data table. Prefer column filter and small limit over broad pulls; ' +
+				'results include total matching `count`, so `limit: 1` is enough to check row existence.',
 		),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.optional().describe(filterDescribe),
@@ -231,14 +227,14 @@ const queryAction = z.object({
 		.optional()
 		.describe(
 			`Return cell values untruncated. By default values longer than ${MAX_CELL_CHARS} characters ` +
-				'(e.g. inline base64 images) are truncated. Requires a filter matching the specific ' +
-				`row(s) whose full values are needed (ignored without one) and returns at most ${MAX_FULL_VALUE_ROWS} ` +
-				'rows per call (default 1) — paginate for more.',
+				'(e.g. inline base64 images) are truncated. Requires filter matching the specific ' +
+				`row(s) whose full values are needed (ignored without one); returns at most ${MAX_FULL_VALUE_ROWS} ` +
+				'rows per call (default 1). Paginate for more.',
 		),
 });
 
 const createAction = z.object({
-	action: z.literal('create').describe('Create a new data table with typed columns'),
+	action: z.literal('create').describe('Create data table with typed columns'),
 	name: z.string().min(1).max(128).describe('Table name'),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columns: z
@@ -256,20 +252,16 @@ const deleteAction = z.object({
 	action: z.literal('delete').describe('Permanently delete a data table and all its rows'),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
 const addColumnAction = z.object({
-	action: z.literal('add-column').describe('Add a new column to an existing data table'),
+	action: z.literal('add-column').describe('Add column to existing data table'),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
@@ -277,28 +269,24 @@ const addColumnAction = z.object({
 });
 
 const deleteColumnAction = z.object({
-	action: z.literal('delete-column').describe('Remove a column from a data table'),
+	action: z.literal('delete-column').describe('Remove column from data table'),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	columnId: z.string().describe('ID of the column'),
+	columnId: z.string().describe('Column ID'),
 	currentColumnName: z.string().optional().describe(columnNameForCardDescribe),
 });
 
 const renameColumnAction = z.object({
-	action: z.literal('rename-column').describe('Rename a column in a data table'),
+	action: z.literal('rename-column').describe('Rename column in data table'),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
-	columnId: z.string().describe('ID of the column'),
+	columnId: z.string().describe('Column ID'),
 	currentColumnName: z.string().optional().describe(columnNameForCardDescribe),
 	newName: z.string().describe('New column name'),
 });
@@ -307,9 +295,7 @@ const insertRowsAction = z.object({
 	action: z.literal('insert-rows').describe('Insert rows into a data table'),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	rows: z
@@ -320,12 +306,10 @@ const insertRowsAction = z.object({
 });
 
 const updateRowsAction = z.object({
-	action: z.literal('update-rows').describe('Update rows matching a filter in a data table'),
+	action: z.literal('update-rows').describe('Update rows matching filter in data table'),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.describe(filterDescribe),
@@ -336,13 +320,11 @@ const deleteRowsAction = z.object({
 	action: z
 		.literal('delete-rows')
 		.describe(
-			'Delete rows matching a filter from a data table. At least one filter condition is required.',
+			'Delete rows matching filter from data table. At least one filter condition required.',
 		),
 	dataTableId: z
 		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+		.describe('Data table ID (UUID). Name works as fallback, but pass ID when possible.'),
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchemaWithMinOne.describe(filterDescribe),
@@ -937,13 +919,13 @@ export function createDataTablesTool(
 		.legacyNames(...getLegacyBuilderToolNames(DATA_TABLES_TOOL_ID))
 		.description(
 			options.description ??
-				'Manage data tables — list, query, create, modify columns, and manage rows. ' +
-					'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
+				'Manage data tables: list, query, create, modify columns, manage rows. ' +
+					'Load `data-table-manager` via `load_skill` before calling this tool, including natural ' +
 					'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
 					'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-					'`workflow-builder` before `workflow_builder_build_workflow`. Use list, create, and schema before ' +
+					'`workflow-builder` before `workflow_builder_build_workflow`. Use list, create, schema before ' +
 					'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
-					'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
+					'especially when diagnosing: never pull a table unfiltered; after a failed or 0-row ' +
 					'query only retry strictly narrower.',
 		)
 		.input(inputSchema)

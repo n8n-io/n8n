@@ -55,18 +55,18 @@ function createSelfHealingTools(
 		}),
 		createExecutionsTool(context, {
 			allowedActions: ['list', 'get', 'debug', 'get-node-output', 'get-resolved-node-parameters'],
-			description: 'Read execution status, diagnostics, node output, and resolved parameters.',
+			description: 'Read execution status, diagnostics, node output, resolved parameters.',
 		}),
 		createDataTablesTool(context, {
 			allowedActions: ['list', 'schema', 'query'],
-			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
+			description: 'Read data tables and schemas. Use targeted queries, small limit.',
 		}),
 		createSearchNodesTool(context),
 		createGetNodeTypesTool(context),
 		createN8nDocsTool(context),
 		createResearchTool(context),
 		new Tool('verify_candidate')
-			.description('Verify the candidate against the captured workflow baseline.')
+			.description('Verify candidate against captured workflow baseline.')
 			.input(selfHealingCandidateInputSchema)
 			.handler(async (input, ctx) => {
 				const signal = abortSignal ?? ctx.abortSignal;
@@ -110,8 +110,8 @@ export async function createSelfHealingAgent(
 		}) ?? tools;
 
 	const systemPrompt = [
-		'Investigate the supplied failed execution. Prepare one candidate workflow for review.',
-		'Work without user interaction. Report blockers in the structured output.',
+		'Investigate supplied failed execution. Prepare one candidate workflow for review.',
+		'No user interaction. Report blockers in structured output.',
 		UNTRUSTED_CONTENT_DOCTRINE,
 		SELF_HEALING_PROMPT,
 	].join('\n\n');

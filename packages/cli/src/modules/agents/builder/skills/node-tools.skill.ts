@@ -8,7 +8,7 @@ export function nodeToolsSkill(): RuntimeSkill {
 		id: 'agent-builder-node-tools',
 		name: 'Agent Builder Node Tools',
 		description:
-			'Use whenever adding, removing, or updating an n8n node-backed tool, including search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.',
+			'Use whenever adding, removing, or updating n8n node-backed tool, including search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.',
 		recommendedTools: [
 			'agent-context',
 			'search_nodes',
@@ -30,105 +30,102 @@ export function nodeToolsSkill(): RuntimeSkill {
 		instructions: `\
 ## Purpose
 
-Use this to discover, configure, and wire node tools into the target agent's
+Discover, configure, and wire node tools into target agent's
 \`tools[]\`, including \`nodeParameters\`, credentials, and n8n expressions.
 
 ## Web Search vs Direct HTTP Requests
 
 Generic web search, browsing, research, current-information, and source-finding
-requests must use \`config.webSearch\` according to the \`agent-builder-config\` skill's
+requests must use \`config.webSearch\` according to \`agent-builder-config\` skill's
 web-search rules. Do not search integrations or nodes for
 these requests.
 
-Never add the retired \`@n8n/n8n-nodes-langchain.toolHttpRequest\`. When the
-user explicitly requests the HTTP Request Tool or direct HTTP, API, or
+Never add retired \`@n8n/n8n-nodes-langchain.toolHttpRequest\`. When
+user explicitly requests HTTP Request Tool or direct HTTP, API, or
 specific-page fetching, use only \`n8n-nodes-base.httpRequestTool\`.
 
 ### Mandatory HTTP Request URL Gate
 
-Use only an exact URL explicitly supplied by the user for
-\`n8n-nodes-base.httpRequestTool\`. If the user has not supplied one, you MUST
-ask which URL the tool should fetch. During an initial build, add this to the
-pending setup and include the URL question in the single trailing \`agent_builder_finish_setup\`
-call; add the tool with the returned URL after the user answers. On later
-turns, call \`${ASK_QUESTIONS_TOOL_NAME}\` and wait for the answer before
-mutating the config. Do not search for, derive, infer, guess, or invent a URL
-from a service name, requested action, documentation, or common API
-conventions. Never add an incomplete tool or use a placeholder URL.
+Use only exact URL explicitly supplied by user for
+\`n8n-nodes-base.httpRequestTool\`. If user has not supplied one, you MUST
+ask which URL tool should fetch. During initial build, add this to
+pending setup and include URL question in single trailing \`agent_builder_finish_setup\`
+call; add tool with returned URL after user answers. On later
+turns, call \`${ASK_QUESTIONS_TOOL_NAME}\` and wait for answer before
+mutating config. Do not search for, derive, infer, guess, or invent URL
+from service name, requested action, documentation, or common API
+conventions. Never add incomplete tool or use placeholder URL.
 
 ## Workflow
 
-- For a generic external-service request, call \`agent-context\` with
-  \`type: "integrations"\` and \`queries\` before node discovery unless an
+- For generic external-service request, call \`agent-context\` with
+  \`type: "integrations"\` and \`queries\` before node discovery unless
   integration search result is already available.
 - If it returns \`kind: "mcp"\`, load \`agent-builder-external-services\`,
   follow its MCP Servers section, and stop this node-tool workflow.
 - If it returns \`kind: "node"\`, use its returned node results and call
-  \`get_node_types\`; do not repeat the same search with \`search_nodes\`.
-- Fetch every node definition that the build needs in one
+  \`get_node_types\`; do not repeat same search with \`search_nodes\`.
+- Fetch every node definition build needs in one
   \`get_node_types\` call, with all nodes and operations together.
   Do not fetch one service per call.
-- Call \`search_nodes\` (with \`scope: "agent_tool"\`) directly only when the user explicitly requests an n8n
-  node, when refining node results, or when a verified MCP server lacks the
+- Call \`search_nodes\` (with \`scope: "agent_tool"\`) directly only when user explicitly requests n8n
+  node, when refining node results, or when verified MCP server lacks
   requested capability.
 - Never guess node type names.
-- Use the tool node id from discovery, usually ending in \`Tool\`.
-- Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
+- Use tool node id from discovery, usually ending in \`Tool\`.
+- Put fixed values in \`nodeParameters\`; use complete n8n expressions for values agent should decide at runtime:
   \`={{ $fromAI('message', 'The message to send', 'string') }}\`.
-- \`n8n-nodes-base.httpRequestTool\` requires a fixed \`nodeParameters.url\`; it
-  does not work with a dynamic or model-selected URL. Never use \`$fromAI\` in
-  the URL; use it only in other request fields.
+- \`n8n-nodes-base.httpRequestTool\` requires fixed \`nodeParameters.url\`; it
+  does not work with dynamic or model-selected URL. Never use \`$fromAI\` in
+  URL; use it only in other request fields.
 - For stable dynamic selectors, load \`agent-builder-resource-locators\` and
   follow it.
-- Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
-- Do not pipe AI-chosen fields through \`$json\`.
+- Never write literal \`"$fromAI"\` or bare \`$fromAI\`; node will treat it as actual value.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- Gateway credits cover many services, including some community nodes. Adding a node tool with its credential slot omitted triggers server-side assignment: for a covered service the server attaches the managed \`Gateway credits\` credential (\`{ id: null, name: "Gateway credits", __aiGatewayManaged: true }\`) to each required, eligible slot on write — but only when the project has no credential of that type; an existing credential of the type wins and the slot stays empty for the normal credential flow below. Add the tool with the credential slot omitted, then check the slot in the write result: when the server assigned a credential, the result carries the saved \`config\`; when the result has no \`config\`, the slot stayed empty.
-- Exception — when the user explicitly asks to run a tool on Gateway credits, write \`{ "id": null, "name": "Gateway credits", "__aiGatewayManaged": true }\` into that credential slot yourself: the server keeps it when the service is covered (even if the user has their own credential of the type) and removes it when not covered — check the \`config\` in the write result (it is present when the server removed the slot) and resolve a real credential if it was removed.
-- The \`Gateway credits\` managed credential IS the real, working credential — the tool executes through n8n's gateway on Gateway credits, so NO separate API key is needed. It is NOT a placeholder and NOT "invalid for the service", even for a community node. For a slot that the config (from \`agent-context({ type: "config" })\` or a write result) shows populated with it: the slot is fully connected and the tool WILL run. Do NOT call \`setup_credentials(target: "agent")\` for it; do NOT include it in \`agent_builder_finish_setup\`; NEVER clear, remove, or replace it via \`agent_builder_patch_config\`; and NEVER seek a "real" API key to swap in for it. Report the tool as ready, running on Gateway credits — exactly like a managed model. Never tell the user the credential is "not connected"/"not set up" or that the tool "won't run until a credential is added".
-- Only for a required slot that is still empty after the write (a service Gateway credits do not cover) do you resolve a real credential: call \`setup_credentials(target: "agent")\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} The trailing \`agent_builder_finish_setup\` writes the resolved credential into every empty node-tool slot of that type, so do not patch it in yourself, unless the \`agent_builder_finish_setup\` result lists that slot in \`configApplyErrors\`. In that case the write failed, so patch the resolved credential into the slot yourself. For resource-locator resolution, follow \`agent-builder-resource-locators\` after \`agent_builder_finish_setup\`. On success, the result \`credentials\` maps each credential type to \`{ id, name }\`: set \`node.credentials[<credential key>]\` to the entry for that type. If skipped, still add the tool and omit only that credential slot.
-- When the agent already has a chat channel configured and the tool needs the same
-  credential type, \`setup_credentials(target: "agent")\` reuses the channel's credential automatically —
-  do not ask the user to pick a different one.
+- Gateway credits cover many services, including some community nodes. Adding node tool with credential slot omitted triggers server-side assignment: for covered service server attaches managed \`Gateway credits\` credential (\`{ id: null, name: "Gateway credits", __aiGatewayManaged: true }\`) to each required, eligible slot on write — but only when project has no credential of that type; existing credential of type wins and slot stays empty for normal credential flow below. Add tool with credential slot omitted, then check slot in write result: when server assigned credential, result carries saved \`config\`; when result has no \`config\`, slot stayed empty.
+- Exception — when user explicitly asks to run tool on Gateway credits, write \`{ "id": null, "name": "Gateway credits", "__aiGatewayManaged": true }\` into that credential slot yourself: server keeps it when service is covered (even if user has own credential of type) and removes it when not covered — check \`config\` in write result (present when server removed slot) and resolve real credential if it was removed.
+- \`Gateway credits\` managed credential IS real, working credential — tool executes through n8n's gateway on Gateway credits, so NO separate API key is needed. It is NOT placeholder and NOT "invalid for the service", even for community node. For slot that config (from \`agent-context({ type: "config" })\` or write result) shows populated with it: slot is fully connected and tool WILL run. Do NOT call \`setup_credentials(target: "agent")\` for it; do NOT include it in \`agent_builder_finish_setup\`; NEVER clear, remove, or replace it via \`agent_builder_patch_config\`; and NEVER seek "real" API key to swap in for it. Report tool as ready, running on Gateway credits — exactly like managed model. Never tell user credential is "not connected"/"not set up" or that tool "won't run until a credential is added".
+- Only for required slot still empty after write (service Gateway credits do not cover) do you resolve real credential: call \`setup_credentials(target: "agent")\` once before config mutation for addition to existing agent. ${INITIAL_BUILD_NOTE} Trailing \`agent_builder_finish_setup\` writes resolved credential into every empty node-tool slot of that type, so do not patch it in yourself, unless \`agent_builder_finish_setup\` result lists that slot in \`configApplyErrors\`. In that case write failed, so patch resolved credential into slot yourself. For resource-locator resolution, follow \`agent-builder-resource-locators\` after \`agent_builder_finish_setup\`. On success, result \`credentials\` maps each credential type to \`{ id, name }\`: set \`node.credentials[<credential key>]\` to entry for that type. If skipped, still add tool and omit only that credential slot.
+- When agent already has chat channel configured and tool needs same
+  credential type, \`setup_credentials(target: "agent")\` reuses channel's credential automatically —
+  do not ask user to pick different one.
 
 ## n8n Expressions
 
 Node tool parameters inside \`nodeParameters\` can use n8n expressions.
-Prefer \`$fromAI\` whenever the target agent should decide a value at runtime,
-except where this skill requires a fixed value, especially the HTTP Request
+Prefer \`$fromAI\` whenever target agent should decide value at runtime,
+except where this skill requires fixed value, especially HTTP Request
 Tool URL.
-Do not use \`$fromAI\` for stable resource IDs that the target agent cannot know
+Do not use \`$fromAI\` for stable resource IDs target agent cannot know
 at runtime, such as Linear \`teamId\`, project IDs, channel IDs, calendar IDs,
 database IDs, table IDs, or other dynamic "Name or ID" selectors. Resolve those
-with the \`agent-builder-resource-locators\` skill, \`setup_credentials(target: "agent")\`, and
-\`get_node_parameter_options\`; write the returned \`parameterValue\` into
+with \`agent-builder-resource-locators\` skill, \`setup_credentials(target: "agent")\`, and
+\`get_node_parameter_options\`; write returned \`parameterValue\` into
 \`nodeParameters\`.
 
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\`
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\`
 - \`={{ $now.toISO() }}\` for current date/time.
-- \`={{ $today }}\` for the start of today.
+- \`={{ $today }}\` for start of today.
 
 Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
 through \`$json\`; use \`$fromAI\` for those fields instead.
 
 ## Gotchas
 
-- Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- \`$fromAI(...)\` placeholders define the node tool input schema; do not add it manually.
+- \`$fromAI(...)\` placeholders define node tool input schema; do not add it manually.
 - Follow \`agent-builder-resource-locators\` for dynamic selector lookup,
   credentials, and \`parameterValue\` handling.
-- If a required node-tool credential is skipped, add the tool and omit only that credential slot.
 - Node tools execute inline, so never use waiting operations such as \`sendAndWait\`
-  or \`dispatchAndWait\`. When the user requests human approval, configure the
-  intended non-waiting operation and set \`requireApproval: true\` on the tool.
+  or \`dispatchAndWait\`. When user requests human approval, configure
+  intended non-waiting operation and set \`requireApproval: true\` on tool.
 
 ## Verify
 
 - Generic external-service requests were routed through \`agent-context\`
   before node setup.
 - Node tools use discovered tool node ids and valid node parameters.
-- HTTP Request Tools use a fixed URL supplied by the user.`,
+- HTTP Request Tools use fixed URL supplied by user.`,
 	};
 }

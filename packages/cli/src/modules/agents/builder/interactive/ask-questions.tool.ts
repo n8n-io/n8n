@@ -19,7 +19,7 @@ import type { BuilderTrackFn } from '../builder-config-telemetry';
 
 const askQuestionsQuestionSchema = z.object({
 	id: z.string().optional().describe('Unique question identifier; defaults to q1, q2, ...'),
-	question: z.string().describe('The question text to display to the user'),
+	question: z.string().describe('Question text to display to user'),
 	type: z
 		.enum(['single', 'multi', 'text'])
 		.describe('single = pick one option, multi = pick many, text = free-form input'),
@@ -33,8 +33,8 @@ const askQuestionsInputSchema = z.object({
 	questions: z
 		.array(askQuestionsQuestionSchema)
 		.min(1)
-		.describe('All questions to ask the user, batched into a single card'),
-	introMessage: z.string().optional().describe('Brief intro text shown above the questions'),
+		.describe('All questions to ask user, batched into single card'),
+	introMessage: z.string().optional().describe('Brief intro text shown above questions'),
 });
 
 type AskQuestionsInput = z.infer<typeof askQuestionsInputSchema>;
@@ -95,11 +95,10 @@ export function buildAskQuestionsTool(deps: { track: BuilderTrackFn }): BuiltToo
 	return new Tool(ASK_QUESTIONS_TOOL_NAME)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_QUESTIONS_TOOL_NAME))
 		.description(
-			'Ask the user one or more questions in a single batched card; the run suspends until ' +
-				'they respond. ALWAYS use this instead of calling it multiple times when you have more ' +
-				'than one question — batch them into one call. Questions are single-select, ' +
-				'multi-select, or free-text. A question is asked at most once — a dismissal or empty ' +
-				'answer means "proceed without this": assume a sensible default and never re-present ' +
+			'Ask user one or more questions in single batched card; run suspends until ' +
+				'they respond. ALWAYS batch multiple questions into one call, never call multiple times. ' +
+				'Questions are single-select, multi-select, or free-text. A question is asked at most once: ' +
+				'dismissal or empty answer means "proceed without this": assume sensible default, never re-present ' +
 				'it. Returns { answered: false } on dismissal, or { answered: true, answers } otherwise.',
 		)
 		.input(askQuestionsInputSchema)

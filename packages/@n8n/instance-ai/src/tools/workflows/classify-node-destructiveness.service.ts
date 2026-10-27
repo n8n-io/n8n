@@ -339,17 +339,17 @@ const LlmVerdictSchema = z.record(
 	}),
 );
 
-const SYSTEM_INSTRUCTIONS = `You classify n8n workflow nodes by whether executing them would CREATE, UPDATE, DELETE, or SEND data in an external system (destructive), or only READ/transform data (safe).
+const SYSTEM_INSTRUCTIONS = `Classify n8n workflow nodes by whether executing them would CREATE, UPDATE, DELETE, or SEND data in external system (destructive), or only READ/transform data (safe).
 
 Rules:
-- "simulate" = destructive: the node writes, sends, deletes, uploads, or otherwise mutates state outside the workflow. Reads that consume or mutate state (marking items read, consuming queue messages, acknowledging events) count as destructive.
-- "execute" = safe: the node only reads or transforms data.
-- For HTTP requests, judge the URL, method, and body semantics (e.g. POST to a /search or /query endpoint is a read).
-- For code, judge what the code actually does with its network/filesystem access.
+- "simulate" = destructive: node writes, sends, deletes, uploads, or otherwise mutates state outside workflow. Reads that consume or mutate state (marking items read, consuming queue messages, acknowledging events) count as destructive.
+- "execute" = safe: node only reads or transforms data.
+- HTTP requests: judge URL, method, and body semantics (e.g. POST to a /search or /query endpoint is a read).
+- Code: judge what code actually does with its network/filesystem access.
 - When uncertain, prefer "simulate" with confidence "low". Never guess "execute" when uncertain.
-- "reason" must be one short user-facing sentence describing what the node would do (e.g. "Sends a message to a Slack channel").
+- "reason" must be one short user-facing sentence describing what node would do (e.g. "Sends a message to a Slack channel").
 
-Output: a single JSON object keyed by node name, each value {"verdict": "simulate"|"execute", "reason": string, "confidence": "high"|"low"}. Return only the JSON object — no prose, no markdown fences.`;
+Output: single JSON object keyed by node name, each value {"verdict": "simulate"|"execute", "reason": string, "confidence": "high"|"low"}. Return only the JSON object — no prose, no markdown fences.`;
 
 function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 	const params = isRecord(node.parameters)
@@ -365,11 +365,11 @@ async function classifyAmbiguousNodes(
 	modelFetch?: FetchFn,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
-		'Classify the following n8n workflow nodes.',
+		'Classify these n8n workflow nodes.',
 		'',
 		nodes.map(formatNodeBlock).join('\n\n'),
 		'',
-		`Output a single JSON object with exactly these keys: ${nodes.map((n) => `"${n.name}"`).join(', ')}.`,
+		`Output single JSON object with exactly these keys: ${nodes.map((n) => `"${n.name}"`).join(', ')}.`,
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-destructiveness-classifier', {

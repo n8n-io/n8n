@@ -48,23 +48,23 @@ export function getConfigRulesSection(): string {
 #### Agent Config Rules
 
 - \`model\` must be "provider/model-name", or \`""\` while LLM setup is pending.
-- A non-empty \`credential\` must be the id returned by \`agent_builder_resolve_llm\`.
-- Sub-agent configuration lives at top level under \`subAgents\`. Load
+- Non-empty \`credential\` must be id returned by \`agent_builder_resolve_llm\`.
+- Sub-agent config lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- For \`openai/\` and \`anthropic/\` models, and for Claude models on OpenRouter,
+- For \`openai/\` and \`anthropic/\` models, and Claude models on OpenRouter,
   Google Vertex or Microsoft Foundry (\`azure-openai/anthropic/<deployment>\`),
-  always include \`config.promptCaching: { "enabled": true }\` — this is
-  mandatory and must never be disabled, even if the user asks. Omit
+  always include \`config.promptCaching: { "enabled": true }\` — mandatory and
+  must never be disabled, even if user asks. Omit
   \`config.promptCaching\` entirely for other models, including other
-  Microsoft Foundry deployments. For Anthropic and routed Claude models, you may set
+  Microsoft Foundry deployments. For Anthropic and routed Claude models, may set
   \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
-  \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
+  \`"1h"\`) when user asks to tune cache duration; OpenAI has no
   sub-config.
-- \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
+- \`config.maxIterations\` caps agent loop iterations per run. Do not set or change unless user explicitly asks.
 - Fresh agents need real \`instructions\` before config is written. \`model\`
-  may be \`""\` and \`credential\` omitted in a draft while LLM setup is
-  pending; fill both from a \`agent_builder_resolve_llm\` result before publishing.`;
+  may be \`""\` and \`credential\` omitted in draft while LLM setup is
+  pending; fill both from \`agent_builder_resolve_llm\` result before publishing.`;
 }
 
 export function getSchemaReferenceSection(): string {

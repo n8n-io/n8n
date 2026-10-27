@@ -113,22 +113,22 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 };
 
 const BASE_CONFIG_HASH_RULE =
-	'Requires baseConfigHash: the configHash from the latest agent-context with type "config" result, ' +
-	'or from the latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, ' +
+	'Requires baseConfigHash: configHash from latest agent-context with type "config" result, ' +
+	'or from latest builder result that returned one (agent_builder_write_config, agent_builder_patch_config, agent_builder_create_skills, ' +
 	'agent_builder_create_tasks, agent_builder_finish_setup, agent_builder_configure_channel, agent_builder_verify_mcp_server with credentialApplied: true, ' +
 	'or a stale failure), whichever came last. ';
 
 const BASE_CONFIG_HASH_FIELD_DESCRIPTION =
-	'Latest configHash from agent-context with type "config" or from the latest builder result that ' +
+	'Latest configHash from agent-context with type "config" or latest builder result that ' +
 	'returned one; null only if no config exists';
 
 const CONFIG_WRITE_RESULT_RULE =
-	'Returns { ok: true, configMutated: true, agentId, configHash } on success. The result also carries ' +
-	'`config` when the saved config differs from what you sent (for example applied defaults or kept ' +
-	'omitted fields); treat that `config` as the current state. On failure returns { ok: false, stage, ' +
-	'errors } and nothing is saved, so on a parse, patch, or schema error fix the payload and retry with ' +
-	'the same baseConfigHash. On stage: "stale", the result carries the current config and configHash: ' +
-	're-apply your change to it and retry once. ';
+	'Returns { ok: true, configMutated: true, agentId, configHash } on success. Result also carries ' +
+	'`config` when saved config differs from what you sent (e.g. applied defaults or kept ' +
+	'omitted fields); treat that `config` as current state. On failure returns { ok: false, stage, ' +
+	'errors }, nothing saved: on parse, patch, or schema error fix payload and retry with ' +
+	'same baseConfigHash. On stage: "stale", result carries current config and configHash: ' +
+	're-apply your change to it, retry once. ';
 
 /**
  * Models sometimes still send a structured argument as a JSON string. Parse it
@@ -237,15 +237,15 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 const createSkillInputSchema = z
 	.object({
 		name: agentSkillSchema.shape.name.describe(
-			'Human-readable skill name. It must be unique in the project: no other skill of this ' +
-				'project may have a name like it (case, spaces, hyphens and underscores do not count).',
+			'Human-readable skill name. Must be unique in the project: no other skill of this ' +
+				'project may have a similar name (case, spaces, hyphens and underscores do not count).',
 		),
 		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
 		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
 		references: agentSkillSchema.shape.references
 			.optional()
 			.describe(
-				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
+				'Markdown-only supporting files under references/... paths. Not auto-loaded: instructions must say exactly when to load each reference by path.',
 			),
 	})
 	.strict();
@@ -258,7 +258,7 @@ const updateSkillFieldsSchema = z
 		description: agentSkillSchema.shape.description.optional(),
 		instructions: agentSkillSchema.shape.instructions
 			.optional()
-			.describe('Complete replacement body. Use only for a rewrite of most of the body.'),
+			.describe('Complete replacement body. Use only to rewrite most of body.'),
 		instructionEdits: z
 			.array(
 				z
@@ -266,10 +266,8 @@ const updateSkillFieldsSchema = z
 						oldText: z
 							.string()
 							.min(1)
-							.describe(
-								'Exact text from the current instructions. It must match exactly one place.',
-							),
-						newText: z.string().describe('Replacement text. Use an empty string to delete.'),
+							.describe('Exact text from current instructions. Must match exactly one place.'),
+						newText: z.string().describe('Replacement text. Use empty string to delete.'),
 					})
 					.strict(),
 			)
@@ -277,8 +275,8 @@ const updateSkillFieldsSchema = z
 			.max(20)
 			.optional()
 			.describe(
-				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
-					'`instructions` for a partial change. Do not pass both.',
+				'Targeted replacements in current instructions, applied in order. Prefer over ' +
+					'`instructions` for partial change. Do not pass both.',
 			),
 		references: agentSkillSchema.shape.references
 			.unwrap()
@@ -301,10 +299,10 @@ const updateSkillInputSchema = z
 			.string()
 			.min(1)
 			.describe(
-				'skillHash from the immediately preceding agent-context with type "skill" result for this skill.',
+				'skillHash from immediately preceding agent-context with type "skill" result for this skill.',
 			),
 		updates: updateSkillFieldsSchema.describe(
-			'Only the fields to change. Pass null for references to remove them; an empty array is invalid.',
+			'Only fields to change. Pass null for references to remove them; empty array is invalid.',
 		),
 	})
 	.strict();
@@ -317,7 +315,7 @@ const updateTaskFieldsSchema = z
 		objective: agentTaskSchema.shape.objective.optional().describe(TASK_OBJECTIVE_GUIDANCE),
 		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 		timezone: agentTaskSchema.shape.timezone.describe(
-			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
+			'IANA zone cron runs in. Pass null to move task back to instance timezone.',
 		),
 	})
 	.strict()
@@ -328,7 +326,7 @@ const updateTaskFieldsSchema = z
 const updateTaskInputSchema = z
 	.object({
 		taskId: z.string().min(1).describe('Persisted target-agent task id to update.'),
-		updates: updateTaskFieldsSchema.describe('Only the task fields to change.'),
+		updates: updateTaskFieldsSchema.describe('Only task fields to change.'),
 	})
 	.strict();
 
@@ -828,23 +826,23 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CALL_AGENT))
 			.description(
-				'Do not call this tool by default after a build. Call it when the user reports a problem with the agent, to reproduce the problem and confirm the fix. ' +
-					'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
-					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier agent_builder_call_agent result; never make one up. ' +
-					'If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. ' +
-					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
-					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
-					'Unsupported interactive requests return approval_required with a Preview path.',
+				'Do not call by default after a build. Call when user reports problem with agent, to reproduce problem and confirm fix. ' +
+					'Tests draft agent through built-in Preview chat. Does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
+					'Omit sessionId to start new conversation. To continue one, pass exact sessionId from earlier agent_builder_call_agent result; never make one up. ' +
+					'If sessionId not found, test starts new conversation and result has sessionNote. ' +
+					'Draft uses real configured tools and credentials: external side effects possible. ' +
+					'Standard tool approvals pause test until user approves or rejects them in chat. ' +
+					'Unsupported interactive requests return approval_required with Preview path.',
 			)
 			.input(
 				z.object({
-					message: z.string().trim().min(1).describe('Message to send to the target agent'),
+					message: z.string().trim().min(1).describe('Message to send to target agent'),
 					sessionId: z
 						.string()
 						.trim()
 						.optional()
 						.describe(
-							'Exact sessionId from an earlier agent_builder_call_agent result. Omit it to start a new conversation.',
+							'Exact sessionId from earlier agent_builder_call_agent result. Omit to start new conversation.',
 						),
 				}),
 			)
@@ -953,8 +951,8 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UNPUBLISH_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.UNPUBLISH_AGENT))
 			.description(
-				'Unpublish this target agent: clears the live version while preserving the draft, disconnects chat ' +
-					'integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. ' +
+				'Unpublish this target agent: clears live version, preserves draft, disconnects chat ' +
+					'integrations, stops scheduled tasks. Call when user asks to unpublish or take agent offline. ' +
 					'Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.',
 			)
 			.input(z.object({}))
@@ -986,10 +984,10 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.PUBLISH_AGENT)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.PUBLISH_AGENT))
 			.description(
-				'Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. ' +
-					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
-					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
-					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
+				'Publish this target agent to make it live: integrations sync, scheduled tasks start running. ' +
+					'Idempotent when draft is already the active published version. Pass optional `versionId` to ' +
+					'activate existing history row instead of publishing current draft. Call only when user ' +
+					'asks to publish, activate, or make agent live/usable — never tell them to click Publish in editor. ' +
 					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
 			)
 			.input(
@@ -998,9 +996,7 @@ export class AgentsBuilderToolsService {
 						.string()
 						.min(1)
 						.optional()
-						.describe(
-							'Optional history version ID to activate. Omit to publish the current draft.',
-						),
+						.describe('Optional history version ID to activate. Omit to publish current draft.'),
 				}),
 			)
 			.handler(async ({ versionId }: { versionId?: string }) => {
@@ -1052,12 +1048,12 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.PATCH_CONFIG))
 			.description(
-				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
-					'Pass the patch operations as an array of objects, not as a JSON string. ' +
+				'Apply RFC 6902 JSON Patch operations to current agent config. ' +
+					'Pass patch operations as array of objects, not JSON string. ' +
 					BASE_CONFIG_HASH_RULE +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
 					CONFIG_WRITE_RESULT_RULE +
-					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "locked", stop and tell the user to close ' +
+					'stage is "locked", "parse", "stale", "patch", or "schema". On stage: "locked", stop and tell user to close ' +
 					'their editing session in the n8n builder.',
 			)
 			.input(
@@ -1094,10 +1090,10 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.WRITE_CONFIG))
 			.description(
-				'Create or update the agent configuration. Pass the config as an object, not as a JSON string. ' +
-					'Send only the top-level fields you set or change: every top-level field you omit ' +
-					'(including model and credential) keeps its stored value, and a field you send replaces ' +
-					'the stored field whole. A fresh agent with no stored config needs name, model, and instructions. ' +
+				'Create or update agent config. Pass config as object, not JSON string. ' +
+					'Send only top-level fields you set or change: every top-level field you omit ' +
+					'(including model and credential) keeps its stored value; a field you send replaces ' +
+					'stored field whole. Fresh agent with no stored config needs name, model, and instructions. ' +
 					BASE_CONFIG_HASH_RULE +
 					CONFIG_WRITE_RESULT_RULE +
 					'Failure errors carry path, message, expected, and received fields.',
@@ -1108,7 +1104,7 @@ export class AgentsBuilderToolsService {
 					z.object({
 						config: z
 							.preprocess(parseJsonStringInput, z.record(z.unknown()))
-							.describe('Agent configuration object with the top-level fields to set'),
+							.describe('Agent config object with top-level fields to set'),
 						baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
 					}),
 				),
@@ -1140,29 +1136,29 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CREATE_TASKS))
 			.description(
-				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
-					'schedule per task) in a single call. Pass every task you currently know how to write in one ' +
+				'Create one or more recurring scheduled tasks for target agent (name + objective + cron ' +
+					'schedule per task) in single call. Pass every task you currently know how to write in one ' +
 					"`tasks` array — do not spread multiple fully-specified tasks across separate calls; each task's " +
-					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
-					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
-					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `agent_builder_publish_agent`. Returns { ok: true, configMutated: true, agentId, ' +
-					'configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are ' +
-					'not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your ' +
+					'objective field carries its own structured template. Whole batch is all-or-nothing: ' +
+					'invalid cron or objective rejects every task in call. Adds `{ type: "task", id, ' +
+					'enabled }` ref per task to agent config (config.tasks); each task starts running once ' +
+					'agent is (re)published via `agent_builder_publish_agent`. Returns { ok: true, configMutated: true, agentId, ' +
+					'configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons ' +
+					'not echoed back) or { ok: false, errors }. Use returned configHash as baseConfigHash for ' +
 					'next config write.',
 			)
 			.systemInstruction(
-				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
-					'required section, or an unclear schedule. Each objective must follow the required structured ' +
-					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
-					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
+				'Never create task with vague, broad, or placeholder objective, objective missing any ' +
+					'required section, or unclear schedule. Each objective must follow required structured ' +
+					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria), every ' +
+					'section filled with concrete, run-specific content. Agent Instructions still apply and ' +
 					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
-					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
-					'stated assumptions listed in your summary; ask the user clarifying questions with agent_builder_ask_questions ' +
-					'only when even a reasonable assumption is impossible, before calling ' +
-					'agent_builder_create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
-					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
-					'config (agent_builder_patch_config/agent_builder_write_config) BEFORE calling agent_builder_create_tasks — otherwise the task will fail at ' +
+					"copy reusable procedures into objective. If anything ambiguous, derive it from user's goal as " +
+					'stated assumptions listed in summary; ask user clarifying questions with agent_builder_ask_questions ' +
+					'only when even reasonable assumption impossible, before calling ' +
+					'agent_builder_create_tasks. Task can only use tools agent already has: if any step in objective ' +
+					'requires tool, integration, or web search agent is missing, you MUST add it to agent ' +
+					'config (agent_builder_patch_config/agent_builder_write_config) BEFORE calling agent_builder_create_tasks — otherwise task fails at ' +
 					'runtime. Batch every task you currently know how to write into one call.',
 			)
 			.input(
@@ -1173,16 +1169,16 @@ export class AgentsBuilderToolsService {
 								name: agentTaskSchema.shape.name.describe('Short, human-readable task name.'),
 								objective: agentTaskSchema.shape.objective.describe(TASK_OBJECTIVE_GUIDANCE),
 								cronExpression: agentTaskSchema.shape.cronExpression.describe(
-									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
+									'5-field cron expression for when task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
 								),
 								timezone: agentTaskSchema.shape.timezone.describe(
-									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
+									'IANA timezone cron runs in, e.g. "Europe/London". Set when user names timezone or location; omit to use instance timezone.',
 								),
 							}),
 						)
 						.min(1)
 						.max(20)
-						.describe('Every task to create, in the order they should be created.'),
+						.describe('Every task to create, in creation order.'),
 				}),
 			)
 			.handler(
@@ -1232,7 +1228,7 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UPDATE_TASK)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.UPDATE_TASK))
 			.description(
-				'Update selected body fields of an existing target-agent scheduled task in place, preserving ' +
+				'Update selected body fields of existing target-agent scheduled task in place, preserving ' +
 					'its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } ' +
 					'or { ok: false, errors }.',
 			)
@@ -1266,16 +1262,16 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.UPDATE_SKILL)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.UPDATE_SKILL))
 			.description(
-				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
-					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
-					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
-					'instead of rewriting instructions. Pass null for references to remove all references; an ' +
-					'empty array is invalid. The skill is shared: the update saves its next version, and every ' +
-					'agent draft that follows the latest version runs that version. Published versions keep ' +
-					'the version they pinned. Returns ' +
-					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
-					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
-					'baseSkillHash. On a stale skill error, ' +
+				'Update selected fields of existing target-agent skill in place, preserving its id and ' +
+					'agent config reference. Requires baseSkillHash from immediately preceding agent-context with type "skill" ' +
+					'result. To change part of body, pass instructionEdits with oldText/newText pairs ' +
+					'instead of rewriting instructions. Pass null for references to remove all references; ' +
+					'empty array is invalid. Skill is shared: update saves its next version, and every ' +
+					'agent draft that follows latest version runs that version. Published versions keep ' +
+					'version they pinned. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. Failed edit ' +
+					'saves nothing: fix oldText so it matches exactly one place, retry with same ' +
+					'baseSkillHash. On stale skill error, ' +
 					'call agent-context with type "skill" and retry once with its fresh skillHash.',
 			)
 			.input(updateSkillInputSchema)
@@ -1316,27 +1312,27 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CREATE_SKILLS)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.CREATE_SKILLS))
 			.description(
-				'Create and store one or more agent skills (reusable, load-on-demand capabilities) in a ' +
+				'Create and store one or more agent skills (reusable, load-on-demand capabilities) in ' +
 					'single call. Pass every skill you currently know how to write in one `skills` array — do ' +
 					"not spread multiple fully-specified skills across separate calls; each skill's instructions " +
-					'field carries its own structured template. The whole batch is all-or-nothing: an invalid or ' +
-					'duplicate-named skill rejects every skill in the call. It also attaches a `{ type: "skill", id }` ' +
-					'ref per skill to the agent config (config.skills), so do not patch them in yourself; the agent ' +
+					'field carries its own structured template. Whole batch is all-or-nothing: invalid or ' +
+					'duplicate-named skill rejects every skill in call. Also attaches a `{ type: "skill", id }` ' +
+					'ref per skill to agent config (config.skills), so do not patch them in yourself; agent ' +
 					'config must already exist. Returns { ok: true, configMutated: true, agentId, configHash, skills: ' +
-					'[{ id, name }, ...] } (same order as input, bodies are not echoed back) or { ok: false, errors }. ' +
-					'Use the returned configHash as baseConfigHash for your next config write.',
+					'[{ id, name }, ...] } (same order as input, bodies not echoed back) or { ok: false, errors }. ' +
+					'Use returned configHash as baseConfigHash for next config write.',
 			)
 			.systemInstruction(
-				'Never create a vague or placeholder skill. The description field is the routing contract the ' +
-					'runtime uses to decide when to load the skill; the instructions must follow the required ' +
-					'structured Markdown template (Overview, Inputs, Steps, Rules, Example, Gotchas) with each ' +
-					'applicable section filled in with concrete, specific content. If you do not have enough domain ' +
-					"detail to write a genuinely useful skill, derive it from the user's goal as stated assumptions " +
-					'listed in your summary; ask the user clarifying questions only when even a reasonable ' +
-					'assumption is impossible. Use references ' +
-					'only for markdown supporting files under the references/ directory — references are not ' +
+				'Never create vague or placeholder skill. Description field is routing contract runtime ' +
+					'uses to decide when to load skill; instructions must follow required ' +
+					'structured Markdown template (Overview, Inputs, Steps, Rules, Example, Gotchas), each ' +
+					'applicable section filled with concrete, specific content. If not enough domain ' +
+					"detail to write genuinely useful skill, derive it from user's goal as stated assumptions " +
+					'listed in summary; ask the user clarifying questions only when even reasonable ' +
+					'assumption impossible. Use references ' +
+					'only for markdown supporting files under references/ directory — references are not ' +
 					'automatically loaded, so instructions must say exactly when to load each one by path; scripts and ' +
-					'non-markdown linked files are not supported. Do not invent tool names or reference paths. Batch ' +
+					'non-markdown linked files not supported. Do not invent tool names or reference paths. Batch ' +
 					'every skill you currently know how to write into one call.',
 			)
 			.input(
@@ -1345,7 +1341,7 @@ export class AgentsBuilderToolsService {
 						.array(createSkillInputSchema)
 						.min(1)
 						.max(20)
-						.describe('Every skill to create, in the order they should be created.'),
+						.describe('Every skill to create, in creation order.'),
 				}),
 			)
 			.handler(async ({ skills }: { skills: CreateSkillInput[] }) => {
@@ -1382,11 +1378,11 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.BUILD_CUSTOM_TOOL))
 			.description(
-				'Compile and store a custom tool. Pass the complete TypeScript source ' +
-					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
-					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
-					'This does NOT register the tool in the agent config — follow up with ' +
+				'Compile and store custom tool. Pass complete TypeScript source ' +
+					'using `export default new Tool(...)` builder chain. Code is validated in ' +
+					'sandbox and saved against agent. Returned `id` equals tool name ' +
+					'declared in code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
+					'This does NOT register tool in agent config — follow up with ' +
 					'agent_builder_patch_config (or agent_builder_write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
 					'to `tools`.' +
 					'Returns { ok: true, id, name } or { ok: false, errors }.',

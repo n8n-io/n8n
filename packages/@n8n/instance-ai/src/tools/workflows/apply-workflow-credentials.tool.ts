@@ -23,8 +23,8 @@ import type { OrchestrationContext } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
-	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
-	workflowId: z.string().describe('The workflow ID to update'),
+	workItemId: z.string().describe('Work item ID from build (wi_XXXXXXXX)'),
+	workflowId: z.string().describe('Workflow ID to update'),
 	credentials: z.record(z.string()).describe('Map of credentialType → credentialId to apply'),
 });
 
@@ -32,8 +32,8 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 	return new Tool(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS))
 		.description(
-			'Apply real credentials to a workflow that was built with mocked credentials. ' +
-				'Only updates nodes that were mocked — never overwrites existing real credentials.',
+			'Apply real credentials to workflow built with mocked credentials. ' +
+				'Only updates mocked nodes — never overwrites existing real credentials.',
 		)
 		.input(applyWorkflowCredentialsInputSchema)
 		.output(

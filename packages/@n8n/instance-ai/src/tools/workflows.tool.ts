@@ -90,18 +90,18 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 // conflicting descriptions for one field name across the union, so each has to read correctly
 // for every action that uses it.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. For `list` and `node-usage`: read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+	'Project ID from `workspace(action="list-projects")`. For `list` and `node-usage`: read that one project instead of default scope — use for "what is in project X" instead of reading whole instance and guessing which results belong to X. Read-only: narrows what you can already see, does not widen it, does not move where you can write. For `setup`: scope credential creation to that project.';
 
 const SCOPE_FIELD_DESCRIPTION =
-	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
+	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only with clear reason to look across all accessible projects.";
 
 const LIMIT_FIELD_DESCRIPTION = 'Max results to return';
 
 const NODE_TYPES_FIELD_DESCRIPTION =
-	'Full node types, e.g. ["n8n-nodes-base.slack"]. Matched against the nodes a workflow actually contains, from an index — so it finds users of a node however the workflow is named, and costs one call however many workflows exist. Keeps only workflows containing at least one of these.';
+	'Full node types, e.g. ["n8n-nodes-base.slack"]. Matched against nodes a workflow actually contains, from an index — finds users of a node however workflow is named, costs one call however many workflows exist. Keeps only workflows containing at least one of these.';
 
 const QUERY_FIELD_DESCRIPTION =
-	'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.';
+	'Substring filter on workflow NAME only — does not match node types, descriptions, or what a workflow does. Omit it when you need actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use only when user named a workflow, or to locate one you know exists.';
 
 // Shared-field descriptions live in constants: `sanitizeInputSchema` flattens the
 // action union into one object and throws when one field name carries two
@@ -111,13 +111,13 @@ const QUERY_FIELD_DESCRIPTION =
 // per run, so `folderScopeFields.query` below can carry a different
 // description than `listActionBase.query` without ever conflicting.
 const FOLDER_PATH_FIELD_DESCRIPTION =
-	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
+	'Restrict to one folder, named as user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members sharing the prefix. Matched case-insensitively on full path, then on folder name. If it does not resolve, result says so and lists real folders — never assume returned set is the folder.';
 
 const FOLDER_ID_FIELD_DESCRIPTION =
-	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said. When both are given, `folderId` wins.';
+	'Folder ID, when a previous listing gave one (each workflow row carries its `folder`). Prefer `folderPath` when working from what user said. When both given, `folderId` wins.';
 
 const RECURSIVE_FIELD_DESCRIPTION =
-	'Whether a folder is read together with its nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
+	'Whether folder is read together with nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
 
 // Separate objects per capability combination, rather than optional-and-ignored fields, so a
 // flag-off state's schema is byte-identical to the pre-feature tool. An A/B needs a control that
@@ -128,7 +128,7 @@ const listActionBase = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			'List workflows accessible to the current user. Use for workflow inspection. Call it without `query` to get the complete inventory in scope — the result reports how many workflows a filter or the limit left out.',
+			'List workflows accessible to current user. Use for workflow inspection. Call without `query` for complete inventory in scope — result reports how many workflows a filter or limit left out.',
 		),
 	query: z.string().optional().describe(QUERY_FIELD_DESCRIPTION),
 	limit: z.number().int().positive().max(100).optional().describe(LIMIT_FIELD_DESCRIPTION),
@@ -136,7 +136,7 @@ const listActionBase = z.object({
 		.enum(['active', 'archived', 'all'])
 		.optional()
 		.describe(
-			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
+			'Which workflows to list. Defaults to active; use archived to find restorable workflows.',
 		),
 	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
@@ -153,7 +153,7 @@ const folderScopeFields = {
 		.optional()
 		.describe(
 			QUERY_FIELD_DESCRIPTION +
-				' If the user named a FOLDER, use `folderPath` — folder membership is not a name prefix, and guessing it here silently returns the wrong set.',
+				' If user named a FOLDER, use `folderPath` — folder membership is not a name prefix, guessing it here silently returns wrong set.',
 		),
 	folderPath: z.string().optional().describe(FOLDER_PATH_FIELD_DESCRIPTION),
 	folderId: z.string().optional().describe(FOLDER_ID_FIELD_DESCRIPTION),
@@ -173,18 +173,18 @@ const nodeUsageAction = z.object({
 	action: z
 		.literal('node-usage')
 		.describe(
-			'Which node types the workflows in scope actually use, and how many use each, most-used ' +
-				'first. Read this BEFORE opening workflows when the question is what a project is built ' +
-				'out of — its conventions, which integrations are in play, whether something already ' +
-				'exists. Call it with no `nodeType` for the overview; call it with one to get the ' +
-				'workflows using that type, most recently updated first, when you want to read a ' +
+			'Which node types workflows in scope actually use, and how many use each, most-used ' +
+				'first. Read BEFORE opening workflows when question is what a project is built ' +
+				'out of — conventions, which integrations are in play, whether something already ' +
+				'exists. No `nodeType` gives overview; with one, gives ' +
+				'workflows using that type, most recently updated first, to read a ' +
 				'current example.',
 		),
 	nodeType: z
 		.string()
 		.optional()
 		.describe(
-			'A single full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit it for the ' +
+			'A single full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit for ' +
 				'overview of every type in use.',
 		),
 	// Caps both shapes: node types in the overview, workflows when a `nodeType` is given. The
@@ -208,7 +208,7 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Inspect a workflow: metadata plus its structure as SDK code. Large workflows omit node parameters unless full is set; small ones include them. Pass versionId to inspect a past version instead of the current draft.',
+			'Inspect a workflow: metadata plus structure as SDK code. Large workflows omit node parameters unless full is set; small ones include them. Pass versionId to inspect a past version instead of current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -222,23 +222,19 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Write an existing workflow as TypeScript SDK source into the workspace (src/workflows/<name>.workflow.ts), bind the file to the workflow, and return the file path plus a node index with line numbers. Edit the file with scoped replacements and save with workflow_builder_build_workflow. Source is inlined only when small. Pass versionId for a past version instead of the current draft.',
+			'Write existing workflow as TypeScript SDK source into workspace (src/workflows/<name>.workflow.ts), bind file to workflow, return file path plus node index with line numbers. Edit file with scoped replacements and save with workflow_builder_build_workflow. Source is inlined only when small. Pass versionId for a past version instead of current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
 });
 
 const deleteAction = z.object({
-	action: z
-		.literal('delete')
-		.describe('Archive a workflow by ID. This is reversible with the unarchive action.'),
+	action: z.literal('delete').describe('Archive workflow by ID. Reversible with unarchive action.'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const unarchiveAction = z.object({
-	action: z
-		.literal('unarchive')
-		.describe('Restore an archived workflow by ID without publishing it'),
+	action: z.literal('unarchive').describe('Restore archived workflow by ID without publishing it'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -246,7 +242,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Configure workflow credentials and parameters after a build. Follow the returned guidance for a setup panel announcement, selection card, or approval.',
+			'Configure workflow credentials and parameters after a build. Follow returned guidance for setup panel announcement, selection card, or approval.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
@@ -257,42 +253,42 @@ const setupAction = z.object({
 					.string()
 					.optional()
 					.describe(
-						'Restrict the recipe to one node — needed when several nodes use Simplified Custom Auth for different services.',
+						'Restrict recipe to one node — needed when several nodes use Simplified Custom Auth for different services.',
 					),
 			}),
 		)
 		.optional()
 		.describe(
-			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the setup form pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template and testUrl must come from provider pages fetched there, never from memory.',
+			'Recipes for Simplified Custom Auth credentials user will create during setup: setup form pre-fills template and asks only for placeholder values. Provide one per templated credential. REQUIRED before composing: load `credential-recipe-research` skill and execute its lookup procedure — template and testUrl must come from provider pages fetched there, never from memory.',
 		),
 	allowPlainGenericAuth: z
 		.boolean()
 		.optional()
 		.describe(
-			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
+			'Set ONLY when user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
 	preferNewCredentials: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when the user ' +
-				'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
+			'Credential types (e.g. ["slackApi"]) to route to fresh credential creation — pass when user ' +
+				'explicitly asked ("create a new Slack credential") or must enter a replacement for ' +
 				'credential whose secret is invalid or rotated (e.g. pasted a new token in chat, which you ' +
-				'cannot store). Never pass as a default. The card opens with nothing preselected so the user ' +
-				'lands on credential creation; existing credentials of the type stay listed in case they ' +
-				'change their mind. Pass the same list you passed to workflow_builder_build_workflow.',
+				'cannot store). Never pass as a default. Card opens with nothing preselected so user ' +
+				'lands on credential creation; existing credentials of the type stay listed in case ' +
+				'they change their mind. Pass same list you passed to workflow_builder_build_workflow.',
 		),
 	reopenSkipped: z
 		.array(z.string())
 		.optional()
 		.describe(
-			'Credential types (or node names) the user has just explicitly asked to configure after skipping them earlier — e.g. ["slackApi"] for "connect Slack now". Use the `reopenWith` value setup reported for that card. Anything the user skipped and did not ask about stays out of the card; without this, setup reports skipped credentials instead of re-opening them. An entry matching nothing in the workflow comes back as `unknown_reopen_target` with the list to choose from.',
+			'Credential types (or node names) user just explicitly asked to configure after skipping earlier — e.g. ["slackApi"] for "connect Slack now". Use `reopenWith` value setup reported for that card. Anything user skipped and did not ask about stays out of card; without this, setup reports skipped credentials instead of re-opening them. Entry matching nothing in workflow comes back as `unknown_reopen_target` with list to choose from.',
 		),
 	includeAllNodes: z
 		.boolean()
 		.optional()
 		.describe(
-			'By default, setup after a build covers only the nodes that build changed. Set to true to cover every node in the workflow — ONLY when the user explicitly asked to set up the whole workflow or a node the last build did not touch. Cards the user skipped stay out unless named in `reopenSkipped`.',
+			'By default, setup after a build covers only nodes that build changed. Set true to cover every node in workflow — ONLY when user explicitly asked to set up whole workflow or a node last build did not touch. Cards user skipped stay out unless named in `reopenSkipped`.',
 		),
 });
 
@@ -300,7 +296,7 @@ const validateAction = z.object({
 	action: z
 		.literal('validate')
 		.describe(
-			'Return the per-node configuration issues a human would see as red warning indicators on the canvas: missing credentials, parameter validation errors, etc. Static check (does not execute the workflow). Use this to confirm a workflow is configured correctly before suggesting the user run or publish it.',
+			'Return per-node configuration issues a human would see as red warning indicators on canvas: missing credentials, parameter validation errors, etc. Static check (does not execute workflow). Use to confirm workflow is configured correctly before suggesting user run or publish it.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
@@ -316,7 +312,7 @@ const validateAction = z.object({
 			]),
 		)
 		.optional()
-		.describe('Issue categories to suppress from the result'),
+		.describe('Issue categories to suppress from result'),
 });
 
 const publishBaseAction = z.object({
@@ -330,8 +326,8 @@ const publishBaseAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Set true only after you told the user the workflow is not fully verified and they still ' +
-				'asked to publish. Publishing is refused without this while the latest verification left ' +
+			'Set true only after you told user workflow is not fully verified and they still ' +
+				'asked to publish. Publishing is refused without this while latest verification left ' +
 				'nodes unreached or simulated. Never set it to skip the disclosure.',
 		),
 });
@@ -357,8 +353,8 @@ const restoreVersionAction = z.object({
 	action: z
 		.literal('restore-version')
 		.describe(
-			'Restore a previous version into the current draft. This does not publish it. ' +
-				'For a production rollback, publish the restored draft through the normal approval flow.',
+			'Restore a previous version into current draft. Does not publish it. ' +
+				'For production rollback, publish restored draft through normal approval flow.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
@@ -367,7 +363,7 @@ const restoreVersionAction = z.object({
 const updateVersionAction = z.object({
 	action: z
 		.literal('update-version')
-		.describe('Update the name or description of a workflow version (null to clear a field)'),
+		.describe('Update name or description of a workflow version (null clears a field)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
 	name: z.string().nullable().optional().describe('Name for the version'),

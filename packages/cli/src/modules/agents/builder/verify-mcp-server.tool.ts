@@ -93,8 +93,8 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(64)
 		.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
-		.describe('The user-facing server name; it is normalized for model-facing tool names'),
-	url: z.string().min(1).describe('The MCP server endpoint URL'),
+		.describe('User-facing server name; normalized for model-facing tool names'),
+	url: z.string().min(1).describe('MCP server endpoint URL'),
 	transport: z
 		.enum(['sse', 'streamableHttp'])
 		.default('streamableHttp')
@@ -117,7 +117,7 @@ const verifyMcpServerInputSchema = z.object({
 		.max(120_000)
 		.optional()
 		.describe(
-			'Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms',
+			'Timeout in milliseconds for whole verification (connect + list tools). Defaults to 10000ms',
 		),
 });
 
@@ -127,17 +127,17 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.VERIFY_MCP_SERVER)
 		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.VERIFY_MCP_SERVER))
 		.description(
-			'Test connectivity to an MCP server before adding it to the agent config. ' +
-				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
+			'Test connectivity to MCP server before adding it to agent config. ' +
+				'Opens temporary connection, lists available tools, closes connection. ' +
 				'Returns { ok: true, tools: [{ name, description, category }] } on success, or ' +
 				'{ ok: false, error: string } on failure. ' +
-				'Tool names are the original MCP names without the model-facing server prefix. ' +
-				'When a credential is provided and a matching mcpServers entry already exists, ' +
-				'a successful verify also writes the credential into that entry ' +
+				'Tool names are original MCP names without model-facing server prefix. ' +
+				'When credential provided and matching mcpServers entry exists, ' +
+				'successful verify also writes credential into that entry ' +
 				'({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no ' +
-				'agent-context/agent_builder_patch_config follow-up. Treat the returned config as the current state and use ' +
-				'its configHash as baseConfigHash for your next config write. ' +
-				'Call this after setup_credentials(target: "agent") when authentication is not "none".',
+				'agent-context/agent_builder_patch_config follow-up. Treat returned config as current state, use ' +
+				'its configHash as baseConfigHash for next config write. ' +
+				'Call after setup_credentials(target: "agent") when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {

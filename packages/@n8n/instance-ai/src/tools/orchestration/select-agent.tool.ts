@@ -35,36 +35,36 @@ const selectAgentInputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Short stable key you choose once for an agent in this conversation and repeat on ' +
-				'every later call for that same agent (like a workflow source filePath). Prefer a ' +
-				'slug of the display name. A repeated key selects that agent; a fresh key creates ' +
-				'a new one only when no agent is bound yet, or alongside `createNew`. Omit to keep ' +
-				'the current agent. When omitted on a create/switch call, the key is derived from `name`.',
+			'Short stable key you choose once per agent in this conversation and repeat on ' +
+				'every later call for that agent (like workflow source filePath). Prefer ' +
+				'slug of display name. Repeated key selects that agent; fresh key creates ' +
+				'new one only when no agent bound yet, or alongside `createNew`. Omit to keep ' +
+				'current agent. When omitted on create/switch call, key is derived from `name`.',
 		),
 	name: z
 		.string()
 		.optional()
 		.describe(
-			'Display name for a new agent (required when creating). Also used as the addressing ' +
-				'key when `agentRef` is omitted. Omit on calls for the current agent.',
+			'Display name for new agent (required when creating). Also used as addressing ' +
+				'key when `agentRef` omitted. Omit on calls for current agent.',
 		),
 	agentId: z
 		.string()
 		.optional()
 		.describe(
-			'Existing agent id to adopt — use when editing an agent that was not built in this ' +
-				'conversation (e.g. from the project list). Once adopted, prefer `agentRef`. NEVER ' +
-				'pass for a request to build a NEW agent. Agents the request merely references — as ' +
-				'sub-agents, delegation targets, or examples — are not the build target.',
+			'Existing agent id to adopt — use when editing agent not built in this ' +
+				'conversation (e.g. from project list). Once adopted, prefer `agentRef`. NEVER ' +
+				'pass for request to build NEW agent. Agents request merely references — as ' +
+				'sub-agents, delegation targets, or examples — are not build target.',
 		),
 	createNew: z
 		.boolean()
 		.optional()
 		.describe(
-			'Set to true ONLY when the user explicitly wants an ADDITIONAL agent alongside the one ' +
-				'this conversation is already building. Leave unset otherwise: while a target is ' +
-				'bound, a fresh `agentRef`/`name` continues that agent instead of creating a second ' +
-				'one, so naming the agent for the first time cannot strand it behind a duplicate.',
+			'Set true ONLY when user explicitly wants ADDITIONAL agent alongside the one ' +
+				'this conversation is already building. Leave unset otherwise: while target is ' +
+				'bound, fresh `agentRef`/`name` continues that agent instead of creating second ' +
+				'one, so naming agent for first time cannot strand it behind duplicate.',
 		),
 });
 
@@ -319,12 +319,12 @@ async function verifyTarget(
 export function createSelectAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.SELECT_AGENT)
 		.description(
-			'Selects the n8n Agent that the agent_builder_* tools create, change, test, and publish. ' +
-				'Load `agent-builder` via `load_skill` before calling this tool. Call it once at the ' +
-				'start of every Agent build request: pass `name` to create a new Agent, `agentRef` to ' +
-				'select an Agent from this conversation, or `agentId` to adopt an existing one. With no ' +
-				'arguments it keeps the current Agent. Returns the selected `agentRef`/`agentId` and the ' +
-				'`sessionContext` with the Preview link and model recommendations. This tool is only for ' +
+			'Selects n8n Agent that agent_builder_* tools create, change, test, and publish. ' +
+				'Load `agent-builder` via `load_skill` before calling this tool. Call once at ' +
+				'start of every Agent build request: pass `name` to create new Agent, `agentRef` to ' +
+				'select Agent from this conversation, or `agentId` to adopt existing one. With no ' +
+				'arguments it keeps current Agent. Returns selected `agentRef`/`agentId` and ' +
+				'`sessionContext` with Preview link and model recommendations. Only for ' +
 				'Agent artifacts; for read-only research use `agent-context`.',
 		)
 		.input(selectAgentInputSchema)

@@ -32,34 +32,34 @@ interface ConfirmationToolContext {
 	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
 }
 
-const skillIdField = z.string().describe('The skill ID from the list action');
+const skillIdField = z.string().describe('Skill ID from list action');
 
 const projectIdField = z
 	.string()
 	.optional()
 	.describe(
-		'A project ID. list: only skills of this project. create and update: required when scope is project, absent otherwise',
+		'Project ID. list: only skills of this project. create and update: required when scope is project, absent otherwise',
 	);
 
 const scopeField = z
 	.enum(['project', 'instance'])
 	.describe(
-		'project: one project can use the skill. instance: every project can use it. On update, a new scope moves the skill. The move is refused if an agent that uses the skill cannot use it in the new scope',
+		'project: one project can use the skill. instance: every project can use it. On update, new scope moves the skill. Move refused if agent using skill cannot use it in new scope',
 	);
 
 const availableToAssistantField = z
 	.boolean()
 	.optional()
 	.describe(
-		'Allow the n8n Assistant to use the skill. On update, changing only this setting keeps the content version',
+		'Allow n8n Assistant to use skill. On update, changing only this setting keeps content version',
 	);
 
 const skillContentShape = {
 	name: agentSkillShape.name,
 	description: agentSkillShape.description.describe(
-		'When an agent should use the skill. Agents read it to decide whether to load the skill',
+		'When agent should use skill. Agents read it to decide whether to load skill',
 	),
-	instructions: agentSkillShape.instructions.describe('The full instructions, in Markdown'),
+	instructions: agentSkillShape.instructions.describe('Full instructions, in Markdown'),
 	references: agentSkillShape.references,
 };
 
@@ -71,26 +71,20 @@ const listAction = z.object({
 	attachableToAgentId: z
 		.string()
 		.optional()
-		.describe(
-			'Only the skills this agent may attach. Do not combine with filterByScope or projectId',
-		),
+		.describe('Only skills this agent may attach. Do not combine with filterByScope or projectId'),
 	limit: z.number().int().min(1).max(SKILLS_MAX_PAGE_SIZE).optional().describe('Default 50'),
-	skip: z.number().int().min(0).optional().describe('Skills to skip, for the next page'),
+	skip: z.number().int().min(0).optional().describe('Skills to skip, for next page'),
 });
 
 const getAction = z.object({
 	action: z
 		.literal('get')
-		.describe(
-			'Read a skill with its instructions, references, skillHash and the agents that use it',
-		),
+		.describe('Read skill with its instructions, references, skillHash and agents that use it'),
 	skillId: skillIdField,
 });
 
 const createAction = z.object({
-	action: z
-		.literal('create')
-		.describe('Create a skill in the skills hub. It is not attached to any agent'),
+	action: z.literal('create').describe('Create skill in skills hub. Not attached to any agent'),
 	scope: scopeField,
 	projectId: projectIdField,
 	skill: z.object(skillContentShape).strict(),
@@ -98,13 +92,11 @@ const createAction = z.object({
 });
 
 const updateAction = z.object({
-	action: z
-		.literal('update')
-		.describe('Save a new version of a skill. Pass only the fields to change'),
+	action: z.literal('update').describe('Save new version of skill. Pass only fields to change'),
 	skillId: skillIdField,
 	baseSkillHash: z
 		.string()
-		.describe('skillHash from the get action. The update is refused if the skill changed since'),
+		.describe('skillHash from get action. Update refused if skill changed since'),
 	name: skillContentShape.name.optional(),
 	description: skillContentShape.description.optional(),
 	instructions: skillContentShape.instructions.optional(),
@@ -115,9 +107,7 @@ const updateAction = z.object({
 });
 
 const deleteAction = z.object({
-	action: z
-		.literal('delete')
-		.describe('Permanently delete a skill. Refused while an agent uses it'),
+	action: z.literal('delete').describe('Permanently delete skill. Refused while agent uses it'),
 	skillId: skillIdField,
 });
 
@@ -366,8 +356,8 @@ export function createSkillsTool(context: InstanceAiContext) {
 
 	return new Tool(DOMAIN_TOOL_IDS.SKILLS)
 		.description(
-			'Manage skills in the skills hub: list, get, create, update and delete. A skill is reusable instructions. ' +
-				'This tool does not attach a skill to an agent.',
+			'Manage skills in skills hub: list, get, create, update and delete. Skill is reusable instructions. ' +
+				'Does not attach skill to agent.',
 		)
 		.input(inputSchema)
 		.untrustedOutput()

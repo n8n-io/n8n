@@ -72,8 +72,8 @@ const finishSetupQuestionInputSchema = interactionQuestionSchema.extend({
 		.startsWith('/')
 		.optional()
 		.describe(
-			'JSON Pointer into the agent config, e.g. "/tools/2/node/nodeParameters/sendTo". ' +
-				'The answer is written there as a string when the flow completes.',
+			'JSON Pointer into agent config, e.g. "/tools/2/node/nodeParameters/sendTo". ' +
+				'Answer is written there as string when flow completes.',
 		),
 });
 type FinishSetupQuestionInput = z.infer<typeof finishSetupQuestionInputSchema>;
@@ -546,27 +546,27 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.FINISH_SETUP)
 		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.FINISH_SETUP))
 		.description(
-			'Collect everything still needed to finish the initial build in ONE guided flow: open ' +
-				'questions (including the model choice), credential slots, and chat-channel ' +
-				'setup. Call it at most once, only in the trailing step of an initial build ' +
+			'Collect everything still needed to finish initial build in ONE guided flow: open ' +
+				'questions (including model choice), credential slots, and chat-channel ' +
+				'setup. Call at most once, only in trailing step of initial build ' +
 				'when only pending setup remains, and never together with another interactive tool. ' +
-				'It shows setup cards back-to-back without returning control between them: questions, ' +
+				'Shows setup cards back-to-back without returning control between them: questions, ' +
 				'then credentials, then one card per requested channel. Channel cards always run last ' +
 				'after every credential phase, including when earlier setup was skipped or dismissed. Pass ' +
-				'`channels` with a returned `type` from agent-context integrations, one entry per channel ' +
-				'to configure; do not infer channel names. Each channel card persists the configuration ' +
+				'`channels` with returned `type` from agent-context integrations, one entry per channel ' +
+				'to configure; do not infer channel names. Each channel card persists configuration ' +
 				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
-				'agent_builder_configure_channel again for a channel handled by ' +
-				'this flow. When a question answers a value that already has a place in the config ' +
-				'(a recipient, a channel id, a sheet id), give it `configPath`: the answer is written ' +
-				'there as a string. Write that config field empty beforehand, never skip the tool. ' +
+				'agent_builder_configure_channel again for channel handled by ' +
+				'this flow. When a question answers a value that already has a place in config ' +
+				'(recipient, channel id, sheet id), give it `configPath`: answer is written ' +
+				'there as string. Write that config field empty beforehand, never skip the tool. ' +
 				'Returns { completed, answers, credentials, channels, appliedToConfig, configHash } ' +
-				'(plus configMutated/agentId refresh metadata when completed). The tool already wrote ' +
+				'(plus configMutated/agentId refresh metadata when completed). Tool already wrote ' +
 				'each resolved credential into every empty node-tool slot of its type, and each ' +
 				'configPath answer; `appliedToConfig` lists them. Do not patch those again. Resolve ' +
-				'only what is left: the model answer with agent_builder_resolve_llm, MCP servers with ' +
+				'only what is left: model answer with agent_builder_resolve_llm, MCP servers with ' +
 				'agent_builder_verify_mcp_server, and any entry in `configApplyErrors`. Auto-resolves ' +
-				'credential slots that match an existing single credential or configured channel credential.',
+				'credential slots matching existing single credential or configured channel credential.',
 		)
 		.input(finishSetupInputSchema)
 		.suspend(finishSetupSuspendSchema)

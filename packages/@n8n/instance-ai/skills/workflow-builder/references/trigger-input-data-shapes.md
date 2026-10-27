@@ -5,24 +5,17 @@ description: >-
   `workflow_builder_executions(action="run")`, to use the shape that matches the workflow's
   trigger type.
 ---
-
 # Per-trigger `inputData` shape
 
-Used by `workflow_builder_verify_built_workflow` and `workflow_builder_executions(action="run")`. The pin-data adapter spreads or wraps based on trigger type —
-passing the wrong shape gives null downstream values that look like an
-expression bug.
+Used by `workflow_builder_verify_built_workflow` and `workflow_builder_executions(action="run")`. Pin-data adapter spread or wrap by trigger type — wrong shape give null downstream values that look like expression bug.
 
 ## Form Trigger (`n8n-nodes-base.formTrigger`)
 
-Flat field map, e.g. `{name: "Alice", email: "a@b.c"}`. The production Form
-Trigger emits each field directly on `$json`, so the builder's `$json.<field>`
-expressions are correct. **Do NOT wrap in `formFields`** — the adapter will
-reject the call.
+Flat field map, e.g. `{name: "Alice", email: "a@b.c"}`. Production Form Trigger emit each field direct on `$json`, so builder `$json.<field>` expressions correct. **Do NOT wrap in `formFields`** — adapter reject call.
 
 ## Webhook (`n8n-nodes-base.webhook`)
 
-The body payload, e.g. `{event: "signup", userId: "..."}`. The adapter wraps it
-under `body`, so downstream nodes reference `$json.body.<field>`.
+Body payload, e.g. `{event: "signup", userId: "..."}`. Adapter wrap under `body`, so downstream nodes reference `$json.body.<field>`.
 
 ## Chat Trigger (`@n8n/n8n-nodes-langchain.chatTrigger`)
 
@@ -30,16 +23,12 @@ under `body`, so downstream nodes reference `$json.body.<field>`.
 
 ## Schedule Trigger (`n8n-nodes-base.scheduleTrigger`)
 
-Omit `inputData`; the adapter emits synthetic timestamp fields.
+Omit `inputData`; adapter emit synthetic timestamp fields.
 
 ## Other event triggers
 
-Linear, GitHub, Slack, MCP, and similar triggers: pass `inputData` matching the
-trigger's expected payload shape from the node type definition.
+Linear, GitHub, Slack, MCP, similar triggers: pass `inputData` matching trigger expected payload shape from node type definition.
 
 ## Debugging wrong null values
 
-**Do not patch a workflow first when verify returns null downstream values.**
-Re-run verify with the corrected `inputData` shape. Only patch the workflow if
-the expression is wrong against the *production* trigger output shape (consult
-node descriptions), not the `instanceAi` pin data path.
+**Do not patch workflow first when verify return null downstream values.** Re-run verify with corrected `inputData` shape. Only patch workflow if expression wrong against *production* trigger output shape (check node descriptions), not `instanceAi` pin data path.

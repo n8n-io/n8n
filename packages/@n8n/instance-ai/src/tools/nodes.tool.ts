@@ -48,13 +48,13 @@ const unsupportedEphemeralNodeOperationMessage = (operation: string): string =>
 
 const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
 const METHOD_NAME_DESCRIPTION =
-	"Exact method name from the node's @searchListMethod/@loadOptionsMethod annotation — read it via `get_node_types` first, never guess.";
+	"Exact method name from node's @searchListMethod/@loadOptionsMethod annotation — read via `get_node_types` first, never guess.";
 const METHOD_TYPE_DESCRIPTION =
 	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match the annotation.';
 const CURRENT_NODE_PARAMETERS_DESCRIPTION =
-	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
+	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 10). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+	'Node type IDs for node-level lookups (max 10). For split nodes (e.g. Slack, Gmail, Google Sheets), pass object form WITH resource/operation (or mode) discriminators when known — bare string errors with resource→operations index for resource/operation nodes, returns all mode variants for mode-split nodes.';
 
 const nodeRequestObjectSchema = z.object({
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
@@ -95,15 +95,15 @@ const executeNodeFieldsShape = {
 				.optional()
 				.describe(
 					'Resolved credential references by credential type, e.g. { slackApi: { id, name } }. ' +
-						'Ask the user which credentials to use if there are multiple credentials available - ' +
-						'do not pick a credential on your own',
+						'Ask user which credentials to use if multiple available - ' +
+						'do not pick credential on your own',
 				),
 		})
-		.describe('Node config — same shape as a workflow-sdk node config'),
+		.describe('Node config — same shape as workflow-sdk node config'),
 	input: z
 		.array(z.object({ json: z.record(z.unknown()) }))
 		.optional()
-		.describe('Input items for the node (defaults to one empty item)'),
+		.describe('Input items for node (defaults to one empty item)'),
 	timeoutMs: z.number().int().positive().max(MAX_EXECUTE_TIMEOUT_MS).optional(),
 };
 
@@ -521,7 +521,7 @@ const searchNodesInputSchema = z.object({
 		.max(10)
 		.optional()
 		.describe(
-			'Batch of search queries (e.g. ["gmail", "slack", "http"]). Prefer batching multiple service lookups in one call.',
+			'Batch of search queries (e.g. ["gmail", "slack", "http"]). Prefer batching service lookups in one call.',
 		),
 	categories: z
 		.array(z.string())
@@ -529,14 +529,14 @@ const searchNodesInputSchema = z.object({
 		.max(3)
 		.optional()
 		.describe(
-			`Curated workflow technique categories: ${categoryList.join(', ')}. Pass when the workflow fits a known category.`,
+			`Curated workflow technique categories: ${categoryList.join(', ')}. Pass when workflow fits known category.`,
 		),
 	scope: z
 		.enum(['all', 'agent_tool'])
 		.optional()
 		.default('all')
 		.describe(
-			'Filter scope: "all" (default) searches workflow and tool nodes; "agent_tool" restricts to executable *Tool nodes usable by an n8n Agent.',
+			'Filter scope: "all" (default) searches workflow and tool nodes; "agent_tool" restricts to executable *Tool nodes usable by n8n Agent.',
 		),
 	connectionType: z
 		.enum(AI_CONNECTION_TYPES)
@@ -548,11 +548,7 @@ const searchNodesInputSchema = z.object({
 		.describe(
 			'When true, return only nodes supported by Gateway credits (each carries an `aiGateway` field with minVersion/operations).',
 		),
-	limit: z
-		.number()
-		.optional()
-		.default(10)
-		.describe('Maximum number of results to return per query (default: 10)'),
+	limit: z.number().optional().default(10).describe('Max results per query (default: 10)'),
 });
 
 export function createSearchNodesTool(context: InstanceAiContext) {
@@ -563,9 +559,9 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 		.description(
 			'Search n8n node types by service name, category, AI connection type, or Gateway credits coverage. ' +
 				'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
-				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
-				'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
-				'After finding a node, call `get_node_types` to read its parameter schema.',
+				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` for executable *Tool ' +
+				'nodes for n8n Agent, `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
+				'After finding node, call `get_node_types` to read its parameter schema.',
 		)
 		.input(searchNodesInputSchema)
 		.handler(async (input) => {
@@ -674,7 +670,7 @@ export function createGetNodeTypesTool(context: InstanceAiContext) {
 			'Get TypeScript type definitions and metadata for n8n nodes — exact parameter names, enum values, ' +
 				'credential types, display conditions, `@builderHint` annotations, Gateway credits (`aiGateway`) metadata, ' +
 				'and webhook/trigger details. For split nodes (e.g. Slack, Gmail, Google Sheets), ' +
-				'pass the object form with `resource` and `operation` (or `mode`) discriminators.',
+				'pass object form with `resource` and `operation` (or `mode`) discriminators.',
 		)
 		.input(getNodeTypesInputSchema)
 		.handler(async (input, ctx) => {
@@ -692,15 +688,13 @@ const getNodeParameterOptionsInputSchema = z.object({
 	version: z
 		.number()
 		.optional()
-		.describe(
-			'Pass in an optional version number if you want to use a specific version of the node, e.g. 4.7. Otherwise, it defaults to the latest version of the node.',
-		),
+		.describe('Specific node version number, e.g. 4.7. Defaults to latest version.'),
 	nodeTypeVersion: z.number().optional().describe('Alias for version'),
 	parameterPath: z
 		.string()
 		.optional()
 		.describe(
-			'Parameter path to resolve (preferred), e.g. "channelId", "documentId", "teamId", or "additionalFields.teamId". Resolves resourceLocator, loadOptionsMethod, and loadOptions routing automatically and returns ready-to-write `parameterValue` entries.',
+			'Parameter path to resolve (preferred), e.g. "channelId", "documentId", "teamId", or "additionalFields.teamId". Resolves resourceLocator, loadOptionsMethod, and loadOptions routing automatically; returns ready-to-write `parameterValue` entries.',
 		),
 	methodName: z.string().optional().describe(METHOD_NAME_DESCRIPTION),
 	methodType: z.enum(['listSearch', 'loadOptions']).optional().describe(METHOD_TYPE_DESCRIPTION),
@@ -713,7 +707,7 @@ const getNodeParameterOptionsInputSchema = z.object({
 		.record(z.object({ id: z.string(), name: z.string() }))
 		.optional()
 		.describe(
-			'Node credentials map (e.g. built from a credentials setup result), as an alternative to credentialType + credentialId.',
+			'Node credentials map (e.g. from credentials setup result), alternative to credentialType + credentialId.',
 		),
 	currentNodeParameters: z
 		.record(z.unknown())
@@ -724,14 +718,14 @@ const getNodeParameterOptionsInputSchema = z.object({
 	paginationToken: z
 		.string()
 		.optional()
-		.describe('Pagination token from a previous call to get more results'),
+		.describe('Pagination token from previous call for more results'),
 });
 
 export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS))
 		.description(
-			"Fetch live credential-backed options for a node's dynamic parameter (resourceLocator, loadOptionsMethod, or loadOptions routing) — " +
+			"Fetch live credential-backed options for node's dynamic parameter (resourceLocator, loadOptionsMethod, or loadOptions routing) — " +
 				'e.g. Google Sheets documents/tabs, Slack channels, Linear teams, or provider models. ' +
 				'Pass `parameterPath` (preferred, e.g. "channelId" or "documentId") or `methodName` + `methodType` from `get_node_types`, ' +
 				'along with `credentialType` + `credentialId` (or `credentials` map).',
@@ -824,12 +818,12 @@ export function createExecuteNodeTool(context: InstanceAiContext) {
 			...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.NODES),
 		)
 		.description(
-			'Execute a single n8n node standalone with real credentials and return its real output items. ' +
-				'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
-				'downstream expressions. Always read the node via `get_node_types` first and build the parameters ' +
-				'from it — never guess parameter names, resource/operation values, or the version. The node really ' +
+			'Execute single n8n node standalone with real credentials; return real output items. ' +
+				'Use for one-off operation or to learn exact output shape of node before wiring ' +
+				'downstream expressions. Always read node via `get_node_types` first and build parameters ' +
+				'from it — never guess parameter names, resource/operation values, or version. Node really ' +
 				'runs (requires user approval, real side effects). Expressions referencing other nodes cannot resolve; ' +
-				'binary output is returned as metadata only.',
+				'binary output returned as metadata only.',
 		)
 		.input(sanitizeInputSchema(executeNodeInputSchema))
 		.suspend(suspendSchema)

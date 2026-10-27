@@ -27,7 +27,7 @@ const searchAction = z.object({
 		.array(z.string().min(1))
 		.min(1)
 		.describe(
-			'Free-text queries matched against server name, title, and description — typically the service name (e.g. ["notion"], ["linear", "issue tracker"]).',
+			'Free-text queries matched against server name, title, description; typically service name (e.g. ["notion"], ["linear", "issue tracker"]).',
 		),
 });
 
@@ -42,7 +42,7 @@ const connectAction = z.object({
 		.min(1)
 		.max(MAX_SUGGESTED_SERVERS)
 		.describe(
-			`Slugs returned by \`search\`, best match first, at most ${MAX_SUGGESTED_SERVERS}. Pass one unless the request genuinely matches several servers.`,
+			`Slugs returned by \`search\`, best match first, at most ${MAX_SUGGESTED_SERVERS}. Pass one unless request genuinely matches several servers.`,
 		),
 	reason: z
 		.string()
@@ -96,11 +96,11 @@ const mcpServersOutputSchema = z.union([
 	connectOutputSchema,
 ]);
 
-const DESCRIPTION = `The user's MCP servers: connections to third-party services that persist across conversations, exposing tools you can use here. Not \`credentials\`, which only stores what a node authenticates with when a workflow runs, and not for building — a workflow that talks to a service uses that service's node and credential. What separates them is who runs it: reading, fetching or summarizing a service's data yourself, in this conversation, is this tool; a workflow the user runs later is a node.
-\`connected\`: which servers are connected, and each one's tool count. Only the user connects or disconnects, so a server missing here is one they never connected or disconnected — ask here instead of answering from the conversation. A connected server with no tools has a broken or expired connection.
+const DESCRIPTION = `User's MCP servers: connections to third-party services that persist across conversations, exposing tools you can use here. Not \`credentials\` (only stores what a node authenticates with when a workflow runs) and not for building: a workflow that talks to a service uses that service's node and credential. Split is who runs it: reading, fetching or summarizing a service's data yourself, in this conversation, is this tool; a workflow the user runs later is a node.
+\`connected\`: which servers are connected, each one's tool count. Only the user connects or disconnects, so a server missing here is one they never connected or disconnected: ask here instead of answering from the conversation. Connected server with no tools has a broken or expired connection.
 \`details\`: one server's tool names; \`connected\` never returns them. \`search_tools\` finds a tool by keyword.
-\`search\`: find a server for a service nothing connected covers, before saying it is unavailable or serving that request another way.
-\`connect\`: offer servers for the user to connect, resuming once they connect or skip. Only they can complete it; also use it to switch a credential or reconnect a broken server. In the same turn, first write one sentence telling them what connecting unlocks.`;
+\`search\`: find a server for a service nothing connected covers, before saying it is unavailable or serving request another way.
+\`connect\`: offer servers for user to connect, resuming once they connect or skip. Only they can complete it; also use to switch a credential or reconnect a broken server. Same turn, first write one sentence telling them what connecting unlocks.`;
 
 const NOTHING_CONNECTED_HINT =
 	'Nothing connected. Only the user can connect a server: `search` for it, then `connect` it.';

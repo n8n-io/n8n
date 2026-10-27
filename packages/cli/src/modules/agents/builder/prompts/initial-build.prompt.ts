@@ -4,4 +4,4 @@
  * section of the Instance AI `agent-builder` skill.
  */
 export const INITIAL_BUILD_NOTE =
-	'During an initial build, never suspend mid-build: defer pending setup to the end of the build, per the Initial Build rules in the `agent-builder` skill.';
+	'During initial build, never suspend mid-build: defer pending setup to end of build, per Initial Build rules in `agent-builder` skill.';

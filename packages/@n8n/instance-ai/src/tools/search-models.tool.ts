@@ -11,12 +11,12 @@ export function createSearchModelsTool(service = catalogService) {
 	return new Tool(DOMAIN_TOOL_IDS.SEARCH_MODELS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_MODELS))
 		.description(
-			'Search models.dev for recent text-generation models when selecting a new model without a relevant credential or a suitable named builder-hint recommendation. ' +
-				'This includes selecting a model while building a workflow. ' +
-				'Use query to filter model IDs and names before the limit, for example provider="openrouter", query="claude" or query="openai". ' +
-				'For an unspecified model, omit query unless the user requested a maker or family. Do not narrow discovery to a remembered model ID. ' +
-				'If a provider credential or Gateway credits is available, use get_node_parameter_options with that credential instead. ' +
-				'Do not use this tool to check an unfamiliar or existing model, or as a fallback when credential lookup fails. ' +
+			'Search models.dev for recent text-generation models when selecting new model without relevant credential or suitable named builder-hint recommendation. ' +
+				'Includes selecting model while building workflow. ' +
+				'Use query to filter model IDs and names before limit, e.g. provider="openrouter", query="claude" or query="openai". ' +
+				'For unspecified model, omit query unless user requested maker or family. Do not narrow discovery to remembered model ID. ' +
+				'If provider credential or Gateway credits is available, use get_node_parameter_options with that credential instead. ' +
+				'Do not use this tool to check unfamiliar or existing model, or as fallback when credential lookup fails. ' +
 				'Results include preview models and catalog metadata; they do not establish credential access or model validity.',
 		)
 		.input(searchModelsInputSchema)
