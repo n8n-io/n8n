@@ -1,5 +1,6 @@
 import type { JSONObject, TokenUsage } from '@n8n/agents';
 import {
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
@@ -43,7 +44,10 @@ import {
 	isMaskedStreamFailure,
 } from '../user-facing-errors';
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
-import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
+import {
+	AssistantTurnEnvironmentFactory,
+	type AssistantTurnEnvironment,
+} from '../turn-setup/assistant-turn-environment.factory';
 import {
 	AssistantTurnInputBuilder,
 	type AssistantTurnInput,
@@ -239,6 +243,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				// Finish before the host events close and the next queued turn reads the cursor.
 				await inputAccepted;
 				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+				// A suspended turn can still be building the workflows it marked.
+				if (outcome.status !== 'suspended') {
+					const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
+					this.emitArchivedWorkflows(turn, thread.id, archived);
+				}
 			},
 			formatError: async (error) => await this.formatTurnError(user, error),
 		};
@@ -330,6 +339,64 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
 		);
 		return { message, ...(code ? { code } : {}) };
+	}
+
+	/**
+	 * Archives the workflows that the thread still marks as temporary: failed
+	 * attempts and scratch workflows that no build promoted. Best effort.
+	 */
+	private async archiveTemporaryWorkflows(
+		environment: AssistantTurnEnvironment,
+		runtime: AssistantTurnRuntime,
+		threadId: string,
+	): Promise<string[]> {
+		const markers = runtime.temporaryWorkflowMarkers;
+		if (!markers) return [];
+		let workflowIds: string[] = [];
+		try {
+			workflowIds = await markers.list();
+		} catch (error) {
+			this.logger.warn('Failed to read the temporary workflows of an Assistant thread', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+		const archived: string[] = [];
+		for (const workflowId of workflowIds) {
+			try {
+				if (await environment.context.workflowService.archiveIfAiTemporary(workflowId)) {
+					archived.push(workflowId);
+					continue;
+				}
+				// A marked workflow that is not archived was deleted or is out of reach.
+				// Thread metadata has no foreign key to drop it, so drop the marker here.
+				await markers.unmark(workflowId);
+			} catch (error) {
+				this.logger.warn('Failed to archive a temporary Assistant workflow', {
+					threadId,
+					workflowId,
+					error: getErrorMessage(error),
+				});
+			}
+		}
+		return archived;
+	}
+
+	/** Tells the chat which workflows the turn end archived, so it can mark their artifacts. */
+	private emitArchivedWorkflows(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		threadId: string,
+		workflowIds: string[],
+	): void {
+		if (workflowIds.length === 0) return;
+		try {
+			turn.emitHostEvent(ASSISTANT_WORKFLOWS_ARCHIVED_EVENT, { workflowIds }, { key: 'turn' });
+		} catch (error) {
+			this.logger.warn('Failed to send the archived Assistant workflows to the chat', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Claims the turn's model usage against the Assistant credits. Best effort. */
