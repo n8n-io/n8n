@@ -2,12 +2,14 @@ import {
 	AgentIntegrationConfigSchema,
 	AgentIntegrationSchema,
 	isCredentialAgentIntegration,
+	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { runSerially } from '@n8n/utils/run-serially';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -80,7 +82,9 @@ export class AgentIntegrationManagementService {
 		modifiedBy?: AgentActor;
 		pushRef?: string;
 	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: ProjectAgent }> {
-		const integration = await this.validateConfig(options.integration);
+		const integration = await this.validateConfig(
+			withDraftValues(options.integration, options.agent.integrations ?? []),
+		);
 		// n8n Chat has no credential to look up or claim.
 		if (isCredentialAgentIntegration(integration)) {
 			await this.assertUsableCredential(options.agent, options.user, integration);
@@ -462,4 +466,20 @@ export class AgentIntegrationManagementService {
 			);
 		}
 	}
+}
+
+/**
+ * Completing setup replaces the same-type draft, so the draft's settings and
+ * approval apply where the request leaves them out. Not every setup view
+ * offers these fields.
+ */
+function withDraftValues(requested: unknown, current: AgentIntegrationConfig[]): unknown {
+	if (!isRecord(requested)) return requested;
+	const draft = current.find((entry) => entry.type === requested.type && isDraftIntegration(entry));
+	if (!draft || !isCredentialAgentIntegration(draft)) return requested;
+	return {
+		...(draft.settings !== undefined ? { settings: draft.settings } : {}),
+		...(draft.approval !== undefined ? { approval: draft.approval } : {}),
+		...requested,
+	};
 }
