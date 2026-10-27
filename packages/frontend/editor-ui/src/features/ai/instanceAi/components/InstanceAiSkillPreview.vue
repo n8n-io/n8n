@@ -108,6 +108,7 @@ function openInSkillsHub() {
 					@select="selectedPath = $event"
 				/>
 				<AgentSkillViewer
+					:class="$style.viewer"
 					:skill="detail.skill"
 					:selected-path="selectedPath"
 					read-only
@@ -155,6 +156,10 @@ function openInSkillsHub() {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+.viewer {
+	padding: var(--spacing--sm) var(--spacing--md);
 }
 
 .centerState {
