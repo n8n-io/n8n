@@ -123,6 +123,7 @@ export class ImportPackageRequestDto extends Z.class(
 		conflictPolicy: z
 			.enum(['new-version', 'fail', 'skip'])
 			.openapi(importPackageRequestFieldDocs.conflictPolicy),
+		// Do not add `preserve-target-state`. Only promotions use it, and they bypass this DTO.
 		publishingPolicy: optionalEnum(
 			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
 			'preserve-published-state',
