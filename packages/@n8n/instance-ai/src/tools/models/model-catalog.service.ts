@@ -70,8 +70,8 @@ export class ModelCatalogService {
 
 	async search(
 		input: SearchModelsInput,
+		fetch: typeof globalThis.fetch,
 		abortSignal?: AbortSignal,
-		fetch?: typeof globalThis.fetch,
 	): Promise<SearchModelsResult> {
 		throwIfAborted(abortSignal);
 		const providerId = input.provider.trim().toLowerCase();
@@ -135,7 +135,7 @@ export class ModelCatalogService {
 		};
 	}
 
-	private async refresh(fetch?: typeof globalThis.fetch): Promise<void> {
+	private async refresh(fetch: typeof globalThis.fetch): Promise<void> {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 		try {

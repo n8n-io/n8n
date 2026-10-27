@@ -90,7 +90,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		settingsService,
 		aiService,
 		resolveTracingConfig: overrides.resolveTracingConfig,
-		getTemplatesService: overrides.getTemplatesService,
+		getTemplatesService: overrides.getTemplatesService ?? vi.fn(),
 	};
 	const service = new InstanceAiSandboxService(options);
 	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };

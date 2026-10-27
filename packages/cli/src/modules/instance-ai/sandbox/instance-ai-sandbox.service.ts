@@ -173,7 +173,7 @@ export type InstanceAiSandboxServiceOptions = {
 	backgroundTasks: InstanceAiSandboxBackgroundTasks;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
-	getTemplatesService?: () => BuilderTemplatesService;
+	getTemplatesService: () => BuilderTemplatesService;
 	resolveTracingConfig?: (
 		threadId: string,
 		userId?: string,
@@ -465,7 +465,7 @@ export class InstanceAiSandboxService {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
-			templatesService: this.options.getTemplatesService?.(),
+			templatesService: this.options.getTemplatesService(),
 		});
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
