@@ -111,6 +111,8 @@ defineSlots<{
 	margin-top: var(--spacing--xs);
 	opacity: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+	/** Use smaller padding so icon aligns vertically with text block in assistant message **/
+	padding-inline: var(--spacing--xs);
 
 	&:hover,
 	&:focus-within {
