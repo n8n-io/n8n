@@ -1,0 +1,87 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_2a8ce83efa44b6::t_31e68a87348e7e 235-238
+  s_2a8ce83efa44b6::t_cf5ea1b4bd0678 241-242,246-247,249
+  s_2a8ce83efa44b6::t_1569bb6a2f7456 45,245,430-431,443-444
+  s_2a8ce83efa44b6::t_67453a01ccdee4 405-410
+  s_2a8ce83efa44b6::t_cb3cab59def5e6 411-412
+  s_2a8ce83efa44b6::t_e93cdc342783fc 1,3,42-44,239-240,243-244,384-393,395-401,403-404,414,425,427-429,432-438,440-442,446
+  s_d8c226bf9b5af9::t_12dac6c5545a10 2,234,416-417
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_2a8ce83efa44b6::t_1603937e8e908d 135,139-140
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 145
+packages/cli/src/modules/otel/otel-span-exporter.ts
+  s_d8c226bf9b5af9::t_da991ddc45774a 3-5
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_2a8ce83efa44b6::t_a8ac1f3b924462 526
+  s_2a8ce83efa44b6::t_e2a527c93a61e4 508
+  s_2a8ce83efa44b6::t_d205a9e6b04e4a 640-642
+  s_2a8ce83efa44b6::t_b0679d1d4755ce 12,21-25,502,622-629,631-639,654,656-659,667-670
+  s_2a8ce83efa44b6::t_f005fec00bee98 643-653
+  s_2a8ce83efa44b6::t_649d7d977b30e4 655
+  s_d8c226bf9b5af9::t_8d9854f1a0ffb7 11,630
+packages/cli/package.json
+  s_2a8ce83efa44b6::t_bfc51b408702f1 153
+packages/cli/src/observability/__tests__/agent-365-provider.test.ts
+  s_2a8ce83efa44b6::t_b939bda0bd2728 19
+  s_2a8ce83efa44b6::t_2077275f8706c8 28
+  s_2a8ce83efa44b6::t_9da59829fa744d 1-18,20-27,29-30
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_2a8ce83efa44b6::t_48b60280e7dcd2 20-23,25-27
+  s_d8c226bf9b5af9::t_8d9854f1a0ffb7 24
+packages/cli/src/observability/otel-sdk.ts
+  s_d8c226bf9b5af9::t_8d9854f1a0ffb7 136
+  s_2a8ce83efa44b6::t_00aa6adad7d6ed 92,103-104,171-175
+  s_2a8ce83efa44b6::t_a86b74debbc102 127-129
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 5,24,26,68-69,108-110,131-132,134-135,137,142-147
+  s_2a8ce83efa44b6::t_eb98b56a886f43 4,6-22,50-57,93,95-96,107,123-126,130,133,139,189-196
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 138,140-141
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_d8c226bf9b5af9::t_12dac6c5545a10 290,292-295,344,349,352,361,391,393
+  s_d8c226bf9b5af9::t_755ad2c098bcde 348,350-351
+  s_2a8ce83efa44b6::t_67e0d70777c032 1,23-25,271-273,275,278-283,302,321-322,325-326,328-329,333-343,346,359,372,374-382,384-388
+  s_2a8ce83efa44b6::t_553698063a5d08 345,347,353,355-358,360,364-371
+  s_d8c226bf9b5af9::t_d829decf945b41 362-363
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 34,41-45,52
+  s_2a8ce83efa44b6::t_e1cfd05ad77e37 22,270,274,276-277,284-289,291,296-301,303-320,323-324,327,330-332,354,373,389-390,392,394-399
+  s_2a8ce83efa44b6::t_00aa6adad7d6ed 383
+packages/@n8n/nodes-langchain/package.json
+  s_2a8ce83efa44b6::t_38ae0ccf9e824a 278
+packages/cli/src/observability/agent-365-provider.ts
+  s_d8c226bf9b5af9::t_4ddac78c45b10c 37-40
+  s_2a8ce83efa44b6::t_bfb4ac00eb5a82 1,4,13,22,33,47,51,54-64,66
+  s_d8c226bf9b5af9::t_9f168f4583ec87 15-20,26
+  s_2a8ce83efa44b6::t_aa8602021f4efc 5-12,14,21,23-25,27-32,34-35,44-46,48-50,52-53,65,67-68
+  s_2a8ce83efa44b6::t_e4ca364074b3bc 2-3,36,41-43
+pnpm-workspace.yaml
+  s_2a8ce83efa44b6::t_fffb6babc508f7 302
+packages/cli/src/observability/tracer-gate.ts
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 7,13-20,33-36,41
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 37-40
+packages/cli/src/observability/span-resource.ts
+  s_d8c226bf9b5af9::t_271b7e060d50b4 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e4a2c434c0a61dd89244f8025f9fb607a7c83a9",
+  "prompts": {},
+  "sessions": {
+    "s_2a8ce83efa44b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "439b3f77-5dbe-4a94-945b-d462bc256d1c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_d8c226bf9b5af9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d35ae82-5f43-4785-a4c4-69f8d233e4f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
