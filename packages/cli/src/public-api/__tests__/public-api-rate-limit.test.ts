@@ -261,7 +261,7 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		}
 	});
 
-	it('turns off a layer when its limit is 0', async () => {
+	it('turns off a counter when its limit is 0', async () => {
 		const app = activate({ globalReadLimit: 0, endpointReadLimit: 2 });
 
 		expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
@@ -270,10 +270,10 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 	});
 
 	it.each([
-		{ layer: 'per-endpoint', globalReadLimit: 0, endpointReadLimit: 3 },
-		{ layer: 'all-endpoints', globalReadLimit: 3, endpointReadLimit: 0 },
+		{ counter: 'per-endpoint', globalReadLimit: 0, endpointReadLimit: 3 },
+		{ counter: 'all-endpoints', globalReadLimit: 3, endpointReadLimit: 0 },
 	])(
-		'reports the $layer limit in the headers when it is the only active limit',
+		'reports the $counter limit in the headers when it is the only active limit',
 		async ({ globalReadLimit, endpointReadLimit }) => {
 			const app = activate({ globalReadLimit, endpointReadLimit });
 
@@ -507,7 +507,7 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([429]);
 		});
 
-		it('starts to count a layer whose limit changes from 0', async () => {
+		it('starts a counter whose limit changes from 0', async () => {
 			const { app, settings } = activateWithSettings({ globalReadLimit: 0 });
 			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
 
@@ -583,7 +583,7 @@ describe('Public API rate limiting across mains', () => {
 		expect((await send(main1, 'get', '/widgets/1')).status).toBe(429);
 	});
 
-	it('keeps a Redis key for each layer, access and endpoint', async () => {
+	it('keeps a Redis key for each counter, access and endpoint', async () => {
 		const main = activateApp({}, multiMain());
 
 		await send(main, 'get', '/widgets/1');
