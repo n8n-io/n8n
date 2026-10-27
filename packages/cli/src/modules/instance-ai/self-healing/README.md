@@ -173,7 +173,9 @@ A configuration can select individual members, the project members group, or bot
 The group stores the `includeAllProjectMembers` flag, not a list of users.
 Each check reads current project membership. A user who joins the project joins the group.
 A user who leaves the project stops being a reviewer, also when selected individually.
-The individual picker offers enabled members with workflow edit access from a project or global role.
+The individual picker offers enabled members who can edit a project workflow. The access can come
+from a project role, a global role, or a workflow share. Save accepts the same members, so a
+selected reviewer stays valid after a role change while a share still gives edit access.
 Existing permissions still apply. A reviewer reviews a result only with edit access to its
 workflow, from a project role, a global role, or a workflow share.
 Admins outside the project can manage and enable a configuration without being a reviewer.

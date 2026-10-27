@@ -27,8 +27,8 @@ import { SelfHealingInvestigationRepository } from './database/self-healing-inve
 
 export const REVIEWER_SCOPES: Scope[] = ['workflow:read', 'workflow:update'];
 
-const NO_ELIGIBLE_PROJECT_MEMBER =
-	'No project member can edit these workflows. Add a reviewer or give a project member edit access.';
+const NO_ELIGIBLE_REVIEWER =
+	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
 
 @Service()
 export class SelfHealingConfigurationService {
@@ -109,8 +109,8 @@ export class SelfHealingConfigurationService {
 
 			await this.configurations.saveConfiguration(configuration, ctx);
 			await this.configurations.replaceSelections(configuration, input, ctx);
-			if (!(await this.hasReviewers(configuration, ctx))) {
-				throw new BadRequestError(NO_ELIGIBLE_PROJECT_MEMBER);
+			if (!(await this.hasEligibleReviewer(configuration, ctx))) {
+				throw new BadRequestError(NO_ELIGIBLE_REVIEWER);
 			}
 			return configuration.id;
 		});
@@ -126,8 +126,8 @@ export class SelfHealingConfigurationService {
 
 		const threadIds = await this.transactionRunner.run({}, async (ctx) => {
 			const configuration = await this.requireConfiguration(id, projectId, ctx);
-			if (enabled && !(await this.hasReviewers(configuration, ctx))) {
-				throw new BadRequestError(NO_ELIGIBLE_PROJECT_MEMBER);
+			if (enabled && !(await this.hasEligibleReviewer(configuration, ctx))) {
+				throw new BadRequestError(NO_ELIGIBLE_REVIEWER);
 			}
 			this.changeEnabled(configuration, enabled, user, canEnable);
 			await this.configurations.saveConfiguration(configuration, ctx);
@@ -190,10 +190,13 @@ export class SelfHealingConfigurationService {
 
 	private async findEligibleReviewers(projectId: string, userIds?: string[]) {
 		const roles = await this.reviewerRoles();
-		return await this.configurations.findProjectMembersWithEditRole(projectId, roles, userIds);
+		return await this.configurations.findProjectMembersWithEditAccess(projectId, roles, userIds);
 	}
 
-	private async hasReviewers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
+	private async hasEligibleReviewer(
+		configuration: SelfHealingConfiguration,
+		ctx: OperationContext,
+	) {
 		const roles = await this.reviewerRoles(ctx);
 		if (await this.configurations.hasReviewerWithEditRole(configuration, roles, ctx)) return true;
 		return await this.configurations.hasReviewerWithSharedWorkflowAccess(configuration, roles, ctx);
@@ -271,7 +274,7 @@ export class SelfHealingConfigurationService {
 	) {
 		if (!configuration.enabled) return null;
 
-		if (!(await this.hasReviewers(configuration, ctx))) {
+		if (!(await this.hasEligibleReviewer(configuration, ctx))) {
 			configuration.enabled = false;
 			await this.configurations.saveConfiguration(configuration, ctx);
 			return null;
