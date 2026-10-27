@@ -44,9 +44,9 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 
 const renderTable = createComponentRenderer(SkillsTable);
 
-function render(skills: SkillListItem[], showAvailableToMCP = false) {
+function render(skills: SkillListItem[], showMcpAvailability = false) {
 	return renderTable({
-		props: { skills, itemsLength: skills.length, loading: false, showAvailableToMCP },
+		props: { skills, itemsLength: skills.length, loading: false, showMcpAvailability },
 	});
 }
 

@@ -38,7 +38,7 @@ const props = defineProps<{
 	showAssistantAvailability?: boolean;
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
-	showAvailableToMCP?: boolean;
+	showMcpAvailability?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -187,7 +187,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							</N8nBadge>
 						</N8nTooltip>
 						<N8nTooltip
-							v-if="props.showAvailableToMCP && item.scope !== 'agent' && item.availableToMCP"
+							v-if="props.showMcpAvailability && item.scope !== 'agent' && item.availableToMCP"
 							placement="right"
 							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
 						>

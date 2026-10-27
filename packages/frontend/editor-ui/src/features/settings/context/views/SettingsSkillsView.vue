@@ -684,7 +684,7 @@ onMounted(async () => {
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none'"
 			:show-assistant-availability="assistantSkillsEnabled"
-			:show-available-to-mcp="mcpSkillsEnabled"
+			:show-mcp-availability="mcpSkillsEnabled"
 			@open="openEditModal"
 			@download="onDownload"
 			@delete="onDelete"

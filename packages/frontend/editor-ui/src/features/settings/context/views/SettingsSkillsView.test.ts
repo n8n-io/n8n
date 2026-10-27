@@ -833,6 +833,21 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().availableToMCP).toBeUndefined();
 		});
 
+		it('marks the skills that MCP clients get in the table', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.skills = [
+				skill({ id: 's1', name: 'Served', availableToMCP: true }),
+				skill({ id: 's2', name: 'Hidden', availableToMCP: false }),
+			];
+			skillsStore.count = 2;
+			const { getAllByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			const icons = getAllByTestId('skill-available-to-mcp-icon');
+			expect(icons).toHaveLength(1);
+			expect(icons[0].closest('tr')).toHaveTextContent('Served');
+		});
+
 		it('saves a change of the toggle without new content and reloads the list', async () => {
 			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 			skillsStore.saveSkill.mockResolvedValue({
