@@ -1,0 +1,30 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_fb780391c8e997::t_06f6cb5c004118 293
+  s_fb780391c8e997::t_e630500f5d859d 375,383
+  s_fb780391c8e997::t_3d9bc4261281e0 378
+  s_71ad2034164515::t_6ebe1f167df9ba 384-385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2317a5beb6ecbb6765e52514a51f63f3b093fe41",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

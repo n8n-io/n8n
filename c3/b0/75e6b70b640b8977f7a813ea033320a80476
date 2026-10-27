@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_fb780391c8e997::t_4d0bb9012c6a9f 44,71
+packages/cli/src/modules/agents/agents.service.ts
+  s_fb780391c8e997::t_1a62052a14960d 350,355
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71ad2034164515::t_4a0aa9c5e41d1f 634-635,639,641,645-646
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_6ebe1f167df9ba 327,397-398,549,421-422,575-576
+  s_fb780391c8e997::t_e630500f5d859d 408,420,211,316,557,572
+  s_fb780391c8e997::t_3d9bc4261281e0 415,228,412,569
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c3b075e6b70b640b8977f7a813ea033320a80476",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
