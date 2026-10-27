@@ -544,6 +544,7 @@ describe('Instance AI skills', () => {
 		);
 		expect(reference).toContain('Do NOT wrap in `formFields`');
 		expect(reference).toContain('{body, query, headers, params}');
+		expect(reference).toMatch(/simulated downstream node can still\s+look green/);
 	});
 
 	it('loads the bundled instance-awareness skill', async () => {
