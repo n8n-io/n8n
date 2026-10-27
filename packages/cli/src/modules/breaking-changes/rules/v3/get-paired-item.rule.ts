@@ -25,6 +25,8 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
+			// Each call has a documented replacement expression.
+			assistant: 'fix',
 		};
 	}
 

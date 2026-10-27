@@ -2,7 +2,9 @@
 import Modal from '@/app/components/Modal.vue';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import type {
+	BreakingChangeAssistantAction,
 	BreakingChangeRecommendation,
+	BreakingChangeRuleImpact,
 	BreakingChangeWorkflowRuleResult,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
@@ -15,6 +17,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useToast } from '@n8n/composables/useToast';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
+import { useMigrationFindingAssistant } from './useMigrationFindingAssistant';
 
 type AffectedWorkflow = BreakingChangeWorkflowRuleResult['affectedWorkflows'][number];
 
@@ -22,6 +25,9 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		ruleId: string;
+		ruleTitle: string;
+		ruleImpact: BreakingChangeRuleImpact;
+		assistantAction: BreakingChangeAssistantAction;
 		// One workflow, or the rows the user selected for a bulk migration.
 		workflows: AffectedWorkflow[];
 		// The rule's recommendations, shown as the concrete "what will change" detail.
@@ -161,6 +167,34 @@ async function handlePublish() {
 	}
 }
 
+// A refused or partial migration can continue in n8n Assistant, which gets what the
+// migration left so it does not replace the nodes again.
+const findingAssistant = useMigrationFindingAssistant();
+const canContinueInAssistant = computed(
+	() => findingAssistant.available.value && props.data.assistantAction !== 'none',
+);
+const rule = computed(() => ({
+	ruleId: props.data.ruleId,
+	ruleTitle: props.data.ruleTitle,
+	ruleImpact: props.data.ruleImpact,
+}));
+
+function continueRefusedInAssistant({ workflow, error }: MigrationFailure) {
+	void findingAssistant.open({
+		rule: rule.value,
+		workflow,
+		automatedMigration: { outcome: 'refused', message: error.message, nodeName: error.node?.name },
+	});
+}
+
+function continuePartialInAssistant({ workflow, result }: MigrationSuccess) {
+	void findingAssistant.open({
+		rule: rule.value,
+		workflow,
+		automatedMigration: { outcome: 'partial', notes: result.notes, unmapped: result.unmapped },
+	});
+}
+
 function close() {
 	props.data.eventBus.emit('close');
 }
@@ -265,29 +299,54 @@ function close() {
 									><template v-if="index < outcome.result.migratedNodeIds.length - 1">, </template>
 								</template>
 							</div>
+							<N8nButton
+								v-if="canContinueInAssistant"
+								variant="outline"
+								size="small"
+								:class="$style.assistantButton"
+								:label="
+									i18n.baseText('settings.migrationReport.detail.migrate.modal.continueInAssistant')
+								"
+								data-test-id="migrate-modal-continue-in-assistant-button"
+								@click="continuePartialInAssistant(outcome)"
+							/>
 						</N8nCallout>
 					</template>
 
 					<N8nCallout
-						v-for="{ workflow, error } in failed"
-						:key="workflow.id"
+						v-for="failure in failed"
+						:key="failure.workflow.id"
 						theme="danger"
 						icon="status-error"
 					>
 						<div v-if="isBulk" :class="$style.reviewTitle">
 							{{
 								i18n.baseText('settings.migrationReport.detail.migrate.modal.bulkErrorTitle', {
-									interpolate: { name: workflow.name },
+									interpolate: { name: failure.workflow.name },
 								})
 							}}
 						</div>
-						{{ error.message }}
-						<template v-if="error.node">
+						{{ failure.error.message }}
+						<template v-if="failure.error.node">
 							<br />
-							<N8nLink :to="`/workflow/${workflow.id}/${error.node.id}`" new-window size="small">{{
-								error.node.name
-							}}</N8nLink>
+							<N8nLink
+								:to="`/workflow/${failure.workflow.id}/${failure.error.node.id}`"
+								new-window
+								size="small"
+								>{{ failure.error.node.name }}</N8nLink
+							>
 						</template>
+						<N8nButton
+							v-if="canContinueInAssistant"
+							variant="outline"
+							size="small"
+							:class="$style.assistantButton"
+							:label="
+								i18n.baseText('settings.migrationReport.detail.migrate.modal.continueInAssistant')
+							"
+							data-test-id="migrate-modal-continue-in-assistant-button"
+							@click="continueRefusedInAssistant(failure)"
+						/>
 					</N8nCallout>
 
 					<N8nText v-if="publishedWorkflowIds.size" size="small" color="success">
@@ -408,6 +467,11 @@ function close() {
 
 .reviewNodes {
 	margin-top: var(--spacing--3xs);
+}
+
+.assistantButton {
+	display: flex;
+	margin-top: var(--spacing--2xs);
 }
 
 .actions {

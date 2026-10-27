@@ -14,6 +14,10 @@ export function handoffContextKey(context: InstanceAiHandoffContext): string {
 		return `${context.source}:${context.workflowId}`;
 	}
 
+	if (context.source === 'migration-report') {
+		return `${context.source}:${context.ruleId}:${context.workflowId}`;
+	}
+
 	return `${context.source}:${context.credential.credentialType}:${context.credential.id ?? context.credential.displayName}`;
 }
 

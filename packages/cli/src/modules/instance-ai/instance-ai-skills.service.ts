@@ -16,6 +16,7 @@ export const SKILLS = {
 	agentBuilder: 'agent-builder',
 	intentRecognition: 'intent-recognition',
 	suggestAutomations: 'suggest-automations',
+	v3Migration: 'v3-migration',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];

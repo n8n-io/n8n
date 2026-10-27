@@ -134,6 +134,7 @@ describe('Instance AI skills', () => {
 			'n8n-docs-assistant',
 			'progressive-building',
 			'suggest-automations',
+			'v3-migration',
 			'workflow-builder',
 		]);
 	});

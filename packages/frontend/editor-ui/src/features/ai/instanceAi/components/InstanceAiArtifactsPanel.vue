@@ -150,6 +150,8 @@ function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | unde
 
 	// A control signal, not user-added context — no sidebar entry.
 	if (context.source === 'setup-panel-execute') return undefined;
+	// The workflow attachment already shows the workflow the finding is about.
+	if (context.source === 'migration-report') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {

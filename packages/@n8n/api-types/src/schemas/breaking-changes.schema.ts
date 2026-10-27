@@ -23,6 +23,16 @@ export const breakingChangeRuleImpactSchema = z.enum([
 ]);
 export type BreakingChangeRuleImpact = z.infer<typeof breakingChangeRuleImpactSchema>;
 
+/**
+ * What n8n Assistant can do with a finding of a workflow rule:
+ * - `fix`: change the workflow so the finding no longer applies.
+ * - `review`: explain the change for the workflow and let the user decide, because the
+ *   right change depends on what the user wants.
+ * - `none`: nothing in the workflow. The fix lives outside it, such as a credential secret.
+ */
+export const breakingChangeAssistantActionSchema = z.enum(['fix', 'review', 'none']);
+export type BreakingChangeAssistantAction = z.infer<typeof breakingChangeAssistantActionSchema>;
+
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
 export const breakingChangeVersionSchema = z.enum(['v2', 'v3']);
@@ -152,6 +162,8 @@ export type BreakingChangeInstanceRuleResult = z.infer<typeof instanceRuleResult
 
 const workflowRuleResultsSchema = ruleResultBaseSchema.extend({
 	affectedWorkflows: z.array(affectedWorkflowSchema),
+	// Declared by the rule, so the report offers the Assistant only where it can help.
+	assistantAction: breakingChangeAssistantActionSchema,
 });
 export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResultsSchema>;
 

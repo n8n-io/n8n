@@ -45,6 +45,7 @@ const mockWorkflowIssue = {
 		},
 	],
 	migratable: false,
+	assistantAction: 'fix' as const,
 	nbAffectedWorkflows: 5,
 	nbWontFixWorkflows: 0,
 };

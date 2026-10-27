@@ -198,6 +198,20 @@ A changed default whose runs keep going with a different result is `behaviorChan
 
 Pick the impact from the effect on the user, not from how many workflows a rule touches. The migration report sorts rules by impact, from `upgradeBlocked` down to `capabilityRemoved`.
 
+## Assistant Action
+
+A workflow rule can offer n8n Assistant on its findings. Set `assistant` in `getMetadata()`. A rule that does not set it offers no Assistant. The report uses it to label the Assistant button on a finding, or to hide it:
+
+| Action | Meaning | Example |
+| --- | --- | --- |
+| `fix` | The Assistant changes the workflow so the finding no longer applies. | A removed node with a documented replacement. |
+| `review` | The right change depends on what the user wants. The Assistant explains it and lets the user decide. | A behavior fix that most workflows do not notice. |
+| `none` (default) | The report offers no Assistant. | A credential secret, a client outside n8n, or a fix the Assistant cannot do reliably yet. |
+
+Opt a rule in only when the change stays inside the workflow, the `v3-migration` skill in `@n8n/instance-ai` explains how to make it, and the Assistant does not need anything it cannot reach, such as a secret, a file on disk or a community node that is not installed. The rule discovery test lists every rule that opts in.
+
+A rule with an automated migration offers the Assistant only after the migration refuses or leaves notes.
+
 ## Rule Types
 
 The system supports three types of rules:

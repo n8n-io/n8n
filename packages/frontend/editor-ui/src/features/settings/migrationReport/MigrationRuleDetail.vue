@@ -14,6 +14,7 @@ import type {
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
+	N8nAssistantIcon,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
@@ -28,6 +29,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 import type { IUser, TableHeader } from '@n8n/design-system';
@@ -47,6 +49,7 @@ import { I18nT } from 'vue-i18n';
 import FindingStateSelect from './components/FindingStateSelect.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
+import { rowAssistantAction, useMigrationFindingAssistant } from './useMigrationFindingAssistant';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
 	matchesWorkflowFilters,
@@ -92,6 +95,7 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 		affectedWorkflows: [],
 		recommendations: [],
 		migratable: false,
+		assistantAction: 'none',
 	},
 );
 
@@ -207,6 +211,31 @@ function ownerLabel(workflow: AffectedWorkflow): string {
 
 const showMigrate = computed(() => state.value.migratable);
 
+const findingAssistant = useMigrationFindingAssistant();
+// Undefined when the Assistant is off or the rule has no row action. The loading state declares none.
+const assistantAction = computed(() =>
+	findingAssistant.available.value ? rowAssistantAction(state.value) : undefined,
+);
+
+const assistantActionLabel = computed(() =>
+	i18n.baseText(
+		assistantAction.value === 'review'
+			? 'settings.migrationReport.detail.assistant.reviewLabel'
+			: 'settings.migrationReport.detail.assistant.fixLabel',
+	),
+);
+const assistantActionText = computed(() =>
+	i18n.baseText(
+		assistantAction.value === 'review'
+			? 'settings.migrationReport.detail.assistant.review'
+			: 'settings.migrationReport.detail.assistant.fix',
+	),
+);
+
+function openInAssistant(workflow: AffectedWorkflow) {
+	void findingAssistant.open({ rule: state.value, workflow });
+}
+
 /** Rule descriptions arrive with or without a trailing period; the header copy always ends in one. */
 const ruleDescription = computed(() => {
 	const description = state.value.ruleDescription;
@@ -246,13 +275,16 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		},
 	];
 
-	// The actions column holds the Migrate and Notify buttons.
-	if (showMigrate.value || canNotify.value) {
+	// The actions column holds the Migrate, Assistant and Notify buttons.
+	if (showMigrate.value || canNotify.value || assistantAction.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: (showMigrate.value ? 160 : 0) + (canNotify.value ? 110 : 0),
+			width:
+				(showMigrate.value ? 160 : 0) +
+				(canNotify.value ? 110 : 0) +
+				(assistantAction.value ? 110 : 0),
 			disableSort: true,
 		});
 	}
@@ -294,6 +326,9 @@ function openMigrateModal(workflows: AffectedWorkflow[]) {
 		name: MIGRATE_WORKFLOW_MODAL_KEY,
 		data: {
 			ruleId: props.migrationRuleId,
+			ruleTitle: state.value.ruleTitle,
+			ruleImpact: state.value.ruleImpact,
+			assistantAction: state.value.assistantAction,
 			workflows,
 			recommendations: state.value.recommendations,
 			eventBus: migrateModalBus,
@@ -1018,6 +1053,20 @@ const sortedWorkflows = computed(() => {
 							</template>
 						</I18nT>
 					</N8nInfoTip>
+					<!-- A short verb keeps the column narrow; the tooltip and aria-label name the Assistant. -->
+					<N8nTooltip v-if="assistantAction" :content="assistantActionText" placement="top">
+						<N8nButton
+							size="small"
+							:label="assistantActionLabel"
+							:aria-label="assistantActionText"
+							data-test-id="migration-open-in-assistant-button"
+							@click="openInAssistant(item)"
+						>
+							<template #icon>
+								<N8nAssistantIcon size="small" />
+							</template>
+						</N8nButton>
+					</N8nTooltip>
 					<template v-if="showMigrate">
 						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
 							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}

@@ -1,5 +1,6 @@
 import type {
 	BreakingChangeAffectedWorkflow,
+	BreakingChangeAssistantAction,
 	BreakingChangeRecommendation,
 	BreakingChangeRuleImpact,
 	BreakingChangeVersion,
@@ -29,6 +30,13 @@ export interface BreakingChangeRuleMetadata {
 	/** What happens if the user does not fix this breaking change. */
 	impact: BreakingChangeRuleImpact;
 	documentationUrl?: string;
+	/**
+	 * What n8n Assistant can do with a finding of this workflow rule. Defaults to `none`, so
+	 * the report offers the Assistant only on rules that opt in. Set `fix` when the Assistant
+	 * can make the change in the workflow, and `review` when the right change depends on what
+	 * the user wants. Instance rules ignore it.
+	 */
+	assistant?: BreakingChangeAssistantAction;
 }
 
 export interface IBreakingChangeInstanceRule {

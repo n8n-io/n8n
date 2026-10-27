@@ -357,10 +357,12 @@ export type {
 	MigrationNotifyResult,
 	MigrationNotifySkipReason,
 	WorkflowMigrationResult,
+	BreakingChangeAssistantAction,
 } from './schemas/breaking-changes.schema';
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeAssistantActionSchema,
 	breakingChangeRuleImpactSchema,
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
@@ -489,6 +491,8 @@ export {
 	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	instanceAiMigrationReportHandoffContextSchema,
+	instanceAiAutomatedMigrationOutcomeSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
 	instanceAiThreadTabRefSchema,
@@ -701,6 +705,8 @@ export type {
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
+	InstanceAiMigrationReportHandoffContext,
+	InstanceAiAutomatedMigrationOutcome,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
 	InstanceAiThreadTabRef,

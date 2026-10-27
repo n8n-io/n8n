@@ -26,6 +26,8 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 				'Gmail Trigger versions below 1.4 are removed and every Gmail Trigger node runs with v1.4 behavior: the number of emails fetched per poll is limited by "Max Emails per Poll" (default 10, the remainder is picked up in later polls), drafts are excluded unless the "Include Drafts" filter is enabled, and sent (non-inbox) and scheduled emails no longer trigger the workflow.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
+			// Whether drafts, sent mail or larger polls matter is the user's call.
+			assistant: 'review',
 		};
 	}
 

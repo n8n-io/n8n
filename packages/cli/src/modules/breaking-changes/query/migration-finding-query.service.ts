@@ -21,6 +21,7 @@ import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { ErrorReporter } from 'n8n-core';
 
+import { assistantActionOf } from '../assistant-action';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
@@ -52,7 +53,7 @@ const workflowFilter = (scope: ReportScope) =>
 	scope.kind === 'workflows' ? scope.workflowIds : undefined;
 
 /** The rule fields both report types share. */
-type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+export type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
 const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
@@ -204,6 +205,28 @@ export class MigrationFindingQueryService {
 		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
 	}
 
+	/**
+	 * One workflow rule as the report describes it, with the workflow's current issues for it.
+	 * The caller loads the workflow and checks access. Undefined when no workflow rule has the id.
+	 */
+	async describeWorkflowFinding(
+		ruleId: string,
+		workflow: WorkflowEntity,
+	): Promise<{ rule: RuleDescription; issues: BreakingChangeWorkflowIssue[] } | undefined> {
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule || !isWorkflowLevelRule(rule)) return undefined;
+
+		const issuesByWorkflow =
+			'collectWorkflowData' in rule
+				? await this.issuesFromScan(rule.getMetadata().version, rule)
+				: await this.issuesFromRecheck(rule, [workflow]);
+
+		return {
+			rule: await this.describeRule(rule),
+			issues: issuesByWorkflow.get(workflow.id) ?? [],
+		};
+	}
+
 	private async describeRule(
 		rule: WorkflowLevelRule,
 		affectedWorkflows: BreakingChangeAffectedWorkflow[] = [],
@@ -217,6 +240,7 @@ export class MigrationFindingQueryService {
 			ruleDocumentationUrl: metadata.documentationUrl,
 			recommendations: await rule.getRecommendations(affectedWorkflows),
 			migratable: this.migrationRegistry.has(rule.id),
+			assistantAction: assistantActionOf(rule),
 		};
 	}
 

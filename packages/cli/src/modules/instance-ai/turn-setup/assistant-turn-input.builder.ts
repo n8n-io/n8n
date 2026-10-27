@@ -78,6 +78,10 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from '../internal-messages';
+import {
+	buildMigrationReportContextBlock,
+	resolveMigrationReportFinding,
+} from '../migration-report-handoff';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import { type OrchestratorResumeReason } from '../tracing';
 
@@ -314,6 +318,16 @@ export class AssistantTurnInputBuilder {
 			});
 		} else if (handoffContext?.source === 'setup-panel-execute' && isSetupPanelEnabled(context)) {
 			handoffContextBlock = buildWorkflowTestRequestBlock(handoffContext.workflowId);
+		} else if (handoffContext?.source === 'migration-report') {
+			const [finding, skill] = await Promise.all([
+				resolveMigrationReportFinding(handoffContext, user),
+				this.skillsService.loadSkill(SKILLS.v3Migration, skillScope),
+			]);
+			handoffContextBlock = buildMigrationReportContextBlock(
+				handoffContext,
+				finding,
+				skill.instructions,
+			);
 		} else {
 			handoffContextBlock = buildHandoffContextBlock(handoffContext);
 		}
