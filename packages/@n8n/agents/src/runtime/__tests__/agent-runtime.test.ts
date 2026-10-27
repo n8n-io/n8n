@@ -8918,6 +8918,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
 
+	it('streams and persists a skill update before the model responds', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save(
+			{ ...PERSISTENCE, agentName: 'mid-run-agent' },
+			{ skillIds: ['builder'], versions: { builder: 'previous-version' } },
+		);
+		const skillSource = {
+			...createRuntimeSkillSource([
+				{
+					id: 'builder',
+					name: 'Builder',
+					description: 'Build workflows.',
+					instructions: 'Use the latest guidance.',
+				},
+			]),
+			shouldAppendSkillUpdates: () => true,
+		};
+		const runtime = buildMidRunRuntime(memory, { skillSource });
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
+		const { stream } = await runtime.stream('Continue', { persistence: PERSISTENCE });
+		const chunks = await collectChunks(stream);
+		await runtime.dispose();
+		const notices = chunks
+			.filter((chunk) => chunk.type === 'message')
+			.filter((chunk) => chunk.message.type === 'custom');
+		expect(notices).toEqual([
+			{
+				type: 'message',
+				message: {
+					type: 'custom',
+					data: {
+						type: 'n8n:runtime-skill-update',
+						skillUpdate: expect.objectContaining({
+							skillId: 'builder',
+							name: 'Builder',
+							change: 'updated',
+						}),
+					},
+				},
+			},
+		]);
+		expect(chunks.indexOf(notices[0])).toBeLessThan(
+			chunks.findIndex((chunk) => chunk.type === 'text-delta'),
+		);
+		expect(await memory.getMessages(PERSISTENCE.threadId)).toContainEqual(
+			expect.objectContaining(notices[0].message),
+		);
+	});
+
 	it('persists full skill content when the memory adapter has no skill state store', async () => {
 		const instructions = 'Wait for a real execution before extending the workflow.';
 		const source = createRuntimeSkillSource([

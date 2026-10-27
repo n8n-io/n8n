@@ -49,11 +49,27 @@ interface PgPoolInternals {
 export const FORCE_CLOSE_GRACE_MS = 1_000;
 
 /**
+ * The ping timed out before it could check a client out of the pool, so it never ran its
+ * query on a pooled connection. The pool is busy with other queries or slow to open a new
+ * connection. An `OperationalError` so the ping does not report it to Sentry.
+ */
+class PooledConnectionUnavailableError extends OperationalError {
+	constructor(cause: Error) {
+		super(`No pooled connection available for the ping: ${cause.message}`);
+	}
+}
+
+/**
  * Watches a DataSource and recovers it when the connection goes bad.
  * - Pings on `databaseConfig.pingIntervalSeconds`, races against `databaseConfig.pingTimeoutMs`.
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
  *   and reinitializes the DataSource with exponential backoff
  *   (`databaseConfig.minRecoveryBackoffMs` .. `databaseConfig.maxRecoveryBackoffMs`).
+ *   A failure only counts when a pooled connection was checked out and did not answer,
+ *   while a connection opened outside the pool still does: that proves the pooled
+ *   connections are the broken part, so a rebuilt pool helps. A ping that got no pooled
+ *   connection (busy pool) or whose probe fails too (unreachable or stalled server) is
+ *   not counted: tearing the pool down would only abort every in-flight query for nothing.
  *   Postgres-only: for sqlite the database is a local file, so a failed ping means a
  *   saturated pool rather than a lost connection, and destroying the pool would abort
  *   every pending acquisition (failing in-flight executions) with nothing to re-establish.
@@ -175,6 +191,29 @@ export class DbConnectionMonitor {
 			return;
 		} catch (error) {
 			this.setConnected(false);
+			const { message } = ensureError(error);
+			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
+				this.errorReporter.error(error);
+			}
+
+			// A rebuild only helps when a pooled connection is the broken part. A ping that never
+			// got one says nothing about the pooled connections: the pool is busy or cannot grow.
+			// A ping whose pooled connection went unanswered while the database is unreachable
+			// says nothing either: no pool would answer.
+			const threshold = `${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}`;
+			if (this.recoveryEnabled && error instanceof PooledConnectionUnavailableError) {
+				this.logger.warn(
+					`Database ping failed (not counted, no pooled connection free, ${threshold}): ${message}`,
+				);
+				return;
+			}
+			if (this.recoveryEnabled && !(await this.probeOutsidePool())) {
+				this.logger.warn(
+					`Database ping failed (not counted, database unreachable, ${threshold}): ${message}`,
+				);
+				return;
+			}
+
 			this.consecutiveFailures += 1;
 
 			// Only Postgres counts toward a recovery threshold; showing it for sqlite would suggest a teardown that never comes.
@@ -182,10 +221,7 @@ export class DbConnectionMonitor {
 				? `${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}`
 				: `${this.consecutiveFailures}`;
 
-			this.logger.warn(`Database ping failed (${failureCount}): ${ensureError(error).message}`);
-			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
-				this.errorReporter.error(error);
-			}
+			this.logger.warn(`Database ping failed (${failureCount}): ${message}`);
 
 			if (
 				this.recoveryEnabled &&
@@ -241,6 +277,12 @@ export class DbConnectionMonitor {
 				(late) => this.safeDestroyClient(late),
 				() => {},
 			);
+			// Only the ping timeout means "pool busy". A rejection from pg-pool itself (refused
+			// connection, failed auth, server at max connections) is a connection error: it is
+			// reported and probed like any other, and the probe decides whether it counts.
+			if (error instanceof OperationalError) {
+				throw new PooledConnectionUnavailableError(error);
+			}
 			throw error;
 		}
 
@@ -257,6 +299,43 @@ export class DbConnectionMonitor {
 		} catch (error) {
 			this.safeDestroyClient(client); // timeout or error: destroy the connection to free the slot now
 			throw error;
+		}
+	}
+
+	/**
+	 * Opens a connection outside the pool and runs the health-check query on it, bounded by
+	 * `pingTimeoutMs`. Resolves `true` when the server answers: the pooled connections are
+	 * then the broken part, so a rebuilt pool would work. Resolves `false` when this
+	 * connection fails too: the server is unreachable or stalled, and a rebuild would only
+	 * abort every in-flight query for nothing.
+	 *
+	 * The client is built the way pg-pool builds its own, from `pool.options`, so it uses
+	 * the same host, credentials, TLS and connect timeout. Resolves `true` (the pre-probe
+	 * behaviour) when the driver offers no way to build one.
+	 */
+	private async probeOutsidePool(): Promise<boolean> {
+		const pool = this.postgresDriver.master;
+		const { postgres } = this.postgresDriver;
+		const Client = typeof postgres === 'object' && postgres !== null ? postgres.Client : undefined;
+		if (!pool?.options || typeof Client !== 'function') {
+			this.logger.warn(
+				'Cannot probe the database outside the pool: driver.master.options or driver.postgres.Client is unavailable (TypeORM internals may have changed); counting the ping failure towards recovery',
+			);
+			return true;
+		}
+
+		const client = new Client(pool.options);
+		// A client that errors after connecting emits 'error'; without a listener Node crashes the process.
+		client.on('error', () => {});
+		try {
+			await this.raceTimeout(client.connect().then(async () => await client.query('SELECT 1')));
+			return true;
+		} catch (error) {
+			this.logger.debug(`Database probe outside the pool failed: ${ensureError(error).message}`);
+			return false;
+		} finally {
+			// `end()` is a no-op on a client that never connected and destroys the socket under a hung query.
+			void client.end().catch(() => {});
 		}
 	}
 

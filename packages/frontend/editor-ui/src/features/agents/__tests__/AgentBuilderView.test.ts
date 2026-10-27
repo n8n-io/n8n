@@ -6085,7 +6085,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		fetchConfigMock.mockClear();
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
-		await nextTick();
+		// The modal opens once the agent is persisted.
+		await flushPromises();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
 			expect.objectContaining({

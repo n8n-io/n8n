@@ -24,6 +24,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
 	count: number;
@@ -79,6 +80,27 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
+	}
+
+	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
+		const manager = this.managerFor(ctx);
+		const agent = await manager.findOne(Agent, {
+			where: { id, scope: projectScope },
+			...(this.manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+
+		if (agent && !agent.versionId) {
+			agent.versionId = randomUUID();
+			await manager.update(
+				Agent,
+				{ id },
+				{ versionId: agent.versionId, updatedAt: agent.updatedAt },
+			);
+		}
+
+		return agent;
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -597,7 +619,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds), scope: projectScope }, { availableInMCP });
+		await this.update(
+			{ id: In(agentIds), scope: projectScope },
+			{ availableInMCP, revision: () => 'revision + 1' },
+		);
 	}
 
 	/**
@@ -799,7 +824,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
+	async saveDraftFenced(
+		agent: Agent,
+		ctx: OperationContext = {},
+		metadata: AgentDefinitionMetadata = {},
+	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
@@ -812,8 +841,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 				schema: agent.schema,
 				integrations: agent.integrations,
 				tools: agent.tools,
-				skills: agent.skills,
 				versionId: agent.versionId,
+				...(metadata.availableInMCP !== undefined
+					? { availableInMCP: metadata.availableInMCP }
+					: {}),
 				updatedAt,
 				revision: () => 'revision + 1',
 			})
@@ -822,6 +853,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
@@ -871,27 +903,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 			);
 		}
 		return agents.filter(isProjectAgent);
-	}
-
-	/**
-	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
-	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
-	 * write does not check `revision`: call it only in the same transaction as a
-	 * won `saveDraftFenced`.
-	 */
-	async updateDraftSkills(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
-		ctx: OperationContext,
-	): Promise<void> {
-		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
-		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
-		await this.managerFor(ctx)
-			.createQueryBuilder()
-			.update(Agent)
-			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
-			.where('id = :id', { id: agent.id })
-			.andWhere(projectScopeUpdateSql)
-			.execute();
 	}
 
 	async updateDraftSchema(

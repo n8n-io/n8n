@@ -10,10 +10,10 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { SkillRepository } from '@/modules/skills/skill.repository';
 import { SkillService } from '@/modules/skills/skill.service';
 import { PostHogClient } from '@/posthog';
@@ -57,7 +57,6 @@ describe('SkillsController', () => {
 	});
 
 	beforeEach(async () => {
-		setSkillsHubFlag(true);
 		postHog.getFeatureFlagForInstance.mockImplementation(
 			async (flag) => flag === ASSISTANT_SKILLS_FLAG,
 		);
@@ -205,12 +204,13 @@ describe('SkillsController', () => {
 		expect(list.count).toBe(0);
 	});
 
-	it('hides the skills API when the skills hub is off', async () => {
-		setSkillsHubFlag(false);
+	it('hides the skills API while the agents module is off', async () => {
+		// As when the agents module never registered its provider.
+		vi.spyOn(Container.get(SkillAgentsProxy), 'hasProvider', 'get').mockReturnValue(false);
 
 		await owner.get('/skills').expect(404);
 		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
-		// The flag is checked before the body, so a malformed request also answers 404.
+		// The gate is checked before the body, so a malformed request also answers 404.
 		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
 		await owner.get('/skills?take=-1').expect(404);
 	});
