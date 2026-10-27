@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type {
 	InstanceAiConfirmation,
@@ -135,9 +136,6 @@ vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 		template: '<div data-test-id="mock-workflow-setup" />',
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
 	},
-}));
-vi.mock('../components/PlanReviewPanel.vue', () => ({
-	default: { template: '<div />', props: ['plannedTasks', 'message', 'readOnly'] },
 }));
 
 const renderComponent = createThreadComponentRenderer(InstanceAiConfirmationPanel);
@@ -328,6 +326,8 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 
 			expect(description.textContent).toBe(message);
+			await waitFor(() => expect(getByTestId('approval-card-always-allow')).toHaveFocus());
+			getByRole('button', { expanded: true }).focus();
 			await userEvent.tab();
 			expect(description).toHaveFocus();
 			expect(getByTestId('approval-card-allow-once')).toBeVisible();

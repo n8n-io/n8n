@@ -2,6 +2,7 @@ import type { Agent as RuntimeAgent, SideCallUsageReport, StreamChunk } from '@n
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService, RecordMessageParams } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -24,6 +25,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		mock<AgentMessageQueueService>(),
 		mock<AgentMessageSteeringService>(),
 		mock<AgentToolApprovalService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 	);
 	const controller = new AbortController();
 	const turn: AgentTurnRequest = {
@@ -88,6 +90,7 @@ describe('onBeforeFinalize', () => {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
 		);
 		const agentInstance = mock<RuntimeAgent>();
 		agentInstance.stream.mockImplementation(async () => {
@@ -116,6 +119,51 @@ describe('onBeforeFinalize', () => {
 		}
 		return { onBeforeFinalize, executions };
 	}
+
+	it('broadcasts server duration with each model turn before finalization', async () => {
+		vi.useFakeTimers();
+		const start = Date.parse('2026-10-26T10:00:00Z');
+		vi.setSystemTime(start);
+		try {
+			const first = { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 };
+			const second = { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.02 };
+			const { executions } = await runTurn(
+				[
+					{ type: 'usage', model: 'test-model', usage: first },
+					{ type: 'usage', model: 'test-model', usage: second },
+					{ type: 'finish', finishReason: 'stop', usage: second },
+				],
+				{ beforeStream: () => vi.setSystemTime(start + 2300) },
+			);
+			expect(executions.reportUsage.mock.calls).toEqual([
+				[
+					{
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						threadId: 'thread-1',
+						executionId: 'exec-1',
+					},
+					first,
+					2300,
+				],
+				[
+					{
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						threadId: 'thread-1',
+						executionId: 'exec-1',
+					},
+					second,
+					2300,
+				],
+			]);
+			expect(executions.reportUsage.mock.invocationCallOrder[1]).toBeLessThan(
+				executions.finalizeExecution.mock.invocationCallOrder[0],
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 
 	it('reports a completed turn once, before the record is stored', async () => {
 		const { onBeforeFinalize, executions } = await runTurn([
@@ -216,6 +264,7 @@ describe('onSideCallUsage', () => {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
 		);
 		const emptyStream = () =>
 			new ReadableStream<StreamChunk>({

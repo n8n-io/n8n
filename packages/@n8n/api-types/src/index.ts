@@ -17,8 +17,11 @@ export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
-export type * from './node-type-availability';
+export * from './node-type-availability';
+export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
+export type * from './transfer-preview';
+export type * from './transfer-result';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -233,9 +236,16 @@ export {
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
+	ENVIRONMENTS_VERSIONS,
+	type EnvironmentsVersion,
 } from './schemas/source-controlled-file.schema';
 
-export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export {
+	policyViolationSchema,
+	type PolicyViolation,
+	POLICY_VIOLATION_KIND,
+	POLICY_VIOLATION_SUBJECT_TYPE,
+} from './schemas/policy-violation.schema';
 export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
@@ -264,8 +274,10 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UsersListStatusCounts,
 	type UserProject,
 	usersListSchema,
+	usersListStatusCountsSchema,
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
@@ -414,9 +426,10 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
-	plannedTaskArgSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	workflowsArchivedPayloadSchema,
 	agentSpawnedPayloadSchema,
 	agentActivitySchema,
 	agentChangeSchema,
@@ -444,6 +457,7 @@ export {
 	setupItemSchema,
 	setupItemsPayloadSchema,
 	aiPreferencesAppliedPayloadSchema,
+	skillUpdatePayloadSchema,
 	errorPayloadSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
@@ -508,6 +522,11 @@ export {
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalExportExecutionRequest,
+	InstanceAiEvalRestoreExecutionRequest,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type InstanceAiEvalFailedExecutionSummary,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
@@ -624,6 +643,7 @@ export type {
 	InstanceAiPreferenceCardEditResponse,
 	PreferenceCardPayload,
 	AiPreferencesAppliedPayload,
+	InstanceAiSkillUpdatePayload,
 	InstanceAiErrorEvent,
 	McpTool,
 	McpToolAnnotations,
@@ -705,7 +725,6 @@ export type {
 	InstanceAiBrowserStatusResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
-	PlannedTaskArg,
 	InstanceAiEvalNodeExecutionMode,
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
@@ -994,7 +1013,6 @@ export {
 export * from './self-healing-configurations';
 export type {
 	ScimUser,
-	ScimUserCreate,
 	ScimPatchOp,
 	ScimPatchRequest,
 	ScimListResponse,
@@ -1002,11 +1020,9 @@ export type {
 	ScimMeta,
 	ScimUserName,
 	ScimEmail,
-	ScimRole,
 } from './schemas/scim.schema';
 export {
 	scimUserSchema,
-	scimUserCreateSchema,
 	scimPatchRequestSchema,
 	scimListResponseSchema,
 	scimErrorSchema,

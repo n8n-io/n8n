@@ -209,11 +209,7 @@ function onOpenAutoFocus(event: Event) {
 
 		<N8nDialogBody
 			ref="bodyRoot"
-			:class="[
-				$style.body,
-				hasFooter && $style.bodyAboveFooter,
-				props.stableHeight && $style.bodyStableHeight,
-			]"
+			:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
 			:data-flush="props.bodyFlush ? 'true' : undefined"
 			:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 			data-testid="agent-modal-body"
@@ -281,6 +277,7 @@ function onOpenAutoFocus(event: Event) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
 	min-width: 0;
 }
 
@@ -352,9 +349,10 @@ function onOpenAutoFocus(event: Event) {
 	@include scrollbar-mixins.scroll-bar;
 }
 
-.bodyAboveFooter[data-slot='dialog-body'][data-scrollable] {
-	--agent-modal-body--padding-block-end: 0;
-	padding-block-end: 0;
+.body[data-slot='dialog-body'][data-scrollable] {
+	// The base dialog reduces this inset when a footer is present.
+	padding-block-end: var(--agent-modal-body--padding-block-end);
+	margin-block-end: 0;
 }
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
@@ -363,6 +361,11 @@ function onOpenAutoFocus(event: Event) {
 
 .body[data-scrollable='false'] {
 	overflow: hidden;
+}
+
+.body[data-scrollable='true'] > * {
+	// Keep the bottom inset after scrolling past a tall form.
+	flex-shrink: 0;
 }
 
 .bodyStableHeight {
@@ -421,7 +424,7 @@ function onOpenAutoFocus(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		button {
+		button:not([role='checkbox']) {
 			flex: 1;
 		}
 	}

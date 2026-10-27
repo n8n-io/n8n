@@ -24,6 +24,8 @@ import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
+import { toImportBlockedError } from './import-blocked.error';
+import { agentBodyIssues } from '../entities/agent/agent-body-issues';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
@@ -215,20 +217,11 @@ export class N8nPackageParser {
 	}
 
 	private assertAgentBodiesPresent(agent: SerializedAgent, path: string): void {
-		const references = {
-			skills: agent.config?.skills ?? [],
-			tools: agent.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],
-			tasks: agent.config?.tasks ?? [],
-		};
-		for (const collection of ['skills', 'tools', 'tasks'] as const) {
-			const missing = references[collection].find(
-				({ id }) => !Object.hasOwn(agent[collection], id),
+		const issues = agentBodyIssues({ ...agent, sourceAgentId: agent.id });
+		if (issues.length > 0) {
+			throw toImportBlockedError(
+				issues.map((issue) => ({ ...issue, path: `${path}#${issue.path}` })),
 			);
-			if (missing) {
-				throw new UserError(
-					`Package Agent at ${path} references ${collection} asset "${missing.id}" without a body.`,
-				);
-			}
 		}
 	}
 

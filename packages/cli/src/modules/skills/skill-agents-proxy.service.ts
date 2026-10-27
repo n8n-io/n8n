@@ -1,4 +1,4 @@
-import type { SkillUsage } from '@n8n/api-types';
+import type { SkillAgentOption, SkillUsage } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -29,6 +29,18 @@ export interface SkillAgentsProvider {
 	/** The agents that use the skill: a draft ref or a published pin. */
 	findUsingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
 
+	/** The skills the agent uses: a draft ref or a published pin. */
+	findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext): Promise<string[]>;
+
+	/**
+	 * Id and name of the agents in these projects (null for every project), searched by
+	 * name and cut to `limit`. Reads no agent config.
+	 */
+	findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]>;
+
 	/** Refuses a rename that makes the skill clash by name with another skill of an agent. */
 	assertRenameKeepsNamesApart(
 		skillId: string,
@@ -39,10 +51,14 @@ export interface SkillAgentsProvider {
 
 	/**
 	 * In the save transaction: the agents that follow the skill run the new version, so each
-	 * one that was in sync with its published version shows unpublished changes. Returns the
+	 * one gets a saved Agent version. Returns the
 	 * ids of the following agents.
 	 */
-	markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]>;
+	markFollowersChanged(
+		skillId: string,
+		ctx: OperationContext,
+		userId?: string | null,
+	): Promise<string[]>;
 
 	/** After a save commits: the agents reload, except the tab of `excludePushRef`. */
 	refreshAgents(agentIds: string[], excludePushRef?: string): Promise<void>;
@@ -95,6 +111,19 @@ export class SkillAgentsProxy implements SkillAgentsProvider {
 		return await this.provider.findUsingAgentIds(skillId, ctx);
 	}
 
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext = {}) {
+		if (!this.provider) return [];
+		return await this.provider.findSkillIdsUsedByAgent(agentId, ctx);
+	}
+
+	async findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]> {
+		if (!this.provider || projectIds?.length === 0) return [];
+		return await this.provider.findAgentSummaries(projectIds, filter);
+	}
+
 	async assertRenameKeepsNamesApart(
 		skillId: string,
 		oldName: string,
@@ -104,9 +133,9 @@ export class SkillAgentsProxy implements SkillAgentsProvider {
 		await this.provider?.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
 	}
 
-	async markFollowersChanged(skillId: string, ctx: OperationContext = {}) {
+	async markFollowersChanged(skillId: string, ctx: OperationContext = {}, userId?: string | null) {
 		if (!this.provider) return [];
-		return await this.provider.markFollowersChanged(skillId, ctx);
+		return await this.provider.markFollowersChanged(skillId, ctx, userId);
 	}
 
 	async refreshAgents(agentIds: string[], excludePushRef?: string) {

@@ -40,6 +40,33 @@ Consequences:
 - The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
   no effect.
 
+### Outbound propagation
+
+During an execution, n8n adds the W3C trace context to the requests it sends. The service that
+n8n calls can then continue the trace.
+
+There are two ways to add the headers:
+
+- `httpRequest` and `request` add them for you. A node that uses these helpers needs no code.
+- A node with its own HTTP transport calls `helpers.getTraceHeaders()` and adds the result to
+  its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
+  helper is public, so a community node can use it too.
+
+`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one. It
+returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
+off, or when no execution runs. Use the result without a guard.
+
+Both ways obey these rules:
+
+- **Read the headers for each request.** They name the span that is active now. A transport
+  that stays open serves many spans, so a value read at connect names the wrong span later.
+- **The trace context replaces** a header of the same name on the request.
+- **The headers follow a redirect**, also across origins. A trace id is not a credential. On
+  the MCP path, n8n first checks each hop against the credential allowlist and the egress
+  filter.
+- **A failure never stops the request.** The request goes out without the headers, and n8n
+  logs a warning.
+
 ### Execution identity
 
 Workflow and node spans carry `n8n.execution.id`, `n8n.workflow.id`, `n8n.workflow.name`,
@@ -87,6 +114,19 @@ or a node started, before the real span ends.
 - Both flags follow `N8N_OTEL_TRACES_PRODUCTION_ONLY`. Set them on workers too.
 - A marker that fails logs a warning. It does not stop the real span or the execution.
 
+### Custom attribute prefixes
+
+n8n adds a prefix to the keys of custom telemetry tags: `n8n.project.custom.`,
+`n8n.workflow.custom.` and `n8n.node.custom.`. `N8N_OTEL_TRACES_CUSTOM_ATTRIBUTE_PREFIXES`
+replaces them with a JSON object, for example `{"project":"","node":""}`.
+
+- An empty string removes the prefix for that level. A level that is left out keeps its default.
+- An invalid value logs a warning, and n8n uses the default prefixes.
+- When keys collide, the more specific level wins: node, then workflow, then project.
+- n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value.
+- Node metadata from the Tools Agent (`ai.agent.*`) uses the node prefix too.
+- Set the same value on main, workers and webhook processes.
+
 ### Module architecture
 ```mermaid
 graph TD
@@ -129,7 +169,9 @@ graph TD
         PUB(("Pub/Sub
         reload-otel-config"))
         REQ["Request helpers
-        module context injectTraceHeaders"]
+        httpRequest, request"]
+        MCP["Nodes with their own transport
+        MCP client nodes, helpers.getTraceHeaders()"]
         AGT["AgentRunTracingService
         AgentWorkflowExecutionService"]
     end
@@ -152,6 +194,7 @@ graph TD
     LCH -- "persist and read" --> TCS
     ELT -- "getTracer()" --> SVC
     REQ -- "outbound traceparent" --> ELT
+    MCP -- "outbound traceparent" --> ELT
     AGT -- "getActiveContext()" --> ELT
     AGT -- "getTracer()" --> SVC
     SDK -. "exports spans" .-> COL
@@ -166,7 +209,7 @@ graph TD
     class CFG,SET,CTRL config
     class SVC,SDK,API sdk
     class LCH,ELT,TCS inst
-    class LC,PUB,REQ,AGT,COL core
+    class LC,PUB,REQ,MCP,AGT,COL core
 ```
 
 #### Manual validation

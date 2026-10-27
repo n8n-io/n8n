@@ -55,7 +55,7 @@ import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-att
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
 import { executionsToMessagesDto } from '@/modules/agents/utils/execution-to-message-mapper';
-import { formatPreviewSessionContext } from '@/modules/instance-ai/format-agent-session-context';
+import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
@@ -63,6 +63,7 @@ import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interru
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import type { AgentToolApprovalService } from '@/modules/agents/agent-tool-approval.service';
+import type { AgentKnowledgeUsageTracker } from '@/modules/agents/agent-knowledge-usage-tracker';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -277,6 +278,7 @@ describe('AgentExecutionRepository', () => {
 				queue,
 				steering,
 				mock<AgentToolApprovalService>(),
+				mock<AgentKnowledgeUsageTracker>(),
 			),
 		};
 	}

@@ -36,6 +36,8 @@ export interface ResolvedCredentialMatch {
 }
 
 export abstract class CredentialMatcher {
+	protected matchesById = false;
+
 	constructor(
 		protected readonly credentialTypes: CredentialTypes,
 		protected readonly credentialsService: CredentialsService,
@@ -46,20 +48,12 @@ export abstract class CredentialMatcher {
 		context: CredentialMatcherContext,
 	): Promise<CredentialResolution> {
 		const orphanFailures = orphanBindingFailures(context.credentialBindings, requirements);
-		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
-		const { bound, unbound } = partitionByExplicitBinding(known, context.credentialBindings);
-
-		const usableCredentials =
-			known.length === 0
-				? []
-				: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(context.user, {
-						projectId: context.projectId,
-					});
-		const usableTypesById = new Map(usableCredentials.map((c) => [c.id, c.type]));
-
-		const boundLocated = resolveExplicitBindings(bound, usableTypesById);
-		const resolvedLocated = this.resolve(unbound, usableCredentials, context);
-		const located = new Map([...boundLocated, ...resolvedLocated]);
+		const { known, unknownTypeFailures } = partitionByKnownType(
+			requirements,
+			this.credentialTypes,
+			(reference) => this.matchesById || context.credentialBindings?.has(reference.id) === true,
+		);
+		const located = await this.locateRequirements(known, context);
 
 		const successes: ImportBindingMap = new Map();
 		const notFoundFailures: CredentialResolutionFailure[] = [];
@@ -71,7 +65,7 @@ export abstract class CredentialMatcher {
 				notFoundFailures.push(
 					createNotFoundFailure(reference, context.credentialBindings?.get(reference.id)),
 				);
-			} else if (match.targetType !== reference.type) {
+			} else if (reference.type !== undefined && match.targetType !== reference.type) {
 				typeMismatchFailures.push(createTypeMismatchFailure(reference, match));
 			} else {
 				successes.set(reference.id, match.targetId);
@@ -87,6 +81,41 @@ export abstract class CredentialMatcher {
 				...typeMismatchFailures,
 			],
 		};
+	}
+
+	private async locateRequirements(
+		requirements: PackageCredentialRequirement[],
+		context: CredentialMatcherContext,
+	): Promise<Map<string, ResolvedCredentialMatch>> {
+		const located = new Map<string, ResolvedCredentialMatch>();
+
+		for (const excludePersonalRoute of [false, true]) {
+			const references = requirements.filter(
+				(reference) =>
+					reference.usedBy.some(({ kind }) => kind === 'agent') === excludePersonalRoute,
+			);
+			if (references.length === 0) continue;
+
+			const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+				context.user,
+				{
+					projectId: context.projectId,
+					excludePersonalRoute,
+				},
+			);
+			const usableTypesById = new Map(
+				usableCredentials.map((credential) => [credential.id, credential.type]),
+			);
+			const { bound, unbound } = partitionByExplicitBinding(references, context.credentialBindings);
+			const boundLocated = resolveExplicitBindings(bound, usableTypesById);
+			const resolvedLocated = this.resolve(unbound, usableCredentials, context);
+
+			for (const [sourceId, match] of [...boundLocated, ...resolvedLocated]) {
+				located.set(sourceId, match);
+			}
+		}
+
+		return located;
 	}
 
 	/**
@@ -141,6 +170,7 @@ function resolveExplicitBindings(
 function partitionByKnownType(
 	requirements: PackageCredentialRequirement[] | undefined,
 	credentialTypes: CredentialTypes,
+	canMatchUntyped: (reference: PackageCredentialRequirement) => boolean,
 ): {
 	known: PackageCredentialRequirement[];
 	unknownTypeFailures: CredentialResolutionFailure[];
@@ -149,7 +179,15 @@ function partitionByKnownType(
 	const unknownTypeFailures: CredentialResolutionFailure[] = [];
 
 	for (const reference of requirements ?? []) {
-		if (reference.type !== undefined && credentialTypes.recognizes(reference.type)) {
+		const untypedAgentReference =
+			reference.type === undefined &&
+			reference.usedBy.length > 0 &&
+			reference.usedBy.every(({ kind }) => kind === 'agent') &&
+			canMatchUntyped(reference);
+		if (
+			untypedAgentReference ||
+			(reference.type !== undefined && credentialTypes.recognizes(reference.type))
+		) {
 			known.push(reference);
 		} else {
 			unknownTypeFailures.push(createFailure(reference, 'unknown_type'));

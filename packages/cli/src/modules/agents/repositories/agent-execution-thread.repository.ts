@@ -553,6 +553,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return { threads, hasMore };
 	}
 
+	async findIdsByAgentId(agentId: string): Promise<string[]> {
+		const threads = await this.find({ select: { id: true }, where: { agentId } });
+		return threads.map((thread) => thread.id);
+	}
+
 	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */
 	async findByAgentUpdatedBefore(
 		agentId: string,

@@ -580,6 +580,23 @@ describe('N8nMemory', () => {
 			);
 		});
 
+		it('deletes thread-scoped state for a list of thread ids in one transaction', async () => {
+			await memory.deleteThreads(['t-1', 't-2']);
+
+			const observationScope = { agentId: 'agent-1', observationScopeId: In(['t-1', 't-2']) };
+			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenCalledWith(AgentObservationEntity, observationScope);
+			expect(transactionDelete).toHaveBeenCalledWith(AgentThreadEntity, {
+				id: In(['t-1', 't-2']),
+			});
+		});
+
+		it('does nothing when the thread id list is empty', async () => {
+			await memory.deleteThreads([]);
+
+			expect(runInTransaction).not.toHaveBeenCalled();
+		});
+
 		it('deletes thread-scoped observation state by thread id prefix in one transaction', async () => {
 			await memory.deleteThreadsByPrefix('test-agent-1');
 

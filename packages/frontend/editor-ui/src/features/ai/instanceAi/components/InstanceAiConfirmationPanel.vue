@@ -152,9 +152,11 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.workflow_builder_workflows.restore-version.imperative',
 			'instanceAi.tools.workflow_builder_workflows.restore-version.imperativeWithResource',
 			'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource',
+			'instanceAi.tools.execute_node.imperative',
+			'instanceAi.tools.execute_node.imperativeWithResource',
 			'instanceAi.tools.workflow_builder_executions.run.imperative',
 			'instanceAi.tools.workflow_builder_executions.run.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_credentials.delete.imperative',
+			'instanceAi.tools.delete_credential.imperative',
 			'instanceAi.tools.data_tables.create.imperative',
 			'instanceAi.tools.data_tables.create.imperativeWithResource',
 			'instanceAi.tools.data_tables.delete.imperative',
@@ -214,11 +216,13 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 		});
 	}
 	if (item.toolCall.confirmation.targetApproval) {
-		return i18n.baseText('agents.chat.approval.title');
+		return buildApprovalSubtitle(item);
 	}
 	const { args } = item.toolCall;
-	const toolName = resolveBuilderToolName(item.toolCall.toolName);
-	const action = typeof args?.action === 'string' ? args.action : undefined;
+	const toolName = resolveBuilderToolName(item.toolCall.toolName, args?.action);
+	// A former multi-action tool resolves to a single-action tool, which takes no action suffix.
+	const actionSelectsTool = toolName !== resolveBuilderToolName(item.toolCall.toolName);
+	const action = typeof args?.action === 'string' && !actionSelectsTool ? args.action : undefined;
 	const keyBase = action
 		? `instanceAi.tools.${toolName}.${action}`
 		: `instanceAi.tools.${toolName}`;
@@ -728,7 +732,11 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				data-test-id="instance-ai-confirmation-panel"
 				:title="buildApprovalTitle(chunk.item)"
 				:labels="approvalLabels"
-				:description="buildApprovalSubtitle(chunk.item)"
+				:description="
+					chunk.item.toolCall.confirmation.targetApproval
+						? undefined
+						: buildApprovalSubtitle(chunk.item)
+				"
 				:args="chunk.item.toolCall.confirmation.targetApproval?.args"
 				:description-label="i18n.baseText('instanceAi.confirmation.details')"
 				:options="credentialDestinationOptions(chunk.item)"

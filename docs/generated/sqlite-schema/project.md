@@ -159,6 +159,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope
@@ -256,6 +257,7 @@ erDiagram
   boolean enabled
   varchar enabledById FK
   INTEGER id
+  BOOLEAN includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt
@@ -267,13 +269,13 @@ erDiagram
 }
 "self_healing_investigation" {
   varchar backgroundUserId FK
-  TEXT baseline
   INTEGER configurationId FK
   datetime_3_ createdAt
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   varchar runId
   varchar threadId
@@ -315,6 +317,7 @@ erDiagram
 "skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

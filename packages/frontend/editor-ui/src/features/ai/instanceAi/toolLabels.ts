@@ -26,6 +26,13 @@ const SKILL_TOOLS = new Set<string>([
 	'load_skill',
 	'skills',
 ]);
+const CREDENTIAL_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_CREDENTIAL_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.TEST_CREDENTIAL,
+	SHARED_BUILDER_TOOL_NAMES.DELETE_CREDENTIAL,
+]);
 const WORKFLOW_BUILDER_PREFIX_PATTERN = /^workflow_builder_/;
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
@@ -135,7 +142,6 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT) return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
@@ -147,13 +153,17 @@ export function getToolIcon(rawToolName: string): IconName {
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE ||
 		toolName === 'templates' ||
 		toolName === AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES ||
 		toolName === AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS) return 'key-round';
+	if (CREDENTIAL_TOOL_NAMES.has(toolName)) return 'key-round';
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
 		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
@@ -182,7 +192,7 @@ export function useToolLabel() {
 	const i18n = useI18n();
 
 	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
-		const toolName = resolveBuilderToolName(rawToolName);
+		const toolName = resolveBuilderToolName(rawToolName, args?.action);
 		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
