@@ -4,10 +4,12 @@ import { ref, useTemplateRef, watch } from 'vue';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
 
 const props = withDefaults(
@@ -26,12 +28,23 @@ const props = withDefaults(
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
+		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
-	{ visible: true, newSession: false, layout: 'dock', dismissedFixToolCallIds: () => [] },
+	{
+		visible: true,
+		newSession: false,
+		layout: 'dock',
+		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+		increaseBudget: undefined,
+	},
 );
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
@@ -49,6 +62,10 @@ function getConversationMarkdown(): string {
 	return chatPanel.value?.getConversationMarkdown() ?? '';
 }
 
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	chatPanel.value?.clearBudgetStops(fields);
+}
+
 watch(
 	[() => props.initialPrompt, chatPanel],
 	([prompt, panel]) => {
@@ -58,7 +75,7 @@ watch(
 	{ immediate: true, flush: 'post' },
 );
 
-defineExpose({ focusInput, getConversationMarkdown });
+defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 </script>
 
 <template>
@@ -86,7 +103,10 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:can-send-to-assistant="canSendToAssistant"
 				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 				:before-send="beforeSend"
+				:budget-cards="budgetCards"
+				:increase-budget="increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@usage-updated="emit('usage-updated', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"

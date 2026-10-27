@@ -1,4 +1,4 @@
-import type { SourceControlledFile } from '@n8n/api-types';
+import type { EnvironmentsVersion, SourceControlledFile } from '@n8n/api-types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
 
 export type SshKeyTypes = ['ed25519', 'rsa'];
@@ -9,6 +9,7 @@ export type SshKeyTypes = ['ed25519', 'rsa'];
 // - Global admin (sourceControl:manage): SourceControlPreferences (full)
 export type SourceControlPublicPreferences = {
 	branchReadOnly: boolean;
+	environmentsVersion?: EnvironmentsVersion;
 };
 
 export type SourceControlProjectPreferences = SourceControlPublicPreferences & {

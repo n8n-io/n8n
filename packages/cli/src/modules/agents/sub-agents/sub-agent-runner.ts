@@ -11,15 +11,19 @@ import {
 	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentResumeRequest,
 	type GenerateResult,
+	type EpisodicScopeDecision,
 	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
+	type SideCallUsageReport,
 	type StreamChunk,
 	type StreamResult,
 	type SubAgentTaskDifficulty,
 	type SubAgentTaskPath,
+	type TokenUsage,
 } from '@n8n/agents';
 import type {
+	AgentBudgetNotice,
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSource,
@@ -36,13 +40,18 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import type { StartExecutionParams } from '../agent-execution.service';
+import {
+	AgentExecutionRepository,
+	type AgentExecutionLinks,
+} from '../repositories/agent-execution.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import { episodicScopeHostMetadata } from '../utils/episodic-scope-metadata';
 import { bindExecutionInput } from '../utils/execution-input';
 import { BACKGROUND_SUB_AGENT_METADATA_KEY } from '../background/sub-agent-background-state';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import { AgentToolApprovalService } from '../agent-tool-approval.service';
-import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
+import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,
@@ -55,13 +64,20 @@ import type { ExecutionRecorder, MessageRecord } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
 import { withBudgetGuardrail } from '../budget-guardrail';
-import { modelStreamStallOptions } from '../model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { createAttributionTracker } from '../utils/mcp-attribution';
-import { SubAgentSourceResolver } from './sub-agent-source-resolver';
+import {
+	SubAgentSourceResolver,
+	type ResolvedSubAgentRuntimeSource,
+} from './sub-agent-source-resolver';
+import { SystemAgentUsageRelay } from '../system-agents/system-agent-usage-relay';
+import type { AgentTurnStatus } from '../types/agent-turn-outcome';
 
 export interface SubAgentRunContext {
+	/** The parent turn's episodic scope decision. A disabled decision stays disabled for the child. */
+	parentEpisodicScope?: EpisodicScopeDecision;
 	projectId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId: string;
@@ -113,13 +129,17 @@ export interface SubAgentRunContext {
 	parentMessageContext?: IntegrationMessageContext | null;
 	onResumeClaimed?: () => Promise<void>;
 	beforeResume?: () => Promise<void>;
+	shouldPause?: () => Promise<boolean>;
+	runtimeSnapshot?: string;
+	/** Preview-chat budget sink forwarded from the root run. Absent elsewhere. */
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 }
 
 export interface SubAgentRunResult {
 	taskPath: SubAgentTaskPath;
 	/** The child run's memory/session thread id, so callers can link or continue it. */
 	threadId: string;
-	status: 'completed' | 'failed' | 'suspended';
+	status: 'completed' | 'failed' | 'suspended' | 'paused';
 	result: GenerateResult;
 	/** Opaque, checkpoint-safe host context required to reconstruct this child exactly. */
 	resumeContext?: JSONValue;
@@ -147,6 +167,12 @@ type ForegroundOperation = {
 			source: SubAgentSource;
 			threadId: string;
 	  }
+	| {
+			type: 'resumePaused';
+			request: Omit<SubAgentResumeRequest, 'childToolCallId' | 'resumeData'>;
+			source: SubAgentSource;
+			threadId: string;
+	  }
 );
 
 @Service()
@@ -158,6 +184,8 @@ export class SubAgentRunner {
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
 		private readonly toolApprovalService: AgentToolApprovalService,
+		private readonly executionRepository: AgentExecutionRepository,
+		private readonly usageRelay: SystemAgentUsageRelay,
 	) {}
 
 	async run(
@@ -194,6 +222,26 @@ export class SubAgentRunner {
 		);
 	}
 
+	async resumePaused(
+		request: Omit<SubAgentResumeRequest, 'childToolCallId' | 'resumeData'>,
+		context: SubAgentRunContext,
+	): Promise<SubAgentRunResult> {
+		assertSubAgentTaskPath(request.taskPath);
+		if (!request.childThreadId || request.resumeContext === undefined) {
+			throw new UserError('Background task checkpoint metadata is missing');
+		}
+		return await this.executeForeground(
+			{
+				type: 'resumePaused',
+				request,
+				taskPath: request.taskPath,
+				source: parseResumeContext(request.resumeContext, request.subAgentId),
+				threadId: request.childThreadId,
+			},
+			context,
+		);
+	}
+
 	async cancelForeground(
 		request: DelegateSubAgentCancelRequest,
 		expectedSourceAgentId = request.subAgentId,
@@ -215,7 +263,13 @@ export class SubAgentRunner {
 		// A resume carries the pinned versionId it started with, which wins either way.
 		const runtimeSource = await this.sourceResolver.resolveForRuntime(
 			operation.type === 'run' ? operation.request.source : operation.source,
-			{ projectId: context.projectId, usePublishedVersion: context.runType === 'production' },
+			{
+				projectId: context.projectId,
+				usePublishedVersion: context.runType === 'production',
+				...(context.runtimeSnapshot !== undefined
+					? { runtimeSnapshot: context.runtimeSnapshot }
+					: {}),
+			},
 		);
 
 		// A delegated run uses the same fresh id for SDK memory and its session
@@ -242,6 +296,7 @@ export class SubAgentRunner {
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
+		const executionLinks = await this.resolveExecutionLinks(operation, threadId);
 		const recording: StartExecutionParams = {
 			// Saved parents supply access in the thread creation transaction.
 			access: { accessScope: 'user', ownerId: null },
@@ -251,9 +306,10 @@ export class SubAgentRunner {
 			projectId: context.projectId,
 			userMessage,
 			resourceId,
-			resumeRunId: operation.type === 'resume' ? operation.request.childRunId : undefined,
-			sessionMode: operation.type === 'resume' ? 'existing' : 'new',
+			resumeRunId: operation.type !== 'run' ? operation.request.childRunId : undefined,
+			sessionMode: operation.type !== 'run' ? 'existing' : 'new',
 			source: 'subagent',
+			...(executionLinks !== undefined ? { executionLinks } : {}),
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,
 				parentAgentId: context.parentAgentId,
@@ -274,10 +330,13 @@ export class SubAgentRunner {
 		const { executionId } = admission;
 		let executionStarted = false;
 		let executionError: unknown;
+		let runId: string | undefined;
 		let agent: BuiltAgent | undefined;
+		let finish: FinishUsage | undefined;
+
 		try {
 			context.abortSignal?.throwIfAborted();
-			if (operation.type === 'resume') await context.beforeResume?.();
+			if (operation.type !== 'run') await context.beforeResume?.();
 			const reconstructed = await reconstructionService.reconstructFromResolvedSource({
 				config: childConfig,
 				memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -308,6 +367,15 @@ export class SubAgentRunner {
 
 			agent = reconstructed.agent;
 			context.abortSignal?.throwIfAborted();
+			const forwardBudgetNotice = context.onBudgetNotice
+				? (notice: AgentBudgetNotice) =>
+						context.onBudgetNotice?.(
+							notice.code === 'budget.session'
+								? { code: notice.code }
+								: // The innermost budget owner wins.
+									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
+						)
+				: undefined;
 			const executionOptions = withBudgetGuardrail(
 				{
 					approvalContext: await this.toolApprovalService.createContext(
@@ -318,6 +386,18 @@ export class SubAgentRunner {
 					...(telemetry !== undefined ? { telemetry } : {}),
 					...modelStreamStallOptions(this.aiConfig),
 					executionCounter: context.executionCounter,
+					shouldPause: context.shouldPause,
+					...(executionLinks !== undefined
+						? {
+								onSideCallUsage: (report: SideCallUsageReport) =>
+									this.usageRelay.reportDelegatedSideCall({
+										...report,
+										executionId,
+										threadId,
+										parentExecutionId: executionLinks.parentExecutionId,
+									}),
+							}
+						: {}),
 				},
 				{
 					useRootSessionCap: true,
@@ -325,61 +405,92 @@ export class SubAgentRunner {
 					sessionId: context.rootSessionId,
 					agentId: runtimeSource.source.sourceId,
 					rootSessionCapUsd: context.rootSessionCapUsd,
+					...(forwardBudgetNotice !== undefined ? { onNotice: forwardBudgetNotice } : {}),
 				},
 			);
 			context.abortSignal?.throwIfAborted();
 			executionStarted = operation.type === 'run';
-			const resultStream =
-				operation.type === 'run'
-					? await agent.stream(bindExecutionInput(userMessage ?? '', admission.inputMessageIds), {
-							...executionOptions,
-							persistence: {
-								resourceId,
-								threadId,
-								delegated: true,
-								hostMetadata: {
-									...createHostMetadata(
-										context,
-										operation.taskPath,
-										runtimeSource.source,
-										sandboxPrincipalHash,
-									),
-									[EXECUTION_METADATA_KEY]: executionId,
-								},
+			let resultStream: StreamResult;
+			if (operation.type === 'run') {
+				resultStream = await agent.stream(
+					bindExecutionInput(userMessage ?? '', admission.inputMessageIds),
+					{
+						...executionOptions,
+						persistence: {
+							resourceId,
+							threadId,
+							delegated: true,
+							hostMetadata: {
+								...createHostMetadata(
+									context,
+									operation.taskPath,
+									runtimeSource,
+									sandboxPrincipalHash,
+								),
+								...episodicScopeHostMetadata(resourceId, context.parentEpisodicScope),
+								[EXECUTION_METADATA_KEY]: executionId,
 							},
-						})
-					: await agent.resume('stream', operation.request.resumeData, {
-							...executionOptions,
-							hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
-							runId: operation.request.childRunId,
-							toolCallId: operation.request.childToolCallId,
-							onResumeClaimed: async () => {
-								executionStarted = true;
-								recorder.recordHitlResponse(
-									operation.request.childToolCallId,
-									operation.request.resumeData,
-								);
-								await context.onResumeClaimed?.();
-							},
-						});
+						},
+					},
+				);
+			} else if (operation.type === 'resumePaused') {
+				resultStream = await agent.resumePaused({
+					...executionOptions,
+					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					runId: operation.request.childRunId,
+					onResumeClaimed: async () => {
+						await context.onResumeClaimed?.();
+						executionStarted = true;
+					},
+				});
+			} else {
+				resultStream = await agent.resume('stream', operation.request.resumeData, {
+					...executionOptions,
+					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					runId: operation.request.childRunId,
+					toolCallId: operation.request.childToolCallId,
+					onResumeClaimed: async () => {
+						await context.onResumeClaimed?.();
+						executionStarted = true;
+						recorder.recordHitlResponse(
+							operation.request.childToolCallId,
+							operation.request.resumeData,
+						);
+					},
+				});
+			}
+
+			runId = resultStream.runId;
 			const consumed = await consumeAgentStream(
 				resultStream,
 				recorder,
 				createAttributionTracker(reconstructed.mcpServerAttributions),
 				context.onChunk,
 			);
+
 			executionError = consumed.executionError;
+			finish = consumed.finish;
 			const { result } = consumed;
 			const suspended = recorder.suspended;
+			let status: SubAgentRunResult['status'] = 'completed';
+
+			if (result.finishReason === 'paused') status = 'paused';
+			else if (suspended) status = 'suspended';
+			else if (result.finishReason === 'error' || result.error !== undefined) status = 'failed';
+			else if (result.finishReason === 'guardrail') {
+				// A budget stop is not a completed task: the parent model gets a
+				// failure with the reason, and the preview chat gets the card.
+				status = 'failed';
+				const code = result.guardrail?.code;
+				if (code === 'budget.session' || code === 'budget.monthly') {
+					forwardBudgetNotice?.({ code });
+				}
+			}
 
 			return {
 				taskPath: operation.taskPath,
 				threadId,
-				status: suspended
-					? 'suspended'
-					: result.finishReason === 'error' || result.error !== undefined
-						? 'failed'
-						: 'completed',
+				status,
 				result,
 				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
 			};
@@ -389,6 +500,11 @@ export class SubAgentRunner {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			const usageStatus = delegatedRunStatus(
+				context.abortSignal?.aborted === true,
+				recorder.suspended,
+				executionError !== undefined || recorder.getMessageRecord().error !== null,
+			);
 			try {
 				const record = recorder.getMessageRecord();
 				await this.turnExecutionService.finalizeExecution({
@@ -406,8 +522,18 @@ export class SubAgentRunner {
 								? 'resumed'
 								: undefined,
 					},
+					runId,
 				});
 			} finally {
+				// After the store attempt, so a provider usually sees the final row.
+				// Report even when storing fails, so the usage is not lost.
+				this.reportDelegatedRunUsage({
+					executionId,
+					threadId,
+					executionLinks,
+					finish,
+					status: usageStatus,
+				});
 				await agent?.close().catch((error) => {
 					this.logger.warn(`Failed to close subagent after ${operation.type}`, {
 						taskPath: operation.taskPath,
@@ -415,6 +541,55 @@ export class SubAgentRunner {
 					});
 				});
 			}
+		}
+	}
+
+	/**
+	 * Report the usage of this execution to the system agent of the turn that
+	 * delegated it. Without a parent link or usage there is nothing to route.
+	 */
+	private reportDelegatedRunUsage(params: {
+		executionId: string;
+		threadId: string;
+		executionLinks: AgentExecutionLinks | undefined;
+		finish: FinishUsage | undefined;
+		status: AgentTurnStatus;
+	}): void {
+		const { executionLinks, finish } = params;
+		if (!executionLinks || !finish) return;
+		this.usageRelay.reportDelegatedRun({
+			executionId: params.executionId,
+			threadId: params.threadId,
+			parentExecutionId: executionLinks.parentExecutionId,
+			status: params.status,
+			model: finish.model,
+			usage: finish.usage,
+		});
+	}
+
+	/**
+	 * A new run links to the parent execution that delegates it. A resumed run
+	 * keeps the links of the child's first execution, so every execution of one
+	 * child points at the turn that delegated it, even when a later turn resumes it.
+	 */
+	private async resolveExecutionLinks(
+		operation: ForegroundOperation,
+		threadId: string,
+	): Promise<AgentExecutionLinks | undefined> {
+		try {
+			if (operation.type !== 'run') {
+				return (await this.executionRepository.findFirstLinksInThread(threadId)) ?? undefined;
+			}
+			const { parentExecutionId } = operation.request;
+			if (parentExecutionId === undefined) return undefined;
+			return (await this.executionRepository.findLinksForChildOf(parentExecutionId)) ?? undefined;
+		} catch (error) {
+			// Links serve usage reads only. A failed lookup must not stop the delegated run.
+			this.logger.warn('Failed to resolve sub-agent execution links', {
+				taskPath: operation.taskPath,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
 		}
 	}
 
@@ -458,15 +633,37 @@ async function getReconstructionService() {
 	return Container.get(AgentRuntimeReconstructionService);
 }
 
+/** The usage and model from the `finish` chunk of a delegated run. */
+interface FinishUsage {
+	usage: TokenUsage;
+	model: string | null;
+}
+
+function delegatedRunStatus(
+	cancelled: boolean,
+	suspended: boolean,
+	errored: boolean,
+): AgentTurnStatus {
+	if (cancelled) return 'cancelled';
+	if (suspended) return 'suspended';
+	return errored ? 'errored' : 'completed';
+}
+
 async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
 	attributionTracker: ReturnType<typeof createAttributionTracker>,
 	onChunk?: (chunk: StreamChunk) => void,
-): Promise<{ result: GenerateResult; executionError: unknown }> {
+): Promise<{
+	result: GenerateResult;
+	executionError: unknown;
+	finish: FinishUsage | undefined;
+}> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
+	let guardrail: GenerateResult['guardrail'];
+	let finish: FinishUsage | undefined;
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
@@ -488,20 +685,28 @@ async function consumeAgentStream(
 				...(value.resumeSchema !== undefined ? { resumeSchema: value.resumeSchema } : {}),
 			});
 		}
-		if (value.type === 'finish' && value.structuredOutput !== undefined) {
-			structuredOutput = value.structuredOutput;
+		if (value.type === 'finish') {
+			if (value.structuredOutput !== undefined) structuredOutput = value.structuredOutput;
+			// The recorder keeps only the finish reason; the stop code lives
+			// on the chunk, so capture it here or it is lost.
+			if (value.guardrail !== undefined) guardrail = value.guardrail;
+			// The recorder keeps only the token totals. The chunk also has the
+			// cache details and the prompt-size split that billing needs.
+			if (value.usage !== undefined) finish = { usage: value.usage, model: value.model ?? null };
 		}
 	}
 
 	const messageRecord = recorder.getMessageRecord();
 	return {
 		executionError,
+		finish,
 		result: buildGenerateResultFromRecord(
 			resultStream.runId,
 			messageRecord,
 			structuredOutput,
 			() => resultStream.getState(),
 			pendingSuspend,
+			guardrail,
 		),
 	};
 }
@@ -509,7 +714,7 @@ async function consumeAgentStream(
 function createHostMetadata(
 	context: SubAgentRunContext,
 	taskPath: SubAgentTaskPath,
-	source: ResolvedSubAgentSource,
+	runtimeSource: ResolvedSubAgentRuntimeSource,
 	principalHash?: AgentSandboxPrincipalHash,
 ): JSONObject | undefined {
 	let metadata = principalHash
@@ -522,7 +727,8 @@ function createHostMetadata(
 				JSON.stringify({
 					jobId: context.backgroundJobId,
 					taskPath,
-					resumeContext: createResumeContext(source),
+					resumeContext: createResumeContext(runtimeSource.source),
+					runtimeSnapshot: JSON.stringify(runtimeSource),
 					difficulty: context.selfDelegationDifficulty,
 					sharedWorkspace: context.parentWorkspaceHandle !== undefined,
 					messageContext: context.parentMessageContext ?? null,
@@ -586,6 +792,7 @@ function buildGenerateResultFromRecord(
 	structuredOutput: unknown,
 	getState: () => SerializableAgentState,
 	pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [],
+	guardrail?: GenerateResult['guardrail'],
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = isFinishReason(record.finishReason) ? record.finishReason : undefined;
@@ -605,6 +812,7 @@ function buildGenerateResultFromRecord(
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
 		...(pendingSuspend.length > 0 ? { pendingSuspend } : {}),
+		...(guardrail !== undefined ? { guardrail } : {}),
 		getState,
 	};
 	return result;

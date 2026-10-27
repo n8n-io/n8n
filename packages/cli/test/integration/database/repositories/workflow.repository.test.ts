@@ -1131,7 +1131,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
@@ -1176,7 +1176,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1217,7 +1217,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1269,7 +1269,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
@@ -1351,7 +1351,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users

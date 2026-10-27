@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, nextTick, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -62,7 +62,6 @@ const InstanceAiViewHeaderStub = defineComponent({
 	},
 	template: `<div data-test-id="header-stub" :data-disabled="String(Boolean(threadList?.disabled))">
 		<span data-test-id="list-count">{{ count }}</span>
-		<slot name="title" />
 		<slot name="actions" />
 		<button data-test-id="list-select" type="button" @click="$emit('select', 't-other')" />
 	</div>`,
@@ -462,39 +461,6 @@ describe('InstanceAiChatPanel', () => {
 		buildingIds.value = new Set(['agent-1']);
 		await vi.waitFor(() => expect(emitted('update:building')?.at(-1)).toEqual([true]));
 		expect(useAgentMutationRefreshMock).toHaveBeenCalled();
-	});
-
-	it('reports processing from send preparation through the Assistant run', async () => {
-		const runtime = makeThread();
-		store.getOrCreateRuntime.mockReturnValue(runtime);
-		store.getRuntime.mockReturnValue(runtime);
-		const preparation = Promise.withResolvers<void>();
-		const wrapper = mountPanel({
-			subject,
-			launch,
-			threadId: 't-match',
-			beforeSend: () => preparation.promise,
-		});
-		await flushPromises();
-		const prepareSend = wrapper
-			.findComponent({ name: 'InstanceAiConversation' })
-			.props('beforeSend') as () => Promise<void>;
-
-		const send = prepareSend();
-		await nextTick();
-		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
-
-		runtime.isSendingMessage = true;
-		preparation.resolve();
-		await send;
-		runtime.isStreaming = true;
-		runtime.isSendingMessage = false;
-		await nextTick();
-		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
-
-		runtime.isStreaming = false;
-		await nextTick();
-		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([false]);
 	});
 
 	it('emits update:building false on unmount so a host closing the panel mid-build unlocks', async () => {

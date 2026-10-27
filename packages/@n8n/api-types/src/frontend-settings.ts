@@ -6,6 +6,7 @@ import type {
 	ChatProviderSettingsDto,
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
+import type { InboxSettings } from './inbox';
 import type { InsightsDateRange } from './schemas/insights.schema';
 import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
@@ -93,6 +94,7 @@ export interface FrontendSettings {
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
 	endpointHealth: string;
+	healthCheckTimeoutMs: number;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -181,11 +183,6 @@ export interface FrontendSettings {
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
-	/**
-	 * Granular credential sharing: a personal credential is usable in any
-	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
-	 */
-	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -238,6 +235,7 @@ export interface FrontendSettings {
 		enforced: boolean;
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
+	inbox?: InboxSettings;
 	folders: {
 		enabled: boolean;
 	};
@@ -307,6 +305,12 @@ export interface FrontendSettings {
 		 * `101_agent_evals` flag would otherwise never resolve.
 		 */
 		agentEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that forces the
+		 * "Test your agent" offer's capability check to pass regardless of the
+		 * agent's actual model/tools/skills.
+		 */
+		forceAgentWorthTesting: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -372,6 +376,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for SCIM user-provisioning module.
+	 */
+	scim?: {
+		/** Whether SCIM provisioning is enabled in the instance. */
+		scimEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -387,7 +399,6 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		mcpConnectionsAvailable: boolean;
-		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
@@ -398,8 +409,7 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
-		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
-		activationCapped?: boolean;
+		workflowSuggestionsEnabled: boolean;
 	};
 
 	/**
@@ -435,6 +445,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's

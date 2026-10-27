@@ -33,6 +33,27 @@ import type { RawActionToolOperation, RawContextToolOperation } from './integrat
 /** Resume shape for the action tool, including a follow-up interactive card. */
 export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
+/**
+ * True when an action tool result reports that no reply will be sent
+ * (`do_not_respond`), on its own or inside a batch.
+ */
+export function isSilentActionOutput(output: unknown): boolean {
+	if (!isRecord(output)) return false;
+	if (output.silent === true) return true;
+	// Batched action calls nest per-operation results under `results`.
+	return (
+		Array.isArray(output.results) &&
+		output.results.some(
+			(entry) =>
+				isRecord(entry) &&
+				entry.action === 'do_not_respond' &&
+				isRecord(entry.result) &&
+				entry.result.ok === true &&
+				entry.result.silent === true,
+		)
+	);
+}
+
 export function integrationActionApprovalKey(connectionId: string, action: string): string {
 	return JSON.stringify(['integration_action', connectionId, action]);
 }
@@ -42,8 +63,10 @@ export async function executeContextToolOperation(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
 	queryExecutor: IntegrationContextQueryExecutor;
 	persistence: ToolContext['persistence'];
+	abortSignal?: AbortSignal;
 }): Promise<unknown> {
-	const { operation, descriptor, queryExecutor, persistence } = params;
+	const { operation, descriptor, queryExecutor, persistence, abortSignal } = params;
+	abortSignal?.throwIfAborted();
 
 	if (isCurrentContextQuery(operation.query)) {
 		if (!persistence) {
@@ -92,6 +115,7 @@ export async function executeContextToolOperation(params: {
 				query: 'get_user',
 				input: { userId: context.interactingUserId },
 				persistence,
+				abortSignal,
 			});
 		}
 
@@ -110,6 +134,7 @@ export async function executeContextToolOperation(params: {
 			query: 'get_channel_info',
 			input: { channelId },
 			persistence,
+			abortSignal,
 		});
 	}
 
@@ -118,6 +143,7 @@ export async function executeContextToolOperation(params: {
 		query: operation.query,
 		input: operation.input,
 		persistence,
+		abortSignal,
 	});
 }
 

@@ -1,6 +1,14 @@
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	FolderFinderService,
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
+	AiPreferenceService,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -20,6 +28,7 @@ import {
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
+	SKILL_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
@@ -30,8 +39,11 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExecutionService } from '@/executions/execution.service';
+import { SkillService } from '@/modules/skills/skill.service';
+import { SkillsApiService } from '@/modules/skills/skills-api.service';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -44,7 +56,6 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -56,7 +67,7 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -134,6 +145,18 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toContain('unpublish_agent');
 	});
 
+	it('grants only the read skill tools with skill:read', () => {
+		expect(getAllowedToolNames(['skill:read'])).toEqual(
+			new Set(['search_n8n_skills', 'get_skill']),
+		);
+	});
+
+	it('grants the read skill tools with skill:write too', () => {
+		expect(getAllowedToolNames(['skill:write'])).toEqual(
+			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill']),
+		);
+	});
+
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
@@ -152,11 +175,13 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		agentsActive = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
+		agentsActive?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -211,7 +236,11 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ModuleRegistry, {
 				isActive: vi
 					.fn()
-					.mockImplementation((name: string) => instanceAiActive && name === 'instance-ai'),
+					.mockImplementation(
+						(name: string) =>
+							(instanceAiActive && name === 'instance-ai') || (agentsActive && name === 'agents'),
+					),
+				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
@@ -222,6 +251,7 @@ describe('McpService scope enforcement', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockInstance(SkillAgentsProxy, { hasProvider: false });
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
@@ -236,8 +266,9 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// Agent and skill tools require the agents module (inactive here). The agent
+		// tools' own drift guard lives in agent-tools.service.test.ts, and the skill
+		// tools are covered by the skill tools tests below. Community-package
 		// tools need that module, the verified catalog, and a scope-bearing
 		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts. Instance-context tools
@@ -246,11 +277,56 @@ describe('McpService scope enforcement', () => {
 			(name) =>
 				!registered.has(name) &&
 				!AGENT_TOOLS.has(name) &&
+				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
 				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
+
+	it.each([true, false])(
+		'registers the skill tools only with an agents provider: %s',
+		async (hasProvider) => {
+			mockInstance(SkillsApiService);
+			mockInstance(SkillAgentsProxy, { hasProvider });
+			const server = await buildService({
+				builderEnabled: false,
+				agentsActive: true,
+			}).getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('mutate_agent')).toBe(false);
+			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
+				hasProvider ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
+
+	it.each([
+		['an agents provider and an API key', true, true, undefined, true],
+		['an agents provider and skill:read', true, true, ['skill:read'], true],
+		['an agents provider and skill:write', true, true, ['skill:write'], true],
+		['an agents provider and no skill scope', true, true, ['workflow:read'], false],
+		['no agents provider', false, true, undefined, false],
+		['the feature flag off', true, false, undefined, false],
+	])(
+		'declares the skills extension with %s',
+		async (_, hasProvider, skillsExtensionEnabled, grantedScopes, declared) => {
+			mockInstance(SkillsApiService);
+			mockInstance(SkillService);
+			mockInstance(SkillAgentsProxy, { hasProvider });
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ skillsExtensionEnabled }),
+				undefined,
+				{ grantedScopes },
+			);
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'sets all context tools and the resource from the shared flag override: %s',

@@ -27,6 +27,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['open'],
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogBody: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nSwitch: {
 		template:
@@ -134,7 +135,7 @@ describe('AgentMemoryPanel', () => {
 			credentialType: 'openAiApi',
 			selectedCredentialId: null,
 			hideCreateNew: false,
-			teleported: false,
+			teleported: true,
 			credentialModalAppendToBody: true,
 		});
 	});
@@ -219,7 +220,7 @@ describe('AgentMemoryPanel', () => {
 		await wrapper.find('[data-testid="agent-episodic-memory-change-credential"]').trigger('click');
 
 		const picker = wrapper.findComponent({ name: 'CredentialPicker' });
-		expect(picker.props('selectedCredentialId')).toBeNull();
+		expect(picker.props('selectedCredentialId')).toBe('existing-credential');
 		picker.vm.$emit('credential-selected', 'replacement-credential');
 		await wrapper.vm.$nextTick();
 

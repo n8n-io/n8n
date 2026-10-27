@@ -12,6 +12,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { createPinia, setActivePinia } from 'pinia';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 describe('CanvasRunWorkflowButton', () => {
 	const renderComponent = createComponentRenderer(CanvasRunWorkflowButton, {
@@ -152,6 +153,35 @@ describe('CanvasRunWorkflowButton', () => {
 		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute workflow'));
 	});
 
+	describe('disabled reason', () => {
+		const reason = "Uses Alice's Gmail. Only Alice Chen can run or publish with it.";
+
+		// The reason replaces the shortcut: it says why the click does nothing.
+		it('should show the reason instead of the label and the shortcut', async () => {
+			const wrapper = renderComponent({ props: { disabled: true, disabledReason: reason } });
+
+			await hoverTooltipTrigger(wrapper.getByRole('button'));
+			await new Promise((r) => setTimeout(r, 600));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(reason));
+			expect(getTooltip()).not.toHaveTextContent('Execute workflow');
+			expect(getTooltip()).not.toHaveTextContent('↵');
+		});
+
+		// Both of these hide the tooltip otherwise, and the reason has to survive them.
+		it.each([
+			['executing', { executing: true }],
+			['hideTooltip', { hideTooltip: true }],
+		])('should show the reason while %s suppresses the tooltip', async (_name, props) => {
+			const wrapper = renderComponent({ props: { ...props, disabledReason: reason } });
+
+			await hoverTooltipTrigger(wrapper.getByRole('button'));
+			await new Promise((r) => setTimeout(r, 600));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(reason));
+		});
+	});
+
 	it('should select and execute the trigger picked from the dropdown', async () => {
 		const wrapper = renderComponent({
 			props: {
@@ -169,5 +199,47 @@ describe('CanvasRunWorkflowButton', () => {
 		await fireEvent.click(menuItems[1]);
 		expect(wrapper.emitted('selectTriggerNode')).toEqual([['B']]);
 		expect(wrapper.emitted('execute')).toEqual([[]]);
+	});
+
+	describe('trigger icon treatment on the secondary button', () => {
+		const imageIconType = {
+			name: 'test.imageTrigger',
+			displayName: 'Image Trigger',
+			iconUrl: 'icons/image-trigger.svg',
+		} as unknown as INodeTypeDescription;
+		const fontIconType = {
+			name: 'test.fontTrigger',
+			displayName: 'Font Trigger',
+			icon: 'fa:clock',
+			iconBasePath: '',
+		} as unknown as INodeTypeDescription;
+
+		it('should add contrast to an image icon', () => {
+			const wrapper = renderComponent({
+				props: {
+					type: 'secondary',
+					triggerNodes: [createTestNode({ type: imageIconType.name })],
+					getNodeType: () => imageIconType,
+				},
+			});
+
+			expect(wrapper.getByTestId('execute-workflow-button-trigger-icon')).toHaveClass(
+				'secondaryTriggerIcon',
+			);
+		});
+
+		it('should not change a font icon', () => {
+			const wrapper = renderComponent({
+				props: {
+					type: 'secondary',
+					triggerNodes: [createTestNode({ type: fontIconType.name })],
+					getNodeType: () => fontIconType,
+				},
+			});
+
+			expect(wrapper.getByTestId('execute-workflow-button-trigger-icon')).not.toHaveClass(
+				'secondaryTriggerIcon',
+			);
+		});
 	});
 });

@@ -6,6 +6,7 @@ import * as files from './files/Files.resource';
 import * as genie from './genie/Genie.resource';
 import { makePermissionErrorLegible, permissionHintFor } from './helpers';
 import * as job from './job/Job.resource';
+import * as lakebase from './lakebase/Lakebase.resource';
 import * as modelServing from './modelServing/ModelServing.resource';
 import * as unityCatalog from './unityCatalog/UnityCatalog.resource';
 import * as vectorSearch from './vectorSearch/VectorSearch.resource';
@@ -15,6 +16,7 @@ type ResourceMap =
 	| typeof files
 	| typeof genie
 	| typeof job
+	| typeof lakebase
 	| typeof modelServing
 	| typeof unityCatalog
 	| typeof vectorSearch;
@@ -40,6 +42,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			break;
 		case 'job':
 			resourceModule = job;
+			break;
+		case 'lakebase':
+			resourceModule = lakebase;
 			break;
 		case 'modelServing':
 			resourceModule = modelServing;

@@ -362,6 +362,77 @@ describe('CredentialsTester', () => {
 			ctx.additionalData.credentialsHelper.getParentTypes('databricksOAuth2Api');
 			expect(storedHelper.getParentTypes).toHaveBeenCalledWith('databricksOAuth2Api');
 		});
+
+		it('keeps the node type of a request test isolated from a concurrent one', async () => {
+			const urls: Record<string, string> = {
+				firstApi: 'https://example.test/first',
+				secondApi: 'https://example.test/second',
+			};
+			credentialTypes.getByName.mockImplementation(
+				(type) => ({ test: { request: { url: urls[type] } } }) as unknown as ICredentialType,
+			);
+			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: 'n8n-nodes-base.noOp', version: 1, properties: [] },
+				}),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: {
+					getDecrypted: vi.fn(),
+					getParentTypes: vi.fn().mockReturnValue([]),
+				} as unknown as ICredentialsHelper,
+			} as unknown as IWorkflowExecuteAdditionalData);
+
+			// The first run stays inside the routing engine until the second run has finished.
+			let finishFirst!: () => void;
+			const firstMayFinish = new Promise<void>((resolve) => {
+				finishFirst = resolve;
+			});
+			(RoutingNode as unknown as Mock)
+				.mockImplementationOnce(function () {
+					return {
+						runNode: vi.fn().mockImplementation(async () => {
+							await firstMayFinish;
+							return [[{ json: {} }]];
+						}),
+					};
+				})
+				.mockImplementationOnce(function () {
+					return { runNode: vi.fn().mockResolvedValue([[{ json: {} }]]) };
+				});
+
+			const first = credentialsTester.testCredentials('user-id', 'firstApi', {
+				id: '1',
+				name: 'First',
+				type: 'firstApi',
+				data: {},
+			});
+			await vi.waitFor(() => expect(RoutingNode).toHaveBeenCalledTimes(1));
+
+			await expect(
+				credentialsTester.testCredentials('user-id', 'secondApi', {
+					id: '2',
+					name: 'Second',
+					type: 'secondApi',
+					data: {},
+				}),
+			).resolves.toEqual({ status: 'OK', message: 'Connection successful!' });
+
+			finishFirst();
+			await expect(first).resolves.toEqual({ status: 'OK', message: 'Connection successful!' });
+
+			// Both runs are over. Each engine context must still resolve its own node
+			// type copy; with one shared registry the second run deleted the first one's.
+			const [firstCtx, secondCtx] = (RoutingNode as unknown as Mock).mock.calls.map(
+				(call) => call[0] as ExecuteContext,
+			);
+			const requestUrl = (ctx: ExecuteContext) =>
+				ctx.workflow.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp', 1).description
+					.properties[0].routing?.request?.url;
+			expect(requestUrl(firstCtx)).toBe(urls.firstApi);
+			expect(requestUrl(secondCtx)).toBe(urls.secondApi);
+		});
 	});
 
 	describe('probeCredentialAuth', () => {

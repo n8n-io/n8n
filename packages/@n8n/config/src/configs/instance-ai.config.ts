@@ -5,6 +5,12 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 */
+	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
+	workflowSuggestionsEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
@@ -46,6 +52,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
 
+	/**
+	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
+	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
+	memoryModel: string = '';
+
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
@@ -57,10 +71,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
-
-	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
-	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
-	localGatewayDisabled: boolean = false;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
@@ -118,9 +128,9 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
-	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
-	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
-	 * instance an eval pointed at a real workflow must leave its history alone.
+	 * Set to true only on a throwaway instance that runs n8n Assistant evaluations. It turns on
+	 * the evaluation API routes and lets an evaluation reset Remove Duplicates history between
+	 * scenarios. Feature flags then come only from their defaults and environment overrides.
 	 */
 	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
 	evalInstance: boolean = false;
@@ -165,10 +175,6 @@ export class InstanceAiConfig {
 	/** SearXNG instance URL for web search (e.g. "http://searxng:8080"). Empty = disabled. No API key needed. */
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
-
-	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
-	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
-	gatewayApiKey: string = '';
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
@@ -242,19 +248,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
 	folderExplorationEnabled: boolean = false;
-
-	/**
-	 * Activation-capped trial variant for n8n cloud experiment.
-	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
-	activationCapped: boolean = false;
-
-	/**
-	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
-	activationLockMessageThreshold: number = 1;
 
 	/**
 	 * Max orchestrator runs executing concurrently on this process. A new user turn over

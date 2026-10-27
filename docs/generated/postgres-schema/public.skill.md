@@ -1,0 +1,139 @@
+# public.skill
+
+## Columns
+
+| Name | Type | Default | Nullable | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Set when only this agent can use the skill. projectId is then NULL: the agent holds the project |
+| availableToAssistant | boolean | false | false |  |  | Whether a user has enabled this skill for the n8n Assistant. Scope and permissions still apply. |
+| availableToMCP | boolean | false | false |  |  | Whether a user has enabled this skill for MCP clients of the n8n MCP server. Scope and permissions still apply. |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
+| id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
+| projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Set for a project skill, team or personal. NULL otherwise |
+| source | varchar(16) |  | false |  |  | How the skill was created, set by the server: "ui" (the skills hub) or "agent" (the agent builder or the copy of agent skills) |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+
+## Constraints
+
+| Name | Type | Definition |
+| ---- | ---- | ---------- |
+| CHK_skill_single_target | CHECK | CHECK ((("agentId" IS NULL) OR ("projectId" IS NULL))) |
+| FK_402ed37bff0d3134f6e782455ed | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| FK_4de4501583cd1fcd6f5ea85f547 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
+| FK_7d4fb6af107e507d9a86293cf9d | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
+| PK_a0d33334424e64fb78dc3ce7196 | PRIMARY KEY | PRIMARY KEY (id) |
+| skill_availableToAssistant_not_null | n | NOT NULL "availableToAssistant" |
+| skill_availableToMCP_not_null | n | NOT NULL "availableToMCP" |
+| skill_createdAt_not_null | n | NOT NULL "createdAt" |
+| skill_id_not_null | n | NOT NULL id |
+| skill_source_not_null | n | NOT NULL source |
+| skill_updatedAt_not_null | n | NOT NULL "updatedAt" |
+
+## Indexes
+
+| Name | Definition |
+| ---- | ---------- |
+| IDX_402ed37bff0d3134f6e782455e | CREATE INDEX "IDX_402ed37bff0d3134f6e782455e" ON public.skill USING btree ("projectId") |
+| IDX_7d4fb6af107e507d9a86293cf9 | CREATE INDEX "IDX_7d4fb6af107e507d9a86293cf9" ON public.skill USING btree ("agentId") |
+| PK_a0d33334424e64fb78dc3ce7196 | CREATE UNIQUE INDEX "PK_a0d33334424e64fb78dc3ce7196" ON public.skill USING btree (id) |
+
+## Relations
+
+```mermaid
+erDiagram
+
+"public.skill" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.agent_version_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+
+"public.skill" {
+  varchar_36_ agentId FK
+  boolean availableToAssistant
+  boolean availableToMCP
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_16_ source
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents" {
+  varchar_36_ activeVersionId FK
+  boolean availableInMCP
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  json integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  integer revision
+  json schema
+  varchar_16_ scope
+  timestamp_3__with_time_zone setupCompletedAt
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
+}
+"public.user" {
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  varchar_16_ kind
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_skill_dependency" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ skillId FK
+  uuid skillVersionId FK
+}
+"public.agent_version_skill_dependency" {
+  varchar_36_ agentVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ skillId FK
+  uuid skillVersionId FK
+}
+"public.skill_version" {
+  varchar_64_ contentHash
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_1024_ description
+  json frontmatter
+  uuid id
+  text instructions
+  varchar_128_ name
+  varchar_36_ skillId FK
+  timestamp_3__with_time_zone updatedAt
+  integer version
+}
+"public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
+  varchar_36_ id
+  varchar_255_ name
+  varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+```
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

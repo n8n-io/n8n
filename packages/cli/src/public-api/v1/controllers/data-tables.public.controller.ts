@@ -1,4 +1,5 @@
 import {
+	ClearDataTableRowsResponsePublicDto,
 	columnIdParamSchema,
 	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
@@ -8,11 +9,17 @@ import {
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	DataTableRowListPublicDto,
+	DependencyListPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	DeleteDataTableRowsResponsePublicDto,
 	InsertDataTableRowsResponsePublicDto,
+	ListDependenciesQueryDto,
 	PublicApiListDataTableQueryDto,
 	PublicApiListDataTableRowsQueryDto,
 	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpdateDataTableRowPublicDto,
+	UpdateDataTableRowResponsePublicDto,
 	UpsertDataTableRowPublicDto,
 	UpsertDataTableRowResponsePublicDto,
 	dataTableIdParamSchema,
@@ -51,6 +58,8 @@ import { DataTableNameConflictError } from '@/modules/data-table/errors/data-tab
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
+import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -59,7 +68,7 @@ import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 const tags = ['DataTable'];
 
-/** The domain errors the data table service raises, mapped to the public statuses the eov handler sent. */
+/** The domain errors the data table service raises, mapped to public statuses. */
 function handleError(error: unknown): never {
 	if (error instanceof DataTableValidationError) {
 		throw new BadRequestError(error.message);
@@ -147,11 +156,21 @@ const isRowWithState = (
 	row: DataTableRowReturn | DataTableRowReturnWithState,
 ): row is DataTableRowReturnWithState => Object.hasOwn(row, 'dryRunState');
 
+const toMutateRowsResponsePublic = (
+	result: boolean | DataTableRowReturn[] | DataTableRowReturnWithState[],
+) =>
+	typeof result === 'boolean'
+		? result
+		: result.map((row) =>
+				isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
+			);
+
 @PublicApiController('/data-tables')
 export class DataTablesPublicController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	@Get('/')
@@ -246,6 +265,36 @@ export class DataTablesPublicController {
 		} catch (error) {
 			return handleError(error);
 		}
+	}
+
+	@Get('/:dataTableId/dependencies')
+	@ApiKeyScope('dataTable:read')
+	@ProjectScope('dataTable:read')
+	@ApiSummary('List data table dependencies')
+	@ApiDescription('List the workflows that use the data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DependencyListPublicDto)
+	@ApiErrorResponse(404)
+	async getDataTableDependencies(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: ListDependenciesQueryDto,
+	): Promise<DependencyListPublicDto> {
+		const pagination = resolveOffsetPagination(query);
+		try {
+			await this.dataTableService.getProjectIdForDataTable(dataTableId);
+		} catch (error) {
+			return handleError(error);
+		}
+
+		const result = await this.workflowDependencyQueryService.getResourceDependencies(
+			[dataTableId],
+			'dataTable',
+			req.user,
+		);
+
+		return toDependencyListPublicDto(result[dataTableId], pagination);
 	}
 
 	@Patch('/:dataTableId')
@@ -505,11 +554,103 @@ export class DataTablesPublicController {
 				dryRun,
 			);
 
-			return typeof result === 'boolean'
-				? result
-				: result.map((row) =>
-						isRowWithState(row) ? toDataTableRowWithStatePublic(row) : toDataTableRowPublic(row),
-					);
+			return toMutateRowsResponsePublic(result);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Patch('/:dataTableId/rows/update')
+	@ApiKeyScope('dataTableRow:update')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Update rows in a data table')
+	@ApiDescription('Update rows matching filter conditions in a data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, UpdateDataTableRowResponsePublicDto)
+	@ApiErrorResponse(404)
+	async updateDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Body body: UpdateDataTableRowPublicDto,
+	) {
+		const { filter, data, returnData, dryRun } = body;
+
+		try {
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const result = await this.dataTableService.updateRows(
+				dataTableId,
+				projectId,
+				{ filter, data },
+				returnData,
+				dryRun,
+			);
+
+			return toMutateRowsResponsePublic(result);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/rows/clear')
+	@ApiKeyScope('dataTableRow:delete')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Clear all rows from a data table')
+	@ApiDescription(
+		'Permanently delete all rows from a data table. The table structure is retained. This ' +
+			'action cannot be undone.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ClearDataTableRowsResponsePublicDto)
+	@ApiErrorResponse(404)
+	async clearDataTableRows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+	): Promise<ClearDataTableRowsResponsePublicDto> {
+		try {
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+
+			return await this.dataTableService.clearRows(dataTableId, projectId);
+		} catch (error) {
+			return handleError(error);
+		}
+	}
+
+	@Delete('/:dataTableId/rows/delete')
+	@ApiKeyScope('dataTableRow:delete')
+	@ProjectScope('dataTable:writeRow')
+	@ApiSummary('Delete rows from a data table')
+	@ApiDescription(
+		'Delete rows matching filter conditions from a data table. Filter is required to prevent ' +
+			'accidental deletion of all data.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, DeleteDataTableRowsResponsePublicDto)
+	@ApiErrorResponse(404)
+	async deleteDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: DeleteDataTableRowsPublicQueryDto,
+	) {
+		const { filter, returnData, dryRun } = query;
+
+		try {
+			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
+			const result = await this.dataTableService.deleteRows(
+				dataTableId,
+				projectId,
+				{ filter },
+				returnData,
+				dryRun,
+			);
+
+			return toMutateRowsResponsePublic(result);
 		} catch (error) {
 			return handleError(error);
 		}

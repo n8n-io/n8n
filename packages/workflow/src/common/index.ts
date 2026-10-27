@@ -4,5 +4,6 @@ export * from './get-connected-nodes';
 export * from './get-executable-nodes';
 export * from './get-node-by-name';
 export * from './get-parent-nodes';
+export * from './get-runnable-nodes';
 export * from './map-connections-by-destination';
 export * from './resolve-variables';

@@ -10,7 +10,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'AI Assistant::enabled',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe('Code Node Error Help', () => {

@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import {
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+import {
+	useAgentTelemetry,
+	type AgentPreviewNewChatSource,
+} from '../composables/useAgentTelemetry';
 
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
-import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
 import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
@@ -59,12 +59,17 @@ const props = withDefaults(
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
+		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
 	{
 		newSession: false,
 		canDeleteSession: false,
 		isDeletingSession: false,
 		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+		increaseBudget: undefined,
 	},
 );
 
@@ -75,6 +80,7 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
@@ -82,6 +88,19 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const usageUpdates = ref<Record<string, AgentUsageUpdate>>({});
+
+function onUsageUpdated(update: AgentUsageUpdate) {
+	if (update.sessionId !== props.effectiveSessionId) return;
+	const previous = usageUpdates.value[update.executionId];
+	usageUpdates.value[update.executionId] = {
+		...update,
+		usage: update.usage ?? previous?.usage,
+	};
+	emit('usage-updated', usageUpdates.value[update.executionId]);
+}
+
+const agentTelemetry = useAgentTelemetry();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -122,7 +141,8 @@ function exportSession() {
 	});
 }
 
-function createNewSession() {
+function createNewSession(source: Exclude<AgentPreviewNewChatSource, 'standalone'>) {
+	agentTelemetry.trackClickedNewTestChat({ agentId: props.agentId, source });
 	emit('new-session');
 }
 
@@ -132,6 +152,10 @@ function close() {
 
 function getConversationMarkdown() {
 	return previewChatPage.value?.getConversationMarkdown() ?? '';
+}
+
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
 }
 
 function toggleFullWidth() {
@@ -175,8 +199,14 @@ function handleEscapeKey(event: KeyboardEvent) {
 }
 
 useKeybindings({
-	'ctrl+shift+;': createNewSession,
+	'ctrl+shift+;': {
+		allowInInputs: true,
+		disabled: () => !props.isOpen,
+		run: () => createNewSession('shortcut'),
+	},
 });
+
+defineExpose({ clearBudgetStops });
 </script>
 
 <template>
@@ -192,33 +222,22 @@ useKeybindings({
 	>
 		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
-				<AgentSessionHistoryDropdown
-					:session-options="props.sessionOptions"
-					:can-delete-session="props.canDeleteSession"
-					:is-deleting-session="props.isDeletingSession"
-					@select="emit('session-select', $event)"
-					@delete="emit('delete-session', $event)"
-				>
-					<template #trigger>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:class="$style.sessionTitle"
-							:aria-label="i18n.baseText('agentSessions.sessionName')"
-							data-testid="agent-preview-session-title"
-						>
-							<AgentPersonalisationIcon
-								:personalisation="
-									props.localConfig?.personalisation ?? props.agent?.schema?.personalisation
-								"
-								:size="20"
+				<div :class="$style.sessionHistory">
+					<AgentSessionHistoryDropdown
+						:session-options="props.sessionOptions"
+						:can-delete-session="props.canDeleteSession"
+						:is-deleting-session="props.isDeletingSession"
+						@select="emit('session-select', $event)"
+						@delete="emit('delete-session', $event)"
+					>
+						<template #trigger>
+							<ChatHistoryDropdownTrigger
+								:title="props.hasSession ? props.sessionTitle : undefined"
+								data-testid="agent-preview-history-trigger"
 							/>
-							<span :class="$style.sessionTitleLabel">{{ props.sessionTitle }}</span>
-							<N8nIcon icon="chevron-down" color="text-light" :size="12" />
-						</N8nButton>
-					</template>
-				</AgentSessionHistoryDropdown>
-
+						</template>
+					</AgentSessionHistoryDropdown>
+				</div>
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
@@ -250,7 +269,7 @@ useKeybindings({
 							icon-size="large"
 							:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
 							data-testid="agent-preview-new-chat-btn"
-							@click="createNewSession"
+							@click="createNewSession('test-panel')"
 						/>
 					</KeyboardShortcutTooltip>
 
@@ -265,21 +284,22 @@ useKeybindings({
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
+						:usage-updates="usageUpdates"
 						@toggle-full-width="toggleFullWidth"
 						@export-session="exportSession"
 						@delete-session="requestActiveSessionDeletion"
 					/>
 					<KeyboardShortcutTooltip
 						placement="bottom"
-						:label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+						:label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 					>
 						<N8nIconButton
-							icon="chevrons-right"
+							icon="x"
 							variant="ghost"
 							size="small"
 							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+							:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 							data-testid="agent-preview-close-btn"
 							@click="close"
 						/>
@@ -302,7 +322,10 @@ useKeybindings({
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
+				:budget-cards="props.budgetCards"
+				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@usage-updated="onUsageUpdated"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
@@ -366,27 +389,7 @@ useKeybindings({
 	gap: var(--spacing--2xs);
 }
 
-.sessionTitle {
-	width: 100%;
-	min-width: 0;
-	max-width: 100%;
-	flex: 1 1 auto;
-	margin-left: calc(var(--spacing--3xs) * -1);
-	padding-inline: var(--spacing--2xs);
-}
-
-.sessionTitleLabel {
-	display: block;
-	min-width: 0;
-	flex: 1 1 auto;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-size: var(--font-size--xs);
-}
-
-/** Let the button's inner container shrink so the session title can truncate. */
-.sessionTitle > div {
+.sessionHistory {
 	min-width: 0;
 }
 

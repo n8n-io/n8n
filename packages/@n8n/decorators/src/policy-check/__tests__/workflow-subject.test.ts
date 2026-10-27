@@ -67,3 +67,29 @@ describe('workflowContentSubject', () => {
 		});
 	});
 });
+
+describe('agent subjects', () => {
+	it('binds an existing agent to its id with the agent type', () => {
+		expect(
+			workflowSubject(policed({ id: 'agent-1', name: 'x', nodes: [], artifactKind: 'agent' })),
+		).toEqual({ type: 'agent', id: 'agent-1' });
+	});
+
+	it('binds a new agent to the node hash with the agent type', () => {
+		const nodes = [{ name: 'Date & Time' }];
+
+		expect(workflowContentSubject(policed({ nodes, artifactKind: 'agent' }))).toEqual({
+			type: 'agent',
+			id: hashOf(nodes),
+		});
+	});
+
+	it('never lets an agent clearance stand in for a workflow with the same id', () => {
+		const agent = workflowSubject(
+			policed({ id: 'same', name: 'x', nodes: [], artifactKind: 'agent' }),
+		);
+		const workflow = workflowSubject(policed({ id: 'same', name: 'x', nodes: [] }));
+
+		expect(agent).not.toEqual(workflow);
+	});
+});

@@ -59,6 +59,10 @@ import type {
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { OwnershipService } from '@/services/ownership.service';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
+import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -132,6 +136,21 @@ function countRuleActions(rules: readonly PolicyRule[]) {
  */
 const MAX_LISTED_POLICY_TYPES = 100;
 
+/** Keeps a block on a workflow with many blocked nodes under the 32 KB payload cap. */
+const MAX_LISTED_VIOLATIONS = 50;
+
+/** Subject types whose subject is a type name. Any other subject is open text and stays out. */
+const TYPE_NAME_SUBJECT_TYPES = new Set(['nodeType', 'credentialType']);
+
+/** An agent or credential create has a `null` id, so test for the key's presence, not its value. */
+function policedTargetType(
+	event: RelayEventMap['policy-decision-blocked'],
+): 'workflow' | 'agent' | 'credential' {
+	if (event.credentialType !== undefined) return 'credential';
+	if (event.agentId !== undefined) return 'agent';
+	return 'workflow';
+}
+
 /**
  * What a saved policy makes of every type this instance knows, within the policy's own kind
  * (node types or credential types). Runs the same evaluation the node panel runs, once per
@@ -159,6 +178,7 @@ function countSelectorKinds(rules: readonly PolicyRule[]) {
 	return {
 		name_selector_count: rules.filter((rule) => rule.selector.kind === 'name').length,
 		package_selector_count: rules.filter((rule) => rule.selector.kind === 'package').length,
+		extends_selector_count: rules.filter((rule) => rule.selector.kind === 'extends').length,
 	};
 }
 
@@ -204,6 +224,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 		private readonly postHogClient: PostHogClient,
+		private readonly ownershipService: OwnershipService,
 	) {
 		super(eventService);
 	}
@@ -218,6 +239,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
 			'source-control-settings-updated': (event) => this.sourceControlSettingsUpdated(event),
+			'source-control-environments-version-switched': (event) =>
+				this.sourceControlEnvironmentsVersionSwitched(event),
 			'source-control-user-started-pull-ui': (event) => this.sourceControlUserStartedPullUi(event),
 			'source-control-user-finished-pull-ui': (event) =>
 				this.sourceControlUserFinishedPullUi(event),
@@ -236,6 +259,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
+			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -311,6 +335,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-deleted': (event) => this.userDeleted(event),
 			'user-invited': (event) => this.userInvited(event),
 			'user-signed-up': (event) => this.userSignedUp(event),
+			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
+			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -319,6 +345,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
+			'migration-report-viewed': (event) => this.migrationReportViewed(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
@@ -335,6 +362,7 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
+			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
 		});
 	}
 
@@ -440,6 +468,18 @@ export class TelemetryEventRelay extends EventRelay {
 			connected,
 			connection_type: connectionType,
 		});
+	}
+
+	private sourceControlEnvironmentsVersionSwitched({
+		userId,
+		version,
+	}: RelayEventMap['source-control-environments-version-switched']) {
+		this.telemetry.track(
+			version === 'v2'
+				? TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_TO_ENVIRONMENTS_V2
+				: TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_BACK_TO_ENVIRONMENTS_V1,
+			{ user_id: userId },
+		);
 	}
 
 	private sourceControlUserStartedPullUi({
@@ -575,7 +615,8 @@ export class TelemetryEventRelay extends EventRelay {
 		after,
 		rulesBefore,
 		rulesAfter,
-		warningCount,
+		shadowWarningCount,
+		notLoadedWarningCount,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -583,7 +624,7 @@ export class TelemetryEventRelay extends EventRelay {
 			kind === CREDENTIAL_TYPES_KIND
 				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
 				: Object.keys(this.nodeTypes.getKnownTypes());
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		this.telemetry.track(
@@ -599,7 +640,8 @@ export class TelemetryEventRelay extends EventRelay {
 				...countSelectorKinds(rulesAfter),
 				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
 				previous_rule_count: rulesBefore?.length ?? null,
-				shadow_warning_count: warningCount,
+				shadow_warning_count: shadowWarningCount,
+				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
 			},
 		);
@@ -688,6 +730,42 @@ export class TelemetryEventRelay extends EventRelay {
 				previous_attachment_count: before.attachments.length,
 			},
 		);
+	}
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	/** Workflow, agent and user names stay in the audit log; only ids and type names leave. */
+	private policyDecisionBlocked(event: RelayEventMap['policy-decision-blocked']) {
+		this.telemetry.track(TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION, {
+			...(event.actorType === 'user'
+				? { user_id: event.user.id, actor_type: 'user' }
+				: { actor_type: 'system', system_reason: event.systemReason }),
+			point: event.point,
+			outcome: event.outcome,
+			duration_ms: event.durationMs,
+			check_ids: event.checkIds,
+			violation_count: event.violations.length,
+			violations: event.violations.slice(0, MAX_LISTED_VIOLATIONS).map((violation) => ({
+				check_id: violation.checkId,
+				kind: violation.kind,
+				subject_type: violation.subjectType,
+				subject:
+					violation.subjectType !== null && TYPE_NAME_SUBJECT_TYPES.has(violation.subjectType)
+						? violation.subject
+						: null,
+				scope: violation.scope,
+				matched_rule: violation.matchedRuleId !== null,
+			})),
+			target_type: policedTargetType(event),
+			workflow_id: event.workflowId,
+			agent_id: event.agentId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			consumer_node_type: event.consumerNodeType,
+			project_id: event.projectId,
+		});
 	}
 
 	// #endregion
@@ -1349,6 +1427,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id_policy: options.workflowIdPolicy,
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
+			credential_conflict_policy: options.credentialConflictPolicy,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
 			missing_node_type_mode: options.missingNodeTypeMode,
 			project_conflict_policy: options.projectConflictPolicy,
@@ -1370,9 +1449,11 @@ export class TelemetryEventRelay extends EventRelay {
 			folders_removed: counts.folders.removed,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
+			credentials_updated: counts.credentials.updated,
 			credentials_required: counts.credentials.requirements,
 			data_tables_matched: counts.dataTables.matched,
 			data_tables_created: counts.dataTables.created,
+			data_tables_updated: counts.dataTables.updated,
 			data_tables_required: counts.dataTables.requirements,
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,
@@ -1397,6 +1478,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
+			agent_count: counts.agents,
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
@@ -1411,6 +1493,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageExportFailed({
 		user,
 		reason,
+		agentIds,
 		workflowIds,
 		folderIds,
 		projectIds,
@@ -1418,6 +1501,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User package export failed', {
 			user_id: user.id,
 			reason,
+			agent_count: agentIds?.length ?? 0,
 			workflow_count: workflowIds?.length ?? 0,
 			folder_count: folderIds?.length ?? 0,
 			project_count: projectIds?.length ?? 0,
@@ -1589,6 +1673,7 @@ export class TelemetryEventRelay extends EventRelay {
 			runData.status = 'canceled';
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		telemetryProperties.success = !!runData?.finished;
 
 		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
@@ -1765,14 +1850,34 @@ export class TelemetryEventRelay extends EventRelay {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 		const dbVersion = await this.dbConnection.getDbVersion();
+		const runtime = detectRuntime(process.env, this.instanceSettings.isDocker);
+		const memoryLimit = getMemoryLimit();
+		const cpu = getCpuLimit();
+		const dbVendor =
+			this.globalConfig.database.type === 'postgresdb'
+				? detectDbVendor(
+						this.globalConfig.database.postgresdb.host,
+						await this.dbConnection.getManagedPostgresMarkers(),
+					)
+				: undefined;
+		const redisVendor =
+			this.globalConfig.executions.mode === 'queue'
+				? detectRedisVendor(
+						this.globalConfig.queue.bull.redis.host,
+						this.globalConfig.queue.bull.redis.clusterNodes,
+					)
+				: undefined;
 
 		const info = {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
+			db_vendor: dbVendor,
+			redis_vendor: redisVendor,
 			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process:
 				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
@@ -1788,6 +1893,13 @@ export class TelemetryEventRelay extends EventRelay {
 					speed: cpus[0].speed,
 				},
 				is_docker: this.instanceSettings.isDocker,
+				memory_limit: memoryLimit === null ? null : memoryLimit / 1024,
+				cpu_limit: cpu.limit,
+				cpu_limit_source: cpu.source,
+				cpu_weight: cpu.weight,
+				runtime,
+				kubernetes_provider:
+					runtime === 'kubernetes' ? detectKubernetesProvider(os.release()) : undefined,
 			},
 			execution_variables: {
 				executions_mode: this.globalConfig.executions.mode,
@@ -1804,11 +1916,11 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_history: {
 				compaction_optimizing_time_window_hours:
 					this.globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
-				compaction_trim_on_start_up: this.globalConfig.workflowHistoryCompaction.trimOnStartUp,
 				compaction_trimming_time_window_days:
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
@@ -1845,10 +1957,37 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 		};
 
-		const versionParts = getSemanticVersioning(N8N_VERSION);
+		const firstWorkflow = await this.workflowRepository.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		});
 
-		// Instance information available at group level on PostHog & Rudderstack
-		const telemetryInstanceInfo = {
+		const instanceGroupFacts = await this.getInstanceGroupFacts();
+
+		// Inject instance info on telemetry instance group. PostHog refuses a group
+		// update with no real person behind it, so it gets the owner once setup is done.
+		this.telemetry.groupIdentify({
+			traits: instanceGroupFacts,
+			postHog: { userId: await this.getInstanceOwnerId(), traits: instanceGroupFacts },
+		});
+
+		this.telemetry.identify(info);
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+			otel,
+			settings_managed_by_env_vars: settingsManagedByEnvVars,
+		});
+	}
+
+	// Instance information available at group level on PostHog & Rudderstack
+	private async getInstanceGroupFacts() {
+		const versionParts = getSemanticVersioning(N8N_VERSION);
+		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+		const dbVersion = await this.dbConnection.getDbVersion();
+
+		return this.telemetry.sanitizeTelemetryProperties({
 			// Main instance settings
 			n8n_host: this.globalConfig.host,
 			version_cli: N8N_VERSION,
@@ -1858,6 +1997,7 @@ export class TelemetryEventRelay extends EventRelay {
 			release_channel: this.globalConfig.generic.releaseChannel,
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
 
@@ -1889,26 +2029,14 @@ export class TelemetryEventRelay extends EventRelay {
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
-		};
-
-		const firstWorkflow = await this.workflowRepository.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
 		});
+	}
 
-		// Inject instance info on telemetry instance group
-		this.telemetry.groupIdentify({
-			traits: this.telemetry.sanitizeTelemetryProperties(telemetryInstanceInfo),
-		});
+	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
+	private async getInstanceOwnerId() {
+		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
 
-		this.telemetry.identify(info);
-		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
-			...info,
-			earliest_workflow_created: firstWorkflow?.createdAt,
-			otel,
-			settings_managed_by_env_vars: settingsManagedByEnvVars,
-		});
+		return (await this.ownershipService.getInstanceOwner()).id;
 	}
 
 	private async getOtelTelemetryInfo() {
@@ -1997,10 +2125,29 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
+	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			workflow_id: event.workflowId,
+			execution_mode: event.mode,
+			reason: event.reason,
+			running_node_type: event.runningNodeType,
+			largest_data_node_type: event.largestDataNodeType,
+			estimated_bytes: event.estimatedBytes,
+			memory_used_bytes: event.memoryUsedBytes,
+			memory_limit_bytes: event.memoryLimitBytes,
+			freed_memory: event.freedMemory,
+			workflow_deactivation_started: event.workflowDeactivationStarted,
+		});
+		// An OOM kill can follow a stop within the flush interval, so send the event now.
+		void this.telemetry.flushQueue();
+	}
+
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
-		// Attach owner to instance group on telemetry
+		// Attach owner to instance group on telemetry. PostHog also gets the instance
+		// facts now: the startup update skipped them while no owner existed.
 		this.telemetry.groupIdentify({
 			userId,
+			postHog: { userId, traits: await this.getInstanceGroupFacts() },
 		});
 
 		this.telemetry.track('Owner finished instance setup', { user_id: userId });
@@ -2208,6 +2355,14 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User signed up', payload);
 	}
 
+	private userMfaEnabled({ user }: RelayEventMap['user-mfa-enabled']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_ENABLED_MFA, { user_id: user.id });
+	}
+
+	private userMfaDisabled({ user }: RelayEventMap['user-mfa-disabled']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, { user_id: user.id });
+	}
+
 	private userSubmittedPersonalizationSurvey({
 		userId,
 		answers,
@@ -2360,6 +2515,31 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #endregion
 	// #region workflow history compaction
+	private migrationReportViewed({
+		user,
+		targetVersion,
+		refreshed,
+		report,
+	}: RelayEventMap['migration-report-viewed']) {
+		this.telemetry.track(TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT, {
+			user_id: user.id,
+			target_version: targetVersion,
+			refreshed,
+			total_workflows: report.totalWorkflows,
+			affected_workflows: report.totalAffectedWorkflows,
+			// The overview lists only the instance rules that fired.
+			affected_instance_rules: report.report.instanceResults.length,
+			rules: report.report.workflowResults.map((rule) => ({
+				rule_id: rule.ruleId,
+				impact: rule.ruleImpact,
+				affected_workflows: rule.nbAffectedWorkflows,
+			})),
+			synced_at: report.report.generatedAt
+				? new Date(report.report.generatedAt).toISOString()
+				: undefined,
+		});
+	}
+
 	private historyCompacted({
 		workflowsProcessed,
 		totalVersionsSeen,

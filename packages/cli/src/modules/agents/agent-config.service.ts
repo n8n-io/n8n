@@ -1,52 +1,47 @@
-import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
-import {
-	AgentJsonConfigSchema,
-	findVectorStoreToolNameCollisions,
-	formatAgentConfigZodError,
-	sanitizeAgentJsonConfig,
-	type AgentConfigMutationResponse,
-	type AgentJsonConfig,
-	type AgentJsonToolConfig,
+import type {
+	AgentConfigMutationResponse,
+	AgentJsonConfig,
+	AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { WorkflowRepository, type User } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
+import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
+import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 
 import {
-	type AgentConfigPart,
-	AgentModificationTelemetryService,
+	buildAgentMutationEvent,
 	diffAgentConfigParts,
-	isUnconfiguredAgent,
 	type AgentActor,
 } from './agent-modification-telemetry.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import {
+	AgentConfigPreparationService,
+	writesField,
+	type ConfigReplacement,
+} from './agent-config-preparation.service';
+import { AgentPolicyService } from './agent-policy.service';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
-import { AgentSkillsService } from './agent-skills.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
-import type { Agent } from './entities/agent.entity';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
+import { AgentsSettingsService } from './agents-settings.service';
+import type { ProjectAgent } from './entities/agent.entity';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
+import { assertSingleConnections } from './integrations/single-connection';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
-import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
-import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
-import {
-	findHttpRequestToolUrlFromAiViolations,
-	validateNodeToolConfigs,
-	validateNodeToolExpressions,
-} from './utils/node-tool-validation';
-import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
+import type {
+	CompleteAgentDefinition,
+	AgentDefinitionMetadata,
+	PlannedAgentDestinations,
+} from './utils/agent-definition';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 
 interface AgentConfigUpdateOptions {
@@ -58,29 +53,18 @@ interface AgentConfigUpdateOptions {
 	pushRef?: string;
 }
 
-interface ConfigReplacement {
-	nextSchema: AgentJsonConfig;
-	nextIntegrations: NonNullable<Agent['integrations']>;
-	previousSchema: AgentJsonConfig | null;
-	previousIntegrations: NonNullable<Agent['integrations']>;
-	changedParts: AgentConfigPart[];
-}
-
 @Service()
 export class AgentConfigService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentTaskRepository: AgentTaskRepository,
-		private readonly agentSkillsService: AgentSkillsService,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly credentialsService: CredentialsService,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
-		private readonly eventService: EventService,
+		private readonly configPreparation: AgentConfigPreparationService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly transactionRunner: TransactionRunner,
+		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -93,68 +77,111 @@ export class AgentConfigService {
 			projectId,
 			'Agent not found',
 		);
-		const config = composeJsonConfig(entity);
+		const config = composeJsonConfig(entity, await this.agentSkillRefs.refsForDraft(entity, {}));
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
 		return config;
 	}
 
-	/**
-	 * Validate an AgentJsonConfig: runs Zod schema validation and checks any
-	 * node tool configurations against their JSON-Schema definitions.
-	 */
-	async validateConfig(
-		raw: unknown,
-	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
-		if (hasNodeToolInputSchema(raw)) {
-			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
+	async validateConfig(raw: unknown) {
+		return await this.configPreparation.validateConfig(raw);
+	}
+
+	async replaceDefinition(
+		agentId: string,
+		projectId: string,
+		definition: CompleteAgentDefinition,
+		user: User,
+		options: {
+			expectedRevision: number;
+			metadata?: AgentDefinitionMetadata;
+			plannedDestinations?: PlannedAgentDestinations;
+		},
+	): Promise<ProjectAgent> {
+		await Container.get(AgentsSettingsService).assertEnabled();
+		await this.configPreparation.assertCanSaveDefinition(projectId, user, 'update');
+		const agent = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
+		if (agent.revision !== options.expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently; please retry');
 		}
-
-		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
-		if (!parsed.success) {
-			return { valid: false, error: formatAgentConfigZodError(parsed.error) };
-		}
-
-		const config = parsed.data;
-
-		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
-		if (toolNameCollisions.length > 0) {
-			return {
-				valid: false,
-				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
-			};
-		}
-
-		try {
-			validateNodeToolExpressions(config.tools);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return {
-				valid: false,
-				error: `Invalid $fromAI expression in node tool config: ${message}`,
-			};
-		}
-
-		const urlViolations = findHttpRequestToolUrlFromAiViolations(config.tools);
-		if (urlViolations.length > 0) {
-			return {
-				valid: false,
-				error: urlViolations
-					.map(
-						({ toolName, path }) =>
-							`HTTP Request tool "${toolName}" cannot use $fromAI in ${path}. Enter a fixed URL.`,
-					)
-					.join('\n'),
-			};
-		}
-
-		const nodeError = await validateNodeToolConfigs(config.tools);
-		if (nodeError) {
-			return { valid: false, error: nodeError };
-		}
-
-		return { valid: true, config };
+		const prepared = await this.configPreparation.prepareDefinition(
+			agentId,
+			definition,
+			projectId,
+			user,
+			options.plannedDestinations,
+		);
+		const content = prepared.definition;
+		const previousSkills = await this.agentSkillRefs.readDraft(agent, {});
+		const previousConfig = composeJsonConfig(agent, previousSkills.skillRefs);
+		const previousIntegrations = agent.integrations ?? [];
+		await Container.get(AgentPolicyService).enforceSave(
+			projectId,
+			agentId,
+			content.config ?? { name: content.name },
+			agent.schema,
+			{ kind: 'user', user },
+		);
+		const sidecarChanges = {
+			skills: !isEqual(previousSkills.skills, content.skills),
+			tools: !isEqual(agent.tools, content.tools),
+		};
+		const decomposed = content.config
+			? decomposeJsonConfig(content.config)
+			: { schemaConfig: null, integrations: [] };
+		const { config, skillRefs: incomingSkillRefs } = decomposed.schemaConfig
+			? fromAgentDocument(decomposed.schemaConfig)
+			: { config: null, skillRefs: undefined };
+		agent.name = content.config?.name ?? content.name;
+		agent.integrations = decomposed.integrations;
+		agent.schema = config;
+		agent.tools = structuredClone(content.tools);
+		markAgentDraftDirty(agent);
+		const { skillRefs, tasksChanged } = await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx, options.metadata);
+			const skillRefs = await this.agentSkillRefs.importDraftSkills(
+				agent,
+				incomingSkillRefs,
+				content.skills,
+				user.id,
+				ctx,
+			);
+			const tasksChanged = await this.agentTaskRepository.replaceForAgent(
+				agent.id,
+				content.tasks,
+				ctx,
+			);
+			return { skillRefs, tasksChanged };
+		});
+		await this.saveCompletion.definitionSaved(
+			buildAgentMutationEvent(
+				agent,
+				skillRefs,
+				projectId,
+				{ user, modifiedBy: 'user' },
+				diffAgentConfigParts(
+					previousConfig,
+					content.config,
+					previousIntegrations,
+					agent.integrations,
+					{
+						...sidecarChanges,
+						tasks: tasksChanged,
+					},
+				),
+			),
+			previousIntegrations,
+			prepared.credentialProvider,
+			content.tasks,
+			'update',
+		);
+		return agent;
 	}
 
 	/**
@@ -179,36 +206,48 @@ export class AgentConfigService {
 			projectId,
 			'Agent not found',
 		);
-		if (options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity))) {
+		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		if (
+			options.baseConfigHash !== getAgentConfigHash(composeJsonConfig(entity, previousSkillRefs))
+		) {
 			throw new ConflictError(
 				'Agent config was changed elsewhere; reload to get the latest version',
 			);
 		}
 
-		const { validatedConfig, credentialProvider, existingTaskIds } = await this.prepareConfig(
-			entity,
-			config,
-			user,
-		);
-		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, options);
-		entity.schema = replacement.nextSchema;
+		const clearOmitted = options.clearOmittedOptionalFields === true;
+		const { validatedConfig, credentialProvider, replacement, existingTaskIds } =
+			await this.configPreparation.prepareForSave(entity, config, user, {
+				previousSkillRefs,
+				clearOmitted,
+			});
+		assertSingleConnections(this.chatIntegrationRegistry, replacement.nextIntegrations);
+		const next = fromAgentDocument(replacement.nextSchema);
+		entity.schema = next.config;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
 		markAgentDraftDirty(entity);
-		this.removeUnreferencedResources(entity, validatedConfig);
+		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
 
-		const saved = await this.saveConfig(entity, credentialProvider, user, options, replacement);
-		return await this.finishConfigUpdate(saved, validatedConfig, existingTaskIds, replacement);
+		const saved = await this.saveConfig(
+			entity,
+			next.skillRefs,
+			credentialProvider,
+			user,
+			options,
+			replacement,
+			existingTaskIds,
+		);
+		return await this.finishConfigUpdate(saved, validatedConfig, replacement, clearOmitted);
 	}
 
 	private async finishConfigUpdate(
-		saved: Agent,
+		saved: ProjectAgent,
 		validatedConfig: AgentJsonConfig,
-		existingTaskIds: string[],
 		replacement: ConfigReplacement,
+		clearOmitted: boolean,
 	): Promise<AgentConfigMutationResponse> {
-		await this.removeUnreferencedTasks(validatedConfig, existingTaskIds);
-		if (validatedConfig.integrations !== undefined) {
+		if (writesField(validatedConfig, 'integrations', clearOmitted)) {
 			await syncAgentIntegrations(
 				saved,
 				replacement.previousIntegrations,
@@ -216,7 +255,9 @@ export class AgentConfigService {
 				this.logger,
 			);
 		}
-		const savedConfig = composeJsonConfig(saved) ?? validatedConfig;
+		const savedConfig =
+			composeJsonConfig(saved, await this.agentSkillRefs.refsForDraft(saved, {})) ??
+			validatedConfig;
 		return {
 			config: savedConfig,
 			configHash: getAgentConfigHash(savedConfig),
@@ -226,64 +267,73 @@ export class AgentConfigService {
 	}
 
 	private async removeUnreferencedTasks(
-		config: AgentJsonConfig,
+		agent: ProjectAgent,
 		existingTaskIds: string[],
+		ctx: OperationContext,
 	): Promise<void> {
-		if (config.tasks === undefined) return;
-		const referencedTaskIds = new Set(config.tasks.map((ref) => ref.id));
+		const referencedTaskIds = new Set((agent.schema?.tasks ?? []).map((ref) => ref.id));
 		const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
-		if (orphanTaskIds.length > 0) await this.agentTaskRepository.delete(orphanTaskIds);
+		if (orphanTaskIds.length > 0) {
+			await this.agentTaskRepository.deleteForAgent(agent.id, orphanTaskIds, ctx);
+		}
 	}
 
 	private async saveConfig(
-		entity: Agent,
+		entity: ProjectAgent,
+		skillRefs: AgentSkillRefs,
 		credentialProvider: AgentsCredentialProvider,
 		user: User,
 		options: AgentConfigUpdateOptions,
 		replacement: ConfigReplacement,
+		existingTaskIds: string[],
 	) {
 		const { id: agentId, projectId } = entity;
-		const { changedParts, previousSchema, previousIntegrations } = replacement;
-		this.runtimeCacheService.clearRuntimes(agentId);
+		const { changedParts, changedSettings } = replacement;
 
 		// Gate evaluated against the state about to be written; the marker is
 		// claimed and reported only once that write succeeded.
 		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
 			entity,
+			skillRefs,
 			projectId,
 			credentialProvider,
 			user,
 		);
 
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.eventService.emit('agent-saved', { agentId });
-		// Every config writer (editor, builder, MCP) lands here, so this is where
-		// other open Agent Builder tabs learn that their loaded config is stale.
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId, source: options.modifiedBy },
+		const saved = await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
+			await this.agentSkillRefs.replaceDraftRefs(entity, skillRefs, ctx);
+			await this.removeUnreferencedTasks(entity, existingTaskIds, ctx);
+			return entity;
+		});
+		await this.saveCompletion.configurationSaved(
+			{
+				agent: saved,
+				config: replacement.nextSchema,
+				projectId,
+				user,
+				by: options.modifiedBy,
+				changedParts,
+				changedSettings,
+			},
 			options.pushRef,
+			emitSetupCompleted,
 		);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
-
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user,
-			by: options.modifiedBy,
-			changedParts,
-			wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
-		});
-		await emitSetupCompleted?.();
 		return saved;
 	}
 
-	private removeUnreferencedResources(entity: Agent, config: AgentJsonConfig): void {
-		if (config.tools !== undefined) this.removeUnreferencedCustomTools(entity, config);
-		if (config.skills !== undefined)
-			this.agentSkillsService.removeUnreferencedSkills(entity, config);
+	private removeUnreferencedResources(
+		entity: ProjectAgent,
+		config: AgentJsonConfig,
+		clearOmitted: boolean,
+	): void {
+		if (writesField(config, 'tools', clearOmitted)) {
+			this.removeUnreferencedCustomTools(entity, config);
+		}
 	}
 
-	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
+	private removeUnreferencedCustomTools(entity: ProjectAgent, config: AgentJsonConfig): void {
 		const referencedIds = new Set(
 			(config.tools ?? [])
 				.filter(
@@ -297,260 +347,5 @@ export class AgentConfigService {
 		const tools = { ...entity.tools };
 		for (const id of orphanIds) delete tools[id];
 		entity.tools = tools;
-	}
-
-	private buildConfigReplacement(
-		entity: Agent,
-		validatedConfig: AgentJsonConfig,
-		rawConfig: unknown,
-		options: AgentConfigUpdateOptions,
-	): ConfigReplacement {
-		const previousIntegrations = entity.integrations ?? [];
-		const previousSchema = entity.schema ?? null;
-		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
-		const nextIntegrations =
-			validatedConfig.integrations !== undefined ? integrations : previousIntegrations;
-		const nextSchema = this.mergeConfigSchema(
-			schemaConfig,
-			previousSchema,
-			rawConfig,
-			options.clearOmittedOptionalFields,
-		);
-		// Compare before the entity is changed.
-		const changedParts = diffAgentConfigParts(
-			previousSchema,
-			nextSchema,
-			previousIntegrations,
-			nextIntegrations,
-		);
-		return {
-			nextSchema,
-			nextIntegrations,
-			previousSchema,
-			previousIntegrations,
-			changedParts,
-		};
-	}
-
-	private mergeConfigSchema(
-		decomposedSchema: AgentJsonConfig,
-		previousSchema: AgentJsonConfig | null,
-		config: unknown,
-		clearOmitted: boolean | undefined,
-	): AgentJsonConfig {
-		// Under clearOmittedOptionalFields an omitted gradient is a deliberate
-		// removal, so the schema default wins instead of the previous gradient.
-		let nextPersonalisation = decomposedSchema.personalisation;
-		if (decomposedSchema.personalisation !== undefined && !clearOmitted) {
-			nextPersonalisation = mergePersonalisationWithPreviousGradient(
-				decomposedSchema.personalisation,
-				previousSchema,
-				config,
-			);
-		}
-
-		const nextSchema: AgentJsonConfig = {
-			...previousSchema,
-			name: decomposedSchema.name,
-			model: decomposedSchema.model,
-			instructions: decomposedSchema.instructions,
-			...(decomposedSchema.credential !== undefined
-				? { credential: decomposedSchema.credential }
-				: {}),
-			...(decomposedSchema.personalisation !== undefined
-				? { personalisation: nextPersonalisation }
-				: {}),
-			...(decomposedSchema.memory !== undefined ? { memory: decomposedSchema.memory } : {}),
-			...(decomposedSchema.subAgents !== undefined
-				? { subAgents: decomposedSchema.subAgents }
-				: {}),
-			...(decomposedSchema.tools !== undefined ? { tools: decomposedSchema.tools } : {}),
-			...(decomposedSchema.skills !== undefined ? { skills: decomposedSchema.skills } : {}),
-			...(decomposedSchema.tasks !== undefined ? { tasks: decomposedSchema.tasks } : {}),
-			...(decomposedSchema.providerTools !== undefined
-				? { providerTools: decomposedSchema.providerTools }
-				: {}),
-			...(decomposedSchema.config !== undefined ? { config: decomposedSchema.config } : {}),
-			...(decomposedSchema.mcpServers !== undefined
-				? { mcpServers: decomposedSchema.mcpServers }
-				: {}),
-			...(decomposedSchema.vectorStores !== undefined
-				? { vectorStores: decomposedSchema.vectorStores }
-				: {}),
-		};
-		this.normalizeOptionalConfigFields(nextSchema, decomposedSchema, clearOmitted);
-		return nextSchema;
-	}
-
-	private normalizeOptionalConfigFields(
-		nextSchema: AgentJsonConfig,
-		validatedConfig: AgentJsonConfig,
-		clearOmitted: boolean | undefined,
-	): void {
-		// Both are trimmed by the schema; an empty string clears the stored value.
-		for (const field of ['description', 'modelDeploymentName'] as const) {
-			const value = validatedConfig[field];
-			if (value === undefined) continue;
-			if (value) nextSchema[field] = value;
-			else delete nextSchema[field];
-		}
-
-		if (clearOmitted) {
-			clearOmittedOptionalFields(nextSchema, validatedConfig);
-		}
-	}
-
-	private async prepareConfig(entity: Agent, config: unknown, user: User) {
-		const { id: agentId, projectId } = entity;
-		const credentialProvider = createAgentCredentialProvider(
-			this.credentialsService,
-			projectId,
-			user,
-		);
-		const accessibleCredentials = await credentialProvider.list();
-		const accessibleCredentialIds = new Set(
-			accessibleCredentials.map((credential) => credential.id),
-		);
-		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
-		const sanitizedConfig = sanitizeUnknownAgentCredentials(
-			sanitizedBaseConfig,
-			accessibleCredentialIds,
-		);
-
-		const result = await this.validateConfig(sanitizedConfig);
-		if (!result.valid) {
-			throw new UserError(`Invalid agent config: ${result.error}`);
-		}
-
-		// Reconcile native web-search provider tools with the config's explicit
-		// `webSearch` state. This is the single write path, so persisted config
-		// always agrees with read/compose paths.
-		const validatedConfig = reconcileNativeWebSearch(result.config);
-
-		if (validatedConfig.tools !== undefined) {
-			await this.nodeToolAiGatewayService.assignManagedCredentials(
-				validatedConfig.tools.filter((tool) => tool.enabled !== false),
-				new Set(accessibleCredentials.map((credential) => credential.type)),
-			);
-		}
-		await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig, projectId);
-
-		const tasksProvided = validatedConfig.tasks !== undefined;
-		const existingTaskIds = tasksProvided
-			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
-			: [];
-
-		const resolvedSubAgents = await this.removeMissingConfigRefs(
-			validatedConfig,
-			entity,
-			new Set(existingTaskIds),
-		);
-		this.validateSubAgentRefs(resolvedSubAgents, entity);
-		return { validatedConfig, credentialProvider, existingTaskIds };
-	}
-
-	private async removeMissingConfigRefs(
-		config: AgentJsonConfig,
-		entity: Agent,
-		existingTaskIds: ReadonlySet<string>,
-	): Promise<ResolvedSubAgentRef[]> {
-		if (config.skills !== undefined) {
-			const skills = entity.skills ?? {};
-			const existingSkillIds = new Set((entity.schema?.skills ?? []).map((ref) => ref.id));
-			config.skills = config.skills.filter(
-				(ref) => ref.enabled === false || existingSkillIds.has(ref.id) || Boolean(skills[ref.id]),
-			);
-		}
-
-		if (config.tools !== undefined) {
-			const tools = entity.tools ?? {};
-			const existingToolIds = new Set(
-				(entity.schema?.tools ?? []).filter((ref) => ref.type === 'custom').map((ref) => ref.id),
-			);
-			config.tools = config.tools.filter(
-				(ref) =>
-					ref.enabled === false ||
-					ref.type !== 'custom' ||
-					existingToolIds.has(ref.id) ||
-					Boolean(tools[ref.id]),
-			);
-		}
-
-		if (config.tasks !== undefined) {
-			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
-		}
-
-		if (config.subAgents?.agents !== undefined) {
-			const existingAgentIds = new Set(
-				(entity.schema?.subAgents?.agents ?? []).map((ref) => ref.agentId),
-			);
-			const resolvedSubAgents = await resolveUniqueSubAgents({
-				refs: config.subAgents.agents,
-				projectId: entity.projectId,
-				agentRepository: this.agentRepository,
-			});
-			config.subAgents.agents = resolvedSubAgents
-				.filter(({ agentId, agent }) => existingAgentIds.has(agentId) || agent !== null)
-				.map(({ agent: _agent, ...ref }) => ref);
-			return resolvedSubAgents;
-		}
-
-		return [];
-	}
-
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
-		for (const { agentId } of resolvedSubAgents) {
-			if (agentId === entity.id) {
-				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-		}
-	}
-}
-
-function mergePersonalisationWithPreviousGradient(
-	personalisation: AgentJsonConfig['personalisation'],
-	previousSchema: AgentJsonConfig | null,
-	rawConfig: unknown,
-): AgentJsonConfig['personalisation'] {
-	if (!personalisation || !isRecord(rawConfig) || !isRecord(rawConfig.personalisation)) {
-		return personalisation;
-	}
-
-	if (rawConfig.personalisation.gradient !== undefined) return personalisation;
-
-	const previousGradient = previousSchema?.personalisation?.gradient;
-	if (!previousGradient) return personalisation;
-
-	return {
-		...personalisation,
-		gradient: previousGradient,
-	};
-}
-
-function hasNodeToolInputSchema(raw: unknown): boolean {
-	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
-
-	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
-}
-
-/** Drop optional fields the submitted config omitted instead of retaining the previous value. */
-function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
-	const optionalFields = [
-		'credential',
-		'description',
-		'modelDeploymentName',
-		'personalisation',
-		'memory',
-		'subAgents',
-		'tools',
-		'skills',
-		'tasks',
-		'providerTools',
-		'config',
-		'mcpServers',
-		'vectorStores',
-	] as const;
-	for (const field of optionalFields) {
-		if (submitted[field] === undefined) delete schema[field];
 	}
 }

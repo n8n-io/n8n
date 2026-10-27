@@ -1,16 +1,48 @@
+import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useAgentsN8nChatFlag } from './useAgentsN8nChatFlag';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+export type AgentCreateSource =
+	| 'button'
+	| 'dropdown'
+	| 'card'
+	| 'empty_state_blank'
+	| 'empty_state_prompt'
+	| 'empty_state_template'
+	| 'command_bar';
+export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
+export type N8nChatHint = 'channel_chip' | 'new_chat_sidebar';
+export type KnowledgeUploadClientFailureReason = Extract<
+	InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD>,
+	{ stage: 'client' }
+>['reason'];
+export type AgentSessionFilterName = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
+>['filter_names'][number];
+export type AgentPreviewNewChatSource = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL
+>['source'];
+export type AgentPreviewMoreOption = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST
+>['option'];
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 
-	const common = () => ({ session_id: rootStore.pushRef });
+	const common = () => ({ push_ref: rootStore.pushRef });
+
+	// Reports `null` when the user has no flag value for this experiment.
+	function currentN8nChatVariant(): string | null {
+		const variant = usePostHog().getVariant(AGENTS_N8N_CHAT_FLAG);
+		return typeof variant === 'string' ? variant : null;
+	}
 
 	// Telemetry is best-effort: every track call is wrapped so a RudderStack
 	// failure can never surface to a caller (and never takes down a critical
@@ -23,10 +55,81 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
+	function trackClickedAgentsTab(params: {
+		agentId: string;
+		name: InferTelemetryProps<typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB>['name'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AGENTS_TAB, {
+			agent_id: params.agentId,
+			name: params.name,
+			...common(),
+		});
+	}
+
+	function trackClickedKnowledgeUpload(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_KNOWLEDGE_UPLOAD, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedTraceItem(params: {
+		agentId: string;
+		itemType: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM
+		>['item_type'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM, {
+			agent_id: params.agentId,
+			item_type: params.itemType,
+			...common(),
+		});
+	}
+
+	function trackAppliedSessionFilter(params: {
+		agentId: string;
+		filterNames: InferTelemetryProps<
+			typeof TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER
+		>['filter_names'];
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER, {
+			agent_id: params.agentId,
+			filter_names: params.filterNames,
+			...common(),
+		});
+	}
+
+	function trackClickedNewTestChat(params: { agentId: string; source: AgentPreviewNewChatSource }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL, {
+			agent_id: params.agentId,
+			source: params.source,
+			...common(),
+		});
+	}
+
+	function trackClickedPreviewMoreOptions(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedPreviewMoreOption(params: {
+		agentId: string;
+		option: AgentPreviewMoreOption;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST, {
+			agent_id: params.agentId,
+			option: params.option,
+			...common(),
+		});
+	}
+
+	function trackClickedNewAgent(source: AgentCreateSource, agentId: string, templateId?: string) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source,
 			agent_id: agentId,
+			...(templateId ? { template_id: templateId } : {}),
 			...common(),
 		});
 	}
@@ -62,6 +165,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackRemovedTrigger(params: {
+		agentId: string;
+		triggerType: string;
+		triggers: string[];
+		configVersion: string;
+		status: AgentTelemetryStatus;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
+			agent_id: params.agentId,
+			trigger_type: params.triggerType,
+			triggers: params.triggers,
+			config_version: params.configVersion,
+			status: params.status,
+			...common(),
+		});
+	}
+
 	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: params.agentId,
@@ -80,6 +200,20 @@ export function useAgentTelemetry() {
 
 	function trackOpenedAddSkillModal(params: { agentId: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_ADD_SKILL_MODAL, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackRevertedChangesOnAgent(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackClickedTraceDetailsFromTestPanel(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL, {
 			agent_id: params.agentId,
 			...common(),
 		});
@@ -190,20 +324,142 @@ export function useAgentTelemetry() {
 		}
 	}
 
+	function trackDismissedAgentPublishedModal(params: {
+		agentId: string;
+		dontShowAgain: boolean;
+		action: 'got_it' | 'talk_to_agent' | 'closed';
+		n8nChatLive: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_AGENT_PUBLISHED_MODAL, {
+			agent_id: params.agentId,
+			dont_show_again: params.dontShowAgain,
+			action: params.action,
+			n8n_chat_live: params.n8nChatLive,
+			...common(),
+		});
+	}
+
+	function trackViewedN8nChatHint(params: { hint: N8nChatHint; agentId?: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_VIEWED_N8N_CHAT_HINT, {
+			hint: params.hint,
+			...(params.agentId ? { agent_id: params.agentId } : {}),
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackDismissedN8nChatHint(params: { hint: N8nChatHint; agentId?: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_N8N_CHAT_HINT, {
+			hint: params.hint,
+			...(params.agentId ? { agent_id: params.agentId } : {}),
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackSelectedN8nChatAgent(params: { agentId: string; source: N8nChatAgentSource }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SELECTED_N8N_CHAT_AGENT, {
+			agent_id: params.agentId,
+			source: params.source,
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackSentMessageToN8nChatAgent(params: {
+		agentId: string;
+		threadId: string;
+		isNewThread: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT, {
+			agent_id: params.agentId,
+			thread_id: params.threadId,
+			is_new_thread: params.isNewThread,
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	// No-op with the flag off, so sidebar callers don't need their own flag check.
+	function trackClickedSidebarItem(
+		params: { item: 'new_chat' } | { item: 'chat'; chatType: 'assistant' | 'agent' },
+	) {
+		if (!isAgentsN8nChatFlag.value) return;
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM, {
+			...(params.item === 'new_chat'
+				? { item: 'new_chat' as const }
+				: { item: 'chat' as const, chat_type: params.chatType }),
+			variant: currentN8nChatVariant(),
+			...common(),
+		});
+	}
+
+	function trackOpenedKnowledgeTab(params: { agentId: string }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_KNOWLEDGE_TAB, {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
+	function trackStartedAddingKnowledge(
+		params: { agentId: string } & ({ kind: 'file'; fileCount: number } | { kind: 'vector_store' }),
+	) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_STARTED_ADDING_AGENT_KNOWLEDGE, {
+			agent_id: params.agentId,
+			kind: params.kind,
+			...(params.kind === 'file' ? { file_count: params.fileCount } : {}),
+			...common(),
+		});
+	}
+
+	/** Server rejections are sent by the backend, so the editor reports only its own checks. */
+	function trackFailedKnowledgeUpload(params: {
+		agentId: string;
+		reason: KnowledgeUploadClientFailureReason;
+		fileCount: number;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD, {
+			stage: 'client',
+			agent_id: params.agentId,
+			file_count: params.fileCount,
+			reason: params.reason,
+			...common(),
+		});
+	}
+
 	return {
+		trackClickedAgentsTab,
+		trackClickedKnowledgeUpload,
+		trackClickedTraceItem,
+		trackAppliedSessionFilter,
+		trackClickedNewTestChat,
+		trackClickedPreviewMoreOptions,
+		trackClickedPreviewMoreOption,
 		trackClickedNewAgent,
 		trackSubmittedMessage,
 		trackAddedTrigger,
+		trackRemovedTrigger,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackRevertedChangesOnAgent,
+		trackClickedTraceDetailsFromTestPanel,
 		trackImportedSkill,
 		trackDuplicatedAgent,
+		trackDismissedAgentPublishedModal,
+		trackViewedN8nChatHint,
+		trackDismissedN8nChatHint,
 		trackStartedChannelSetup,
 		trackClosedChannelSetup,
 		trackFailedToConnectChannel,
 		trackCheckedTeamsCredential,
 		trackClickedDeployToAzure,
 		trackDownloadedTeamsAppPackage,
+		trackSelectedN8nChatAgent,
+		trackSentMessageToN8nChatAgent,
+		trackClickedSidebarItem,
+		trackOpenedKnowledgeTab,
+		trackStartedAddingKnowledge,
+		trackFailedKnowledgeUpload,
 	};
 }

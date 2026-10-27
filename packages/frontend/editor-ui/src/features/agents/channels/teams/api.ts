@@ -1,7 +1,14 @@
 import type {
 	AgentTeamsIntegrationSettings,
+	CreateTeamsManagerCredentialResponse,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
+	TeamsAzureSubscription,
+	TeamsCatalogState,
+	TeamsManagedSetupState,
+	TeamsProvisionedAppSummary,
+	TeamsProvisionedBotSummary,
 } from '@n8n/api-types';
 import { getBrowserId } from '@n8n/constants';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -36,6 +43,18 @@ export const checkTeamsCredential = async (
 		`${integrationPath(projectId, agentId)}/check/${credentialId}`,
 	);
 
+export const checkTeamsFileAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<TeamsFileAccessCheck> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/file-access/${credentialId}`,
+	);
+
 /**
  * Fetched rather than linked to. The session cookie is bound to a `browser-id`
  * header, which a plain navigation cannot send: the request comes back 401 and
@@ -62,3 +81,108 @@ export const fetchTeamsAppPackage = async (
 	}
 	return await response.blob();
 };
+
+export const getTeamsManagedSetup = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<TeamsManagedSetupState> =>
+	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/managed-setup`);
+
+export const createTeamsManagerCredential = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<CreateTeamsManagerCredentialResponse> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/manager-credential`,
+	);
+
+export const provisionTeamsApp = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	managerCredentialId: string,
+): Promise<TeamsProvisionedAppSummary> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/provision-app`,
+		{
+			managerCredentialId,
+		},
+	);
+
+export const getTeamsAzureSubscriptions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	managerCredentialId: string,
+): Promise<TeamsAzureSubscription[]> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/azure-subscriptions`,
+		{ managerCredentialId },
+	);
+
+/** Says the setup left the recommended flow to make the bot by hand. */
+export const reportTeamsManualBotRoute = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<void> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/manual-bot-route`,
+	);
+
+export const provisionTeamsBot = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: {
+		managerCredentialId: string;
+		credentialId: string;
+		subscriptionId: string;
+	},
+): Promise<TeamsProvisionedBotSummary> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/provision-bot`,
+		payload,
+	);
+
+export const publishTeamsApp = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: {
+		managerCredentialId: string;
+		credentialId: string;
+		settings?: AgentTeamsIntegrationSettings;
+	},
+): Promise<TeamsCatalogState> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/publish`,
+		payload,
+	);
+
+export const getTeamsCatalogState = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	managerCredentialId: string,
+	/** The channel's own credential, which carries what the last publish made. */
+	credentialId?: string,
+): Promise<TeamsCatalogState> =>
+	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/catalog`, {
+		managerCredentialId,
+		...(credentialId ? { credentialId } : {}),
+	});

@@ -69,6 +69,21 @@ describe('EngineDataPlaneProxyService', () => {
 		expect(provider.searchExecutions).toHaveBeenCalledWith({ workflowIds: ['wf'], limit: 20 });
 	});
 
+	it('reports no latest execution without a provider', async () => {
+		await expect(proxy.findLatestExecution({ workflowIds: ['wf'] })).resolves.toBeUndefined();
+	});
+
+	it('forwards a latest-execution read to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		const snapshot = mock<ExecutionSnapshot>({ id: executionId });
+		provider.findLatestExecution.mockResolvedValue(snapshot);
+		proxy.registerProvider(provider);
+
+		const filter = { workflowIds: ['wf'], status: ['completed' as const] };
+		await expect(proxy.findLatestExecution(filter)).resolves.toBe(snapshot);
+		expect(provider.findLatestExecution).toHaveBeenCalledWith(filter);
+	});
+
 	it('delegates a read to the registered provider', async () => {
 		const provider = mock<EngineDataPlaneProvider>();
 		const snapshot = mock<ExecutionSnapshot>({ id: executionId });
@@ -86,5 +101,24 @@ describe('EngineDataPlaneProxyService', () => {
 		await proxy.getExecution(executionId, { includeSteps: true });
 
 		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
+	});
+
+	it('reports no execution to cancel without a provider', async () => {
+		await expect(proxy.cancelExecution(executionId)).resolves.toBeUndefined();
+	});
+
+	it('forwards a cancel to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		provider.cancelExecution.mockResolvedValue({
+			cancelled: true,
+			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+		});
+		proxy.registerProvider(provider);
+
+		await expect(proxy.cancelExecution(executionId)).resolves.toEqual({
+			cancelled: true,
+			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+		});
+		expect(provider.cancelExecution).toHaveBeenCalledWith(executionId);
 	});
 });

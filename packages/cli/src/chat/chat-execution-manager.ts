@@ -56,6 +56,7 @@ export class ChatExecutionManager {
 		await this.workflowRunner.run(await this.getRunData(execution, message), true, true, {
 			executionId: execution.id,
 			expectedStatus: 'waiting',
+			storedAt: execution.storedAt,
 		});
 	}
 
@@ -70,7 +71,10 @@ export class ChatExecutionManager {
 		if (!this.isChatDrivenExecution(execution)) return;
 
 		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
-			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
+			await this.executionRepository.update(
+				{ id: executionId },
+				{ status: 'canceled', stoppedAt: new Date() },
+			);
 		}
 	}
 
@@ -87,7 +91,7 @@ export class ChatExecutionManager {
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,

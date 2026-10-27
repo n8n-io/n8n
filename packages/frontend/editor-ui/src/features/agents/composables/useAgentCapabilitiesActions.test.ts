@@ -1,3 +1,5 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
@@ -5,6 +7,7 @@ import {
 	useAgentCapabilitiesActions,
 	type AgentCapabilitiesTelemetry,
 } from './useAgentCapabilitiesActions';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
@@ -47,28 +50,52 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 function makeActions(
 	overrides: Partial<AgentJsonConfig> = {},
 	telemetry?: AgentCapabilitiesTelemetry,
+	validationIssues = ref<AgentConfigValidationIssue[]>([]),
 ) {
 	const scheduleConfigUpdate = vi.fn();
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
 	const agentId = ref('agent-1');
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig(overrides));
+	const connectedTriggers = ref<string[]>([]);
 	const actions = useAgentCapabilitiesActions({
 		localConfig,
 		agent,
 		projectId: computed(() => 'proj-1'),
 		agentId: computed(() => agentId.value),
-		connectedTriggers: ref<string[]>([]),
+		connectedTriggers,
 		scheduleConfigUpdate,
 		scheduleSkillSave,
 		telemetry,
+		validationIssues,
 	});
-	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
+	return {
+		actions,
+		scheduleConfigUpdate,
+		scheduleSkillSave,
+		agent,
+		agentId,
+		localConfig,
+		connectedTriggers,
+	};
 }
 
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setActivePinia(createTestingPinia());
+	});
+
+	it('stores the remaining triggers and tracks a removed trigger', () => {
+		const trackTriggerRemoved = vi.fn();
+		const { actions, connectedTriggers } = makeActions({}, { trackTriggerRemoved });
+		connectedTriggers.value = ['n8n_chat', 'slack'];
+		const payload = { triggerType: 'n8n_chat', triggers: ['slack'] };
+
+		actions.onTriggerRemoved(payload);
+
+		expect(connectedTriggers.value).toEqual(['slack']);
+		expect(trackTriggerRemoved).toHaveBeenCalledExactlyOnceWith(payload);
 	});
 
 	it('forwards the selected picker mode to the tools modal', () => {
@@ -116,23 +143,42 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools });
 	});
 
-	it('changes only the selected skill activation flag through autosave', () => {
-		const { actions, scheduleConfigUpdate, scheduleSkillSave } = makeActions({
-			skills: [
-				{ type: 'skill', id: 'skill-1' },
-				{ type: 'skill', id: 'skill-2', enabled: true },
-			],
+	it("gives the tool modal a live read of that tool's validation issues", () => {
+		const issue = (index: number): AgentConfigValidationIssue => ({
+			code: 'restricted_node_type',
+			reason: 'restricted_by_inline_tool',
+			path: `tools.${index}.node.nodeType`,
+			capability: { kind: 'tool', index, toolType: 'node' },
+			restriction: { nodeType: 'n8n-nodes-base.mySql' },
 		});
+		const validationIssues = ref<AgentConfigValidationIssue[]>([]);
+		const { actions } = makeActions(
+			{
+				tools: [
+					{ type: 'node', name: 'first' } as AgentJsonToolConfig,
+					{ type: 'node', name: 'second' } as AgentJsonToolConfig,
+				],
+			},
+			undefined,
+			validationIssues,
+		);
+		actions.onOpenToolFromList(1);
 
-		actions.onToggleSkill({ id: 'skill-1', enabled: false });
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { validationIssues: () => AgentConfigValidationIssue[] };
+		};
+		expect(modalData.data.validationIssues()).toEqual([]);
 
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
-			skills: [
-				{ type: 'skill', id: 'skill-1', enabled: false },
-				{ type: 'skill', id: 'skill-2', enabled: true },
-			],
-		});
-		expect(scheduleSkillSave).not.toHaveBeenCalled();
+		// The builder validates again after the modal opened.
+		validationIssues.value = [issue(0), issue(1)];
+
+		expect(modalData.data.validationIssues()).toEqual([issue(1)]);
+	});
+
+	it('offers no skill activation toggle', () => {
+		const { actions } = makeActions({ skills: [{ type: 'skill', id: 'skill-1' }] });
+
+		expect(actions).not.toHaveProperty('onToggleSkill');
 	});
 
 	it('opens the MCP-server modal for a numeric target past the tools array', () => {
@@ -144,6 +190,9 @@ describe('useAgentCapabilitiesActions', () => {
 					url: 'https://mcp.example.com',
 					authentication: 'none',
 					transport: 'streamableHttp',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			],
 		} as Partial<AgentJsonConfig>);
@@ -158,6 +207,68 @@ describe('useAgentCapabilitiesActions', () => {
 		};
 		expect(modalData.data.kind).toBe('mcpServer');
 		expect(modalData.data.mcpServer?.name).toBe('srv');
+	});
+
+	it('updates and removes only the selected registry MCP server', () => {
+		const github: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.test',
+			authentication: 'githubOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+		const notion: AgentJsonMcpServerConfig = {
+			name: 'notion',
+			url: 'https://mcp.notion.test',
+			authentication: 'notionMcpOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+		};
+		const { actions, scheduleConfigUpdate } = makeActions({ mcpServers: [github, notion] });
+
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				kind: string;
+				onConfirm: (server: AgentJsonMcpServerConfig) => void;
+				onRemove: () => void;
+			};
+		};
+		const updated = { ...github, description: 'Updated' };
+
+		expect(modalData.data.kind).toBe('registryMcpServer');
+		modalData.data.onConfirm(updated);
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+			mcpServers: [updated, notion],
+		});
+
+		modalData.data.onRemove();
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ mcpServers: [notion] });
+	});
+
+	it('drops registry MCP callbacks that land after an agent switch', () => {
+		const server: AgentJsonMcpServerConfig = {
+			name: 'github',
+			url: 'https://mcp.github.test',
+			authentication: 'githubOAuth2Api',
+			transport: 'streamableHttp',
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+		const { actions, scheduleConfigUpdate, agentId } = makeActions({ mcpServers: [server] });
+
+		actions.onOpenToolFromList(0);
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				onConfirm: (updated: AgentJsonMcpServerConfig) => void;
+				onRemove: () => void;
+			};
+		};
+		agentId.value = 'agent-2';
+
+		modalData.data.onConfirm({ ...server, description: 'Stale edit' });
+		modalData.data.onRemove();
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
 	it('drops a skill-modal confirm that lands after an agent switch', () => {
@@ -284,6 +395,9 @@ describe('useAgentCapabilitiesActions', () => {
 			url: 'https://mcp.example.com',
 			authentication: 'none',
 			transport: 'streamableHttp',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 		const { actions, scheduleConfigUpdate, localConfig } = makeActions({
 			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],

@@ -152,6 +152,7 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			let insertedRows = 0;
 
@@ -221,6 +222,7 @@ export class DataTableRowsRepository {
 		returnType: T,
 		trx?: EntityManager,
 	): Promise<DataTableInsertRowsResult> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const inserted: Array<Pick<DataTableRowReturn, 'id'>> = [];
 			const dbType = this.dataSource.options.type;
@@ -308,6 +310,7 @@ export class DataTableRowsRepository {
 		returnData: boolean = false,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = dbType === 'postgres';
@@ -423,6 +426,7 @@ export class DataTableRowsRepository {
 		dryRun: boolean = false,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = !dryRun && dbType === 'postgres';
@@ -484,6 +488,7 @@ export class DataTableRowsRepository {
 	}
 
 	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const result = await em.createQueryBuilder().delete().from(table).execute();
@@ -498,6 +503,7 @@ export class DataTableRowsRepository {
 		idsOnly: T,
 		trx?: EntityManager,
 	): Promise<T extends true ? Array<Pick<DataTableRowReturn, 'id'>> : DataTableRowReturn[]> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';

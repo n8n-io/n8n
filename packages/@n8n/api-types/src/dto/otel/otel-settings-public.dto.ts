@@ -20,6 +20,8 @@ export class OtelSettingsPublicDto extends Z.class(
 		tracesSampleRate: z.number().openapi(docs.tracesSampleRate),
 		startupConnectivityTimeoutMs: z.number().openapi(docs.startupConnectivityTimeoutMs),
 		includeNodeSpans: z.boolean().openapi(docs.includeNodeSpans),
+		emitWorkflowStartSpan: z.boolean().openapi(docs.emitWorkflowStartSpan),
+		emitNodeStartSpan: z.boolean().openapi(docs.emitNodeStartSpan),
 		injectOutbound: z.boolean().openapi(docs.injectOutbound),
 		productionExecutionsOnly: z.boolean().openapi(docs.productionExecutionsOnly),
 	},
@@ -43,6 +45,8 @@ export class UpdateOtelSettingsPublicDto extends Z.class(
 			docs.startupConnectivityTimeoutMs,
 		),
 		includeNodeSpans: fields.includeNodeSpans.openapi(docs.includeNodeSpans),
+		emitWorkflowStartSpan: fields.emitWorkflowStartSpan.openapi(docs.emitWorkflowStartSpan),
+		emitNodeStartSpan: fields.emitNodeStartSpan.openapi(docs.emitNodeStartSpan),
 		injectOutbound: fields.injectOutbound.openapi(docs.injectOutbound),
 		productionExecutionsOnly: fields.productionExecutionsOnly.openapi(
 			docs.productionExecutionsOnly,

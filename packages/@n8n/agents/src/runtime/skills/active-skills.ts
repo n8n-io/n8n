@@ -1,6 +1,6 @@
 import type { ModelMessage, ToolResultPart } from 'ai';
 
-import { formatActiveSkill } from '../../skills/tools';
+import { findReferenceByPath, formatActiveSkill } from '../../skills/tools';
 import {
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillContent,
@@ -67,16 +67,17 @@ export class ActiveSkills {
 				...this.stampedActivations(list).map(([, skillId]) => skillId),
 			];
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
+		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
-			if (!registered.has(id)) continue;
-			const skill = await this.source.loadSkill(id);
+			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
 			if (skill) this.loaded.set(id, skill);
+			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
 		}
-		list.activeSkillIds = [...this.loaded.keys()];
+		list.activeSkillIds = [...retainedIds];
 		const storeIsCurrent =
 			stored !== undefined &&
-			new Set(stored).size === this.loaded.size &&
-			stored.every((id) => this.loaded.has(id));
+			new Set(stored).size === retainedIds.size &&
+			stored.every((id) => retainedIds.has(id));
 		if (!storeIsCurrent && (ids.length > 0 || stored !== undefined)) await this.persist();
 	}
 
@@ -90,19 +91,13 @@ export class ActiveSkills {
 		if (!this.list) throw new Error('Active skills must be restored before loading');
 		if (!this.loaded.has(skillId)) {
 			this.loaded.set(skillId, skill);
-			this.list.activeSkillIds = [...this.loaded.keys()];
+			this.list.activeSkillIds = [...new Set([...(this.list.activeSkillIds ?? []), skillId])];
 			// Stamp the activating tool result so the body re-anchors there on a
 			// later turn instead of falling back into the system prompt.
 			if (anchor) this.list.stampActivatedSkill(anchor.toolCallId, skillId);
 			await this.persist();
 		}
 		return skill;
-	}
-
-	toolDependencies(): string[] {
-		return [
-			...new Set([...this.loaded.values()].flatMap((skill) => skill.dependencies?.tools ?? [])),
-		];
 	}
 
 	/**
@@ -246,7 +241,7 @@ export class ActiveSkills {
 	private formatSkill(skillId: string): string | undefined {
 		const skill = this.loaded.get(skillId);
 		const entry = this.source.registry.skills.find((candidate) => candidate.id === skillId);
-		return skill && entry ? formatActiveSkill(skill, entry) : undefined;
+		return skill && entry ? formatActiveSkill(skill, entry, this.source.registry) : undefined;
 	}
 
 	private recordedLoads(list: AgentMessageList): Map<string, string> {
@@ -269,14 +264,20 @@ export class ActiveSkills {
 					continue;
 				if (part.output.success !== true && part.output.type !== 'content') continue;
 				const { skillId, name, filePath } = part.input;
-				if (typeof filePath === 'string' && !['', '/', '.', 'SKILL.md'].includes(filePath.trim()))
-					continue;
 				const requested =
 					typeof skillId === 'string' ? skillId : typeof name === 'string' ? name : undefined;
 				if (!requested) continue;
 				const entry = this.source.registry.skills.find(
 					(skill) => skill.id === requested || skill.name === requested,
 				);
+				if (typeof filePath === 'string' && !['', '/', '.', 'SKILL.md'].includes(filePath.trim())) {
+					// Only a path to a reference skill is an activation; other linked files are plain reads.
+					const reference = entry
+						? findReferenceByPath(this.source.registry, entry.id, filePath)
+						: undefined;
+					if (reference) loads.set(part.toolCallId, reference.id);
+					continue;
+				}
 				loads.set(part.toolCallId, entry?.id ?? requested);
 			}
 		}

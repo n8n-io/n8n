@@ -1,7 +1,7 @@
 import type { Message } from '@n8n/agents';
 import { z } from 'zod';
 
-import { SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import { JUDGE_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
 import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { BuildExpectationResult } from '../types';
 
@@ -23,7 +23,6 @@ export const expectationResultSchema = z.object({
 	),
 });
 
-const JUDGE_MODEL = SONNET_MODEL;
 const MAX_VERIFY_ATTEMPTS = 2;
 const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
@@ -55,6 +54,7 @@ export async function judgeExpectations(
 			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
 			cache: true,
 			model: JUDGE_MODEL,
+			judge: true,
 		}).structuredOutput(expectationResultSchema);
 
 		const abortController = new AbortController();

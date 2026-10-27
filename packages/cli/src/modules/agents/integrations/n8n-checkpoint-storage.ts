@@ -302,6 +302,25 @@ export class N8NCheckpointStorage {
 		}
 	}
 
+	async markUserPaused(
+		agentId: string,
+		suspension: {
+			runId: string;
+			checkpoint: SerializableAgentState;
+			serializedState: string;
+			updatedAt: Date;
+		},
+	): Promise<boolean> {
+		// Preserve the approval and its expiry. A concurrent resume must win or lose atomically.
+		return await this.agentCheckpointRepository.markUserPaused(
+			suspension.runId,
+			agentId,
+			suspension.serializedState,
+			JSON.stringify({ ...suspension.checkpoint, finishReason: 'paused' }),
+			suspension.updatedAt,
+		);
+	}
+
 	private async deleteDelegation(
 		runId: string,
 		agentId: string,

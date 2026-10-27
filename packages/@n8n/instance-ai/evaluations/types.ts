@@ -6,6 +6,7 @@ import type {
 	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
 	InstanceAiPromptConfiguration,
@@ -202,6 +203,8 @@ export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
+	/** The project the build ran in. Absent means the owner's personal project. */
+	projectId?: string;
 }
 
 /** Structured agent preview. Capture redacts it; persistence validates and caps it. */
@@ -385,6 +388,8 @@ export interface WorkflowTestCaseResult {
 	n8nBaseUrl?: string;
 	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
 	runDebug?: InstanceAiRunDebugResponse[];
+	/** Usage of the eval's own model calls in this iteration: judges, simulated user, mocks. */
+	harnessUsage?: InstanceAiEvalLlmUsage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -412,7 +417,6 @@ export const USER_TURN_EVENT = 'eval-user-turn';
 export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
-	| { kind: 'plan'; tasks: PlanTask[] }
 	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
 	| {
 			kind: 'setup-card';
@@ -438,7 +442,7 @@ export type ToolInteraction =
 			approved?: boolean;
 			/** Prompt the agent showed when requesting confirmation. */
 			message?: string;
-			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			/** Free-text the user sent with their decision. */
 			feedback?: string;
 	  }
 	| {
@@ -450,11 +454,6 @@ export type ToolInteraction =
 			result?: unknown;
 			error?: string;
 	  };
-
-export interface PlanTask {
-	title?: string;
-	description?: string;
-}
 
 export interface AskUserQuestion {
 	id: string;

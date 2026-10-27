@@ -4,7 +4,7 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 test.describe(
 	'NDV Data Display',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Context' }],
 	},
 	() => {
 		test.describe('Schema View', () => {

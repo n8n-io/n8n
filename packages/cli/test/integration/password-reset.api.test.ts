@@ -18,7 +18,7 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { PasswordUtility } from '@/services/password.utility';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
@@ -149,7 +149,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if user is not found', async () => {
-		const token = jwtService.sign({ sub: uuid() });
+		const token = jwtService.sign('passwordReset', { sub: uuid() });
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')

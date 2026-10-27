@@ -1,14 +1,8 @@
-import { DEFAULT_MISFIRE_GRACE_SECONDS, Time } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, MAX_TIMER_DELAY_SECONDS, Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
-
-/**
- * Allows 0 (the clamp disabled) in addition to any positive value. Used for a
- * setting where 0 is a meaningful "off", not just a smaller number.
- */
-const nonNegativeIntSchema = z.number({ coerce: true }).int().nonnegative();
 
 /**
  * A jitter ratio: a fraction in [0, 1). 0 disables jitter; 1 or above would
@@ -24,23 +18,31 @@ const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
  * they start, so they survive restarts and, in a multi-instance setup, each run
  * is picked up by exactly one instance instead of every instance firing it.
  *
- * Off by default. While {@link enabled} is false none of these settings have any
- * effect and the existing in-memory Schedule Trigger behaviour is unchanged. The
- * tunables below only matter once the scheduler is turned on; the defaults suit
- * most instances, so change them only to tune timing precision or storage.
+ * On by default. It takes over Schedule Trigger nodes only while the workflow
+ * publication service is also on. Set {@link enabled} to false to keep the
+ * in-memory Schedule Trigger behaviour. Then none of these settings have any
+ * effect. The defaults suit most instances, so change them only to tune timing
+ * precision or storage.
  */
 @Config
 export class SchedulerConfig {
 	/**
-	 * Turn on the durable scheduler. Off by default so existing self-hosted setups
-	 * keep using the in-memory scheduler and behave exactly as before.
+	 * Turn on the durable scheduler. On by default. Set it to false to go back to
+	 * the in-memory scheduler.
 	 *
 	 * When on, scheduled runs are stored in the database before they execute, so a
 	 * restart doesn't drop them and, across multiple instances, each run executes
 	 * once rather than once per instance.
+	 *
+	 * Schedule Trigger nodes move to the durable scheduler only while the workflow
+	 * publication service (`N8N_USE_WORKFLOW_PUBLICATION_SERVICE`) is also on.
+	 * Otherwise they keep using the in-memory scheduler.
+	 *
+	 * @deprecated The durable scheduler is now the default. This variable and the
+	 * in-memory scheduler will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * How far into the future, in seconds, the scheduler works out and records the
@@ -226,20 +228,8 @@ export class SchedulerConfig {
 	jitterRatio: number = 0.1;
 
 	/**
-	 * The smallest gap, in seconds, allowed between consecutive runs of the same
-	 * schedule. A schedule set to run more often than this is slowed down to this
-	 * gap. Defaults to 0, which disables the limit and honours whatever interval
-	 * each schedule specifies.
-	 *
-	 * Set it to put a floor on how frequently any schedule can run, for example to
-	 * stop a misconfigured every-second schedule from overloading the instance.
-	 */
-	@Env('N8N_SCHEDULER_MIN_INTERVAL', nonNegativeIntSchema)
-	minIntervalSeconds: number = 0;
-
-	/**
 	 * How a Schedule Trigger node's "every N seconds/minutes" schedules run under
-	 * the durable scheduler. Defaults to `legacy`.
+	 * the durable scheduler. Defaults to `new`.
 	 *
 	 * - `legacy`: fires stay aligned to the clock (on the minute, on the hour) and
 	 *   match the in-memory scheduler exactly.
@@ -251,14 +241,16 @@ export class SchedulerConfig {
 	 * for example, leaves a 4-second gap across each minute boundary); `new` keeps
 	 * a uniform gap throughout.
 	 *
-	 * `legacy` is the default so timing is unchanged while the durable scheduler
-	 * rolls out; `new` is the intended future default. Only "every N
-	 * seconds/minutes" schedules are affected: longer schedules (every N
-	 * hours/days/weeks/months) and raw cron expressions run the same way under
-	 * either setting.
+	 * Set it to `legacy` to keep the clock-aligned timing of the in-memory
+	 * scheduler. Only "every N seconds/minutes" schedules are affected: longer
+	 * schedules (every N hours/days/weeks/months) and raw cron expressions run the
+	 * same way under either setting.
+	 *
+	 * @deprecated `new` is now the default. This variable and the `legacy` mode
+	 * will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_TRIGGER_NODE_MODE', z.enum(['legacy', 'new']))
-	triggerNodeMode: 'legacy' | 'new' = 'legacy';
+	triggerNodeMode: 'legacy' | 'new' = 'new';
 
 	/**
 	 * Whether nodes that poll on a schedule (e.g. checking an inbox or API on an
@@ -276,12 +268,8 @@ export class SchedulerConfig {
 	 * was and the next scheduled poll covers the same ground. It counts as a poll
 	 * failure, so a source that keeps timing out is polled at a widening interval.
 	 * Guards against a poll stuck on an unresponsive source running indefinitely.
-	 *
-	 * Keep it below {@link leaseDurationSeconds}: the deadline only starts after
-	 * the occurrence's setup reads, so a poll allowed to run as long as the claim
-	 * on its run can still be in flight when that claim expires and another
-	 * instance takes the run over. The default leaves that headroom, and the
-	 * scheduler warns at startup when the timeout reaches the lease duration.
+	 * A new value applies to a poll trigger the next time it is provisioned, for
+	 * example at startup or when its workflow is activated.
 	 * Must be greater than 0 and at most one day.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
@@ -341,24 +329,6 @@ export class SchedulerConfig {
 	enabledForAgentTasks: boolean = false;
 
 	/**
-	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
-	 * Off by default; intended to be removed once the durable scheduler is GA.
-	 *
-	 * When on, the Schedule Trigger node shows a "Skip Durable Scheduler" toggle; a
-	 * trigger with it checked keeps using the in-memory scheduler even while
-	 * {@link enabled} is on, so an operator can move an individual schedule back
-	 * while testing. When off, the toggle is hidden and every schedule follows
-	 * {@link enabled}.
-	 *
-	 * Named with the `N8N_ENV_FEAT_` prefix so the frontend picks it up through the
-	 * env-feature-flag channel that gates the node property's visibility. Only has
-	 * an effect while {@link enabled} is on: with the durable scheduler off, every
-	 * schedule already runs in memory.
-	 */
-	@Env('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER')
-	allowSkipDurableScheduler: boolean = false;
-
-	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
 	 * or retried on error before it's given up on and dead-lettered. Defaults to
 	 * 5. Raise it on infrastructure prone to instance restarts or transient
@@ -367,6 +337,20 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MAX_ATTEMPTS', positiveIntSchema)
 	maxAttempts: number = 5;
+
+	/**
+	 * How long, in seconds, one run of a scheduled task may take before the
+	 * scheduler aborts its signal and gives the run back. A handler that ignores
+	 * the signal keeps running. Defaults to 300 seconds.
+	 *
+	 * A timed-out run that had not started its work counts as a failed attempt (see
+	 * {@link maxAttempts}). Some tasks set their own timeout, which wins over this one.
+	 * A new value applies to a schedule the next time it is provisioned, for
+	 * example at startup or when its workflow is activated.
+	 * Must be greater than 0 and at most 2147483 (about 24 days).
+	 */
+	@Env('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', positiveIntSchema.max(MAX_TIMER_DELAY_SECONDS))
+	taskTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
 
 	/**
 	 * How late, in seconds, a scheduled run may start and still count as on time. A

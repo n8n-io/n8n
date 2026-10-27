@@ -7,6 +7,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
@@ -52,6 +53,9 @@ export class ActiveExecutions {
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
 
+	/** True once `shutdown()` has started. A parked execution is then removed instead of retained for resume. */
+	private isDraining = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -59,6 +63,7 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	has(executionId: string) {
@@ -177,10 +182,11 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
-				if (execution.status === 'waiting') {
+				execution.postExecuteSettled = true;
+				if (execution.status === 'waiting' && !this.isDraining) {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
-				} else {
+				} else if (this.activeExecutions[executionId] === execution) {
 					delete this.activeExecutions[executionId];
 					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
@@ -334,6 +340,14 @@ export class ActiveExecutions {
 		);
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return {
+			executions: Object.keys(this.activeExecutions).length,
+			responseModes: this.responseModes.size,
+		};
+	}
+
 	/**
 	 * @param writeDeadlineMs - How long to wait for the cancelled status to be recorded.
 	 *   Pass what the caller's own shutdown window can still afford.
@@ -400,8 +414,16 @@ export class ActiveExecutions {
 		return this.responseModes.get(executionId);
 	}
 
-	/** Wait for all active executions to finish */
+	/**
+	 * Wait for all active executions to finish.
+	 *
+	 * A parked (waiting) execution keeps its entry so a resume can answer its original caller.
+	 * No resume happens during a drain, so a parked entry is dropped as soon as its run has
+	 * stopped writing: here for entries parked before the drain, and in the settle handler
+	 * for entries that park while the drain waits.
+	 */
 	async shutdown(cancelAll = false) {
+		this.isDraining = true;
 		const isRegularMode = this.executionsConfig.mode === 'regular';
 		if (isRegularMode) {
 			// removal of active executions will no longer release capacity back,
@@ -409,15 +431,17 @@ export class ActiveExecutions {
 			this.concurrencyControl.disable();
 		}
 
+		const isWorker = this.instanceSettings.instanceType === 'worker';
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { status } = this.activeExecutions[executionId];
+			const { status, isQueueJob, postExecuteSettled } = this.activeExecutions[executionId];
+			const isParked = status === 'waiting' && postExecuteSettled === true;
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
-			} else if (status === 'waiting' || status === 'new') {
-				// Remove waiting and new executions to not block shutdown
+			} else if (isParked || status === 'new' || (isWorker && isQueueJob)) {
+				// Remove parked, new and, on a worker, enqueued executions: these run as Bull jobs that this draining worker never picks up
 				delete this.activeExecutions[executionId];
 			}
 		}
@@ -432,6 +456,11 @@ export class ActiveExecutions {
 			}
 
 			await sleep(500);
+			if (isWorker) {
+				for (const [executionId, { isQueueJob }] of Object.entries(this.activeExecutions)) {
+					if (isQueueJob) delete this.activeExecutions[executionId];
+				}
+			}
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}

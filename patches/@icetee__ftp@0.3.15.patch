@@ -1,0 +1,69 @@
+diff --git a/lib/connection.js b/lib/connection.js
+index 0afc364e7fcf955b2d373ede71d77acdeddeabf7..807542043645cb0b85db0610731f481b3c60c524 100644
+--- a/lib/connection.js
++++ b/lib/connection.js
+@@ -8,9 +8,13 @@ var fs = require('fs'),
+     StringDecoder = require('string_decoder').StringDecoder;
+ 
+ var Parser = require('./parser');
+-var XRegExp = require('xregexp').XRegExp;
++// Run a regex with named groups and return the groups, or null when it does not match.
++function execNamed(re, str) {
++  var m = re.exec(str);
++  return m ? m.groups : null;
++}
+ 
+-var REX_TIMEVAL = XRegExp.cache('^(?<year>\\d{4})(?<month>\\d{2})(?<date>\\d{2})(?<hour>\\d{2})(?<minute>\\d{2})(?<second>\\d+)(?:.\\d+)?$'),
++var REX_TIMEVAL = new RegExp('^(?<year>\\d{4})(?<month>\\d{2})(?<date>\\d{2})(?<hour>\\d{2})(?<minute>\\d{2})(?<second>\\d+)(?:.\\d+)?$'),
+     RE_PASV = /([\d]+),([\d]+),([\d]+),([\d]+),([-\d]+),([-\d]+)/,
+     RE_EPSV = /([\d]+)/,
+     RE_EOL = /\r?\n/g,
+@@ -865,7 +869,7 @@ FTP.prototype.lastMod = function(path, cb) {
+       }, true);
+     } else if (err)
+       return cb(err);
+-    var val = XRegExp.exec(text, REX_TIMEVAL), ret;
++    var val = execNamed(REX_TIMEVAL, text), ret;
+     if (!val)
+       return cb(new Error('Invalid date/time format from server'));
+     ret = new Date(val.year + '-' + val.month + '-' + val.date + 'T' + val.hour
+diff --git a/lib/parser.js b/lib/parser.js
+index 3eae00a4ded905c9aef34c5cda743ec63b18b521..2505bc7a17445052f9deda395f90514cf3405f79 100644
+--- a/lib/parser.js
++++ b/lib/parser.js
+@@ -3,10 +3,14 @@ var WritableStream = require('stream').Writable
+     inherits = require('util').inherits,
+     inspect = require('util').inspect;
+ 
+-var XRegExp = require('xregexp').XRegExp;
++// Run a regex with named groups and return the groups, or null when it does not match.
++function execNamed(re, str) {
++  var m = re.exec(str);
++  return m ? m.groups : null;
++}
+ 
+-var REX_LISTUNIX = XRegExp.cache('^(?<type>[\\-ld])(?<permission>([\\-r][\\-w][\\-xstT]){3})(?<acl>(\\+))?\\s+(?<inodes>\\d+)\\s+(?<owner>\\S+)\\s+(?<group>\\S+)\\s+(?<size>\\d+)\\s+(?<timestamp>((?<month1>\\w{3})\\s+(?<date1>\\d{1,2})\\s+(?<hour>\\d{1,2}):(?<minute>\\d{2}))|((?<month2>\\w{3})\\s+(?<date2>\\d{1,2})\\s+(?<year>\\d{4})))\\s+(?<name>.+)$'),
+-    REX_LISTMSDOS = XRegExp.cache('^(?<month>\\d{2})(?:\\-|\\/)(?<date>\\d{2})(?:\\-|\\/)(?<year>\\d{2,4})\\s+(?<hour>\\d{2}):(?<minute>\\d{2})\\s{0,1}(?<ampm>[AaMmPp]{1,2})\\s+(?:(?<size>\\d+)|(?<isdir>\\<DIR\\>))\\s+(?<name>.+)$'),
++var REX_LISTUNIX = new RegExp('^(?<type>[\\-ld])(?<permission>([\\-r][\\-w][\\-xstT]){3})(?<acl>(\\+))?\\s+(?<inodes>\\d+)\\s+(?<owner>\\S+)\\s+(?<group>\\S+)\\s+(?<size>\\d+)\\s+(?<timestamp>((?<month1>\\w{3})\\s+(?<date1>\\d{1,2})\\s+(?<hour>\\d{1,2}):(?<minute>\\d{2}))|((?<month2>\\w{3})\\s+(?<date2>\\d{1,2})\\s+(?<year>\\d{4})))\\s+(?<name>.+)$'),
++    REX_LISTMSDOS = new RegExp('^(?<month>\\d{2})(?:\\-|\\/)(?<date>\\d{2})(?:\\-|\\/)(?<year>\\d{2,4})\\s+(?<hour>\\d{2}):(?<minute>\\d{2})\\s{0,1}(?<ampm>[AaMmPp]{1,2})\\s+(?:(?<size>\\d+)|(?<isdir>\\<DIR\\>))\\s+(?<name>.+)$'),
+     RE_ENTRY_TOTAL = /^total/,
+     RE_RES_END = /(?:^|\r?\n)(\d{3}) [^\r\n]*\r?\n/,
+     RE_EOL = /\r?\n/g,
+@@ -82,7 +86,7 @@ Parser.parseListEntry = function(line) {
+       month, day, year,
+       hour, mins;
+ 
+-  if (ret = XRegExp.exec(line, REX_LISTUNIX)) {
++  if (ret = execNamed(REX_LISTUNIX, line)) {
+     info = {
+       type: ret.type,
+       name: undefined,
+@@ -182,7 +186,7 @@ Parser.parseListEntry = function(line) {
+     } else
+       info.name = ret.name;
+     ret = info;
+-  } else if (ret = XRegExp.exec(line, REX_LISTMSDOS)) {
++  } else if (ret = execNamed(REX_LISTMSDOS, line)) {
+     info = {
+       name: ret.name,
+       type: (ret.isdir ? 'd' : '-'),

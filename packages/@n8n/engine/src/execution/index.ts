@@ -13,9 +13,11 @@ export type {
 	StepError,
 	StepKey,
 	StepKeyId,
+	ResumeBinding,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
+	SeededSteps,
 	TriggerOutputs,
 	WaitDeclaration,
 	WorkflowDocument,
@@ -26,6 +28,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListFilter,
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';

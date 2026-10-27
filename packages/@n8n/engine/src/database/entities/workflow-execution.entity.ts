@@ -14,7 +14,7 @@ import type {
 	TriggerOutputs,
 	WorkflowDocument,
 } from '../../execution/execution.types';
-import type { WorkflowGraph } from '../../graph';
+import type { StoredWorkflowGraph } from '../../graph';
 import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
@@ -34,7 +34,7 @@ export class WorkflowExecution {
 	mode!: ExecutionMode;
 
 	@Column('jsonb')
-	graph!: WorkflowGraph;
+	graph!: StoredWorkflowGraph;
 
 	/** The workflow captured at start. Stored and reported, never read by the engine. */
 	@Column('jsonb')

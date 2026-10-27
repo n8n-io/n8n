@@ -1,24 +1,33 @@
-import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
-import type { AgentExecution } from '../../agents/entities/agent-execution.entity';
-import { resolveAgentPreviewHandoff } from '../agent-preview-handoff';
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+
+import type {
+	AgentSessionThread,
+	AgentSessionTurn,
+} from '@/modules/agents/agent-context.contracts';
+import type { User } from '@n8n/db';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
+import {
+	assertAgentPreviewHandoffScopes,
+	resolveAgentPreviewHandoff,
+} from '../agent-preview-handoff';
 import {
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 	AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 } from '../internal-messages';
 
-function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
+function makeThread(overrides: Partial<AgentSessionThread> = {}): AgentSessionThread {
 	return {
 		id: 'preview-thread-1',
 		title: 'Support triage test',
 		sessionNumber: 3,
 		...overrides,
-	} as AgentExecutionThread;
+	} as AgentSessionThread;
 }
 
-function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution {
+function makeExecution(overrides: Partial<AgentSessionTurn> = {}): AgentSessionTurn {
 	return {
 		id: 'exec-1',
-		threadId: 'preview-thread-1',
 		status: 'success',
 		userMessage: 'Hello agent',
 		model: 'gpt-test',
@@ -27,7 +36,7 @@ function makeExecution(overrides: Partial<AgentExecution> = {}): AgentExecution 
 		error: null,
 		timeline: [],
 		...overrides,
-	} as AgentExecution;
+	} as AgentSessionTurn;
 }
 
 const handoff = {
@@ -191,5 +200,31 @@ describe('resolveAgentPreviewHandoff', () => {
 		expect(body).toContain('&lt;/agent-preview-context&gt;');
 		// UI fallback keeps the original title.
 		expect(result.titleFallback).toBe(craftedTitle);
+	});
+});
+
+describe('assertAgentPreviewHandoffScopes', () => {
+	const user = { id: 'user-1' } as User;
+
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockReset();
+	});
+
+	it('requires both agent read and update scopes for preview handoffs', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+
+		await expect(assertAgentPreviewHandoffScopes(user, 'project-1')).resolves.toBeUndefined();
+
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read', 'agent:update'], false, {
+			projectId: 'project-1',
+		});
+	});
+
+	it('rejects preview handoffs when either required agent scope is missing', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(assertAgentPreviewHandoffScopes(user, 'project-1')).rejects.toThrow(
+			'You do not have permission to load or edit agent previews in this project.',
+		);
 	});
 });

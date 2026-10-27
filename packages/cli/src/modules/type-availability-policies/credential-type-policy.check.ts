@@ -4,9 +4,9 @@ import type {
 	ContentImportContext,
 	CredentialDecryptContext,
 	CredentialSaveContext,
+	CredentialTransferContext,
 	PolicedWorkflow,
 	PolicyCheckResult,
-	PolicyViolation,
 	RegisteredPolicyCheck,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -20,10 +20,8 @@ import { getActiveCredentialTypes } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	type ComposedTypeVerdict,
-} from './type-availability-policy.service';
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
+import { CREDENTIAL_TYPE_SUBJECT, toTypeViolation } from './type-violation';
 
 const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 
@@ -31,21 +29,6 @@ const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 const NOTHING_GRANDFATHERED: ReadonlySet<string> = new Set();
 
 const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
-
-function toViolation(checkId: string, verdict: ComposedTypeVerdict): PolicyViolation {
-	const by = verdict.scope === 'instance' ? 'an instance policy' : "this project's policy";
-
-	return {
-		kind: 'credential-type-unavailable',
-		checkId,
-		message: `Credential type "${verdict.name}" is blocked by ${by}`,
-		subject: verdict.name,
-		subjectType: 'credentialType',
-		scope: verdict.scope,
-		// The scope's default action decided when no rule matched, and there is no id to report.
-		...(verdict.matchedRuleId !== null && { matchedRuleId: verdict.matchedRuleId }),
-	};
-}
 
 /**
  * Enforces credential type availability policies, at every point that handles a workflow and
@@ -138,6 +121,13 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		return await this.checkTypes([credential.type], projectId);
 	}
 
+	async onCredentialTransfer({
+		credential,
+		targetProjectId,
+	}: CredentialTransferContext): Promise<PolicyCheckResult> {
+		return await this.checkTypes([credential.type], targetProjectId);
+	}
+
 	/**
 	 * Locks on the credential's own type, never on the node asking, which is what closes the
 	 * gap a node policy alone leaves: a blocked `slackApi` is refused to the Slack node and to
@@ -155,8 +145,13 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 
 	/**
 	 * The credential types a workflow's nodes ask for: the keys of each node's `credentials` map,
-	 * plus a type a node like HTTP Request names by parameter. A node that names a type without
-	 * selecting a credential still counts: the workflow is built around a type the policy refuses.
+	 * a type a node like HTTP Request names by parameter, and the type a credential-only node
+	 * extends. A node that names a type without selecting a credential still counts: the workflow
+	 * is built around a type the policy refuses.
+	 *
+	 * `extendsCredential` is read on its own because it needs no node description. It is how a
+	 * credential-only node (the VirusTotal node, say) is stored, so a rule on `virusTotalApi`
+	 * reaches that node even when HTTP Request's description is not installed here.
 	 */
 	private distinctCredentialTypes(nodes: PolicedWorkflow['nodes']): string[] {
 		// A Set keeps first-encounter order, so violations and audit lines stay deterministic.
@@ -165,6 +160,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		for (const node of nodes) {
 			for (const type of Object.keys(node.credentials ?? {})) types.add(type);
 			for (const type of this.parameterCredentialTypes(node)) types.add(type);
+			if (node.extendsCredential) types.add(node.extendsCredential);
 		}
 
 		return [...types];
@@ -176,7 +172,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	 * expression, or a node type that isn't installed, can't be resolved here, so it adds nothing.
 	 */
 	private parameterCredentialTypes(node: INode): string[] {
-		const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters[name]).filter(
+		const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
 			(value): value is string => typeof value === 'string' && value !== '',
 		);
 		if (named.length === 0) return [];
@@ -227,7 +223,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		return {
 			violations: verdicts
 				.filter((verdict) => verdict.action === 'deny')
-				.map((verdict) => toViolation(this.id, verdict)),
+				.map((verdict) => toTypeViolation(this.id, CREDENTIAL_TYPE_SUBJECT, verdict, projectId)),
 			// Reported even when nothing is denied: the audit line records what a partial run read.
 			policyVersions: versions,
 		};

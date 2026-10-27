@@ -48,6 +48,9 @@
                                                     "type": {
                                                         "type": "string"
                                                     },
+                                                    "unicode": {
+                                                        "type": "string"
+                                                    },
                                                     "url": {
                                                         "type": "string"
                                                     }
@@ -130,5 +133,5 @@
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 3
 }

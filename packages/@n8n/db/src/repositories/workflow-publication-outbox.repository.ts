@@ -33,8 +33,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * The in-flight (pending or in_progress) publication for a workflow, or null.
 	 * In-progress is preferred when both exist.
 	 */
-	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
-		const inFlight = await this.findBy({
+	async findInFlightByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.managerFor(ctx).findBy(WorkflowPublicationOutbox, {
 			workflowId,
 			status: In([Status.InProgress, Status.Pending]),
 		});

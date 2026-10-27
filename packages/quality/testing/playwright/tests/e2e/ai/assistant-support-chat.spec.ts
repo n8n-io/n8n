@@ -18,7 +18,7 @@ type ChatRequestBody = {
 test.describe(
 	'AI Assistant::enabled',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe('Support Chat', () => {

@@ -157,6 +157,7 @@ function processSubnodes(
 	}
 	if (subnodes.outputParser)
 		addSingleSubnode(nodes, subnodes.outputParser, 'ai_outputParser', 0, parentName);
+	// oxlint-disable-next-line typescript/no-deprecated
 	addSubnodeFlat(nodes, subnodes.embedding ?? subnodes.embeddings, 'ai_embedding', parentName);
 	if (subnodes.vectorStore)
 		addSingleSubnode(nodes, subnodes.vectorStore, 'ai_vectorStore', 0, parentName);

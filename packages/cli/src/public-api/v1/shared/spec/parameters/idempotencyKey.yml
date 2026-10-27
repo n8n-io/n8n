@@ -1,0 +1,9 @@
+name: Idempotency-Key
+in: header
+description: Safe retry key for this POST. Use 1 to 128 visible ASCII characters. The same key and the same request return the first successful response. A different request with this key returns 422. A retry while the first request is in progress returns 409.
+required: false
+schema:
+  type: string
+  minLength: 1
+  maxLength: 128
+  pattern: '^[\x21-\x7E]+$'

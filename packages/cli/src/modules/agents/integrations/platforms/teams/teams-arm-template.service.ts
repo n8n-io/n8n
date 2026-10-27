@@ -2,8 +2,7 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { createHmac } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 
 import { sanitiseAppName } from '../../integration-helpers';
 
@@ -12,9 +11,6 @@ import { sanitiseAppName } from '../../integration-helpers';
  * long enough to click it.
  */
 const TOKEN_TTL = '15m';
-
-/** Scopes the token to this route, so no other n8n-signed token is accepted. */
-const TOKEN_SUBJECT = 'teams-arm-template';
 
 interface TeamsArmTokenClaims {
 	projectId: string;
@@ -74,7 +70,7 @@ export class TeamsArmTemplateService {
 			parameters: {
 				botName: {
 					type: 'string',
-					defaultValue: this.buildBotName(options.agentName, options.agentId),
+					defaultValue: this.botNameFor(options.agentName, options.agentId),
 					metadata: { description: 'Name of the Azure Bot resource. Must be globally unique.' },
 				},
 				// An empty default looks filled in and fails validation only at the end
@@ -168,7 +164,7 @@ export class TeamsArmTemplateService {
 	 */
 	verifyToken(projectId: string, agentId: string, credentialId: string, token: string): boolean {
 		try {
-			const claims = this.jwtService.verify<TeamsArmTokenClaims>(token, { subject: TOKEN_SUBJECT });
+			const claims = this.jwtService.verify<TeamsArmTokenClaims>('teamsArmTemplate', token);
 			return (
 				claims.projectId === projectId &&
 				claims.agentId === agentId &&
@@ -181,16 +177,21 @@ export class TeamsArmTemplateService {
 
 	private signToken(projectId: string, agentId: string, credentialId: string): string {
 		return this.jwtService.sign(
+			'teamsArmTemplate',
 			{ projectId, agentId, credentialId },
-			{ subject: TOKEN_SUBJECT, expiresIn: TOKEN_TTL },
+			{ expiresIn: TOKEN_TTL },
 		);
 	}
 
 	/**
+	 * Public so the provisioned path names the bot exactly as the Deploy to
+	 * Azure template does. Two rungs of the same ladder must not create two
+	 * differently named bots for one agent.
+	 *
 	 * A digest is appended because an Azure Bot resource name is globally unique,
 	 * so the bare agent name would collide across tenants.
 	 */
-	private buildBotName(agentName: string, agentId: string): string {
+	botNameFor(agentName: string, agentId: string): string {
 		const suffix = createHmac('sha256', 'teams-bot-name').update(agentId).digest('hex').slice(0, 8);
 		const slug = agentName
 			.toLowerCase()

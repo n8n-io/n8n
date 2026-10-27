@@ -870,6 +870,36 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
+		it('should send the engine type from the document settings', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-engine',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				settings: { executionOrder: 'v1', engineType: 'v1' },
+			});
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			// The run endpoint reads the stored settings, so the save before a run must carry the selection.
+			for (const engineType of ['v2', 'v1'] as const) {
+				documentStore.setSettings({ ...documentStore.getSettingsSnapshot(), engineType });
+
+				await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenLastCalledWith(
+					workflow.id,
+					expect.objectContaining({ settings: expect.objectContaining({ engineType }) }),
+					false,
+				);
+			}
+		});
+
 		it('should remove invalid node groups before saving and warn the user', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w6',
@@ -1760,6 +1790,39 @@ describe('useWorkflowSaving', () => {
 			} finally {
 				vi.useRealTimers();
 			}
+		});
+
+		it('should not retry autosave when the backend rejects deprecated nodes', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-deprecated-nodes');
+			mockedStore(useSettingsStore).isAutosaveEnabled = true;
+
+			const violation = {
+				kind: 'node-type-deprecated',
+				checkId: 'deprecated-nodes',
+				message:
+					'Cannot use a "n8n-nodes-base.function" node ("Function"): this node type is deprecated.',
+				subject: 'n8n-nodes-base.function',
+				subjectType: 'nodeType',
+			};
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(
+				Object.assign(new Error(violation.message), {
+					httpStatusCode: 400,
+					meta: { violations: [violation] },
+				}),
+			);
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
+
+			expect(await saveCurrentWorkflow({ id: workflow.id }, true, false, true)).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(showPolicyViolationToastSpy).toHaveBeenCalledWith(
+				[violation],
+				expect.any(String),
+				'save',
+				expect.anything(),
+			);
 		});
 
 		it('should not schedule autosave when network is offline', () => {

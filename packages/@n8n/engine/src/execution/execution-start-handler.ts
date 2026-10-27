@@ -8,9 +8,9 @@ import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued -> running`), records the trigger as a completed step, and announces
- * that completion. The first step(s) are planned by the step completion handler
- * that handles the trigger completion.
+ * (`queued -> running`), records the trigger as completed, and announces that
+ * completion. The first step(s) are planned by the step completion handler
+ * that handles that completion.
  * NOTE: this means an extra trip through the queue, but it eliminates some
  * special-casing for triggers and simplifies the completion logic.
  */
@@ -55,7 +55,7 @@ export class ExecutionStartHandler {
 		// already completed so successors read them like any predecessor's slots.
 		// No payload means no slots at all: every successor edge reads undefined
 		// and is treated as dead, same as any other step that produced nothing.
-		// The claim above makes this the only writer, so the row cannot exist yet.
+		// The claim above makes this the only writer, so no row can exist yet.
 		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,

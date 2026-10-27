@@ -1,15 +1,21 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
 	promotionBindingPreflightResultSchema,
+	promotionBindingProjectSchema,
 	promotionBindingWarningSchema,
+	promotionInstanceProjectSchema,
 } from './promotion-binding-preflight.dto';
+import { promotionCommitMessageSchema } from './promotion-common.dto';
+import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
-		commitMessage: z.string().trim().min(1).max(1000),
+		commitMessage: promotionCommitMessageSchema,
 		force: z.boolean().optional(),
 	},
 	{ strict: true },
@@ -38,12 +44,22 @@ export const promotePackageCountsSchema = z.object({
 	tags: count(),
 });
 
+/** A follow-up step that failed after the push. `linkUrl` is an http(s) URL that n8n wrote. */
+export const promotionPromoteWarningSchema = z.object({
+	message: z.string(),
+	linkUrl: z.string().optional(),
+});
+export type PromotionPromoteWarning = z.infer<typeof promotionPromoteWarningSchema>;
+
 /** Describes the instance that handled the request, not any other instance. */
 export const promotePackageResultSchema = z.object({
-	connectionId: n8nIdSchema,
-	configId: n8nIdSchema,
+	environmentId: n8nIdSchema,
 	counts: promotePackageCountsSchema,
 	git: promotionGitResultSchema,
+	/** Set when the push opened a review for the promotion branch. */
+	review: promotionReviewResultSchema.optional(),
+	/** The push succeeded, but a follow-up step did not. The admin can finish it on the host. */
+	warnings: z.array(promotionPromoteWarningSchema).optional(),
 });
 
 export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}
@@ -51,11 +67,29 @@ export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
-	folders: z.object({ created: count(), skipped: count(), removed: count() }),
+	folders: z.object({
+		created: count(),
+		updated: count().openapi({
+			description: 'Existing folders that Apply moved or renamed to match the branch.',
+		}),
+		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated folders that Apply moved under another parent of their project. Included in `updated`.',
+		}),
+		renamed: count().openapi({
+			description: 'Updated folders that Apply gave the name on the branch. Included in `updated`.',
+		}),
+		removed: count(),
+	}),
 	workflows: z.object({
 		created: count(),
 		updated: count(),
 		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated workflows that Apply also moved to another folder of their project. Included in `updated`.',
+		}),
 		archived: count(),
 		deleted: count(),
 		publishing: z.object({
@@ -66,8 +100,8 @@ export const applyPackageCountsSchema = z.object({
 			failed: count(),
 		}),
 	}),
-	credentials: z.object({ matched: count(), stubbed: count() }),
-	dataTables: z.object({ matched: count(), created: count() }),
+	credentials: z.object({ matched: count(), stubbed: count(), updated: count() }),
+	dataTables: z.object({ matched: count(), created: count(), updated: count() }),
 	variables: z.object({
 		matched: count(),
 		created: count(),
@@ -86,7 +120,7 @@ export const applyPackageCountsSchema = z.object({
 
 const expectedSourceSchema = z
 	.object({
-		configId: n8nIdSchema,
+		environmentId: n8nIdSchema,
 		branchName: z.string().min(1),
 		commitSha: z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/),
 	})
@@ -98,15 +132,56 @@ export class ApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const confirmDestructiveChangesSchema = z
+	.boolean()
+	.optional()
+	.openapi({
+		description:
+			'Also applies destructive data table changes, which a `destructive-change` conflict reports: ' +
+			'removed or retyped columns. The values in those columns are removed. ' +
+			'Rows and other columns are kept. ' +
+			'On a full apply, also deletes the team projects that a `project-deletion` conflict reports, ' +
+			'with everything in them. ' +
+			'The confirmation covers every such change and deletion when Continue runs, ' +
+			'including those that are not in the reviewed result.',
+	});
+
 /** Continue must name the source that the paused Apply reported. */
 export class ContinueApplyPackageDto extends Z.class(
-	{ expectedSource: expectedSourceSchema },
+	{
+		expectedSource: expectedSourceSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+	},
+	{ strict: true },
+) {}
+
+/** The selection is a set, so a repeated workflow id is a malformed request. */
+const selectedWorkflowIdsSchema = z
+	.array(n8nIdSchema)
+	.min(1)
+	.refine((ids) => new Set(ids).size === ids.length, {
+		message: 'workflowIds contains duplicates',
+	});
+
+export class ApplySelectionDto extends Z.class(
+	{
+		workflowIds: selectedWorkflowIdsSchema,
+		expectedSource: expectedSourceSchema.optional(),
+	},
+	{ strict: true },
+) {}
+
+export class ContinueApplySelectionDto extends Z.class(
+	{
+		workflowIds: selectedWorkflowIdsSchema,
+		expectedSource: expectedSourceSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+	},
 	{ strict: true },
 ) {}
 
 const applyPackageIdentitySchema = z.object({
-	connectionId: n8nIdSchema,
-	configId: n8nIdSchema,
+	environmentId: n8nIdSchema,
 	git: promotionGitResultSchema,
 });
 
@@ -130,3 +205,36 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
+
+/** The Apply check reads the package at the commit of the Apply preview. */
+export class ApplyCheckQueryDto extends Z.class(
+	{ commitSha: expectedSourceSchema.shape.commitSha },
+	{ strict: true },
+) {}
+
+const crossProjectMoveSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on the branch. */
+	project: promotionBindingProjectSchema,
+	/**
+	 * False when the branch project does not exist on this instance yet. Then the item can only move
+	 * back on the source instance.
+	 */
+	projectExists: z.boolean(),
+	/** The project that holds the item on this instance. */
+	instanceProject: promotionInstanceProjectSchema,
+});
+
+const applyCheckResultSchema = applyPackageIdentitySchema.extend({
+	preflight: promotionBindingPreflightResultSchema,
+	/**
+	 * Workflows that the branch holds in one project and this instance holds in another, where one of
+	 * the two is this project. Apply cannot move them between projects.
+	 */
+	movedWorkflows: z.array(crossProjectMoveSchema),
+	/** Folders that the branch and this instance hold in different projects, as for workflows. */
+	movedFolders: z.array(crossProjectMoveSchema),
+});
+
+export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

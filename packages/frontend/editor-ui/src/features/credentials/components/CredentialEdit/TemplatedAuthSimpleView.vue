@@ -269,7 +269,7 @@ const typeOptions = [
 
 			<div v-if="!compact" :class="$style.provenance">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					data-test-id="templated-auth-edit-setup"
 					@click="setEditing(true)"

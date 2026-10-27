@@ -212,6 +212,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-parameters');
 	}
 
+	getDeprecatedNotice() {
+		return this.container.getByTestId('node-deprecated-notice');
+	}
+
 	getParameterInputHint() {
 		return this.container.getByTestId('parameter-input-hint');
 	}
@@ -242,6 +246,35 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInput(parameterName: string, index?: number) {
 		return locatorByIndex(this.container.getByTestId(`parameter-input-${parameterName}`), index);
+	}
+
+	getParameterInputBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.n8n-input__wrapper');
+	}
+
+	getParameterNumberBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).getByTestId('input-number');
+	}
+
+	getParameterExpressionBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-input-group__prepend').locator('..');
+	}
+
+	getParameterExpressionPrefixBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-input-group__prepend');
+	}
+
+	getParameterCodeEditorBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.cm-editor');
+	}
+
+	getFromAiOverrideButton(parameterName: string) {
+		const inlineButton =
+			this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+		const standaloneButton = this.container
+			.getByTestId(`${parameterName}-parameter-input-persistent-options-container`)
+			.getByTestId('from-ai-override-button');
+		return inlineButton.or(standaloneButton);
 	}
 
 	getParameterInputTextbox(parameterName: string, index?: number) {

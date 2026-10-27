@@ -1,23 +1,37 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
+	N8N_CHAT_INTEGRATION_TYPE,
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
+	type AgentActor,
+	type AgentCreationState,
 	type AgentCapabilityTool,
+	getProviderAttachmentCapabilities,
 	type AgentChatListItem,
 	type AgentChatListResponse,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
+	type AgentN8nChatAgentDetails,
+	type AgentN8nChatThreadSummary,
+	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
+import { EventService, ProjectScopeService } from '@n8n/backend-services';
+import {
+	In,
+	isUniqueConstraintError,
+	ProjectRelationRepository,
+	TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
 // `CredentialsService` reaches `workflow-execute-additional-data`, which
@@ -25,49 +39,90 @@ import { v4 as uuid } from 'uuid';
 // in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { ConflictError } from '@n8n/errors';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
+import { AgentConfigPreparationService } from './agent-config-preparation.service';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { syncAgentIntegrations } from './integrations/integrations-sync';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentTestChatService } from './agent-test-chat.service';
-import { Agent } from './entities/agent.entity';
+import { AgentsSettingsService } from './agents-settings.service';
+import { Agent, type ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-flag.service';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
+	hasN8nChatChannel,
+	type AgentImportIdentity,
 	type AgentSummary,
 	type AgentListResult,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
+import { toAgentRef } from './utils/agent-ref';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import type {
+	CompleteAgentDefinition,
+	AgentDefinitionMetadata,
+	PlannedAgentDestinations,
+} from './utils/agent-definition';
+import { buildAgentMutationEvent } from './agent-modification-telemetry.service';
 
-type CreateAgentOptions = {
+type CreateAgentOptions =
+	| DraftAgentCreateOptions
+	| {
+			actor: PolicyActor;
+			id: string;
+			definition: CompleteAgentDefinition;
+			user: User;
+			metadata?: AgentDefinitionMetadata;
+			plannedDestinations?: PlannedAgentDestinations;
+	  };
+
+type DraftAgentCreateOptions = {
+	/** Who asked for the create, named on the policy block audit event. */
+	actor: PolicyActor;
 	availableInMCP?: boolean;
 	id?: string;
 	adoptOnCollision?: boolean;
 	defaultModel?: AgentModelCredentialConfig;
+	/** Initial configuration for an ordinary create. */
+	config?: Record<string, unknown>;
+	/** Product surface responsible for the insert. Internal seeds omit it. */
+	createdBy?: AgentActor;
+	pushRef?: string;
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
+	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skills hub skill
+	 *  stays a ref; a ref with only a body gets a new hub skill in this project. */
 	skills?: Record<string, AgentSkill>;
+	/** Creates the hub skills of refs with only a body when `user` is not set.
+	 *  Without either, those refs are dropped. */
+	skillCreator?: User;
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
 	 *  validated when the source agent was authored). */
 	tools?: Record<string, unknown>;
-	/** When set, the create is a user-driven duplicate: the seeded config is
-	 *  sanitized and credential-access-checked, channels are copied as drafts,
-	 *  and the write emits `agent-saved` so the dependency index refreshes —
-	 *  parity with the `AgentConfigService.updateConfig` write path. Eval
-	 *  seeding omits it. The duplicate itself is reported by the frontend
-	 *  "User duplicated agent" event (mirrors "User duplicated workflow"). */
+	/** User for configuration validation and product save effects. With schema, duplicates safely. */
 	user?: User;
 };
+
+export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
 
 @Service()
 export class AgentsService {
@@ -85,6 +140,14 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly settingsService: AgentsSettingsService,
+		private readonly agentPolicyService: AgentPolicyService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly transactionRunner: TransactionRunner,
+		private readonly configPreparation: AgentConfigPreparationService,
+		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly setupCompletion: AgentSetupCompletionService,
+		private readonly n8nChatFlag: N8nChatFlagService,
 	) {}
 
 	/**
@@ -97,17 +160,15 @@ export class AgentsService {
 	 *
 	 * Adoption is an authorization decision, and this method makes none: callers
 	 * pass the flag only after proving the caller may adopt this very agent (see
-	 * `InstanceAiPendingAgentService` and the builder delegate).
+	 * `InstanceAiPendingAgentService` and `InstanceAiBuilderDelegateAdapterService`).
 	 *
-	 * Emits no telemetry: a row on its own is not a created agent, so the
-	 * creation events fire from the first configuring write instead (see
-	 * `AgentModificationTelemetryService`). The duplicate path is the one
-	 * exception — a seeded copy is born configured, so the first edit would
-	 * otherwise report a modification, not a creation. The frontend emits a
-	 * dedicated "User duplicated agent" event for that case (carrying the
-	 * source agent id), mirroring "User duplicated workflow".
+	 * Reports creation after the insert and its skill references commit.
 	 */
-	async create(projectId: string, name: string, options: CreateAgentOptions = {}): Promise<Agent> {
+	async create(
+		projectId: string,
+		name: string,
+		options: CreateAgentOptions,
+	): Promise<ProjectAgent> {
 		return (await this.createOrAdopt(projectId, name, options)).agent;
 	}
 
@@ -119,61 +180,259 @@ export class AgentsService {
 	async createOrAdopt(
 		projectId: string,
 		name: string,
-		{
-			availableInMCP = false,
-			id,
-			adoptOnCollision = false,
-			defaultModel,
-			schema,
-			skills,
-			tools,
-			user,
-		}: CreateAgentOptions = {},
-	): Promise<{ agent: Agent; adopted: boolean }> {
-		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
-			schema,
-			user,
-			defaultModel,
-		});
-
-		const agent = this.agentRepository.create({
-			...(id ? { id } : {}),
-			name,
+		options: CreateAgentOptions,
+	): Promise<AgentCreationResult> {
+		await this.settingsService.assertEnabled();
+		if ('definition' in options) {
+			const agent = await this.createCompleteDefinition(projectId, options);
+			return await this.getCreationResult(agent, false);
+		}
+		this.assertCreateOptions(options);
+		const { schemaConfig, integrations } = await this.prepareInitialConfig(
 			projectId,
-			schema: schemaConfig,
-			...(integrations.length > 0 ? { integrations } : {}),
-			...(skills ? { skills } : {}),
-			...(tools ? { tools: tools as Agent['tools'] } : {}),
-			versionId: uuid(),
-			availableInMCP,
-		});
-
-		let saved: Agent;
+			name,
+			options,
+		);
+		// Keep the non-null project type returned by this creation path.
+		const agent = Object.assign(
+			this.agentRepository.create({
+				id: options.id || generateNanoId(),
+				name,
+				projectId,
+				schema: fromAgentDocument(schemaConfig).config,
+				...(integrations.length > 0 ? { integrations } : {}),
+				...(options.tools ? { tools: options.tools as Agent['tools'] } : {}),
+				versionId: uuid(),
+				availableInMCP: options.availableInMCP ?? false,
+			}),
+			{ projectId },
+		);
+		const prepared = await this.prepareAgentCreation(agent, schemaConfig, options);
+		let savedRefs: AgentSkillRefs;
 		try {
-			// `insertNew`, not `save`: `save` would update the row a reused
-			// client-minted id names instead of letting the primary key reject it.
-			await this.agentRepository.insertNew(agent);
-			saved = agent;
+			savedRefs = await this.insertAgent(agent, prepared.skillRefs, options);
 		} catch (error) {
-			return {
-				agent: await this.adoptExistingAgent(id, projectId, adoptOnCollision, error),
-				adopted: true,
-			};
+			const existing = await this.adoptExistingAgent(
+				options.id,
+				projectId,
+				options.adoptOnCollision ?? false,
+				error,
+			);
+			return await this.getCreationResult(existing, true);
 		}
 
-		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
+		const config = composeJsonConfig(agent, savedRefs);
+		const result = { agent, config, configHash: getAgentConfigHash(config), adopted: false };
+		this.logger.debug('Created SDK agent', { agentId: agent.id, projectId });
+		await this.completeCreation(result, savedRefs, options, prepared.credentialProvider);
+		return result;
+	}
 
-		// A user-driven duplicate is a real config write, so give it the same
-		// side effect as `updateConfig`: refresh the dependency index. Without
-		// this, a duplicated agent stays un-indexed (workflow edits wouldn't
-		// invalidate its runtime cache). Eval seeding stays silent, as before.
-		// The duplicate is reported by the frontend "User duplicated agent"
-		// event, which carries the source agent id — see `AgentsListView`.
-		if (user) {
-			this.eventService.emit('agent-saved', { agentId: saved.id });
+	/** Compose the saved state when a pending artifact adopts an existing Agent. */
+	async getCreationResult(agent: ProjectAgent, adopted: boolean): Promise<AgentCreationResult> {
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
+		return { agent, config, configHash: getAgentConfigHash(config), adopted };
+	}
+
+	private assertCreateOptions({ config, schema, user, createdBy }: DraftAgentCreateOptions): void {
+		if (config !== undefined && schema !== undefined) {
+			throw new UserError(
+				'Use config for initial configuration or schema for duplication, not both.',
+			);
 		}
+		if ((config !== undefined || createdBy !== undefined) && !user) {
+			throw new UnexpectedError('Agent configuration and creation telemetry require a user');
+		}
+	}
 
-		return { agent: saved, adopted: false };
+	private async prepareAgentCreation(
+		agent: ProjectAgent,
+		initialSchema: AgentJsonConfig,
+		options: DraftAgentCreateOptions,
+	): Promise<{ skillRefs: AgentSkillRefs; credentialProvider?: AgentsCredentialProvider }> {
+		if (options.config === undefined || !options.user) {
+			await this.agentPolicyService.enforceSave(
+				agent.projectId,
+				null,
+				initialSchema,
+				null,
+				options.actor,
+			);
+			return { skillRefs: fromAgentDocument(initialSchema).skillRefs };
+		}
+		const { replacement, credentialProvider, validatedConfig } =
+			await this.configPreparation.prepareForSave(
+				agent,
+				{
+					...initialSchema,
+					// Keeps the default channels split out of `initialSchema`; a config that sets its own wins.
+					...(agent.integrations?.length ? { integrations: agent.integrations } : {}),
+					...options.config,
+					name: agent.name,
+				},
+				options.user,
+				{ previousSkillRefs: [], isNew: true, actor: options.actor },
+			);
+		const { config, skillRefs } = fromAgentDocument(replacement.nextSchema);
+		agent.schema = config;
+		agent.name = validatedConfig.name;
+		agent.integrations = replacement.nextIntegrations;
+		return { skillRefs, credentialProvider };
+	}
+
+	private async insertAgent(
+		agent: Agent,
+		skillRefs: AgentSkillRefs,
+		options: DraftAgentCreateOptions,
+	) {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			// Insert-only: a reused client id must not overwrite the winning draft.
+			await this.agentRepository.insertNew(agent, ctx);
+			if (options.config !== undefined) {
+				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
+				return await this.agentSkillRefs.refsForDraft(agent, ctx);
+			}
+			return await this.agentSkillRefs.createDraftRefs(
+				agent,
+				skillRefs,
+				options.skills ?? {},
+				options.user ?? options.skillCreator ?? null,
+				ctx,
+			);
+		});
+	}
+
+	private async completeCreation(
+		{ agent, config }: AgentCreationResult,
+		skillRefs: AgentSkillRefs,
+		{ user, createdBy, pushRef, config: initialConfig }: DraftAgentCreateOptions,
+		credentialProvider?: AgentsCredentialProvider,
+	): Promise<void> {
+		if (!user) return;
+		if (createdBy) {
+			this.saveCompletion.configurationCreated(
+				{ agent, config, projectId: agent.projectId, user, by: createdBy },
+				pushRef,
+			);
+		} else {
+			this.eventService.emit('agent-saved', { agentId: agent.id });
+		}
+		if (initialConfig !== undefined) {
+			await syncAgentIntegrations(agent, [], agent.integrations ?? [], this.logger);
+		}
+		try {
+			const provider =
+				credentialProvider ??
+				createAgentCredentialProvider(this.credentialsService, agent.projectId, user);
+			const emitSetupCompleted = await this.setupCompletion.recordIfSetupComplete(
+				agent,
+				skillRefs,
+				agent.projectId,
+				provider,
+				user,
+			);
+			await emitSetupCompleted?.();
+		} catch (error) {
+			this.logger.warn('Failed to check setup completion after Agent creation', {
+				agentId: agent.id,
+				error,
+			});
+		}
+	}
+
+	async recordSavedSetupComplete(agent: ProjectAgent, user: User): Promise<void> {
+		if (agent.setupCompletedAt) return;
+		try {
+			const { AgentSetupCompletionService } = await import('./agent-setup-completion.service.js');
+			const emitSetupCompleted = await Container.get(
+				AgentSetupCompletionService,
+			).recordIfSetupComplete(
+				agent,
+				await this.agentSkillRefs.refsForDraft(agent, {}),
+				agent.projectId,
+				createAgentCredentialProvider(this.credentialsService, agent.projectId, user),
+				user,
+			);
+			await emitSetupCompleted?.();
+		} catch (error) {
+			this.logger.warn('Failed to check Agent setup completion', { agentId: agent.id, error });
+		}
+	}
+
+	private async createCompleteDefinition(
+		projectId: string,
+		options: Extract<CreateAgentOptions, { definition: CompleteAgentDefinition }>,
+	): Promise<ProjectAgent> {
+		const { AgentConfigPreparationService } = await import('./agent-config-preparation.service.js');
+		const preparation = Container.get(AgentConfigPreparationService);
+		const { id, user, metadata } = options;
+		await preparation.assertCanSaveDefinition(projectId, user, 'create');
+		const { definition, credentialProvider } = await preparation.prepareDefinition(
+			id,
+			options.definition,
+			projectId,
+			user,
+			options.plannedDestinations,
+		);
+		const { schemaConfig, integrations } = definition.config
+			? decomposeJsonConfig(definition.config)
+			: { schemaConfig: null, integrations: [] };
+		const { config: storedConfig, skillRefs } = schemaConfig
+			? fromAgentDocument(schemaConfig)
+			: { config: null, skillRefs: undefined };
+		await this.agentPolicyService.enforceSave(
+			projectId,
+			null,
+			definition.config ?? { name: definition.name },
+			null,
+			options.actor,
+		);
+		const agent = Object.assign(
+			this.agentRepository.create({
+				id,
+				projectId,
+				name: definition.config?.name ?? definition.name,
+				schema: storedConfig,
+				integrations,
+				tools: definition.tools,
+				availableInMCP: metadata?.availableInMCP ?? false,
+				versionId: uuid(),
+				activeVersionId: null,
+				setupCompletedAt: null,
+			}),
+			{ projectId },
+		);
+		const importedSkillRefs = await Container.get(TransactionRunner).run({}, async (ctx) => {
+			try {
+				await this.agentRepository.insertNew(agent, ctx);
+			} catch (error) {
+				if (isUniqueConstraintError(error)) throw new ConflictError('Agent already exists');
+				throw error;
+			}
+			const imported = await this.agentSkillRefs.importDraftSkills(
+				agent,
+				skillRefs,
+				definition.skills,
+				user.id,
+				ctx,
+			);
+			await this.agentTaskRepository.replaceForAgent(id, definition.tasks, ctx);
+			return imported;
+		});
+		await Container.get(AgentSaveCompletionService).definitionSaved(
+			buildAgentMutationEvent(
+				agent,
+				importedSkillRefs,
+				projectId,
+				{ user, modifiedBy: 'user' },
+				[],
+			),
+			[],
+			credentialProvider,
+			definition.tasks,
+			'create',
+		);
+		return agent;
 	}
 
 	/**
@@ -222,8 +481,19 @@ export class AgentsService {
 		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<Agent | null> {
+	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	}
+
+	async findImportCandidates(
+		projectId: string,
+		sourceAgentIds: string[],
+	): Promise<AgentImportIdentity[]> {
+		return await this.agentRepository.findImportCandidates(projectId, sourceAgentIds);
+	}
+
+	async findImportIdOwners(agentIds: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		return await this.agentRepository.findImportIdOwners(agentIds);
 	}
 
 	async isN8nChatPublished(agentId: string, projectId: string): Promise<boolean> {
@@ -257,9 +527,10 @@ export class AgentsService {
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
-		const skills = (schema?.skills ?? []).map((skill) => ({
+		const draftSkills = await this.agentSkillRefs.readDraft(entity, {});
+		const skills = (draftSkills.skillRefs ?? []).map((skill) => ({
 			id: skill.id,
-			name: entity.skills[skill.id]?.name ?? skill.id,
+			name: draftSkills.skills[skill.id]?.name ?? skill.id,
 		}));
 
 		const tasks = await this.getCapabilityTasks(entity);
@@ -306,7 +577,7 @@ export class AgentsService {
 	 * scopes (instance owners/admins) grant access without an explicit project
 	 * relation.
 	 */
-	async findByIdForUser(agentId: string, user: User): Promise<Agent | null> {
+	async findByIdForUser(agentId: string, user: User): Promise<ProjectAgent | null> {
 		if (hasGlobalScope(user, 'agent:read')) {
 			return await this.agentRepository.findById(agentId);
 		}
@@ -329,27 +600,121 @@ export class AgentsService {
 	 *
 	 * Carries the project relation, because the chat page labels each agent
 	 * with its project.
+	 *
+	 * Also lists every agent in the projects the user is a member of with
+	 * `agent:update` and `agent:publish`, published to n8n Chat or not, so the
+	 * page can offer to make it available. That audience may read the config.
 	 */
 	async findChatReachableByUserPaginated(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentChatListResponse> {
-		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
-		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
+		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
+		const [projectIds, ownedProjectIds] = await Promise.all([
+			this.projectScopeService.getProjectIds(user, ['agent:execute']),
+			this.projectScopeService.getMemberProjectIds(user, ['agent:update', 'agent:publish']),
+		]);
+		// Usage counts are only meaningful (and only needed) for the usage sort.
+		const usageCounts =
+			options.sortBy === 'usage:desc'
+				? await this.agentExecutionService.countN8nChatThreadsByAgent(user.id, projectIds)
+				: undefined;
+		const { count, data } = await this.agentRepository.findN8nChatListPaginated(
 			projectIds,
+			ownedProjectIds,
 			options,
-			{ withProject: true },
+			usageCounts,
 		);
 		return { count, data: data.map(toChatListItem) };
 	}
 
-	/** The agents overview list: every project the user belongs to, no scope check. */
-	async findByUserMembershipPaginated(
+	/**
+	 * One agent over n8n Chat (see the controller route's doc for the audience
+	 * this serves). Scoped like {@link findChatReachableByUserPaginated}.
+	 * Returns `null` when missing, unreachable, or unpublished to n8n Chat —
+	 * the controller turns all three into the same 404.
+	 */
+	async findChatReachableAgentForUser(
+		agentId: string,
+		user: User,
+	): Promise<AgentN8nChatAgentDetails | null> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
+		if (!agent) return null;
+
+		const schema = agent.activeVersion?.schema;
+		// Names are labels only: keep disabled sub-agents so older threads that
+		// delegated to them still show a name. Dedupe so a repeated entry shows once.
+		const subAgentIds = [
+			...new Set((schema?.subAgents?.agents ?? []).map((subAgent) => subAgent.agentId)),
+		];
+		const namesById = new Map(
+			(await this.agentRepository.findByIdsAndProjectId(subAgentIds, agent.projectId)).map(
+				(row) => [row.id, row.name],
+			),
+		);
+
+		return {
+			...toChatListItem(agent),
+			subAgents: subAgentIds.flatMap((id) => {
+				const name = namesById.get(id);
+				return name ? [{ id, name }] : [];
+			}),
+		};
+	}
+
+	/**
+	 * The user's own n8n Chat threads across every agent they can currently
+	 * reach over n8n Chat: a project where they hold `agent:execute`, with a
+	 * published config that carries the channel. Scoping by agent id (not just
+	 * project) keeps a thread out of the list the moment its agent's channel is
+	 * unpublished, even if the user still belongs to the project.
+	 */
+	async findN8nChatThreadsForUser(
+		user: User,
+		options: { limit: number; cursor?: string; agentId?: string; search?: string },
+	): Promise<AgentN8nChatThreadsResponse> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agentIds = options.agentId
+			? await this.reachableAgentIds(options.agentId, projectIds)
+			: await this.agentRepository.findChatReachableIds(projectIds);
+		// `options` also carries `agentId`, already consumed above; the callee only reads
+		// `limit`/`cursor`/`search` off it.
+		return await this.agentExecutionService.findN8nChatThreadsForAgents(user.id, agentIds, options);
+	}
+
+	/**
+	 * Checks reachability for one agent directly, instead of loading every
+	 * reachable id and filtering in memory. An unreachable `agentId` resolves
+	 * to no agent ids, not an error — the caller already can't see that
+	 * agent's threads either way.
+	 */
+	private async reachableAgentIds(agentId: string, projectIds: string[] | null): Promise<string[]> {
+		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
+		return agent ? [agent.id] : [];
+	}
+
+	/**
+	 * One of the user's own n8n Chat threads, scoped like
+	 * {@link findN8nChatThreadsForUser}. Returns `null` when the thread doesn't
+	 * exist, isn't owned by this user, or its agent isn't reachable over n8n
+	 * Chat anymore — the controller turns all three into the same 404.
+	 */
+	async findN8nChatThreadForUser(
+		user: User,
+		threadId: string,
+	): Promise<AgentN8nChatThreadSummary | null> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
+		const agentIds = await this.agentRepository.findChatReachableIds(projectIds);
+		return await this.agentExecutionService.findN8nChatThreadForAgents(user.id, agentIds, threadId);
+	}
+
+	/** The agents overview list: every project where the user holds `agent:list`. */
+	async findListableByUserPaginated(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = projectRelations.map((pr) => pr.projectId);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
@@ -392,6 +757,8 @@ export class AgentsService {
 
 		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
+		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
+
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
@@ -412,7 +779,11 @@ export class AgentsService {
 	private async prepareInitialConfig(
 		projectId: string,
 		name: string,
-		{ schema, user, defaultModel }: CreateAgentOptions,
+		{
+			schema,
+			user,
+			defaultModel,
+		}: Pick<DraftAgentCreateOptions, 'schema' | 'user' | 'defaultModel'>,
 	): Promise<ReturnType<typeof decomposeJsonConfig>> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
@@ -429,7 +800,15 @@ export class AgentsService {
 				gradient: getRandomAgentPersonalisationGradient(),
 			},
 		};
-		if (!schema) return decomposeJsonConfig(defaultConfig);
+		if (!schema) {
+			// New agents start available in n8n Chat while their creator is in the
+			// experiment. Duplicates and seeded configs keep their own channels;
+			// internal creates without a user get none.
+			if (user && (await this.n8nChatFlag.isEnabledFor(user))) {
+				defaultConfig.integrations = [{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }];
+			}
+			return decomposeJsonConfig(defaultConfig);
+		}
 		if (!user) return decomposeJsonConfig(schema);
 		return await this.prepareDuplicateConfig(schema, projectId, user);
 	}
@@ -439,7 +818,7 @@ export class AgentsService {
 		projectId: string,
 		adoptOnCollision: boolean,
 		error: unknown,
-	): Promise<Agent> {
+	): Promise<ProjectAgent> {
 		if (!id || !isUniqueConstraintError(error)) throw error;
 		// Never disclose whether the id exists in another project.
 		const conflict = new ConflictError('An agent with this id already exists');
@@ -452,7 +831,7 @@ export class AgentsService {
 		return existing;
 	}
 
-	private getCapabilityTools(entity: Agent): AgentCapabilityTool[] {
+	private getCapabilityTools(entity: ProjectAgent): AgentCapabilityTool[] {
 		return (entity.schema?.tools ?? []).flatMap<AgentCapabilityTool>((tool) => {
 			switch (tool.type) {
 				case 'custom':
@@ -477,7 +856,7 @@ export class AgentsService {
 		});
 	}
 
-	private async getCapabilityTasks(entity: Agent): Promise<AgentCapabilitySummary['tasks']> {
+	private async getCapabilityTasks(entity: ProjectAgent): Promise<AgentCapabilitySummary['tasks']> {
 		const taskRefs = entity.schema?.tasks ?? [];
 		let taskNamesById: Record<string, string> = {};
 		if (taskRefs.length > 0) {
@@ -538,15 +917,21 @@ export class AgentsService {
 }
 
 /**
- * Keeps the chat list to what the page renders. The icon comes from the
- * published snapshot, the same config the run would use.
+ * Keeps the chat list to what the page renders: icon, blurb, and attachment support
+ * from the published snapshot, or from the draft for an agent not in n8n Chat yet.
  */
-function toChatListItem(agent: Agent): AgentChatListItem {
-	const personalisation = agent.activeVersion?.schema?.personalisation;
+function toChatListItem(agent: ProjectAgent): AgentChatListItem {
+	const availableInChat = hasN8nChatChannel(agent.activeVersion?.schema?.integrations);
+	const schema = availableInChat ? agent.activeVersion?.schema : agent.schema;
+	const description = schema?.description;
+	if (!agent.project) throw new UnexpectedError('Agent project relation is not loaded');
 	return {
-		id: agent.id,
-		name: agent.name,
-		...(personalisation ? { personalisation } : {}),
+		...toAgentRef(agent, schema),
+		...(description ? { description } : {}),
+		availableInChat,
 		project: { id: agent.projectId, name: agent.project.name },
+		attachments: getProviderAttachmentCapabilities(
+			schema?.model ? splitModelId(schema.model).provider : undefined,
+		),
 	};
 }

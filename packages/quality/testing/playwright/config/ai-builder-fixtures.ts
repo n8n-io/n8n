@@ -2,9 +2,8 @@ import { INSTANCE_AI_DISABLED } from './ai-assistant-fixtures';
 import type { TestRequirements } from '../Types';
 
 /**
- * Requirements for enabling the AI workflow builder feature.
- * These tests use the real Anthropic API for workflow generation,
- * requiring N8N_AI_ANTHROPIC_KEY to be set in the environment.
+ * Enable the legacy workflow builder with Instance AI disabled.
+ * Tests that generate workflows configure their API fixtures separately.
  */
 export const workflowBuilderEnabledRequirements: TestRequirements = {
 	config: {

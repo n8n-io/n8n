@@ -6,7 +6,7 @@
  * Navigation intents are emitted as events, except for the project breadcrumb
  * which links back to the owning project/personal page.
  */
-import { computed, onMounted, useCssModule } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
@@ -15,16 +15,18 @@ import {
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
+	N8nHoverCard,
+	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 import AgentPublishButton from './AgentPublishButton.vue';
-import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
+import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
@@ -39,28 +41,29 @@ const props = defineProps<{
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
-	isPreviewOpen?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
+	tasks?: Array<SetupTask<SetupTaskId>>;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
-	'open-preview': [];
-	'close-preview': [];
+	'publish-ready': [ready: boolean];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
+	'setup-task-action': [task: SetupTask<SetupTaskId>];
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 const $style = useCssModule();
+const publishButton = ref<InstanceType<typeof AgentPublishButton>>();
 
 const { createAgent } = useCreateAgent();
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
@@ -77,13 +80,19 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
-
+		icon: props.projectIcon,
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
 ]);
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
+
+function publishAgent() {
+	return publishButton.value?.publish();
+}
+
+defineExpose({ publishAgent });
 
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
@@ -155,9 +164,6 @@ function onMenuSelect(id: string) {
 				theme="medium"
 				@item-selected="onBreadcrumbSelect"
 			>
-				<template #prepend>
-					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
-				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -224,15 +230,44 @@ function onMenuSelect(id: string) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
-			<AgentPreviewButton
-				:is-runnable="props.agent?.isRunnable === true"
-				:is-preview-open="props.isPreviewOpen"
-				:validation-issues="props.configValidationIssues ?? []"
-				test-id="agent-header-preview-btn"
-				@open-preview="emit('open-preview')"
-				@close-preview="emit('close-preview')"
+			<AgentSetupTasks
+				v-if="tasks && tasks.length > 0"
+				:tasks="tasks"
+				@action="emit('setup-task-action', $event)"
 			/>
+			<N8nHoverCard side="bottom" align="end">
+				<template #trigger>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon="circle-help"
+						icon-only
+						:aria-label="i18n.baseText('agents.builder.header.documentation')"
+						href="https://blog.n8n.io/introducing-n8n-agents/"
+						target="_blank"
+						data-testid="agent-documentation-help"
+					/>
+				</template>
+				<template #content>
+					<a
+						href="https://blog.n8n.io/introducing-n8n-agents/"
+						target="_blank"
+						rel="noopener noreferrer"
+						:class="$style.documentationLink"
+						data-testid="agent-documentation-link"
+					>
+						<N8nText step="sm" :class="$style.documentationTitle">
+							{{ i18n.baseText('agents.builder.header.documentation') }}
+							<N8nIcon icon="arrow-up-right" size="small" />
+						</N8nText>
+						<N8nText step="xs" color="text-base">{{
+							i18n.baseText('agents.builder.header.documentation.description')
+						}}</N8nText>
+					</a>
+				</template>
+			</N8nHoverCard>
 			<AgentPublishButton
+				ref="publishButton"
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -241,6 +276,7 @@ function onMenuSelect(id: string) {
 				:config-validation-status="configValidationStatus"
 				:config-validation-issues="props.configValidationIssues ?? []"
 				:before-publish="beforePublish"
+				@publish-ready="emit('publish-ready', $event)"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
@@ -274,10 +310,6 @@ function onMenuSelect(id: string) {
 
 .left :global(.n8n-breadcrumbs) {
 	min-width: max-content;
-}
-
-.left :global(.n8n-breadcrumbs > ul > li:first-child) {
-	display: none;
 }
 
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
@@ -343,5 +375,24 @@ function onMenuSelect(id: string) {
 .destructiveItem,
 .destructiveItem * {
 	color: var(--text-color--danger) !important;
+}
+.documentationLink {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--xs);
+	border-radius: var(--radius--xs);
+	color: var(--text-color);
+
+	&:hover,
+	&:focus-visible {
+		background-color: var(--background--hover);
+	}
+}
+
+.documentationTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>

@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 import {
 	ExecutionNotFoundError,
+	type CancelExecutionResult,
 	type CancelExecutionService,
 	type ExecutionQueryService,
-	type ExecutionStatus,
 	type ExecutionView,
 	type ExecutionWithStepsView,
 	type StepView,
@@ -33,13 +33,18 @@ const ExecutionStatusSchema = z.enum([
 	'cancelled',
 ]);
 
+/** Which executions a search matches. The search body adds the paging. */
+const ExecutionFilterShape = {
+	workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
+	status: z.array(ExecutionStatusSchema).min(1).optional(),
+	hostMode: z.string().min(1).max(32).optional(),
+	createdAfter: datetimeStringWithOffset().optional(),
+	createdBefore: datetimeStringWithOffset().optional(),
+};
+
 const SearchExecutionsBody = z
 	.object({
-		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
-		status: z.array(ExecutionStatusSchema).min(1).optional(),
-		hostMode: z.string().min(1).max(32).optional(),
-		createdAfter: datetimeStringWithOffset().optional(),
-		createdBefore: datetimeStringWithOffset().optional(),
+		...ExecutionFilterShape,
 		before: z
 			.object({ createdAt: datetimeStringWithOffset(), id: z.string().uuid() })
 			.strict()
@@ -72,6 +77,31 @@ export function createSearchExecutionsHandler(
 		}
 		const result = await executionQuery.searchExecutions(parsed.data);
 		res.status(200).json(result);
+	};
+}
+
+/**
+ * `strict`, so a paging key is refused rather than stripped: the body names
+ * one execution, and a `limit` or `before` would otherwise read as honored.
+ */
+const FindLatestExecutionBody = z.object(ExecutionFilterShape).strict();
+
+/** The newest match, with its steps, as `GET /:id?includeSteps=true` reports it. */
+export function createFindLatestExecutionHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = FindLatestExecutionBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		const execution = await executionQuery.findLatestExecutionWithSteps(parsed.data);
+		if (!execution) {
+			fail(res, 404, { error: 'not_found' });
+			return;
+		}
+		res.status(200).json(toExecutionSnapshot(execution));
 	};
 }
 
@@ -152,9 +182,9 @@ export function createCancelExecutionHandler(
 		const id = parseExecutionId(req, res);
 		if (id === null) return;
 
-		let status: ExecutionStatus;
+		let result: CancelExecutionResult;
 		try {
-			({ status } = await cancelExecution.cancel(id));
+			result = await cancelExecution.cancel(id);
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) {
 				fail(res, 404, { error: 'not_found' });
@@ -164,16 +194,20 @@ export function createCancelExecutionHandler(
 		}
 
 		// A repeated cancel answers like the first, so a retried request is safe.
-		if (status !== 'cancelled') {
+		if (result.status !== 'cancelled' || result.finishedAt === null) {
 			fail(res, 409, {
 				error: 'not_cancellable',
-				reason: `The execution has already ${status}`,
-				details: { status },
+				reason: `The execution has already ${result.status}`,
+				details: { status: result.status },
 			});
 			return;
 		}
 
-		const body: CancelExecutionResponse = { executionId: id, status };
+		const body: CancelExecutionResponse = {
+			executionId: id,
+			status: result.status,
+			finishedAt: result.finishedAt.toISOString(),
+		};
 		res.status(200).json(body);
 	};
 }

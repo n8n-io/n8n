@@ -110,6 +110,18 @@ export type WorkflowDocument = JsonObject;
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
 
 /**
+ * Steps the caller already holds the outputs of, by node id: a partial manual
+ * run that reuses earlier results, or a node with pinned data. The engine does
+ * not run such a node. When the run reaches it, the engine records it as
+ * completed with these outputs instead, so everything before it has settled
+ * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
+ *
+ * Each node maps to its outputs per pass, iteration 0 first. A node outside a
+ * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ */
+export type SeededSteps = Record<string, StepSlots[]>;
+
+/**
  * A step's declaration that it is not done: instead of outputs, it says when
  * to resume. The executor produces it, the engine persists it on the step row,
  * and whatever resumes the step reads it back — the engine never interprets
@@ -125,15 +137,18 @@ export type WaitDeclaration =
 			resumeAt: string;
 			/** The slots the step emits when the deadline fires. */
 			outputsAtDeadline: StepSlots;
-			/** Whether a resume request may end the wait early. */
-			acceptsResumeRequest: boolean;
+			/** Which resume request may end the wait early. If absent, none can. */
+			resumeBinding?: ResumeBinding;
 	  }
 	| {
 			/** No deadline, so only a resume request ends this wait. */
 			resumeAt?: never;
 			outputsAtDeadline?: never;
-			acceptsResumeRequest: true;
+			resumeBinding: ResumeBinding;
 	  };
+
+/** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
+export type ResumeBinding = 'execution' | 'step';
 
 /**
  * What ended a step's wait, recorded on the row when it resumed. No node code
@@ -150,7 +165,11 @@ export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: Ste
  * system, as `assertCreatableRecord` does for step creation.
  */
 export function hasResumeCondition(wait: WaitDeclaration): boolean {
-	return wait.acceptsResumeRequest || wait.resumeAt !== undefined;
+	return (
+		wait.resumeBinding === 'execution' ||
+		wait.resumeBinding === 'step' ||
+		wait.resumeAt !== undefined
+	);
 }
 
 /**

@@ -1,9 +1,18 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
 
-import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import {
+	credentialUpdateScope,
+	resolveCredentialConflictPolicy,
+} from '../entities/credential/credential-conflict-policy';
+import type {
+	CredentialBindingRequest,
+	CredentialUpdateScope,
+} from '../entities/credential/credential.types';
+import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
@@ -32,7 +41,13 @@ import {
 	assertTagWritesAllowed,
 } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
-import { needsBundledVariableValues, placeByLayout } from './package-layout';
+import {
+	needsBundledCredentialData,
+	needsBundledCredentialFiles,
+	needsBundledVariableValues,
+	placeByLayout,
+	placeCredentialData,
+} from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -41,7 +56,9 @@ import {
 } from './import-orchestrator';
 import {
 	buildImportResult,
+	credentialsUpdatedAcrossScopes,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
@@ -52,7 +69,6 @@ import {
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
 export class ProjectPackageImporter {
@@ -102,6 +118,15 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getVariables(reader)
 			: undefined;
+		// Read once for the whole import: every scope looks its credentials up by id.
+		const packageCredentials = needsBundledCredentialFiles(
+			request,
+			(manifest.requirements?.credentials?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getCredentials(reader)
+			: undefined;
+		// Projects match by id, so a package project id is also its destination project id.
+		const updateScope = credentialUpdateScope(selectedProjects.map(({ id }) => id));
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
@@ -112,7 +137,7 @@ export class ProjectPackageImporter {
 
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
-		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
+		const inputs: ImportOrchestrationInput[] = [];
 		for (const project of selectedProjects) {
 			const input = await this.buildImportContextForProject(
 				request,
@@ -120,11 +145,30 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
-				bundledVariables,
+				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
 				importSource,
 			);
-			const plan = await this.importOrchestrator.plan(input);
-			planned.push({ project, plan });
+			inputs.push(input);
+		}
+		const plans = await this.importOrchestrator.planPackage(inputs);
+		const planned = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
+
+		const missingCredentialIds = new Set(
+			planned.flatMap(({ plan }) =>
+				plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
+			),
+		);
+		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
+			const bundledCredentials =
+				packageCredentials ??
+				(await this.packageParser.getCredentials(reader, missingCredentialIds));
+			for (const { plan } of planned) {
+				const { credentialRequest } = plan.input;
+				credentialRequest.requirements = placeCredentialData({
+					requirements: credentialRequest.requirements,
+					bundledCredentials,
+				});
+			}
 		}
 
 		assertTagWritesAllowed(
@@ -182,6 +226,9 @@ export class ProjectPackageImporter {
 		const stubbed: string[] = [];
 		let dataTablesMatched = 0;
 		let dataTablesCreated = 0;
+		let dataTablesUpdated = 0;
+		const seeded: string[] = [];
+		const incomplete: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -203,6 +250,9 @@ export class ProjectPackageImporter {
 			stubbed.push(...content.credentialResult.stubbed);
 			dataTablesMatched += content.dataTablePlan.matchedCount;
 			dataTablesCreated += content.dataTablePlan.creations.length;
+			dataTablesUpdated += content.dataTablePlan.updates.length;
+			seeded.push(...content.credentialResult.seeded);
+			incomplete.push(...content.credentialResult.incomplete);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -228,8 +278,20 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed },
-			dataTables: { matched: dataTablesMatched, created: dataTablesCreated },
+			credentials: reconcileCredentialSummary({
+				matched,
+				stubbed,
+				seeded,
+				incomplete,
+				updated: credentialsUpdatedAcrossScopes(
+					applied.map(({ content }) => content.credentialResult),
+				),
+			}),
+			dataTables: {
+				matched: dataTablesMatched,
+				created: dataTablesCreated,
+				updated: dataTablesUpdated,
+			},
 			variables: reconcileVariableSummary({
 				matched: variablesMatched,
 				missing: variablesMissing,
@@ -250,12 +312,21 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
-		bundledVariables: Map<string, SerializedVariable> | undefined,
+		/** Read or resolved once for every scope of the import. */
+		importWide: {
+			bundledVariables: Map<string, SerializedVariable> | undefined;
+			packageCredentials: Map<string, SerializedCredential> | undefined;
+			credentialUpdateScope: CredentialUpdateScope;
+		},
 		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const agents =
+			!request.selection && manifest.agents?.length
+				? await this.packageParser.getAgents(reader, basePrefix)
+				: [];
 
 		// Do not expand the selection to include referenced sub-workflows.
 		const workflows = request.selection
@@ -266,7 +337,11 @@ export class ProjectPackageImporter {
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
-		const requirements = identifyRequirements(manifest.requirements?.credentials, workflows);
+		const requirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+			agents,
+		);
 		const credentialRequest: CredentialBindingRequest = {
 			requirements,
 			matchingMode: request.credentialMatchingMode,
@@ -275,10 +350,13 @@ export class ProjectPackageImporter {
 				request.bindings?.credentials,
 				requirements,
 			),
+			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			packageCredentials: importWide.packageCredentials,
+			updateScope: importWide.credentialUpdateScope,
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows),
+			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows, agents),
 			packageDataTables: await this.packageParser.getDataTables(reader),
 			matchingMode: request.dataTableMatchingMode,
 			missingMode: request.dataTableMissingMode,
@@ -287,10 +365,10 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: placeByLayout({
-				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+				requirements: identifyRequirements(manifest.requirements?.variables, workflows, agents),
 				manifestVariables: manifest.variables,
 				scopePrefix: basePrefix,
-				bundledVariables,
+				bundledVariables: importWide.bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
 			conflictPolicy: request.variableConflictPolicy,
@@ -312,6 +390,8 @@ export class ProjectPackageImporter {
 			},
 			folders,
 			workflows,
+			agents,
+			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
@@ -321,8 +401,14 @@ export class ProjectPackageImporter {
 			importSource,
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
-			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			subWorkflowRequirements: identifyRequirements(
+				manifest.requirements?.workflows,
+				workflows,
+				agents,
+			),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
+			checkRootPlacement: true,
+			...(request.selection ? { movableFolderIds: foldersHolding(folders, workflows) } : {}),
 		};
 	}
 
@@ -367,4 +453,26 @@ function deletesForProject(
 ): string[] | undefined {
 	if (!selection || selection.selectedProjectId !== projectId) return undefined;
 	return selection.deletedWorkflowIds;
+}
+
+/** The folders that hold a selected workflow, with every folder above them. */
+function foldersHolding(
+	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
+	workflows: Array<{ parentFolderId: string | null }>,
+): Set<string> {
+	const parentOf = new Map(
+		folders.map(({ sourceFolderId, parentFolderId }) => [sourceFolderId, parentFolderId]),
+	);
+	const holding = new Set<string>();
+	for (const workflow of workflows) {
+		// A visited folder ends the walk, which also stops a cycle.
+		for (
+			let current = workflow.parentFolderId;
+			current !== null && !holding.has(current);
+			current = parentOf.get(current) ?? null
+		) {
+			holding.add(current);
+		}
+	}
+	return holding;
 }

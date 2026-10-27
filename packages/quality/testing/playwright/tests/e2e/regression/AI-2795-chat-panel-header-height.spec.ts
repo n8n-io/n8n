@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe(
 	'AI-2795: chat panel header height in the expanded logs pane',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
 		test('keeps the chat header the same height as the overview header', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Test_chat_partial_execution.json');

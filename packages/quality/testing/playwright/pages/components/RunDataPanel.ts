@@ -194,4 +194,9 @@ export class RunDataPanel {
 	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {
 		await this.root.getByTestId(`radio-button-${mode}`).click();
 	}
+
+	/** The download button of a binary entry in the binary display mode. */
+	getDownloadBinaryDataButton(index = 0) {
+		return this.root.getByTestId('ndv-download-binary-data').nth(index);
+	}
 }

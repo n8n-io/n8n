@@ -27,7 +27,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -83,7 +83,7 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string };
+	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
@@ -183,14 +183,13 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
-	private hardDeletionBatchSize = 100;
+	readonly hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		transactionRunner: TransactionRunner,
 	) {
@@ -594,6 +593,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
@@ -616,7 +616,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter({
+	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
 		deleteConditions,
@@ -656,23 +656,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return [];
 		}
 
-		const refs = executions.map(({ id, workflowId, storedAt }) => ({
+		return executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
 			storedAt,
 		}));
-
-		const toDelete = [...refs];
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
-			await Promise.all([
-				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
-			]);
-		} while (toDelete.length > 0);
-
-		return refs;
 	}
 
 	async getIdsSince(date: Date) {
@@ -732,7 +720,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.execute();
 	}
 
-	async findSoftDeletedExecutions() {
+	/** One batch of soft-deleted executions past the buffer, newest id first, below `before` when given. */
+	async findSoftDeletedExecutions(before?: string) {
 		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 		const bufferMs =
 			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
@@ -741,7 +730,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
 				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				...(before === undefined ? {} : { id: LessThan(before) }),
 			},
+			order: { id: 'DESC' },
 			take: this.hardDeletionBatchSize,
 
 			/**
@@ -1420,6 +1411,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
+	}
+
+	/** IDs of executions still in progress (`running` or `unknown` status). */
+	async findUnfinishedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: In(['running', 'unknown']) },
+		});
+		return rows.map(({ id }) => id);
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {

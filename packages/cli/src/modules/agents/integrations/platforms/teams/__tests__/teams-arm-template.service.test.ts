@@ -2,8 +2,7 @@ import { mock } from 'vitest-mock-extended';
 import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
 
@@ -14,6 +13,7 @@ const CREDENTIAL_ID = 'cred-1';
 const jwtService = new JwtService(
 	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 	mock<GlobalConfig>({ userManagement: { jwtSecret: 'test-jwt-secret' } }),
+	mock(),
 );
 const urlService = mock<UrlService>();
 urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
@@ -212,6 +212,7 @@ describe('TeamsArmTemplateService', () => {
 		it('rejects an n8n token minted for anything other than this route', () => {
 			// The instance signs tokens for other purposes with the same secret.
 			const token = jwtService.sign(
+				'session',
 				{ projectId: PROJECT_ID, agentId: AGENT_ID, credentialId: CREDENTIAL_ID },
 				{ expiresIn: '15m' },
 			);

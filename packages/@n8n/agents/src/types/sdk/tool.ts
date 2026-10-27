@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { GuardrailNotice } from './guardrail';
 import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
 import type { ApprovalResumePayload } from '../../sdk/tool';
@@ -64,6 +65,8 @@ export interface ToolExecutionContext {
 	continuation?: JSONValue;
 	/** Resume schema restored from persistence for a resumed tool call. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolContext {
@@ -85,6 +88,7 @@ export interface ToolContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -122,6 +126,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	continuation?: JSONValue;
 	/** Resume schema persisted for this suspension. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolCancellationContext extends ToolContext {
@@ -137,6 +142,12 @@ export interface ToolCancellationContext extends ToolContext {
 
 export interface BuiltTool {
 	readonly name: string;
+	/**
+	 * Former names of this tool. Persisted checkpoints and message history can
+	 * still reference them, so the runtime resolves them to this tool. They are
+	 * never exposed to the model.
+	 */
+	readonly legacyNames?: readonly string[];
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -166,6 +177,16 @@ export interface BuiltTool {
 	readonly toModelOutput?: (output: unknown) => unknown;
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
+	/**
+	 * Ends the run after this call's batch settles, without another model call,
+	 * when it returns true for the output. For tools whose result is the last
+	 * thing the turn should do, so the model cannot repeat them.
+	 *
+	 * After a resume, the calls that settled before the suspension are checked
+	 * against the output stored in history. Keep the output small and do not
+	 * combine this with `toModelOutput`, so both checks see the same value.
+	 */
+	readonly endsTurn?: (output: unknown) => boolean;
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,

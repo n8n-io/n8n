@@ -94,6 +94,7 @@ export type AiPreferenceDto = {
 	project: AiPreferenceProjectDto | null;
 	/** Which surface wrote the row. Rows written before the column existed read `ui`. */
 	source: AiPreferenceSource;
+	createdBy: AiPreferenceUserDto | null;
 	scopes: Scope[];
 	createdAt: string;
 	updatedAt: string;

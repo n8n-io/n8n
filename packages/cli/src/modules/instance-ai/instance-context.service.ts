@@ -123,7 +123,12 @@ export type InstanceContextScope =
  * so nothing downstream can mistake "what was asked for" for "what was allowed".
  */
 type ResolvedScope = { allowedCategories: ActivityEventCategory[] } & (
-	| { surface: 'conversation'; projectIds: string[] }
+	| {
+			surface: 'conversation';
+			projectIds: string[];
+			/** Whether the caller holds `execution:read` on the thread's project. */
+			runsVisible: boolean;
+	  }
 	| {
 			surface: 'mcp';
 			projectIds: ActivityProjectScope;
@@ -232,7 +237,6 @@ const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
 	failed: true,
 	empty: false,
 	disabled: false,
-	'machine-follow-up': false,
 };
 
 export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
@@ -281,18 +285,11 @@ export class InstanceContextService {
 		 */
 		scope: InstanceContextScope;
 		cursor: InstanceContextCursor | null;
-		/**
-		 * The agent continuing its own task — a checkpoint or a planned build — rather than a
-		 * person saying something. Nobody is reading intent on those turns, so the block would be
-		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
-		 */
-		isMachineFollowUp?: boolean;
 		/** Instance gate result shared with the activity tool for this turn. */
 		enabled: boolean;
 		now?: Date;
 	}): Promise<InstanceContextResult> {
 		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
-		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
@@ -313,7 +310,7 @@ export class InstanceContextService {
 
 			const [entries, runs, inventory] = await Promise.all([
 				this.readEntries({ cursor, now, scope: resolved }),
-				resolved.surface === 'mcp' && !resolved.runsVisible
+				!resolved.runsVisible
 					? Promise.resolve([])
 					: this.readRuns({ projectIds, cursor, now, mcpVisibleOnly }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
@@ -678,11 +675,17 @@ export class InstanceContextService {
 			if (!allowed) return null;
 
 			if (scope.surface === 'conversation') {
-				const credentials = await userHasScopes(user, ['credential:read'], false, { projectId });
+				// Runs sit behind `execution:read`, as in the executions API. A custom project role
+				// can grant `workflow:read` without it.
+				const [credentials, executions] = await Promise.all([
+					userHasScopes(user, ['credential:read'], false, { projectId }),
+					userHasScopes(user, ['execution:read'], false, { projectId }),
+				]);
 				return {
 					surface: 'conversation',
 					projectIds: [projectId],
 					allowedCategories: credentials ? ['workflow', 'credential'] : ['workflow'],
+					runsVisible: executions,
 				};
 			}
 
@@ -899,7 +902,7 @@ const toolNames = {
 	conversation: {
 		expand: '`activity(action="expand", id=N)`',
 		list: '`activity(action="list")`',
-		workflows: '`workflows(action="list")`',
+		workflows: '`workflow_builder_workflows(action="list")`',
 	},
 	mcp: {
 		expand: '`expand_instance_activity(id=N)`',
@@ -915,9 +918,8 @@ const initialPreamble = (tools: SurfaceToolNames) => [
 	'and act on it rather than asking them to choose from a list they can already see.',
 	'Do not narrate this back to them — unless they asked what has been happening, let it change',
 	'what you do rather than what you say.',
-	`Call ${tools.expand} on a bracketed id to see that entry in full along with`,
-	`everything else that happened to the same resource, or ${tools.list} to look`,
-	'further back than this window. An entry may name a resource that no longer exists.',
+	`Call ${tools.expand} to read an entry and its resource history.`,
+	`Use ${tools.list} to look further back. An entry may name a resource that no longer exists.`,
 ];
 
 /**
@@ -928,7 +930,7 @@ const updatePreamble = (tools: SurfaceToolNames) => [
 	'What has happened since the list earlier in this conversation. Those earlier entries still',
 	'stand — these are additions, not a replacement. Read them the same way: context on what the',
 	'user has been doing, not a task list or something to comment on unprompted.',
-	`${tools.expand} and ${tools.list} work on these ids too.`,
+	`Use ${tools.expand} for details or ${tools.list} for older entries.`,
 ];
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
@@ -976,7 +978,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 				? `ran ${run.total}×, all succeeded`
 				: `ran ${run.total}×, ${run.failed} failed`;
 		// The failure itself, not the newest run, which on a schedule that has since recovered is a
-		// success. `executions` fetches the live record from this id.
+		// success. `workflow_builder_executions` fetches the live record from this id.
 		const failure = run.lastFailedExecutionId
 			? `last failure execution:${run.lastFailedExecutionId}`
 			: '';
@@ -1057,7 +1059,7 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  *
  * Named in the caller's own vocabulary,
- * because the two surfaces do not share tool names. An MCP client handed `workflows(action="get")`
+ * because the two surfaces do not share tool names. An MCP client handed `workflow_builder_workflows(action="get")`
  * would be told to call a tool its server does not expose.
  */
 function liveRecordHint(
@@ -1070,9 +1072,11 @@ function liveRecordHint(
 	> = {
 		conversation: {
 			workflow: row.resourceId
-				? `workflows(action="get", workflowId="${row.resourceId}")`
+				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
 				: undefined,
-			credential: 'credentials(action="list")',
+			credential: row.resourceId
+				? `list_credentials(ids=["${row.resourceId}"])`
+				: 'list_credentials()',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,
@@ -1085,7 +1089,7 @@ function liveRecordHint(
 
 function toFeedEntry(row: ActivityEvent, currentUserId: string, now: Date): string {
 	return [
-		`[${row.id}]`,
+		`[id:${row.id}]`,
 		formatAge(row.createdAt, now),
 		row.category,
 		row.action,

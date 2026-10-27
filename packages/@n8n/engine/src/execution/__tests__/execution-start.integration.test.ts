@@ -146,7 +146,7 @@ describe('execution start (integration)', () => {
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },

@@ -15,6 +15,9 @@ import { ModuleLoadError } from './errors/module-load.error';
 import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
 
+/** Modules that load from workspace packages instead of the n8n modules directory. */
+export type PackagedModules = Partial<Record<ModuleName, () => Promise<unknown>>>;
+
 const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
 	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
 
@@ -43,6 +46,10 @@ export class ModuleRegistry {
 		// policy-infrastructure leads: it registers the enforcement implementation
 		// that every policy feature's checks are run by.
 		'policy-infrastructure',
+		// inbound-auth-core binds the inbound-auth contracts that later modules inject. Modules
+		// initialize in this order, and an unbound abstract constructor parameter resolves to
+		// `undefined` in the container, so it has to run before every consumer.
+		'inbound-auth-core',
 		'insights',
 		'external-secrets',
 		'community-packages',
@@ -51,6 +58,9 @@ export class ModuleRegistry {
 		// resource with the oauth-server module's registry on init.
 		'oauth-server',
 		'mcp',
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		'mcp-discovery',
+		// EOF Experiment cleanup
 		'provisioning',
 		'breaking-changes',
 		'source-control',
@@ -74,12 +84,29 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'inbox',
+		// skills precedes instance-ai and agents: agents keeps its skills in the
+		// skills hub, so skills must start first. See `eligibleModules`.
+		'skills',
 		'instance-ai',
+		// knowledge precedes agents: a module counts as active only after its own
+		// init, and the agents module reads `isActive('knowledge')` in `settings()`.
+		'knowledge',
 		'agents',
-		'inbound-auth-core',
+		'agent-evals',
+		'scim',
+		'type-availability-policies',
 	];
 
 	private readonly activeModules: string[] = [];
+
+	private warnedSkillsKept = false;
+
+	private readonly packagedModules: PackagedModules = {};
+
+	registerPackagedModules(packagedModules: PackagedModules) {
+		Object.assign(this.packagedModules, packagedModules);
+	}
 
 	get eligibleModules(): ModuleName[] {
 		const { enabledModules, disabledModules } = this.modulesConfig;
@@ -90,7 +117,19 @@ export class ModuleRegistry {
 
 		const defaultPlusEnabled = [...new Set([...this.defaultModules, ...enabledModules])];
 
-		return defaultPlusEnabled.filter((m) => !disabledModules.includes(m));
+		// Agents keep their skills in the skills hub, so the agents module needs the skills module.
+		const agentsOn = defaultPlusEnabled.includes('agents') && !disabledModules.includes('agents');
+		const keepSkills = agentsOn && disabledModules.includes('skills');
+		if (keepSkills && !this.warnedSkillsKept) {
+			this.warnedSkillsKept = true;
+			this.logger.warn(
+				'The "skills" module cannot be disabled while the "agents" module is enabled, because agents keep their skills in the skills hub. n8n keeps the "skills" module enabled. To disable it, also disable the "agents" module.',
+			);
+		}
+
+		return defaultPlusEnabled.filter(
+			(m) => !disabledModules.includes(m) || (keepSkills && m === 'skills'),
+		);
 	}
 
 	/**
@@ -118,6 +157,18 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const importPackagedModule = this.packagedModules[moduleName];
+
+			if (importPackagedModule) {
+				try {
+					await importPackagedModule();
+				} catch (error) {
+					throw new ModuleLoadError(moduleName, error);
+				}
+
+				continue;
+			}
+
 			const entryPath = getModuleEntryPath(modulesDir, moduleName);
 
 			try {

@@ -1,8 +1,9 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output,
+ * Consolidated workflow_builder_executions tool — list, get, run, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
 import {
+	getLegacyBuilderToolNames,
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalDetailsSchema,
@@ -14,10 +15,11 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { restrictToolActions } from './restrict-tool-actions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -87,8 +89,8 @@ const runAction = z.object({
 			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
 				'more than one trigger: without it a single trigger is auto-detected and the other ' +
 				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from build-workflow's `triggerNodes` or " +
-				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
+				"Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
+				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
 				'workflow to reach a branch — use this instead.',
 		),
 	timeout: z
@@ -223,20 +225,23 @@ const stopAction = z.object({
 	executionId: z.string().describe('Execution ID'),
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		runAction,
-		runStepAction,
-		debugAction,
-		getNodeOutputAction,
-		getResolvedNodeParametersAction,
-		stopAction,
-	]),
-);
+const actions = [
+	listAction,
+	getAction,
+	runAction,
+	runStepAction,
+	debugAction,
+	getNodeOutputAction,
+	getResolvedNodeParametersAction,
+	stopAction,
+] as const;
 
-type Input = z.infer<typeof inputSchema>;
+type Input = z.infer<(typeof actions)[number]>;
+
+interface ExecutionsToolOptions {
+	allowedActions?: ReadonlyArray<Input['action']>;
+	description?: string;
+}
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
 
@@ -293,39 +298,6 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	return await context.executionService.getStatus(input.executionId);
 }
 
-function normalizeWorkflowName(name: string): string {
-	return name.trim().toLowerCase();
-}
-
-function hasWorkflowName(
-	allowList: ReadonlySet<string>,
-	workflowName: string | undefined,
-): boolean {
-	if (!workflowName) return false;
-
-	const normalizedWorkflowName = normalizeWorkflowName(workflowName);
-	for (const allowedName of allowList) {
-		if (normalizeWorkflowName(allowedName) === normalizedWorkflowName) return true;
-	}
-
-	return false;
-}
-
-async function findAllowedWorkflowByName(
-	context: InstanceAiContext,
-	allowList: ReadonlySet<string> | undefined,
-): Promise<{ id: string; name: string } | undefined> {
-	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
-
-	for (const allowedName of allowList) {
-		const { workflows } = await context.workflowService.list({ query: allowedName, limit: 10 });
-		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
-		if (match) return { id: match.id, name: match.name };
-	}
-
-	return undefined;
-}
-
 async function handleRun(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'run' }>,
@@ -342,60 +314,27 @@ async function handleRun(
 		};
 	}
 
-	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
-	// Checkpoint follow-ups pass an explicit allow-list (the workflows the checkpoint is
-	// verifying). When the allow-list is unset (e.g. planned-build follow-ups, which grant
-	// `runWorkflow: 'always_allow'` without one), the bypass is scoped to the workflows the
-	// agent created during the active plan cycle. Running any other pre-existing workflow
-	// still requires HITL approval, so a prompt injection can't silently run arbitrary
-	// workflows under the user's authority.
-	const allowList = context.allowedRunWorkflowIds;
-	const workflowNameAllowList = context.allowedRunWorkflowNames;
-	let workflowName: string | undefined;
-	let workflowId = input.workflowId;
-	const getWorkflowName = async () => {
-		workflowName ??= await context.workflowService
+	// `always_allow` is only honored for workflows the agent created in this thread.
+	// Running any other workflow still requires HITL approval, so a prompt injection
+	// can't silently run arbitrary workflows under the user's authority.
+	const workflowId = input.workflowId;
+	const getWorkflowName = async () =>
+		await context.workflowService
 			.get(workflowId)
 			.then((wf) => wf.name)
 			.catch(() => undefined);
-		return workflowName;
-	};
-	let allowedByName =
-		context.permissions?.runWorkflow === 'always_allow' &&
-		workflowNameAllowList !== undefined &&
-		hasWorkflowName(workflowNameAllowList, await getWorkflowName());
-	if (
-		context.permissions?.runWorkflow === 'always_allow' &&
-		workflowNameAllowList !== undefined &&
-		!allowedByName &&
-		workflowName === undefined
-	) {
-		const fallbackWorkflow = await findAllowedWorkflowByName(context, workflowNameAllowList);
-		if (fallbackWorkflow) {
-			workflowId = fallbackWorkflow.id;
-			workflowName = fallbackWorkflow.name;
-			allowedByName = true;
-		}
-	}
-	const allowedByList =
-		allowList !== undefined
-			? allowList.has(workflowId)
-			: (context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 	const allowedByScope =
-		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowedByList || allowedByName);
+		(context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 
-	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
-	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
+	// A per-workflow "always allow" grant skips HITL for the rest of the session.
 	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
-	const allowedBySessionGrant =
-		context.requireRunWorkflowApproval !== true &&
-		context.sessionApprovedToolKeys?.has(grantKey) === true;
+	const allowedBySessionGrant = context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
 		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
@@ -479,30 +418,23 @@ async function handleRunStep(
 		};
 	}
 
-	// Same pre-authorization the full run uses: the checkpoint's allow-list when
-	// there is one, otherwise the workflows this plan cycle created.
-	const allowList = context.allowedRunWorkflowIds;
-	const allowedByList =
-		allowList !== undefined
-			? allowList.has(input.workflowId)
-			: (context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
+	// Same pre-authorization the full run uses: workflows the agent created in this thread.
 	const allowedByScope =
-		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		allowedByList;
+		(context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
 
 	// A per-node grant keeps a debug loop from re-prompting on every attempt. A
 	// whole-workflow run grant also covers a single node of that workflow.
 	const stepGrantKey = buildRunStepSessionGrantKey(input.workflowId, input.nodeName);
 	const allowedBySessionGrant =
-		context.requireRunWorkflowApproval !== true &&
-		(context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
-			context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
-				true);
+		context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
+		context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
+			true;
 
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName =
 			(await context.workflowService
 				.get(input.workflowId)
@@ -572,21 +504,38 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-export function createExecutionsTool(context: InstanceAiContext) {
-	return new Tool('executions')
+/**
+ * Appended to every description, a custom one too: each caller reads
+ * executions redacted for its user.
+ */
+const REDACTED_RESULT_GUIDANCE =
+	' A result with `redaction` set carries no output items: n8n hides that ' +
+	"execution's data from this user, for example because a node uses a colleague's " +
+	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
+	'and do not try to get the data another way.';
+
+export function createExecutionsTool(
+	context: InstanceAiContext,
+	options: ExecutionsToolOptions = {},
+) {
+	const inputSchema = restrictToolActions(actions, options.allowedActions);
+
+	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
-				'get node output, get resolved node parameters for a past run, and stop. ' +
-				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
-				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
-				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
-				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
-				'"Execute step" button. Use it to see what one node really returns — when ' +
-				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
-				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+			(options.description ??
+				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
+					'get node output, get resolved node parameters for a past run, and stop. ' +
+					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					'do not treat such a request as a request to build something. ' +
+					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
+					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
+					'action="run-step" runs a single node of the saved workflow, like the canvas ' +
+					'"Execute step" button. Use it to see what one node really returns — when ' +
+					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
+					'the node re-runs on the data it actually received. It runs for real, so do ' +
+					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

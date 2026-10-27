@@ -46,6 +46,7 @@ import {
 	parseTemplatedAuthField,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '../templatedAuth.utils';
+import { hasManagedOAuthApp } from '../credentials.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -400,12 +401,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	}
 
 	function hasManagedOAuthCredentials(credType: string): boolean {
-		const type = credentialsStore.getCredentialTypeByName(credType);
-		if (type?.__skipManagedCreation) return false;
-		return !!(
-			type?.__overwrittenProperties?.includes('clientId') &&
-			type.__overwrittenProperties.includes('clientSecret')
-		);
+		return hasManagedOAuthApp(credentialsStore.getCredentialTypeByName(credType));
 	}
 
 	function usesExternalSecrets(data: Record<string, unknown>): boolean {
@@ -704,7 +700,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		getParentTypes,
 		getCredentialProperties,
 		displayCredentialParameter,
-		hasManagedOAuthCredentials,
 		usesExternalSecrets,
 		setCredentialPropertyDefaults,
 		resetCredentialData,

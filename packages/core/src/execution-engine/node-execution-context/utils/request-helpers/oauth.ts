@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -244,6 +245,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// previous token data to ensure it's not lost on refresh.
 		if (!newOAuthTokenData.resource && token.data.resource) {
 			newOAuthTokenData.resource = token.data.resource;
+		}
+
+		// Salesforce requires the instance URL even when the refresh response returns an empty value.
+		if (!newOAuthTokenData.instance_url && token.data.instance_url) {
+			newOAuthTokenData.instance_url = token.data.instance_url;
 		}
 
 		const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(

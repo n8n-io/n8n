@@ -4,9 +4,6 @@ tags:
 summary: Unpublish a workflow
 description: Unpublish a workflow. In n8n v1, this action was termed deactivating a workflow.
 x-required-scope: workflow:deactivate
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

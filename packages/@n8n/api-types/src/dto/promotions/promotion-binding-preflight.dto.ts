@@ -2,6 +2,7 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
+import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { projectIconSchema } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
@@ -9,6 +10,14 @@ import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+/**
+ * A project on this instance. `name` is left out for a personal project, because its name holds
+ * the owner's email.
+ */
+export const promotionInstanceProjectSchema = z.object({
+	id: sourceId,
+	name: z.string().optional(),
+});
 // Report package values unchanged. The create API validates them when used.
 export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
 	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),
@@ -98,7 +107,45 @@ const credentialConflictSchema = z.object({
 	consumers: consumersSchema,
 });
 
-/** Conflicts need a package or target correction before creation can proceed. */
+export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('add-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(false),
+	}),
+	z.object({
+		kind: z.literal('remove-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('change-column-type'),
+		column: z.string(),
+		from: dataTableColumnTypeSchema,
+		to: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('rename-column'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+	z.object({ kind: z.literal('reorder-columns'), destructive: z.literal(false) }),
+	z.object({
+		kind: z.literal('rename-table'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+]);
+
+/**
+ * Continue can confirm a `destructive-change` or `project-deletion` conflict.
+ * The other conflicts need a package or target correction before creation can proceed.
+ */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
@@ -125,6 +172,21 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		project: promotionBindingProjectSchema,
 		filePath: z.string(),
 		workflows: z.array(workflowSchema),
+	}),
+	/** A full apply deletes each team project that the package does not hold. */
+	z.object({
+		kind: z.literal('project'),
+		code: z.literal('project-deletion'),
+		project: promotionBindingProjectSchema,
+	}),
+	z.object({
+		kind: z.literal('data-table'),
+		code: z.literal('destructive-change'),
+		id: sourceId,
+		name: z.string(),
+		consumers: consumersSchema,
+		/** Every change that the import would make, destructive or not. */
+		changes: z.array(promotionDataTableChangeSchema).min(1),
 	}),
 ]);
 
@@ -170,4 +232,5 @@ export type PromotionCredentialExpressionData = z.infer<
 	typeof promotionCredentialExpressionDataSchema
 >;
 export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
+export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;

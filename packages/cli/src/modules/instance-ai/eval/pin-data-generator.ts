@@ -11,12 +11,12 @@
  * LLM call (`createEvalAgent`) and the `__schema__` lookup wiring.
  */
 
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type {
 	WorkflowJSON,
 	OutputSchemaLookup,
 	PinDataGenerationInstructions,
-	DataTableColumnInfo,
 } from '@n8n/workflow-sdk';
 import {
 	buildDateAnchors,
@@ -55,11 +55,6 @@ export interface GeneratePinDataOptions {
 	 * Absent lookup degrades to API-knowledge-only generation.
 	 */
 	outputSchemaLookup?: OutputSchemaLookup;
-	/**
-	 * Real Data Table columns per pinned dataTable-read node name — the
-	 * authoritative row shape; pinned rows are validated against these keys.
-	 */
-	dataTableColumns?: Record<string, DataTableColumnInfo[]>;
 }
 
 /**
@@ -73,7 +68,7 @@ export interface GeneratePinDataOptions {
  * @throws when generation fails or a node is missing — a silently unpinned node runs for real.
  */
 export async function generatePinData(options: GeneratePinDataOptions): Promise<PinData> {
-	const { workflow, nodeNames, instructions, outputSchemaLookup, dataTableColumns } = options;
+	const { workflow, nodeNames, instructions, outputSchemaLookup } = options;
 
 	if (nodeNames.length === 0) return {};
 
@@ -84,12 +79,7 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 	// Build schema contexts with optional __schema__ enrichment and
 	// structured-output-parser envelopes for AI roots
 	const outputParserTargets = findOutputParserTargets(workflow);
-	const contexts = buildSchemaContexts(
-		targetNodes,
-		outputSchemaLookup,
-		outputParserTargets,
-		dataTableColumns,
-	);
+	const contexts = buildSchemaContexts(targetNodes, outputSchemaLookup, outputParserTargets);
 
 	// Build prompt and call LLM
 	const userPrompt = buildPinDataUserPrompt(workflow, contexts, {
@@ -109,7 +99,8 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
 		});
 
-		const responseText = extractText(result);
+		// The model sometimes explains its answer after the JSON block.
+		const responseText = extractJsonCandidate(extractText(result));
 		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
 
 		const missing = expectedNodeNames.filter((name) => !(name in pinData));
@@ -142,7 +133,7 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 		const summary = remaining
 			.map(
 				(v) =>
-					`${v.nodeName} (unknown: ${v.unknownKeys.join(', ') || '-'}; missing: ${v.missingKeys.join(', ') || '-'}; declared: ${v.declaredKeys.join(', ')})`,
+					`${v.nodeName} (unknown: ${v.unknownKeys.join(', ')}; declared: ${v.declaredKeys.join(', ')})`,
 			)
 			.join('; ');
 		// Fail loud: a drifted fixture served silently would poison failure

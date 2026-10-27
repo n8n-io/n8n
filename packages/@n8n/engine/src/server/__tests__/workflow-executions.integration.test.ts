@@ -11,6 +11,7 @@ import {
 	createDataSource,
 	createStores,
 	WorkflowExecution,
+	WorkflowSeededStep,
 	WorkflowStepExecution,
 } from '../../database';
 import { generateId } from '../../database/generate-id';
@@ -22,7 +23,7 @@ import {
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
-import { noopExecutionResponseSender } from '../../response-channel';
+import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 import type { SearchExecutionsResponse } from '../api.types';
@@ -219,6 +220,7 @@ let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
 let lifecycleEventPublisher: LifecycleEventPublisher;
+let responseSender: ExecutionResponseSender;
 let url: string;
 let stop: () => Promise<void>;
 
@@ -234,10 +236,16 @@ beforeAll(async () => {
 beforeEach(async () => {
 	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
+	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
 		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
-		cancelExecution: new CancelExecutionService(executionStore, stepStore, lifecycleEventPublisher),
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			lifecycleEventPublisher,
+			responseSender,
+		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier: new SharedSecretIdentityVerifier(secret),
 	}));
@@ -272,7 +280,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.workflowId).toBe('wf-1');
 		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
-		expect(row.graph).toEqual(sampleGraph);
+		expect(row.graph).toEqual({ ...sampleGraph, seeded: [] });
 		expect(row.workflow).toEqual(sampleWorkflow);
 		expect(row.triggerOutputs).toEqual([[{ json: { hello: 'world' } }]]);
 
@@ -457,6 +465,53 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
+	it('stores the seeded outputs beside the row and marks the node in the graph', async () => {
+		const seededSteps = { a: [[[{ json: { reused: true } }]]] };
+		const body = startBody({
+			graph: {
+				nodes: [
+					{ id: 'trigger', name: 'T', type: 'trigger' },
+					{ id: 'a', name: 'A', type: 'v1-node' },
+				],
+				edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
+			},
+			seededSteps,
+		});
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.graph.seeded).toEqual(['a']);
+		const seeded = await dataSource
+			.getRepository(WorkflowSeededStep)
+			.find({ where: { executionId: body.executionId } });
+		expect(seeded).toEqual([
+			{ executionId: body.executionId, nodeId: 'a', iteration: 0, outputs: seededSteps.a[0] },
+		]);
+	});
+
+	it('rejects a seeded step for a node outside the graph with 400, creating nothing', async () => {
+		const body = startBody({ seededSteps: { ghost: [[]] } });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_graph');
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOne({ where: { id: body.executionId } });
+		expect(row).toBeNull();
+	});
+
 	it('rejects a graph without a trigger with 400, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
@@ -523,6 +578,65 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(response.status).toBe(501);
 		expect((response.body as { error: string }).error).toBe('unimplemented');
 		expect(workQueue.publish).not.toHaveBeenCalled();
+	});
+});
+
+describe('POST /api/workflow-executions/search/latest (integration)', () => {
+	const findLatest = (body: object) =>
+		request(url).post('/api/workflow-executions/search/latest').set(authHeader()).send(body);
+	async function start(workflowId: string) {
+		const body = startBody({ workflowId });
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+		return body.executionId;
+	}
+
+	it('requires authentication', async () => {
+		await request(url)
+			.post('/api/workflow-executions/search/latest')
+			.send({ workflowIds: 'all' })
+			.expect(401);
+	});
+
+	it.each([
+		{},
+		{ workflowIds: [] },
+		{ workflowIds: 'all', status: [] },
+		{ workflowIds: 'all', limit: 1 },
+		{ workflowIds: 'all', before: sampleCursor },
+		{ workflowIds: 'all', includeTotal: true },
+		{ workflowIds: 'all', unknown: true },
+	])('rejects an invalid body %#', async (body) => {
+		await findLatest(body).expect(400);
+	});
+
+	it('returns the newest matching execution with its steps', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+		const newest = await start(workflowId);
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: [workflowId], status: ['queued'] }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({
+			id: newest,
+			workflowId,
+			status: 'queued',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			steps: [],
+		});
+	});
+
+	it('returns 404 not_found when nothing matches', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+
+		const response = await findLatest({ workflowIds: [workflowId], status: ['completed'] });
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
 	});
 });
 
@@ -684,8 +798,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	const cancel = (id: string) =>
 		request(url).post(`/api/workflow-executions/${id}/cancel`).set(authHeader());
+	/** Started expecting the run end, so a cancel owes the caller an `ended` response. */
 	async function start() {
-		const body = startBody();
+		const body = startBody({ responseExpectation: { kind: 'runEnd' } });
 		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
 		return body.executionId;
 	}
@@ -715,18 +830,23 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 				nodeId: 'b',
 				iteration: 0,
 				status: 'waiting',
-				waitDeclaration: { acceptsResumeRequest: true },
+				waitDeclaration: { resumeBinding: 'execution' },
 			}),
 		);
 
 		const response = await cancel(executionId).expect(200);
 
-		expect(response.body).toEqual({ executionId, status: 'cancelled' });
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('cancelled');
 		expect(row.finishedAt).toBeInstanceOf(Date);
+		// the time the row records, so a caller can show when the run stopped
+		expect(response.body).toEqual({
+			executionId,
+			status: 'cancelled',
+			finishedAt: row.finishedAt?.toISOString(),
+		});
 		for (const step of [queued, waiting]) {
 			expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
 		}
@@ -736,15 +856,24 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 			workflowId: 'wf-1',
 			at: expect.any(String),
 		});
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId,
+			workflowId: 'wf-1',
+			status: 'cancelled',
+			lastStep: null,
+		});
 	});
 
 	it('answers a repeated cancel the same way, announcing nothing more', async () => {
 		const executionId = await start();
-		await cancel(executionId).expect(200);
+		const first = await cancel(executionId).expect(200);
 
-		const response = await cancel(executionId).expect(200);
+		const repeat = await cancel(executionId).expect(200);
 
-		expect(response.body).toEqual({ executionId, status: 'cancelled' });
+		// the same time as well: the row's, not a reading taken on the repeat
+		expect(repeat.body).toEqual(first.body);
+		expect(first.body).toMatchObject({ executionId, status: 'cancelled' });
 		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(1);
 	});
 

@@ -300,6 +300,79 @@ describe('AgentModelCatalogService', () => {
 		expect(result.models.map((m) => m.id)).toEqual(['claude-sonnet-4-6']);
 	});
 
+	it('keeps the gateway label of a google model missing from the catalog', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Gemini Brand New', value: 'models/gemini-brand-new' }],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-brand-new', name: 'Gemini Brand New' }),
+		]);
+	});
+
+	it('prefers the gateway name over the catalog name and keeps its priority for a managed model', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: 'Gemini 2.5 Flash (Gateway)', value: 'models/gemini-2.5-flash', priority: 10 },
+				{ name: 'models/gemini-2.5-flash-lite', value: 'models/gemini-2.5-flash-lite' },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({
+				id: 'gemini-2.5-flash',
+				name: 'Gemini 2.5 Flash (Gateway)',
+				reasoning: true,
+				priority: 10,
+			}),
+			expect.objectContaining({ id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' }),
+		]);
+	});
+
+	it('falls back to the catalog name or the id when the gateway reports no name', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: '', value: 'models/gemini-2.5-flash' },
+				{ name: '', value: 'models/gemini-brand-new', priority: 5 },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }),
+			{ id: 'gemini-brand-new', name: 'gemini-brand-new', toolCall: true, priority: 5 },
+		]);
+	});
+
 	it('strips the "models/" prefix from google model ids before matching', async () => {
 		const { service, lookupService } = makeService();
 		lookupService.lookup.mockResolvedValue({
@@ -431,6 +504,88 @@ describe('AgentModelCatalogService', () => {
 		expect(result.verified).toBe(false);
 		expect(result.models).toHaveLength(1);
 		expect(lookupService.lookup).not.toHaveBeenCalled();
+	});
+
+	describe('azure-openai', () => {
+		it('offers the exact deployment names of the Foundry project, without the catalog', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockResolvedValue({
+				status: 'success',
+				policy: 'endpoint-only',
+				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				models: [{ id: 'my-chat', name: 'my-chat (gpt-4.1)', toolCall: true }],
+			});
+			expect(lookupService.lookupAzureFoundryDeployments).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				credentialId,
+			);
+			expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		});
+
+		it('reports why the deployments are unavailable, without a catalog fallback', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockResolvedValue({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				error: undefined,
+				reason: 'project_missing',
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				unavailable: true,
+				unavailableReason: 'project_missing',
+				models: [],
+			});
+		});
+
+		it('does not send the n8n Connect managed tag to the Foundry lookup', async () => {
+			const { service, lookupService } = makeService();
+
+			await service.getProviderModels(user, 'project-1', 'azure-openai', AI_GATEWAY_MANAGED_TAG);
+
+			expect(lookupService.lookupAzureFoundryDeployments).not.toHaveBeenCalled();
+		});
+
+		it('does not use the catalog when the credential cannot be read', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockRejectedValue(new Error('not accessible'));
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				unavailable: true,
+				models: [],
+			});
+		});
 	});
 
 	it('still returns live models (verified: true) when the catalog fetch fails', async () => {

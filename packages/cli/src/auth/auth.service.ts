@@ -15,8 +15,13 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@n8n/backend-services';
+import {
+	JwtService,
+	UrlService,
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	EventService,
+	// EOF Experiment cleanup
+} from '@n8n/backend-services';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -97,6 +102,9 @@ export class AuthService {
 	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -138,9 +146,10 @@ export class AuthService {
 
 			// Agent chat attachments render via <img> tags, which can't send the
 			// browser-id header. The controller prefix carries a resolved
-			// :projectId in req.baseUrl, so this one needs a pattern.
+			// :projectId in req.baseUrl, so this one needs a pattern. It covers
+			// both the agent preview chat and n8n Chat routes.
 			new RegExp(
-				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/(?:n8n-)?chat/attachments/:attachmentId$`,
 			),
 		];
 	}
@@ -218,7 +227,9 @@ export class AuthService {
 
 			if (token) {
 				try {
-					const payload = this.jwtService.verify<unknown>(token, { algorithms: ['HS256'] });
+					const payload = this.jwtService.verify<unknown>('session', token, {
+						algorithms: ['HS256'],
+					});
 					if (this.isAuthJwtPayload(payload)) {
 						next();
 						return;
@@ -281,7 +292,7 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (!token) return;
 		try {
-			const { exp } = this.jwtService.decode(token);
+			const { exp } = this.jwtService.decodeUnverified(token);
 			if (exp) {
 				await this.invalidAuthTokenRepository.insert({
 					token,
@@ -293,7 +304,22 @@ export class AuthService {
 		}
 	}
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
+		this.setAuthCookie(res, user, usedMfa, browserId, isEmbed, cookieOverrides);
+		this.eventService.emit('experiment-user-first-login', { userId: user.id, at: Date.now() });
+	}
+	// EOF Experiment cleanup
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): rename setAuthCookie to public issueCookie; keep the method body.
+	private setAuthCookie(
 		res: Response,
 		user: User,
 		usedMfa: boolean,
@@ -303,6 +329,7 @@ export class AuthService {
 	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
@@ -326,7 +353,7 @@ export class AuthService {
 			usedMfa,
 			...(isEmbed && { isEmbed }),
 		};
-		return this.jwtService.sign(payload, {
+		return this.jwtService.sign('session', payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
@@ -425,7 +452,7 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload = this.jwtService.verify<unknown>(token, {
+		const jwtPayload = this.jwtService.verify<unknown>('session', token, {
 			algorithms: ['HS256'],
 		});
 
@@ -471,7 +498,8 @@ export class AuthService {
 			const embedCookieOverrides = jwtPayload.isEmbed
 				? ({ sameSite: 'none' as const, secure: true } as const)
 				: undefined;
-			this.issueCookie(
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): call issueCookie instead of setAuthCookie; keep the call and its arguments.
+			this.setAuthCookie(
 				res,
 				user,
 				jwtPayload.usedMfa ?? false,
@@ -490,7 +518,7 @@ export class AuthService {
 			newEmail,
 			hash: this.createJWTHash(user),
 		};
-		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const token = this.jwtService.sign('emailChange', payload, { expiresIn: '20m' });
 		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
 		url.searchParams.append('token', token);
 		return url.toString();
@@ -501,9 +529,7 @@ export class AuthService {
 	): Promise<{ user: User; newEmail: string } | undefined> {
 		let decoded: EmailChangeToken;
 		try {
-			decoded = this.jwtService.verify(token, {
-				audience: 'n8n-email-change',
-			});
+			decoded = this.jwtService.verify('emailChange', token);
 		} catch {
 			return;
 		}
@@ -518,7 +544,7 @@ export class AuthService {
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
+		return this.jwtService.sign('passwordReset', payload, { expiresIn });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -534,9 +560,7 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token, {
-				audience: 'n8n-password-reset',
-			});
+			decodedToken = this.jwtService.verify('passwordReset', token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

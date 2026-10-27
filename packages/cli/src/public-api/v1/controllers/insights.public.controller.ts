@@ -15,7 +15,7 @@ import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { InsightsService } from '@n8n/backend-module-insights';
 
 @PublicApiController('/insights')
 export class InsightsPublicController {

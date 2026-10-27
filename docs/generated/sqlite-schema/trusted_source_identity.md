@@ -63,11 +63,14 @@ erDiagram
   TEXT config
   INTEGER configVersion
   datetime_3_ createdAt
+  varchar_36_ discoveryClaimToken
+  datetime_3_ discoveryClaimedAt
   varchar_36_ id PK
   varchar issuer
   datetime_3_ lastCheckedAt
   TEXT lastError
   varchar_16_ managedBy
+  TEXT metadata
   varchar_128_ name
   varchar_16_ status
   varchar_32_ type
@@ -79,6 +82,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

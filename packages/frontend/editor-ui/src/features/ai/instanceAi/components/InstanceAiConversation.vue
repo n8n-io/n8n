@@ -34,7 +34,6 @@ import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
@@ -124,13 +123,17 @@ const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined
 	'openWorkflowPreview',
 	undefined,
 );
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
+const outOfCreditsMessage = computed(() => {
+	if (!isOutOfCredits.value) return undefined;
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
+});
 
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 const pendingComposerDraft = ref<PendingComposerDraft | null>(null);
@@ -297,7 +300,12 @@ const awaitingOnboardingGreeting = computed(
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+	const isNewAgent =
+		agentAttachment !== null &&
+		pendingAgentAttachment.value?.id === agentAttachment.id &&
+		pendingAgentAttachment.value.pending === true;
+	// A brand-new agent is already the focus of the builder — no composer chip.
+	if (agentAttachment && !isNewAgent && pendingComposerContext.value?.source !== 'agent-preview') {
 		// Prefer the host's live subject name when it refers to the same agent as
 		// the stashed attachment, so a rename in the builder updates the chip
 		// without re-stashing. Falls back to the stashed snapshot otherwise.
@@ -309,9 +317,6 @@ const composerContextChip = computed(() => {
 			type: 'agent-artifact' as const,
 			agentId: agentAttachment.id,
 			projectId: agentAttachment.projectId,
-			isNewAgent:
-				pendingAgentAttachment.value?.id === agentAttachment.id &&
-				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
 			label: liveSubjectName ?? agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
@@ -374,6 +379,10 @@ const composerContextChip = computed(() => {
 
 	return null;
 });
+
+// The new-agent placeholder no longer rides the context chip (a pending agent
+// shows none), so it is passed to the input as an explicit placeholder key.
+const isPendingAgentComposer = computed(() => pendingAgentAttachment.value?.pending === true);
 
 const workflowHandoffGreeting = computed(() => {
 	const attachment = thread.pendingWorkflowAttachment;
@@ -478,16 +487,13 @@ watch(
 	},
 );
 
-watch(
-	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
-	([input, draft, planReview]) => {
-		if (!input || !draft || planReview) return;
-		input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
-		generatedComposerDraft.value = draft.text;
-		pendingComposerDraft.value = null;
-		void nextTick(focusChatInputIfFocusIsIdle);
-	},
-);
+watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	generatedComposerDraft.value = draft.text;
+	pendingComposerDraft.value = null;
+	void nextTick(focusChatInputIfFocusIsIdle);
+});
 
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
@@ -606,16 +612,6 @@ function restoreFailedSubmission(restoreDraft: () => boolean) {
 	restoreDraft();
 }
 
-/**
- * A plan change request is in flight. `confirmAction` never touches the send
- * counter, so without this the composer stays live for the round trip and a
- * second Enter is dropped by the runtime's duplicate guard without a trace.
- */
-const isPlanChangeInFlight = computed(() => {
-	const requestId = thread.pendingPlanReview?.requestId;
-	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
-});
-
 // --- Message handlers ---
 async function handleSubmit(
 	message: string,
@@ -647,39 +643,6 @@ async function handleSubmit(
 
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-
-	// While a plan review is pending every message is feedback on that plan —
-	// the user does not have to click "Ask for edits" first.
-	const planReview = thread.pendingPlanReview;
-	if (planReview) {
-		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
-			if (!sent) {
-				restoreFailedSubmission(restoreDraft);
-				return;
-			}
-			acceptDraft();
-			// Only an accepted request revises the plan. Tracking up front would
-			// also count a dropped or failed submit the run never saw.
-			telemetry.track('User finished providing input', {
-				thread_id: thread.id,
-				input_thread_id: planReview.inputThreadId ?? '',
-				instance_id: rootStore.instanceId,
-				type: 'plan-review',
-				provided_inputs: [
-					{
-						label: 'plan',
-						options: ['approve', 'ask-for-edits', 'deny'],
-						option_chosen: 'ask-for-edits',
-					},
-				],
-				skipped_inputs: [],
-				num_tasks: planReview.taskCount,
-				feedback: scrubSecretsInText(message),
-				plan_feedback_type: 'changes_requested',
-			});
-		});
-		return;
-	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
 	const submittedGeneratedDraft = generatedComposerDraft.value;
@@ -795,9 +758,7 @@ function applyHandoff(context: InstanceAiHandoffContext, initialDraft?: PendingC
 		clearGeneratedDraft();
 	}
 
-	if (!thread.pendingPlanReview) {
-		void nextTick(() => chatInputRef.value?.focus());
-	}
+	void nextTick(() => chatInputRef.value?.focus());
 }
 
 function clearPendingComposerHandoff() {
@@ -821,7 +782,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+	if (composerContextChip.value.type === 'agent-artifact' && pendingAgentAttachment.value) {
 		clearPendingAgentAttachment(thread.id);
 		pendingAgentAttachment.value = null;
 		return;
@@ -949,7 +910,7 @@ defineExpose({
 							:agent-node="builder"
 						/>
 					</div>
-					<!-- Inline confirmations (plan review, text, setup, credential,
+					<!-- Inline confirmations (text, setup, credential,
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat
 						 input slot below instead - see `hasFloatingConfirmation`. -->
@@ -998,10 +959,11 @@ defineExpose({
 							<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 							<LimitedModeNotice />
 							<CreditWarningBanner
-								v-if="creditBanner.visible.value"
+								v-if="isOutOfCredits || creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
 								:credits-quota="store.creditsQuota"
-								:amounts-hidden="quotaLocked"
+								:message="outOfCreditsMessage"
+								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 								@dismiss="creditBanner.dismiss()"
 							/>
@@ -1018,18 +980,20 @@ defineExpose({
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
+										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
 											thread.isSendingMessage ||
-											isPlanChangeInFlight ||
 											thread.hydrationStatus === 'idle' ||
 											thread.isHydratingThread
 										"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder-key="
+											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
+										"
 										:contextual-suggestion="thread.contextualSuggestion"
 										:mentions-enabled="props.mentionsEnabled"
 										:mention-project-id="thread.projectId"
@@ -1076,14 +1040,15 @@ defineExpose({
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
 
-	:global([data-orientation='vertical'][data-orientation='vertical']) {
+	// Only the scrollbar, a direct child: menus inside the chat are vertical too.
+	> :global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
 		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
 		z-index: 4;
 	}
 
-	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+	> :global([data-orientation='vertical'][data-orientation='vertical'] > *) {
 		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
 
 		&:hover {

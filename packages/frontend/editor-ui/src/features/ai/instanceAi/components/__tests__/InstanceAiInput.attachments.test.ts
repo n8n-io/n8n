@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
@@ -22,6 +22,11 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: vi.fn() }),
 }));
 
+const showMessageMock = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock, showError: vi.fn() }),
+}));
+
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
 }));
@@ -34,7 +39,6 @@ const defaultProps = () => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
-	isAwaitingPlanReview: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -52,10 +56,11 @@ describe('InstanceAiInput — staged node attachments', () => {
 		telemetryTrack.mockClear();
 	});
 
-	it('keeps the existing input menu enabled outside the mentions rollout', () => {
-		const { getByTestId } = renderComponent();
+	it('keeps the existing input menu enabled outside the mentions rollout, with no paperclip', () => {
+		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-input-menu')).toBeEnabled();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('consumes staged attachments into the draft without touching already-typed text', async () => {
@@ -111,48 +116,51 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(restoreDraft()).toBe(true);
 		await findAllByTestId('nodes-chip-node');
 	});
+});
 
-	// Plan feedback is resumed as a plain string, so attachments cannot ride along.
-	// They must stay staged for the next real message rather than vanish on send.
-	it('keeps staged chips out of plan feedback instead of dropping them', async () => {
-		const { emitted, findAllByTestId, findByTestId, getByRole, rerender } = renderComponent();
-		const store = useInstanceAiStore();
-
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
-		await findAllByTestId('nodes-chip-node');
-
-		await rerender({ ...defaultProps(), isAwaitingPlanReview: true, isStreaming: true });
-		await userEvent.type(getByRole('textbox'), 'Drop the third workflow');
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
-
-		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
-		const [message, attachments] = emitted().submit[0] as [string, unknown];
-		expect(message).toBe('Drop the third workflow');
-		expect(attachments).toBeUndefined();
-
-		// Still staged, so the user can see them and send them deliberately later.
-		await findAllByTestId('nodes-chip-node');
+describe('attach-only composer', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
-	// Attachments are never submitted with plan feedback, so `isDirty()` stays true
-	// from the staged chips alone — the text restore must not depend on it.
-	it('restores plan feedback text on a failed send even with chips still staged', async () => {
-		const { emitted, findAllByTestId, findByTestId, getByRole, rerender } = renderComponent();
-		const store = useInstanceAiStore();
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
-		await findAllByTestId('nodes-chip-node');
+	it('replaces the "+" menu with a paperclip restricted to the agent\'s file types', () => {
+		const { getByTestId, queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*,application/pdf' },
+		});
 
-		await rerender({ ...defaultProps(), isAwaitingPlanReview: true, isStreaming: true });
-		const textbox = getByRole('textbox');
-		await userEvent.type(textbox, 'Drop the third workflow');
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+		const fileInput = container.querySelector('input[type="file"]');
+		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
+	});
 
-		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
-		const [, , restoreDraft] = emitted().submit[0] as [string, unknown, () => boolean];
+	it('tells the user when a dropped file type is not accepted', async () => {
+		const { getByRole } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
 
-		expect(restoreDraft).toBeTypeOf('function');
-		expect(restoreDraft()).toBe(true);
-		await waitFor(() => expect(textbox).toHaveValue('Drop the third workflow'));
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'report.pdf is not a supported file type',
+		});
+	});
+
+	it('hides attaching entirely when the agent accepts no file types', () => {
+		const { queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: '' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 	});
 });
 

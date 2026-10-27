@@ -49,7 +49,7 @@ export interface BinaryCheckContext {
 	/** Per-test-case annotations forwarded from fixtures. Used by checks that opt into fixture-side overrides. */
 	annotations?: Record<string, unknown>;
 	/**
-	 * Per-live-turn count of build-workflow calls that FAILED (errored / returned
+	 * Per-live-turn count of workflow_builder_build_workflow calls that FAILED (errored / returned
 	 * success:false) — error-forced rebuilds, the universal thrash signal (see
 	 * `failedBuildsPerTurn`). Absent when there's no build transcript
 	 * (e.g. prebuilt-workflow scoring).

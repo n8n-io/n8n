@@ -7,9 +7,6 @@
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
 #
 # A skipped branch or a hard failure is reported to #alerts-build.
-#
-# This workflow dispatches the bundle sync after each mirror run. Bundle branches merge the
-# public branch directly, so they never inherit a private-only bundle cut.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
@@ -30,7 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
 
     steps:
       - name: Generate App Token
@@ -102,13 +98,6 @@ jobs:
 
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
-
-      - name: Dispatch bundle branch sync
-        if: ${{ !cancelled() }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh workflow run sec-sync-bundle-branches.yml --ref master
 
       - name: Notify Slack on failure
         if: failure()

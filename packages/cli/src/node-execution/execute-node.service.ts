@@ -13,15 +13,22 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IRedactedErrorInfo,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, BaseError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	getExecutionRedaction,
+	loadExecutionForViewer,
+} from '@/executions/execution-viewer-reader';
+import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 export const DEFAULT_EXECUTE_NODE_TIMEOUT_MS = 30_000;
 export const MAX_EXECUTE_NODE_TIMEOUT_MS = 60_000;
@@ -52,11 +59,21 @@ export interface ExecuteNodeError {
 	message: string;
 	description?: string;
 	nodeErrorType?: string;
+	/**
+	 * n8n refused the run before it started. The message and the description
+	 * are n8n's own text, not data from the node or the service it calls.
+	 */
+	refused?: true;
 }
 
 export type ExecuteNodeResult =
 	| { status: 'success'; output: ExecuteNodeOutputItem[][] }
-	| { status: 'error'; error: ExecuteNodeError };
+	| { status: 'error'; error: ExecuteNodeError }
+	/**
+	 * n8n redacted the run's data for the user, the same way the executions API
+	 * does. Only the outcome, the redaction reason and the error type remain.
+	 */
+	| { status: 'redacted'; failed: boolean; reason: string; error?: IRedactedErrorInfo };
 
 /**
  * Executes a single node standalone with real credentials and caller-supplied
@@ -86,6 +103,7 @@ export class ExecuteNodeService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async run(user: User, request: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
@@ -98,6 +116,7 @@ export class ExecuteNodeService {
 		await this.checkCredentialAccess(user, credentials);
 
 		const node = this.buildNode(request, credentials);
+		this.deprecatedNodesValidationService.validateOnCreate([node]);
 		const timeoutMs = Math.min(
 			request.timeoutMs ?? DEFAULT_EXECUTE_NODE_TIMEOUT_MS,
 			MAX_EXECUTE_NODE_TIMEOUT_MS,
@@ -106,6 +125,11 @@ export class ExecuteNodeService {
 
 		const workflow = await this.createTemporaryWorkflow(request.projectId, node, timeoutMs);
 		try {
+			const refusal = await findCredentialRefusal(workflow.id, [node], user.id);
+			if (refusal) {
+				const { message, description } = refusal;
+				return { status: 'error', error: { message, description, refused: true } };
+			}
 			return await this.execute(user, workflow, node, inputItems, timeoutMs);
 		} catch (error) {
 			return { status: 'error', error: this.toErrorResponse(error) };
@@ -192,6 +216,7 @@ export class ExecuteNodeService {
 		newWorkflow.isArchived = true;
 		newWorkflow.versionId = uuid();
 		newWorkflow.name = `Execute node ${node.type}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = [node];
@@ -266,7 +291,7 @@ export class ExecuteNodeService {
 			};
 		}
 
-		return await this.extractResult(executionId, node.type);
+		return await this.extractResult(executionId, node.type, user);
 	}
 
 	private async waitForCompletion(executionId: string, timeoutMs: number): Promise<boolean> {
@@ -325,11 +350,9 @@ export class ExecuteNodeService {
 	private async extractResult(
 		executionId: string,
 		nodeTypeName: string,
+		user: User,
 	): Promise<ExecuteNodeResult> {
-		const execution = await this.executionPersistence.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		const execution = await loadExecutionForViewer(executionId, user);
 
 		// The temp workflow is deleted after this read, so a waiting execution
 		// could never be resumed — report it instead of a false success.
@@ -339,6 +362,19 @@ export class ExecuteNodeService {
 				error: {
 					message: `Node type "${nodeTypeName}" entered a wait state; standalone node execution does not support waiting or resuming (e.g. Wait nodes or send-and-wait operations)`,
 				},
+			};
+		}
+
+		const redaction = execution && getExecutionRedaction(execution);
+		if (execution && redaction) {
+			const nodeRuns = execution.data.resultData.runData?.[NODE_NAME];
+			const error = execution.data.resultData.redactedError ?? nodeRuns?.at(-1)?.redactedError;
+			return {
+				status: 'redacted',
+				failed:
+					error !== undefined || execution.status === 'error' || execution.status === 'crashed',
+				reason: redaction.reason,
+				...(error ? { error } : {}),
 			};
 		}
 
@@ -392,7 +428,9 @@ export class ExecuteNodeService {
 		}
 		if (error instanceof Error) {
 			this.logger.debug('Execute node failed', { error: error.message });
-			return { message: error.message };
+			// n8n errors carry their advice in `description`.
+			const description = error instanceof BaseError ? error.description : undefined;
+			return { message: error.message, ...(description ? { description } : {}) };
 		}
 		// Errors read back from a persisted execution are revived as plain
 		// objects, not Error instances.

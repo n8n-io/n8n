@@ -172,7 +172,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
 	});
 
-	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
+	it('bare route: omits every optional field, but always adds success/auth responses', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
@@ -194,11 +194,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
 		});
-		expect(operation.config['x-eov-operation-id']).toBe('unreachable');
-		expect(operation.config['x-eov-operation-handler']).toBe(
-			'v1/handlers/decorator-routed.handler',
-		);
-		expect(operation.config['x-decorator-routed']).toBe(true);
+		expect(Object.keys(operation.config).filter((key) => key.startsWith('x-'))).toEqual([]);
 	});
 
 	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {
@@ -257,6 +253,38 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(operation.config.responses[415]).toEqual({
 			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+	});
+
+	it('documents a multipart body under its own content key, with 413, 415, and 500 responses', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(
+				_req: unknown,
+				_res: unknown,
+				@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) }) body: WidgetBodyDto,
+			) {
+				return body;
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.content).toEqual({
+			'multipart/form-data': { schema: WidgetBodyDto.schema },
+		});
+		expect(operation.config.responses[413]).toEqual({
+			$ref: '../../../../shared/spec/responses/contentTooLarge.yml',
+		});
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+		// Multer's parsing errors can themselves 500 (an unmasked parse failure, or
+		// LIMIT_UNEXPECTED_FILE) - see multipart.request-body.ts's `toPublicApiError`.
+		expect(operation.config.responses[500]).toEqual({
+			$ref: '../../../../shared/spec/responses/internalServerError.yml',
 		});
 	});
 
@@ -340,5 +368,110 @@ describe('getDecoratorGeneratedOperations', () => {
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 		expect(getSharedResponseSchemas().has(WidgetResponseDto)).toBe(false);
+	});
+
+	it('documents a binary success response', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, {
+				mediaType: 'application/gzip',
+				description: 'An archive.',
+				headers: {
+					'X-Example': { description: 'A header.' },
+				},
+			})
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[200]).toEqual({
+			description: 'An archive.',
+			headers: {
+				'X-Example': {
+					description: 'A header.',
+					required: true,
+					schema: { type: 'string' },
+				},
+			},
+			content: {
+				'application/gzip': {
+					schema: { type: 'string', format: 'binary' },
+				},
+			},
+		});
+	});
+
+	it('defaults the binary response description to "Operation successful." and omits headers when none are declared', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, { mediaType: 'application/gzip' })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[200]).toEqual({
+			description: 'Operation successful.',
+			content: {
+				'application/gzip': {
+					schema: { type: 'string', format: 'binary' },
+				},
+			},
+		});
+	});
+
+	it('does not include a binary route in getSharedResponseSchemas', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, { mediaType: 'application/gzip' })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		expect(getSharedResponseSchemas().size).toBe(0);
+	});
+
+	it('documents Idempotency-Key on a non-idempotent POST', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(201)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+		const parameters = operation.config.parameters ?? [];
+
+		expect(parameters).toEqual(
+			expect.arrayContaining([
+				{
+					$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
+				},
+			]),
+		);
+		expect(operation.config.responses[409]).toEqual({
+			$ref: '../../../../shared/spec/responses/conflict.yml',
+		});
+		expect(operation.config.responses[422]).toEqual({
+			$ref: '../../../../shared/spec/responses/unprocessableEntity.yml',
+		});
+	});
+
+	it('omits Idempotency-Key on an idempotent POST', () => {
+		class WidgetsPublicController {
+			@Post('/:widgetId/activate')
+			@ApiResponse(200)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.parameters).toBeUndefined();
+		expect(operation.config.responses[409]).toBeUndefined();
+		expect(operation.config.responses[422]).toBeUndefined();
 	});
 });

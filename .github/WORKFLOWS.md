@@ -10,7 +10,6 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -187,8 +186,7 @@ These only run if specific files changed:
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
-| Review approved            | `release-chromatic.yml` | + design files changed                               |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+| Review submitted or dismissed | `util-notify-pr-status.yml` | Triggers required-review checks for fork PRs; notifies only for approved or dismissed reviews on PRs without the community label |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
 workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
@@ -236,14 +234,6 @@ parallelism). See the `--build-via-mcp` section in
 | PR closed (any)                    | `util-notify-pr-status.yml`    |
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
-
-### Manual Triggers (PR Comments)
-
-| Command            | Workflow                     | Permissions         |
-|--------------------|------------------------------|---------------------|
-| `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
-
-**Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
 
 ### Label Triggers
 
@@ -420,7 +410,9 @@ Run-workflow dropdown, which only a user with write access can pick.
 |-----------------------------|---------------------------------------------------------|
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `test-image-efficiency.yml` | Measure n8n and runners image size and layer waste with Dive |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
+| `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 
 ---
 
@@ -454,10 +446,6 @@ test-sbom-nightly.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
-
-PR Comment Dispatchers (triggered by /command in PR comments):
-test-workflows-pr-comment.yml
-    └──────────────────────────▶  test-workflows-callable.yml
 ```
 
 ---
@@ -480,14 +468,14 @@ test-workflows-pr-comment.yml
 │                                                                            │
 │  Inputs:                                                                   │
 │  ├─ release-type: patch │ minor │ major │ experimental │ premajor          │
-│  └─ base-branch: default master                                            │
+│  ├─ base-branch: default master                                            │
+│  └─ prerelease: skip release channel and branch maintenance                │
 │                          │                                                 │
 │                          ▼                                                 │
 │  STAGE 2: CI Validation                                                    │
 │  ───────────────────────                                                   │
 │  ci-pull-requests.yml runs full suite                                      │
-│  ├─ NO ci-check-pr-title.yml (skipped for release branches)                │
-│  └─ NO release-chromatic.yml (skipped)                                 │
+│  └─ NO ci-check-pr-title.yml (skipped for release branches)                │
 │                          │                                                 │
 │                          ▼ [Merge PR]                                      │
 │  STAGE 3: Publish                                                          │
@@ -517,6 +505,37 @@ test-workflows-pr-comment.yml
 │                                                                            │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Standalone prereleases
+
+Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
+prerelease without moving the stable or beta release channels. This mode:
+
+- publishes public packages under the npm `rc` dist-tag;
+- publishes versioned Docker images without moving channel tags;
+- marks the GitHub release as a prerelease and populates cloud with the same
+  non-experimental payload as a normal minor or patch release;
+- skips pointer tag updates, backport label updates, release notifications, and
+  release-candidate branch maintenance; and
+- fast-forwards `3.x` to the release tag so the next minor version increments
+  from the released version.
+
+Standalone prereleases require `base-branch: 3.x`, a bare v3 version, and a
+`major`, `minor`, or `patch` release type. The release tag update shares a
+concurrency group with the master-to-`3.x` sync. The publish workflow verifies
+that the release descends from the current `3.x` branch before it publishes any
+artifacts. The final branch update fails unless `3.x` can move with a
+fast-forward. Do not merge or push other changes to `3.x` from release PR
+creation until the release tag returns to `3.x`.
+
+For the first v3 prerelease, use `base-branch: 3.x`, `release-type: major`, and
+`prerelease: true`. For later weekly prereleases, use `base-branch: 3.x`,
+`release-type: minor`, and `prerelease: true`.
+
+A major release marks every public package as dirty and increments every package
+by one major version. This gives parallel release lines separate npm version
+namespaces. Minor and patch releases continue to bump only changed packages and
+their dependents.
 
 ### Recovering a failed release
 
@@ -580,8 +599,8 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.18.1, 26.5.1)
-│   └─ Coverage only on 24.18.1
+├─ unit-test (matrix: Node 24.22.1, 26.12.1)
+│   └─ Coverage only on 24.22.1
 ├─ lint
 ├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
@@ -598,9 +617,8 @@ Push to master
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
-| Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
+| Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
@@ -611,6 +629,7 @@ Push to master
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
+| Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
 
@@ -662,7 +681,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.5.1'
+  node-version:        # default: '26.12.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -850,9 +869,8 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in the top-level `OWNERS` file (this replaces the
-GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
-that consume it live in `.github/scripts/owners/`. Line format:
+Team ownership lives in the top-level `OWNERS` file. The scripts that consume
+it live in `.github/scripts/owners/`. Line format:
 
 ```
 <pattern> <@org/team> [required]
@@ -884,8 +902,10 @@ The file drives four workflows:
 ### Required reviews
 
 An entry with the `required` option makes team approval mandatory: when a PR
-changes a file whose winning entry carries `required`, a member of each listed
-team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+changes a non-test file whose winning entry carries `required`, a member of each
+listed team must approve the PR. Test files match the shared patterns in
+`test-files.mjs` and do not trigger required reviews.
+`ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
@@ -920,30 +940,19 @@ Reviews** status succeed without required OWNERS team approvals. A team member
 must apply the `large-scale-change` label. The gate checks the actor from the
 label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
-the exemption. During the CODEOWNERS trial, GitHub still enforces its separate
-code-owner review requirement.
+the exemption.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive
 through `pull_request_target`, which is safe here because no step checks out
 or runs PR code. Review events on a same-repo PR arrive through
 `pull_request_review`. Review events on a fork PR arrive through the
-`workflow_run` of `ci-pull-request-review.yml`, which runs on every submitted
+`workflow_run` of `util-notify-pr-status.yml`, which receives every submitted
 or dismissed review; the owners workflow looks the PR up from that run's head
 and skips same-repo heads, which the direct event already covers. A first
 contribution whose runs still wait for approval gets no review-event
 re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
 the PR number is the manual fallback.
-
-### Transition from CODEOWNERS
-
-During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
-GitHub's native code-owner enforcement keeps gating merges while the
-"Required Reviews" status runs side by side. The two must agree — CODEOWNERS
-holds exactly the `required` entries of OWNERS (plus the OWNERS file itself)
-and must not gain new entries; new ownership goes into OWNERS. After the
-trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
-from the master ruleset, and delete this section (tracked in DEVP-887).
 
 ---
 
@@ -964,7 +973,7 @@ from the master ruleset, and delete this section (tracked in DEVP-887).
 
 **`ubuntu-latest`** - Simple build verification, scheduled maintenance, PR comment handlers, release tagging, Docker manifest creation, any job where speed is not critical
 
-**`blacksmith-2vcpu-ubuntu-2204`** - Initial build/install (benefits from Blacksmith caching), database integration tests (I/O bound), Chromatic/Storybook builds
+**`blacksmith-2vcpu-ubuntu-2204`** - Initial build/install (benefits from Blacksmith caching), database integration tests (I/O bound), Storybook builds
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
@@ -1161,9 +1170,9 @@ open the PR there. That PR **must stay a single-parent squash** — the publish 
 posts to `#alerts-build` when that gate fails on a PR opened *from* `bundle/2.x` or
 `bundle/1.x` (link only, no PR title, since the branch is embargoed).
 
-`sec-sync-bundle-branches.yml` keeps those branches current after every public-to-private sync,
-daily, whenever a PR is merged into one, and on `workflow_dispatch`. It **merges the public
-base into** the bundle branch via
+`sec-sync-bundle-branches.yml` keeps those branches current nightly at 03:00 UTC and on
+`workflow_dispatch`, including before a bundle cut. It **merges the public base into** the
+bundle branch via
 [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without forcing.
 Every push is verified to carry exactly the tree a merge of the two sides would produce (`git
 merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
@@ -1176,7 +1185,8 @@ private-only until publication. The mirror can replace that commit with the publ
 the bundle branch is deleted. The next bundle branch must not inherit the replaced commit.
 
 Deleting a bundle branch takes its open PRs with it: GitHub moves each one onto the deleted
-branch's own base, and re-creating the branch does not move them back. So the sync then calls
+branch's own base, and re-creating the branch does not move them back. The next nightly or manual
+sync re-creates the branch and then calls
 [`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
 on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
 branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
@@ -1259,7 +1269,7 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 |---------------------|-------------------------------------------------------------|
 | Package Publishing  | `NPM_TOKEN`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`           |
 | Notifications       | `QBOT_SLACK_TOKEN`, `RELEASE_HELPER_SLACK_TOKEN`            |
-| Code Quality        | `CODECOV_TOKEN`, `CHROMATIC_PROJECT_TOKEN`, `CURRENTS_RECORD_KEY` |
+| Code Quality        | `CODECOV_TOKEN`, `CURRENTS_RECORD_KEY` |
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |
@@ -1275,12 +1285,6 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 ---
 
 ## Future Vision
-
-### Redundancy Review
-
-Comment trigger (`/test-workflows`) is a workaround.
-
-Long-term: Main CI should be reliable enough to not need these.
 
 ### Workflow Testability
 

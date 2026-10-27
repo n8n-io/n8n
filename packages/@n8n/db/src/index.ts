@@ -21,6 +21,7 @@ export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
 export { principalFromUser } from './utils/principal-from-user';
+export { isPerson, isServiceAccount } from './utils/account-guards';
 export { parseListQuerySortBy } from './utils/list-query-sort';
 export type { ListQuerySort, ListQuerySortDirection } from './utils/list-query-sort';
 export { separate } from './utils/separate';
@@ -44,7 +45,7 @@ export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
-export { DbConnection } from './connection/db-connection';
+export { DbConnection, type ManagedPostgresMarkers } from './connection/db-connection';
 export { DbConnectionMetrics } from './connection/db-connection-metrics';
 export { DbConnectionOptions } from './connection/db-connection-options';
 export type { DbPoolStats } from './connection/db-pool-stats';

@@ -64,26 +64,14 @@ vi.mock('../storage', () => ({
 	formatPreviousAttempts: () => 'previous attempts',
 	ThreadIterationLogStorage: class ThreadIterationLogStorage {},
 	ThreadTaskStorage: class ThreadTaskStorage {},
-	PlannedTaskStorage: class PlannedTaskStorage {},
 	getThread: () => ({ id: 'thread-1' }),
 	TerminalOutcomeStorage: class TerminalOutcomeStorage {},
 	patchThread: () => ({ id: 'thread-1' }),
 	WorkflowLoopStorage: class WorkflowLoopStorage {},
 }));
 vi.mock('../stream/map-chunk', () => ({ mapAgentChunkToEvent: () => ({ type: 'event' }) }));
-vi.mock('../skills/runtime-skills', () => ({
-	INSTANCE_AI_SKILLS_DIR: '/instance-ai-skills',
-	loadInstanceAiRuntimeSkillSource: () => 'runtime-skill-source',
-}));
-vi.mock('../skills/materialize-runtime-skills', () => ({
-	SANDBOX_RUNTIME_SKILLS_DIR: '/sandbox-skills',
-	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: 'registry.json',
-	RUNTIME_SKILL_MANIFEST_FILE: 'manifest.json',
-	RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION: 1,
-	N8N_SKILLS_DIR_ENV: 'N8N_SKILLS_DIR',
-	N8N_SKILL_DIR_ENV: 'N8N_SKILL_DIR',
-	N8N_WORKSPACE_DIR_ENV: 'N8N_WORKSPACE_DIR',
-	createLazyWorkspaceRuntimeSkillSource: () => 'lazy-skill-source',
+vi.mock('../skills/skills', () => ({
+	loadInstanceAiSkills: () => 'skills',
 }));
 vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
@@ -152,12 +140,6 @@ vi.mock('../workflow-loop', () => ({
 vi.mock('../workflow-loop/runtime', () => ({
 	WorkflowLoopRuntime: class WorkflowLoopRuntime {},
 }));
-vi.mock('../planned-tasks/planned-task-service', () => ({
-	PlannedTaskCoordinator: class PlannedTaskCoordinator {},
-}));
-vi.mock('../planned-tasks/planned-task-permissions', () => ({
-	PLANNED_TASK_PERMISSION_OVERRIDES: { checkpoint: { runWorkflow: 'always_allow' } },
-}));
 vi.mock('../parsers/structured-file-parser', () => ({
 	classifyAttachments: () => [{ index: 0, parseable: true, format: 'csv' }],
 	buildAttachmentManifest: () => '[ATTACHMENTS] parse-file [/ATTACHMENTS]',
@@ -224,23 +206,13 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.TraceIndex)).toBeInstanceOf(entrypoint.TraceIndex);
 		expect(construct(entrypoint.TraceWriter)).toBeInstanceOf(entrypoint.TraceWriter);
 
-		expect(call(entrypoint.loadInstanceAiRuntimeSkillSource)).toBe('runtime-skill-source');
-		expect(call(entrypoint.createLazyWorkspaceRuntimeSkillSource)).toBe('lazy-skill-source');
-		expect(entrypoint.INSTANCE_AI_SKILLS_DIR).toBe('/instance-ai-skills');
-		expect(entrypoint.SANDBOX_RUNTIME_SKILLS_DIR).toBe('/sandbox-skills');
-		expect(entrypoint.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE).toBe('registry.json');
-		expect(entrypoint.RUNTIME_SKILL_MANIFEST_FILE).toBe('manifest.json');
-		expect(entrypoint.RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION).toBe(1);
-		expect(entrypoint.N8N_SKILLS_DIR_ENV).toBe('N8N_SKILLS_DIR');
-		expect(entrypoint.N8N_SKILL_DIR_ENV).toBe('N8N_SKILL_DIR');
-		expect(entrypoint.N8N_WORKSPACE_DIR_ENV).toBe('N8N_WORKSPACE_DIR');
+		expect(call(entrypoint.loadInstanceAiSkills)).toBe('skills');
 
 		expect(call(entrypoint.formatPreviousAttempts)).toBe('previous attempts');
 		expect(construct(entrypoint.ThreadIterationLogStorage)).toBeInstanceOf(
 			entrypoint.ThreadIterationLogStorage,
 		);
 		expect(construct(entrypoint.ThreadTaskStorage)).toBeInstanceOf(entrypoint.ThreadTaskStorage);
-		expect(construct(entrypoint.PlannedTaskStorage)).toBeInstanceOf(entrypoint.PlannedTaskStorage);
 		expect(call(entrypoint.getThread)).toEqual({ id: 'thread-1' });
 		expect(construct(entrypoint.TerminalOutcomeStorage)).toBeInstanceOf(
 			entrypoint.TerminalOutcomeStorage,
@@ -307,12 +279,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(entrypoint.verificationResultSchema.safeParse({}).success).toBe(true);
 		expect(construct(entrypoint.WorkflowLoopRuntime)).toBeInstanceOf(
 			entrypoint.WorkflowLoopRuntime,
-		);
-		expect(construct(entrypoint.PlannedTaskCoordinator)).toBeInstanceOf(
-			entrypoint.PlannedTaskCoordinator,
-		);
-		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint!.runWorkflow).toBe(
-			'always_allow',
 		);
 
 		const classified = entrypoint.classifyAttachments([]);

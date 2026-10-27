@@ -105,7 +105,7 @@ const descriptionCountId = `${descriptionId}-count`;
 }
 
 .label {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	max-width: 230px;
 }
 

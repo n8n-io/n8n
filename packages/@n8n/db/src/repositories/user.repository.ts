@@ -5,32 +5,49 @@ import type {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	Repository,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/**
+ * Loads accounts of both kinds. A full row comes back as the child entity that
+ * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
+ * `ServiceAccountRepository` when only one kind can appear.
+ *
+ * The query methods below predate service accounts. They stay here until their
+ * callers move to `PersonRepository`, so that a caller sees no change.
+ */
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
 		userIds: string[],
 		options?: {
 			includeRole?: boolean;
+			includeAuthIdentities?: boolean;
 			offset?: number;
 			limit?: number;
 		},
 	) {
+		const relations = [
+			...(options?.includeRole ? ['role'] : []),
+			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
+		];
 		return await this.find({
 			where: { id: In(userIds) },
 			skip: options?.offset,
 			take: options?.limit,
-			relations: options?.includeRole ? ['role'] : undefined,
+			relations: relations.length > 0 ? relations : undefined,
 			order: { id: 'ASC' },
 		});
 	}
@@ -44,8 +61,17 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	async findByIdWithRole(id: string): Promise<User | null> {
-		return await this.findOne({
+	/**
+	 * Every user with the relations `isPending` needs: the role and the auth
+	 * identities. Without the identities, a user who signs in through SSO or LDAP
+	 * and so has no password would read as pending.
+	 */
+	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
+		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+	}
+
+	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: { id },
 			relations: ['role'],
 		});
@@ -121,6 +147,22 @@ export class UserRepository extends Repository<User> {
 				throw error;
 			}
 			return 'changed';
+		});
+	}
+
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
 		});
 	}
 
@@ -234,17 +276,23 @@ export class UserRepository extends Repository<User> {
 		projectId,
 		projectRoleSlugs,
 		globalRoleSlugs,
+		userIds,
 	}: {
 		projectId: string;
 		projectRoleSlugs: string[];
 		globalRoleSlugs: string[];
+		userIds?: string[];
 	}): Promise<User[]> {
+		if (userIds?.length === 0) return [];
+
+		const requestedUsers = userIds ? { id: In(userIds) } : {};
 		const where: Array<FindOptionsWhere<User>> = [];
 		if (globalRoleSlugs.length > 0) {
-			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
 		}
 		if (projectRoleSlugs.length > 0) {
 			where.push({
+				...requestedUsers,
 				disabled: false,
 				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
 			});
@@ -343,7 +391,16 @@ export class UserRepository extends Repository<User> {
 	private applyUserListFilter(
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
 	): SelectQueryBuilder<User> {
+		if (roleSlugs !== undefined) {
+			if (roleSlugs.length === 0) {
+				queryBuilder.andWhere('1 = 0');
+			} else {
+				queryBuilder.andWhere('user.role IN (:...roleSlugs)', { roleSlugs });
+			}
+		}
+
 		if (filter?.email !== undefined) {
 			queryBuilder.andWhere('user.email = :email', {
 				email: filter.email,
@@ -477,7 +534,10 @@ export class UserRepository extends Repository<User> {
 		return queryBuilder;
 	}
 
-	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
+	buildUserQuery(
+		listQueryOptions?: UsersListFilterDto,
+		roleSlugs?: string[],
+	): SelectQueryBuilder<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
@@ -488,7 +548,7 @@ export class UserRepository extends Repository<User> {
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
 		this.applyUserListSelect(queryBuilder, select);
-		this.applyUserListFilter(queryBuilder, filter);
+		this.applyUserListFilter(queryBuilder, filter, roleSlugs);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);

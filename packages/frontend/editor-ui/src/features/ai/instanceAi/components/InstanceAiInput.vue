@@ -25,7 +25,6 @@ import type {
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { buildMentionKey } from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
@@ -58,6 +57,7 @@ export type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	telemetryPayload?: ITelemetryTrackProperties;
 	/** Required so a new catalog cannot emit suggestions that report as user-typed. */
 	prefillType: InstanceAiPrefillType;
+	suggestionTitle?: string;
 	/**
 	 * Catalog this row belongs to. A host-triggered submit (agent templates)
 	 * is not the home-screen catalog mounted on this input.
@@ -86,7 +86,6 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
-		isAwaitingPlanReview?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -98,6 +97,8 @@ const props = withDefaults(
 		suggestionCatalogVersion?: string;
 		suggestionTelemetryPayload?: ITelemetryTrackProperties;
 		placeholderKey?: BaseTextKey;
+		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
+		placeholder?: string;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -111,12 +112,14 @@ const props = withDefaults(
 		mentionArtifacts?: readonly WorkflowArtifactReference[];
 		mentionActiveWorkflowId?: string;
 		reservedAttachmentCount?: number;
+		isOutOfCredits?: boolean;
+		/** Undefined keeps the default "+" menu; a string replaces it with a plain attach button restricted to those MIME types (`''` hides attaching). */
+		attachOnlyMimeTypes?: string;
 	}>(),
 	{
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
-		isAwaitingPlanReview: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -131,6 +134,7 @@ const props = withDefaults(
 		mentionArtifacts: () => [],
 		mentionActiveWorkflowId: undefined,
 		reservedAttachmentCount: 0,
+		isOutOfCredits: false,
 	},
 );
 
@@ -269,14 +273,13 @@ defineExpose({
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
+	// Lets a host disable other controls (e.g. an agent picker) while a file
+	// attachment is still encoding, so they cannot change who a send targets.
+	isPreparingSubmission,
 });
 
-// A run suspended on a plan review is parked, not working: the user is meant to
-// type into it. Only a real in-flight submission blocks the composer then.
-const isBusy = computed(() =>
-	props.isAwaitingPlanReview
-		? props.isSubmitting
-		: props.isStreaming || props.isSubmitting || isPreparingSubmission.value,
+const isBusy = computed(
+	() => props.isStreaming || props.isSubmitting || isPreparingSubmission.value,
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
@@ -326,9 +329,10 @@ watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
-const shouldShowMentions = computed(
-	() => props.mentionsEnabled && Boolean(props.mentionProjectId) && !props.isAwaitingPlanReview,
+const showAttach = computed(
+	() => props.attachOnlyMimeTypes === undefined || props.attachOnlyMimeTypes.length > 0,
 );
+const shouldShowMentions = computed(() => props.mentionsEnabled && Boolean(props.mentionProjectId));
 const mentionAvailability = useAssistantMentionAvailability({
 	enabled: shouldShowMentions,
 	projectId: () => props.mentionProjectId,
@@ -412,7 +416,6 @@ const canSubmit = computed(() =>
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
-		!props.isAwaitingPlanReview &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -433,9 +436,6 @@ const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	if (props.isAwaitingPlanReview) {
-		return i18n.baseText('instanceAi.input.planReviewPlaceholder');
-	}
 	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
 	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
 		return typedPreview.value;
@@ -451,10 +451,7 @@ const placeholder = computed(() => {
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
 	}
-	if (props.contextChip?.type === 'agent-artifact' && props.contextChip.isNewAgent) {
-		return i18n.baseText('instanceAi.input.newAgentPlaceholder');
-	}
-	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
+	return props.placeholder ?? i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
 watch(
@@ -523,30 +520,17 @@ function resolveAuthorship(
 	};
 }
 
-function resetDraftComposer({ keepAttachments = false } = {}) {
+function resetDraftComposer() {
 	inputText.value = '';
-	if (keepAttachments) return;
 	attachedFiles.value = [];
 	attachedResources.value = [];
 }
 
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
+	if (props.isOutOfCredits) return false;
 	if (isBusy.value || isGatedBySetup.value) return false;
-	// Plan feedback travels as a plain string, so an attachment cannot carry it.
-	if (props.isAwaitingPlanReview) return message.length > 0;
 	return message.length > 0 || attachmentCount > 0;
-}
-
-/**
- * Put failed plan feedback back. Only the text was submitted, so this cannot use
- * `isDirty()` as its guard: staged attachments keep that true even when the text
- * box is empty, which would block every restore.
- */
-function restorePlanFeedbackDraft(message: string) {
-	if (hasNonWhitespaceDraftText.value) return false;
-	inputText.value = message;
-	return true;
 }
 
 /**
@@ -603,27 +587,6 @@ function submitComposerMessage(
 		return;
 	}
 
-	// Plan feedback is resumed as a plain string. Send the text alone and leave
-	// anything staged in place, so it stays visible for a later real message
-	// instead of being dropped on a send that could never carry it. A suggestion
-	// draft can reach here, but feedback on a plan is not a suggestion submission.
-	if (props.isAwaitingPlanReview) {
-		// Feedback on a plan is the user's own answer, so it reports as typed even
-		// when a pre-filled draft is what reached here -- the same reason this path
-		// skips the suggestion-submitted event below.
-		emitSubmittedMessage(
-			message,
-			undefined,
-			() => restorePlanFeedbackDraft(message),
-			USER_TYPED_MESSAGE,
-			responseStartedAtEpochMs,
-			() => {},
-			EMPTY_ASSISTANT_MENTION_COUNTS,
-		);
-		resetDraftComposer({ keepAttachments: true });
-		return;
-	}
-
 	trackSelectedSuggestionSubmitted(message);
 
 	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
@@ -675,12 +638,6 @@ async function handleSubmit() {
 	}
 	mentions.close();
 	const responseStartedAtEpochMs = instanceAiResponseNow();
-
-	// Plan feedback carries no attachments, so skip encoding the staged files.
-	if (props.isAwaitingPlanReview) {
-		submitComposerMessage(text, undefined, null, responseStartedAtEpochMs);
-		return;
-	}
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
@@ -773,6 +730,17 @@ function handleFilesSelected(files: File[]) {
 	attachedFiles.value.push(...files);
 }
 
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
+}
+
 function handleFileRemove(file: File) {
 	const idx = attachedFiles.value.indexOf(file);
 	if (idx !== -1) {
@@ -843,6 +811,7 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 		suggestionId: payload.suggestionId,
 		suggestionKind: payload.suggestionKind,
 		position: payload.position,
+		suggestionTitle: payload.suggestionTitle,
 	});
 }
 
@@ -903,22 +872,23 @@ const resizable = computed(() => {
 			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
-			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
+			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
-			:disabled="isGatedBySetup || isPreparingSubmission"
+			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
-			:show-attach="!props.isAwaitingPlanReview"
-			:show-attach-button="false"
+			:show-attach="showAttach"
+			:accepted-mime-types="props.attachOnlyMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
+			@files-rejected="handleFilesRejected"
 		>
 			<template #attachments>
 				<div v-if="props.contextChip || attachedResources.length > 0" :class="$style.attachments">
@@ -951,10 +921,10 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template v-if="!props.isAwaitingPlanReview" #footer-start>
+			<template v-if="props.attachOnlyMimeTypes === undefined" #footer-start>
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
-					:thread-id="props.currentThreadId || undefined"
+					:is-streaming="props.isStreaming"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
 			</template>

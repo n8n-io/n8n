@@ -21,6 +21,7 @@ export type PubSubEventName =
 	| 'reload-license'
 	| 'reload-oidc-config'
 	| 'reload-saml-config'
+	| 'reload-oauth-signing-keys'
 	| 'reload-overwrite-credentials'
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
@@ -28,6 +29,7 @@ export type PubSubEventName =
 	| 'relay-agent-execution-update'
 	| 'relay-agent-queued-chat'
 	| 'cancel-agent-chat-execution'
+	| 'cancel-agent-chat-foreground'
 	| 'relay-agent-message-queue-update'
 	| 'relay-agent-background-tasks-update'
 	| 'relay-agent-update'
@@ -42,6 +44,8 @@ export type PubSubEventName =
 	| 'reload-mcp-registry'
 	| 'reload-otel-config'
 	| 'reload-instance-ai-settings'
+	| 'self-healing-failure'
+	| 'reload-agents-settings'
 	| 'cancel-test-run'
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
@@ -52,7 +56,9 @@ export type PubSubEventName =
 	| 'cancel-agent-background-job'
 	| 'wake-agent-background-job'
 	| 'agent-tasks-changed'
-	| 'redaction-floor-changed';
+	| 'redaction-floor-changed'
+	| 'reload-type-availability-policies'
+	| 'pubsub-reconnected';
 
 export type PubSubEventFilter =
 	| {

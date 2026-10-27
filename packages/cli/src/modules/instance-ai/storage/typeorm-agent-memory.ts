@@ -7,6 +7,8 @@ import {
 	type MemoryDescriptor,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -163,7 +165,6 @@ function workingMemoryKey(params: {
 const PATCH_ONLY_METADATA_KEYS = new Set([
 	'activeSkillStates',
 	'instanceAiIterationLog',
-	'instanceAiPlannedTasks',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
@@ -564,6 +565,12 @@ export class TypeORMAgentMemory
 				metadata: { scope: params.scope },
 			}),
 		);
+	}
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationLog.commitObservationLogBatch(batch);
 	}
 
 	async appendObservationLogEntries(

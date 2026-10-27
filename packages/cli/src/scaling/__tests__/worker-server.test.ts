@@ -17,9 +17,19 @@ import type { RedisClientService } from '@n8n/backend-services';
 import { WorkerServer } from '../worker-server';
 
 const app = mock<express.Application>();
+const e2eFlags = vi.hoisted(() => ({ inE2ETests: false }));
 
 vi.mock('node:http');
 vi.mock('express', () => ({ __esModule: true, default: () => app }));
+vi.mock('@/services/e2e-diagnostics.router', () => ({
+	createE2EDiagnosticsRouter: vi.fn(() => vi.fn()),
+}));
+vi.mock('@/constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/constants')>()),
+	get inE2ETests() {
+		return e2eFlags.inE2ETests;
+	},
+}));
 
 const addressInUseError = () => {
 	const error: NodeJS.ErrnoException = new Error('Port already in use');
@@ -51,6 +61,7 @@ describe('WorkerServer', () => {
 		);
 
 	beforeEach(() => {
+		e2eFlags.inE2ETests = false;
 		globalConfig = mock<GlobalConfig>({
 			path: '/',
 			queue: {
@@ -188,6 +199,23 @@ describe('WorkerServer', () => {
 			await expect(
 				workerServer.init({ health: false, overwrites: false, metrics: false }),
 			).rejects.toThrowError(AssertionError);
+		});
+
+		it('should mount E2E diagnostics when no other endpoints are enabled', async () => {
+			e2eFlags.inE2ETests = true;
+			globalConfig.endpoints.rest = 'rest';
+			const server = mock<http.Server>();
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
+				return server;
+			});
+
+			await newWorkerServer().init({ health: false, overwrites: false, metrics: false });
+
+			expect(app.use).toHaveBeenCalledWith('/rest/e2e', expect.any(Function));
+			expect(server.listen).toHaveBeenCalled();
 		});
 
 		it('should call `worker.ready` external hook', async () => {

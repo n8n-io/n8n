@@ -49,7 +49,7 @@ const chatTriggerConnections = {
 test.describe(
 	'Demo executable preview - Chat Trigger',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
 		test.beforeEach(async ({ setupRequirements }) => {

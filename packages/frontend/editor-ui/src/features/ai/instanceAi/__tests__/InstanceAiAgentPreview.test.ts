@@ -2,7 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiMessage } from '@n8n/api-types';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentCreationResource } from '@/features/agents/types';
+import type { persistPendingAgent } from '../instanceAi.memory.api';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -46,7 +47,7 @@ vi.mock('../instanceAi.memory.api', () => ({
 const persistedAgent = {
 	id: 'agent-1',
 	name: 'Support Agent',
-} as AgentResource;
+} as AgentCreationResource;
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
@@ -222,15 +223,19 @@ describe('InstanceAiAgentPreview', () => {
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 
 		const persist = builder.props('artifactPersistAgent') as (
-			name: string,
-		) => Promise<AgentResource>;
-		await expect(persist('Support Agent')).resolves.toBe(persistedAgent);
+			request: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
+		const config = { name: 'Support Agent', model: '', instructions: 'Help users' };
+		await expect(
+			persist({ projectId: 'project-1', agentId: 'agent-1', name: 'Support Agent', config }),
+		).resolves.toBe(persistedAgent);
 		await flushPromises();
 
 		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			name: 'Support Agent',
+			config,
 		});
 		expect(getPendingAgentTargetFromThreadMetadata(metadataState.value)).toBeUndefined();
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)).toEqual({
@@ -245,5 +250,43 @@ describe('InstanceAiAgentPreview', () => {
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)?.name).toBe(
 			'Renamed Support Agent',
 		);
+	});
+
+	it('persists the supplied target after the preview switches to another pending agent', async () => {
+		const target = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			name: 'Support Agent',
+		};
+		const request = {
+			...target,
+			config: { name: 'Support Agent', model: '', instructions: 'Help users' },
+		};
+		persistPendingAgentMock.mockResolvedValue({
+			agent: persistedAgent,
+			thread: { metadata: { instanceAiAgentBuilderTarget: target } },
+		});
+		const wrapper = mount(InstanceAiAgentPreview, {
+			props: { projectId: 'project-1', agentId: 'agent-1', pending: true, previewOpen: false },
+			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
+		});
+		const persist = wrapper
+			.findComponent({ name: 'AgentBuilderView' })
+			.props('artifactPersistAgent') as (
+			request: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
+
+		await wrapper.setProps({ agentId: 'agent-2' });
+		metadataState.value = {
+			instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-2' },
+		};
+		await persist(request);
+
+		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-1', request);
+		expect(getPendingAgentTargetFromThreadMetadata(metadataState.value)).toEqual({
+			projectId: 'project-1',
+			agentId: 'agent-2',
+		});
+		wrapper.unmount();
 	});
 });

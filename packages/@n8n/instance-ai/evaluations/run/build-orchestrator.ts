@@ -38,6 +38,7 @@ import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
+	harnessFault,
 	leakHaystackFor,
 	redactLocalRunSecrets,
 	searchableBuildText,
@@ -96,9 +97,8 @@ export interface Lane {
 	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
 	 *  deleting them via another lane's client would 404. */
 	workflowIdsToDelete: Set<string>;
-	/** Pool of invited member users for `--build-via-mcp` — each build claims one
-	 *  so its MCP credential/workflow view is isolated to that user. */
-	mcpUserPool?: LaneUserPool;
+	/** Invited members, one per build: MCP builds act as it, orchestrator builds use its project. */
+	buildUserPool?: LaneUserPool;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
@@ -164,6 +164,7 @@ export interface LaneState {
 		timeoutMs: number;
 		testCaseName?: string;
 		seedContext?: ScenarioSeedContext;
+		projectId?: string;
 	}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 }
 
@@ -211,14 +212,14 @@ async function buildWorkflowViaMcpOnLane(config: {
 		createdWorkflowIds: [],
 		createdDataTableIds: [],
 	});
-	if (!lane.mcpUserPool) {
-		return failure(`Lane ${lane.baseUrl} has no MCP build user pool — cannot build via MCP`);
+	if (!lane.buildUserPool) {
+		return failure(`Lane ${lane.baseUrl} has no build user pool — cannot build via MCP`);
 	}
 
 	let mcpApiKey: string;
 	try {
 		mcpApiKey = await provisionCaseBuildUser({
-			pool: lane.mcpUserPool,
+			pool: lane.buildUserPool,
 			memberClient: new N8nClient(lane.baseUrl),
 			credentials,
 			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
@@ -476,10 +477,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// would still score on them.
 		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
-		if (build.priorRunFailed) {
+		const fault = harnessFault(build);
+		if (fault) {
 			const unjudged = allFailVerdicts(
 				collectExpectations(testCase),
-				`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+				`not judged — ${fault.reason}`,
 			);
 			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
@@ -487,7 +489,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				Promise.resolve(
 					build.timeout
 						? timedOut(unjudged)
-						: unjudged.map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
+						: unjudged.map((verdict) => ({
+								...verdict,
+								incomplete: !fault.counted,
+								attribution: 'framework_issue' as const,
+							})),
 				),
 			);
 			return;

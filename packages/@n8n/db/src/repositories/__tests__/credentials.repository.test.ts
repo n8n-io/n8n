@@ -2,7 +2,7 @@ import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { ILike, In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsEntity, SharedCredentials } from '../../entities';
@@ -325,6 +325,18 @@ describe('CredentialsRepository', () => {
 
 			const callArg = entityManager.find.mock.calls[0]?.[1];
 			expect(callArg?.order).toBeUndefined();
+		});
+	});
+
+	describe('findManyAndCount with a name filter', () => {
+		it('matches the name without case sensitivity', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+			entityManager.count.mockResolvedValueOnce(0);
+
+			await credentialsRepository.findManyAndCount({ filter: { name: 'github' } });
+
+			const callArg = entityManager.find.mock.calls[0]?.[1];
+			expect(callArg?.where).toMatchObject({ name: ILike('%github%') });
 		});
 	});
 

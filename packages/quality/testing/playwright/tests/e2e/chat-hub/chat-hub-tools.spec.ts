@@ -5,7 +5,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'Tools usage',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('use web search tool in conversation', async ({

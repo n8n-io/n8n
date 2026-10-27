@@ -34,6 +34,11 @@ export const ExecutionDataStoreKey: InjectionKey<
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
 /** Keep setup hints compact while retaining their full text on the field. */
 export const CompactParameterHintsKey: InjectionKey<boolean> = Symbol('CompactParameterHints');
+/** Lets modal hosts coordinate focus and portals for expanded parameter editors. */
+export const ParameterInputModalContextKey: InjectionKey<{
+	openDialogs: Ref<Set<string>>;
+	appendTo: string;
+}> = Symbol('ParameterInputModalContext');
 /**
  * Opts resource-locator dropdowns into teleporting to `<body>`. Defaults to
  * `false` (stay in the local stacking context, e.g. inside the NDV dialog).
@@ -115,3 +120,10 @@ export interface LogsPanelHost {
 	heightContainer?: MaybeRefOrGetter<HTMLElement | null | undefined>;
 }
 export const LogsPanelHostKey: InjectionKey<LogsPanelHost> = Symbol('LogsPanelHost');
+
+/**
+ * Canvas area of an embedded editor, below its own header. Fixed overlays, such
+ * as the node creator, align to its top. The standalone editor provides nothing.
+ */
+export const EmbeddedCanvasElementKey: InjectionKey<Readonly<Ref<HTMLElement | null>>> =
+	Symbol('EmbeddedCanvasElement');

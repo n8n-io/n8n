@@ -31,17 +31,23 @@ const credential = (id: string, type = 'githubApi') => ({ id, name: id, type });
 
 const variable = (name: string) => ({ name, type: 'string' });
 
+const dataTable = (id: string) => ({
+	id,
+	name: id,
+	columns: [{ name: 'email', type: 'string', index: 0 }],
+});
+
 describe('PackageDirectoryInventoryReader', () => {
 	const reader = new PackageDirectoryInventoryReader(new WorkflowSerializer());
 
-	it('reads projects, nested workflows, credentials and variables from their files and ignores other files', async () => {
+	it('reads projects, nested workflows, credentials, variables and data tables from their files and ignores other files', async () => {
 		const inventory = await reader.read(
 			sourceOf({
 				'manifest.json': 'not json {',
 				'projects/alpha-p1/project.json': project('p1', 'Alpha'),
 				'projects/alpha-p1/workflows/root-w1/workflow.json': workflow('w1', 'Root'),
 				'projects/alpha-p1/workflows/root-w1/workflow-metadata.json': { publishedVersionId: null },
-				'projects/alpha-p1/folders/f1/folder.json': { id: 'f1', name: 'F1' },
+				'projects/alpha-p1/folders/f1/folder.json': { id: 'f1', name: 'F1', parentFolderId: null },
 				'projects/alpha-p1/folders/f1/folders/f2/workflows/deep-w2/workflow.json': workflow(
 					'w2',
 					'Deep',
@@ -50,6 +56,8 @@ describe('PackageDirectoryInventoryReader', () => {
 				'projects/alpha-p1/variables/region/variable.json': variable('REGION'),
 				'credentials/gh-c2/credential.json': credential('c2'),
 				'variables/region/variable.json': variable('REGION'),
+				'projects/alpha-p1/data-tables/orders-dt1/data-table.json': dataTable('dt1'),
+				'data-tables/customers-dt2/data-table.json': dataTable('dt2'),
 				'README.md': 'ignored',
 			}),
 		);
@@ -70,6 +78,13 @@ describe('PackageDirectoryInventoryReader', () => {
 			},
 		]);
 		expect(inventory.workflows[0].content.nodes).toEqual([]);
+		expect(inventory.folders).toEqual([
+			{
+				path: 'projects/alpha-p1/folders/f1/folder.json',
+				projectId: 'p1',
+				folder: { id: 'f1', name: 'F1', parentFolderId: null },
+			},
+		]);
 		expect(inventory.credentials).toEqual([
 			{ path: 'credentials/gh-c2/credential.json', projectId: null, credential: credential('c2') },
 			{
@@ -86,6 +101,13 @@ describe('PackageDirectoryInventoryReader', () => {
 			},
 			{ path: 'variables/region/variable.json', projectId: null, variable: variable('REGION') },
 		]);
+		expect(inventory.dataTables).toEqual([
+			{ path: 'data-tables/customers-dt2/data-table.json', dataTable: dataTable('dt2') },
+			{
+				path: 'projects/alpha-p1/data-tables/orders-dt1/data-table.json',
+				dataTable: dataTable('dt1'),
+			},
+		]);
 	});
 
 	it("accepts a workflow nested two folders deep in the export's flat layout", async () => {
@@ -94,8 +116,16 @@ describe('PackageDirectoryInventoryReader', () => {
 		const inventory = await reader.read(
 			sourceOf({
 				'projects/alpha-p1/project.json': project('p1', 'Alpha'),
-				'projects/alpha-p1/folders/ops-f1/folder.json': { id: 'f1', name: 'Ops' },
-				'projects/alpha-p1/folders/ops-f1/orders-f2/folder.json': { id: 'f2', name: 'Orders' },
+				'projects/alpha-p1/folders/ops-f1/folder.json': {
+					id: 'f1',
+					name: 'Ops',
+					parentFolderId: null,
+				},
+				'projects/alpha-p1/folders/ops-f1/orders-f2/folder.json': {
+					id: 'f2',
+					name: 'Orders',
+					parentFolderId: 'f1',
+				},
 				'projects/alpha-p1/folders/ops-f1/orders-f2/workflows/deep-w1/workflow.json': workflow(
 					'w1',
 					'Deep',
@@ -128,8 +158,10 @@ describe('PackageDirectoryInventoryReader', () => {
 		expect(await reader.read(sourceOf({ 'manifest.json': '{}' }))).toEqual({
 			projects: [],
 			workflows: [],
+			folders: [],
 			credentials: [],
 			variables: [],
+			dataTables: [],
 		});
 	});
 
@@ -141,10 +173,13 @@ describe('PackageDirectoryInventoryReader', () => {
 		);
 	});
 
-	it('rejects a file inside a project directory that has no project.json', async () => {
-		await expect(
-			reader.read(sourceOf({ 'projects/orphan/workflows/w1/workflow.json': workflow('w1') })),
-		).rejects.toThrow('is inside "projects/orphan", which has no project.json');
+	it.each([
+		['projects/orphan/workflows/w1/workflow.json', workflow('w1')],
+		['projects/orphan/data-tables/dt1/data-table.json', dataTable('dt1')],
+	])('rejects %s inside a project directory that has no project.json', async (path, content) => {
+		await expect(reader.read(sourceOf({ [path]: content }))).rejects.toThrow(
+			'is inside "projects/orphan", which has no project.json',
+		);
 	});
 
 	it.each([
@@ -153,8 +188,15 @@ describe('PackageDirectoryInventoryReader', () => {
 		['projects/p1/project.json', 'projects/p1/folders/f1/workflow.json', workflow('w1')],
 		// `folders/` with no folder entry before `workflows/` is malformed.
 		['projects/p1/project.json', 'projects/p1/folders/workflows/w1/workflow.json', workflow('w1')],
+		// A folder file needs a folder entry after `folders/`.
+		[
+			'projects/p1/project.json',
+			'projects/p1/folders/folder.json',
+			{ id: 'f1', name: 'F1', parentFolderId: null },
+		],
 		['projects/p1/project.json', 'projects/p1/credentials/credential.json', credential('c1')],
 		['projects/p1/project.json', 'variables/a/b/variable.json', variable('A')],
+		['projects/p1/project.json', 'projects/p1/data-tables/data-table.json', dataTable('dt1')],
 	])(
 		'rejects an entity file in an unsupported location (%s, %s)',
 		async (projectPath, path, content) => {
@@ -175,6 +217,27 @@ describe('PackageDirectoryInventoryReader', () => {
 				}),
 			),
 		).rejects.toThrow('Package contains a duplicate workflow id: w1');
+		await expect(
+			reader.read(
+				sourceOf({
+					'projects/a/project.json': project('p1'),
+					'projects/a/data-tables/x/data-table.json': dataTable('dt1'),
+					'data-tables/y/data-table.json': dataTable('dt1'),
+				}),
+			),
+		).rejects.toThrow('Package contains a duplicate data table id: dt1');
+		const withColumnId = (id: string) => ({
+			...dataTable(id),
+			columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
+		});
+		await expect(
+			reader.read(
+				sourceOf({
+					'data-tables/x/data-table.json': withColumnId('dt1'),
+					'data-tables/y/data-table.json': withColumnId('dt2'),
+				}),
+			),
+		).rejects.toThrow('Package contains a duplicate data table column id: col1');
 	});
 
 	it('rejects the same variable name twice in one scope but allows it in different scopes', async () => {

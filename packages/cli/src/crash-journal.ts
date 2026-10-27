@@ -18,13 +18,30 @@ export const touchFile = async (filePath: string): Promise<void> => {
 };
 
 const { n8nFolder } = Container.get(InstanceSettings);
-const journalFile = join(n8nFolder, 'crash.journal');
+
+/**
+ * `N8N_CRASH_JOURNAL_PATH` is the absolute path to the journal of this process.
+ * Set it when several processes share one `N8N_USER_FOLDER` on a writable
+ * volume, because each process needs its own journal: processes that share one
+ * journal report a crash that did not happen, and the shutdown of one process
+ * removes the journal of another process. The orchestrator owns the uniqueness,
+ * the same way it does for `N8N_EVENTBUS_LOGWRITER_LOGFULLPATH`. The parent
+ * directory is created if it is missing. Empty (default) keeps
+ * `${N8N_USER_FOLDER}/crash.journal`.
+ */
+export const journalFile = process.env.N8N_CRASH_JOURNAL_PATH || join(n8nFolder, 'crash.journal');
+
+let lastSessionCrashed = false;
+
+/** Whether `init()` found the journal of a session that did not shut down cleanly. */
+export const didLastSessionCrash = () => lastSessionCrashed;
 
 export const init = async () => {
 	if (!inProduction || process.env.N8N_DEV_RELOAD === 'true') return;
 
 	if (existsSync(journalFile)) {
 		// Crash detected
+		lastSessionCrashed = true;
 		Container.get(Logger).error('Last session crashed');
 		// add a 10 seconds pause to slow down crash-looping
 		await sleep(10_000);

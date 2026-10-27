@@ -7,6 +7,7 @@ import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-co
 import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { RawProviderError } from '../model/raw-error';
+import { mergePromptSizeUsage, mergeTokenCounts } from './prompt-size-usage';
 
 /**
  * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
@@ -55,6 +56,7 @@ const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set([
 	'length',
 	'other',
 	'unknown',
+	'interrupted',
 	'content-filter',
 ]);
 
@@ -186,38 +188,18 @@ export function makeErrorStream(error: unknown): ReadableStream<StreamChunk> {
 	return readable;
 }
 
-/** Accumulate token usage across two values, returning undefined if both are absent. */
+/**
+ * Accumulate token usage across two values, returning undefined if both are absent.
+ * Keeps the prompt-size split only when both values carry one.
+ */
 export function mergeUsage(
 	current: TokenUsage | undefined,
 	next: TokenUsage | undefined,
 ): TokenUsage | undefined {
 	if (!next) return current;
 	if (!current) return next;
-	const merged: TokenUsage = {
-		promptTokens: current.promptTokens + next.promptTokens,
-		completionTokens: current.completionTokens + next.completionTokens,
-		totalTokens: current.totalTokens + next.totalTokens,
-	};
-
-	const noCache =
-		(current.inputTokenDetails?.noCache ?? 0) + (next.inputTokenDetails?.noCache ?? 0);
-	const cacheRead =
-		(current.inputTokenDetails?.cacheRead ?? 0) + (next.inputTokenDetails?.cacheRead ?? 0);
-	const cacheWrite =
-		(current.inputTokenDetails?.cacheWrite ?? 0) + (next.inputTokenDetails?.cacheWrite ?? 0);
-	if (noCache > 0 || cacheRead > 0 || cacheWrite > 0) {
-		merged.inputTokenDetails = {
-			...(noCache > 0 && { noCache }),
-			...(cacheRead > 0 && { cacheRead }),
-			...(cacheWrite > 0 && { cacheWrite }),
-		};
-	}
-
-	const reasoning =
-		(current.outputTokenDetails?.reasoning ?? 0) + (next.outputTokenDetails?.reasoning ?? 0);
-	if (reasoning > 0) {
-		merged.outputTokenDetails = { reasoning };
-	}
-
+	const merged: TokenUsage = mergeTokenCounts(current, next);
+	const byPromptSize = mergePromptSizeUsage(current.byPromptSize, next.byPromptSize);
+	if (byPromptSize) merged.byPromptSize = byPromptSize;
 	return merged;
 }
