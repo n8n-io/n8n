@@ -2090,9 +2090,9 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectConflictPolicy: 'overwrite',
-					workflowConflictPolicy: 'new-version',
-					workflowIdPolicy: 'source',
-					workflowPublishingPolicy: 'match-source',
+					conflictPolicy: 'new-version',
+					idPolicy: 'source',
+					publishingPolicy: 'match-source',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',

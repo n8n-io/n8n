@@ -118,10 +118,19 @@ describe('Agent version history', () => {
 	it('records each publication period and preserves the draft', async () => {
 		const newerVersionId = randomUUID();
 		await agents.update({ id: agentId }, { versionId: newerVersionId });
-		await service.publishAgent(agentId, projectId, owner, emitter, versionId, undefined, {
-			name: 'Release',
-			description: 'Notes',
-		});
+		await service.publishAgent(
+			agentId,
+			projectId,
+			owner,
+			emitter,
+			versionId,
+			undefined,
+			undefined,
+			{
+				name: 'Release',
+				description: 'Notes',
+			},
+		);
 		await service.unpublishAgent(agentId, projectId, owner, 'user');
 		await service.publishAgent(agentId, projectId, owner, emitter, versionId);
 		expect(await agents.findById(agentId)).toMatchObject({
@@ -231,7 +240,7 @@ describe('Agent version history', () => {
 	it('rolls back labels and activation when the publication event cannot be saved', async () => {
 		vi.spyOn(publications, 'record').mockRejectedValueOnce(new Error('Event write failed'));
 		await expect(
-			service.publishAgent(agentId, projectId, owner, emitter, versionId, undefined, {
+			service.publishAgent(agentId, projectId, owner, emitter, versionId, undefined, undefined, {
 				name: 'Release',
 			}),
 		).rejects.toThrow('Event write failed');
