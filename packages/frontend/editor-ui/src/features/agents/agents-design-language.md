@@ -45,8 +45,8 @@ remaining width in proportion to each panel's requested extra width above
 
 ## Session controls
 
-Show `Stop session` for a running session when the user can execute the Agent.
-Allow Stop for child sessions that the user can access.
+Show `Stop session` for a running session, including a child session, when the
+user can access the session and execute the Agent.
 Put it in the session list menu and beside Close in the session detail header.
 Use a red, icon-only ghost control in the header. Match the Preview control's
 size. Disable the action while the request runs. Keep the session running until
