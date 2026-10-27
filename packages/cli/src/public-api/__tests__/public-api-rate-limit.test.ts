@@ -65,22 +65,14 @@ function activateApp(
 	rateLimit: Partial<RateLimitConfig>,
 	storeFactory: PublicApiRateLimitStoreFactory,
 ): express.Express {
-	return buildApp(rateLimitSettings(rateLimit), storeFactory);
+	return activateAppWithSettings(rateLimit, storeFactory).app;
 }
 
-/** Returns the settings too, so that a test can change them while the app runs. */
 function activateAppWithSettings(
 	rateLimit: Partial<RateLimitConfig>,
 	storeFactory: PublicApiRateLimitStoreFactory,
 ) {
 	const settings = rateLimitSettings(rateLimit);
-	return { app: buildApp(settings, storeFactory), settings };
-}
-
-function buildApp(
-	settings: RateLimitConfig,
-	storeFactory: PublicApiRateLimitStoreFactory,
-): express.Express {
 	const app = express();
 	const router = express.Router({ mergeParams: true });
 	new PublicApiControllerRegistry(
@@ -97,7 +89,7 @@ function buildApp(
 		mock<Logger>(),
 	).activate(router, 'v1');
 	app.use('/api/v1', router);
-	return app;
+	return { app, settings };
 }
 
 function registerWidgets() {
