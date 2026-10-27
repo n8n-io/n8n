@@ -15,7 +15,16 @@ describe('ImportResultDto', () => {
 					projectId: 'proj-1',
 					activeVersionId: null,
 					status: 'created',
-					publishing: { state: 'failed', error: 'Not ready' },
+					publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+					channels: [
+						{ type: 'slack', status: 'reused' },
+						{
+							type: 'telegram',
+							status: 'setup-required',
+							reason: 'new-channel',
+							setupUrl: 'https://n8n.example.com/projects/proj-1/agents/agent-local',
+						},
+					],
 					schema: { instructions: 'Private instructions' },
 					skills: {},
 					tools: {},
@@ -91,7 +100,16 @@ describe('ImportResultDto', () => {
 				projectId: 'proj-1',
 				activeVersionId: null,
 				status: 'created',
-				publishing: { state: 'failed', error: 'Not ready' },
+				publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+				channels: [
+					{ type: 'slack', status: 'reused' },
+					{
+						type: 'telegram',
+						status: 'setup-required',
+						reason: 'new-channel',
+						setupUrl: 'https://n8n.example.com/projects/proj-1/agents/agent-local',
+					},
+				],
 			});
 		}
 	});
