@@ -205,6 +205,10 @@ export class RunDataPanel {
 		return this.root.locator('iframe.__html-display').contentFrame();
 	}
 
+	getHtmlPreviewHeadings() {
+		return this.getHtmlPreview().getByRole('heading');
+	}
+
 	getHtmlPreviewHeading(name: string) {
 		return this.getHtmlPreview().getByRole('heading', { name, exact: true });
 	}

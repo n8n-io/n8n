@@ -22,6 +22,8 @@ test.describe(
 				'radio-button-html',
 			);
 			await expect(outputPanel.getHtmlPreviewHeading('Item 1')).toBeVisible();
+			// The HTML view shows only the first item
+			await expect(outputPanel.getHtmlPreviewHeadings()).toHaveCount(1);
 		});
 
 		test('should show the HTML of the item that matches the search', async ({ n8n }) => {
@@ -35,6 +37,8 @@ test.describe(
 				'radio-button-html',
 			);
 			await expect(outputPanel.getHtmlPreviewHeading('Item 27')).toBeVisible();
+			// The HTML view shows only the first item
+			await expect(outputPanel.getHtmlPreviewHeadings()).toHaveCount(1);
 		});
 
 		test('should fall back to a built-in display mode on a node that does not generate HTML', async ({
