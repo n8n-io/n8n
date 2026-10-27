@@ -52,8 +52,8 @@ vi.mock('../../components/InstanceAiQuestions.vue', () => ({
 }));
 
 /** The resume data of each submit, without the `onAccepted` callback that the card passes along. */
-function sent(submits: unknown[][] | undefined) {
-	return (submits ?? []).map(([resumeData]) => [resumeData]);
+function sent(submits: unknown[] | undefined) {
+	return ((submits ?? []) as unknown[][]).map(([resumeData]) => [resumeData]);
 }
 
 const renderComponent = createComponentRenderer(AssistantConfirmationCard, {

@@ -120,6 +120,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
+		name: 'InteractiveCardStub',
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
 		props: ['payload'],
@@ -1213,7 +1214,7 @@ describe('AgentChatMessageList', () => {
 		});
 		const onAccepted = vi.fn();
 
-		const card = wrapper.findComponent('[data-testid="interactive-card-stub"]');
+		const card = wrapper.findComponent({ name: 'InteractiveCardStub' });
 		card.vm.$emit('submit', { answer: 'yes' }, onAccepted);
 		card.vm.$emit('submit', { answer: 'no' });
 
