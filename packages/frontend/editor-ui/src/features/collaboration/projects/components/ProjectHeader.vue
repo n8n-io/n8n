@@ -6,6 +6,7 @@ import type { TabOptions, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
+import { canConfigureSelfHealing, selfHealingLocation } from '../projects.utils';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -20,6 +21,10 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import {
+	PERSONAL_SELF_HEALING_VIEW,
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
@@ -146,6 +151,24 @@ const pageType = computed(() => {
 	}
 });
 
+const personalSelfHealingTab = computed((): TabOptions<string> | null => {
+	const project = projectsStore.currentProject;
+	if (
+		pageType.value !== 'project' ||
+		!project ||
+		project.id !== route?.params?.projectId ||
+		selfHealingLocation(project) !== 'personalTab' ||
+		!canConfigureSelfHealing(project)
+	) {
+		return null;
+	}
+	return {
+		label: i18n.baseText('selfHealing.config.heading'),
+		value: PERSONAL_SELF_HEALING_VIEW,
+		to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: project.id } },
+	};
+});
+
 const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
 	const moduleTabs = uiStore.moduleTabs[pageType.value];
@@ -154,7 +177,8 @@ const customProjectTabs = computed((): Array<TabOptions<string>> => {
 			settingsStore.isModuleActive(module) &&
 			(module !== 'agents' || settingsStore.isAgentsEnabled),
 	);
-	return activeModules.flatMap((module) => moduleTabs[module]);
+	const tabs = activeModules.flatMap((module) => moduleTabs[module]);
+	return personalSelfHealingTab.value ? [...tabs, personalSelfHealingTab.value] : tabs;
 });
 
 const ACTION_TYPES = {
@@ -164,6 +188,7 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
+	SELF_HEALING: 'selfHealing',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -215,6 +240,14 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const createSelfHealingButton = computed(() => ({
+	value: ACTION_TYPES.SELF_HEALING,
+	label: i18n.baseText('selfHealing.config.create'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled: sourceControlStore.preferences.branchReadOnly || !personalSelfHealingTab.value,
+}));
+
 const selectedMainButtonType = computed(() => {
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
@@ -230,6 +263,8 @@ const mainButtonConfig = computed(() => {
 			return createDataTableButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
+		case ACTION_TYPES.SELF_HEALING:
+			return createSelfHealingButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
 		case ACTION_TYPES.WORKFLOW:
@@ -385,6 +420,12 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	[ACTION_TYPES.VARIABLE]: () => {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
+	},
+	[ACTION_TYPES.SELF_HEALING]: (projectId) => {
+		void router.push({
+			name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+			params: { projectId, configurationId: 'new' },
+		});
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		createAgent(source, projectId);
