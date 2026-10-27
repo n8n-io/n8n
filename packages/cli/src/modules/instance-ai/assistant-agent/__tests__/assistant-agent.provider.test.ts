@@ -272,6 +272,47 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		it('finishes recording the accepted input before the turn settles', async () => {
+			const { provider, turnInput } = setup();
+			let finishRecording = () => {};
+			turnInput.onInputAccepted.mockReturnValue(
+				new Promise<void>((resolve) => {
+					finishRecording = resolve;
+				}),
+			);
+
+			const handle = await provider.prepareTurn(startTurn());
+			handle.onChunk?.({ type: 'text-delta', delta: 'Hi' } as never);
+			let settled = false;
+			const settling = handle
+				.onSettled?.({ executionId: 'exec-1', status: 'completed' })
+				.then(() => {
+					settled = true;
+				});
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(settled).toBe(false);
+
+			finishRecording();
+			await settling;
+			expect(settled).toBe(true);
+		});
+
+		it('settles the turn when recording the accepted input fails', async () => {
+			const { provider, turnInput, creditService } = setup();
+			turnInput.onInputAccepted.mockRejectedValue(new Error('metadata write failed'));
+
+			const handle = await provider.prepareTurn(startTurn());
+			handle.onChunk?.({
+				type: 'finish',
+				finishReason: 'stop',
+				model: 'anthropic/claude-sonnet',
+				usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			} as never);
+			await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+			expect(creditService.claimRunUsage).toHaveBeenCalled();
+		});
+
 		it('claims the model usage of the turn when it settles', async () => {
 			const { provider, creditService } = setup();
 

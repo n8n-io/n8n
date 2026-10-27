@@ -189,7 +189,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		});
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
-		let inputAccepted = turnInput === undefined;
+		let inputAccepted: Promise<void> | undefined;
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
@@ -206,8 +206,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			onChunk: (chunk) => {
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
-					inputAccepted = true;
-					void this.turnInput
+					inputAccepted = this.turnInput
 						.onInputAccepted(environment, runtime, turnInput, { user, threadId: thread.id, runId })
 						.catch((error: unknown) => {
 							this.logger.warn('Failed to record the accepted n8n Assistant turn input', {
@@ -224,6 +223,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				}
 			},
 			onSettled: async (outcome) => {
+				// Finish before the host events close and the next queued turn reads the cursor.
+				await inputAccepted;
 				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
 			},
 		};
