@@ -46,7 +46,6 @@ const REMOTE_URL = 'git@github.com:o/r.git';
 
 const emptyManifest = packageManifestSchema.parse({
 	packageFormatVersion: '1',
-	exportedAt: '2026-01-01T00:00:00.000Z',
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'inst-1',
 });
@@ -1024,7 +1023,6 @@ describe('PromotionsService', () => {
 			JSON.stringify(
 				{
 					packageFormatVersion: '1',
-					exportedAt: '2026-01-01T00:00:00.000Z',
 					sourceN8nVersion: '1.0.0',
 					sourceId: 'inst-1',
 					...overrides,
@@ -1862,7 +1860,7 @@ describe('PromotionsService', () => {
 
 		const importResult = () =>
 			({
-				package: { sourceN8nVersion: '1.0.0', sourceId: 'src', exportedAt: 'now' },
+				package: { sourceN8nVersion: '1.0.0', sourceId: 'src' },
 				projects: [
 					{ status: 'created', localId: 'p1' },
 					{ status: 'updated', localId: 'p2' },
@@ -2090,9 +2088,9 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectConflictPolicy: 'overwrite',
-					workflowConflictPolicy: 'new-version',
-					workflowIdPolicy: 'source',
-					workflowPublishingPolicy: 'match-source',
+					conflictPolicy: 'new-version',
+					idPolicy: 'source',
+					publishingPolicy: 'match-source',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',

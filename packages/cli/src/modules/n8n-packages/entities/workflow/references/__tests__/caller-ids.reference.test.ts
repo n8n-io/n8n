@@ -6,6 +6,7 @@ import { callerIdsReference } from '../caller-ids.reference';
 const workflow = (callerIds: unknown): WorkflowEntity =>
 	({ id: 'parent', settings: { callerIds } }) as WorkflowEntity;
 const bindings = (workflows: Map<string, string>): PackageImportBindings => ({
+	agents: new Map(),
 	workflows,
 	credentials: new Map(),
 });

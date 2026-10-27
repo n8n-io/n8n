@@ -1,6 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository, type User, UserRepository } from '@n8n/db';
+import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users';
@@ -202,47 +202,44 @@ describe('UserRepository', () => {
 		});
 	});
 
-	describe('changeEmail()', () => {
-		beforeEach(async () => {
-			await testDb.truncate(['User']);
+	describe('users list status', () => {
+		let disabledIds: string[];
+
+		beforeAll(async () => {
+			await testDb.truncate(['ProjectRelation', 'Project', 'User']);
+			await createOwner();
+			const users = await Promise.all(Array.from({ length: 9 }, async () => await createMember()));
+			disabledIds = users.slice(0, 2).map(({ id }) => id);
+			await userRepository.update(disabledIds, { disabled: true });
 		});
 
-		test('should change the email and rename the personal project when the current email matches', async () => {
-			const user = await createMember();
-			const newEmail = randomEmail();
-
-			const result = await userRepository.changeEmail(user.id, user.email, newEmail);
-
-			expect(result).toBe('changed');
-			const updated = await userRepository.findOneByOrFail({ id: user.id });
-			expect(updated.email).toBe(newEmail);
-
-			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-				user.id,
-			);
-			expect(project.name).toContain(newEmail);
+		test('should apply the other filters to the counts', async () => {
+			await expect(
+				userRepository.countUsersListStatuses({ ids: [disabledIds[0], disabledIds[1]] }),
+			).resolves.toEqual({ all: 2, active: 0, deactivated: 2 });
+			await expect(userRepository.countUsersListStatuses({ isOwner: true })).resolves.toEqual({
+				all: 1,
+				active: 1,
+				deactivated: 0,
+			});
 		});
 
-		test('should not change the email when the current email does not match', async () => {
-			const user = await createMember();
-			const newEmail = randomEmail();
+		test('should count users in a project once each', async () => {
+			const project = await createTeamProject();
+			const [disabledUser] = await userRepository.findBy({ id: disabledIds[0] });
+			const owner = await userRepository.findOneByOrFail({ role: { slug: 'global:owner' } });
+			await linkUserToProject(disabledUser, project, 'project:viewer');
+			await linkUserToProject(owner, project, 'project:admin');
 
-			const result = await userRepository.changeEmail(user.id, 'stale@example.com', newEmail);
-
-			expect(result).toBe('stale');
-			const updated = await userRepository.findOneByOrFail({ id: user.id });
-			expect(updated.email).toBe(user.email);
+			await expect(
+				userRepository.countUsersListStatuses({ projectId: project.id }),
+			).resolves.toEqual({ all: 2, active: 1, deactivated: 1 });
 		});
 
-		test('should report when another user already owns the target email', async () => {
-			const user = await createMember();
-			const other = await createMember();
-
-			const result = await userRepository.changeEmail(user.id, user.email, other.email);
-
-			expect(result).toBe('email-taken');
-			const updated = await userRepository.findOneByOrFail({ id: user.id });
-			expect(updated.email).toBe(user.email);
+		test('should count zero users without matches', async () => {
+			await expect(
+				userRepository.countUsersListStatuses({ email: 'nobody@example.com' }),
+			).resolves.toEqual({ all: 0, active: 0, deactivated: 0 });
 		});
 	});
 });

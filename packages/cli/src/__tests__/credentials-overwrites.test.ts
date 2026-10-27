@@ -3,12 +3,14 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Cipher, UnrecognizedCredentialTypeError } from 'n8n-core';
-import type { ICredentialType } from 'n8n-workflow';
+import { MANAGED_VERSION_KEY } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, ICredentialType, IDataObject } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -36,6 +38,7 @@ describe('CredentialsOverwrites', () => {
 			if (credentialType === parentCredentialType.name) return parentCredentialType;
 			throw new UnrecognizedCredentialTypeError(credentialType);
 		});
+		credentialTypes.getParentTypes.mockReturnValue([]);
 		credentialTypes.getParentTypes
 			.calledWith(testCredentialType.name)
 			.mockReturnValue([parentCredentialType.name]);
@@ -1312,6 +1315,582 @@ describe('CredentialsOverwrites', () => {
 			credentialTypes.recognizes.mockReturnValue(false);
 
 			expect(instance.isManagedOAuthType('somethingUnknown')).toBe(false);
+		});
+	});
+
+	describe('managed OAuth versions', () => {
+		const oauthCredentialType = mock<ICredentialType>({
+			name: 'notionOAuth2Api',
+			extends: ['oAuth2Api'],
+		});
+		const baseOAuth2Type = mock<ICredentialType>({ name: 'oAuth2Api', extends: undefined });
+		const apiKeyCredentialType = mock<ICredentialType>({ name: 'notionApi', extends: undefined });
+
+		const baseApp = { clientId: 'old-id', clientSecret: 'old-secret' };
+		const newApp = { clientId: 'new-id', clientSecret: 'new-secret' };
+		const tokens = { access_token: 'token' };
+
+		const createInstance = async (data: Record<string, unknown>) => {
+			globalConfig.credentials.overwrite.data = JSON.stringify(data);
+			const instance = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+			await instance.init();
+			return instance;
+		};
+
+		/** A managed credential: the client fields are empty, so the overwrite supplies them. */
+		const managed = (oauthTokenData?: Record<string, unknown>): ICredentialDataDecryptedObject => ({
+			clientId: '',
+			clientSecret: '',
+			...(oauthTokenData ? { oauthTokenData: oauthTokenData as IDataObject } : {}),
+		});
+
+		beforeEach(() => {
+			credentialTypes.recognizes.mockReturnValue(true);
+			credentialTypes.getByName.mockImplementation((name) => {
+				if (name === 'notionOAuth2Api') return oauthCredentialType;
+				if (name === 'oAuth2Api') return baseOAuth2Type;
+				if (name === 'notionApi') return apiKeyCredentialType;
+				throw new UnrecognizedCredentialTypeError(name);
+			});
+			credentialTypes.getParentTypes.mockImplementation((name) =>
+				name === 'notionOAuth2Api' ? ['oAuth2Api'] : [],
+			);
+		});
+
+		describe('without a rollout', () => {
+			it('should use the base entry for every credential', async () => {
+				const instance = await createInstance({ notionOAuth2Api: baseApp });
+
+				expect(instance.applyOverwrite('notionOAuth2Api', managed(tokens))).toMatchObject(baseApp);
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(baseApp);
+			});
+
+			it('should not read a version from the base entry of a non-OAuth type', async () => {
+				const instance = await createInstance({ notionApi: { version: 'v2', apiKey: 'key' } });
+
+				expect(instance.getOverwrites('notionApi')).toEqual({ version: 'v2', apiKey: 'key' });
+			});
+		});
+
+		describe('during a rollout', () => {
+			const rollout = {
+				notionOAuth2Api: baseApp,
+				__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+			};
+
+			it('should use the base app for a credential with tokens and no stored version', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.applyOverwrite('notionOAuth2Api', managed(tokens))).toMatchObject(baseApp);
+			});
+
+			it('should use the stored version', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 2 }),
+					),
+				).toMatchObject(newApp);
+				expect(
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 1 }),
+					),
+				).toMatchObject(baseApp);
+			});
+
+			it('should use the newer app for a credential with no tokens', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(newApp);
+			});
+
+			it('should fail when the stored version matches no app', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(() =>
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 5 }),
+					),
+				).toThrow(ManagedAppUnavailableError);
+				expect(() =>
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 5 }),
+					),
+				).toThrow('Reconnect the credential to continue.');
+			});
+
+			it('should keep a user-owned client, whatever the stored version is', async () => {
+				const instance = await createInstance(rollout);
+				const data = {
+					clientId: 'mine',
+					clientSecret: 'my-secret',
+					oauthTokenData: { ...tokens, [MANAGED_VERSION_KEY]: 5 },
+				};
+
+				expect(instance.applyOverwrite('notionOAuth2Api', data)).toMatchObject({
+					clientId: 'mine',
+					clientSecret: 'my-secret',
+				});
+				expect(instance.resolveBoundVersion('notionOAuth2Api', data)).toBeUndefined();
+			});
+
+			it.each([
+				['a string', '2'],
+				['zero', 0],
+				['a fraction', 1.5],
+			])(
+				'should fail when the stored version is %s, and not use version 1',
+				async (_name, value) => {
+					const instance = await createInstance(rollout);
+					const data = managed({ ...tokens, [MANAGED_VERSION_KEY]: value });
+
+					expect(() => instance.resolveBoundVersion('notionOAuth2Api', data)).toThrow(
+						ManagedAppUnavailableError,
+					);
+					expect(() => instance.applyOverwrite('notionOAuth2Api', data)).toThrow(
+						'Reconnect the credential to continue.',
+					);
+					expect(instance.getManagedAuthState('notionOAuth2Api', data)).toBe('missing-app');
+				},
+			);
+
+			it('should give the newer app the fields of the base entry that it does not set', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: { ...baseApp, scope: 'read' },
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({ ...newApp, scope: 'read' });
+			});
+
+			it('should return the default app, or the requested app, from getOverwrites', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(newApp);
+				expect(instance.getOverwrites('notionOAuth2Api', 2)).toEqual(newApp);
+				expect(instance.getOverwrites('notionOAuth2Api', 1)).toEqual(baseApp);
+				expect(() => instance.getOverwrites('notionOAuth2Api', 7)).toThrow(
+					ManagedAppUnavailableError,
+				);
+			});
+
+			it('should not leak versions into the credential data or the overwrites', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getAll()).toEqual({ notionOAuth2Api: baseApp });
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).not.toHaveProperty('version');
+			});
+
+			it('should not log an unknown credential type for the versions key', async () => {
+				await createInstance(rollout);
+
+				expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('__versions'));
+			});
+
+			it('should report managed auth for the resolved app, without failing', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.usesManagedAuth('notionOAuth2Api', managed(tokens))).toBe(true);
+				expect(
+					instance.usesManagedAuth(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 5 }),
+					),
+				).toBe(false);
+			});
+
+			it('should use the version and the rollout of the type that owns the app', async () => {
+				const parentApp = { clientId: 'parent-id', clientSecret: 'parent-secret' };
+				const instance = await createInstance({
+					oAuth2Api: { version: 2, ...parentApp },
+					notionOAuth2Api: baseApp,
+					__versions: { oAuth2Api: { version: 3, ...newApp } },
+				});
+
+				// The child sets its own client, so it keeps its own app and its own version 1.
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
+				expect(instance.getOverwrites('notionOAuth2Api')).toMatchObject(baseApp);
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([]);
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(baseApp);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
+			});
+
+			it('should use the version of the parent for a type that sets no client fields', async () => {
+				const instance = await createInstance({
+					oAuth2Api: { version: 2, ...baseApp },
+					notionOAuth2Api: { scope: 'read' },
+				});
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
+				expect(
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 2 }),
+					),
+				).toMatchObject({ ...baseApp, scope: 'read' });
+				// Tokens without a stored version count as version 1, and the parent has no version 1.
+				expect(() => instance.applyOverwrite('notionOAuth2Api', managed(tokens))).toThrow(
+					'Reconnect the credential to continue.',
+				);
+			});
+
+			it('should find the newer app of a parent type', async () => {
+				const instance = await createInstance({
+					oAuth2Api: baseApp,
+					__versions: { oAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(newApp);
+				expect(instance.applyOverwrite('notionOAuth2Api', managed(tokens))).toMatchObject(baseApp);
+			});
+		});
+
+		describe('fields of the newer app', () => {
+			it('should list the fields that the newer app sets, without the version', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp, scope: 'read' } },
+				});
+
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([
+					'clientId',
+					'clientSecret',
+					'scope',
+				]);
+			});
+
+			it('should find the fields of the newer app of a parent type', async () => {
+				const instance = await createInstance({
+					oAuth2Api: baseApp,
+					__versions: { oAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([
+					'clientId',
+					'clientSecret',
+				]);
+			});
+
+			it('should be empty without a rollout or for a non-OAuth type', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					notionApi: { apiKey: 'k' },
+				});
+
+				expect(instance.getNewerAppProperties('notionOAuth2Api')).toEqual([]);
+				expect(instance.getNewerAppProperties('notionApi')).toEqual([]);
+			});
+		});
+
+		describe('a type without an overwrite', () => {
+			it('should leave the credential data unchanged', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+				const data = { apiKey: 'own', oauthTokenData: { [MANAGED_VERSION_KEY]: 7 } };
+
+				expect(instance.applyOverwrite('notionApi', data)).toEqual(data);
+			});
+		});
+
+		describe('after a migration', () => {
+			it('should serve the stored version of the base entry and reject any other', async () => {
+				const instance = await createInstance({ notionOAuth2Api: { version: 2, ...newApp } });
+
+				expect(
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 2 }),
+					),
+				).toMatchObject(newApp);
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(newApp);
+				expect(() => instance.applyOverwrite('notionOAuth2Api', managed(tokens))).toThrow(
+					ManagedAppUnavailableError,
+				);
+				expect(instance.getAll()).toEqual({ notionOAuth2Api: newApp });
+			});
+
+			it('should accept a next rollout with a greater version', async () => {
+				const third = { clientId: 'third-id', clientSecret: 'third-secret' };
+				const instance = await createInstance({
+					notionOAuth2Api: { version: 2, ...newApp },
+					__versions: { notionOAuth2Api: { version: 3, ...third } },
+				});
+
+				expect(
+					instance.applyOverwrite(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 2 }),
+					),
+				).toMatchObject(newApp);
+				expect(instance.applyOverwrite('notionOAuth2Api', managed())).toMatchObject(third);
+			});
+		});
+
+		describe('default version', () => {
+			it('should be the version of the base entry when there is no rollout', async () => {
+				const instance = await createInstance({ notionOAuth2Api: baseApp });
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
+			});
+
+			it('should be the version of the base entry after a migration', async () => {
+				const instance = await createInstance({ notionOAuth2Api: { version: 2, ...newApp } });
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
+			});
+
+			it('should be the version of the newer app during a rollout', async () => {
+				const instance = await createInstance({
+					notionOAuth2Api: baseApp,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
+			});
+
+			it('should be undefined for a type without an overwrite or a non-OAuth type', async () => {
+				const instance = await createInstance({ notionApi: { apiKey: 'k' } });
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBeUndefined();
+				expect(instance.getNewConnectionVersion('notionApi', managed())).toBeUndefined();
+			});
+		});
+
+		describe('version of a new connection', () => {
+			const rollout = {
+				notionOAuth2Api: baseApp,
+				__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+			};
+
+			it('should be the default version when the overwrite supplies the client', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
+				// A reconnect of a credential that holds tokens of the old app moves to the default app.
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed(tokens))).toBe(2);
+			});
+
+			it('should be the version of the base entry when there is no rollout', async () => {
+				const instance = await createInstance({ notionOAuth2Api: baseApp });
+
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
+			});
+
+			it('should be undefined for a user-owned app', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.getNewConnectionVersion('notionOAuth2Api', {
+						clientId: 'mine',
+						clientSecret: 'my-secret',
+					}),
+				).toBeUndefined();
+			});
+		});
+
+		describe('getManagedAuthState', () => {
+			const rollout = {
+				notionOAuth2Api: baseApp,
+				__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+			};
+			const empty = { clientId: '', clientSecret: '' };
+
+			it('should report a credential that gets its client from the overwrite as managed', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getManagedAuthState('notionOAuth2Api', empty)).toBe('managed');
+				expect(instance.usesManagedAuth('notionOAuth2Api', empty)).toBe(true);
+			});
+
+			it('should report a stored version that no app has as missing-app', async () => {
+				const instance = await createInstance(rollout);
+				const data = { ...empty, oauthTokenData: { access_token: 'a', n8n_managed_version: 3 } };
+
+				expect(instance.getManagedAuthState('notionOAuth2Api', data)).toBe('missing-app');
+				expect(instance.usesManagedAuth('notionOAuth2Api', data)).toBe(false);
+			});
+
+			it('should report a credential with its own client as not-managed', async () => {
+				const instance = await createInstance(rollout);
+				const data = { clientId: 'own', clientSecret: 'own-secret' };
+
+				expect(instance.getManagedAuthState('notionOAuth2Api', data)).toBe('not-managed');
+			});
+
+			it('should report a type without an overwrite as not-managed', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getManagedAuthState('notionApi', {})).toBe('not-managed');
+			});
+		});
+
+		describe('a payload that does not follow the format', () => {
+			const base = { notionOAuth2Api: baseApp };
+			const newerThan = (version: unknown) => ({
+				...base,
+				__versions: { notionOAuth2Api: { version, ...newApp } },
+			});
+
+			it.each([
+				[
+					'an array',
+					{ ...base, __versions: { notionOAuth2Api: [{ version: 2, ...newApp }] } },
+					'one object',
+				],
+				['a version that equals the base version', newerThan(1), 'must be greater'],
+				[
+					'a version below the base version',
+					{
+						notionOAuth2Api: { version: 3, ...baseApp },
+						__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+					},
+					'must be greater',
+				],
+				['a version that is not an integer', newerThan(1.5), 'integer "version"'],
+				[
+					'a missing version',
+					{ ...base, __versions: { notionOAuth2Api: newApp } },
+					'integer "version"',
+				],
+				[
+					'a missing client field',
+					{ ...base, __versions: { notionOAuth2Api: { version: 2, clientId: 'x' } } },
+					'must set "clientSecret"',
+				],
+				[
+					'a versions key that is not an object',
+					{ ...base, __versions: 'two' },
+					'must be an object',
+				],
+			])('should skip %s and load the rest', async (_name, payload, reason) => {
+				const instance = await createInstance(payload);
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(reason));
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(expect.objectContaining(baseApp));
+			});
+
+			it('should compare a versions entry with the version of its own base entry', async () => {
+				// The child sets its own client. The version of the parent does not apply to it.
+				const instance = await createInstance({
+					oAuth2Api: { version: 5, clientId: 'parent-id', clientSecret: 'parent-secret' },
+					notionOAuth2Api: baseApp,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(logger.warn).not.toHaveBeenCalled();
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(2);
+			});
+
+			it('should compare a versions entry with the base version of a parent type', async () => {
+				// The child entry sets no client fields, so it inherits the version of the parent.
+				const parentBase = {
+					oAuth2Api: { version: 2, ...baseApp },
+					notionOAuth2Api: { scope: 'read' },
+				};
+
+				await createInstance({
+					...parentBase,
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('must be greater than the version of the base entry (2)'),
+				);
+
+				logger.warn.mockClear();
+				const instance = await createInstance({
+					...parentBase,
+					__versions: { notionOAuth2Api: { version: 3, ...newApp } },
+				});
+				expect(logger.warn).not.toHaveBeenCalled();
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(3);
+			});
+
+			it('should skip a versions entry that has no base entry', async () => {
+				const instance = await createInstance({
+					__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+				});
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('needs a base entry'));
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({});
+			});
+
+			it('should skip the versions of a non-OAuth type', async () => {
+				const instance = await createInstance({
+					notionApi: { apiKey: 'k' },
+					__versions: { notionApi: { version: 2, apiKey: 'k2' } },
+				});
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('versions are supported only for OAuth credential types'),
+				);
+				expect(instance.getOverwrites('notionApi')).toEqual({ apiKey: 'k' });
+			});
+
+			it('should ignore an invalid base version and keep the base entry', async () => {
+				const instance = await createInstance({ notionOAuth2Api: { version: 0, ...baseApp } });
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('must be an integer of at least 1'),
+				);
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(baseApp);
+				expect(instance.getNewConnectionVersion('notionOAuth2Api', managed())).toBe(1);
+			});
+
+			it('should load no overwrites when the payload is not an object', async () => {
+				const instance = await createInstance(null as never);
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('it must be an object keyed by credential type'),
+				);
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({});
+			});
+
+			it('should skip an entry that is not an object', async () => {
+				const instance = await createInstance({ notionOAuth2Api: [baseApp] });
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('must be an object'));
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual({});
+			});
+
+			it('should skip a versions entry of a type that this instance does not know', async () => {
+				credentialTypes.recognizes.mockImplementation((type) => type !== 'communityOAuth2Api');
+
+				const instance = await createInstance({
+					...base,
+					communityOAuth2Api: { clientId: 'c', clientSecret: 's' },
+					__versions: {
+						notionOAuth2Api: { version: 2, ...newApp },
+						communityOAuth2Api: { version: 2, clientId: 'c2', clientSecret: 's2' },
+					},
+				});
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('this instance does not know the credential type'),
+				);
+				expect(instance.getOverwrites('notionOAuth2Api')).toMatchObject(newApp);
+			});
+
+			it('should replace the overwrites with the valid part of a later payload', async () => {
+				const instance = await createInstance(base);
+
+				instance.setPlainData(newerThan(1));
+
+				expect(instance.getAll()).toEqual(base);
+				expect(instance.getOverwrites('notionOAuth2Api')).toEqual(baseApp);
+			});
 		});
 	});
 });
