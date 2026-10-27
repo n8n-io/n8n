@@ -1385,6 +1385,40 @@ describe('nodes tools', () => {
 				expect(result.error).toContain('methodType');
 				expect(context.nodeService.exploreResources).not.toHaveBeenCalled();
 			});
+
+			it('uses the latest node version when version is omitted', async () => {
+				const resolveParameterOptions = vi.fn().mockResolvedValue({ ok: true, results: [] });
+				const context = createMockContext();
+				context.nodeService.resolveParameterOptions = resolveParameterOptions;
+				(context.nodeService.getDescription as Mock).mockResolvedValue({ version: 2.3 });
+				const tool = createGetNodeParameterOptionsTool(context);
+
+				await executeTool(tool, {
+					nodeType: 'n8n-nodes-base.slack',
+					parameterPath: 'channelId',
+					credentialType: 'slackApi',
+					credentialId: 'cred-1',
+				});
+
+				expect(context.nodeService.getDescription).toHaveBeenCalledWith('n8n-nodes-base.slack');
+				expect(resolveParameterOptions).toHaveBeenCalledWith(
+					expect.objectContaining({ version: 2.3 }),
+				);
+			});
+
+			it('returns an error when version is omitted and the node type is unknown', async () => {
+				const context = createMockContext();
+				(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not found'));
+				const tool = createGetNodeParameterOptionsTool(context);
+
+				const result = await executeTool(tool, {
+					nodeType: 'n8n-nodes-base.unknown',
+					parameterPath: 'channelId',
+				});
+
+				expect(result).toMatchObject({ ok: false, results: [] });
+				expect(result.error).toContain('n8n-nodes-base.unknown');
+			});
 		});
 
 		describe('createExecuteNodeTool', () => {
