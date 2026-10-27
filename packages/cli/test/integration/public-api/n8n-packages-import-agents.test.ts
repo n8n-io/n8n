@@ -269,6 +269,15 @@ it.each(['loose', 'project'] as const)(
 			await agents.save(sourceAgents[0]);
 			bindings = JSON.stringify({ credentials: { [sourceCredential.id]: targetCredential.id } });
 		}
+		const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
+		const sourceSlack = await createCredentials(
+			{ name: 'Source Slack', type: 'slackApi', data: '' },
+			sourceProject,
+		);
+		sourceAgents[0].integrations = [
+			{ type: 'slack', credentialId: sourceSlack.id, settings: slackSettings },
+		];
+		await agents.save(sourceAgents[0]);
 		const archive = await download(
 			shape === 'project' ? { projectIds: [sourceProject.id] } : undefined,
 		);
@@ -301,6 +310,17 @@ it.each(['loose', 'project'] as const)(
 				activeVersionId: null,
 				status: 'created',
 				publishing: { state: 'unchanged' },
+				channels:
+					index === 0
+						? [
+								{
+									type: 'slack',
+									status: 'setup-required',
+									reason: 'new-channel',
+									setupUrl: expect.stringContaining(`/projects/${projectId}/agents/${localId}`),
+								},
+							]
+						: [],
 			});
 			const saved = await agents.findById(localId);
 			expect(saved).toMatchObject({
@@ -312,6 +332,18 @@ it.each(['loose', 'project'] as const)(
 					subAgents: { agents: [{ agentId: result.bindings.agents[sourceAgents[1 - index].id] }] },
 				},
 			});
+			// The channel settings travel; the source credential does not connect the channel.
+			expect(saved!.integrations).toEqual(
+				index === 0 ? [{ type: 'slack', credentialId: '', settings: slackSettings }] : [],
+			);
+			const destinationCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { projectId },
+				relations: { credentials: true },
+			});
+			// A credential that only a channel uses is neither imported nor stubbed.
+			expect(destinationCredentials.map(({ credentials }) => credentials.type)).not.toContain(
+				'slackApi',
+			);
 			expect(await skillRefs.readDraft({ id: localId }, {})).toEqual(sourceSkills[index]);
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({

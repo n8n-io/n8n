@@ -560,6 +560,7 @@ export {
 	ImportResultDto,
 	ImportBlockedErrorDto,
 	importResultSchema,
+	type ImportedAgentChannel,
 } from './packages/import-result.dto';
 export * from './packages/credential.schema';
 export * from './packages/data-table.schema';

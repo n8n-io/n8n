@@ -10,7 +10,8 @@ export type PublishingOutcomeState =
 export type PublishingBlockedReason =
 	| 'stub-credential'
 	| 'incomplete-credential'
-	| 'missing-node-type';
+	| 'missing-node-type'
+	| 'channel-setup-required';
 
 export interface PublishingOutcome {
 	state: PublishingOutcomeState;
