@@ -8,7 +8,7 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from '@n8n/api-types';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();

@@ -17,7 +17,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG, type RedactionFloor } from '@n8n/api-types';
+import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { EnterpriseEditionFeature, SECURITY_POLICIES_DOCS_URL } from '@/app/constants';
@@ -28,6 +28,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
 import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 

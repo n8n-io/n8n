@@ -1,6 +1,8 @@
 import type { PublicApiRateLimitSettings } from '@n8n/api-types';
 import type { useI18n } from '@n8n/i18n';
 
+export const PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG = '131_public_api_rate_limit_settings';
+
 export const RATE_LIMIT_ROW_KEYS = [
 	'globalRead',
 	'globalWrite',
