@@ -89,20 +89,17 @@ describe('AgentChatPlan timer', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('freezes the stopped timer across reloads and shows a failed report notice', async () => {
+	it('freezes the stopped timer across reloads', async () => {
 		const wrapper = mount(AgentChatPlan, {
 			props: {
 				plan: planView({ startedAt }),
 				stopped: true,
 				stoppedAt: '2026-10-01T10:00:30.000Z',
-				reportFailed: true,
 			},
 		});
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
 		await vi.advanceTimersByTimeAsync(20_000);
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
-		await wrapper.get('button').trigger('click');
-		expect(wrapper.text()).toContain('agents.chat.tasks.reportFailed');
 		wrapper.unmount();
 	});
 

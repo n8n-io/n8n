@@ -25,7 +25,6 @@ const props = defineProps<{
 	stopping?: boolean;
 	stopped?: boolean;
 	stoppedAt?: string;
-	reportFailed?: boolean;
 	stopFailed?: boolean;
 }>();
 const isStopped = computed(
@@ -326,9 +325,6 @@ const summary = computed(() => {
 			</div>
 			<p v-if="stopFailed" :class="$style.detail" role="status">
 				{{ i18n.baseText('agents.chat.backgroundTasks.stopError') }}
-			</p>
-			<p v-if="reportFailed" :class="$style.detail" role="status">
-				{{ i18n.baseText('agents.chat.tasks.reportFailed') }}
 			</p>
 		</ChatCollapsibleContainer>
 	</div>

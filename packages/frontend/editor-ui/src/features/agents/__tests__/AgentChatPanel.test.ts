@@ -1753,7 +1753,7 @@ describe('AgentChatPanel', () => {
 			},
 		);
 
-		it('shows a summary failure with trace access and keeps the stack hidden', () => {
+		it('keeps a summary failure in chat when work continues', async () => {
 			const plan = planView();
 			messagesMock.value = [publishPlan(plan)];
 			planStopState.value = {
@@ -1771,6 +1771,27 @@ describe('AgentChatPanel', () => {
 				'agents.chat.tasks.inline.reportFailed',
 			);
 			expect(wrapper.get('[role="status"]').text()).toContain('agents.chat.plan.viewTrace');
+			const failedReport: ChatMessage = {
+				id: 'failed-report',
+				role: 'assistant',
+				content: '',
+				status: 'error',
+				stopReport: true,
+				executionId: 'report',
+			};
+			messagesMock.value.push(failedReport, { id: 'continue', role: 'user', content: 'Continue' });
+			planStopState.value.status = 'resumed';
+			livePlan.value = planView({
+				document: { title: 'Research', items: [planTask(1, 'in_progress')] },
+			});
+			await nextTick();
+			const card = wrapper.getComponent(AgentChatPlan);
+			await card.get('button').trigger('click');
+			expect(card.text()).not.toContain('agents.chat.tasks.reportFailed');
+			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+			expect(
+				wrapper.getComponent({ name: 'AgentChatMessageList' }).props('messages'),
+			).toContainEqual(failedReport);
 		});
 
 		it('keeps active work visible after a recovered tool error', () => {

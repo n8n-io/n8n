@@ -1876,7 +1876,6 @@ onBeforeUnmount(() => {
 				:stopping="planStopActive && stopDisabled"
 				:stopped="planStopped"
 				:stopped-at="currentPlanStop?.requestedAt"
-				:report-failed="currentPlanStop?.reportFailed"
 				:stop-failed="canRetryStop && canStopPlan && !isStopping"
 				@stop="stopBackgroundJobs"
 			/>
@@ -1963,7 +1962,6 @@ onBeforeUnmount(() => {
 							:stopping="planStopActive && stopDisabled"
 							:stopped="planStopped"
 							:stopped-at="currentPlanStop?.requestedAt"
-							:report-failed="currentPlanStop?.reportFailed"
 							:stop-failed="canRetryStop && canStopPlan && !isStopping"
 							@stop="stopBackgroundJobs"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
