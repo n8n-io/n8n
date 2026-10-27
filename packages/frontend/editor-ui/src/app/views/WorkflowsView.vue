@@ -2236,6 +2236,7 @@ const onNameSubmit = async (name: string) => {
 		v-else
 		ref="resourcesListLayout"
 		v-model:filters="filters"
+		filters-in-header
 		resource-key="workflows"
 		type="list-paginated"
 		:resources="workflowListResources"
@@ -2255,11 +2256,52 @@ const onNameSubmit = async (name: string) => {
 		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
-		<template #header>
+		<template #header="{ filters: FiltersToolbar }">
 			<ProjectHeader
 				:has-active-callouts="hasActiveCallouts"
 				@create-folder="createFolderInCurrent"
 			>
+				<template v-if="breadcrumbsLoading || showMainBreadcrumbs" #title="{ description }">
+					<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
+						<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
+					</div>
+					<div
+						v-else-if="showMainBreadcrumbs"
+						:class="$style['breadcrumbs-container']"
+						data-test-id="main-breadcrumbs"
+					>
+						<FolderBreadcrumbs
+							heading
+							:project-description="description"
+							:current-folder="currentFolderParent"
+							:actions="breadcrumbsActions"
+							:hidden-items-trigger="isDragging ? 'hover' : 'click'"
+							:current-folder-as-link="true"
+							@item-selected="onBreadcrumbItemClick"
+							@action="onBreadCrumbsAction"
+							@item-drop="onBreadCrumbsItemDrop"
+							@project-drop="moveFolderToProjectRoot"
+						>
+							<template v-if="currentFolder" #append>
+								<span :class="$style['path-separator']">/</span>
+								<N8nInlineTextEdit
+									ref="renameInput"
+									:key="currentFolder?.id"
+									data-test-id="breadcrumbs-item-current"
+									:placeholder="i18n.baseText('folders.rename.placeholder')"
+									:model-value="currentFolder.name"
+									:max-length="30"
+									:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
+									:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+									@update:model-value="onNameSubmit"
+								/>
+							</template>
+						</FolderBreadcrumbs>
+					</div>
+				</template>
+				<template #filters>
+					<component :is="FiltersToolbar" />
+				</template>
 				<InsightsSummary
 					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -2335,42 +2377,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 			</N8nCallout>
 		</template>
-		<template #breadcrumbs>
-			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
-				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
-			</div>
-			<div
-				v-else-if="showMainBreadcrumbs"
-				:class="$style['breadcrumbs-container']"
-				data-test-id="main-breadcrumbs"
-			>
-				<FolderBreadcrumbs
-					:current-folder="currentFolderParent"
-					:actions="breadcrumbsActions"
-					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
-					:current-folder-as-link="true"
-					@item-selected="onBreadcrumbItemClick"
-					@action="onBreadCrumbsAction"
-					@item-drop="onBreadCrumbsItemDrop"
-					@project-drop="moveFolderToProjectRoot"
-				>
-					<template v-if="currentFolder" #append>
-						<span :class="$style['path-separator']">/</span>
-						<N8nInlineTextEdit
-							ref="renameInput"
-							:key="currentFolder?.id"
-							data-test-id="breadcrumbs-item-current"
-							:placeholder="i18n.baseText('folders.rename.placeholder')"
-							:model-value="currentFolder.name"
-							:max-length="30"
-							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
-							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
-							@update:model-value="onNameSubmit"
-						/>
-					</template>
-				</FolderBreadcrumbs>
-			</div>
-		</template>
+
 		<template #item="{ item: data, index }">
 			<Draggable
 				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
@@ -2607,7 +2614,12 @@ const onNameSubmit = async (name: string) => {
 .breadcrumbs-container {
 	display: flex;
 	align-items: center;
-	align-self: flex-end;
+
+	:deep([data-test-id='folder-breadcrumbs'] .n8n-text) {
+		font-size: var(--font-size--xl);
+		font-weight: var(--font-weight--medium);
+		line-height: var(--line-height--sm);
+	}
 }
 
 .breadcrumbs-loading {
@@ -2650,8 +2662,11 @@ const onNameSubmit = async (name: string) => {
 }
 
 .name {
+	transform: translateY(calc(-1 * var(--spacing--5xs)));
 	color: $custom-font-dark;
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--xl);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 

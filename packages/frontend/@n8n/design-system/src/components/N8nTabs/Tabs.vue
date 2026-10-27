@@ -1,9 +1,8 @@
 <script lang="ts" setup generic="Value extends string | number">
-import { usePreferredReducedMotion } from '@vueuse/core';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import { useI18n } from '../../composables/useI18n';
 import type { TabOptions } from '../../types';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
@@ -19,46 +18,24 @@ const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	justified: false,
 });
 
-const { t } = useI18n();
-const reducedMotion = usePreferredReducedMotion();
-const scrollPosition = ref(0);
-const canScrollRight = ref(false);
-const hasOverflow = ref(false);
-const root = ref<HTMLDivElement>();
 const tabs = ref<HTMLDivElement>();
-let resizeObserver: ResizeObserver | null = null;
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+const observedElements = computed(() =>
+	tabs.value ? [tabs.value, ...Array.from(tabs.value.children)] : [],
+);
 
 function updateScrollState() {
 	const container = tabs.value;
 	if (!container) return;
 
-	scrollPosition.value = container.scrollLeft;
-	canScrollRight.value = container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
-	/** Compare against the full row to keep reserved controls stable at both ends. */
-	hasOverflow.value = !props.justified && container.scrollWidth > (root.value?.clientWidth ?? 0);
+	canScrollLeft.value = !props.justified && container.scrollLeft > 1;
+	canScrollRight.value =
+		!props.justified && container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
 }
 
-onMounted(() => {
-	const container = tabs.value;
-	if (!container) return;
-
-	container.addEventListener('scroll', updateScrollState);
-	resizeObserver = new ResizeObserver(updateScrollState);
-	resizeObserver.observe(container);
-	if (root.value) resizeObserver.observe(root.value);
-	updateScrollState();
-});
-
-onUnmounted(() => {
-	tabs.value?.removeEventListener('scroll', updateScrollState);
-	resizeObserver?.disconnect();
-});
-
-/**
- * The observer only fires when the container itself resizes. Options that
- * arrive or change label after mount grow scrollWidth without touching it, so
- * the arrows would otherwise stay hidden until the next mount.
- */
+/** Observe tab sizes too, because labels can grow without resizing the viewport. */
+useResizeObserver(observedElements, updateScrollState);
 watch(() => [props.options, props.justified, props.size, props.variant], updateScrollState, {
 	deep: true,
 	flush: 'post',
@@ -77,35 +54,10 @@ function handleTabClick(option: TabOptions<Value>) {
 	if (option.disabled) return;
 	emit('update:modelValue', option.value);
 }
-
-function scroll(direction: 'left' | 'right') {
-	const container = tabs.value;
-	if (!container) return;
-
-	const viewport = container.getBoundingClientRect();
-	const items = Array.from(container.children);
-	if (direction === 'left') items.reverse();
-
-	for (const item of items) {
-		const bounds = item.getBoundingClientRect();
-		const distance =
-			direction === 'right' ? bounds.right - viewport.right : bounds.left - viewport.left;
-		if (direction === 'right' ? distance > 1 : distance < -1) {
-			/** Keep the middle of an oversized tab reachable in both directions. */
-			const step = Math.max(-container.clientWidth, Math.min(distance, container.clientWidth));
-			container.scrollTo({
-				left: container.scrollLeft + step,
-				behavior: reducedMotion.value === 'reduce' ? 'instant' : 'smooth',
-			});
-			return;
-		}
-	}
-}
 </script>
 
 <template>
 	<div
-		ref="root"
 		:class="[
 			'n8n-tabs',
 			$style.container,
@@ -114,17 +66,15 @@ function scroll(direction: 'left' | 'right') {
 			justified ? $style.justified : '',
 		]"
 	>
-		<button
-			v-if="hasOverflow"
-			type="button"
-			:class="$style.button"
-			:aria-label="t('tabs.scrollLeft')"
-			:disabled="scrollPosition <= 1"
-			@click="scroll('left')"
+		<div
+			ref="tabs"
+			role="tablist"
+			:class="[
+				$style.tabs,
+				{ [$style.fadeLeft]: canScrollLeft, [$style.fadeRight]: canScrollRight },
+			]"
+			@scroll="updateScrollState"
 		>
-			<N8nIcon icon="chevron-left" size="small" />
-		</button>
-		<div ref="tabs" role="tablist" :class="$style.tabs">
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
@@ -209,20 +159,11 @@ function scroll(direction: 'left' | 'right') {
 				</N8nTooltip>
 			</div>
 		</div>
-		<button
-			v-if="hasOverflow"
-			type="button"
-			:class="$style.button"
-			:aria-label="t('tabs.scrollRight')"
-			:disabled="!canScrollRight"
-			@click="scroll('right')"
-		>
-			<N8nIcon icon="chevron-right" size="small" />
-		</button>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/mixins' as scrollMixins;
 .container {
 	position: relative;
 	display: flex;
@@ -245,6 +186,18 @@ function scroll(direction: 'left' | 'right') {
 	min-width: 0;
 	position: relative;
 	overflow-x: auto;
+
+	&.fadeLeft {
+		@include scrollMixins.scroll-mask(left);
+	}
+
+	&.fadeRight {
+		@include scrollMixins.scroll-mask(right);
+	}
+
+	&.fadeLeft.fadeRight {
+		@include scrollMixins.scroll-mask(x);
+	}
 
 	> div {
 		flex-shrink: 0;
@@ -403,27 +356,6 @@ function scroll(direction: 'left' | 'right') {
 
 	&:hover {
 		color: var(--text-color--disabled);
-	}
-}
-
-.button {
-	composes: tab;
-	flex: 0 0 var(--spacing--xl);
-	justify-content: center;
-	padding-inline: 0;
-	border: 0;
-	background: var(--tabs--arrow-buttons--color, transparent);
-	font-family: inherit;
-	line-height: inherit;
-
-	/** Match the label line box so the chevron stays centered with the title. */
-	&::before {
-		content: '\200b';
-	}
-
-	&:disabled {
-		color: var(--text-color--disabled);
-		cursor: default;
 	}
 }
 

@@ -34,6 +34,8 @@ type Props = {
 	hiddenItemsTrigger?: 'hover' | 'click';
 	currentFolderAsLink?: boolean;
 	visibleLevels?: 1 | 2;
+	heading?: boolean;
+	projectDescription?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -42,6 +44,8 @@ const props = withDefaults(defineProps<Props>(), {
 	hiddenItemsTrigger: 'click',
 	currentFolderAsLink: false,
 	visibleLevels: 1,
+	heading: false,
+	projectDescription: '',
 });
 
 const emit = defineEmits<{
@@ -240,6 +244,8 @@ onBeforeUnmount(() => {
 		>
 			<template v-if="currentProject" #prepend>
 				<ProjectBreadcrumb
+					:heading="heading"
+					:description="projectDescription"
 					:current-project="currentProject"
 					:is-dragging="isDragging"
 					@project-drop="onProjectDrop"
@@ -253,6 +259,8 @@ onBeforeUnmount(() => {
 		<!-- If there is no current folder, just show project badge -->
 		<div v-else-if="currentProject || isSharedContext" :class="$style['home-project']">
 			<ProjectBreadcrumb
+				:heading="heading"
+				:description="projectDescription"
 				:current-project="currentProject"
 				:is-shared="isSharedContext"
 				:is-dragging="isDragging"

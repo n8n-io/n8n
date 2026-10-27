@@ -10,6 +10,13 @@ type Props = {
 	color?: 'text-light' | 'text-base' | 'text-dark';
 };
 
+const iconSizes = {
+	mini: 'small',
+	small: 'large',
+	medium: 'xlarge',
+	large: 'xxlarge',
+} as const;
+
 const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
 	round: false,
@@ -28,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 		<N8nIcon
 			v-if="icon.type === 'icon'"
 			:icon="icon.value"
-			:class="$style.icon"
+			:size="iconSizes[props.size]"
 			:color="icon.color ?? color"
 		></N8nIcon>
 		<N8nText v-else-if="icon.type === 'emoji'" color="text-light" :class="$style.emoji">
@@ -58,10 +65,6 @@ const props = withDefaults(defineProps<Props>(), {
 	width: var(--spacing--xs);
 	height: var(--spacing--xs);
 
-	.icon {
-		font-size: var(--font-size--2xs);
-	}
-
 	.emoji {
 		font-size: var(--font-size--3xs);
 	}
@@ -86,9 +89,9 @@ const props = withDefaults(defineProps<Props>(), {
 }
 
 .large {
-	// Making this in line with user avatar size
-	min-width: 40px;
-	height: 40px;
+	/** Match the user avatar size. */
+	min-width: var(--height--xl);
+	height: var(--height--xl);
 
 	.emoji {
 		font-size: var(--font-size--sm);

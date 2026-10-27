@@ -42,6 +42,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { getProtectedInstanceTooltip } from '@/features/integrations/sourceControl.ee/sourceControl.utils';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { isVariableResource } from '@/app/utils/typeGuards';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -313,6 +314,7 @@ onMounted(() => {
 	<ResourcesListLayout
 		ref="layoutRef"
 		v-model:filters="filters"
+		filters-in-header
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="variables"
@@ -328,8 +330,14 @@ onMounted(() => {
 		@update:search="onSearchUpdated"
 		@click:add="openCreateVariableModal"
 	>
-		<template #header>
+		<template #header="{ filters: FiltersToolbar }">
 			<ProjectHeader main-button="variable">
+				<template v-if="overview.isProjectsSubPage" #title="{ description }">
+					<FolderBreadcrumbs heading :project-description="description" />
+				</template>
+				<template #filters>
+					<component :is="FiltersToolbar" />
+				</template>
 				<InsightsSummary
 					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"

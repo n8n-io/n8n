@@ -23,6 +23,9 @@ import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
 import { N8nButton, N8nCheckbox, N8nSelectedItemsInfo, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+import { createReusableTemplate } from '@vueuse/core';
+
+const [DefineFilters, ReuseFilters] = createReusableTemplate();
 
 const props = withDefaults(
 	defineProps<{
@@ -30,6 +33,7 @@ const props = withDefaults(
 		filters: ExecutionFilterType;
 		total?: number;
 		concurrentTotal?: number;
+		filtersInHeader?: boolean;
 	}>(),
 	{
 		total: 0,
@@ -349,7 +353,15 @@ const goToUpgrade = () => {
 
 <template>
 	<div :class="$style.execListWrapper">
-		<slot />
+		<DefineFilters>
+			<ExecutionsFilter
+				:initial-filters="props.filters"
+				:workflows="workflows"
+				class="execFilter"
+				@filter-changed="onFilterChanged"
+			/>
+		</DefineFilters>
+		<slot :filters="ReuseFilters" />
 		<div :class="$style.execListHeaderControls">
 			<ConcurrentExecutionsHeader
 				v-if="showConcurrencyHeader"
@@ -369,12 +381,7 @@ const goToUpgrade = () => {
 			/>
 			<div :class="$style.execHeaderRight">
 				<ExecutionStopAllText :executions="props.executions" />
-				<ExecutionsFilter
-					:initial-filters="props.filters"
-					:workflows="workflows"
-					class="execFilter"
-					@filter-changed="onFilterChanged"
-				/>
+				<ReuseFilters v-if="!props.filtersInHeader" />
 			</div>
 		</div>
 		<div :class="$style.execList">
