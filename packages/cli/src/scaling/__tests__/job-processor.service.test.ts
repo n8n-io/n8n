@@ -157,6 +157,31 @@ describe('JobProcessor', () => {
 		expect(result).toEqual({ success: false });
 	});
 
+	it('should refrain from processing an execution canceled while queued', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({ status: 'canceled' }),
+		);
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		const result = await jobProcessor.processJob(mock<Job>());
+
+		expect(result).toEqual({ success: false });
+		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+	});
+
 	it('should throw a descriptive error when the execution has no run data', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const executionPersistence = mock<ExecutionPersistence>();

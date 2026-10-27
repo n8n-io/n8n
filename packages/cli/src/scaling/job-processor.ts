@@ -153,6 +153,10 @@ export class JobProcessor {
 		 */
 		if (execution.status === 'crashed') return { success: false };
 
+		// A stop request for a job that still waits in the queue only marks the execution as
+		// canceled: no worker runs it yet, and only the enqueuing process can remove the job.
+		if (execution.status === 'canceled') return { success: false };
+
 		// A correctly enqueued execution always carries a run-data payload. A missing
 		// one means the producer persisted no data, which would otherwise surface as an
 		// opaque `Cannot read properties of undefined` deref further down. Fail with a
