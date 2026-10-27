@@ -166,6 +166,25 @@ async function mergeOnHost(iid: number, headSha: string) {
 	});
 }
 
+/** Ends the review on the host without putting its head on `main`, as a squash merge does. */
+function finishOnHost(
+	iid: number,
+	outcome: Partial<GitLabMergeRequest> & { state: 'merged' | 'closed' },
+) {
+	const mergeRequest = hostMergeRequests.get(iid);
+	if (!mergeRequest) throw new Error(`Unknown merge request ${iid}`);
+	hostMergeRequests.set(iid, { ...mergeRequest, ...outcome });
+}
+
+async function dropReviewRefs(iid: number, branchName: string) {
+	const remote = simpleGit(remoteFolder);
+	await remote.raw(['update-ref', '-d', `refs/merge-requests/${iid}/head`]);
+	await remote.raw(['update-ref', '-d', `refs/heads/${branchName}`]);
+	// A clone of a local path copies every object, so the host must also drop the loose ones.
+	await remote.raw(['reflog', 'expire', '--expire=now', '--all']);
+	await remote.raw(['gc', '--prune=now', '--quiet']);
+}
+
 /** Commits on `main` of the remote from a temporary clone, as a push on the host does. */
 async function commitOnMain(change: (folder: string) => Promise<void>) {
 	const folder = await mkdtemp(path.join(tmpdir(), 'promotion-review-changes-clone-'));
@@ -309,12 +328,111 @@ it('diffs a merged review against the base that the host recorded', async () => 
 
 	const changes = await changesOf(review.reviewId);
 
-	expect(changes).toMatchObject({ baselineCommitSha: baseSha, headCommitSha: review.commitSha });
+	expect(changes).toMatchObject({
+		baselineCommitSha: baseSha,
+		headCommitSha: review.commitSha,
+		outcome: { state: 'merged', by: null, webUrl: expect.stringContaining('/merge_requests/') },
+	});
 	expect(changed(changes.resources)).toEqual([
 		[`project:${project.id}`, 'added'],
 		[`workflow:${quote.id}`, 'added'],
 	]);
 }, 60_000);
+
+describe('when the host dropped the commits of a finished review', () => {
+	/** A head that only the host had, then gone from the host too. */
+	async function promoteAndLose() {
+		await createTeamProject('Sales', owner);
+		const review = await promote('Changes');
+		await commitOnMain(async () => {});
+		await rebaseOnHost(review);
+		const headSha = hostMergeRequests.get(review.iid)?.sha;
+		if (!headSha) throw new Error('The rebase recorded no head');
+		const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+		await dropReviewRefs(review.iid, review.branchName);
+		// A fresh checkout has none of the review commits, as after a reconnect.
+		await Container.get(PromotionsService).clone(environmentId);
+		return { review, headSha, baseSha };
+	}
+
+	it('states who merged the review and when, instead of failing', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merged_at: '2026-10-01T10:00:00.000Z',
+			merge_user: { name: 'Ada Lovelace' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		const changes = await changesOf(review.reviewId);
+
+		expect(changes).toEqual({
+			baselineCommitSha: baseSha,
+			headCommitSha: headSha,
+			resources: [],
+			dependencies: [],
+			warnings: ['commitsUnavailable'],
+			outcome: {
+				state: 'merged',
+				at: '2026-10-01T10:00:00.000Z',
+				by: 'Ada Lovelace',
+				webUrl: hostMergeRequests.get(review.iid)?.web_url,
+			},
+		});
+	}, 60_000);
+
+	it('names the n8n approver over the token user, but not the time n8n noticed the merge', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			approvedById: owner.id,
+			approvedAt: new Date('2026-10-03T09:00:00.000Z'),
+			lastStateChangeAt: new Date('2026-10-20T09:00:00.000Z'),
+		});
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merge_user: { name: 'n8n' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		const changes = await changesOf(review.reviewId);
+
+		expect(changes.outcome).toEqual({
+			state: 'merged',
+			at: null,
+			by: [owner.firstName, owner.lastName].join(' '),
+			webUrl: hostMergeRequests.get(review.iid)?.web_url,
+		});
+	}, 60_000);
+
+	it('states when the review was closed', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		finishOnHost(review.iid, {
+			state: 'closed',
+			closed_at: '2026-10-02T10:00:00.000Z',
+			closed_by: { name: 'Grace Hopper' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		const changes = await changesOf(review.reviewId);
+
+		expect(changes.warnings).toEqual(['commitsUnavailable']);
+		expect(changes.outcome).toEqual({
+			state: 'closed',
+			at: '2026-10-02T10:00:00.000Z',
+			by: 'Grace Hopper',
+			webUrl: hostMergeRequests.get(review.iid)?.web_url,
+		});
+	}, 60_000);
+
+	it('still fails for an open review, which has no outcome to show', async () => {
+		const { review } = await promoteAndLose();
+
+		await server
+			.authAgentFor(owner)
+			.get(`/promotions/reviews/${review.reviewId}/changes`)
+			.expect(400);
+	}, 60_000);
+});
 
 it('lists what a full promotion removes: a credential that no workflow uses and a project', async () => {
 	const support = await createTeamProject('Support', owner);
