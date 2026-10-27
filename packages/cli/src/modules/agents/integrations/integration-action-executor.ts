@@ -5,7 +5,11 @@ import type { Adapter, FileUpload, SentMessage } from 'chat';
 import { z } from 'zod';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import { type AgentChatIntegration, ChatIntegrationRegistry } from './agent-chat-integration';
+import {
+	type AgentChatIntegration,
+	ChatIntegrationRegistry,
+	MAX_CHANNEL_SEND_FILE_BYTES,
+} from './agent-chat-integration';
 import type { CallbackMetadata } from './callback-store';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
 import {
@@ -473,6 +477,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
+		const maxFileBytes = Math.min(limits.maxFileBytes, MAX_CHANNEL_SEND_FILE_BYTES);
 		const attachments = [];
 		for (const fileId of fileIds) {
 			const attachment = await this.attachmentService.getReadable(fileId, params.fileScope);
@@ -482,16 +487,16 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 					`File "${fileId}" not found in this conversation.`,
 				);
 			}
-			if (attachment.fileSizeBytes > limits.maxFileBytes) {
+			if (attachment.fileSizeBytes > maxFileBytes) {
 				return integrationError(
 					INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED,
-					`File "${attachment.fileName}" is ${formatMegabytes(attachment.fileSizeBytes)}. The ${platform} integration sends files up to ${formatMegabytes(limits.maxFileBytes)}.`,
+					`File "${attachment.fileName}" is ${formatMegabytes(attachment.fileSizeBytes)}. The ${platform} integration sends files up to ${formatMegabytes(maxFileBytes)}.`,
 				);
 			}
 			attachments.push(attachment);
 		}
 
-		// ponytail: loads each file into memory, the same as the inbound path. Stream the upload if large files become common.
+		// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
 		return await Promise.all(
 			attachments.map(async (attachment) => ({
 				data: await this.attachmentService.getBuffer(attachment),
