@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Delete a promotion environment
 description: Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in Git changes.
-x-required-scope: gitConnection:delete
+x-required-scope: promotions:delete
 parameters:
   - schema:
       type: string

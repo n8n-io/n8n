@@ -96,9 +96,9 @@ const DEPENDENCY_COLLECTIONS = {
 	ManifestEntityCollection | null
 >;
 
-const GIT_SCOPES = {
-	promote: 'gitConnection:push',
-	apply: 'gitConnection:pull',
+const PROMOTION_SCOPES = {
+	promote: 'promotions:promote',
+	apply: 'promotions:apply',
 } as const satisfies Record<PromotionDirection, Scope>;
 
 type DesiredPackage = {
@@ -442,10 +442,10 @@ export class PromotionChangeService {
 
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
 	private assertCanPreview(user: User, direction: PromotionDirection) {
-		if (!hasGlobalScope(user, GIT_SCOPES[direction])) {
-			const operation = direction === 'promote' ? 'push' : 'pull';
+		const scope = PROMOTION_SCOPES[direction];
+		if (!hasGlobalScope(user, scope)) {
 			throw new ForbiddenError(
-				`Change preview requires the promotion ${operation} permission. Ask an administrator for access.`,
+				`Change preview requires the ${scope} scope. Ask an administrator for access.`,
 			);
 		}
 	}

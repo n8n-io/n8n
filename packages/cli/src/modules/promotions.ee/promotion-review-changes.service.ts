@@ -4,6 +4,7 @@ import {
 	type PromotionResourceDetails,
 	type PromotionReviewChanges,
 	type PromotionReviewDetailsRequestDto,
+	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
 	type SerializedWorkflow,
 } from '@n8n/api-types';
@@ -29,6 +30,7 @@ import {
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { parsePackageManifest, toDetail, type DetailSide } from './promotion-change.service';
 import { buildPreview, indexProjects, type PreviewSide } from './promotion-preview';
+import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { PromotionReviewInboxService } from './promotion-review-inbox.service';
 import { PromotionsService } from './promotions.service';
@@ -68,15 +70,33 @@ export class PromotionReviewChangesService {
 		if (!headCommitSha) {
 			throw new BadRequestError('GitLab did not report the head commit of the merge request.');
 		}
-		const commits = await this.promotionsService.readReviewCommits(target.environment.id, {
-			headRef: target.headRef,
-			headCommitSha,
-			baseline: baselineOf(mergeRequest),
-		});
+		const baseline = baselineOf(mergeRequest);
+		const outcome = outcomeOf(target.review, mergeRequest);
+		let commits;
+		try {
+			commits = await this.promotionsService.readReviewCommits(target.environment.id, {
+				headRef: target.headRef,
+				headCommitSha,
+				baseline,
+			});
+		} catch (error) {
+			// The host drops the refs of a finished review. Its outcome is still worth showing.
+			if (!(error instanceof PromotionReviewCommitsMissingError) || !outcome) throw error;
+			if (!('commitSha' in baseline)) throw error;
+			return {
+				baselineCommitSha: baseline.commitSha,
+				headCommitSha,
+				resources: [],
+				dependencies: [],
+				warnings: ['commitsUnavailable'],
+				outcome,
+			};
+		}
 		const [base, head] = [await readSide(commits.baseline), await readSide(commits.head)];
 		const commitShas = {
 			baselineCommitSha: commits.baseline.commitSha,
 			headCommitSha: commits.head.commitSha,
+			outcome,
 		};
 		const warnings: PromotionReviewWarning[] = [];
 		if (base.manifestUnreadable) warnings.push('baselineManifestUnreadable');
@@ -184,6 +204,34 @@ function baselineOf(
 		throw new BadRequestError('GitLab did not report the base commit of the merge request.');
 	}
 	return { commitSha, targetBranchName: mergeRequest.target_branch };
+}
+
+/**
+ * A merge through n8n reaches the host as its token user, so the n8n approver names the
+ * person and comes first. The time stays unknown when the host omits it: n8n only knows
+ * when it noticed the change, not when the host made it.
+ */
+function outcomeOf(
+	review: PromotionReview,
+	mergeRequest: GitLabMergeRequest,
+): PromotionReviewOutcome | null {
+	const { state, web_url: webUrl } = mergeRequest;
+	if (state !== 'merged' && state !== 'closed') return null;
+	const hostActor =
+		state === 'merged'
+			? (mergeRequest.merge_user ?? mergeRequest.merged_by)?.name
+			: mergeRequest.closed_by?.name;
+	const hostAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
+	const approver = state === 'merged' ? review.approvedBy : null;
+	const approverName = approver
+		? [approver.firstName, approver.lastName].filter(Boolean).join(' ') || approver.email
+		: null;
+	return {
+		state,
+		at: hostAt ?? null,
+		by: approverName ?? hostActor ?? null,
+		webUrl,
+	};
 }
 
 function newestBranchName({ runs }: PromotionReview): string | null {
