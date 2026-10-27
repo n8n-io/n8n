@@ -42,6 +42,8 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
+    "memory": "pnpm --dir packages/quality/efficiency/memory/local exec tsx src/cli.ts",
+    "memory:start": "cross-env E2E_TESTS=true N8N_SECURE_COOKIE=false node --expose-gc packages/cli/bin/n8n start",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",
