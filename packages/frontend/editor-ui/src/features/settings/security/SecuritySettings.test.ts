@@ -18,10 +18,24 @@ vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
 }));
 
-vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => ({
-	getPublicApiRateLimitSettings: vi.fn().mockResolvedValue(undefined),
-	updatePublicApiRateLimitSettings: vi.fn(),
-}));
+vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
+	const limits = {
+		globalReadLimit: 1200,
+		globalReadWindowSeconds: 60,
+		globalWriteLimit: 600,
+		globalWriteWindowSeconds: 60,
+		endpointReadLimit: 1000,
+		endpointReadWindowSeconds: 60,
+		endpointWriteLimit: 500,
+		endpointWriteWindowSeconds: 60,
+	};
+	return {
+		getPublicApiRateLimitSettings: vi
+			.fn()
+			.mockResolvedValue({ enabled: false, ...limits, defaults: limits, envManagedFields: [] }),
+		updatePublicApiRateLimitSettings: vi.fn(),
+	};
+});
 
 const showToast = vi.fn();
 const showError = vi.fn();

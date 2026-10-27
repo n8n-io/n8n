@@ -108,10 +108,11 @@ async function save(next: PublicApiRateLimitSettings) {
 
 <template>
 	<N8nSettingsSection
+		v-if="state && settings"
 		:title="i18n.baseText('settings.security.rateLimits.title')"
 		data-test-id="rate-limits-section"
 	>
-		<N8nSettingsRowGroup v-if="state && settings">
+		<N8nSettingsRowGroup>
 			<N8nSettingsRow :model-value="settings.enabled" expandable :disclosure="false">
 				<template #info>
 					<N8nText :bold="true">
@@ -180,7 +181,6 @@ async function save(next: PublicApiRateLimitSettings) {
 		</N8nSettingsRowGroup>
 
 		<ApiKeyRateLimitsDialog
-			v-if="state && settings"
 			v-model:open="dialogOpen"
 			:mode="dialogMode"
 			:settings="settings"

@@ -121,6 +121,14 @@ describe('ApiKeyRateLimitsSection', () => {
 			);
 		});
 
+		it('hides the section and shows an error when the settings cannot be loaded', async () => {
+			getSettings.mockRejectedValue(new Error('boom'));
+			const { queryByTestId } = renderSection();
+
+			await waitFor(() => expect(showError).toHaveBeenCalled());
+			expect(queryByTestId('rate-limits-section')).not.toBeInTheDocument();
+		});
+
 		it('shows an error when the settings cannot be saved', async () => {
 			updateSettings.mockRejectedValue(new Error('boom'));
 			const { getByTestId } = await renderLoaded({ enabled: true });
