@@ -1,10 +1,31 @@
 import { render, fireEvent } from '@testing-library/vue';
+import { h, nextTick } from 'vue';
 
 import N8nMarkdown from './Markdown.vue';
 import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {
+		it('keeps slot targets across streamed HTML and preserves raw nested fences', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '> ```js\n>   first\n> ```' },
+				slots: {
+					'code-block': ({ code, language }: { code: string; language: string }) =>
+						h('pre', { 'data-language': language }, code),
+				},
+			});
+			await nextTick();
+			const target = wrapper.container.querySelector('blockquote pre')?.parentElement;
+			expect(target).toHaveClass('not-prose');
+			expect(target?.textContent).toBe('  first\n');
+			await wrapper.rerender({ content: 'New paragraph\n\n> ```js\n>   second\n> ```' });
+			await nextTick();
+			expect(wrapper.container.querySelector('blockquote pre')?.parentElement).toBe(target);
+			expect(target?.textContent).toBe('  second\n');
+			await wrapper.rerender({ content: 'New paragraph\n\n> ```js\n>   third\n> ```' });
+			await nextTick();
+			expect(target?.textContent).toBe('  third\n');
+		});
 		it('supports flat parser options and preserves defaults', () => {
 			const wrapper = render(N8nMarkdown, {
 				props: {
