@@ -84,7 +84,10 @@ export function describeSkillSourceClientContract(subject: () => SkillSourceClie
 			const published = [
 				skill('Brand voice', {
 					frontmatter: { 'allowed-tools': ['Read'], license: 'MIT' },
-					files: [{ path: 'references/tone.md', content: '# Tone\n\nBe brief.\n' }],
+					files: [
+						{ path: 'references/tone.md', content: '# Tone\n\nBe brief.\n' },
+						{ path: 'references/guides/style.markdown', content: '# Style\n' },
+					],
 				}),
 				skill('Release notes'),
 				skill('Support replies'),

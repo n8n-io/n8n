@@ -96,7 +96,7 @@ function toSkillContent(page: Page): FetchedSkill['content'] {
 		instructions: page.body,
 		frontmatter: page.properties,
 		files: page.children.map((child) => ({
-			path: `references/${child.title}.md`,
+			path: `references/${child.title}`,
 			content: child.body,
 		})),
 	};

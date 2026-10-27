@@ -1,6 +1,6 @@
 import type { SkillContent } from '../../utils/skill-content-hash';
 
-/** A page holds one skill. Its child pages are the reference files. */
+/** A page holds one skill. Its child pages are the reference files, titled by their path under `references/`. */
 export type Page = {
 	id: string;
 	title: string;
@@ -72,7 +72,7 @@ function toPage(id: string, content: SkillContent, editCount: number): Page {
 		body: content.instructions,
 		properties: content.frontmatter,
 		children: content.files.map((file) => ({
-			title: file.path.replace(/^references\//, '').replace(/\.md$/, ''),
+			title: file.path.replace(/^references\//, ''),
 			body: file.content,
 		})),
 		editCount,

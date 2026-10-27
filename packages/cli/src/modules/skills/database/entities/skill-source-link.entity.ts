@@ -1,8 +1,6 @@
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-import type { OpaqueSourceValue } from './skill-source-connection.entity';
-
 /** The sync state of one synced skill. Badges and counts read it. */
 export type SkillSourceLinkState =
 	| 'up_to_date'
@@ -26,7 +24,7 @@ export class SkillSourceLink extends WithTimestamps {
 
 	/** Where the skill is in the source, such as its folder. */
 	@JsonColumn()
-	remoteRef: OpaqueSourceValue;
+	remoteRef: Record<string, unknown>;
 
 	/** Source revision of the content in the latest accepted version. */
 	@Column({ type: 'varchar', length: 255 })
