@@ -770,6 +770,12 @@ export class AgentRuntime {
 			updateState: (patch) => this.updateState(patch),
 			emitAgentEnd: (messages) => this.eventBus.emit({ type: AgentEvent.AgentEnd, messages }),
 			getState: () => this.getState(),
+			resolveDynamicToolCall: (input) => {
+				const resolution = this.dynamicTools?.resolveCall(input);
+				return resolution?.ok
+					? { toolName: resolution.toolName, input: resolution.input }
+					: undefined;
+			},
 		};
 	}
 

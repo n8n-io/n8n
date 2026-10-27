@@ -105,6 +105,11 @@ describe('dynamic tools', () => {
 		const toolResults = chunksOfType(chunks, 'tool-result');
 		expect(toolResults.map((chunk) => chunk.toolName)).toEqual(['get_tools', 'slack_send_message']);
 		expect(toolResults.some((chunk) => chunk.isError === true)).toBe(false);
+		const toolCalls = chunksOfType(chunks, 'tool-call');
+		expect(toolCalls.map((chunk) => [chunk.toolCallId, chunk.toolName, chunk.input])).toEqual([
+			['tc-1', 'get_tools', { namespace: 'slack' }],
+			['tc-2', 'slack_send_message', { channel: 'general', text: 'hi' }],
+		]);
 
 		expect(calls).toHaveLength(3);
 		for (const call of calls) expect(toolNames(call)).toEqual(['call_tool', 'get_tools']);
