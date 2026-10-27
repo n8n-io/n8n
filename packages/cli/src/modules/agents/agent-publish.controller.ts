@@ -53,6 +53,7 @@ export class AgentPublishController {
 			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
 			req.headers?.['push-ref'],
+			undefined,
 			payload,
 		);
 		return await this.agentRunnableStateService.addRunnableState(

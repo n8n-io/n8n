@@ -11,11 +11,11 @@ const importPackageSummarySchema = z.object({
 	exportedAt: z.string().datetime(),
 });
 
-const workflowPublishingOutcomeSchema = z.object({
+const publishingOutcomeSchema = z.object({
 	state: z.enum(['published', 'unpublished', 'unchanged', 'blocked', 'failed']).openapi({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
-			'(for example because the workflow uses an empty or incomplete credential, or uses a node type this ' +
+			'(for example because the Agent or workflow uses an empty or incomplete credential, or a node type this ' +
 			'instance does not have). When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
@@ -49,9 +49,8 @@ const importedWorkflowSummarySchema = z.object({
 		.openapi({ description: 'Workflow id as it appeared in the package.' }),
 	localId: z.string().openapi({
 		description:
-			'Workflow id on the target instance: newly assigned for `created` (fresh under ' +
-			"`workflowIdPolicy=new`, the package id under `source`), the existing workflow's id for " +
-			'`updated`/`skipped`.',
+			'Workflow ID on the target instance. New workflows use the package ID. ' +
+			'Updated and skipped workflows keep their destination ID.',
 	}),
 	name: z.string(),
 	projectId: z.string(),
@@ -69,11 +68,29 @@ const importedWorkflowSummarySchema = z.object({
 			'Whether the workflow is archived on the target after import. Under `new-version` this ' +
 			"follows the package's `isArchived` flag. A skipped workflow keeps its own state.",
 	}),
-	publishing: workflowPublishingOutcomeSchema.openapi({
+	publishing: publishingOutcomeSchema.openapi({
 		description: 'Outcome of applying the selected publishing policy to this workflow.',
 	}),
 	status: z.enum(['created', 'updated', 'skipped']).openapi({
 		description: 'Import outcome for this package workflow.',
+	}),
+});
+
+const importedAgentSummarySchema = z.object({
+	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),
+	localId: z.string().openapi({
+		description:
+			'Agent ID on the target instance. New Agents use the package ID. ' +
+			'Updated and skipped Agents keep their destination ID.',
+	}),
+	name: z.string(),
+	projectId: z.string(),
+	activeVersionId: z.string().nullable().openapi({
+		description: 'Published version on the target after import. Null when no version is published.',
+	}),
+	status: z.enum(['created', 'updated', 'skipped']),
+	publishing: publishingOutcomeSchema.openapi({
+		description: 'Publication outcome. A failed publication does not undo the definition import.',
 	}),
 });
 
@@ -248,6 +265,9 @@ const importTagSummarySchema = z
 
 const serializedBindingsSchema = z
 	.object({
+		agents: z.record(z.string(), z.string()).openapi({
+			description: 'Source-to-target IDs for created, updated, and skipped package Agents.',
+		}),
 		workflows: z.record(z.string(), z.string()),
 		credentials: z.record(z.string(), z.string()).openapi({
 			description:
@@ -265,6 +285,14 @@ const serializedBindingsSchema = z
 
 export const importResultSchema = z.object({
 	package: importPackageSummarySchema,
+	agents: z.array(importedAgentSummarySchema),
+	counts: z.object({
+		agents: z.object({
+			created: z.number().int().nonnegative(),
+			updated: z.number().int().nonnegative(),
+			skipped: z.number().int().nonnegative(),
+		}),
+	}),
 	workflows: z.array(importedWorkflowSummarySchema),
 	removedWorkflows: z.array(removedWorkflowSummarySchema).openapi({
 		description: 'Workflows removed from the target during this import.',

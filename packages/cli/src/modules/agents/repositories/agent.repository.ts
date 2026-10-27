@@ -25,6 +25,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
 	count: number;
@@ -619,7 +620,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds), scope: projectScope }, { availableInMCP });
+		await this.update(
+			{ id: In(agentIds), scope: projectScope },
+			{ availableInMCP, revision: () => 'revision + 1' },
+		);
 	}
 
 	/**
@@ -819,7 +823,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
+	async saveDraftFenced(
+		agent: Agent,
+		ctx: OperationContext = {},
+		metadata: AgentDefinitionMetadata = {},
+	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		const previous = await this.managerFor(ctx).findOne(Agent, {
 			where: { id: agent.id },
@@ -841,6 +849,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 				integrations: agent.integrations,
 				tools: agent.tools,
 				versionId: agent.versionId,
+				...(metadata.availableInMCP !== undefined
+					? { availableInMCP: metadata.availableInMCP }
+					: {}),
 				updatedAt,
 				revision: () => 'revision + 1',
 				...(connectionsChanged ? { publicationRevision: () => '"publicationRevision" + 1' } : {}),
@@ -850,6 +861,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}

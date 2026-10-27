@@ -2134,6 +2134,9 @@ importers:
         specifier: ^4.5.2
         version: 4.5.2
     devDependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../oxlint-config
@@ -2152,6 +2155,9 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 0.21.1
+      tsdown:
+        specifier: catalog:typescript
+        version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
