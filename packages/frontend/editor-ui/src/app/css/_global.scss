@@ -6,6 +6,7 @@
 }
 
 ::selection {
+	color: light-dark(currentColor, var(--color--neutral-950));
 	background-color: light-dark(
 		color-mix(in oklch, var(--background--brand) 30%, transparent),
 		var(--background--brand)
