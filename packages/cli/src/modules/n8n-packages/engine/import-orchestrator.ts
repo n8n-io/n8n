@@ -13,6 +13,7 @@ import {
 	requiredAgentScopes,
 	type AgentImportPlan,
 	type PreparedAgent,
+	type PersistedAgentOutcome,
 } from '../entities/agent/agent-import.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
@@ -133,6 +134,7 @@ export interface ImportOrchestrationInput {
  */
 export interface ImportContentResult {
 	workflowOutcomes: PersistedWorkflowOutcome[];
+	agentOutcomes: PersistedAgentOutcome[];
 	removedWorkflows: RemovedWorkflowSummary[];
 	removedFolders: RemovedFolderSummary[];
 	folderSummaries: ImportedFolderSummary[];
@@ -553,6 +555,12 @@ export class ImportOrchestrator {
 			}),
 		);
 
+		let agentOutcomes: PersistedAgentOutcome[] = [];
+		if (plan.agentPlan) {
+			const { AgentImporter } = await import('../entities/agent/agent-importer.js');
+			agentOutcomes = await Container.get(AgentImporter).apply(context, plan.agentPlan);
+		}
+
 		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
 		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
 		// publish sweep, which evaluates trigger parameters against variable values.
@@ -578,6 +586,7 @@ export class ImportOrchestrator {
 		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
 
 		return {
+			agentOutcomes,
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
 			),
