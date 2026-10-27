@@ -425,6 +425,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, showVersions = fal
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
+			latestVersion: detail.latestVersion,
 			initialVersionsOpen: showVersions,
 			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 			deleteDisabledReason: deleteBlockedReason(detail),

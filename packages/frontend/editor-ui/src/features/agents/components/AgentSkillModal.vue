@@ -13,8 +13,6 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 	type SkillUsage,
-	type SkillVersionDetail,
-	type SkillVersionSummary,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -42,12 +40,8 @@ import type {
 	ToolCategoryKey,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
-import {
-	getHubSkill,
-	getSkillVersion,
-	listAttachableSkills,
-	listSkillVersions,
-} from '../composables/useAgentApi';
+import { getHubSkill, listAttachableSkills } from '../composables/useAgentApi';
+import { useSkillVersions } from '../composables/useSkillVersions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import {
@@ -122,6 +116,8 @@ export type AgentSkillModalData = {
 	onDelete?: (id: string) => void | Promise<void>;
 	/** Why "Delete skill" is disabled, for example because agents use the skill. */
 	deleteDisabledReason?: string;
+	/** The latest version of a saved hub skill. Set means the skill has versions to show. */
+	latestVersion?: number;
 	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
 	initialVersionsOpen?: boolean;
 	/**
@@ -739,59 +735,38 @@ function onPreviewAdd() {
 onMounted(() => {
 	if (hasPicker) void loadLibrarySkills();
 	if (props.data.skillId && props.data.hubSkillsEnabled) void loadSkillAccess(props.data.skillId);
-	void loadVersions();
 });
 
 const showAssistantToggle = computed(
 	() => showScope.value && showAssistantAvailability.value && !cannotEdit.value,
 );
 
-/** A saved hub skill has versions. Settings always edits hub skills. */
-const isHubSkill = computed(
-	() =>
-		!!props.data.skillId && (!!props.data.hubSkillsEnabled || !!props.data.scopeOptions?.length),
-);
-const versions = ref<SkillVersionSummary[] | null>(null);
+const latestVersion = computed(() => (props.data.skillId ? props.data.latestVersion : undefined));
 const versionsOpen = ref(!!props.data.initialVersionsOpen);
-/** An older version the user opened from the Versions panel. Null shows the latest. */
-const viewedVersion = ref<SkillVersionDetail | null>(null);
-const latestVersion = computed(() => versions.value?.[0]?.version);
-const shownSkill = computed(() => viewedVersion.value?.skill ?? skill.value);
-const canRestore = computed(() => !isReadOnly.value && !isSaving.value);
+const { versions, viewedVersion, loadVersions, fetchVersion, openVersion } = useSkillVersions(
+	() => props.data.skillId,
+);
+// The list loads the first time the panel opens.
+watch(
+	versionsOpen,
+	(open) => {
+		if (open) void loadVersions();
+	},
+	{ immediate: true },
+);
+const displayedSkill = computed(() => viewedVersion.value?.skill ?? skill.value);
+const canRestore = computed(() => !isReadOnly.value);
 
-async function loadVersions() {
-	if (!isHubSkill.value || !props.data.skillId) return;
-	try {
-		versions.value = await listSkillVersions(rootStore.restApiContext, props.data.skillId);
-	} catch (error) {
-		showError(error, i18n.baseText('agents.builder.skills.versions.loadError'));
-	}
-}
-
-async function fetchVersion(version: number): Promise<SkillVersionDetail | undefined> {
-	if (!props.data.skillId) return undefined;
-	if (viewedVersion.value?.version === version) return viewedVersion.value;
-	try {
-		return await getSkillVersion(rootStore.restApiContext, props.data.skillId, version);
-	} catch (error) {
-		showError(error, i18n.baseText('agents.builder.skills.versions.loadError'));
-		return undefined;
-	}
-}
-
-async function openVersion(version: number) {
+async function onOpenVersion(version: number) {
 	selectedPath.value = SKILL_FILE;
-	if (version === latestVersion.value) {
-		viewedVersion.value = null;
-		return;
-	}
-	viewedVersion.value = (await fetchVersion(version)) ?? viewedVersion.value;
+	await openVersion(version);
 }
 
 /** Saves the content of an older version as the next version, like any other save. */
 async function restoreVersion(version: number) {
-	if (!canRestore.value) return;
-	const detail = await fetchVersion(version);
+	if (!canRestore.value || isSaving.value) return;
+	const detail =
+		viewedVersion.value?.version === version ? viewedVersion.value : await fetchVersion(version);
 	if (!detail) return;
 	await submit(normalizeSkill({ ...detail.skill }), {});
 }
@@ -914,10 +889,11 @@ async function onSave() {
 	});
 }
 
-type ConfirmPayload = Parameters<AgentSkillModalData['onConfirm']>[0];
-
 /** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
-async function submit(payload: AgentSkill, extras: Omit<ConfirmPayload, 'id' | 'skill'>) {
+async function submit(
+	payload: AgentSkill,
+	extras: Omit<Parameters<AgentSkillModalData['onConfirm']>[0], 'id' | 'skill'>,
+) {
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
 	try {
@@ -1025,10 +1001,7 @@ function onRemove() {
 				@select="onHeaderMenuSelect"
 			/>
 		</template>
-		<template
-			v-if="isFormStep && (showAssistantToggle || (isHubSkill && latestVersion))"
-			#headerActions
-		>
+		<template v-if="isFormStep && (showAssistantToggle || latestVersion)" #headerActions>
 			<N8nSwitch
 				v-if="showAssistantToggle"
 				id="skill-assistant-availability"
@@ -1038,7 +1011,7 @@ function onRemove() {
 				data-testid="skill-assistant-availability"
 			/>
 			<N8nButton
-				v-if="isHubSkill && latestVersion"
+				v-if="latestVersion"
 				variant="ghost"
 				size="small"
 				:class="versionsOpen && $style.versionsButtonActive"
@@ -1165,7 +1138,7 @@ function onRemove() {
 				/>
 				<template v-else>
 					<AgentSkillFileNav
-						:skill="shownSkill"
+						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
 						:read-only="editorLocked || !!viewedVersion"
@@ -1176,7 +1149,7 @@ function onRemove() {
 					/>
 					<AgentSkillViewer
 						:key="viewedVersion?.version ?? 'latest'"
-						:skill="shownSkill"
+						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
 						:read-only="cannotEdit || !!viewedVersion"
@@ -1214,9 +1187,9 @@ function onRemove() {
 					<SkillVersionTimeline
 						v-if="versionsOpen && versions"
 						:versions="versions"
-						:shown-version="viewedVersion?.version ?? latestVersion ?? 0"
+						:shown-version="viewedVersion?.version ?? versions[0]?.version"
 						:can-restore="canRestore"
-						@open="openVersion"
+						@open="onOpenVersion"
 						@restore="restoreVersion"
 					/>
 				</template>

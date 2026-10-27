@@ -353,6 +353,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(id),
 				hubSkillsEnabled: hubSkillsEnabled.value,
 				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				latestVersion: hubSkillsEnabled.value
+					? agent.value?.skillVersions?.[id]?.latest
+					: undefined,
 				projectLabel: projectName.value ?? undefined,
 				agentName: agent.value?.name,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),

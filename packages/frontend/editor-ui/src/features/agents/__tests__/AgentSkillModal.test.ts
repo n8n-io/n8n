@@ -170,6 +170,7 @@ function renderModal({
 		| 'onDelete'
 		| 'deleteDisabledReason'
 		| 'initialVersionsOpen'
+		| 'latestVersion'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1858,6 +1859,7 @@ describe('Versions panel', () => {
 	const settings = {
 		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
 		initialScope: 'instance',
+		latestVersion: 2,
 	};
 	const author = { id: 'u1', email: 'ana@acme.test', firstName: 'Ana', lastName: 'Lima' };
 
@@ -1945,10 +1947,20 @@ describe('Versions panel', () => {
 		expect(queryByTestId('agent-skill-version-restore')).not.toBeInTheDocument();
 	});
 
+	it('loads the version list only when the panel opens', async () => {
+		const { findByTestId } = renderModal({ skill: latest, skillId: 'tone', settings });
+
+		const button = await findByTestId('agent-skill-versions-button');
+		expect(listSkillVersions).not.toHaveBeenCalled();
+
+		await userEvent.click(button);
+
+		await waitFor(() => expect(listSkillVersions).toHaveBeenCalledWith(expect.anything(), 'tone'));
+	});
+
 	it('has no versions for a new skill', () => {
 		const { queryByTestId } = renderModal({ settings });
 
-		expect(listSkillVersions).not.toHaveBeenCalled();
 		expect(queryByTestId('agent-skill-versions-button')).not.toBeInTheDocument();
 	});
 });

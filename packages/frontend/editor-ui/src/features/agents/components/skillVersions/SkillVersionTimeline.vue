@@ -4,6 +4,7 @@ import { N8nActionDropdown, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 
 type VersionAction = 'open' | 'restore';
@@ -12,7 +13,7 @@ const props = defineProps<{
 	/** Newest first, so the first one is the latest. */
 	versions: SkillVersionSummary[];
 	/** The version the editor shows. */
-	shownVersion: number;
+	shownVersion?: number;
 	canRestore: boolean;
 }>();
 
@@ -24,14 +25,15 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 function savedBy(version: SkillVersionSummary): string {
-	const date = new Date(version.createdAt);
+	const { date, time } = convertToDisplayDate(version.createdAt);
 	return i18n.baseText('agents.builder.skills.versions.savedBy', {
 		interpolate: {
 			author:
 				preferenceUserName(version.createdBy) ||
 				i18n.baseText('agents.builder.skills.versions.unknownUser'),
-			date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-			time: date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+			date,
+			// The panel shows minutes, as the design does.
+			time: time.slice(0, 5),
 		},
 	});
 }
