@@ -454,7 +454,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				'completed',
 			);
 		} catch (error) {
-			this.logger.warn('Failed to claim n8n Assistant side-call usage', {
+			this.logger.warn('Failed to claim Assistant side-call usage', {
 				threadId,
 				runId,
 				task: report.task,
