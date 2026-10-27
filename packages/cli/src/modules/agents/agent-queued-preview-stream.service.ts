@@ -71,6 +71,11 @@ export class AgentQueuedPreviewStreamService {
 		};
 	}
 
+	/** Close local browser connections for messages that will not run. */
+	closeQueuedStreams(queueIds: string[]): void {
+		for (const queueId of queueIds) this.listeners.get(queueId)?.close();
+	}
+
 	/** Forward events to the main with the browser stream. Heartbeats detect a lost relay. */
 	createSender(queueId: string) {
 		let sequence = 0;

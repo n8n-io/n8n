@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
+import { createAbortError } from '../../sdk/abort';
 
 import {
 	buildCheckpointOptions,
@@ -740,7 +741,7 @@ export class AgentRuntime {
 	private assertNotAborted(abortScope: AgentAbortScope): void {
 		if (abortScope.isAborted) {
 			this.updateState({ status: 'cancelled' });
-			throw new Error('Agent run was aborted');
+			throw createAbortError('Agent run was aborted');
 		}
 	}
 
