@@ -8,7 +8,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddCreatedByThreadIdToAgentChatAttachments1792755948917';
+const MIGRATION_NAME = 'AddCreatedByThreadIdToAgentChatAttachments1793118209000';
 
 describe('AddCreatedByThreadIdToAgentChatAttachments Migration', () => {
 	let dataSource: DataSource;

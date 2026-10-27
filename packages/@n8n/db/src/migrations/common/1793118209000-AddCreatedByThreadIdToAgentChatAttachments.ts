@@ -15,7 +15,7 @@ const CREATED_BY_COLUMN = 'createdByThreadId';
  * `agent_execution_threads`: inline agents have no thread rows, as for
  * `threadId`.
  */
-export class AddCreatedByThreadIdToAgentChatAttachments1792755948917
+export class AddCreatedByThreadIdToAgentChatAttachments1793118209000
 	implements ReversibleMigration
 {
 	async up(context: MigrationContext) {

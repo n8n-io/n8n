@@ -9,7 +9,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * with its file. `threadId` has no foreign key: inline agents have no thread
  * rows, as for `agent_chat_attachments.threadId`.
  */
-export class CreateAgentFileGrantsTable1792755949259 implements ReversibleMigration {
+export class CreateAgentFileGrantsTable1793118209500 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agent_file_grants')
 			.withColumns(
