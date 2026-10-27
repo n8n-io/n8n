@@ -34,6 +34,16 @@ describe('packageManifestSchema', () => {
 		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
 	});
 
+	it('keeps the archive flag of a workflow entry and accepts an entry without it', () => {
+		const workflows = [
+			{ ...validManifest.workflows[0], isArchived: true },
+			{ id: 'wf-def', name: 'Older package', target: 'workflows/older-def' },
+		];
+		expect(packageManifestSchema.parse({ ...validManifest, workflows }).workflows).toEqual(
+			workflows,
+		);
+	});
+
 	it('rejects a manifest with an unsupported packageFormatVersion', () => {
 		const manifest = { ...validManifest, packageFormatVersion: '99' };
 
