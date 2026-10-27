@@ -13,9 +13,9 @@ import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-type
 import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
 import {
 	AiPreferenceRepository,
-	PersonRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -130,7 +130,7 @@ export class AiPreferenceService {
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly personRepository: PersonRepository,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/** Preferences that apply to the user inside the given projects. */
@@ -448,11 +448,8 @@ export class AiPreferenceService {
 				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
 					throw new ForbiddenError('You are not allowed to set preferences for another user');
 				}
-				// Personal preferences belong to people. A service account has none.
-				const target = await this.personRepository.findById(userId);
-				if (!target) {
-					throw new BadRequestError('The user of the preference does not exist or is not a person');
-				}
+				const target = await this.userRepository.findOneBy({ id: userId });
+				if (!target) throw new BadRequestError('The user of the preference does not exist');
 				return { userId: target.id, user: target, projectId: null, project: null };
 			}
 

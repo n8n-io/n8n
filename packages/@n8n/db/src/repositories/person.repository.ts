@@ -161,7 +161,8 @@ export class PersonRepository {
 		}
 		if (where.length === 0) return [];
 
-		return await this.table.find({ where });
+		// `computeIsPending` reads the role and the auth identities on load.
+		return await this.table.find({ where, relations: { role: true, authIdentities: true } });
 	}
 
 	/**
