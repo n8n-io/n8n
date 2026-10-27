@@ -1,4 +1,4 @@
-import { getLegacyBuilderToolNames, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { getLegacyBuilderToolNames, SHARED_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 
 // Stored-content markers shared by the SQL prefilter and the JSON parsing.
 
@@ -11,7 +11,7 @@ export const TOOL_CALL_PART_TYPES: readonly string[] = [
 	INVALID_TOOL_CALL_PART_TYPE,
 ];
 
-export const ASK_USER_TOOL_NAME = WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER;
+export const ASK_USER_TOOL_NAME = SHARED_BUILDER_TOOL_NAMES.ASK_USER;
 
 // Rows stored before the rename carry the former tool name.
 export const LEGACY_ASK_USER_TOOL_NAMES: readonly string[] =

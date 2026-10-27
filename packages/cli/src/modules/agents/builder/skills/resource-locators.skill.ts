@@ -21,7 +21,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 			'get_node_types',
 			'setup_credentials',
 			'get_node_parameter_options',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent-context',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
@@ -50,7 +50,7 @@ selector, skip adding that tool for now instead of blocking the rest of the
 build. Include the credential in the trailing \`agent_builder_finish_setup\` call, then run
 the option lookup with the returned credential in the same turn and write the
 config mutation only when the result is unambiguous (an exact or single
-filtered match). If options remain ambiguous, do not call \`agent_builder_ask_questions\` —
+filtered match). If options remain ambiguous, do not call \`ask_user\` —
 leave the tool deferred and add a one-line setup checklist item naming the
 pending selection; resolve it in a later turn. In an addition to an existing
 agent, resolve the credential and any ambiguity immediately instead.
@@ -79,7 +79,7 @@ agent, resolve the credential and any ambiguity immediately instead.
    - current \`nodeParameters\`
    - returned \`credentials\`, when available
    - \`filter\` when the user named a specific team, channel, project, or object
-6. If results are ambiguous, use \`agent_builder_ask_questions\` with the returned option
+6. If results are ambiguous, use \`ask_user\` with the returned option
    names (existing agents only — during an initial build, defer per
    Initial-build timing above). If there are many pages, retry with
    \`paginationToken\` or a narrower \`filter\`.

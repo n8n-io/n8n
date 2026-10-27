@@ -177,7 +177,7 @@ function nextStepFor(result: Record<string, unknown>): string | undefined {
 			}
 			return result.availableModelsTruncated === true
 				? 'availableModels is only a sample of totalAvailableModels. Ask the user with ' +
-						'agent_builder_ask_questions instead of treating it as the full list. Never retry the id that failed.'
+						'ask_user instead of treating it as the full list. Never retry the id that failed.'
 				: 'Retry with a model from availableModels. Never retry the id that failed.';
 		case 'ambiguous_credential':
 			return `${DEFER_OR_ASK} When the user picks a credential, pass its credentialId.`;

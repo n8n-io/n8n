@@ -765,7 +765,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ASKED_QUESTIONS: {
 		name: 'Builder asked questions',
 		description:
-			'The Instance AI builder used the agent_builder_ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
+			'The Instance AI builder showed the questions step of agent_builder_finish_setup. Before Oct 2026 it also fired for the retired agent_builder_ask_questions tool.',
 		properties: z.object({
 			...builderSessionIdentity,
 			question_count: z.number(),
@@ -775,7 +775,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ANSWERED_BUILDER_QUESTIONS: {
 		name: 'User answered builder questions',
 		description:
-			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
+			'The user answered, skipped, or dismissed the questions step of agent_builder_finish_setup. Before Oct 2026 it also fired for the retired agent_builder_ask_questions tool.',
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),

@@ -319,7 +319,7 @@ describe('Instance AI skills', () => {
 		expect(skill?.name).toBe('credential-setup-with-browser-use');
 		for (const tool of [
 			'research',
-			'workflow_builder_ask_user',
+			'ask_user',
 			'browser_connect',
 			'browser_snapshot',
 			'browser_capture_secret',

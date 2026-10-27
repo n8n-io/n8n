@@ -11,14 +11,10 @@ export function subAgentsSkill(): RuntimeSkill {
 		name: 'Agent Builder Sub-Agents',
 		description:
 			'Use when configuring inline or saved sub-agent delegation for the target agent, selecting same-project sub-agents, or changing subAgents.maxChildren.',
-		recommendedTools: [
-			'agent-context',
-			'agent_builder_ask_questions',
-			'agent_builder_patch_config',
-		],
+		recommendedTools: ['agent-context', 'ask_user', 'agent_builder_patch_config'],
 		allowedTools: [
 			'agent-context',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
 		],
@@ -59,7 +55,7 @@ target agent may select by id when they are a better fit than an inline subagent
    Exclude the target id from the result. Do not write agent ids
    from memory, prose, or user-entered free text.
 2. If other agents are available and the user has not named exact agents,
-   call \`agent_builder_ask_questions\` with one \`type: "multi"\` question whose \`options\`
+   call \`ask_user\` with one \`type: "multi"\` question whose \`options\`
    are the returned agent names. Map each selected option back to the
    matching \`agentId\` from the \`agent-context({ type: "agents" })\` result.
 3. If no other agents are available, do not configure saved subagents. Inline
@@ -77,7 +73,7 @@ Example patch flow:
 
 1. \`agent-context({ type: "config" })\`, then \`agent-context({ type: "agents" })\`.
 2. If it returns one or more other agents and the user has not named exact ones, call
-   \`agent_builder_ask_questions({ questions: [{ type: "multi", ... }] })\` with those agents
+   \`ask_user({ questions: [{ type: "multi", ... }] })\` with those agents
    as options.
 3. If the user's request does not make the routing rule clear, ask when each
    selected saved subagent should be used.

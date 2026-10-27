@@ -81,10 +81,7 @@ const selectAgentOutputSchema = z.object({
 	agentName: z.string().optional().describe('Display name of the selected agent, when known.'),
 	projectId: z.string().optional(),
 	agentChange: agentChangeSchema.optional(),
-	sessionContext: z
-		.string()
-		.optional()
-		.describe('Preview link and model recommendations for the selected agent.'),
+	sessionContext: z.string().optional().describe('Preview link for the selected agent.'),
 });
 
 type SelectAgentOutput = z.infer<typeof selectAgentOutputSchema>;
@@ -324,7 +321,7 @@ export function createSelectAgentTool(context: OrchestrationContext) {
 				'start of every Agent build request: pass `name` to create a new Agent, `agentRef` to ' +
 				'select an Agent from this conversation, or `agentId` to adopt an existing one. With no ' +
 				'arguments it keeps the current Agent. Returns the selected `agentRef`/`agentId` and the ' +
-				'`sessionContext` with the Preview link and model recommendations. This tool is only for ' +
+				'`sessionContext` with the Preview link. This tool is only for ' +
 				'Agent artifacts; for read-only research use `agent-context`.',
 		)
 		.input(selectAgentInputSchema)

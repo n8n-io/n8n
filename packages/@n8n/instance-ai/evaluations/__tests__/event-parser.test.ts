@@ -861,7 +861,7 @@ describe('seededTurnCounters', () => {
 		expect(counter).toMatchObject({ toolCallCount: 2, toolErrorCount: 1 });
 	});
 
-	it('dual-counts workflow_builder_ask_user as a tool call and a questions confirmation (mirrors live)', () => {
+	it('dual-counts ask_user as a tool call and a questions confirmation (mirrors live)', () => {
 		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);
