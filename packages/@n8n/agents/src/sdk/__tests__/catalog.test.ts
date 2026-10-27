@@ -1,10 +1,7 @@
 import { computeCost, fetchProviderCatalog, getCachedCatalog } from '../catalog';
 
 describe('fetchProviderCatalog', () => {
-	const originalFetch = global.fetch;
-
 	afterEach(() => {
-		global.fetch = originalFetch;
 		vi.restoreAllMocks();
 	});
 
@@ -76,9 +73,11 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog({ signal: abortController.signal });
+		const catalog = await fetchProviderCatalog({
+			signal: abortController.signal,
+			fetch: fetchMock as typeof fetch,
+		});
 
 		expect(catalog.openai.models['gpt-5'].toolCall).toBe(true);
 		expect(catalog.openai.models['gpt-5'].sdk).toBe('@ai-sdk/openai');
@@ -125,9 +124,8 @@ describe('fetchProviderCatalog', () => {
 			ok: true,
 			json: async () => await Promise.resolve([]),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		await expect(fetchProviderCatalog()).rejects.toThrow();
+		await expect(fetchProviderCatalog({ fetch: fetchMock as typeof fetch })).rejects.toThrow();
 	});
 
 	it('omits malformed providers and models while retaining valid entries', async () => {
@@ -160,9 +158,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.invalidProvider).toBeUndefined();
 		expect(catalog.openai.models).toEqual({
@@ -203,9 +200,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
 		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
@@ -239,9 +235,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.anthropic.models).toEqual({});
 		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
@@ -273,9 +268,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		expect(catalog.openai.models['gpt-5-mini'].temperature).toBe(false);
 		expect(catalog.openai.models['gpt-4.1-mini'].temperature).toBe(true);
@@ -320,9 +314,8 @@ describe('fetchProviderCatalog', () => {
 					},
 				}),
 		});
-		global.fetch = fetchMock as typeof fetch;
 
-		const catalog = await fetchProviderCatalog();
+		const catalog = await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
 
 		// Alias keeps its id but loses the "(latest)" tag
 		expect(catalog.anthropic.models['claude-opus-4-5'].name).toBe('Claude Opus 4.5');

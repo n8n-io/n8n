@@ -174,16 +174,16 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  * ```typescript
  * import { fetchProviderCatalog } from '@n8n/agents';
  *
- * const catalog = await fetchProviderCatalog();
+ * const catalog = await fetchProviderCatalog({ fetch });
  * console.log(Object.keys(catalog)); // ['anthropic', 'openai', ...]
  * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
  * ```
  */
-export async function fetchProviderCatalog(options?: {
+export async function fetchProviderCatalog(options: {
 	signal?: AbortSignal;
-	fetch?: typeof globalThis.fetch;
+	fetch: typeof globalThis.fetch;
 }): Promise<ProviderCatalog> {
-	const response = await (options?.fetch ?? fetch)(MODELS_DEV_URL, { signal: options?.signal });
+	const response = await options.fetch(MODELS_DEV_URL, { signal: options.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
@@ -279,7 +279,8 @@ export async function getCachedCatalog(options?: {
 }): Promise<ProviderCatalog | undefined> {
 	if (cachedCatalog) return cachedCatalog;
 
-	catalogFetchPromise ??= fetchProviderCatalog(options)
+	// The runtime falls back to the global `fetch` until `modelFetch` is required.
+	catalogFetchPromise ??= fetchProviderCatalog({ fetch: options?.fetch ?? fetch })
 		.then((c) => {
 			cachedCatalog = c;
 			return c;

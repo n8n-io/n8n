@@ -186,7 +186,7 @@ describe('builder model recommendations', () => {
 		resetModelRecommendationsCacheForTest();
 		fetchProviderCatalog.mockRejectedValueOnce(new Error('offline'));
 
-		const context = await buildBuilderSessionContext('project-1', 'agent-1');
+		const context = await buildBuilderSessionContext('project-1', 'agent-1', vi.fn());
 
 		expect(context).not.toContain('### Recommended LLM Models');
 		expect(context).toContain('do not recommend or name');
@@ -215,8 +215,8 @@ describe('getModelRecommendationsSection', () => {
 	it('caches a successful catalog fetch', async () => {
 		fetchProviderCatalog.mockResolvedValue(catalog);
 
-		const first = await getModelRecommendationsSection();
-		const second = await getModelRecommendationsSection();
+		const first = await getModelRecommendationsSection(vi.fn());
+		const second = await getModelRecommendationsSection(vi.fn());
 
 		expect(first).toContain('### Recommended LLM Models');
 		expect(second).toBe(first);
@@ -227,13 +227,13 @@ describe('getModelRecommendationsSection', () => {
 		vi.useFakeTimers({ toFake: ['Date'] });
 		fetchProviderCatalog.mockRejectedValueOnce(new Error('offline')).mockResolvedValue(catalog);
 
-		expect(await getModelRecommendationsSection()).toBeNull();
-		expect(await getModelRecommendationsSection()).toBeNull();
+		expect(await getModelRecommendationsSection(vi.fn())).toBeNull();
+		expect(await getModelRecommendationsSection(vi.fn())).toBeNull();
 		expect(fetchProviderCatalog).toHaveBeenCalledTimes(1);
 
 		vi.setSystemTime(Date.now() + 10 * 60 * 1000 + 1);
 
-		expect(await getModelRecommendationsSection()).toContain('### Recommended LLM Models');
+		expect(await getModelRecommendationsSection(vi.fn())).toContain('### Recommended LLM Models');
 		expect(fetchProviderCatalog).toHaveBeenCalledTimes(2);
 	});
 });

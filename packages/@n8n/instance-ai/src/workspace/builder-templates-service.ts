@@ -94,8 +94,8 @@ export interface BuilderTemplatesServiceOptions {
 	failureRetryIntervalMs?: number;
 	/** When true, the service short-circuits to an empty bundle and never fetches. */
 	disabled?: boolean;
-	/** `fetch` for the archive and sha256 downloads. Default `globalThis.fetch`. */
-	fetch?: typeof globalThis.fetch;
+	/** `fetch` for the archive and sha256 downloads. */
+	fetch: typeof globalThis.fetch;
 	/** Structured logger. */
 	logger: Logger;
 }
@@ -155,7 +155,7 @@ export class BuilderTemplatesService {
 		this.retryBackoffBaseMs = opts.retryBackoffBaseMs ?? DEFAULT_RETRY_BACKOFF_BASE_MS;
 		this.failureRetryIntervalMs = opts.failureRetryIntervalMs ?? DEFAULT_FAILURE_RETRY_INTERVAL_MS;
 		this.disabled = opts.disabled ?? false;
-		this.fetch = opts.fetch ?? globalThis.fetch;
+		this.fetch = opts.fetch;
 		this.logger = opts.logger;
 	}
 
@@ -589,7 +589,7 @@ async function touchArchiveFile(target: string): Promise<void> {
  */
 export function builderTemplatesOptionsFromEnv({
 	logger,
-}: { logger: Logger }): BuilderTemplatesServiceOptions {
+}: { logger: Logger }): Omit<BuilderTemplatesServiceOptions, 'fetch'> {
 	const url = process.env.N8N_INSTANCE_AI_TEMPLATES_URL;
 	const hoursRaw = process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS;
 	const disabled = process.env.N8N_INSTANCE_AI_TEMPLATES_DISABLED;

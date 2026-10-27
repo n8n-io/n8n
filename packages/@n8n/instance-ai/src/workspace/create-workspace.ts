@@ -31,10 +31,11 @@ export type InstanceAiSandboxConfig =
 export type SandboxConfig = InstanceAiSandboxConfig;
 export { type SandboxInstance, type SandboxProvider };
 
-export interface InstanceAiCreateSandboxOptions extends CreateSandboxOptions {
-	useSnapshotFallback?: boolean;
-	templatesService?: BuilderTemplatesService;
-}
+export type InstanceAiCreateSandboxOptions = CreateSandboxOptions &
+	(
+		| { useSnapshotFallback?: false }
+		| { useSnapshotFallback: true; templatesService: BuilderTemplatesService }
+	);
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},

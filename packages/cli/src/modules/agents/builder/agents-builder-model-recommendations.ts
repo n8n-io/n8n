@@ -97,7 +97,7 @@ ${rows.join('\n')}`;
 }
 
 async function fetchProviderCatalogWithTimeout(
-	fetch?: typeof globalThis.fetch,
+	fetch: typeof globalThis.fetch,
 ): Promise<ProviderCatalog | null> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<null>((resolve) => {
@@ -114,7 +114,7 @@ async function fetchProviderCatalogWithTimeout(
 }
 
 export async function getModelRecommendationsSection(
-	fetch?: typeof globalThis.fetch,
+	fetch: typeof globalThis.fetch,
 ): Promise<string | null> {
 	if (modelRecommendationsSection !== undefined) return modelRecommendationsSection;
 	if (!modelRecommendationsPromise && Date.now() < modelRecommendationsRetryAt) return null;

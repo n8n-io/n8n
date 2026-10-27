@@ -117,6 +117,7 @@ function makeOptions(
 		fetchTimeoutMs: 1_000,
 		// Keep retry tests fast; production default is much higher.
 		retryBackoffBaseMs: 1,
+		fetch: globalThis.fetch,
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
