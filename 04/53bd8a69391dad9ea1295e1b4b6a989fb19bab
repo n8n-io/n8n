@@ -1,0 +1,44 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_176cbc3c096bf7::t_38cd7d2f5e4f74 14,17-20,32,39,42-43,69,74,102,105,113,115,117,136,140,142-149,151-152,155,167,170,172,299,320
+  s_176cbc3c096bf7::t_973fe42d9f04fb 21,23,33,35-38,40-41,64-66,71-72,81,101,103-104,106-112,114,116,118-132,141,153-154,357-358
+  s_176cbc3c096bf7::t_7b83c613b12fea 34
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_176cbc3c096bf7::t_208122aefb7005 29,730,732,743-751
+  s_71ad2034164515::t_6f481ff0713c26 321
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_176cbc3c096bf7::t_325f0fc134c56c 7,338,340,345,397-398,432
+  s_176cbc3c096bf7::t_580bd152c64e7c 339,354,356,360-369,525-526
+  s_176cbc3c096bf7::t_973fe42d9f04fb 341-344,346-347,349
+  s_176cbc3c096bf7::t_50fde3ddfc1708 459,472-475,599-604,614
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_176cbc3c096bf7::t_9e5f9a4d11658f 5,22,137,161,198,204,215,219,221-222,227,232,241
+  s_176cbc3c096bf7::t_ba7ec5b45098b2 44-125
+  s_176cbc3c096bf7::t_f287a8405a0940 192,220,223-226,229
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_176cbc3c096bf7::t_9e5f9a4d11658f 12
+  s_176cbc3c096bf7::t_4edabf6e849a94 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0453bd8a69391dad9ea1295e1b4b6a989fb19bab",
+  "prompts": {},
+  "sessions": {
+    "s_176cbc3c096bf7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a178b7-ae89-7ad2-b584-c9dc4f33347d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
