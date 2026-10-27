@@ -203,7 +203,6 @@ onClickOutside(
 @use '@/app/css/variables' as *;
 @use '@n8n/design-system/css/mixins/motion';
 
-
 :global(strong) {
 	font-weight: var(--font-weight--bold);
 }
