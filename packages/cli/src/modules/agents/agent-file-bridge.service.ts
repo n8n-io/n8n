@@ -1,7 +1,9 @@
 import type { AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
+import { extension } from 'mime-types';
 import { BinaryDataService } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import type { IBinaryData, IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -61,7 +63,7 @@ export class AgentFileBridge {
 			for (const [key, binary] of Object.entries(item.binary)) {
 				let file = binary.id ? stored.get(binary.id) : undefined;
 				if (!file) {
-					file = await this.store(key, binary, scope);
+					file = await this.store(binary, scope);
 					if (!file) continue;
 					if (binary.id) stored.set(binary.id, file);
 					files.push(file);
@@ -84,17 +86,23 @@ export class AgentFileBridge {
 	 * error and leave out the file.
 	 */
 	private async store(
-		key: string,
 		binary: IBinaryData,
 		scope: AgentFileScope,
 	): Promise<AgentToolOutputFile | undefined> {
-		const fileName = binary.fileName ?? key;
+		const id = generateNanoId();
+		let fileName = binary.fileName ?? id;
 		try {
 			// ponytail: loads the whole file into memory, the same as storeInbound. Copy by ID if tools return large files.
 			const data = await this.binaryDataService.getAsBuffer(binary);
 			const mimeType = await resolveInboundMimeType(binary.mimeType, data);
+			if (!binary.fileName) {
+				// Some nodes set no file name. Use the file ID with an extension, so each file has a unique, usable name.
+				const ext = binary.fileExtension ?? (extension(mimeType) || undefined);
+				if (ext) fileName = `${id}.${ext}`;
+			}
 			const attachment = await this.attachmentService.storeInbound({
 				...scope,
+				id,
 				source: 'tool',
 				fileName,
 				mimeType,

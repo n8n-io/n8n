@@ -42,6 +42,7 @@ describe('AgentFileBridge', () => {
 
 		expect(attachmentService.storeInbound).toHaveBeenCalledWith({
 			...scope,
+			id: expect.any(String),
 			source: 'tool',
 			fileName: 'cat.png',
 			mimeType: 'image/png',
@@ -113,5 +114,19 @@ describe('AgentFileBridge', () => {
 
 			expect(result.items[0].json).toEqual({ text });
 		});
+	});
+
+	it('names a binary without a file name after its file ID', async () => {
+		const { fileName: _fileName, ...binary } = pngBinary;
+		attachmentService.storeInbound.mockImplementation(async (params) =>
+			mock<AgentChatAttachment>({ id: params.id, fileSizeBytes: PNG.byteLength }),
+		);
+
+		const result = await bridge.adoptFromItems([{ json: {}, binary: { data: binary } }], scope);
+
+		const { id, fileName } = attachmentService.storeInbound.mock.calls[0][0];
+		expect(id).toEqual(expect.any(String));
+		expect(fileName).toBe(`${id}.png`);
+		expect(result.files[0]).toMatchObject({ fileId: id, fileName: `${id}.png` });
 	});
 });

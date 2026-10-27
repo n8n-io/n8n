@@ -5004,6 +5004,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.2
       moment-timezone:
         specifier: 'catalog:'
         version: 0.5.48
@@ -5200,6 +5203,9 @@ importers:
       '@types/luxon':
         specifier: 'catalog:'
         version: 3.2.0
+      '@types/mime-types':
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/ms':
         specifier: 'catalog:'
         version: 2.1.0
