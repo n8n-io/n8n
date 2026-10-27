@@ -18,6 +18,7 @@ import type {
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import {
@@ -43,6 +44,8 @@ import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
+
+type InFlightExecutionOutcome = Pick<IExecutionResponse, 'status' | 'finished' | 'stoppedAt'>;
 
 type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
@@ -648,16 +651,27 @@ export class ExecutionPersistence {
 	/**
 	 * Delete an in-flight execution that is not meant to be saved.
 	 *
-	 * - When pruning is enabled, soft-deletes with a backdated `deletedAt` so the
-	 * execution is immediately eligible for the next pruning hard-delete batch.
+	 * - When pruning is enabled, writes the final state and soft-deletes with a
+	 * backdated `deletedAt` so the execution is immediately eligible for the
+	 * next pruning hard-delete batch. A canceled execution keeps its status.
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget) {
+	async deleteInFlightExecution(target: DeletionTarget, outcome: InFlightExecutionOutcome) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);
-			await this.executionRepository.update(target.executionId, { deletedAt });
+			const { affected } = await this.executionRepository.update(
+				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
+				{
+					deletedAt,
+					status: outcome.status,
+					// oxlint-disable-next-line typescript/no-deprecated
+					finished: outcome.finished,
+					stoppedAt: outcome.stoppedAt,
+				},
+			);
+			if (!affected) await this.executionRepository.update(target.executionId, { deletedAt });
 		} else {
 			await this.hardDelete(target);
 		}
@@ -667,11 +681,12 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		// Files first: a failed file delete leaves the rows, so the next run retries them.
-		await Promise.all([
-			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			this.jsonStore.delete(this.toBlobRefs(targets)),
-		]);
+		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
+		await this.binaryDataService.deleteMany(
+			targets.map((t) => ({ type: 'execution' as const, ...t })),
+		);
+		// Payload next. A failure leaves the rows, so the next run retries them.
+		await this.jsonStore.delete(this.toBlobRefs(targets));
 
 		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
 	}
@@ -693,9 +708,13 @@ export class ExecutionPersistence {
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
-		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
+		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
 
-		await this.jsonStore.delete(this.toBlobRefs(refs));
+		// Batches keep each row delete under the SQLite expression-depth limit.
+		// Each batch deletes binaries, then the payload, then the rows.
+		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
+			await this.hardDelete(batch);
+		}
 	}
 
 	/**

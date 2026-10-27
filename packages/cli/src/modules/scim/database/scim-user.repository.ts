@@ -37,7 +37,6 @@ export class ScimUserRepository extends BaseRepository<User> {
 		const qb = this.managerFor(ctx)
 			.createQueryBuilder(User, 'user')
 			.leftJoinAndSelect('user.authIdentities', 'authIdentity')
-			.leftJoinAndSelect('user.role', 'role')
 			.orderBy('user.createdAt', 'ASC')
 			.addOrderBy('user.id', 'ASC');
 
@@ -51,7 +50,9 @@ export class ScimUserRepository extends BaseRepository<User> {
 		}
 
 		const total = await qb.getCount();
-		const users = await qb.skip(skip).take(take).getMany();
+		// TypeORM reads `take(0)` as "no limit", but SCIM `count=0` asks for
+		// the total only (RFC 7644 section 3.4.2.4).
+		const users = take > 0 ? await qb.skip(skip).take(take).getMany() : [];
 
 		return [users, total];
 	}

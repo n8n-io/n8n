@@ -2035,16 +2035,17 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should not delete the rows when the binary data delete rejects', async () => {
+		it('should not delete the payload or the rows when the binary data delete rejects', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('binary store down'));
 
 			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('binary store down');
 
+			expect(jsonStore.delete).not.toHaveBeenCalled();
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should delete the rows after both file deletes', async () => {
+		it('should delete binaries, then the payload, then the rows', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 
 			await executionPersistence.hardDelete(target);
@@ -2052,7 +2053,8 @@ describe('ExecutionPersistence', () => {
 			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
 			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
 			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
-			expect(rows).toBeGreaterThan(Math.max(binary, blobs));
+			expect(binary).toBeLessThan(blobs);
+			expect(blobs).toBeLessThan(rows);
 		});
 	});
 
@@ -2097,6 +2099,7 @@ describe('ExecutionPersistence', () => {
 
 	describe('hardDeleteBy', () => {
 		const executionPersistence = createPersistenceService('db');
+		Object.assign(executionRepository, { hardDeletionBatchSize: 100 });
 		const criteria = {
 			filters: { id: '1' },
 			accessibleWorkflowIds: ['wf-1'],
@@ -2110,20 +2113,33 @@ describe('ExecutionPersistence', () => {
 				{ workflowId: 'wf-3', executionId: 'exec-3', storedAt: 'az' as const },
 				{ workflowId: 'wf-4', executionId: 'exec-4', storedAt: 'db' as const },
 			];
-			executionRepository.deleteExecutionsByFilter.mockResolvedValue(refs);
+			executionRepository.findExecutionsToDelete.mockResolvedValue(refs);
 
 			await executionPersistence.hardDeleteBy(criteria);
 
-			expect(executionRepository.deleteExecutionsByFilter).toHaveBeenCalledWith(criteria);
+			expect(executionRepository.findExecutionsToDelete).toHaveBeenCalledWith(criteria);
 			expect(jsonStore.delete).toHaveBeenCalledWith([refs[0], refs[1], refs[2]]);
 		});
 
 		it('should delete no blob data when no refs are returned', async () => {
-			executionRepository.deleteExecutionsByFilter.mockResolvedValue([]);
+			executionRepository.findExecutionsToDelete.mockResolvedValue([]);
 
 			await executionPersistence.hardDeleteBy(criteria);
 
-			expect(jsonStore.delete).toHaveBeenCalledWith([]);
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should keep the rows and skip the payload delete when the binary delete fails', async () => {
+			executionRepository.findExecutionsToDelete.mockResolvedValue([
+				{ workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'az' as const },
+			]);
+			binaryDataService.deleteMany.mockRejectedValueOnce(new Error('azure down'));
+
+			await expect(executionPersistence.hardDeleteBy(criteria)).rejects.toThrow('azure down');
+
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2238,20 +2254,24 @@ describe('ExecutionPersistence', () => {
 
 	describe('deleteUnsaved', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
+		const outcome = { status: 'success' as const, finished: true, stoppedAt: new Date() };
 
-		it('should soft-delete with backdated `deletedAt` when pruning is enabled', async () => {
+		it('should soft-delete with backdated `deletedAt` and the final state when pruning is enabled', async () => {
 			vi.useFakeTimers();
 			const now = Date.now();
 
 			executionsConfig.pruneData = true;
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
 
-			await executionPersistence.deleteInFlightExecution(target);
+			await executionPersistence.deleteInFlightExecution(target, outcome);
 
-			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
-				deletedAt: new Date(now - 3600_000),
-			});
+			expect(executionRepository.update).toHaveBeenCalledTimes(1);
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'exec-1' }),
+				{ deletedAt: new Date(now - 3600_000), ...outcome },
+			);
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 
 			vi.useRealTimers();
@@ -2261,7 +2281,7 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneData = false;
 			const executionPersistence = createPersistenceService('db');
 
-			await executionPersistence.deleteInFlightExecution(target);
+			await executionPersistence.deleteInFlightExecution(target, outcome);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 			expect(executionRepository.update).not.toHaveBeenCalled();

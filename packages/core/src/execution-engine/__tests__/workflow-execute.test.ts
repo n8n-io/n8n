@@ -3035,6 +3035,31 @@ describe('WorkflowExecute', () => {
 			expect(result?.[0][1].pairedItem).toBeUndefined();
 			expect(result?.[0][2].pairedItem).toBeUndefined();
 		});
+
+		test('should fill empty output slots with empty arrays', () => {
+			// Execute Sub-workflow < v1.3 with "Continue" on error writes successful items to
+			// output 0 and the error for item i to output i, so earlier slots stay empty.
+			const nodeOutput: INodeExecutionData[][] = [];
+			nodeOutput[0] = [
+				{ json: { n: 1 }, pairedItem: { item: 0 } },
+				{ json: { n: 2 }, pairedItem: { item: 1 } },
+			];
+			nodeOutput[2] = [{ json: { error: 'Item 3 failed' }, pairedItem: { item: 2 } }];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result).toEqual([
+				[
+					{ json: { n: 1 }, pairedItem: { item: 0 } },
+					{ json: { n: 2 }, pairedItem: { item: 1 } },
+				],
+				[],
+				[{ json: { error: 'Item 3 failed' }, pairedItem: { item: 2 } }],
+			]);
+		});
 	});
 
 	describe('ensureInputData', () => {

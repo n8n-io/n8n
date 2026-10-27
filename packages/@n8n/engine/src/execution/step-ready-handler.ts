@@ -413,7 +413,7 @@ function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
 function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
 	if (!hasResumeCondition(wait)) {
 		throw new UnexpectedError(
-			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume request`,
+			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume binding`,
 		);
 	}
 
