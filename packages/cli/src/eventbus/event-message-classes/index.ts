@@ -168,6 +168,8 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow-review.approved',
 	'n8n.audit.workflow-review.changes-requested',
 	'n8n.audit.workflow-review.closed',
+	'n8n.audit.llm-budget.threshold-reached',
+	'n8n.audit.llm-budget.limit-reached',
 	'n8n.audit.node-type-policy.scope.updated',
 	'n8n.audit.node-type-policy.document.created',
 	'n8n.audit.node-type-policy.document.updated',

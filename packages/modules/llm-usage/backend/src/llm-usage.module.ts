@@ -25,6 +25,8 @@ export class LlmUsageModule implements ModuleInterface {
 		// Workers also capture and store calls, but only main serves the API.
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			await import('./llm-usage.controller.js');
+			const { LlmBudgetWarnings } = await import('./llm-budget-warnings.js');
+			Container.get(LlmBudgetWarnings).start();
 		}
 	}
 
