@@ -19,10 +19,6 @@ export async function inviteUsers(
 }
 
 export async function acceptInvitation(context: IRestApiContext, params: AcceptInvitationParams) {
-	if (!params.token) {
-		throw new Error('Token is required');
-	}
-
 	return await makeRestApiRequest<CurrentUserResponse>(
 		context,
 		'POST',

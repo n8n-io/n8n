@@ -201,12 +201,13 @@ async function onSubmit() {
 		if (successfulUrlInvites.length) {
 			if (successfulUrlInvites.length === 1) {
 				try {
-					const url = await usersStore.generateInviteLink({
+					const { link } = await usersStore.generateInviteLink({
 						id: successfulUrlInvites[0].user.id,
 					});
-					void clipboard.copy(url.link);
+					void clipboard.copy(link);
 				} catch (error) {
 					showError(error, i18n.baseText('settings.users.inviteLinkError'));
+					return;
 				}
 			}
 

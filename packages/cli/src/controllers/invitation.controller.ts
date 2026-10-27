@@ -1,6 +1,6 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { PublicUser, User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
@@ -87,18 +87,19 @@ export class InvitationController {
 		return usersInvited;
 	}
 
-	/**
-	 * Process invitation acceptance: validate users, update invitee, and handle authentication.
-	 */
 	private async processInvitationAcceptance(
-		inviterId: string,
-		inviteeId: string,
-		firstName: string,
-		lastName: string,
-		password: string,
+		invite: {
+			inviterId: string;
+			inviteeId: string;
+			firstName: string;
+			lastName: string;
+			password: string;
+		},
 		req: AuthlessRequest,
 		res: Response,
-	): Promise<Awaited<ReturnType<UserService['toPublic']>>> {
+	): Promise<PublicUser> {
+		const { inviterId, inviteeId, firstName, lastName, password } = invite;
+
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
 			relations: ['role'],
@@ -150,10 +151,7 @@ export class InvitationController {
 		});
 	}
 
-	/**
-	 * Fill out user shell with first name, last name, and password using JWT token.
-	 */
-	@Post('/accept', { skipAuth: true })
+	@Post('/accept', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
 	async acceptInvitationWithToken(
 		req: AuthlessRequest,
 		res: Response,
@@ -168,24 +166,11 @@ export class InvitationController {
 			);
 		}
 
-		if (!payload.token) {
-			this.logger.debug('Request to accept invitation failed because token is missing');
-			throw new BadRequestError('Token is required');
-		}
-
 		const { firstName, lastName, password } = payload;
-
-		// Extract inviterId and inviteeId from JWT token
-		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
-			payload.token,
-		);
+		const { inviterId, inviteeId } = this.userService.getInvitationIdsFromToken(payload.token);
 
 		return await this.processInvitationAcceptance(
-			inviterId,
-			inviteeId,
-			firstName,
-			lastName,
-			password,
+			{ inviterId, inviteeId, firstName, lastName, password },
 			req,
 			res,
 		);

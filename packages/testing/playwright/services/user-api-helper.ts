@@ -44,7 +44,6 @@ export class UserApiHelper {
 		const inviteData = await inviteResponse.json();
 		const { id, inviteAcceptUrl } = inviteData.data[0].user;
 
-		// Accept invitation (invite URL contains token, e.g. /signup?token=...)
 		const url = new URL(inviteAcceptUrl);
 		const token = url.searchParams.get('token');
 		if (!token) {

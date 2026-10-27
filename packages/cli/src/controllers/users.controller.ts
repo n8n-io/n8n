@@ -169,14 +169,21 @@ export class UsersController {
 
 	@Post('/:id/invite-link')
 	@GlobalScope('user:generateInviteLink')
-	async generateInviteLink(req: AuthenticatedRequest<{ id: string }, {}, {}, {}>, _res: Response) {
+	async generateInviteLink(req: UserRequest.PasswordResetLink) {
 		const inviterId = req.user.id;
 		const inviteeId = req.params.id;
 
-		const targetUser = await this.userRepository.findOne({ where: { id: inviteeId } });
+		const targetUser = await this.userRepository.findOne({
+			where: { id: inviteeId },
+			relations: ['role'],
+		});
 
 		if (!targetUser) {
 			throw new NotFoundError('User to generate invite link for not found');
+		}
+
+		if (!targetUser.isPending) {
+			throw new BadRequestError('User has already accepted an invitation');
 		}
 
 		const token = this.jwtService.sign(

@@ -168,6 +168,40 @@ describe('InvitationController', () => {
 			}
 		});
 
+		test('should reject a token the instance did not sign', async () => {
+			const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+			const valid = invitationToken(instanceOwner.id, memberShell.id);
+			const [header, payload, signature] = valid.split('.');
+
+			const forgedTokens = {
+				'not a JWT at all': 'garbage',
+				'a tampered signature': `${header}.${payload}.${signature.slice(0, -4)}AAAA`,
+				'a tampered payload': `${header}.${Buffer.from(
+					JSON.stringify({ inviterId: instanceOwner.id, inviteeId: memberShell.id }),
+				).toString('base64url')}.${signature}`,
+				'an expired token': Container.get(JwtService).sign(
+					{ inviterId: instanceOwner.id, inviteeId: memberShell.id },
+					{ expiresIn: '-1s' },
+				),
+			};
+
+			for (const [description, token] of Object.entries(forgedTokens)) {
+				const response = await testServer.authlessAgent.post('/invitations/accept').send({
+					token,
+					firstName: randomName(),
+					lastName: randomName(),
+					password: randomValidPassword(),
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.headers['set-cookie']).toBeUndefined();
+
+				const stored = await userRepository.findOneByOrFail({ email: memberShell.email });
+				expect(stored.password).toBeNull();
+				expect(stored.firstName).toBeNull();
+			}
+		});
+
 		test('should fail with already accepted invite', async () => {
 			const member = await createMember();
 			const token = invitationToken(instanceOwner.id, member.id);
@@ -253,7 +287,6 @@ describe('InvitationController', () => {
 			const token = inviteUrl.searchParams.get('token');
 			expect(typeof token).toBe('string');
 			expect(token!.length).toBeGreaterThan(0);
-			// IAM-403: invite links are token-only; legacy params must not be present
 			expect(inviteUrl.searchParams.get('inviterId')).toBeNull();
 			expect(inviteUrl.searchParams.get('inviteeId')).toBeNull();
 		});

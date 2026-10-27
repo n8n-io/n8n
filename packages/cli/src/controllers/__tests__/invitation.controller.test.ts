@@ -293,27 +293,6 @@ describe('InvitationController', () => {
 			);
 		});
 
-		it('throws a BadRequestError if token is missing', async () => {
-			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-
-			const invitationController = defaultInvitationController();
-
-			const payload = {
-				firstName: 'John',
-				lastName: 'Doe',
-				password: 'Password123!',
-			} as AcceptInvitationRequestDto;
-
-			const req = mock<AuthlessRequest>({
-				body: payload,
-			});
-			const res = mock<Response>();
-
-			await expect(
-				invitationController.acceptInvitationWithToken(req, res, payload),
-			).rejects.toThrow(new BadRequestError('Token is required'));
-		});
-
 		it('accepts the invitation successfully with JWT token', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 
@@ -332,7 +311,7 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+			jest.spyOn(userService, 'getInvitationIdsFromToken').mockReturnValue({
 				inviterId,
 				inviteeId,
 			});
@@ -363,7 +342,7 @@ describe('InvitationController', () => {
 				invitee as unknown as PublicUser,
 			);
 
-			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith(token);
+			expect(userService.getInvitationIdsFromToken).toHaveBeenCalledWith(token);
 			expect(userRepository.find).toHaveBeenCalledWith({
 				where: [{ id: inviterId }, { id: inviteeId }],
 				relations: ['role'],
@@ -385,7 +364,7 @@ describe('InvitationController', () => {
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+			jest.spyOn(userService, 'getInvitationIdsFromToken').mockReturnValue({
 				inviterId,
 				inviteeId,
 			});
@@ -428,7 +407,7 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			jest.spyOn(userService, 'getInvitationIdsFromPayload').mockResolvedValue({
+			jest.spyOn(userService, 'getInvitationIdsFromToken').mockReturnValue({
 				inviterId,
 				inviteeId,
 			});

@@ -54,7 +54,6 @@ describe('SignupView', () => {
 
 		usersStore = mockedStore(useUsersStore);
 
-		// Clear route query between tests
 		Object.keys(route.query).forEach((key) => {
 			delete route.query[key];
 		});
@@ -154,7 +153,6 @@ describe('SignupView', () => {
 	it('should accept invitation with JWT token', async () => {
 		const mockToken =
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
-		// beforeEach already clears the query, so we just set what we need
 		route.query.token = mockToken;
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
@@ -191,7 +189,6 @@ describe('SignupView', () => {
 			lastName: 'Doe',
 			password: '324R435gfg5fgj!',
 		});
-		// IAM-403: invite acceptance is token-only; must not send legacy params
 		expect(payload).not.toHaveProperty('inviterId');
 		expect(payload).not.toHaveProperty('inviteeId');
 	});

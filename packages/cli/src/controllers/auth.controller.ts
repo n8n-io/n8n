@@ -149,14 +149,7 @@ export class AuthController {
 			);
 		}
 
-		if (!payload.token) {
-			this.logger.debug('Request to resolve signup token failed because token is missing');
-			throw new BadRequestError('Token is required');
-		}
-
-		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
-			payload.token,
-		);
+		const { inviterId, inviteeId } = this.userService.getInvitationIdsFromToken(payload.token);
 
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 

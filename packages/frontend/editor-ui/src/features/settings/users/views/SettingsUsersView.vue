@@ -157,9 +157,6 @@ async function onUsersListAction({ action, userId }: { action: string; userId: s
 		case 'reinvite':
 			await onReinvite(userId);
 			break;
-		case 'copyInviteLink':
-			await onCopyInviteLink(userId);
-			break;
 		case 'generateInviteLink':
 			await onGenerateInviteLink(userId);
 			break;
@@ -218,31 +215,16 @@ async function onReinvite(userId: string) {
 		showError(e, i18n.baseText('settings.users.userReinviteError'));
 	}
 }
-async function onCopyInviteLink(userId: string) {
-	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
-	if (user?.inviteAcceptUrl) {
-		void clipboard.copy(user.inviteAcceptUrl);
+async function onGenerateInviteLink(userId: string) {
+	try {
+		const { link } = await usersStore.generateInviteLink({ id: userId });
+		void clipboard.copy(link);
 
 		showToast({
 			type: 'success',
 			title: i18n.baseText('settings.users.inviteUrlCreated'),
 			message: i18n.baseText('settings.users.inviteUrlCreated.message'),
 		});
-	}
-}
-async function onGenerateInviteLink(userId: string) {
-	try {
-		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
-		if (user) {
-			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
-
-			showToast({
-				type: 'success',
-				title: i18n.baseText('settings.users.inviteUrlCreated'),
-				message: i18n.baseText('settings.users.inviteUrlCreated.message'),
-			});
-		}
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.inviteLinkError'));
 	}

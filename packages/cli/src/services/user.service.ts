@@ -1,7 +1,7 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE, User, UserRepository } from '@n8n/db';
+import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
@@ -10,7 +10,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
-import { PostHogClient } from '@/posthog';
+import type { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -122,7 +122,6 @@ export class UserService {
 
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				// Always use JWT-based tamper-proof invite links
 				const token = this.jwtService.sign(
 					{
 						inviterId: owner.id,
@@ -269,50 +268,21 @@ export class UserService {
 		});
 	}
 
-	/**
-	 * Extract inviterId and inviteeId from JWT token
-	 * @param token - JWT token containing inviterId and inviteeId
-	 * @returns Object with inviterId and inviteeId
-	 * @throws BadRequestError if JWT is invalid or required parameters are missing
-	 */
-	private async processTokenBasedInvite(
-		token: string,
-	): Promise<{ inviterId: string; inviteeId: string }> {
-		try {
-			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
-			if (!decoded.inviterId || !decoded.inviteeId) {
-				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
-				throw new BadRequestError('Invalid invite URL');
-			}
+	getInvitationIdsFromToken(token: string): { inviterId: string; inviteeId: string } {
+		let decoded: { inviterId?: string; inviteeId?: string };
 
-			return { inviterId: decoded.inviterId, inviteeId: decoded.inviteeId };
+		try {
+			decoded = this.jwtService.verify<{ inviterId?: string; inviteeId?: string }>(token);
 		} catch (error) {
-			if (error instanceof BadRequestError) {
-				throw error;
-			}
-			this.logger.debug('Failed to verify JWT token', { error });
+			this.logger.debug('Failed to verify invite token', { error });
 			throw new BadRequestError('Invalid invite URL');
 		}
-	}
 
-	/**
-	 * Extract inviterId and inviteeId from JWT token
-	 * @param token - JWT token containing inviterId and inviteeId
-	 * @returns Object with inviterId and inviteeId
-	 * @throws BadRequestError if JWT is invalid or required parameters are missing
-	 */
-	async getInvitationIdsFromPayload(
-		token: string,
-	): Promise<{ inviterId: string; inviteeId: string }> {
-		const instanceOwner = await this.userRepository.findOne({
-			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
-		});
-
-		if (!instanceOwner) {
-			throw new BadRequestError('Instance owner not found');
+		if (!decoded.inviterId || !decoded.inviteeId) {
+			this.logger.debug('Invite token is missing inviterId or inviteeId');
+			throw new BadRequestError('Invalid invite URL');
 		}
 
-		// Only support token-based invites (tamper-proof)
-		return await this.processTokenBasedInvite(token);
+		return { inviterId: decoded.inviterId, inviteeId: decoded.inviteeId };
 	}
 }

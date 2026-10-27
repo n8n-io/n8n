@@ -1,14 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import {
-	GLOBAL_ADMIN_ROLE,
-	GLOBAL_MEMBER_ROLE,
-	GLOBAL_OWNER_ROLE,
-	Role,
-	User,
-	UserRepository,
-} from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, Role, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -335,110 +328,31 @@ describe('UserService', () => {
 		});
 	});
 
-	describe('getInvitationIdsFromPayload', () => {
-		it('should extract inviterId and inviteeId from valid JWT token', async () => {
+	describe('getInvitationIdsFromToken', () => {
+		it('returns the ids carried by a verified token', () => {
 			const inviterId = uuid();
 			const inviteeId = uuid();
-			const token = 'valid-jwt-token';
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
+			jwtService.verify.mockReturnValue({ inviterId, inviteeId });
 
-			jwtService.verify.mockReturnValue({
-				inviterId,
-				inviteeId,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			const result = await userService.getInvitationIdsFromPayload(token);
-
-			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).toHaveBeenCalledWith(token);
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
-			});
+			expect(userService.getInvitationIdsFromToken('a-token')).toEqual({ inviterId, inviteeId });
+			expect(jwtService.verify).toHaveBeenCalledWith('a-token');
 		});
 
-		it('should throw BadRequestError if JWT token verification fails', async () => {
-			const token = 'invalid-jwt-token';
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
+		test.each([
+			[
+				'verification throws',
+				() =>
+					jwtService.verify.mockImplementation(() => {
+						throw new Error('bad signature');
+					}),
+			],
+			['inviterId is absent', () => jwtService.verify.mockReturnValue({ inviteeId: uuid() })],
+			['inviteeId is absent', () => jwtService.verify.mockReturnValue({ inviterId: uuid() })],
+		])('rejects the token when %s', (_name, arrange) => {
+			arrange();
 
-			jwtService.verify.mockImplementation(() => {
-				throw new Error('Invalid token');
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw BadRequestError if JWT token payload is missing inviterId', async () => {
-			const token = 'valid-jwt-token';
-			const inviteeId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			jwtService.verify.mockReturnValue({
-				inviteeId,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw BadRequestError if JWT token payload is missing inviteeId', async () => {
-			const token = 'valid-jwt-token';
-			const inviterId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			jwtService.verify.mockReturnValue({
-				inviterId,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw error when instance owner is not found', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const token = 'valid-jwt-token';
-
-			jwtService.verify.mockReturnValue({
-				inviterId,
-				inviteeId,
-			});
-
-			userRepository.findOne.mockResolvedValue(null);
-
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
-			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
-				'Instance owner not found',
+			expect(() => userService.getInvitationIdsFromToken('a-token')).toThrow(
+				new BadRequestError('Invalid invite URL'),
 			);
 		});
 	});

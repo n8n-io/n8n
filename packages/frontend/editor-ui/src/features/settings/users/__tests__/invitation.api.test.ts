@@ -35,19 +35,5 @@ describe('invitation.api', () => {
 				params,
 			);
 		});
-
-		it('should throw error when token is not provided', async () => {
-			const params = {
-				firstName: 'John',
-				lastName: 'Doe',
-				password: 'Password123!',
-			};
-
-			await expect(acceptInvitation(mockContext, params as never)).rejects.toThrow(
-				'Token is required',
-			);
-
-			expect(makeRestApiRequest).not.toHaveBeenCalled();
-		});
 	});
 });

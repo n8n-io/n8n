@@ -76,14 +76,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: vi.fn(() => mockPageRedirectionHelper),
 }));
 
-const mockIsVariantEnabled = vi.fn().mockReturnValue(false);
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({
-		isVariantEnabled: mockIsVariantEnabled,
-	})),
-}));
-
 const mockUsersList: UsersList = {
 	items: [
 		{
@@ -115,7 +107,6 @@ const mockUsersList: UsersList = {
 			isOwner: false,
 			isPending: true,
 			settings: {},
-			inviteAcceptUrl: 'https://example.com/invite/123',
 		},
 	],
 	count: 3,
@@ -129,10 +120,6 @@ let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
 	beforeEach(() => {
-		// Reset mock to default state before each test
-		mockIsVariantEnabled.mockReset();
-		mockIsVariantEnabled.mockReturnValue(false);
-
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
 		});
@@ -174,10 +161,7 @@ describe('SettingsUsersView', () => {
 	});
 
 	afterEach(() => {
-		vi.clearAllMocks();
-		// Reset mock implementation to default (feature flag disabled)
-		mockIsVariantEnabled.mockReset();
-		mockIsVariantEnabled.mockReturnValue(false);
+		vi.restoreAllMocks();
 	});
 
 	it('should turn enforcing mfa on', async () => {
@@ -482,21 +466,6 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle copy invite link action', async () => {
-			renderComponent();
-
-			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
-
-			expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/invite/123');
-			await waitFor(() => {
-				expect(mockToast.showToast).toHaveBeenCalledWith({
-					type: 'success',
-					title: expect.any(String),
-					message: expect.any(String),
-				});
-			});
-		});
-
 		it('should handle generate invite link action', async () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
@@ -616,19 +585,6 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle copy invite link with missing inviteAcceptUrl', async () => {
-			// Remove invite URL from user
-			usersStore.usersList.state.items[2].inviteAcceptUrl = undefined;
-
-			renderComponent();
-
-			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
-
-			// Should not call clipboard.copy or show toast
-			expect(mockClipboard.copy).not.toHaveBeenCalled();
-			expect(mockToast.showToast).not.toHaveBeenCalled();
-		});
-
 		it('should show generate invite link action', () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
@@ -641,7 +597,6 @@ describe('SettingsUsersView', () => {
 
 			renderComponent();
 
-			// User 3 is not the current user, so generateInviteLink should show
 			const actionsList = screen.getByTestId('actions-for-3');
 			expect(actionsList).toBeInTheDocument();
 			expect(screen.getByTestId('action-generateInviteLink-3')).toBeInTheDocument();
@@ -659,12 +614,10 @@ describe('SettingsUsersView', () => {
 					return false;
 				});
 
-			// Set user with firstName (already accepted)
 			usersStore.usersList.state.items[2].firstName = 'John';
 
 			renderComponent();
 
-			// Generate invite link should not be in the actions list when user has accepted
 			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
 
 			spy.mockRestore();
