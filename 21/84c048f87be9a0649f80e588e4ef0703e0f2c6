@@ -13,6 +13,7 @@ packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOpe
   s_8056da22c66cb7::t_7c30ce8457ee8e 93,96,117,137-138
 packages/cli/src/modules/promotions.ee/package-references.ts
   s_8056da22c66cb7::t_95cbe78d691f0b 1,4-9,12-15,123
+  s_8056da22c66cb7::t_fbe603904382ff 2-3,10-11,16-122,124-133
 packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
   s_8056da22c66cb7::t_cc2c6ac613d778 8
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.test.ts
