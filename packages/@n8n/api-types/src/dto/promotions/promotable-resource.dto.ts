@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
+import { promotionCommitMessageSchema } from './promotion-common.dto';
 
 export class PromotionChangesQueryDto extends Z.class({
 	search: z.string().trim().optional(),
@@ -49,14 +50,7 @@ export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {
 
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),
-	// Optional here, unlike the required message on the full-instance promote.
-	commitMessage: z
-		.string()
-		.trim()
-		.min(1)
-		.max(1000)
-		.describe('Message for the promotion commit. A default is used when omitted.')
-		.optional(),
+	commitMessage: promotionCommitMessageSchema,
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;

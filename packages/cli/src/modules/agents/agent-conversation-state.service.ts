@@ -1,4 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -15,10 +16,11 @@ export class AgentConversationStateService {
 	async inspect(
 		agentId: string,
 		threadId: string,
+		ctx: OperationContext = {},
 	): Promise<{ running: boolean; suspendedCheckpoint: SerializableAgentState | null }> {
 		const [running, suspendedCheckpoint] = await Promise.all([
-			this.executionRepository.existsRunningByThread(threadId),
-			this.checkpointStorage.findSuspendedForThread(agentId, threadId),
+			this.executionRepository.existsRunningByThread(threadId, ctx),
+			this.checkpointStorage.findSuspendedForThread(agentId, threadId, ctx),
 		]);
 		return { running, suspendedCheckpoint };
 	}

@@ -4,6 +4,7 @@ export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
+export * from './agent-message-origin.schema';
 export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
 export * from './agent-skill.schema';
@@ -30,22 +31,27 @@ export * from './workflow-wait';
 export type {
 	AgentBudgetNotice,
 	AgentBudgetNoticeCode,
+	AgentChatErrorCode,
 	AgentSseEvent,
 	AgentSseMessage,
+	AgentTokenUsage,
 	ForwardedChildChunkWire,
 	ToolSuspendedPayload,
 } from '../agent-sse';
-export { isAgentBudgetNoticeCode } from '../agent-sse';
-export { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '../agent-builder-tool-node-types';
+export { AGENT_CHAT_ERROR_CODES, isAgentBudgetNoticeCode } from '../agent-sse';
+export {
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+	isAgentToolNodeType,
+} from '../agent-builder-tool-node-types';
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
-	askCredentialInputSchema,
 	cancellationResumeSchema,
-	type AskCredentialInput,
 	type CancellationResumeData,
 } from '../agent-builder-interactive';
 export * from './agent-interaction.schema';
+
+export type * from './task-cancellation';

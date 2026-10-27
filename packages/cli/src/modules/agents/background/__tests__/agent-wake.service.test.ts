@@ -592,6 +592,7 @@ describe('AgentWakeService', () => {
 		expect(resumed.checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',
+			{},
 		);
 		expect(resumed.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
 	});

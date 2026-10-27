@@ -164,14 +164,6 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 			domain: 'https://eval.atlassian.net',
 		}),
 	},
-	wordpressApi: {
-		defaultName: '[eval] WordPress',
-		buildData: (token) => ({
-			username: 'eval-user',
-			password: token,
-			url: 'https://eval.example.com',
-		}),
-	},
 	googleOAuth2Api: {
 		defaultName: '[eval] Google',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
@@ -195,6 +187,22 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	clearbitApi: {
 		defaultName: '[eval] Clearbit',
 		buildData: (key) => ({ apiKey: key }),
+	},
+	anthropicApi: {
+		defaultName: '[eval] Anthropic',
+		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
+	},
+	groqApi: {
+		defaultName: '[eval] Groq',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	wordpressApi: {
+		defaultName: '[eval] WordPress',
+		buildData: (password) => ({
+			username: 'eval-user',
+			password,
+			url: 'https://blog.example.com',
+		}),
 	},
 };
 

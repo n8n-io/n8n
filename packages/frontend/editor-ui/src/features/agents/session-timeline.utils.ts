@@ -9,15 +9,15 @@ import { isRecord } from '@n8n/utils/is-record';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
-	EventKind,
 	HitlRequestType,
 	HitlResponseStatus,
-	IdleRange,
+	TimelineActivityStatus,
 	TimelineItem,
 	TimelineStatusFilterKey,
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { backgroundTaskPresentation } from './utils/background-task-timeline';
 import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import {
@@ -26,9 +26,14 @@ import {
 	resolveToolNameForDisplay,
 } from './utils/toolDisplayName';
 
-export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
-
 const LOAD_SKILL_TOOL_NAME = 'load_skill';
+
+const GUARDRAIL_STOP_MESSAGE_KEYS: Partial<Record<string, BaseTextKey>> = {
+	'budget.session': 'agentSessions.timeline.guardrailStop.session',
+	'budget.monthly': 'agentSessions.timeline.guardrailStop.monthly',
+	'budget.credits': 'agentSessions.timeline.guardrailStop.credits',
+	'budget.freeCredits': 'agentSessions.timeline.guardrailStop.freeCredits',
+};
 
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
@@ -107,7 +112,11 @@ export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
 }
 
 export function isErroredTimelineItem(item: TimelineItem): boolean {
-	return item.kind === 'execution-error' || isErroredToolCallTimelineItem(item);
+	return (
+		item.kind === 'execution-error' ||
+		item.backgroundTask?.status === 'failed' ||
+		isErroredToolCallTimelineItem(item)
+	);
 }
 
 /** Extracts a human-readable error message from a failed item's tool output. */
@@ -156,6 +165,7 @@ export function backgroundJobSignalSummary(
 }
 
 export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.guardrailCode) return i18n.baseText('agentSessions.timeline.guardrailStop.label');
 	return i18n.baseText(
 		item.executionStatus === 'interrupted'
 			? 'agentSessions.timeline.executionInterrupted'
@@ -164,6 +174,12 @@ export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): str
 }
 
 export function executionErrorMessage(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.guardrailCode) {
+		return i18n.baseText(
+			GUARDRAIL_STOP_MESSAGE_KEYS[item.guardrailCode] ??
+				'agentSessions.timeline.guardrailStop.fallback',
+		);
+	}
 	if (item.content) return item.content;
 	return i18n.baseText(
 		item.executionStatus === 'interrupted'
@@ -188,12 +204,24 @@ export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string
 }
 
 export type TimelineItemStatus = {
-	kind: 'hitl-response' | 'tool-error';
+	kind: 'hitl-response' | 'tool-error' | 'background-task';
 	labelKey: BaseTextKey;
 	theme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 };
 
 export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
+	if (item.backgroundTask) {
+		return {
+			kind: 'background-task',
+			labelKey: backgroundTaskPresentation[item.backgroundTask.status].labelKey,
+			theme:
+				item.backgroundTask.status === 'failed'
+					? 'danger'
+					: item.backgroundTask.status === 'completed'
+						? 'success'
+						: 'outline',
+		};
+	}
 	if (item.kind === 'hitl-response') {
 		if (item.hitlResponseStatus === 'approved') {
 			return {
@@ -215,21 +243,6 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 		return { kind: 'tool-error', labelKey: 'agentSessions.timeline.error', theme: 'danger' };
 	}
 	return undefined;
-}
-
-export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
-	const ranges: IdleRange[] = [];
-	for (let i = 0; i < items.length - 1; i++) {
-		const a = items[i];
-		const b = items[i + 1];
-		if (a.kind === 'suspension' || b.kind === 'suspension') continue;
-		const aEnd = endTimestampOf(a);
-		const gap = b.timestamp - aEnd;
-		if (gap > IDLE_THRESHOLD_MS) {
-			ranges.push({ start: aEnd, end: b.timestamp });
-		}
-	}
-	return ranges;
 }
 
 export function itemFilterKey(item: TimelineItem): string {
@@ -296,6 +309,13 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('error'));
 	}
 
+	if (item.backgroundTask) {
+		parts.push(
+			item.backgroundTask.title,
+			labelForKey(`background-task-current-${item.backgroundTask.status}`),
+		);
+	}
+
 	for (const job of item.backgroundJobSignal?.tasks ?? []) {
 		parts.push(job.title, labelForKey(`background-task-${job.status}`));
 	}
@@ -359,40 +379,6 @@ export function sessionBounds(items: TimelineItem[]): { start: number; end: numb
 	}
 	if (end <= start) end = start + 1;
 	return { start, end };
-}
-
-const COLOR_MAP: Record<EventKind, string> = {
-	user: 'var(--color--blue-400)',
-	agent: 'var(--color--secondary)',
-	skill: 'var(--color--orange-400)',
-	tool: 'var(--color--success)',
-	node: 'var(--color--text)',
-	workflow: 'var(--color--primary)',
-	'execution-error': 'var(--color--danger)',
-	suspension: 'var(--color--warning)',
-	'hitl-response': 'var(--color--blue-400)',
-	'background-task-signal': 'var(--color--mint-600)',
-};
-
-export function kindColorToken(kind: EventKind): string {
-	return COLOR_MAP[kind];
-}
-
-const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
-	user: 'var(--color--blue-600)',
-	agent: 'var(--color--purple-600)',
-	skill: 'var(--color--orange-600)',
-	tool: 'var(--color--green-600)',
-	node: 'var(--color--neutral-600)',
-	workflow: 'var(--color--pink-600)',
-	'execution-error': 'var(--color--red-600)',
-	suspension: 'var(--color--yellow-600)',
-	'hitl-response': 'var(--color--blue-600)',
-	'background-task-signal': 'var(--color--mint-600)',
-};
-
-export function chartBlockColor(kind: EventKind): string {
-	return CHART_BLOCK_COLOR_MAP[kind];
 }
 
 export function builtinToolLabelKey(
@@ -476,6 +462,12 @@ interface RawBackgroundJobSignalEvent {
 	signal: AgentBackgroundJobSignal;
 }
 
+interface GuardrailEvent {
+	type: 'guardrail';
+	timestamp: number;
+	code: string;
+}
+
 type RawEvent =
 	| RawToolCallEvent
 	| RawTextEvent
@@ -483,7 +475,8 @@ type RawEvent =
 	| RawInputEvent
 	| RawSuspensionEvent
 	| RawHitlResponseEvent
-	| RawBackgroundJobSignalEvent;
+	| RawBackgroundJobSignalEvent
+	| GuardrailEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -514,6 +507,11 @@ function isWaitRequest(value: unknown): boolean {
 function toolCallOutcome(event: RawToolCallEvent): ToolCallOutcome | undefined {
 	if (event.endTime === 0) return undefined;
 	return event.success ? 'success' : 'error';
+}
+
+function toolActivityStatus(event: RawToolCallEvent, exec: AgentExecution): TimelineActivityStatus {
+	if (event.endTime !== 0) return event.success ? 'completed' : 'failed';
+	return exec.status === 'running' ? 'running' : 'interrupted';
 }
 
 function isSkillToolCall(event: RawToolCallEvent): boolean {
@@ -636,8 +634,15 @@ function hitlResponseStatus(
 	return 'responded';
 }
 
-function mergeResumedToolResult(item: TimelineItem | undefined, event: RawToolCallEvent): void {
-	if (!item || isDeclinedToolOutput(event.output)) return;
+function mergeResumedToolResult(
+	item: TimelineItem | undefined,
+	event: RawToolCallEvent,
+	exec: AgentExecution,
+): void {
+	if (!item) return;
+	item.activityStatus = toolActivityStatus(event, exec);
+	item.endTimestamp = event.endTime || undefined;
+	if (isDeclinedToolOutput(event.output)) return;
 	item.toolOutput = event.output;
 	item.toolOutcome = toolCallOutcome(event);
 	item.toolSuccess = event.endTime === 0 ? undefined : event.success;
@@ -677,6 +682,7 @@ function inputTimelineItem(
 	return {
 		kind: 'user',
 		executionId,
+		id: `${executionId}:user:${input.id}`,
 		content: message.content,
 		timestamp,
 		...(input.author && { authorName: input.author.name }),
@@ -776,7 +782,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			} else if (event.type === 'tool-call') {
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (hitlContext) {
-					mergeResumedToolResult(hitlContext.toolItem, event);
+					mergeResumedToolResult(hitlContext.toolItem, event, exec);
 					if (!hitlContext.hasExplicitResponse) {
 						items.push(hitlResponseItem(hitlContext, exec.id, event.output, event.startTime, true));
 					}
@@ -798,8 +804,9 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolOutput: event.output,
 					toolOutcome: toolCallOutcome(event),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
+					activityStatus: toolActivityStatus(event, exec),
 					timestamp: event.startTime,
-					endTimestamp: event.endTime || event.startTime,
+					endTimestamp: event.endTime || undefined,
 					workflowId: isWorkflow ? event.workflowId : undefined,
 					workflowName: isWorkflow ? event.workflowName : undefined,
 					workflowExecutionId: isWorkflow ? event.workflowExecutionId : undefined,
@@ -817,6 +824,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const request = hitlRequestPayload(event, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
 				if (event.toolCallId) {
+					const toolItem = initialToolItems.get(event.toolCallId);
+					if (toolItem) {
+						toolItem.activityStatus =
+							exec.status === 'error' ||
+							exec.status === 'cancelled' ||
+							exec.status === 'interrupted'
+								? 'interrupted'
+								: 'waiting';
+					}
 					hitlContexts.set(event.toolCallId, {
 						requestType,
 						toolName: event.toolName || toolCall?.name || '',
@@ -843,7 +859,23 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (!hitlContext) continue;
 				hitlContext.hasExplicitResponse = true;
+				if (hitlContext.toolItem) {
+					const responseStatus = hitlResponseStatus(hitlContext.requestType, event.response);
+					if (responseStatus === 'declined') {
+						hitlContext.toolItem.activityStatus = 'completed';
+					} else {
+						hitlContext.toolItem.activityStatus =
+							exec.status === 'running' ? 'running' : 'interrupted';
+					}
+				}
 				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
+			} else if (event.type === 'guardrail') {
+				items.push({
+					kind: 'execution-error',
+					executionId: exec.id,
+					guardrailCode: event.code,
+					timestamp: event.timestamp ?? 0,
+				});
 			}
 		}
 		flushThinking();
@@ -858,5 +890,19 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			});
 		}
 	}
+	/** Count equal identities before task merging and sorting. Content can change during streaming. */
+	const occurrences = new Map<string, number>();
+	for (const item of items) {
+		const key = `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
+		const occurrence = occurrences.get(key) ?? 0;
+		occurrences.set(key, occurrence + 1);
+		item.id ??= `${key}:${occurrence}`;
+	}
 	return items;
+}
+
+/** Use the same identity for selection, row state, and size measurements. */
+export function timelineItemKey(item: TimelineItem): string {
+	if (item.backgroundTask) return `background-task-${item.backgroundTask.id}`;
+	return item.id ?? `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
 }

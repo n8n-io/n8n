@@ -2,6 +2,7 @@ import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	EnvironmentsVersion,
 	ProjectRelation,
 	RedactionFloor,
 } from '@n8n/api-types';
@@ -137,6 +138,7 @@ export type RelayEventMap = {
 		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
+		agentIds: string[];
 		options: ImportPackageEventOptions;
 		packageSourceId: string;
 		packageVersion: string;
@@ -226,7 +228,8 @@ export type RelayEventMap = {
 
 	'workflow-pre-execute': {
 		executionId: string;
-		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		userId?: string;
+		data: IWorkflowBase;
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
@@ -364,6 +367,12 @@ export type RelayEventMap = {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
+	};
+
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
 	};
 
 	'user-changed-role': {
@@ -751,6 +760,11 @@ export type RelayEventMap = {
 		connectionType: 'ssh' | 'https';
 	};
 
+	'source-control-environments-version-switched': {
+		userId: string;
+		version: EnvironmentsVersion;
+	};
+
 	'source-control-user-started-pull-ui': {
 		userId?: string;
 		workflowUpdates: number;
@@ -939,6 +953,17 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	/**
+	 * SAML or OIDC sign-in turned off: the authentication method changed from
+	 * that protocol to email. A switch from one protocol to the other keeps
+	 * single sign-on on and does not emit this event.
+	 */
+	'sso-login-disabled': {
+		protocol: 'saml' | 'oidc';
+		/** SCIM provisioning was on when sign-in turned off. SCIM turns off with it. */
+		scimWasEnabled: boolean;
+	};
+
 	// #endregion
 
 	// #region Role Mapping
@@ -1121,6 +1146,38 @@ export type RelayEventMap = {
 		mode: 'internal' | 'external';
 	};
 
+	'memory-guard-hold-started': {
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+	};
+
+	'memory-guard-hold-ended': {
+		heldMs: number;
+	};
+
+	/** Crashed sessions so far, by the strongest guard action before each crash. */
+	'memory-guard-crashes-counted': {
+		crashes: Record<'none' | 'hold' | 'stop', number>;
+	};
+
+	'memory-guard-workflow-deactivated': {
+		workflowId: string;
+	};
+
+	'memory-guard-execution-stopped': {
+		executionId: string;
+		workflowId: string;
+		mode: WorkflowExecuteMode;
+		reason: 'threshold' | 'critical' | 'hold-limit';
+		runningNodeType: string | undefined;
+		largestDataNodeType: string | undefined;
+		estimatedBytes: number;
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+		freedMemory: boolean;
+		workflowDeactivationStarted: boolean;
+	};
+
 	// #endregion
 
 	// #region queue
@@ -1210,7 +1267,8 @@ export type RelayEventMap = {
 					| '2fa_enforcement'
 					| 'workflow_publishing'
 					| 'workflow_sharing'
-					| 'workflow_reviews';
+					| 'workflow_reviews'
+					| 'public_api_rate_limit';
 				value: boolean;
 		  }
 		| {

@@ -54,10 +54,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response: { statusCode: number; body: GenericValue } = await lakebaseApiRequest(this, {
 		method: 'POST',
 		url,
-		body,
+		// The HTTP helper drops a {} body and sets no Content-Type for a string body;
+		// PostgREST answers a bodiless RPC POST with 405
+		body: JSON.stringify(body),
 		json: true,
 		returnFullResponse: true,
-		headers: { Accept: 'application/json' },
+		headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
 	});
 
 	return shapeResult(response.statusCode, response.body).map((json) => ({

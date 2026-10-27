@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { OperationalError, UnexpectedError, UserError, type IDataObject } from 'n8n-workflow';
 
 import type { CollectedTrace, MlflowSpan } from './types';
@@ -140,14 +141,16 @@ export async function ensureExperiment(
 /**
  * The previews are the two columns of the trace list, so they carry the question
  * and the answer as plain text. The serialized span attribute is the fallback
- * for a run that ended before the agent produced either.
+ * for a run that ended before the agent produced either. The plain text is raw
+ * chain input, so it is scrubbed here, before the cut, so a token that straddles
+ * the limit cannot survive as a partial match.
  */
 function preview(
 	text: string | undefined,
 	span: MlflowSpan | undefined,
 	attribute: string,
 ): string {
-	return (text ?? span?.attributes[attribute] ?? '').slice(0, MAX_PREVIEW_CHARS);
+	return scrubSecretsInText(text ?? span?.attributes[attribute] ?? '').slice(0, MAX_PREVIEW_CHARS);
 }
 
 /**

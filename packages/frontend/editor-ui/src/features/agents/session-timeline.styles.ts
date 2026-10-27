@@ -1,55 +1,69 @@
 import type { CSSProperties } from 'vue';
-import type { EventKind, TimelineItem } from './session-timeline.types';
-import { chartBlockColor, isSubAgentTimelineItem } from './session-timeline.utils';
-type TimelinePillKind = EventKind | 'idle' | 'subagent';
+import type { EventKind, TimelineItem, TimelineStatusFilterKey } from './session-timeline.types';
+import { isErroredTimelineItem, isSubAgentTimelineItem } from './session-timeline.utils';
 
-export function pillColors(
-	kind: TimelinePillKind,
-): Pick<CSSProperties, 'backgroundColor' | 'color'> {
-	switch (kind) {
-		case 'user':
-			return { backgroundColor: 'var(--color--blue-200)', color: 'var(--color--blue-950)' };
-		case 'agent':
-			return { backgroundColor: 'var(--color--purple-200)', color: 'var(--color--purple-950)' };
-		case 'skill':
-			return { backgroundColor: 'var(--color--orange-200)', color: 'var(--color--orange-950)' };
-		case 'background-task-signal':
-		case 'subagent':
-			return { backgroundColor: 'var(--color--mint-200)', color: 'var(--color--mint-950)' };
-		case 'tool':
-			return { backgroundColor: 'var(--color--green-200)', color: 'var(--color--green-950)' };
-		case 'workflow':
-			return { backgroundColor: 'var(--color--pink-200)', color: 'var(--color--pink-950)' };
-		case 'node':
-			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
-		case 'execution-error':
-			return {
-				backgroundColor: 'var(--color--red-150)',
-				color: 'var(--text-color--danger)',
-			};
-		case 'suspension':
-		case 'idle':
-			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
-		case 'hitl-response':
-			return { backgroundColor: 'var(--color--blue-200)', color: 'var(--color--blue-950)' };
-		default:
-			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
-	}
+type TimelineColorKind = EventKind | 'idle' | 'subagent' | TimelineStatusFilterKey;
+type TimelinePillColors = Pick<CSSProperties, 'backgroundColor' | 'color'>;
+
+interface TimelineColors {
+	chart: string;
+	pill: TimelinePillColors;
 }
 
-/** Chart block colour for a timeline item — sub-agent delegations get a distinct hue. */
-export function chartBlockStyleForItem(item: TimelineItem): CSSProperties {
+type ColorFamily =
+	| 'blue'
+	| 'purple'
+	| 'orange'
+	| 'mint'
+	| 'green'
+	| 'pink'
+	| 'neutral'
+	| 'red'
+	| 'yellow';
+
+const COLOR_FAMILIES: Record<TimelineColorKind, ColorFamily> = {
+	user: 'blue',
+	agent: 'purple',
+	skill: 'orange',
+	tool: 'green',
+	node: 'neutral',
+	workflow: 'pink',
+	'execution-error': 'red',
+	suspension: 'yellow',
+	'hitl-response': 'blue',
+	'background-task-signal': 'mint',
+	'background-task': 'mint',
+	idle: 'yellow',
+	subagent: 'mint',
+	approved: 'green',
+	declined: 'neutral',
+	error: 'red',
+};
+
+/** Event swatches use chart colors. Status swatches keep their status colors. */
+export function timelineColors(kind: TimelineColorKind): TimelineColors {
+	const family = COLOR_FAMILIES[kind];
+	const isError = kind === 'execution-error' || kind === 'error';
+	const chartFamily =
+		kind === 'user' || kind === 'agent' || kind === 'subagent' || kind === 'approved' || isError
+			? family
+			: 'neutral';
+
 	return {
-		'--session-timeline-chart-block-color': isSubAgentTimelineItem(item)
-			? 'var(--color--mint-600)'
-			: chartBlockColor(item.kind),
+		chart: `var(--color--${chartFamily}-600)`,
+		pill: {
+			backgroundColor: `var(--color--${family}-${isError ? '150' : '200'})`,
+			color: isError ? 'var(--text-color--danger)' : `var(--color--${family}-950)`,
+		},
 	};
 }
 
-/**
- * Background colour for the small filter-dropdown swatch (uses the chart-block
- * alpha so the swatch matches the chart's bar treatment).
- */
-export function swatchBackground(color: string): string {
-	return `color-mix(in srgb, ${color} var(--color--session-timeline-block-bg-alpha), transparent)`;
+export function chartBlockStyleForItem(item: TimelineItem): CSSProperties {
+	const kind = isErroredTimelineItem(item)
+		? 'execution-error'
+		: isSubAgentTimelineItem(item)
+			? 'subagent'
+			: item.kind;
+
+	return { '--session-timeline-chart-block-color': timelineColors(kind).chart };
 }

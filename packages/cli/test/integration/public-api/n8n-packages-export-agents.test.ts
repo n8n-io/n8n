@@ -14,7 +14,6 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -37,10 +36,11 @@ import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration
 import { createProjectVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { toSkillContent } from '@/modules/agents/skills/skill.service';
+import { SkillRepository } from '@/modules/skills/skill.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { toSkillContent } from '@/modules/skills/skill.service';
 
-beforeAll(async () => await testModules.loadModules(['n8n-packages', 'agents']));
+beforeAll(async () => await testModules.loadModules(['n8n-packages', 'skills', 'agents']));
 const server = setupTestServer({ endpointGroups: ['publicApi'] });
 let owner: User;
 let project: Project;
@@ -51,7 +51,6 @@ let workflow: WorkflowEntity;
 let repository: AgentRepository;
 
 beforeAll(async () => {
-	setSkillsHubFlag(true);
 	repository = Container.get(AgentRepository);
 	Container.get(InstanceSettings).markAsLeader();
 });
@@ -153,7 +152,7 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 		},
 		toSkillContent(skill),
 	);
-	await skillRepository.replaceDependencies(agent.id, [{ skillId }]);
+	await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 	await Container.get(AgentTaskRepository).save(
 		Object.entries(tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
 	);

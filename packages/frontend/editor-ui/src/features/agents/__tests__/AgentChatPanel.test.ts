@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
@@ -106,7 +107,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 
-vi.mock('@n8n/i18n', () => {
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@n8n/i18n')>();
 	const baseText = (
 		key: string,
 		options?: { interpolate?: Record<string, string | number>; adjustToNumber?: number },
@@ -140,7 +142,7 @@ vi.mock('@n8n/i18n', () => {
 		return translations[key] ?? key;
 	};
 	const i18n = { baseText };
-	return { useI18n: () => i18n, i18n };
+	return { ...original, useI18n: () => i18n, i18n };
 });
 
 vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
@@ -427,7 +429,7 @@ describe('AgentChatPanel', () => {
 		return mount(AgentChatPanel, {
 			attachTo,
 			slots,
-			global: { plugins: [router] },
+			global: { plugins: [router, i18nInstance] },
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
@@ -438,6 +440,45 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('submits a message when Web Crypto is unavailable', async () => {
+		const actual = await vi.importActual<typeof import('../composables/agentTelemetry.utils')>(
+			'../composables/agentTelemetry.utils',
+		);
+		vi.mocked(buildAgentConfigFingerprint).mockImplementationOnce(
+			actual.buildAgentConfigFingerprint,
+		);
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			sendMessageMock.mockResolvedValueOnce('sent');
+			const wrapper = mountPanel();
+			const input = wrapper.findComponent({ name: 'ChatInputBase' });
+			input.vm.$emit('update:modelValue', 'Hello');
+			await nextTick();
+			input.vm.$emit('submit');
+			await flushPromises();
+
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'Hello',
+				undefined,
+				expect.any(Function),
+				undefined,
+			);
+			sendMessageMock.mock.lastCall?.[2]?.();
+			await nextTick();
+			expect(input.props('modelValue')).toBe('');
+			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
+				agentId: 'a1',
+				status: 'draft',
+				agentConfig: expect.objectContaining({
+					instructions: 'Help.',
+					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
+				}),
+			});
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 
 	describe('resend after an error', () => {
 		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [
@@ -482,7 +523,7 @@ describe('AgentChatPanel', () => {
 					routes: [{ path: '/', component: { template: '<div />' } }],
 				});
 				const wrapper = mount(AgentPreviewChatPage, {
-					global: { plugins: [router] },
+					global: { plugins: [router, i18nInstance] },
 					props: {
 						initialized: true,
 						projectId: 'p1',
@@ -2772,7 +2813,9 @@ describe('AgentChatPanel', () => {
 				await nextTick();
 				const approvals = wrapper.get('[data-testid="agent-chat-approvals"]');
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
-				expect(document.activeElement).toBe(approvals.get('[role="listbox"]').element);
+				expect(document.activeElement).toBe(
+					approvals.get('[role="toolbar"] button[tabindex="0"]').element,
+				);
 				await approvals.get(`[data-test-id="approval-card-${action}"]`).trigger('click');
 				expect(resumeMock).toHaveBeenCalledExactlyOnceWith({
 					runId: 'run-1',
@@ -3887,6 +3930,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 							: null;
 				},
 			}),
+			{ global: { plugins: [i18nInstance] } },
 		);
 	}
 

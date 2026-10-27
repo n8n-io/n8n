@@ -11,6 +11,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 import { PostHogClient } from '@/posthog';
 
 import {
@@ -23,7 +24,6 @@ import {
 import {
 	areAgentToolsAvailable,
 	arePreferenceToolsEnabled,
-	areSkillToolsAvailable,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -78,7 +78,7 @@ export class McpProtectedResource implements ProtectedResource {
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = areSkillToolsAvailable(this.globalConfig, this.moduleRegistry);
+		const skillsAvailable = Container.get(SkillAgentsProxy).hasProvider;
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-apps",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,15 +35,24 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
+    "@n8n/blob-storage": "workspace:*",
+    "@n8n/config": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "n8n-core": "workspace:*",
+    "tar": "catalog:",
     "uuid": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
@@ -55,7 +64,8 @@
     "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

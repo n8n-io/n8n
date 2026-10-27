@@ -4,11 +4,10 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nInput,
-	N8nInputLabel,
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
@@ -18,6 +17,7 @@ import { computed, nextTick, ref, useTemplateRef } from 'vue';
 
 import { httpUrl, warningSegments } from '../promotionResult';
 import { promotePackage } from '../promotionsSettings.api';
+import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
 
 const props = defineProps<{
 	open: boolean;
@@ -38,11 +38,7 @@ const rootStore = useRootStore();
 const commitMessage = ref('');
 const isSubmitting = ref(false);
 const result = ref<PromotePackageResultDto | null>(null);
-const messageInput = useTemplateRef<InstanceType<typeof N8nInput>>('messageInput');
-
-const isPromoteDisabled = computed(
-	() => isSubmitting.value || commitMessage.value.trim().length === 0,
-);
+const messageField = useTemplateRef('messageField');
 
 const dialogTitle = computed(() =>
 	i18n.baseText(
@@ -94,17 +90,20 @@ function onOpenChange(value: boolean) {
 
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
-	void nextTick(() => messageInput.value?.focus());
+	void nextTick(() => messageField.value?.focus());
 }
 
 async function submit() {
-	if (isPromoteDisabled.value) return;
+	if (isSubmitting.value) return;
 
+	const message = commitMessage.value.trim();
 	isSubmitting.value = true;
 	try {
-		result.value = await promotePackage(rootStore.publicApiContext, props.environmentId, {
-			commitMessage: commitMessage.value.trim(),
-		});
+		result.value = await promotePackage(
+			rootStore.publicApiContext,
+			props.environmentId,
+			message ? { commitMessage: message } : {},
+		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.promote.toast.error'));
 	} finally {
@@ -128,28 +127,18 @@ async function submit() {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<form v-if="!result" :class="$style.body" @submit.prevent="submit">
-			<N8nText color="text-base">{{ bodyText }}</N8nText>
+		<template v-if="!result">
+			<N8nDialogBody>
+				<form id="promote-instance-form" :class="$style.body" @submit.prevent="submit">
+					<N8nText color="text-base">{{ bodyText }}</N8nText>
 
-			<N8nInputLabel
-				input-name="promote-commit-message"
-				:label="i18n.baseText('settings.promotions.promote.dialog.commitMessage.label')"
-				required
-			>
-				<N8nInput
-					id="promote-commit-message"
-					ref="messageInput"
-					v-model="commitMessage"
-					type="textarea"
-					:rows="3"
-					:disabled="isSubmitting"
-					:placeholder="
-						i18n.baseText('settings.promotions.promote.dialog.commitMessage.placeholder')
-					"
-					data-test-id="promote-commit-message"
-				/>
-			</N8nInputLabel>
-
+					<PromotionCommitMessageField
+						ref="messageField"
+						v-model="commitMessage"
+						:disabled="isSubmitting"
+					/>
+				</form>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton
 					type="button"
@@ -162,49 +151,54 @@ async function submit() {
 				</N8nButton>
 				<N8nButton
 					type="submit"
-					:disabled="isPromoteDisabled"
+					form="promote-instance-form"
+					:disabled="isSubmitting"
 					:loading="isSubmitting"
 					data-test-id="promote-confirm-button"
 				>
 					{{ i18n.baseText('settings.promotions.promote.dialog.confirm') }}
 				</N8nButton>
 			</N8nDialogFooter>
-		</form>
+		</template>
 
-		<div v-else :class="$style.body">
-			<N8nLink
-				v-if="mergeRequestUrl"
-				:to="mergeRequestUrl"
-				new-window
-				data-test-id="promote-merge-request-link"
-			>
-				{{ i18n.baseText('promotions.result.viewMergeRequest') }}
-			</N8nLink>
-			<N8nText v-else color="text-base" data-test-id="promote-result-summary">
-				{{ pushedText }}
-			</N8nText>
-			<N8nText
-				v-for="(warning, index) in result.warnings"
-				:key="index"
-				color="text-base"
-				data-test-id="promote-warning"
-			>
-				<template
-					v-for="(segment, segmentIndex) in warningSegments(warning, reviewNotRecorded)"
-					:key="segmentIndex"
-				>
-					<N8nLink v-if="segment.kind === 'link'" :to="segment.url" new-window>
-						{{ segment.url }}
+		<template v-else>
+			<N8nDialogBody>
+				<div :class="$style.body">
+					<N8nLink
+						v-if="mergeRequestUrl"
+						:to="mergeRequestUrl"
+						new-window
+						data-test-id="promote-merge-request-link"
+					>
+						{{ i18n.baseText('promotions.result.viewMergeRequest') }}
 					</N8nLink>
-					<template v-else>{{ segment.text }}</template>
-				</template>
-			</N8nText>
+					<N8nText v-else color="text-base" data-test-id="promote-result-summary">
+						{{ pushedText }}
+					</N8nText>
+					<N8nText
+						v-for="(warning, index) in result.warnings"
+						:key="index"
+						color="text-base"
+						data-test-id="promote-warning"
+					>
+						<template
+							v-for="(segment, segmentIndex) in warningSegments(warning, reviewNotRecorded)"
+							:key="segmentIndex"
+						>
+							<N8nLink v-if="segment.kind === 'link'" :to="segment.url" new-window>
+								{{ segment.url }}
+							</N8nLink>
+							<template v-else>{{ segment.text }}</template>
+						</template>
+					</N8nText>
+				</div>
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton type="button" data-test-id="promote-close-button" @click="close">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 			</N8nDialogFooter>
-		</div>
+		</template>
 	</N8nDialog>
 </template>
 

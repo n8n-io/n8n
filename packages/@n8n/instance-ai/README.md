@@ -123,7 +123,6 @@ pnpm --filter @n8n/instance-ai eval:instance-ai
 - [Engineering standards](docs/ENGINEERING.md)
 - [Configuration](docs/configuration.md)
 - [Sandboxing](docs/sandboxing.md)
-- [Local Computer Use gateway](docs/filesystem-access.md)
 - [Tools](docs/tools.md)
 - [Memory](docs/memory.md)
 - [Streaming protocol](docs/streaming-protocol.md)

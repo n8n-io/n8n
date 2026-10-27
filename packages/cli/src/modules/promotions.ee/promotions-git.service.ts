@@ -21,6 +21,7 @@ import {
 	GIT_READ_CONCURRENCY,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
+import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -40,6 +41,15 @@ type GitOperation = {
 	/** Only for logging, so a failure points at the right environment. */
 	environmentId: string;
 };
+
+type TreeReadLimits = {
+	maxEntries: number;
+	maxEntryBytes: number;
+	maxUncompressedBytes: number;
+	maxPathLength: number;
+};
+
+type TreeEntry = { path: string; objectName: string; size: number };
 
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
 const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
@@ -319,12 +329,32 @@ export class PromotionsGitService {
 		}
 	}
 
-	/** Reset the checkout to the latest base branch before one branched promotion. */
-	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+	/** Whether the remote holds the branch. Throws when the remote can't be reached. */
+	async hasRemoteBranch(operation: GitOperation): Promise<boolean> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
-				await this.withGit(
+			// The lock also covers SSH, which can write known_hosts in sshDir.
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['--heads', 'origin', `refs/heads/${branchName}`]),
+				);
+				return refs.trim() !== '';
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Reset the checkout to the latest base branch before one branched promotion. Returns the commit
+	 * it reset to, so later reads of the base need no second fetch.
+	 */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<{ commitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				return await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => {
 						const branchRefs = await git.listRemote([
@@ -342,6 +372,7 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
 			});
@@ -579,6 +610,189 @@ export class PromotionsGitService {
 		}
 	}
 
+	/** The blob SHA of each file under `directory` at the commit, by repository path. */
+	async listFilesAtCommit({
+		paths,
+		branchName,
+		environmentId,
+		commitSha,
+		directory,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'> & {
+		commitSha: string;
+		directory: string;
+	}): Promise<Map<string, string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const tree = await git.raw(['ls-tree', '-r', '-l', '-z', commitSha, '--', `${directory}/`]);
+				return new Map(
+					parseTreeEntries(tree, directory).map(({ path: entryPath, objectName }) => [
+						`${directory}/${entryPath}`,
+						objectName,
+					]),
+				);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Makes the commits of one review available in the checkout and returns its baseline.
+	 * An open review diffs against the merge base with the latest target branch, so it always
+	 * fetches: an old target branch gives an old merge base after a rebase. The commits of a
+	 * merged or closed review do not change, so it fetches only when the checkout lacks one.
+	 */
+	async fetchReviewCommits({
+		headRef,
+		headCommitSha,
+		baseline,
+		...operation
+	}: GitOperation & {
+		/** The host ref that holds the review head. */
+		headRef: string;
+		headCommitSha: string;
+		/** A pinned baseline can name the target branch, which can still hold the commits. */
+		baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+	}): Promise<{ baselineCommitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		const commitShas = [headCommitSha, ...('commitSha' in baseline ? [baseline.commitSha] : [])];
+		if (!commitShas.every((sha) => COMMIT_SHA.test(sha))) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (baseline.targetBranchName) await this.validateBranchName(baseline.targetBranchName);
+		const missingCommits = new PromotionReviewCommitsMissingError();
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const hasCommits = async () => {
+					for (const sha of commitShas) if (!(await hasCommit(git, sha))) return false;
+					return true;
+				};
+				const remoteGit = {
+					remoteUrl,
+					credentials,
+					repoDir: paths.repositoryFolder,
+					sshDir: paths.sshDir,
+				};
+				const fetch = async (refspecs: string[]) =>
+					await this.withGit(
+						remoteGit,
+						// --progress keeps the stall-timeout timer fed during a healthy transfer.
+						async (remote) => await remote.raw(['fetch', '--progress', 'origin', ...refspecs]),
+					);
+				// A fetch of a ref that the remote does not have fails, so check the refs first.
+				const listRemoteRefs = async (refs: string[]) => {
+					const output = await this.withGit(
+						remoteGit,
+						async (remote) => await remote.raw(['ls-remote', 'origin', ...refs]),
+					);
+					return new Set(
+						output
+							.split('\n')
+							.map((line) => line.split('\t')[1])
+							.filter(Boolean),
+					);
+				};
+
+				if ('commitSha' in baseline) {
+					if (!(await hasCommits())) {
+						// GitLab deletes the head ref 14 days after a review closes or merges. The commits
+						// of a merged review can still be on the target branch, so fetch what is left.
+						const sources = [{ ref: headRef, refspec: headRef }];
+						const target = baseline.targetBranchName;
+						if (target) {
+							const ref = `refs/heads/${target}`;
+							sources.push({ ref, refspec: `+${ref}:refs/remotes/origin/${target}` });
+						}
+						const existing = await listRemoteRefs(sources.map(({ ref }) => ref));
+						const available = sources.filter(({ ref }) => existing.has(ref));
+						if (available.length > 0) await fetch(available.map(({ refspec }) => refspec));
+					}
+					if (!(await hasCommits())) throw missingCommits;
+					return { baselineCommitSha: baseline.commitSha };
+				}
+
+				const targetRef = `refs/remotes/origin/${baseline.targetBranchName}`;
+				await fetch([headRef, `+refs/heads/${baseline.targetBranchName}:${targetRef}`]);
+				if (!(await hasCommits())) throw missingCommits;
+				let mergeBase = '';
+				try {
+					mergeBase = (await git.raw(['merge-base', headCommitSha, targetRef])).trim();
+				} catch {
+					// Git exits with an error when the commits share no history.
+				}
+				if (!COMMIT_SHA.test(mergeBase)) {
+					throw new BadRequestError(
+						`The review has no common commit with the target branch ${baseline.targetBranchName}.`,
+					);
+				}
+				return { baselineCommitSha: mergeBase };
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Reads every file under `directory` at the commit, keyed by its path inside `directory`.
+	 * One `cat-file --batch` reads all files: a `git show` per file takes seconds for a large package.
+	 * The limits are checked on the listed sizes, before any content is read.
+	 */
+	async readTreeAtCommit({
+		commitSha,
+		directory,
+		limits,
+		...operation
+	}: GitOperation & {
+		commitSha: string;
+		directory: string;
+		limits: TreeReadLimits;
+	}): Promise<Map<string, Buffer>> {
+		const { paths, branchName, environmentId } = operation;
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const options = { ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder };
+				// Another main may have served the preview, so this checkout can lack its commit.
+				if (!(await hasCommit(simpleGit(options), commitSha))) {
+					await this.fetchBranch(operation);
+					if (!(await hasCommit(simpleGit(options), commitSha))) {
+						throw new BadRequestError(
+							'The branch no longer has the commit of the preview. Load the preview again.',
+						);
+					}
+				}
+				const tree = await simpleGit(options).raw([
+					'ls-tree',
+					'-r',
+					'-l',
+					'-z',
+					commitSha,
+					'--',
+					`${directory}/`,
+				]);
+				const entries = parseTreeEntries(tree, directory);
+				assertWithinLimits(entries, limits);
+				if (entries.length === 0) return new Map();
+
+				const objectNames = entries.map(({ objectName }) => objectName).join('\n') + '\n';
+				const output: Buffer = await simpleGit({
+					...options,
+					input: () => objectNames,
+				}).binaryCatFile(['--batch']);
+				return splitBatchOutput(output, entries);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
 	// Configure credentials per operation and remove temporary SSH key material afterwards.
 	private async withGit<T>(
 		{
@@ -655,4 +869,66 @@ export class PromotionsGitService {
 		this.logger.warn('Git operation failed', ctx);
 		return new BadRequestError('Could not complete the Git operation');
 	}
+}
+
+async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {
+	try {
+		await git.raw(['cat-file', '-e', `${commitSha}^{commit}`]);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Parses `ls-tree -r -l -z`. Like a package folder on disk, the tree may hold only regular files. */
+function parseTreeEntries(output: string, directory: string): TreeEntry[] {
+	return output
+		.split('\0')
+		.filter(Boolean)
+		.map((line) => {
+			const tab = line.indexOf('\t');
+			const [mode, type, objectName, size] = line.slice(0, tab).split(/\s+/);
+			const entryPath = line.slice(tab + 1 + directory.length + 1);
+			if (type !== 'blob' || mode === '120000') {
+				throw new BadRequestError(`Package contains a disallowed entry type for "${entryPath}"`);
+			}
+			return { path: entryPath, objectName, size: Number(size) };
+		});
+}
+
+/** The package import limits, with the same messages as `DirectoryPackageReader`. */
+function assertWithinLimits(entries: TreeEntry[], limits: TreeReadLimits) {
+	if (entries.length > limits.maxEntries) {
+		throw new BadRequestError('Package contains too many entries');
+	}
+	let totalBytes = 0;
+	for (const { path: entryPath, size } of entries) {
+		if (entryPath.length > limits.maxPathLength) {
+			throw new BadRequestError('Package entry path exceeds the maximum allowed length');
+		}
+		if (size > limits.maxEntryBytes) {
+			throw new BadRequestError(
+				`Package entry "${entryPath}" exceeds the maximum allowed uncompressed size per entry`,
+			);
+		}
+		totalBytes += size;
+	}
+	if (totalBytes > limits.maxUncompressedBytes) {
+		throw new BadRequestError('Package exceeds the maximum allowed uncompressed size');
+	}
+}
+
+/** `cat-file --batch` prints `<name> <type> <size>\n<content>\n` for each object, in input order. */
+function splitBatchOutput(output: Buffer, entries: TreeEntry[]): Map<string, Buffer> {
+	const files = new Map<string, Buffer>();
+	let offset = 0;
+	for (const { path: entryPath, size } of entries) {
+		const contentStart = output.indexOf('\n', offset) + 1;
+		files.set(entryPath, output.subarray(contentStart, contentStart + size));
+		offset = contentStart + size + 1;
+	}
+	if (offset !== output.length) {
+		throw new UnexpectedError('Git returned a different amount of file content than it listed');
+	}
+	return files;
 }

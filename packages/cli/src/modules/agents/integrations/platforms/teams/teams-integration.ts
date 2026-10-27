@@ -33,10 +33,13 @@ import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
 import { connectionUnavailable } from '../../integration-helpers';
 import type { IntegrationAction, ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { conversationTypeOf } from './teams-activity';
 import { TeamsCleanupService } from './teams-cleanup.service';
 import { READ_PERMISSIONS } from './teams-manifest.service';
 import { fetchTeamsMessageFiles, graphHttpOf } from './teams-message-files';
 import { executeTeamsContextQuery } from './teams-operations';
+import { buildTeamsOriginDraft } from './teams-origin';
+import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
@@ -68,12 +71,6 @@ const JOINED_THREAD_REPLY_NOTE = [
 	'If it is aimed at someone else, call do_not_respond once. That ends your turn.',
 	'</reply_guidance>',
 ].join('\n');
-
-function conversationTypeOf(activity: unknown): unknown {
-	return isRecord(activity) && isRecord(activity.conversation)
-		? activity.conversation.conversationType
-		: undefined;
-}
 
 /**
  * The adapter reports every inbound author as a person, so the activity is
@@ -157,8 +154,9 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'teams';
 
-	/** Hidden from the catalog and the add-trigger UI until the setup stepper ships. */
-	readonly internal = true;
+	readonly internal = false;
+
+	readonly singleConnectionPerAgent = true;
 
 	readonly builderGuidance = {
 		capabilities: [
@@ -306,6 +304,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 			chat: params.chat,
 			query: params.query,
 			input: params.input,
+			abortSignal: params.abortSignal,
 		});
 	}
 
@@ -325,6 +324,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 	) {
 		super();
+	}
+
+	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
+		return buildTeamsOriginDraft(input, decoded);
+	}
+
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

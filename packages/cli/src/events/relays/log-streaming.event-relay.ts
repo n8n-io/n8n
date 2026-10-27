@@ -3,7 +3,7 @@ import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
+import type { JsonValue } from 'n8n-workflow';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -102,6 +102,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
+			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -354,32 +355,21 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowPreExecute({
 		data,
 		executionId,
+		userId,
 		mode,
 		projectId,
 		projectName,
 	}: RelayEventMap['workflow-pre-execute']) {
-		const payload =
-			'executionData' in data
-				? {
-						executionId,
-						userId: data.userId,
-						workflowId: data.workflowData.id,
-						isManual: data.executionMode === 'manual',
-						mode,
-						workflowName: data.workflowData.name,
-						projectId: data.projectId ?? projectId,
-						projectName: data.projectName ?? projectName,
-					}
-				: {
-						executionId,
-						userId: undefined,
-						workflowId: (data as IWorkflowBase).id,
-						isManual: false,
-						mode,
-						workflowName: (data as IWorkflowBase).name,
-						projectId,
-						projectName,
-					};
+		const payload = {
+			executionId,
+			userId,
+			workflowId: data.id,
+			isManual: mode === 'manual',
+			mode,
+			workflowName: data.name,
+			projectId,
+			projectName,
+		};
 
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.started',
@@ -626,6 +616,18 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
 			payload: event,
+		});
+	}
+
+	@Redactable()
+	private userLoginEmailConflict({
+		user,
+		authenticationMethod,
+		assertedEmail,
+	}: RelayEventMap['user-login-email-conflict']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.login.emailConflict',
+			payload: { ...user, authenticationMethod, _assertedEmail: assertedEmail },
 		});
 	}
 
@@ -1366,6 +1368,14 @@ export class LogStreamingEventRelay extends EventRelay {
 					eventName: value
 						? 'n8n.audit.workflow-reviews.enabled'
 						: 'n8n.audit.workflow-reviews.disabled',
+					payload: user,
+				});
+				break;
+			case 'public_api_rate_limit':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.public-api-rate-limit.enabled'
+						: 'n8n.audit.public-api-rate-limit.disabled',
 					payload: user,
 				});
 				break;

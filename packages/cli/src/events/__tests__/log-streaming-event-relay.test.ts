@@ -1,7 +1,7 @@
 import { EventService } from '@n8n/backend-services';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -67,9 +67,13 @@ describe('LogStreamingEventRelay', () => {
 				projectIds: ['proj-brie', 'proj-stilton'],
 				folderId: 'folder-cheese',
 				workflowIds: ['wf-cheddar', 'wf-brie'],
+				agentIds: ['agent1', 'agent2'],
 				options: {
 					workflowConflictPolicy: 'new-version',
-					workflowIdPolicy: 'new',
+					conflictPolicy: 'new-version',
+					agentIdPolicy: 'source',
+					agentPublishingPolicy: 'match-source',
+					workflowIdPolicy: 'source',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					credentialConflictPolicy: 'keep-existing',
@@ -96,6 +100,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				counts: {
+					agents: { created: 1, updated: 1, skipped: 1 },
 					workflows: {
 						created: 1,
 						updated: 1,
@@ -109,6 +114,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: {
 						matched: 1,
 						created: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					dataTables: {
@@ -149,9 +155,13 @@ describe('LogStreamingEventRelay', () => {
 					projectIds: ['proj-brie', 'proj-stilton'],
 					folderId: 'folder-cheese',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
+					agentIds: ['agent1', 'agent2'],
 					options: {
 						workflowConflictPolicy: 'new-version',
-						workflowIdPolicy: 'new',
+						conflictPolicy: 'new-version',
+						agentIdPolicy: 'source',
+						agentPublishingPolicy: 'match-source',
+						workflowIdPolicy: 'source',
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
 						credentialConflictPolicy: 'keep-existing',
@@ -625,38 +635,30 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-pre-execute` with IWorkflowExecutionDataProcess data', () => {
-			const executionData = {
-				executionData: undefined,
-				executionMode: 'manual' as const,
-				userId: 'user-abc',
-				projectId: 'proj-from-data',
-				projectName: 'Data Project',
-				workflowData: mock<IWorkflowBase>({ id: 'wf303', name: 'Data Workflow' }),
-			} as unknown as IWorkflowExecutionDataProcess;
-
+		it('should mark a manual `workflow-pre-execute` event with workflow data as manual', () => {
 			const event: RelayEventMap['workflow-pre-execute'] = {
-				executionId: 'exec456',
-				data: executionData,
+				executionId: 'exec-manual',
+				userId: 'user-manual',
+				data: mock<IWorkflowBase>({ id: 'wf-manual', name: 'Manual Workflow' }),
 				mode: 'manual',
-				projectId: 'proj-fallback',
-				projectName: 'Fallback Project',
+				projectId: 'proj-123',
+				projectName: 'Test Project',
 			};
 
 			eventService.emit('workflow-pre-execute', event);
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.started',
-				payload: {
-					executionId: 'exec456',
-					userId: 'user-abc',
-					workflowId: 'wf303',
+				payload: expect.objectContaining({
+					executionId: 'exec-manual',
+					userId: 'user-manual',
+					workflowId: 'wf-manual',
+					workflowName: 'Manual Workflow',
 					isManual: true,
 					mode: 'manual',
-					workflowName: 'Data Workflow',
-					projectId: 'proj-from-data',
-					projectName: 'Data Project',
-				},
+					projectId: 'proj-123',
+					projectName: 'Test Project',
+				}),
 			});
 		});
 
@@ -1732,6 +1734,35 @@ describe('LogStreamingEventRelay', () => {
 					userEmail: 'user@example.com',
 					authenticationMethod: 'email',
 					reason: 'Invalid password',
+				},
+			});
+		});
+
+		it('should log on `user-login-email-conflict` event', () => {
+			const event: RelayEventMap['user-login-email-conflict'] = {
+				user: {
+					id: 'user404',
+					email: 'linked@example.com',
+					firstName: 'Linked',
+					lastName: 'User',
+					role: { slug: 'global:member' },
+				},
+				authenticationMethod: 'saml',
+				assertedEmail: 'asserted@example.com',
+			};
+
+			eventService.emit('user-login-email-conflict', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.emailConflict',
+				payload: {
+					userId: 'user404',
+					_email: 'linked@example.com',
+					_firstName: 'Linked',
+					_lastName: 'User',
+					globalRole: 'global:member',
+					authenticationMethod: 'saml',
+					_assertedEmail: 'asserted@example.com',
 				},
 			});
 		});
@@ -3031,6 +3062,60 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Ninth',
 					_lastName: 'Admin',
 					globalRole: 'global:admin',
+				},
+			});
+		});
+
+		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.enabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `public-api-rate-limit.disabled` when public_api_rate_limit is turned off', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.disabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
 				},
 			});
 		});

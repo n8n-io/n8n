@@ -6,27 +6,29 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiSendMessageRequest,
-	AgentConfigResponse,
-	InstanceAiBuildMode,
-	InstanceAiConfirmRequest,
-	InstanceAiRichMessagesResponse,
-	InstanceAiEvalAgentExecutionResult,
-	InstanceAiEvalExecutionResult,
-	InstanceAiRunDebugResponse,
-	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiEvalSeedAgent,
-	InstanceAiEvalSeedDataTable,
-	InstanceAiEvalSeedFolder,
-	InstanceAiEvalSeedWorkflow,
-	InstanceAiResourceAttachment,
-	AgentJsonConfig,
-	AgentSkill,
-	EvaluationConfigDto,
+import {
+	type InstanceAiHandoffContext,
+	type InstanceAiSendMessageRequest,
+	type AgentConfigResponse,
+	type InstanceAiBuildMode,
+	type InstanceAiConfirmRequest,
+	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalExecutionResult,
+	type InstanceAiRunDebugResponse,
+	type InstanceAiEvalThreadMemoryResponse,
+	type InstanceAiThreadDebugRunsResponse,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
+	type InstanceAiEvalSeedWorkflow,
+	type InstanceAiResourceAttachment,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type EvaluationConfigDto,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
 } from '@n8n/api-types';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
@@ -73,6 +75,14 @@ const InvitedUsersEnvelope = z.object({
 
 // -- Conversation seeding response shapes -------------------------------------
 
+const ExportExecutionEnvelope = z.object({
+	data: z.object({ envelope: instanceAiEvalFailedExecutionEnvelopeSchema }),
+});
+
+const RestoreExecutionEnvelope = z.object({
+	data: z.object({ ok: z.literal(true), executionId: z.string().min(1) }),
+});
+
 const RestoreThreadEnvelope = z.object({
 	data: z.object({
 		ok: z.literal(true),
@@ -86,32 +96,11 @@ const RestoreThreadEnvelope = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Computer-use gateway response shapes (Zod-validated to keep the client
-// honest about API drift instead of trusting `as` casts)
+// Browser-use relay response shapes (Zod-validated to keep the client honest
+// about API drift instead of trusting `as` casts). The server owns the CDP
+// relay and the extension dials in.
 // ---------------------------------------------------------------------------
 
-const GatewayLinkSchema = z.object({
-	token: z.string(),
-	command: z.string(),
-});
-const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
-export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
-
-const GatewayStatusSchema = z.object({
-	connected: z.boolean(),
-	directory: z.string().nullable(),
-	toolCategories: z.array(
-		z.object({
-			name: z.string(),
-			enabled: z.boolean(),
-		}),
-	),
-});
-const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
-export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
-
-// Browser-use relay (a different channel from the computer-use gateway above:
-// the server owns the CDP relay and the extension dials in).
 const BrowserLinkSchema = z.object({
 	connectUrl: z.string(),
 	expiresAt: z.string().nullable(),
@@ -465,29 +454,6 @@ export class N8nClient {
 		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
 			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
 		);
-	}
-
-	// -- Computer-use gateway (pairing + status) -----------------------------
-
-	/**
-	 * Generate a one-shot pairing token for the local computer-use daemon.
-	 * POST /rest/instance-ai/gateway/create-link
-	 */
-	async createGatewayLink(): Promise<GatewayLink> {
-		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
-			method: 'POST',
-		});
-		return GatewayLinkEnvelope.parse(result).data;
-	}
-
-	/**
-	 * Read the local gateway status. The daemon flips this to `connected: true`
-	 * once it has registered its capabilities.
-	 * GET /rest/instance-ai/gateway/status
-	 */
-	async getGatewayStatus(): Promise<GatewayStatus> {
-		const result = await this.fetch('/rest/instance-ai/gateway/status');
-		return GatewayStatusEnvelope.parse(result).data;
 	}
 
 	// -- Browser-use relay (extension pairing + status) ----------------------
@@ -1100,6 +1066,31 @@ export class N8nClient {
 		return restored;
 	}
 
+	/** Export one failed execution of the thread's project as a portable envelope. */
+	async exportExecution(
+		threadId: string,
+		executionId: string,
+	): Promise<{ envelope: InstanceAiEvalFailedExecutionEnvelope }> {
+		const result = await this.fetch('/rest/instance-ai/eval/export-execution', {
+			method: 'POST',
+			body: { threadId, executionId },
+		});
+		return ExportExecutionEnvelope.parse(result).data;
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow; returns the new execution id. */
+	async restoreExecution(
+		threadId: string,
+		workflowId: string,
+		envelope: InstanceAiEvalFailedExecutionEnvelope,
+	): Promise<{ executionId: string }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-execution', {
+			method: 'POST',
+			body: { threadId, workflowId, envelope },
+		});
+		return RestoreExecutionEnvelope.parse(result).data;
+	}
+
 	/**
 	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
 	 * for the per-scenario row seeding of a case that pre-created its tables
@@ -1368,8 +1359,8 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
-	 * `seededDataTableIds` run live instead of pinned.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. The server keeps the rows of
+	 * `seededDataTableIds` and fills every other Data Table the workflow uses.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,

@@ -1,4 +1,5 @@
 import type { AvailableCredentialTypesResponse, AvailableTypesResponse } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -7,12 +8,20 @@ import { useTypeAvailabilityPoliciesStore } from './type-availability-policies.s
 const mocks = vi.hoisted(() => ({
 	fetchAvailableTypes: vi.fn(),
 	fetchAvailableCredentialTypes: vi.fn(),
+	getProject: vi.fn(),
+	fetchSubWorkflowPolicyCheck: vi.fn(),
 	isModuleActive: vi.fn(),
+}));
+
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getProject: mocks.getProject,
 }));
 
 vi.mock('./type-availability-policies.api', () => ({
 	fetchAvailableTypes: mocks.fetchAvailableTypes,
 	fetchAvailableCredentialTypes: mocks.fetchAvailableCredentialTypes,
+	fetchSubWorkflowPolicyCheck: mocks.fetchSubWorkflowPolicyCheck,
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
@@ -39,6 +48,8 @@ const PROJECT_B_RESPONSE: AvailableTypesResponse = [
 	{ name: RESTRICTED, available: true },
 ];
 
+const TEAM_PROJECT = { id: 'project-a', type: 'team', relations: [] };
+
 const ALLOWED_CREDENTIAL = 'sysdigApi';
 const RESTRICTED_CREDENTIAL = 'virusTotalApi';
 
@@ -53,6 +64,8 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 	beforeEach(() => {
 		mocks.fetchAvailableTypes.mockReset();
 		mocks.fetchAvailableCredentialTypes.mockReset().mockResolvedValue([]);
+		mocks.getProject.mockReset().mockResolvedValue(TEAM_PROJECT);
+		mocks.fetchSubWorkflowPolicyCheck.mockReset();
 		mocks.isModuleActive.mockReset().mockReturnValue(true);
 		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
@@ -300,7 +313,33 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			store.reset();
 
 			expect(store.loadedProjectId).toBeNull();
+			expect(store.policyProject).toBeNull();
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
+		it('loads the project together with its availability', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+
+			expect(mocks.getProject).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: 'http://localhost' }),
+				'project-a',
+			);
+			expect(store.policyProject).toEqual(TEAM_PROJECT);
+		});
+
+		it('keeps the availability when the caller cannot read the project', async () => {
+			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
+			mocks.getProject.mockRejectedValue(new Error('Forbidden'));
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+
+			expect(store.policyProject).toBeNull();
+			expect(store.loadedProjectId).toBe('project-a');
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
 		});
 	});
 
@@ -383,6 +422,114 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			store.reset();
 
 			expect(store.getCredentialTypeAvailability(RESTRICTED_CREDENTIAL).available).toBe(true);
+		});
+	});
+
+	describe('sub-workflow checks', () => {
+		const CHECK = {
+			projectName: 'Child project',
+			draft: [
+				{
+					kind: 'node-type-unavailable',
+					checkId: 'node-type-availability',
+					message: 'blocked',
+					subject: RESTRICTED,
+					subjectType: 'nodeType',
+					scope: 'project',
+				},
+			],
+			published: null,
+		};
+
+		it('loads a check once and answers it for that parent and sub-workflow only', async () => {
+			mocks.fetchSubWorkflowPolicyCheck.mockResolvedValue(CHECK);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await Promise.all([
+				store.fetchSubWorkflowCheck('parent', 'child'),
+				store.fetchSubWorkflowCheck('parent', 'child'),
+			]);
+			await store.fetchSubWorkflowCheck('parent', 'child');
+
+			expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledTimes(1);
+			expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledWith(
+				expect.anything(),
+				'parent',
+				'child',
+			);
+			expect(store.getSubWorkflowCheck('parent', 'child')).toEqual(CHECK);
+			expect(store.getSubWorkflowCheck('other-parent', 'child')).toBeNull();
+		});
+
+		it('refetches a loaded check when forced', async () => {
+			mocks.fetchSubWorkflowPolicyCheck.mockResolvedValueOnce(CHECK).mockResolvedValueOnce({
+				draft: [],
+				published: null,
+			});
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchSubWorkflowCheck('parent', 'child');
+			await store.fetchSubWorkflowCheck('parent', 'child', { force: true });
+
+			expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledTimes(2);
+			expect(store.getSubWorkflowCheck('parent', 'child')).toEqual({ draft: [], published: null });
+		});
+
+		it.each([404, 403])(
+			'caches a %s as a refused call and does not ask again',
+			async (httpStatusCode) => {
+				mocks.fetchSubWorkflowPolicyCheck.mockRejectedValue(
+					new ResponseError('refused', { httpStatusCode }),
+				);
+				const store = useTypeAvailabilityPoliciesStore();
+
+				await store.fetchSubWorkflowCheck('parent', 'child');
+				await store.fetchSubWorkflowCheck('parent', 'child');
+
+				expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledTimes(1);
+				expect(store.getSubWorkflowCheck('parent', 'child')).toBeNull();
+				expect(store.hasSubWorkflowCheckFailed('parent', 'child')).toBe(false);
+			},
+		);
+
+		it('marks a failed check and retries it on the next fetch', async () => {
+			mocks.fetchSubWorkflowPolicyCheck
+				.mockRejectedValueOnce(new ResponseError('failed', { httpStatusCode: 500 }))
+				.mockResolvedValueOnce(CHECK);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchSubWorkflowCheck('parent', 'child');
+
+			expect(store.hasSubWorkflowCheckFailed('parent', 'child')).toBe(true);
+			expect(store.getSubWorkflowCheck('parent', 'child')).toBeNull();
+
+			await store.fetchSubWorkflowCheck('parent', 'child');
+
+			expect(mocks.fetchSubWorkflowPolicyCheck).toHaveBeenCalledTimes(2);
+			expect(store.hasSubWorkflowCheckFailed('parent', 'child')).toBe(false);
+			expect(store.getSubWorkflowCheck('parent', 'child')).toEqual(CHECK);
+		});
+
+		it('makes no request when the module is not active', async () => {
+			mocks.isModuleActive.mockReturnValue(false);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchSubWorkflowCheck('parent', 'child');
+
+			expect(mocks.fetchSubWorkflowPolicyCheck).not.toHaveBeenCalled();
+		});
+
+		it('drops an answer that arrives after a reset', async () => {
+			const deferred = createDeferredPromise<typeof CHECK>();
+			mocks.fetchSubWorkflowPolicyCheck.mockReturnValue(deferred.promise);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			const pending = store.fetchSubWorkflowCheck('parent', 'child');
+			store.reset();
+			deferred.resolve(CHECK);
+			await pending;
+
+			expect(store.getSubWorkflowCheck('parent', 'child')).toBeNull();
 		});
 	});
 });
