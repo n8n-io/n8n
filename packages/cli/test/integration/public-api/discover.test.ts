@@ -24,14 +24,14 @@ beforeEach(() => {
 });
 
 describe('GET /discover', () => {
-	test('should fail when no API key header is sent', async () => {
-		const unauthAgent = testServer.publicApiAgentWithoutApiKey();
-		const response = await unauthAgent.get('/discover');
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/discover');
+
 		expect(response.statusCode).toBe(401);
 	});
 
-	test('should fail due to missing API Key', async () => {
-		const response = await testServer.publicApiAgentWithoutApiKey().get('/discover');
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/discover');
 
 		expect(response.statusCode).toBe(401);
 	});
