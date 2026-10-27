@@ -12200,7 +12200,9 @@ describe('AgentRuntime — tool output files', () => {
 		}
 		expect(load).toHaveBeenCalledTimes(10);
 		const lastCall: aiModule.ModelMessage[] = generateText.mock.calls[10][0].messages ?? [];
-		expect(JSON.stringify(lastCall)).toContain('file-0) was shown in an earlier step');
+		expect(JSON.stringify(lastCall)).toContain(
+			JSON.stringify('You viewed file "file" (fileId: file-0) in an earlier step').slice(1, -1),
+		);
 	});
 
 	it('sends a text file as text', async () => {

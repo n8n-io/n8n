@@ -120,7 +120,7 @@ export async function loadToolOutputFiles(
 
 function sentFileStub(part: ContentFileWithRef): string {
 	const name = part.fileRef.fileName ?? 'file';
-	return `[File "${name}" (fileId: ${part.fileRef.id}) was shown in an earlier step and is no longer attached. Read it again to see its content.]`;
+	return `[You viewed file "${name}" (fileId: ${part.fileRef.id}) in an earlier step. Its content is no longer attached, to save context. Read it again only if you need to look at it again.]`;
 }
 
 /**
