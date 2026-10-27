@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Postgres/v1/PostgresV1.node.ts
+  s_9dcbecc82c2e4f::t_4b11fe79d1e78c 2-3,5,17,297-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf7eb930ae2d9869e794d89acd59c32cd422868c",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9dcbecc82c2e4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c092756-bf0a-45af-aec5-2bbfe077f246",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
