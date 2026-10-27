@@ -25,6 +25,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
+import ProjectMembersIcon from './ProjectMembersIcon.vue';
 
 const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealingLocation }>(), {
 	variant: 'projectSettings',
@@ -83,6 +84,12 @@ const configActions = computed(() => [
 const reviewersById = computed(
 	() =>
 		new Map(store.options[props.projectId]?.reviewers.map((reviewer) => [reviewer.id, reviewer])),
+);
+const project = computed(() => store.options[props.projectId]?.project);
+const projectMembersLabel = computed(() =>
+	i18n.baseText('selfHealing.config.projectMembers', {
+		interpolate: { project: project.value?.name ?? '' },
+	}),
 );
 
 function scopeLabel(configuration: SelfHealingConfigurationDto) {
@@ -180,11 +187,18 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 </script>
 
 <template>
-	<fieldset id="self-healing" ref="sectionRef" data-test-id="project-self-healing">
+	<component
+		:is="isPersonalTab ? 'div' : 'fieldset'"
+		id="self-healing"
+		ref="sectionRef"
+		:class="{ [$style.personalTab]: isPersonalTab }"
+		data-test-id="project-self-healing"
+	>
 		<h3 v-if="!isPersonalTab">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 		</h3>
-		<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+		<slot v-if="isPersonalTab && loading" name="loading" />
+		<p v-else-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>
@@ -218,6 +232,20 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 				</template>
 				<template #[`item.reviewerIds`]="{ item }">
 					<div :class="$style.people">
+						<div
+							v-if="item.includeAllProjectMembers"
+							:class="$style.person"
+							data-test-id="self-healing-project-members"
+						>
+							<ProjectMembersIcon :icon="project?.icon" size="xsmall" />
+							<N8nText
+								size="medium"
+								color="text-dark"
+								:class="$style.personName"
+								:title="projectMembersLabel"
+								>{{ projectMembersLabel }}</N8nText
+							>
+						</div>
 						<div v-for="id in item.reviewerIds" :key="id" :class="$style.person">
 							<N8nAvatar
 								:first-name="reviewersById.get(id)?.firstName"
@@ -274,7 +302,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			</N8nDataTableServer>
 		</div>
 		<N8nButton
-			v-if="!isPersonalTab || configurations.length"
+			v-if="!isPersonalTab"
 			variant="outline"
 			size="large"
 			icon="plus"
@@ -283,10 +311,14 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			@click="edit('new')"
 			>{{ i18n.baseText('selfHealing.config.create') }}</N8nButton
 		>
-	</fieldset>
+	</component>
 </template>
 
 <style module lang="scss">
+.personalTab {
+	min-width: 0;
+}
+
 .table {
 	margin-bottom: var(--spacing--sm);
 

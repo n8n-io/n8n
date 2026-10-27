@@ -103,4 +103,8 @@ export class Agent extends WithTimestampsAndStringId {
 	 */
 	@Column({ type: 'int', default: 0 })
 	revision: number;
+
+	/** Changes on publication and live connection edits, independently of draft saves. */
+	@Column({ type: 'int', default: 0 })
+	publicationRevision: number;
 }

@@ -25,10 +25,14 @@ vi.mock('../composables/useInstanceAiAvailability', () => ({
 	useInstanceAiReady: () => ref(true),
 }));
 
-const { getProject } = vi.hoisted(() => ({ getProject: vi.fn() }));
+const { getProject, getMyProjects } = vi.hoisted(() => ({
+	getProject: vi.fn(),
+	getMyProjects: vi.fn(),
+}));
 vi.mock('@/features/collaboration/projects/projects.api', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/features/collaboration/projects/projects.api')>()),
 	getProject,
+	getMyProjects,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -159,6 +163,13 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 	}
 
 	function mockProject(project: Partial<Project>) {
+		getMyProjects.mockResolvedValue([
+			{
+				id: 'project',
+				type: project.type,
+				scopes: project.scopes,
+			},
+		]);
 		getProject.mockResolvedValue({
 			id: 'project',
 			name: 'Project',
@@ -172,6 +183,7 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 
 	beforeEach(() => {
 		getProject.mockReset();
+		getMyProjects.mockReset();
 		useUsersStore().currentUserId = 'user';
 	});
 
@@ -201,7 +213,6 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 				for (const { path, name } of routes) {
 					const router = await open(path);
 
-					expect(getProject).toHaveBeenCalledWith(expect.anything(), 'project');
 					expect(router.currentRoute.value.name).toBe(
 						location === allowedIn ? name : VIEWS.HOMEPAGE,
 					);
@@ -209,6 +220,20 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 			}
 		},
 	);
+
+	it('allows a team role with project:update but without project:read', async () => {
+		setGlobalScopes(GLOBAL_MEMBER_SCOPES);
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		mockProject({ type: 'team', scopes: ['project:update'] });
+		getProject.mockRejectedValue(new Error('Forbidden'));
+
+		expect(
+			(await open('/projects/project/settings/self-healing/new')).currentRoute.value.name,
+		).toBe(SELF_HEALING_CONFIGURATION_VIEW);
+		expect(getProject).not.toHaveBeenCalled();
+	});
 
 	it('denies access to a chat user who only views their personal project', async () => {
 		useSettingsStore().moduleSettings = {
@@ -244,6 +269,7 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 		expect((await open('/projects/project/self-healing')).currentRoute.value.name).toBe(
 			PERSONAL_SELF_HEALING_VIEW,
 		);
+		expect(getProject).toHaveBeenCalledWith(expect.anything(), 'project');
 		expect(useProjectsStore().currentProject).toStrictEqual(cachedPersonalProject);
 	});
 
@@ -251,11 +277,23 @@ describe.each(['initial navigation', 'from another page'])('self-healing access 
 		useSettingsStore().moduleSettings = {
 			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
 		};
+		mockProject({ type: 'personal', scopes: ['project:read'] });
 		getProject.mockRejectedValue(new Error('Forbidden'));
 
 		expect((await open('/projects/project/self-healing')).currentRoute.value.name).toBe(
 			VIEWS.HOMEPAGE,
 		);
+	});
+
+	it('denies access when the project list cannot be loaded', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		getMyProjects.mockRejectedValue(new Error('Unavailable'));
+
+		expect(
+			(await open('/projects/project/settings/self-healing/new')).currentRoute.value.name,
+		).toBe(VIEWS.HOMEPAGE);
 	});
 });
 

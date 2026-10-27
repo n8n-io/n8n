@@ -158,6 +158,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope
@@ -255,6 +256,7 @@ erDiagram
   boolean enabled
   varchar enabledById FK
   INTEGER id
+  BOOLEAN includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt

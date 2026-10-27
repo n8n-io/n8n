@@ -100,7 +100,7 @@ export const enum ResourceType {
 
 export function canConfigureSelfHealing(
 	project:
-		| (Pick<Project, 'type' | 'scopes'> & Partial<Pick<Project, 'relations'>>)
+		| (Pick<Project, 'type'> & Partial<Pick<Project, 'scopes' | 'relations'>>)
 		| null
 		| undefined,
 ): boolean {
@@ -118,15 +118,6 @@ export function canConfigureSelfHealing(
 	);
 }
 
-async function loadRouteProject(projectId: string | string[] | undefined): Promise<Project | null> {
-	if (typeof projectId !== 'string') return null;
-	try {
-		return await useProjectsStore().fetchProject(projectId);
-	} catch {
-		return null;
-	}
-}
-
 export function selfHealingLocation(project: Pick<Project, 'type'>): SelfHealingLocation {
 	return project.type === ProjectTypes.Personal ? 'personalTab' : 'projectSettings';
 }
@@ -135,6 +126,20 @@ export async function canOpenSelfHealingRoute(
 	projectId: string | string[] | undefined,
 	location: SelfHealingLocation,
 ): Promise<boolean> {
-	const project = await loadRouteProject(projectId);
-	return !!project && selfHealingLocation(project) === location && canConfigureSelfHealing(project);
+	if (typeof projectId !== 'string') return false;
+	try {
+		const projectsStore = useProjectsStore();
+		// Project members can list their scopes without project:read.
+		await projectsStore.getMyProjects();
+		const project = projectsStore.myProjects.find(({ id }) => id === projectId);
+		if (!project || selfHealingLocation(project) !== location) return false;
+
+		return canConfigureSelfHealing(
+			project.type === ProjectTypes.Personal
+				? await projectsStore.fetchProject(projectId)
+				: project,
+		);
+	} catch {
+		return false;
+	}
 }
