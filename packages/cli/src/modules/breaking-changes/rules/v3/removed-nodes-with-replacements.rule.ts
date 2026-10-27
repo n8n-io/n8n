@@ -180,7 +180,7 @@ export const IntervalRemovedRule = createNodeReplacementRule({
 		{
 			action: 'Replace with Schedule Trigger',
 			description:
-				'Replace this node with Schedule Trigger and set the interval again. Schedule Trigger runs at fixed clock times and supports 1–59 seconds, 1–59 minutes, 1–23 hours, or whole days. For an even gap in seconds, use a value that divides 60, such as 5, 15, or 30.',
+				'Replace this node with Schedule Trigger and set the interval again. Schedule Trigger runs at fixed clock times and supports 1–59 seconds, 1–59 minutes, 1–23 hours, or 1-31 days. For an even gap in seconds, use a value that divides 60, such as 5, 15, or 30.',
 		},
 	],
 });
