@@ -522,12 +522,12 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillService.snapshotForPublish.mockResolvedValue(versionByRef);
+			skillService.snapshotForSave.mockResolvedValue(versionByRef);
 
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(skillService.snapshotForPublish).toHaveBeenCalledWith(
+			expect(skillService.snapshotForSave).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
@@ -539,10 +539,10 @@ describe('AgentSkillRefsService', () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
-			skillService.snapshotForPublish.mockResolvedValue(new Map());
+			skillService.snapshotForSave.mockResolvedValue(new Map());
 
 			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
-				'Cannot publish agent with missing skills: zeta',
+				'Cannot save agent with missing skills: zeta',
 			);
 		});
 
@@ -551,7 +551,7 @@ describe('AgentSkillRefsService', () => {
 			await service.pinVersion('version-1', snapshot, ctx);
 
 			expect(snapshot).toEqual(new Map());
-			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
+			expect(skillService.snapshotForSave).not.toHaveBeenCalled();
 			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
 		});
 	});

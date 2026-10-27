@@ -1414,6 +1414,7 @@ describe('buildFromJson()', () => {
 					enabled: true,
 					credential: 'openai-key',
 					topK: 7,
+					guidance: { include: ['timezone'], exclude: ['passwords'] },
 				},
 			},
 		});
@@ -1432,6 +1433,7 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			topK: 7,
+			guidance: { include: ['timezone'], exclude: ['passwords'] },
 			embeddingProviderOptions: {
 				apiKey: 'test-api-key',
 				baseURL: 'https://custom.example/v1',

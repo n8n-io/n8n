@@ -666,6 +666,7 @@ async function resolveEpisodicMemoryJsonConfig(
 		}),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		...(config.guidance !== undefined && { guidance: config.guidance }),
 		embeddingProviderOptions,
 	};
 }

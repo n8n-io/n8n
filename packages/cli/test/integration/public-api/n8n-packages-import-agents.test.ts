@@ -38,10 +38,12 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -320,6 +322,16 @@ it.each(['loose', 'project'] as const)(
 				objective: 'Summarize the open requests.',
 			});
 			expect(saved!.schema!.tasks![0].id).toBe(task.id);
+			const history = await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
+				saved!.versionId!,
+				localId,
+			);
+			expect(history).not.toBeNull();
+			expect(await Container.get(AgentDefinitionService).readVersion(history!)).toMatchObject({
+				skills: sourceSkills[index].skills,
+				tools: source.tools,
+				tasks: new Map([[task.id, expect.objectContaining({ objective: task.objective })]]),
+			});
 		}
 		expect(
 			(await agents.findById(result.bindings.agents[sourceAgents[0].id]))!.schema!.tools,
@@ -681,6 +693,12 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 		{ status: 'updated', publishing: { state: 'unpublished' } },
 		{ status: 'updated', publishing: { state: 'unpublished' } },
 	]);
+	for (const { localId } of initial.agents) {
+		const saved = await agents.findById(localId);
+		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0);
+		expect(versions).toHaveLength(2);
+		expect(versions.map(({ versionId }) => versionId)).toContain(saved!.versionId);
+	}
 	const before = await records();
 	const skipped = await upload(archive, {
 		conflictPolicy: 'skip',

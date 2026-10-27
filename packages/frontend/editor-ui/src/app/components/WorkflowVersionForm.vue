@@ -11,6 +11,7 @@ import CharacterCount from '@/app/components/CharacterCount.vue';
 
 defineProps<{
 	disabled?: boolean;
+	nameRequired?: boolean;
 	versionNameTestId?: string;
 	descriptionTestId?: string;
 }>();
@@ -43,7 +44,7 @@ defineExpose({
 		<N8nInputLabel
 			input-name="workflow-version-name"
 			:label="i18n.baseText('workflows.publishModal.versionNameLabel')"
-			:required="true"
+			:required="nameRequired ?? true"
 			:class="$style.inputWrapper"
 		>
 			<N8nInput
