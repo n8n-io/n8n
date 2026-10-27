@@ -147,13 +147,16 @@ describe('PersonRepository', () => {
 		it('does not change the email of a service account', async () => {
 			const serviceAccount = await createServiceAccount();
 
+			// Pass the stored (null) email, so only the Person filter can return 'stale'.
 			const result = await personRepository.changeEmail(
 				serviceAccount.id,
-				randomEmail(),
+				serviceAccount.email,
 				randomEmail(),
 			);
 
 			expect(result).toBe('stale');
+			const reloaded = await userRepository.findOneByOrFail({ id: serviceAccount.id });
+			expect(reloaded.email).toBeNull();
 		});
 	});
 
