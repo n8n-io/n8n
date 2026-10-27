@@ -70,6 +70,7 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 			manualSuccess: null,
 			manualError: null,
 		});
+		vi.setSystemTime(new Date('2026-10-25T10:00:31.000Z'));
 		await userEvent.hover(icon);
 
 		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(2);
@@ -85,6 +86,18 @@ describe('WorkflowExecutionsLastRunInfo', () => {
 		await userEvent.hover(await findByTestId('last-production-execution-icon'));
 
 		expect(await findByTestId('last-production-execution-note')).toBeInTheDocument();
+	});
+
+	it('does not load the times again on hover within the refresh interval', async () => {
+		const { findByTestId } = renderComponent();
+		const icon = await findByTestId('last-production-execution-icon');
+
+		vi.setSystemTime(new Date('2026-10-25T10:00:29.000Z'));
+		await userEvent.hover(icon);
+		await userEvent.unhover(icon);
+		await userEvent.hover(icon);
+
+		expect(getWorkflowStatisticsTimes).toHaveBeenCalledTimes(1);
 	});
 
 	it('treats a DEFAULT workflow setting as the instance default', async () => {

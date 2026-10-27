@@ -8,6 +8,7 @@ import { getWorkflowStatisticsTimes } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { TIME } from '@/app/constants/durations';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -39,9 +40,16 @@ const isSavingAllProductionExecutions = computed(() => {
 	);
 });
 
+// Hovering repeatedly must not flood the server, and on Postgres the times only change after the statistics rollup.
+const HOVER_REFRESH_INTERVAL = 30 * TIME.SECOND;
+
+let lastLoadStartedAt = 0;
+
 async function loadLastExecutionTimes() {
 	const id = workflowId.value;
 	if (!id || !workflowsStore.isWorkflowSaved[id]) return;
+
+	lastLoadStartedAt = Date.now();
 
 	try {
 		const times = await getWorkflowStatisticsTimes(rootStore.restApiContext, id);
@@ -51,6 +59,11 @@ async function loadLastExecutionTimes() {
 	} catch {
 		// The last execution times are extra context, so a failed request must not affect the sidebar.
 	}
+}
+
+function onIconHover() {
+	if (Date.now() - lastLoadStartedAt < HOVER_REFRESH_INTERVAL) return;
+	void loadLastExecutionTimes();
 }
 
 watch(
@@ -114,7 +127,7 @@ watch(
 			color="text-light"
 			:aria-label="i18n.baseText('executionsList.lastProductionExecution.title')"
 			data-test-id="last-production-execution-icon"
-			@mouseenter="loadLastExecutionTimes"
+			@mouseenter="onIconHover"
 		/>
 	</N8nTooltip>
 </template>
