@@ -1,5 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -351,6 +352,9 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		});
 	const connect = vi.spyOn(Container.get(ChatIntegrationService), 'connect');
 	const schedule = vi.spyOn(Container.get(AgentTaskService), 'registerEnabledForAgent');
+	vi.spyOn(Container.get(UrlService), 'getInstanceBaseUrl').mockReturnValue(
+		'https://example.com/n8n',
+	);
 	const original = structuredClone(input);
 	const imported = await importSelected(input, {
 		bindings: { credentials: new Map([['source-model', credential.id]]) },
@@ -403,7 +407,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 				type: 'slack',
 				status: 'setup-required',
 				reason: 'new-channel',
-				setupUrl: expect.stringContaining(`/projects/${project.id}/agents/${first.id}`),
+				setupUrl: `https://example.com/n8n/projects/${project.id}/agents/${first.id}`,
 			},
 		],
 	});

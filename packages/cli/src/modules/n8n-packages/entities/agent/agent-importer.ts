@@ -241,10 +241,8 @@ export class AgentImporter {
 
 	private withSetupUrl(channel: ImportedChannel, agent: ProjectAgent): ImportedAgentChannel {
 		if (channel.status === 'reused') return channel;
-		const setupUrl = new URL(
-			`/projects/${agent.projectId}/agents/${agent.id}`,
-			`${this.urlService.getInstanceBaseUrl()}/`,
-		).toString();
+		// Concatenate, so the link keeps the base path of an instance under a sub-path.
+		const setupUrl = `${this.urlService.getInstanceBaseUrl()}/projects/${agent.projectId}/agents/${agent.id}`;
 		return { ...channel, setupUrl };
 	}
 
