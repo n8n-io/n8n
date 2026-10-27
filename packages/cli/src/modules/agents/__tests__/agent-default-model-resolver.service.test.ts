@@ -27,6 +27,14 @@ function makeService(credentials: Array<{ id: string; name: string; type: string
 }
 
 describe('AgentDefaultModelResolverService', () => {
+	it('leaves the model for selection when only an Ollama credential exists', async () => {
+		const { service, aiGatewayService } = makeService([
+			{ id: 'ollama-1', name: 'Local Ollama', type: 'ollamaApi' },
+		]);
+		await expect(service.resolve(user, 'project-1')).resolves.toBeNull();
+		expect(aiGatewayService.getCredentialTypeForProvider).not.toHaveBeenCalled();
+		expect(service.resolveFromVerifiedModelIds('ollama', 'ollama-1', ['gemma4:latest'])).toBeNull();
+	});
 	it('uses a provider default only when live discovery confirms it', async () => {
 		const { service, modelLookupService } = makeService([
 			{ id: 'anthropic-credential', name: 'Anthropic', type: 'anthropicApi' },

@@ -398,6 +398,20 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				supportsStructuredOutputs: creds.supportsStructuredOutputs,
 			}),
 	},
+	ollama: {
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible(
+				'ollama',
+				undefined,
+				{
+					...creds,
+					baseURL: ensureUrlPathSuffix(creds.baseURL ?? 'http://localhost:11434', '/v1'),
+				},
+				model,
+				fetch,
+				{ includeUsage: true, supportsStructuredOutputs: true },
+			),
+	},
 	anthropic: {
 		toolDeferral: anthropicToolDeferral,
 		build: (creds, model, fetch) => {

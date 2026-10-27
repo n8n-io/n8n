@@ -1369,9 +1369,38 @@ describe('createModel', () => {
 		});
 	});
 
+	describe('ollama', () => {
+		it('uses the local chat endpoint without requiring an API key', () => {
+			expect(createModel('ollama/gemma4:latest')).toMatchObject({
+				provider: 'ollama',
+				modelId: 'gemma4:latest',
+				baseURL: 'http://localhost:11434/v1',
+				apiKey: undefined,
+				includeUsage: true,
+				supportsStructuredOutputs: true,
+			});
+		});
+
+		it.each(['https://models.example.com/ollama/', 'https://models.example.com/ollama/v1'])(
+			'preserves proxy paths and credentials for %s',
+			(baseURL) => {
+				const fetch = vi.fn();
+				expect(
+					createModel({ id: 'ollama/team/gemma4:latest', baseURL, apiKey: 'proxy-key' }, fetch),
+				).toMatchObject({
+					provider: 'ollama',
+					modelId: 'team/gemma4:latest',
+					baseURL: 'https://models.example.com/ollama/v1',
+					apiKey: 'proxy-key',
+					fetch,
+				});
+			},
+		);
+	});
+
 	describe('unsupported provider', () => {
-		it('should throw for ollama', () => {
-			expect(() => createModel('ollama/llama3')).toThrow(/Unsupported provider: "ollama"/);
+		it('should throw for an unknown provider', () => {
+			expect(() => createModel('unknown/llama3')).toThrow(/Unsupported provider: "unknown"/);
 		});
 
 		it('should include supported providers in the error message', () => {

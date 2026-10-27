@@ -35,6 +35,7 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	openai: (c) => ({ apiKey: c.apiKey, baseURL: c.url, headers: customCredentialHeaders(c) }),
 	// AnthropicApi.credentials.ts     → apiKey, url (base URL), header/headerName/headerValue
 	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url, headers: customCredentialHeaders(c) }),
+	ollama: (c) => ({ apiKey: c.apiKey, baseURL: c.baseUrl }),
 	// GooglePalmApi.credentials.ts    → apiKey, host (base URL)
 	google: (c) => ({ apiKey: c.apiKey, baseURL: c.host }),
 	'google-vertex': (c) => ({

@@ -20,6 +20,7 @@ const GEN_AI_PROVIDER_NAME_BY_PROVIDER: Record<ProviderId, GenAiProviderName | u
 	mistral: 'mistral',
 	moonshotai: 'moonshot_ai',
 	nvidia: 'nvidia',
+	ollama: 'ollama',
 	openai: 'openai',
 	openrouter: 'openrouter',
 	vercel: 'vercel.ai_gateway',

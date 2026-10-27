@@ -8,7 +8,11 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
-import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
+import {
+	LLM_PROVIDER_DEFAULTS,
+	LLM_PROVIDER_PRIORITY,
+	type LlmProviderDefault,
+} from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { findVerifiedModelId } from './utils/provider-model-id';
 
@@ -51,6 +55,8 @@ export class AgentDefaultModelResolverService {
 		);
 
 		if (supportedCredentials.length === 0) {
+			// Keep local-only setups from selecting a cloud model automatically.
+			if (credentials.some((credential) => credential.type === 'ollamaApi')) return null;
 			return await this.resolveManagedOpenAi(user, projectId);
 		}
 
@@ -92,7 +98,7 @@ export class AgentDefaultModelResolverService {
 
 	private findProviderDefault(
 		provider: string,
-	): { provider: string; defaultModel?: string; credentialType: string } | undefined {
+	): (LlmProviderDefault & { credentialType: string }) | undefined {
 		const entry = Object.entries(LLM_PROVIDER_DEFAULTS).find(
 			([, defaults]) => defaults.provider === provider,
 		);

@@ -24,6 +24,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 		supportsStructuredOutputs: z.boolean().optional(),
 	}),
 	anthropic: apiKeyCreds,
+	ollama: apiKeyCreds,
 	/**
 	 * Claude on Google Vertex (Anthropic Messages via `:rawPredict`).
 	 * `googleCredentials` is a service-account JSON string; omit it to use ADC

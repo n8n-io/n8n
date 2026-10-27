@@ -192,6 +192,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		replayReasoningText: true,
 	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),
+	ollama: reasoningEffortQuirk('ollama'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {

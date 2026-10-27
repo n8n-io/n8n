@@ -24,7 +24,8 @@ function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock
  * path where the credential can actually reach it.
  */
 function makeModelLookupServingDefault(credentialType: string) {
-	const defaultModel = LLM_PROVIDER_DEFAULTS[credentialType].defaultModel as string;
+	const { defaultModel } = LLM_PROVIDER_DEFAULTS[credentialType];
+	if (!defaultModel) throw new Error('This provider has no maintained default');
 	return makeModelLookup(async () => [{ name: defaultModel, value: defaultModel }]);
 }
 
@@ -44,6 +45,30 @@ function makeFreeCredits(
 }
 
 describe('agent_builder_resolve_llm tool', () => {
+	it('offers installed Ollama models and resolves the selected model', async () => {
+		const modelLookup = makeModelLookup(async () => [
+			{ name: 'gemma4:latest', value: 'gemma4:latest', metadata: { toolCall: true } },
+		]);
+		const tool = buildResolveLlmTool({
+			credentialProvider: makeProvider([
+				{ id: 'ollama-1', name: 'Local Ollama', type: 'ollamaApi' },
+			]),
+			modelLookup,
+			freeCredits: makeFreeCredits(),
+		});
+		expect(await tool.handler!({ provider: 'ollama' }, {})).toMatchObject({
+			ok: false,
+			reason: 'unknown_model',
+			availableModels: [{ value: 'gemma4:latest', metadata: { toolCall: true } }],
+		});
+		expect(await tool.handler!({ provider: 'ollama', model: 'gemma4:latest' }, {})).toMatchObject({
+			ok: true,
+			provider: 'ollama',
+			model: 'gemma4:latest',
+			credentialId: 'ollama-1',
+		});
+		expect(modelLookup.list).toHaveBeenCalledWith('ollama-1', 'ollamaApi', 'ollama');
+	});
 	it('auto-resolves when exactly one LLM-provider credential exists', async () => {
 		const credentialProvider = makeProvider([
 			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },

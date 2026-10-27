@@ -202,6 +202,14 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('ollama: forwards an explicit reasoning setting without a default', () => {
+		const options = getProviderQuirks('ollama').thinkingToProviderOptions;
+		expect(options?.({ reasoningEffort: 'none' }, 'ollama/gemma4:latest')).toEqual({
+			ollama: { reasoningEffort: 'none' },
+		});
+		expect(options?.({}, 'ollama/gemma4:latest')).toEqual({});
+	});
+
 	it('custom: omits reasoning effort when unset', () => {
 		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3')).toEqual(
 			{},

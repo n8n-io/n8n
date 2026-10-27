@@ -169,9 +169,10 @@ async function listCallableModels(
 		const models = await modelLookup.list(credential.id, credential.type, provider);
 		return {
 			ok: true,
-			models: models.map(({ name, value, servedModel }) => ({
+			models: models.map(({ name, value, metadata, servedModel }) => ({
 				name: normalizeProviderModelId(provider, name),
 				value: normalizeProviderModelId(provider, value),
+				...(metadata ? { metadata } : {}),
 				...(servedModel ? { servedModel } : {}),
 			})),
 		};
@@ -264,8 +265,8 @@ async function resolveDefaultModelForCredential(
 }
 
 /**
- * A provider without a default model has user-named models (Microsoft Foundry
- * deployments). A single listed model is used; otherwise the user picks one.
+ * Use the credential's live list when the provider has no default model.
+ * Select a single Foundry deployment. Let the user select an Ollama model.
  */
 async function resolveWithoutDefaultModel(
 	credential: CredentialListItem,
@@ -274,7 +275,7 @@ async function resolveWithoutDefaultModel(
 ) {
 	const lookup = await listCallableModels(credential, provider, modelLookup);
 	if (!lookup.ok) return modelLookupFailed(provider, undefined, lookup.error);
-	if (lookup.models.length === 1) {
+	if (provider === 'azure-openai' && lookup.models.length === 1) {
 		return toLlmResolution(credential, provider, lookup.models[0].value);
 	}
 	return unknownModel(provider, undefined, lookup.models);

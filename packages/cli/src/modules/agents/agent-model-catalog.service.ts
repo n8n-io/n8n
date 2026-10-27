@@ -115,6 +115,7 @@ export class AgentModelCatalogService {
 	}
 
 	private async unverifiedCatalog(provider: string): Promise<AgentProviderModelsResponse> {
+		if (provider === 'ollama') return { provider, verified: false, models: [] };
 		const models = await this.getCatalogModels(provider);
 		return { provider, verified: false, models: Object.values(models) };
 	}
@@ -130,6 +131,7 @@ export class AgentModelCatalogService {
 		if (error !== undefined) this.logLiveLookupFailure(provider, error);
 		// Managed and custom endpoint lists are authoritative. Do not use a static fallback.
 		if (
+			provider === 'ollama' ||
 			policy === 'managed' ||
 			policy === 'endpoint-only' ||
 			credentialId === AI_GATEWAY_MANAGED_TAG
@@ -166,7 +168,8 @@ export class AgentModelCatalogService {
 				models: lookup.models.map((live) => ({
 					id: live.value,
 					name: live.name || live.value,
-					toolCall: true,
+					...live.metadata,
+					toolCall: live.metadata?.toolCall ?? provider !== 'ollama',
 				})),
 			});
 		}

@@ -8,12 +8,9 @@ import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
  * Provider strings match the provider IDs used by `@n8n/agents`'s
  * `.model(provider, model)` call.
  *
- * Keep this list narrow — when the canonical default is unclear (e.g. Bedrock),
- * omit the entry so the tool falls through to suspending and lets the user
- * pick explicitly. A provider whose models are user-named (Microsoft Foundry
- * deployments) has an entry without `defaultModel`: the tool resolves its
- * model from the credential's live list, and it never becomes a default for a
- * new agent.
+ * Omit defaultModel for providers whose models depend on the connected server.
+ * Live discovery supplies the choices. Providers without discovery or a known
+ * default stay out of this list.
  *
  * These are hints, not guarantees. For providers supported by
  * `@n8n/ai-utilities/model-discovery`, `agent_builder_resolve_llm` verifies the model it is
@@ -28,10 +25,12 @@ export function hasLiveModelList(provider: string): boolean {
 
 export interface LlmProviderDefault {
 	provider: string;
+	/** Omit when the model must come from the connected server. */
 	defaultModel?: string;
 }
 
 export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
+	ollamaApi: { provider: 'ollama' },
 	anthropicApi: {
 		provider: 'anthropic',
 		defaultModel: 'claude-sonnet-5',
