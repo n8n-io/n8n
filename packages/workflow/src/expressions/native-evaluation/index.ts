@@ -102,14 +102,14 @@ function copyResult(value: unknown): unknown {
 	const copy = (value: unknown, depth: number): unknown => {
 		const nonJsonLeaf =
 			typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
-		if (nonJsonLeaf) throw new EngineFallbackError('unsupported_value');
+		if (nonJsonLeaf) throw new EngineFallbackError('unsupported_type');
 		if (!isObj(value)) return value;
 		if (depth > MAX_DEPTH) throw new EngineFallbackError('too_deep');
-		if (value.isProxy === true) throw new EngineFallbackError('unsupported_value');
+		if (value.isProxy === true) throw new EngineFallbackError('unsupported_type');
 
 		if (isArray(value)) {
 			if (getPrototypeOf(value) !== Array.prototype)
-				throw new EngineFallbackError('unsupported_value');
+				throw new EngineFallbackError('unsupported_type');
 
 			visits += value.length;
 			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
@@ -124,7 +124,7 @@ function copyResult(value: unknown): unknown {
 
 		const proto: unknown = getPrototypeOf(value);
 		if (proto !== Object.prototype && proto !== null)
-			throw new EngineFallbackError('unsupported_value');
+			throw new EngineFallbackError('unsupported_type');
 
 		const ownKeys = keys(value);
 		visits += ownKeys.length;
@@ -132,7 +132,7 @@ function copyResult(value: unknown): unknown {
 
 		const result: Record<string, unknown> = {};
 		for (const key of ownKeys) {
-			if (key === '__proto__') throw new EngineFallbackError('unsupported_value');
+			if (key === '__proto__') throw new EngineFallbackError('unsupported_type');
 			result[key] = copy(value[key], depth + 1);
 		}
 		return result;
@@ -165,7 +165,7 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 
 		// An object here would coerce through its toString on the host.
 		if (isObj(value)) {
-			throw new EngineFallbackError('unsupported_value');
+			throw new EngineFallbackError('unsupported_type');
 		}
 
 		const part = value || value === 0 || value === false ? value : '';

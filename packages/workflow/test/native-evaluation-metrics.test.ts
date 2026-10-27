@@ -47,7 +47,8 @@ describe('Expression - native evaluation metrics', () => {
 	test.each([
 		['={{ $json.name }}', { name: 'a' }, 'handled', ''],
 		['={{ (() => 1)() }}', {}, 'declined', ''],
-		['={{ $json.name.toUpperCase() }}', { name: 1 }, 'fallback', 'unsupported_value'],
+		['={{ $json.name.toUpperCase() }}', { name: 1 }, 'fallback', 'unsupported_method'],
+		['=a {{ $json.name }}', { name: {} }, 'fallback', 'unsupported_type'],
 		["={{ $json.name.replace('a', '$&') }}", { name: 'a' }, 'fallback', 'replace_pattern'],
 	])('counts %s as %s', (expression, json, result, reason) => {
 		evaluate(expression, json);
@@ -90,7 +91,8 @@ describe('evaluateNatively - fallback reasons', () => {
 			{ item: new Array(MAX_STEPS + 1).fill(0) },
 			'too_much_work',
 		],
-		['{{ $json.item.toUpperCase() }}', { item: 1 }, 'unsupported_value'],
+		['{{ $json.item.toUpperCase() }}', { item: 1 }, 'unsupported_method'],
+		['a {{ $json.item }}', { item: {} }, 'unsupported_type'],
 		["{{ $json.item.replace('a', '$&') }}", { item: 'a' }, 'replace_pattern'],
 	])('%s on %#', (expression, json, fallbackReason) => {
 		expect(evaluateNatively(expression, { $json: json } as never)).toEqual({
