@@ -22,6 +22,7 @@ const props = defineProps<{
 	agentId: string;
 	previewSessionId?: string;
 	previewOpen: boolean;
+	previewChatTarget?: HTMLElement | null;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
 }>();
@@ -127,6 +128,7 @@ async function persistAgent(
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
 			:artifact-preview-open="props.previewOpen"
+			:artifact-preview-chat-target="props.previewChatTarget"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
 			:artifact-persist-agent="persistAgent"

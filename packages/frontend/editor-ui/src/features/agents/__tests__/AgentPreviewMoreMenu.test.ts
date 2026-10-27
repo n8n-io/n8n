@@ -329,6 +329,13 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		}
 	});
 
+	it('hides the full-width option when the host controls the width', () => {
+		const wrapper = mountMenu({ canToggleFullWidth: false });
+		expect(getMenuItem(wrapper, 'toggle-full-width')).toBeUndefined();
+		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
+		expect(wrapper.emitted('toggle-full-width')).toBeUndefined();
+	});
+
 	it('emits an event to toggle full width', function togglesFullWidth() {
 		const wrapper = mountMenu();
 		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');

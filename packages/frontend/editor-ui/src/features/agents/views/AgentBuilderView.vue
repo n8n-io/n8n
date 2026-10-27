@@ -190,6 +190,8 @@ const props = withDefaults(
 		artifactPreviewSessionId?: string;
 		/** Controls the preview chat when the builder is inside Instance AI. */
 		artifactPreviewOpen?: boolean;
+		/** Render the test chat over the host Assistant column. */
+		artifactPreviewChatTarget?: HTMLElement | null;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -213,6 +215,7 @@ const props = withDefaults(
 		artifactAgentId: undefined,
 		artifactPreviewSessionId: undefined,
 		artifactPreviewOpen: undefined,
+		artifactPreviewChatTarget: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 		artifactPersistAgent: undefined,
@@ -3355,7 +3358,7 @@ useKeybindings({
 			:class="[
 				$style.builder,
 				{
-					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.previewOpen]: isPreviewDockOpen && !props.artifactPreviewChatTarget,
 					[$style.aiPanelOpen]: showAiPanel,
 					[$style.previewResizing]: isPreviewDockResizing,
 				},
@@ -3510,53 +3513,65 @@ useKeybindings({
 					@unpublished="onUnpublished"
 				/>
 
-				<N8nResizeWrapper
-					v-if="!isStandalonePreview"
-					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
-					:is-resizing-enabled="isPreviewDockOpen"
-					:width="renderedSidePanelWidths.preview"
-					:max-width="AGENT_MAX_PANEL_WIDTH"
-					:default-width="defaultPanelWidth"
-					:min-width="AGENT_MIN_PANEL_WIDTH"
-					:supported-directions="['left']"
-					:grid-size="8"
-					@resizestart="isPreviewDockResizing = true"
-					@resize="onPreviewDockResize"
-					@resizeend="isPreviewDockResizing = false"
+				<Teleport
+					:to="props.artifactPreviewChatTarget ?? 'body'"
+					:disabled="!props.artifactPreviewChatTarget"
 				>
-					<AgentPreviewDock
-						ref="previewDock"
-						:is-open="isPreviewDockOpen"
-						:session-title="currentSessionTitle"
-						:session-options="sessionMenu"
-						:has-session="currentSessionHasMessages"
-						:initialized="initialized && previewSessionReady"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:new-session="currentSessionIsEphemeral"
-						:initial-prompt="taskPreviewPrompt"
-						:can-delete-session="canDeletePreviewSession"
-						:is-deleting-session="isDeletingSession"
-						:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
-						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-						:before-send="beforePreviewSend"
-						budget-cards
-						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-						@view-trace="viewPreviewTrace"
-						@new-session="startNewPreviewSession"
-						@delete-session="onDeletePreviewSession"
-						@session-select="onSessionPick"
-						@close="closePreviewDock"
-						@continue-loaded="onContinueLoaded"
-						@session-created="markSessionCreated"
-						@send-to-assistant="onSendPreviewToAssistant"
-						@initial-consumed="taskPreviewPrompt = undefined"
-					/>
-				</N8nResizeWrapper>
+					<N8nResizeWrapper
+						v-if="!isStandalonePreview"
+						:class="[
+							$style.previewResizeWrapper,
+							{
+								[$style.previewResizeOpen]: isPreviewDockOpen,
+								[$style.previewOverlay]: !!props.artifactPreviewChatTarget,
+							},
+						]"
+						:is-resizing-enabled="isPreviewDockOpen && !props.artifactPreviewChatTarget"
+						:width="renderedSidePanelWidths.preview"
+						:max-width="AGENT_MAX_PANEL_WIDTH"
+						:default-width="defaultPanelWidth"
+						:min-width="AGENT_MIN_PANEL_WIDTH"
+						:supported-directions="['left']"
+						:grid-size="8"
+						@resizestart="isPreviewDockResizing = true"
+						@resize="onPreviewDockResize"
+						@resizeend="isPreviewDockResizing = false"
+					>
+						<AgentPreviewDock
+							ref="previewDock"
+							:is-open="isPreviewDockOpen"
+							:overlay="!!props.artifactPreviewChatTarget"
+							:session-title="currentSessionTitle"
+							:session-options="sessionMenu"
+							:has-session="currentSessionHasMessages"
+							:initialized="initialized && previewSessionReady"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent="agent"
+							:local-config="localConfig"
+							:connected-triggers="connectedTriggers"
+							:effective-session-id="effectiveSessionId"
+							:new-session="currentSessionIsEphemeral"
+							:initial-prompt="taskPreviewPrompt"
+							:can-delete-session="canDeletePreviewSession"
+							:is-deleting-session="isDeletingSession"
+							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
+							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+							:before-send="beforePreviewSend"
+							budget-cards
+							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+							@view-trace="viewPreviewTrace"
+							@new-session="startNewPreviewSession"
+							@delete-session="onDeletePreviewSession"
+							@session-select="onSessionPick"
+							@close="closePreviewDock"
+							@continue-loaded="onContinueLoaded"
+							@session-created="markSessionCreated"
+							@send-to-assistant="onSendPreviewToAssistant"
+							@initial-consumed="taskPreviewPrompt = undefined"
+						/>
+					</N8nResizeWrapper>
+				</Teleport>
 			</template>
 		</div>
 	</div>
@@ -3620,6 +3635,11 @@ useKeybindings({
 			display: none;
 		}
 	}
+}
+
+.previewOverlay {
+	width: 100%;
+	z-index: 5;
 }
 
 .previewResizeOpen {

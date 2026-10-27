@@ -54,6 +54,7 @@ const AgentBuilderViewStub = {
 	props: [
 		'artifactPreviewSessionId',
 		'artifactPreviewOpen',
+		'artifactPreviewChatTarget',
 		'artifactPersistAgent',
 		'artifactEditingLocked',
 	],
@@ -112,12 +113,14 @@ describe('InstanceAiAgentPreview', () => {
 	});
 
 	it('forwards preview dock state and Assistant handoffs from Agent Builder', async () => {
+		const previewChatTarget = document.createElement('div');
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: {
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				previewSessionId: 'preview-session-1',
 				previewOpen: true,
+				previewChatTarget,
 			},
 			global: {
 				stubs: { AgentBuilderView: AgentBuilderViewStub },
@@ -127,6 +130,7 @@ describe('InstanceAiAgentPreview', () => {
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 		expect(builder.props('artifactPreviewSessionId')).toBe('preview-session-1');
 		expect(builder.props('artifactPreviewOpen')).toBe(true);
+		expect(builder.props('artifactPreviewChatTarget')).toBe(previewChatTarget);
 		builder.vm.$emit('preview-open-change', true);
 		const handoff = {
 			projectId: 'project-1',

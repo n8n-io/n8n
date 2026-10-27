@@ -660,6 +660,7 @@ const commonStubs = {
 		template: '<aside data-testid="stub-agent-preview-dock" />',
 		props: [
 			'isOpen',
+			'overlay',
 			'sessionTitle',
 			'sessionOptions',
 			'hasSession',
@@ -2372,6 +2373,38 @@ describe('AgentBuilderView — preview routing', () => {
 			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
 			{ agent_id: 'a1', source },
 		);
+	});
+
+	it('renders the artifact test chat in the Assistant column without reserving editor space', async () => {
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		try {
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactPreviewOpen: true,
+					artifactPreviewChatTarget: target,
+				},
+			});
+			const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+			expect(target.contains(dock.element)).toBe(true);
+			expect(dock.props('overlay')).toBe(true);
+			expect(dock.props('isOpen')).toBe(true);
+			expect(wrapper.get('[data-testid="agent-builder-container"]').classes()).not.toContain(
+				'previewOpen',
+			);
+			const previewWrapper = wrapper
+				.findAllComponents({ name: 'ResizeWrapper' })
+				.find((component) => component.element.contains(dock.element));
+			expect(previewWrapper?.props('isResizingEnabled')).toBe(false);
+			dock.vm.$emit('close');
+			await flushPromises();
+			expect(wrapper.emitted('preview-open-change')?.at(-1)).toEqual([false]);
+		} finally {
+			target.remove();
+		}
 	});
 
 	it('closes Preview from the primary action beside the Agent title', async () => {

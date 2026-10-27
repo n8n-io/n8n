@@ -117,6 +117,7 @@ const AgentPreviewMoreMenuStub = {
 		'effectiveSessionId',
 		'hasSession',
 		'isFullWidth',
+		'canToggleFullWidth',
 		'isDeletingSession',
 		'canDeleteSession',
 		'getConversationMarkdown',
@@ -129,6 +130,7 @@ const AgentPreviewMoreMenuStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		overlay: boolean;
 		sessionTitle: string;
 		effectiveSessionId?: string;
 		beforeSend: () => Promise<void> | void;
@@ -176,6 +178,19 @@ describe('AgentPreviewDock', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
+	});
+
+	it('keeps the overlay at the host width when full width was saved', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ overlay: true });
+
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.classes()).toContain('overlay');
+		expect(wrapper.findComponent(AgentPreviewMoreMenuStub).props('canToggleFullWidth')).toBe(false);
+		await wrapper.get('[data-testid="agent-preview-more-btn"]').trigger('click');
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('fullpage');
+		await wrapper.get('[data-testid="agent-preview-close-btn"]').trigger('click');
+		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
 	it('keeps the last usage on completion', async () => {

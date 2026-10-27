@@ -470,6 +470,7 @@ const isResizingPreview = ref(false);
 const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
+const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
 const MIN_SPLIT_PANEL_WIDTH = 400;
 const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
 // Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
@@ -523,38 +524,23 @@ const shouldAnimatePreviewLayout = computed(
 		!isResizingPreview.value &&
 		!isThreadAreaResizing.value,
 );
-const AGENT_PREVIEW_CHAT_MIN_WIDTH = 320;
-const AGENT_PREVIEW_CHAT_PREFERRED_WIDTH = 480;
-const AGENT_PREVIEW_CHAT_MAX_RATIO = 0.5;
-
-/** Keep the agent chat readable without using more than half of its preview panel. */
-const agentPreviewChatColumnWidth = computed(() => {
-	const containerWidth = isPreviewExpanded.value ? threadAreaWidth.value : previewPanelWidth.value;
-	const maximumWidth = containerWidth * AGENT_PREVIEW_CHAT_MAX_RATIO;
-	const minimumWidth = Math.min(AGENT_PREVIEW_CHAT_MIN_WIDTH, maximumWidth);
-
-	return Math.round(
-		Math.max(minimumWidth, Math.min(AGENT_PREVIEW_CHAT_PREFERRED_WIDTH, maximumWidth)),
-	);
-});
-
-/** Add custom width to Agent Preview chat when canvas area is full expanded. */
-const agentPreviewPanelStyle = computed(() => {
-	const chatColumnWidth = {
-		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
-	};
-
-	return isPreviewExpanded.value
-		? chatColumnWidth
-		: { ...chatColumnWidth, width: `${previewPanelWidth.value}px` };
-});
+const agentPreviewPanelStyle = computed(() =>
+	isPreviewExpanded.value ? undefined : { width: `${previewPanelWidth.value}px` },
+);
 
 function togglePreviewExpanded() {
 	isPreviewExpanded.value = !isPreviewExpanded.value;
+	if (isPreviewExpanded.value) isAgentPreviewDockOpen.value = false;
 }
 
 function handleAgentPreviewDockOpenChange(open: boolean) {
+	const wasOpen = isAgentPreviewDockOpen.value;
 	isAgentPreviewDockOpen.value = open;
+	if (open) {
+		isPreviewExpanded.value = false;
+	} else if (wasOpen) {
+		store.requestComposerFocus();
+	}
 }
 
 function handlePreviewResize({ width }: { width: number }) {
@@ -830,6 +816,7 @@ function handleNewThreadClick() {
 	>
 		<!-- Main chat area -->
 		<div
+			ref="agentPreviewChatTarget"
 			:class="[
 				$style.chatArea,
 				{
@@ -841,6 +828,8 @@ function handleNewThreadClick() {
 		>
 			<div
 				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
+				:inert="isAgentPreviewDockOpen || undefined"
+				:aria-hidden="isAgentPreviewDockOpen || undefined"
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
@@ -936,6 +925,8 @@ function handleNewThreadClick() {
 					{ [$style.contentAreaWithoutLayoutTransitions]: shouldSuppressContentLayoutTransitions },
 				]"
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
+				:inert="isAgentPreviewDockOpen || undefined"
+				:aria-hidden="isAgentPreviewDockOpen || undefined"
 				data-test-id="instance-ai-content-area"
 			>
 				<InstanceAiConversation
@@ -1099,6 +1090,7 @@ function handleNewThreadClick() {
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
 								:preview-open="isAgentPreviewDockOpen"
+								:preview-chat-target="agentPreviewChatTarget"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"

@@ -51,6 +51,7 @@ const props = withDefaults(
 		localConfig: AgentJsonConfig | null;
 		connectedTriggers: string[];
 		isOpen: boolean;
+		overlay?: boolean;
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
@@ -65,6 +66,7 @@ const props = withDefaults(
 	}>(),
 	{
 		newSession: false,
+		overlay: false,
 		canDeleteSession: false,
 		isDeletingSession: false,
 		dismissedFixToolCallIds: () => [],
@@ -111,7 +113,9 @@ const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
 const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 const layout = computed<PreviewLayout>(() =>
-	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
+	!props.overlay && storedLayout.value === PreviewLayout.Fullpage
+		? PreviewLayout.Fullpage
+		: PreviewLayout.Docked,
 );
 
 function requestActiveSessionDeletion() {
@@ -159,6 +163,7 @@ function clearBudgetStops(fields: BudgetAmountField[]) {
 }
 
 function toggleFullWidth() {
+	if (props.overlay) return;
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
@@ -212,7 +217,7 @@ defineExpose({ clearBudgetStops });
 <template>
 	<aside
 		ref="dock"
-		:class="[$style.dock, { [$style.open]: props.isOpen }]"
+		:class="[$style.dock, { [$style.open]: props.isOpen, [$style.overlay]: props.overlay }]"
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
@@ -281,6 +286,7 @@ defineExpose({ clearBudgetStops });
 						:can-delete-session="props.canDeleteSession"
 						:is-deleting-session="props.isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
+						:can-toggle-full-width="!props.overlay"
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
@@ -336,6 +342,8 @@ defineExpose({ clearBudgetStops });
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion' as motion;
+
 .dock {
 	position: absolute;
 	top: 0;
@@ -371,14 +379,25 @@ defineExpose({ clearBudgetStops });
 		transform: translateX(0);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-		will-change: auto;
-	}
+	@include motion.reduced-motion;
 }
 .fullpage {
 	width: 100%;
 	border-left: 0;
+}
+
+.overlay {
+	width: 100%;
+
+	.dockInner {
+		width: 100%;
+		border-left: 0;
+		transform: translateX(-100%);
+	}
+
+	&.open .dockInner {
+		transform: translateX(0);
+	}
 }
 
 .header {
