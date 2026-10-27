@@ -111,30 +111,40 @@ function messageTurnIds(messages: ChatMessage[]): Map<string, string> {
 	return ids;
 }
 
+const backgroundJobReceiptSchema = z.object({
+	jobId: z.string(),
+	status: z.enum(['started', 'running_in_background']),
+});
+
+function taskSummaryTurnIds(messages: ChatMessage[], turnIds: Map<string, string>): Set<string> {
+	const executions = new Set<string>();
+	const continued = new Set<string>();
+	for (const message of messages) {
+		const key = turnIds.get(message.id);
+		if (!key) continue;
+		if (message.backgroundJobSignal?.isFinal) executions.add(key);
+		for (const call of message.toolCalls ?? []) {
+			if (call.state !== TOOL_CALL_STATE.DONE || call.canceled) continue;
+			if (backgroundJobReceiptSchema.safeParse(call.output).success) continued.add(key);
+			if (!planToolNames.has(call.tool)) continue;
+			const plan = planSchema.safeParse(call.output);
+			if (!plan.success) continue;
+			if (!isAgentPlanFinished(plan.data)) executions.delete(key);
+			else if (['update_plan', 'close_plan'].includes(call.tool)) executions.add(key);
+		}
+	}
+	// A result turn can start the next batch instead of summarizing the work.
+	for (const key of continued) executions.delete(key);
+	return executions;
+}
+
 /** Put one summary at the end of each task result turn, including saved turns. */
 export function getTaskSummaryGroupIds(
 	messages: ChatMessage[],
 	groups: DisplayGroup[],
 ): Set<string> {
 	const turnIds = messageTurnIds(messages);
-	const executions = new Set<string>();
-	for (const message of messages) {
-		const key = turnIds.get(message.id);
-		if (!key) continue;
-		if (message.backgroundJobSignal?.isFinal) executions.add(key);
-		for (const call of message.toolCalls ?? []) {
-			if (
-				!['update_plan', 'close_plan'].includes(call.tool) ||
-				call.state !== 'done' ||
-				call.canceled
-			)
-				continue;
-			const plan = planSchema.safeParse(call.output);
-			if (!plan.success) continue;
-			if (isAgentPlanFinished(plan.data)) executions.add(key);
-			else executions.delete(key);
-		}
-	}
+	const executions = taskSummaryTurnIds(messages, turnIds);
 	const lastGroups = new Map<string, string>();
 	for (const group of groups) {
 		const key = turnIds.get(group.id);
@@ -278,9 +288,11 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 		}
 	}
 
+	const turnIds = messageTurnIds(messages);
+	const summaryTurns = taskSummaryTurnIds(messages, turnIds);
 	const groups = buildDisplayGroups(
 		messages.map((message) =>
-			message.backgroundJobSignal?.isFinal
+			message.backgroundJobSignal?.isFinal && summaryTurns.has(turnIds.get(message.id) ?? '')
 				? { ...message, backgroundJobSignal: undefined }
 				: message,
 		),

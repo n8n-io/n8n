@@ -20,7 +20,7 @@ export interface AgentBackgroundJobDto {
 }
 
 export interface AgentBackgroundJobSignal {
-	/** All background jobs for this parent identity have reached a final status. */
+	/** No background results or unfinished plan tasks remain when this turn starts. */
 	isFinal?: boolean;
 	tasks: Array<
 		Pick<AgentBackgroundJobDto, 'id' | 'title' | 'kind'> & {

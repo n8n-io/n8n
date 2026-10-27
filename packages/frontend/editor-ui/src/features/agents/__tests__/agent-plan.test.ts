@@ -9,6 +9,58 @@ import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/type
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
 
 describe('task summaries', () => {
+	it.each([
+		['delegate_subagent', { jobId: 'next-job', status: 'started' }],
+		['workflow_research', { jobId: 'next-job', status: 'running_in_background' }],
+	] as const)('keeps a result turn partial when %s starts more work', (tool, output) => {
+		const messages: ChatMessage[] = [
+			{
+				id: 'results',
+				executionId: 'wake',
+				role: 'assistant',
+				content: '',
+				backgroundJobSignal: {
+					isFinal: true,
+					tasks: [{ id: 'job', title: 'Research', kind: 'subagent', status: 'completed' }],
+				},
+			},
+			{
+				id: 'delegate',
+				executionId: 'wake',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool, toolCallId: 'next', state: 'done', output }],
+			},
+			{ id: 'reply', executionId: 'wake', role: 'assistant', content: 'Started the next task.' },
+		];
+		const groups = buildAgentPlanDisplayGroups(messages);
+		expect(getTaskSummaryGroupIds(messages, groups).size).toBe(0);
+		expect(groups.filter((group) => group.kind === 'backgroundJobSignal')).toHaveLength(1);
+	});
+
+	it.each(['create_plan', 'read_plan', 'update_plan'])(
+		'%s can show that more work remains',
+		(tool) => {
+			const message = {
+				...planMessage(planView(), { tool }),
+				backgroundJobSignal: {
+					isFinal: true,
+					tasks: [
+						{
+							id: 'job',
+							title: 'Research',
+							kind: 'subagent' as const,
+							status: 'completed' as const,
+						},
+					],
+				},
+			};
+			const groups = buildAgentPlanDisplayGroups([message]);
+			expect(getTaskSummaryGroupIds([message], groups).size).toBe(0);
+			expect(groups.filter((group) => group.kind === 'backgroundJobSignal')).toHaveLength(1);
+		},
+	);
+
 	it('keeps one summary at the end of a completed plan turn', () => {
 		const completed = {
 			...planMessage(planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }), {

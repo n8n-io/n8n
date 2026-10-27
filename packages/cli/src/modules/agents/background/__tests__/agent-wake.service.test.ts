@@ -13,6 +13,8 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
+import type { AgentPlanService, AgentPlanSnapshot } from '../../agent-plan.service';
+import type { AgentPlanTask } from '../../plans/agent-plan.schema';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
@@ -70,6 +72,8 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const planService = mock<AgentPlanService>();
+	planService.findActivePlan.mockResolvedValue(null);
 	backgroundJobService.markMailConsumed.mockImplementation(
 		async (...args) => await jobRepository.markMailConsumed(...args),
 	);
@@ -117,12 +121,14 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		agentsConfig,
 		logger,
 		backgroundJobService,
+		planService,
 	);
 
 	return {
 		cancellations,
 		service,
 		backgroundJobService,
+		planService,
 		jobRepository,
 		executionRepository,
 		agentRepository,
@@ -150,6 +156,41 @@ describe('AgentWakeService', () => {
 
 		expect(jobRepository.findWakeableUnconsumed).not.toHaveBeenCalled();
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
+	it.each(['pending', 'in_progress', 'paused', 'done', 'failed', 'cancelled'] as const)(
+		'checks the %s plan task before marking the last job result as final',
+		async (status) => {
+			const { service, planService, orchestrator } = setup();
+			planService.findActivePlan.mockResolvedValue(
+				mock<AgentPlanSnapshot>({
+					data: {
+						title: 'Research',
+						description: 'Research, then prepare the report',
+						items: [
+							mock<AgentPlanTask>({ kind: 'task', status: 'done', jobId: 'job-1' }),
+							mock<AgentPlanTask>({ kind: 'task', status }),
+						],
+					},
+				}),
+			);
+			await service.attemptWake('thread-1');
+			expect(planService.findActivePlan).toHaveBeenCalledWith('thread-1', {});
+			expect(
+				orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal === true,
+			).toBe(['done', 'failed', 'cancelled'].includes(status));
+		},
+	);
+
+	it('does not mark an empty plan as finished when the last job completes', async () => {
+		const { service, planService, orchestrator } = setup();
+		planService.findActivePlan.mockResolvedValue(
+			mock<AgentPlanSnapshot>({
+				data: { title: 'Research', description: 'Plan the work', items: [] },
+			}),
+		);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal).not.toBe(true);
 	});
 
 	it.each(['running', 'suspended', 'paused', 'completed', 'failed', 'cancelled'] as const)(

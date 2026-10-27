@@ -226,6 +226,49 @@ describe('AgentChatMessageList', () => {
 		reloaded.unmount();
 	});
 
+	it('removes the final-summary link when the result turn starts another job, including on reload', async () => {
+		const message: ChatMessage = {
+			id: 'results',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			status: 'streaming',
+			backgroundJobSignal: {
+				isFinal: true,
+				tasks: [{ id: 'job', title: 'Rubric', kind: 'subagent', status: 'completed' }],
+			},
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+		const progress: ChatMessage = {
+			...message,
+			status: 'success',
+			content: 'Started the segment research.',
+			toolCalls: [
+				{
+					tool: 'delegate_subagent',
+					toolCallId: 'next',
+					state: 'done',
+					output: { jobId: 'next-job', status: 'started' },
+				},
+			],
+		};
+		await wrapper.setProps({ messages: [progress], messagingState: 'idle' });
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-chat-task-summary"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain(progress.content);
+		wrapper.unmount();
+		const reloaded = mount(AgentChatMessageList, {
+			props: { messages: [progress], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+		expect(reloaded.find('a[href="/trace"]').exists()).toBe(false);
+		expect(reloaded.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(true);
+		reloaded.unmount();
+	});
+
 	it('shows an inline summary before the result turn starts without a second loading indicator', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

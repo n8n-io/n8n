@@ -481,6 +481,9 @@ plain chat text with a link row below it. Do not show a second loading indicator
 or a collapsed result card for the final batch. Keep partial result cards while
 other tasks continue. Keep a factual fallback and trace access if no summary
 text arrives. Do not add artifact links until that feature is available.
+A result batch is not final while the plan has unfinished tasks. Keep the
+partial result card if the reply starts another background job or adds more
+plan work. Do not attach the final-summary trace link to that progress reply.
 Keep the stack visible after a recovered tool error if work is
 still active. A failure to stop shows an inline explanation and **Retry stopping**.
 Keep the stack hidden during that failure. A report failure shows a factual

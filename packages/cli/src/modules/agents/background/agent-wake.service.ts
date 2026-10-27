@@ -12,6 +12,9 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentConversationStateService } from '../agent-conversation-state.service';
+import { AgentPlanService } from '../agent-plan.service';
+import { planLeaves } from '../plans/agent-plan-state';
+import { isFinal as isFinalPlanStatus } from '../plans/agent-plan.validation';
 import {
 	AgentExecutionOrchestratorService,
 	type ExecuteForWakeConfig,
@@ -66,6 +69,7 @@ export class AgentWakeService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly planService: AgentPlanService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -359,8 +363,11 @@ export class AgentWakeService {
 		try {
 			const first = jobs[0];
 			const deliveredIds = new Set(jobs.map((job) => job.id));
+			const plan = await this.planService.findActivePlan(threadId, {});
+			const leaves = plan ? planLeaves(plan.data) : [];
 			const isFinal =
 				!first.pauseRequestId &&
+				(!plan || (leaves.length > 0 && leaves.every((task) => isFinalPlanStatus(task.status)))) &&
 				!(await this.jobRepository.findByParentThread(threadId)).some(
 					(job) =>
 						this.hasSameParentIdentity(job, first) &&
