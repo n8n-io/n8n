@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_952e2dc69e6ab3::t_fdeabd6f57ec97 1-3,4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96cfba94015a2a96c0e769a43ac6303285b2f479",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
