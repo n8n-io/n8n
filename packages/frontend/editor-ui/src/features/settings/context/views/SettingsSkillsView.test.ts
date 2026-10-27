@@ -700,7 +700,15 @@ describe('SettingsSkillsView', () => {
 
 		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
 			const usedBy = {
-				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'team-1' }],
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'FirstClassDarwin',
+						projectId: 'team-1',
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 0,
 			};
