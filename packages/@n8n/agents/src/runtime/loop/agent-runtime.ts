@@ -1007,6 +1007,9 @@ export class AgentRuntime {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
+		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+			await sink.emitMessage?.(update);
+		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
