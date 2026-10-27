@@ -20,10 +20,8 @@ describe('ImportPackageRequestDto', () => {
 					credentialConflictPolicy: 'keep-existing',
 					bindings: {},
 					conflictPolicy: 'fail',
-					workflowPublishingPolicy: 'preserve-published-state',
-					workflowIdPolicy: 'source',
-					agentIdPolicy: 'source',
-					agentPublishingPolicy: 'preserve-published-state',
+					publishingPolicy: 'preserve-published-state',
+					idPolicy: 'source',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
 					overwriteDeletionPolicy: 'archive',
@@ -56,10 +54,8 @@ describe('ImportPackageRequestDto', () => {
 					credentialConflictPolicy: 'keep-existing',
 					bindings: {},
 					conflictPolicy: 'fail',
-					workflowPublishingPolicy: 'preserve-published-state',
-					workflowIdPolicy: 'source',
-					agentIdPolicy: 'source',
-					agentPublishingPolicy: 'preserve-published-state',
+					publishingPolicy: 'preserve-published-state',
+					idPolicy: 'source',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
 					overwriteDeletionPolicy: 'archive',
@@ -94,10 +90,8 @@ describe('ImportPackageRequestDto', () => {
 					credentialConflictPolicy: 'keep-existing',
 					bindings: {},
 					conflictPolicy: 'new-version',
-					workflowPublishingPolicy: 'preserve-published-state',
-					workflowIdPolicy: 'source',
-					agentIdPolicy: 'source',
-					agentPublishingPolicy: 'preserve-published-state',
+					publishingPolicy: 'preserve-published-state',
+					idPolicy: 'source',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
 					overwriteDeletionPolicy: 'archive',
@@ -122,13 +116,19 @@ describe('ImportPackageRequestDto', () => {
 		).toBe(false);
 	});
 
-	it('rejects the old conflict field even when conflictPolicy is present', () => {
+	it.each([
+		['workflowConflictPolicy', 'skip'],
+		['workflowIdPolicy', 'source'],
+		['agentIdPolicy', 'source'],
+		['workflowPublishingPolicy', 'publish-all'],
+		['agentPublishingPolicy', 'publish-all'],
+	])('rejects the old %s field', (field, value) => {
 		expect(
 			ImportPackageRequestDto.safeParse(
 				withPackageFile({
 					projectId: 'proj-1',
 					conflictPolicy: 'skip',
-					workflowConflictPolicy: 'skip',
+					[field]: value,
 				}),
 			).success,
 		).toBe(false);
@@ -322,49 +322,11 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
-	describe('workflowIdPolicy', () => {
-		it('defaults to "source" when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse(
-				withPackageFile({
-					conflictPolicy: 'fail',
-				}),
-			);
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.workflowIdPolicy).toBe('source');
-			}
-		});
-
-		it('accepts "source"', () => {
-			const result = ImportPackageRequestDto.safeParse(
-				withPackageFile({
-					conflictPolicy: 'fail',
-					workflowIdPolicy: 'source',
-				}),
-			);
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.workflowIdPolicy).toBe('source');
-			}
-		});
-
-		it('rejects unsupported workflowIdPolicy values', () => {
-			expect(
-				ImportPackageRequestDto.safeParse(
-					withPackageFile({
-						conflictPolicy: 'fail',
-						workflowIdPolicy: 'reuse',
-					}),
-				).success,
-			).toBe(false);
-		});
-	});
-
 	// An omitted folder policy follows the project policy. Other policies have fixed defaults.
 	describe.each([
-		{ field: 'agentIdPolicy', values: ['source'], expected: 'source' },
+		{ field: 'idPolicy', values: ['source'], expected: 'source' },
 		{
-			field: 'agentPublishingPolicy',
+			field: 'publishingPolicy',
 			values: ['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
 			expected: 'preserve-published-state',
 		},
@@ -539,8 +501,8 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'credentialMatchingMode', expected: 'id-only' },
 			{ field: 'credentialMissingMode', expected: 'create-stub' },
 			{ field: 'credentialConflictPolicy', expected: 'keep-existing' },
-			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
-			{ field: 'workflowIdPolicy', expected: 'source' },
+			{ field: 'publishingPolicy', expected: 'preserve-published-state' },
+			{ field: 'idPolicy', expected: 'source' },
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
 			{ field: 'projectConflictPolicy', expected: 'merge' },
 			{ field: 'overwriteDeletionPolicy', expected: 'archive' },
@@ -569,7 +531,7 @@ describe('ImportPackageRequestDto', () => {
 				ImportPackageRequestDto.safeParse(
 					withPackageFile({
 						conflictPolicy: 'fail',
-						workflowPublishingPolicy: 'not-a-policy',
+						publishingPolicy: 'not-a-policy',
 					}),
 				).success,
 			).toBe(false);

@@ -48,8 +48,8 @@ let exportDir: string;
 const importPolicy: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: 'overwrite',
 	conflictPolicy: 'new-version',
-	workflowIdPolicy: 'source',
-	workflowPublishingPolicy: 'match-source',
+	idPolicy: 'source',
+	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'import-anyway',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',

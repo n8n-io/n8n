@@ -99,10 +99,10 @@ export class WorkflowImporter {
 				existing !== null,
 			);
 
-			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
+			const item = toPlanItem(workflow, existing, action, options.idPolicy);
 			items.push(item);
 
-			if (item.action === 'create' && options.workflowIdPolicy === 'source' && !blocked) {
+			if (item.action === 'create' && !blocked) {
 				sourceCreateIds.push(item.decidedId);
 			}
 

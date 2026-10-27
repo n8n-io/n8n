@@ -7,15 +7,11 @@ import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-defi
 
 import type { ImportContext } from '../../n8n-packages.types';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
-import type { ImportDecision } from '../import-conflict-policy';
 import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } from '../publishing';
 
-export interface AgentPlanItem extends PreparedAgent {
-	action: ImportDecision['action'];
-	targetAgentId: string;
-	existing: ProjectAgent | null;
+export type AgentPlanItem = PreparedAgent & {
 	publishingAction: PublishingAction;
-}
+} & ({ action: 'create'; existing: null } | { action: 'update' | 'skip'; existing: ProjectAgent });
 
 export interface AgentImportPlan {
 	items: AgentPlanItem[];
@@ -29,7 +25,7 @@ export type PersistedAgentOutcome =
 			status: 'created' | 'updated';
 			agent: ProjectAgent;
 			sourceAgentId: string;
-			item: AgentPlanItem;
+			publishingAction: PublishingAction;
 			blockedFromPublish?: PublishingBlockedReason;
 	  };
 
@@ -54,25 +50,11 @@ export interface AgentImportMatchContext extends Pick<ImportContext, 'user' | 'p
 
 export interface AgentIdConflict {
 	sourceAgentId: string;
-	existingAgentId: string;
 	existingProjectId: string | null;
 }
 
 export interface AgentImportMatches {
-	projectId: string;
-	sourceAgentIds: string[];
 	matches: Map<string, AgentImportIdentity>;
-}
-
-export interface ResolvedAgentImportIdentity {
-	sourceAgentId: string;
-	targetAgentId: string;
-	existing: AgentImportIdentity | null;
-}
-
-export interface AgentImportIdentities {
-	projectId: string;
-	identities: Map<string, ResolvedAgentImportIdentity>;
 	idConflicts: AgentIdConflict[];
 }
 

@@ -108,7 +108,7 @@ type DirectoryProjectPackage =
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	workflowPublishingPolicy: 'match-source',
+	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
@@ -127,7 +127,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'selection'
 	| 'overwriteDeletionPolicy'
 	| 'conflictPolicy'
-	| 'workflowIdPolicy'
+	| 'idPolicy'
 	| 'dataTableSchemaConflictPolicy'
 	| 'tagConflictPolicy'
 	| 'credentialConflictPolicy'
@@ -644,7 +644,7 @@ export class N8nPackagesService {
 			...CHERRY_PICK_IMPORT_POLICY,
 			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,
-			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
+			idPolicy: request.idPolicy ?? WorkflowIdPolicy.Source,
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,

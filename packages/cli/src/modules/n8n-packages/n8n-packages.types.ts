@@ -54,8 +54,6 @@ export const ImportConflictPolicy = {
 } as const;
 
 export const WorkflowIdPolicy = {
-	/** Mints a fresh id for each imported workflow; the source id is kept as `sourceWorkflowId`. */
-	New: 'new',
 	/** Reuses the package's own workflow id in the target instance. */
 	Source: 'source',
 } as const;
@@ -283,7 +281,6 @@ export type ImportRequest = {
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
-	Partial<ImportAgentProperties> &
 	ImportProjectProperties &
 	ImportFolderProperties &
 	ImportDataTableProperties &
@@ -311,7 +308,7 @@ export interface ImportSelection {
 
 /**
  * Match or create the destination project from the package. Callers cannot override its location.
- * The service fixes all policies except `conflictPolicy`, `workflowIdPolicy`,
+ * The service fixes all policies except `conflictPolicy`, `idPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
  * `credentialConflictPolicy` (defaults to `keep-existing`), and `layoutConflictPolicy` (defaults to
@@ -322,7 +319,7 @@ export type ImportSelectionRequest = {
 	apiKeyScopes?: string[];
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	conflictPolicy?: ImportConflictPolicy;
-	workflowIdPolicy?: WorkflowIdPolicy;
+	idPolicy?: WorkflowIdPolicy;
 	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
 	tagConflictPolicy?: TagConflictPolicy;
@@ -341,18 +338,13 @@ export type ImportCredentialProperties = {
 	credentialConflictPolicy?: CredentialConflictPolicy;
 };
 
-export type ImportConflictProperties = {
+export type ImportEntityProperties = {
 	conflictPolicy: ImportConflictPolicy;
+	idPolicy: WorkflowIdPolicy;
+	publishingPolicy: WorkflowPublishingPolicy;
 };
 
-export type ImportAgentProperties = {
-	agentIdPolicy: WorkflowIdPolicy;
-	agentPublishingPolicy: WorkflowPublishingPolicy;
-};
-
-export type ImportWorkflowProperties = ImportConflictProperties & {
-	workflowPublishingPolicy: WorkflowPublishingPolicy;
-	workflowIdPolicy: WorkflowIdPolicy;
+export type ImportWorkflowProperties = ImportEntityProperties & {
 	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
@@ -433,15 +425,18 @@ export interface ImportContext {
 }
 
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
-	ImportWorkflowProperties &
-	ImportAgentProperties &
+	Omit<ImportWorkflowProperties, 'idPolicy' | 'publishingPolicy'> &
 	ImportProjectProperties &
 	ResolvedImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties & {
-		/** Keep the existing audit property when the request field changes. */
+		/** Keep existing audit properties when request fields change. */
 		workflowConflictPolicy: ImportConflictPolicy;
+		workflowIdPolicy: WorkflowIdPolicy;
+		agentIdPolicy: WorkflowIdPolicy;
+		workflowPublishingPolicy: WorkflowPublishingPolicy;
+		agentPublishingPolicy: WorkflowPublishingPolicy;
 	};
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */

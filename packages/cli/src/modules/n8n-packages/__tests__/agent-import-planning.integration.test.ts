@@ -26,6 +26,7 @@ import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
@@ -172,6 +173,7 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 	};
 	fixture.manifest.credentials = [
 		{ id: credential.id, name: credential.name, target: 'credentials/model' },
+		{ id: 'skipped-credential', name: 'Skipped', target: 'credentials/skipped' },
 	];
 	fixture.manifest.requirements = {
 		credentials: [
@@ -197,6 +199,7 @@ it('seeds bundled credential expressions after planning and excludes skipped Age
 		variables: [{ name: 'SKIPPED_VARIABLE', usedBy: [{ kind: 'agent', id: 'research_source' }] }],
 	};
 	fixture.files['credentials/model/credential.json'] = credential;
+	fixture.files['credentials/skipped/credential.json'] = { invalid: true };
 	await agents.save({ id: 'research_source', name: 'Existing', projectId: project.id });
 	const writer = new TarPackageWriter();
 	await writeAgentPackageFixture(writer, fixture);
@@ -319,9 +322,9 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	const [a, b] = plan.agentPlan!.items;
 	const workflowId =
 		plan.workflowPlan.items[0].action === 'create' ? plan.workflowPlan.items[0].decidedId : '';
-	expect(a.targetAgentId).not.toBe(workflowId);
-	expect(a.config?.subAgents?.agents?.[0].agentId).toBe(b.targetAgentId);
-	expect(b.config?.subAgents?.agents?.[0].agentId).toBe(a.targetAgentId);
+	expect(a.sourceAgentId).toBe(workflowId);
+	expect(a.config?.subAgents?.agents?.[0].agentId).toBe(b.sourceAgentId);
+	expect(b.config?.subAgents?.agents?.[0].agentId).toBe(a.sourceAgentId);
 	expect(a.config?.tools?.[0]).toMatchObject({
 		workflowId,
 		inputs: first.config?.tools?.[0].type === 'workflow' ? first.config.tools[0].inputs : undefined,
@@ -385,7 +388,7 @@ it.each<ImportConflictPolicy>(['new-version', 'skip', 'fail'])(
 			expect(plan.blockingIssues).toEqual([]);
 			expect(plan.agentPlan!.items[0]).toMatchObject({
 				action: policy === 'skip' ? 'skip' : 'update',
-				targetAgentId: existing.id,
+				sourceAgentId: existing.id,
 			});
 			expect(plan.credentialPlan.failures).toEqual([]);
 			expect(plan.credentialPlan.stubIds.size).toBe(0);
@@ -491,7 +494,7 @@ it('keeps credential matches scoped to each project and reports an inaccessible 
 	expect(await records()).toEqual(before);
 });
 
-it('checks project boundaries after allocating the whole package', async () => {
+it('checks project boundaries after matching the whole package', async () => {
 	vi.spyOn(Container.get(NodeTypes), 'getSupportedVersions').mockReturnValue([1]);
 	const node = (workflowId: unknown) => ({
 		type: 'node' as const,
@@ -561,7 +564,7 @@ it.each<ImportConflictPolicy>(['new-version', 'skip'])(
 		const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
 		requests[0].options.conflictPolicy = policy;
 		for (const request of requests) {
-			request.options.agentIdPolicy = 'source';
+			request.options.idPolicy = 'source';
 			request.agents![0].tasks.task_shared = {
 				name: 'Summary',
 				objective: 'Summarize.',
@@ -691,7 +694,7 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 			publish: 'publish-all',
 			unpublish: 'unpublish-all',
 		};
-		request.options.agentPublishingPolicy = policies[action];
+		request.options.publishingPolicy = policies[action];
 		const before = await records();
 		await expect(planner.plan(request)).rejects.toBeInstanceOf(ForbiddenError);
 		const permittedRole = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
@@ -703,6 +706,51 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 				apiKeyScopes: scopes.filter((scope) => scope !== required),
 			}),
 		).rejects.toBeInstanceOf(ForbiddenError);
+		expect(await records()).toEqual(before);
+	},
+);
+
+it.each(['existing', 'pending'] as const)(
+	'checks credential stub permissions for Agents in %s projects',
+	async (destination) => {
+		const member = await createMember();
+		const scopes = ['agent:import', 'agent:read', 'agent:create'];
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, project, role.slug);
+		const request = input(
+			[agent('source', { model: 'openai/gpt-4.1-mini', credential: 'missing-credential' })],
+			destination === 'pending' ? 'pending-project' : project.id,
+		);
+		request.context.user = member;
+		request.projectPendingCreation = destination === 'pending';
+		request.credentialRequest.missingMode = 'create-stub';
+		request.credentialRequest.requirements = [
+			{
+				id: 'missing-credential',
+				type: 'openAiApi',
+				usedBy: [{ kind: 'agent', id: 'source' }],
+			},
+		];
+		const before = await records();
+		const plan = await planner.plan(request);
+		expect(plan.blockingIssues).toEqual([]);
+
+		if (destination === 'existing') {
+			await expect(
+				planner.assertNotBlocked([plan], { apiKeyScopes: undefined }),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			const permittedRole = await createCustomRoleWithScopeSlugs([...scopes, 'credential:create'], {
+				roleType: 'project',
+			});
+			await linkUserToProject(member, project, permittedRole.slug);
+		}
+
+		await expect(planner.assertNotBlocked([plan], { apiKeyScopes: scopes })).rejects.toBeInstanceOf(
+			ForbiddenError,
+		);
+		await expect(
+			planner.assertNotBlocked([plan], { apiKeyScopes: [...scopes, 'credential:create'] }),
+		).resolves.toBeUndefined();
 		expect(await records()).toEqual(before);
 	},
 );
@@ -727,8 +775,9 @@ it('plans an authorized pending project without creating its shell and still che
 	expect(await records()).toEqual(before);
 });
 
-it('reports save-policy refusal without enforcing a save or changing records', async () => {
+it('evaluates normalized configuration and reports policy refusal without saving', async () => {
 	const enforcement = Container.get(PolicyEnforcementService);
+	const evaluateAgent = vi.spyOn(Container.get(AgentPolicyService), 'evaluateSave');
 	const violation = {
 		kind: 'node-type-unavailable' as const,
 		checkId: 'node-type-availability',
@@ -739,7 +788,15 @@ it('reports save-policy refusal without enforcing a save or changing records', a
 		.mockResolvedValue({ violations: [violation] });
 	const enforce = vi.spyOn(enforcement, 'enforceWorkflowSave');
 	const before = await records();
-	const plan = await planner.plan(input([agent('source')]));
+	const source = agent('source', {
+		model: 'anthropic/claude-sonnet-4-5',
+		config: { webSearch: { enabled: false } },
+		providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+	});
+	const normalizedConfig = { ...source.config, providerTools: {} };
+	const plan = await planner.plan(input([source]));
+	expect(plan.agentPlan?.items[0].config).toEqual(normalizedConfig);
+	expect(evaluateAgent).toHaveBeenCalledWith(project.id, null, normalizedConfig, null);
 	expect(plan.blockingIssues).toContainEqual({
 		type: 'agent-policy-violation',
 		sourceAgentId: 'source',

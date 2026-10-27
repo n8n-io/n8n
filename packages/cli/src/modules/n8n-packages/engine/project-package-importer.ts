@@ -12,7 +12,6 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
-import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
@@ -34,18 +33,12 @@ import type {
 	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import {
-	assertArchiveTransitionsAllowed,
-	assertPackageImportApiKeyScopes,
-	assertTagWritesAllowed,
-} from './import-gates';
+import { assertPackageImportApiKeyScopes } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import {
-	needsBundledCredentialData,
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
 	placeByLayout,
-	placeCredentialData,
 } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -67,6 +60,7 @@ import {
 } from './import-result';
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 
 @Service()
@@ -75,6 +69,7 @@ export class ProjectPackageImporter {
 		private readonly packageParser: N8nPackageParser,
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
+		private readonly importPreflight: PackageImportPreflight,
 		private readonly licenseState: LicenseState,
 	) {}
 
@@ -148,39 +143,9 @@ export class ProjectPackageImporter {
 			);
 			inputs.push(input);
 		}
-		const plans = await this.importOrchestrator.planPackage(inputs);
+		const draftPlans = await this.importOrchestrator.planPackage(inputs);
+		const plans = await this.importPreflight.prepare(draftPlans, reader, request.apiKeyScopes);
 		const planned = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
-
-		const missingCredentialIds = new Set(
-			planned.flatMap(({ plan }) =>
-				plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
-			),
-		);
-		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
-			const bundledCredentials =
-				packageCredentials ??
-				(await this.packageParser.getCredentials(reader, missingCredentialIds));
-			for (const { plan } of planned) {
-				const { credentialRequest } = plan.input;
-				credentialRequest.requirements = placeCredentialData({
-					requirements: credentialRequest.requirements,
-					bundledCredentials,
-				});
-			}
-		}
-
-		assertTagWritesAllowed(
-			request.apiKeyScopes,
-			planned.map(({ plan }) => plan.tagPlan),
-		);
-		assertArchiveTransitionsAllowed(
-			request.apiKeyScopes,
-			planned.map(({ plan }) => plan.workflowPlan),
-		);
-		await this.importOrchestrator.assertNotBlocked(
-			planned.map(({ plan }) => plan),
-			{ apiKeyScopes: request.apiKeyScopes },
-		);
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
@@ -208,7 +173,7 @@ export class ProjectPackageImporter {
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
 			content: applied.map(({ content }) => content),
-			policy: request.workflowPublishingPolicy,
+			policy: request.publishingPolicy,
 			subWorkflowRequirements: manifest.requirements?.workflows,
 		});
 

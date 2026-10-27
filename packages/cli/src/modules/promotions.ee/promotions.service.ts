@@ -120,8 +120,8 @@ function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean 
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	conflictPolicy: ImportConflictPolicy.NewVersion,
-	workflowIdPolicy: WorkflowIdPolicy.Source,
-	workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+	idPolicy: WorkflowIdPolicy.Source,
+	publishingPolicy: WorkflowPublishingPolicy.MatchSource,
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
