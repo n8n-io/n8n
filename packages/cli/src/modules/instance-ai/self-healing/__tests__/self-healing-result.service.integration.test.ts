@@ -9,6 +9,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
+	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	type Project,
@@ -1777,40 +1778,43 @@ describe('Inbox source reads', () => {
 			).resolves.toMatchObject({ reviewState: 'dismissed' });
 		});
 
-		it('includes instance admins outside the project and excludes other-project members', async () => {
-			const { project, original, result } = await teamFixture();
-			const admin = await createUser({ role: GLOBAL_OWNER_ROLE });
-			const outsider = await createUser();
-			const otherProject = await createTeamProject(undefined, outsider);
-			await linkUserToProject(outsider, otherProject, 'project:editor');
-			await Container.get(SharedWorkflowRepository).save({
-				workflowId: original.id,
-				projectId: otherProject.id,
-				role: 'workflow:editor',
-			});
+		it.each([GLOBAL_OWNER_ROLE, GLOBAL_ADMIN_ROLE])(
+			'includes $slug outside the project and excludes other-project members',
+			async (role) => {
+				const { project, original, result } = await teamFixture();
+				const admin = await createUser({ role });
+				const outsider = await createUser();
+				const otherProject = await createTeamProject(undefined, outsider);
+				await linkUserToProject(outsider, otherProject, 'project:editor');
+				await Container.get(SharedWorkflowRepository).save({
+					workflowId: original.id,
+					projectId: otherProject.id,
+					role: 'workflow:editor',
+				});
 
-			await expectReviewer(outsider, false);
-			await expect(service.getDetail(outsider, project.id, original.id, result.id)).rejects.toThrow(
-				NotFoundError,
-			);
-			await expectReviewer(admin, true);
-			await expect(
-				service.getDetail(admin, project.id, original.id, result.id),
-			).resolves.toMatchObject({ resultId: result.id });
+				await expectReviewer(outsider, false);
+				await expect(
+					service.getDetail(outsider, project.id, original.id, result.id),
+				).rejects.toThrow(NotFoundError);
+				await expectReviewer(admin, true);
+				await expect(
+					service.getDetail(admin, project.id, original.id, result.id),
+				).resolves.toMatchObject({ resultId: result.id });
 
-			await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
-				includeAllProjectMembers: false,
-			});
-			await expectReviewer(admin, false);
-			await expect(service.act(admin, project.id, original.id, result.id, 'apply')).rejects.toThrow(
-				NotFoundError,
-			);
+				await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
+					includeAllProjectMembers: false,
+				});
+				await expectReviewer(admin, false);
+				await expect(
+					service.act(admin, project.id, original.id, result.id, 'apply'),
+				).rejects.toThrow(NotFoundError);
 
-			await addReviewer(result.configurationId, admin.id);
-			await expectReviewer(admin, true);
-			await Container.get(UserRepository).update(admin.id, { role: GLOBAL_MEMBER_ROLE });
-			await expectReviewer(admin, false);
-		});
+				await addReviewer(result.configurationId, admin.id);
+				await expectReviewer(admin, true);
+				await Container.get(UserRepository).update(admin.id, { role: GLOBAL_MEMBER_ROLE });
+				await expectReviewer(admin, false);
+			},
+		);
 
 		it('shows personal project results only to the project owner', async () => {
 			const { user, project, original, result } = await fixture();
