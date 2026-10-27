@@ -505,7 +505,6 @@ for ordinary fresh-Agent creation.
 
 Verify:
 
-<!-- applyFreshAgentMemoryDefault in agents-builder-tools.service.ts adds memory to an Agent without instructions. -->
 - A starter draft without `memory` got the default memory in your first config
   write, unless the user disabled memory.
 
