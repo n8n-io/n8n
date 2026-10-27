@@ -106,8 +106,9 @@ export class PublicApiRateLimitService {
 	}
 
 	/**
-	 * `express-rate-limit` fixes the window when it creates a limiter. So a new window needs a new
-	 * limiter and a new store. On multi-main, the new store uses the same Redis keys as the old one.
+	 * `express-rate-limit` reads the window once, when it creates a limiter, and cannot change it
+	 * later. So when the window changes, this creates a new limiter with a new store. On multi-main,
+	 * the new store uses the same Redis keys, so the counts carry over.
 	 */
 	private getLimiter(counter: Counter, windowMs: number) {
 		if (counter.limiter?.windowMs !== windowMs) {
