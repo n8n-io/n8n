@@ -71,7 +71,6 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const bodyRoot = useTemplateRef<ComponentPublicInstance>('bodyRoot');
-const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 
 function bodyElement(): HTMLElement | null {
 	const element = bodyRoot.value?.$el;
@@ -113,13 +112,6 @@ function onInteractOutside(event: Event) {
 }
 const bodyAutofocusSelector =
 	'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
-
-/** Puts the editable title in edit mode. */
-function focusTitle() {
-	titleEdit.value?.forceFocus();
-}
-
-defineExpose({ focusTitle });
 
 function onOpenAutoFocus(event: Event) {
 	const body =
@@ -176,7 +168,6 @@ function onOpenAutoFocus(event: Event) {
 					<div :class="[$style.titleGroup, $slots.titleSuffix && $style.titleGroupWithSuffix]">
 						<N8nInlineTextEdit
 							v-if="props.editableTitle"
-							ref="titleEdit"
 							:model-value="props.title"
 							:max-length="props.titleMaxLength"
 							:max-width="'100%'"

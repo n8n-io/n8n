@@ -1454,7 +1454,7 @@ describe('AgentSkillModal from Settings', () => {
 	});
 
 	it('shows the scope of a saved skill without letting the user change it', () => {
-		const { getByTestId, queryByTestId } = renderModal({
+		const { getByTestId } = renderModal({
 			skillId: 's1',
 			skill: SAVED_SKILL,
 			settings: {
@@ -1464,8 +1464,10 @@ describe('AgentSkillModal from Settings', () => {
 			},
 		});
 
-		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('FirstClassDarwin only');
-		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
+		const badge = getByTestId('agent-skill-scope-badge');
+		expect(badge).toHaveTextContent('FirstClassDarwin only');
+		// A locked scope is a plain badge, not a button that opens the scope menu.
+		expect(badge.tagName).toBe('SPAN');
 	});
 
 	describe('moving a saved skill from Settings', () => {

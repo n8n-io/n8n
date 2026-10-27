@@ -18,6 +18,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
+import { useSkillDeleteRule } from '../skills.utils';
 
 type SkillAction = 'edit' | 'download' | 'delete';
 
@@ -49,21 +50,8 @@ const emit = defineEmits<{
 const tableOptions = defineModel<TableOptions>('tableOptions', { default: () => ({}) });
 
 const i18n = useI18n();
+const { deleteBlockedReason } = useSkillDeleteRule();
 const usersStore = useUsersStore();
-
-/** The backend refuses to delete a skill that an agent uses, so the action is off before the user tries. */
-function canDeleteNow(skill: SkillListItem) {
-	return skill.canDelete && skill.usedByAgents === 0;
-}
-
-function deleteHint(skill: SkillListItem): string | undefined {
-	if (canDeleteNow(skill)) return undefined;
-	if (!skill.canDelete) return i18n.baseText('settings.context.skills.readOnly');
-	return i18n.baseText('settings.context.skills.delete.inUse', {
-		interpolate: { count: skill.usedByAgents },
-		adjustToNumber: skill.usedByAgents,
-	});
-}
 
 function actionsFor(skill: SkillListItem): SkillActionItem[] {
 	return [
@@ -83,8 +71,8 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
-			disabled: !canDeleteNow(skill),
-			tooltip: deleteHint(skill),
+			disabled: deleteBlockedReason(skill) !== undefined,
+			tooltip: deleteBlockedReason(skill),
 			destructive: true,
 		},
 	];

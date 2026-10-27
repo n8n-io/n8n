@@ -17,6 +17,7 @@ import {
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionDropdown,
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nFormInput,
@@ -142,7 +143,6 @@ const rootStore = useRootStore();
 const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
-const agentModal = useTemplateRef<InstanceType<typeof AgentModalMultiStep>>('agentModal');
 
 const existingNameKeys = computed(() => {
 	const names = props.data.getAttachedSkills
@@ -177,6 +177,8 @@ const hasPicker = !props.data.skillId && !!props.data.hubSkillsEnabled && !!prop
 const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
 );
+/** The form steps show the scope badge, the header menu and "Close" instead of "Cancel". */
+const isFormStep = computed(() => step.value === 'manual' || step.value === 'edit');
 const isImporting = ref(false);
 const isSaving = ref(false);
 /** A name error from the server, such as a taken name. Typing a new name clears it. */
@@ -282,8 +284,7 @@ const showRemove = computed(() => {
 	// A hub skill is detached with "Add to <agent>" in the header menu.
 	return isEditing.value && !props.data.hubSkillsEnabled;
 });
-/** The form steps show the scope badge, the header menu and "Close" instead of "Cancel". */
-const isFormStep = computed(() => step.value === 'manual' || step.value === 'edit');
+
 const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
 	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
@@ -367,7 +368,7 @@ const selectedScope = computed(() =>
 );
 const showScopeBadge = computed(
 	() =>
-		(step.value === 'manual' || step.value === 'edit') &&
+		isFormStep.value &&
 		(showScope.value ||
 			(!!props.data.hubSkillsEnabled && (!isEditing.value || !!savedTarget.value))),
 );
@@ -384,15 +385,16 @@ function onScopeChoice(value: string) {
 	if (value === 'project' || value === 'agent' || value === 'instance') availableTo.value = value;
 }
 
-const scopeBadgeItems = computed<Array<ActionDropdownItem<string>>>(() =>
-	scopeChoices.value.map((choice) => ({
+function scopeItems(testIdPrefix: string): Array<ActionDropdownItem<string>> {
+	return scopeChoices.value.map((choice) => ({
 		id: `scope:${choice.value}`,
 		label: choice.label,
 		icon: choice.icon,
 		checked: choice.value === selectedScopeValue.value,
-		testId: `agent-skill-scope-option-${choice.value}`,
-	})),
-);
+		testId: `${testIdPrefix}${choice.value}`,
+	}));
+}
+const scopeBadgeItems = computed(() => scopeItems('agent-skill-scope-option-'));
 
 /** "Add to <agent>" toggles the attachment of a hub skill to the agent it was opened from. */
 const showAttachToggle = computed(
@@ -425,10 +427,7 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 			icon: selectedScope.value?.icon ?? 'layers',
 			disabled: !scopeEditable.value,
 			testId: 'agent-skill-menu-change-scope',
-			children: scopeBadgeItems.value.map((item) => ({
-				...item,
-				testId: `agent-skill-menu-scope-option-${item.id.slice('scope:'.length)}`,
-			})),
+			children: scopeItems('agent-skill-menu-scope-option-'),
 		});
 	}
 	if (isEditing.value && (props.data.onDelete || showAttachToggle.value)) {
@@ -901,7 +900,6 @@ function onRemove() {
 
 <template>
 	<AgentModalMultiStep
-		ref="agentModal"
 		:open="modalOpen"
 		:step="step"
 		:title="modalTitle"
@@ -922,27 +920,26 @@ function onRemove() {
 				placement="bottom"
 			>
 				<N8nActionDropdown
-					v-if="scopeEditable"
 					:items="scopeBadgeItems"
+					:disabled="!scopeEditable"
 					placement="bottom-start"
 					data-testid="agent-skill-scope"
 					@select="onHeaderMenuSelect"
 				>
 					<template #activator>
-						<button type="button" :class="$style.scopeBadge" data-testid="agent-skill-scope-badge">
-							<N8nIcon :icon="selectedScope.icon" :size="14" />
-							<span>{{ selectedScope.label }}</span>
-						</button>
+						<N8nBadge
+							variant="outline"
+							:clickable="scopeEditable"
+							:class="$style.scopeBadge"
+							data-testid="agent-skill-scope-badge"
+						>
+							<template #leading>
+								<N8nIcon :icon="selectedScope.icon" size="small" />
+							</template>
+							{{ selectedScope.label }}
+						</N8nBadge>
 					</template>
 				</N8nActionDropdown>
-				<span
-					v-else
-					:class="[$style.scopeBadge, $style.scopeBadgeStatic]"
-					data-testid="agent-skill-scope-badge"
-				>
-					<N8nIcon :icon="selectedScope.icon" :size="14" />
-					<span>{{ selectedScope.label }}</span>
-				</span>
 			</N8nTooltip>
 		</template>
 		<template v-if="isFormStep && headerMenuItems.length > 0" #titleSuffix>
@@ -959,18 +956,13 @@ function onRemove() {
 			v-if="isFormStep && showScope && showAssistantAvailability && !cannotEdit"
 			#headerActions
 		>
-			<label :class="$style.assistantToggle" for="skill-assistant-availability">
-				<N8nSwitch
-					id="skill-assistant-availability"
-					v-model="availableToAssistant"
-					:aria-label="i18n.baseText('settings.context.skills.assistant.label')"
-					:disabled="editorLocked"
-					data-testid="skill-assistant-availability"
-				/>
-				<N8nText size="small" color="text-dark">
-					{{ i18n.baseText('settings.context.skills.assistant.label') }}
-				</N8nText>
-			</label>
+			<N8nSwitch
+				id="skill-assistant-availability"
+				v-model="availableToAssistant"
+				:label="i18n.baseText('settings.context.skills.assistant.label')"
+				:disabled="editorLocked"
+				data-testid="skill-assistant-availability"
+			/>
 		</template>
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
 			<ToolsConnectionModal
@@ -1187,37 +1179,10 @@ function onRemove() {
 	text-align: right;
 }
 
-.scopeBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--color--background--light-3);
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
-	cursor: pointer;
-
-	&:hover {
-		border-color: var(--color--foreground--shade-1);
-	}
-}
-
-.scopeBadgeStatic {
-	cursor: default;
-
-	&:hover {
-		border-color: var(--color--foreground);
-	}
-}
-
-.assistantToggle {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	cursor: pointer;
+/* Geist sits high in its line box, as in the Settings scope badge. */
+.scopeBadge > :global(.n8n-text) {
+	line-height: 1;
+	padding-block: var(--spacing--5xs);
 }
 
 @media (max-width: 480px) {

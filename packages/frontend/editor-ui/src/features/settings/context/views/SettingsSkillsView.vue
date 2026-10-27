@@ -58,7 +58,7 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
-import { useSkillScopeDisplay } from '../skills.utils';
+import { useSkillDeleteRule, useSkillScopeDisplay } from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
@@ -83,6 +83,7 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
 const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
@@ -423,10 +424,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
-			onDelete: async () => {
-				if (await onDelete(detail)) uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
-			},
-			deleteDisabledReason: deleteDisabledReason(detail),
+			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
+			deleteDisabledReason: deleteBlockedReason(detail),
 			onConfirm: async ({ skill, scope, availableToAssistant }) =>
 				await onSave(
 					detail.id,
@@ -492,18 +491,8 @@ async function onDownload(item: Pick<SkillListItem, 'id'>) {
 	}
 }
 
-/** The backend refuses to delete a skill that an agent uses, as the table row menu says. */
-function deleteDisabledReason(skill: SkillListItem): string | undefined {
-	if (!skill.canDelete) return i18n.baseText('settings.context.skills.readOnly');
-	if (skill.usedByAgents === 0) return undefined;
-	return i18n.baseText('settings.context.skills.delete.inUse', {
-		interpolate: { count: skill.usedByAgents },
-		adjustToNumber: skill.usedByAgents,
-	});
-}
-
-/** Returns true when the skill was deleted. */
-async function onDelete(skill: Pick<SkillListItem, 'id'>): Promise<boolean> {
+/** `onDeleted` runs as soon as the delete succeeds, before the list reloads. */
+async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void) {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.context.skills.delete.confirm.message'),
 		i18n.baseText('settings.context.skills.delete.confirm.title'),
@@ -513,11 +502,10 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>): Promise<boolean> {
 			cancelButtonText: i18n.baseText('settings.context.skills.delete.cancel'),
 		},
 	);
-	if (confirmed !== MODAL_CONFIRM) return false;
-	let deleted = false;
+	if (confirmed !== MODAL_CONFIRM) return;
 	try {
 		await skillsStore.deleteSkill(skill.id);
-		deleted = true;
+		onDeleted?.();
 		showMessage({
 			title: i18n.baseText('settings.context.skills.delete.success'),
 			type: 'success',
@@ -529,7 +517,6 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>): Promise<boolean> {
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
 	await load();
-	return deleted;
 }
 
 async function goBack() {

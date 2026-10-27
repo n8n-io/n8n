@@ -57,3 +57,24 @@ export function useSkillScopeDisplay() {
 
 	return { scopeDisplay };
 }
+
+/**
+ * Why a skill cannot be deleted now, or undefined when it can. The backend refuses to
+ * delete a skill that an agent uses, so the action is off before the user tries.
+ */
+export function useSkillDeleteRule() {
+	const i18n = useI18n();
+
+	function deleteBlockedReason(
+		skill: Pick<SkillListItem, 'canDelete' | 'usedByAgents'>,
+	): string | undefined {
+		if (!skill.canDelete) return i18n.baseText('settings.context.skills.readOnly');
+		if (skill.usedByAgents === 0) return undefined;
+		return i18n.baseText('settings.context.skills.delete.inUse', {
+			interpolate: { count: skill.usedByAgents },
+			adjustToNumber: skill.usedByAgents,
+		});
+	}
+
+	return { deleteBlockedReason };
+}
