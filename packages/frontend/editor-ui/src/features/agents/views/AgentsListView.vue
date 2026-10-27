@@ -261,6 +261,7 @@ function onCreateFromTemplate(template: AgentTemplate) {
 
 onMounted(async () => {
 	documentTitle.set(locale.baseText('agents.heading'));
+	if (insightsStore.isSummaryEnabled) void insightsStore.weeklySummary.execute();
 });
 </script>
 
