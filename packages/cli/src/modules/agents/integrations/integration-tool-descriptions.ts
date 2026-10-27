@@ -1,4 +1,8 @@
-import { MAX_CHANNEL_SEND_FILE_BYTES, type FileUploadLimits } from './agent-chat-integration';
+import {
+	MAX_CHANNEL_SEND_FILE_BYTES,
+	MAX_FILE_MESSAGES_PER_SEND,
+	type FileUploadLimits,
+} from './agent-chat-integration';
 import { MAX_BATCH_OPERATIONS } from './integration-tool-schema';
 import type { IntegrationToolConnectionDescriptor } from './integration-tool-types';
 
@@ -48,7 +52,7 @@ export function buildActionToolDescription(
 export function buildFileUploadGuidance(limits: FileUploadLimits): string {
 	const maxFileBytes = Math.min(limits.maxFileBytes, MAX_CHANNEL_SEND_FILE_BYTES);
 	const maxMegabytes = Math.floor(maxFileBytes / (1024 * 1024));
-	return `To send files, add input.fileIds to respond, send_dm or send_channel_message. Use fileIds from tool results or user uploads. In the conversation that you reply to, respond with fileIds posts nothing at once: the files go with your final reply, and your reply text is their message. Other sends post message.text with the files. Send up to ${limits.maxFiles} files of up to ${maxMegabytes} MB each in one message.`;
+	return `To send files, add input.fileIds to respond, send_dm or send_channel_message. Use fileIds from tool results or user uploads. In the conversation that you reply to, respond with fileIds posts nothing at once: the files go with your final reply, and your reply text is their message. Other sends post message.text with the files. You can mix file types. The platform can send the files as more than one message, and the text goes with the first. Send up to ${limits.maxFiles * MAX_FILE_MESSAGES_PER_SEND} files of up to ${maxMegabytes} MB each with one action.`;
 }
 
 function buildGenericCardGuidance(): string[] {

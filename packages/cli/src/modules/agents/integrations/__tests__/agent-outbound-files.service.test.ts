@@ -23,9 +23,21 @@ const chartFile = {
 
 function createService() {
 	const attachmentService = mock<AgentChatAttachmentService>();
-	attachmentService.getReadable.mockImplementation(async (fileId) =>
-		fileId === chartFile.id ? (chartFile as never) : null,
-	);
+	attachmentService.getReadable.mockImplementation(async (fileId) => {
+		if (fileId === chartFile.id) return chartFile as never;
+		// `img-<n>` is another image, `doc-<n>` a PDF. Other IDs are not readable.
+		if (fileId.startsWith('img-'))
+			return { ...chartFile, id: fileId, fileName: `${fileId}.png` } as never;
+		if (fileId.startsWith('doc-')) {
+			return {
+				...chartFile,
+				id: fileId,
+				fileName: `${fileId}.pdf`,
+				mimeType: 'application/pdf',
+			} as never;
+		}
+		return null;
+	});
 	attachmentService.getBuffer.mockResolvedValue(Buffer.from('png'));
 	const registry = new ChatIntegrationRegistry();
 	registry.register(new SlackIntegration(mock<AgentRepository>()));
@@ -83,5 +95,61 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 			service.postReplyFiles(thread, 'slack', { fileIds: ['gone'], caption: '', scope }),
 		).rejects.toThrow('File "gone" not found in this conversation.');
 		expect(thread.post).not.toHaveBeenCalled();
+	});
+
+	it('posts Telegram images and documents as separate messages with the caption on the first', async () => {
+		const { service, thread } = createService();
+
+		// The IDs that two responds queued, merged by the stream consumer.
+		await service.postReplyFiles(thread, 'telegram', {
+			fileIds: ['file-1', 'doc-1'],
+			caption: 'Here is the image and its description.',
+			scope,
+		});
+
+		expect(thread.post).toHaveBeenCalledTimes(2);
+		expect(thread.post).toHaveBeenNthCalledWith(1, {
+			markdown: 'Here is the image and its description.',
+			attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
+		});
+		expect(thread.post).toHaveBeenNthCalledWith(2, {
+			raw: '',
+			attachments: [expect.objectContaining({ type: 'file', name: 'doc-1.pdf' })],
+		});
+	});
+
+	it('splits Telegram files into groups of at most 10', async () => {
+		const { service, thread } = createService();
+		const fileIds = Array.from({ length: 12 }, (_, index) => `img-${index}`);
+
+		await service.postReplyFiles(thread, 'telegram', { fileIds, caption: 'Images', scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(2);
+		const [first, second] = thread.post.mock.calls.map(([message]) => message);
+		expect(first).toEqual(
+			expect.objectContaining({ markdown: 'Images', attachments: expect.any(Array) }),
+		);
+		expect(first).toHaveProperty('attachments.length', 10);
+		expect(second).toEqual(expect.objectContaining({ raw: '', attachments: expect.any(Array) }));
+		expect(second).toHaveProperty('attachments.length', 2);
+	});
+
+	it('posts mixed Slack files in one message', async () => {
+		const { service, thread } = createService();
+
+		await service.postReplyFiles(thread, 'slack', {
+			fileIds: ['file-1', 'doc-1'],
+			caption: '',
+			scope,
+		});
+
+		expect(thread.post).toHaveBeenCalledTimes(1);
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: '',
+			files: [
+				expect.objectContaining({ filename: 'chart.png' }),
+				expect.objectContaining({ filename: 'doc-1.pdf' }),
+			],
+		});
 	});
 });

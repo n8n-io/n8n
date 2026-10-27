@@ -125,6 +125,9 @@ export interface AgentChatIntegrationBuilderGuidance {
 /** A temporary cap, because sends load files into memory. Rework it with the storage caps of the session files. */
 export const MAX_CHANNEL_SEND_FILE_BYTES = 50 * 1024 * 1024;
 
+/** One send posts at most this many messages of files, so a runaway call cannot flood the conversation. */
+export const MAX_FILE_MESSAGES_PER_SEND = 3;
+
 export interface FileUploadLimits {
 	/** Maximum number of files in one message. */
 	maxFiles: number;
@@ -338,10 +341,11 @@ export abstract class AgentChatIntegration {
 	readonly sendFilesAsAttachments: boolean = false;
 
 	/**
-	 * Return an error message when the platform cannot send these files in one
-	 * message. Runs before the files are loaded.
+	 * Split files into groups that the platform can send in one message. Keep
+	 * the order that the agent gave. Undefined sends all files as one group.
+	 * Groups larger than `fileUploadLimits.maxFiles` are split again.
 	 */
-	checkOutboundFiles?(files: Array<{ mimeType: string }>): string | undefined;
+	groupOutboundFiles?<T extends { mimeType: string }>(files: T[]): T[][];
 
 	/** Read-only context queries exposed through the generated integration context tool. */
 	get contextQueries(): IntegrationContextQuery[] {

@@ -1,12 +1,16 @@
 import { richMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Adapter, Attachment, PostableCard, SentMessage } from 'chat';
+import type { Adapter, SentMessage } from 'chat';
 import { z } from 'zod';
 
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { type AgentChatIntegration, ChatIntegrationRegistry } from './agent-chat-integration';
-import { AgentOutboundFiles, type OutboundFileFields } from './agent-outbound-files.service';
+import {
+	AgentOutboundFiles,
+	type OutboundPostable,
+	postWithFileGroups,
+} from './agent-outbound-files.service';
 import type { CallbackMetadata } from './callback-store';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
 import {
@@ -282,14 +286,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		const thread = chat.thread(threadId);
 		await this.prepareSentThread(params.descriptor, thread);
-		const sent = await thread.post(
-			await this.toPostable(
-				params.descriptor,
-				input.message,
-				params,
-				await this.outboundFiles.load(params.descriptor.integration.type, files),
-			),
-		);
+		const sent = await this.postWithFiles(thread, params, input.message, files);
 
 		return {
 			ok: true,
@@ -317,14 +314,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const thread = supportsOpenDM(adapter)
 			? chat.thread(await adapter.openDM(input.userId))
 			: await chat.openDM(input.userId);
-		const sent = await thread.post(
-			await this.toPostable(
-				params.descriptor,
-				input.message,
-				params,
-				await this.outboundFiles.load(params.descriptor.integration.type, files),
-			),
-		);
+		const sent = await this.postWithFiles(thread, params, input.message, files);
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
 		const anchoredId = this.sentThreadId(params.descriptor, sent);
@@ -393,14 +383,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				?.normalizeChannelId(input.channelId, chat.getAdapter(platform)) ??
 			normalizePlatformId(platform, input.channelId);
 		const channel = chat.channel(channelId);
-		const sent = await channel.post(
-			await this.toPostable(
-				params.descriptor,
-				input.message,
-				params,
-				await this.outboundFiles.load(params.descriptor.integration.type, files),
-			),
-		);
+		const sent = await this.postWithFiles(channel, params, input.message, files);
 		const threadId = this.sentThreadId(params.descriptor, sent);
 		if (threadId) {
 			await this.prepareSentThread(params.descriptor, chat.thread(threadId));
@@ -420,12 +403,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		descriptor: IntegrationToolConnectionDescriptor,
 		message: MessagePayload,
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
-		fileFields?: OutboundFileFields,
 	) {
 		const cardPayload = message.card;
-		// A string post is plain text, and `raw` keeps it plain text with files.
-		if (!cardPayload)
-			return fileFields ? { raw: message.text ?? '', ...fileFields } : (message.text ?? '');
+		if (!cardPayload) return message.text ?? '';
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');
@@ -449,9 +429,27 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			descriptor.integration.type,
 		);
 
-		// The adapters read `attachments` from a card post too, but PostableCard does not declare it.
-		const postable: PostableCard & { attachments?: Attachment[] } = { card, ...fileFields };
-		return postable;
+		return { card };
+	}
+
+	/**
+	 * Post the message with its files. A platform that cannot send all files
+	 * in one message gets one message for each file group, and the text or
+	 * card goes with the first. Return the first sent message.
+	 */
+	private async postWithFiles(
+		target: { post(message: OutboundPostable): Promise<SentMessage> },
+		params: IntegrationActionParams,
+		message: MessagePayload,
+		files: AgentChatAttachment[],
+	): Promise<SentMessage> {
+		return await postWithFileGroups(
+			async (postable) => await target.post(postable),
+			await this.toPostable(params.descriptor, message, params),
+			files.length > 0
+				? await this.outboundFiles.load(params.descriptor.integration.type, files)
+				: [],
+		);
 	}
 
 	/**

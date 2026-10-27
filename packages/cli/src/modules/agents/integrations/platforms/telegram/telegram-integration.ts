@@ -119,15 +119,14 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly maxMessageLength = 30_000;
 
 	/** A media group can mix photos and videos, but documents and audio go only with their own type. */
-	checkOutboundFiles(files: Array<{ mimeType: string }>): string | undefined {
-		const groups = new Set(
-			files.map(({ mimeType }) => {
-				const type = fileAttachmentType(mimeType);
-				return type === 'image' || type === 'video' ? 'visual' : type;
-			}),
-		);
-		if (groups.size <= 1) return undefined;
-		return 'Telegram can send images and videos together, but documents and audio files only with files of the same type. Send them in separate messages.';
+	groupOutboundFiles<T extends { mimeType: string }>(files: T[]): T[][] {
+		const groups = new Map<string, T[]>();
+		for (const file of files) {
+			const type = fileAttachmentType(file.mimeType);
+			const key = type === 'image' || type === 'video' ? 'visual' : type;
+			groups.set(key, [...(groups.get(key) ?? []), file]);
+		}
+		return [...groups.values()];
 	}
 
 	formatActionDecisionMessage({

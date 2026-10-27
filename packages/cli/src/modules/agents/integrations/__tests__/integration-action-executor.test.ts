@@ -2076,35 +2076,39 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			});
 		});
 
-		it('refuses a Telegram media group that mixes documents with images', async () => {
+		it('posts Telegram images and documents as separate messages with the text on the first', async () => {
 			const report = {
 				...chartFile,
 				id: 'file-2',
 				fileName: 'report.pdf',
 				mimeType: 'application/pdf',
 			};
-			const { executor, descriptor, thread, attachmentService } = buildExecutor(telegram, [
-				chartFile,
-				report,
-			]);
+			const { executor, descriptor, thread } = buildExecutor(telegram, [chartFile, report]);
 
 			const result = await executor.execute({
 				descriptor,
-				action: 'send_dm',
-				input: { userId: '42', message: { text: 'Files' }, fileIds: ['file-1', 'file-2'] },
+				action: 'respond',
+				input: { message: { text: 'Files' }, fileIds: ['file-1', 'file-2'] },
 				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'telegram:cred-telegram',
+					platform: 'telegram',
+					replyExpectation: undefined,
+				},
 				fileScope,
 			});
 
-			expect(result).toEqual({
-				ok: false,
-				error: {
-					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
-					message: expect.stringContaining('separate messages'),
-				},
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(1, {
+				raw: 'Files',
+				attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
 			});
-			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
-			expect(thread.post).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenNthCalledWith(2, {
+				raw: '',
+				attachments: [expect.objectContaining({ type: 'file', name: 'report.pdf' })],
+			});
 		});
 
 		it('returns FILE_NOT_FOUND when the thread cannot read a file', async () => {
@@ -2154,7 +2158,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for too many files', async () => {
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for more files than one action sends', async () => {
 			const { executor, descriptor, attachmentService } = buildExecutor();
 
 			const result = await executor.execute({
@@ -2163,7 +2167,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				input: {
 					userId: 'U123',
 					message: { text: 'Charts' },
-					fileIds: Array.from({ length: 11 }, (_, index) => `file-${index}`),
+					fileIds: Array.from({ length: 31 }, (_, index) => `file-${index}`),
 				},
 				awaitResponse: false,
 				fileScope,
@@ -2171,7 +2175,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 
 			expect(result).toEqual({
 				ok: false,
-				error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED', message: expect.stringContaining('10 files') },
+				error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED', message: expect.stringContaining('30 files') },
 			});
 			expect(attachmentService.getReadable).not.toHaveBeenCalled();
 		});
