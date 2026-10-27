@@ -1600,6 +1600,8 @@ onBeforeUnmount(() => {
 					v-if="pendingApproval"
 					:key="pendingApproval.toolCallId"
 					:input="pendingApproval.input"
+					:agent-name="agentConfig?.name"
+					:tools="agentConfig?.tools"
 					@submit="
 						resume({
 							runId: pendingApproval.runId,
@@ -1620,6 +1622,8 @@ onBeforeUnmount(() => {
 					}}</N8nText>
 					<ApprovalCard
 						:input="backgroundApproval.input"
+						:agent-name="agentConfig?.name"
+						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>

@@ -343,6 +343,7 @@ async function onIncreaseBudget(payload: {
 				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
 				:agent-name="thread?.agentName"
 				:personalisation="localConfig?.personalisation"
+				:tools="localConfig?.tools"
 				@loaded="onPanelLoaded"
 			/>
 		</div>

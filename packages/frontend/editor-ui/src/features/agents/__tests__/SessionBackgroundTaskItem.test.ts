@@ -1,9 +1,8 @@
+import { i18nInstance } from '@n8n/i18n';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it } from 'vitest';
-import { createMemoryHistory, createRouter } from 'vue-router';
-import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM, OPEN_PREVIEW_PARAM } from '../constants';
-import type { AgentBackgroundJobDto } from '@n8n/api-types';
-import { N8nIcon, N8nSpinner } from '@n8n/design-system';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AgentBackgroundJobDto, AgentChatResumeDto } from '@n8n/api-types';
+import { N8nApprovalCard, N8nIcon, N8nSpinner } from '@n8n/design-system';
 import SessionBackgroundTaskItem from '../components/timeline-items/SessionBackgroundTaskItem.vue';
 import { backgroundTasksToTimelineItems } from '../utils/background-task-timeline';
 import { timelineItemSearchText } from '../session-timeline.utils';
@@ -19,82 +18,130 @@ const task: AgentBackgroundJobDto = {
 enableAutoUnmount(afterEach);
 
 describe('SessionBackgroundTaskItem', () => {
-	it('opens Preview on the parent session to review approval', async () => {
-		const router = createRouter({
-			history: createMemoryHistory(),
-			routes: [
-				{ path: '/', component: { template: '<div />' } },
-				{
-					path: '/projects/:projectId/agents/:agentId',
-					name: AGENT_BUILDER_VIEW,
-					component: { template: '<div />' },
+	const suspendedTask: AgentBackgroundJobDto = {
+		...task,
+		status: 'suspended',
+		approval: {
+			runId: 'background-job-job-1',
+			toolCallId: 'gate-1',
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'send_message',
+				displayName: 'Send message',
+				args: { channel: '#updates', message: 'The report is ready.' },
+			},
+		},
+	};
+
+	function mountApproval(job = suspendedTask) {
+		const respondToApproval = vi
+			.fn<(payload: AgentChatResumeDto) => Promise<void>>()
+			.mockResolvedValue(undefined);
+		const wrapper = mount(SessionBackgroundTaskItem, {
+			global: { plugins: [i18nInstance] },
+			props: {
+				item: backgroundTasksToTimelineItems([job])[0],
+				selected: false,
+				respondToApproval,
+			},
+		});
+		return { wrapper, respondToApproval };
+	}
+
+	it('shows the tool and its inputs inline', () => {
+		const { wrapper } = mountApproval();
+		expect(wrapper.text()).toContain('Send message');
+		expect(wrapper.getComponent(N8nApprovalCard).props('autoFocus')).toBe(false);
+		expect(wrapper.get('[data-test-id="approval-card-args"]').text()).toContain('#updates');
+		expect(wrapper.find('[data-test-id="approval-card-always-allow"]').exists()).toBe(false);
+		expect(wrapper.find('a').exists()).toBe(false);
+	});
+
+	it('shows the agent name in the approval sentence', async () => {
+		const { wrapper } = mountApproval();
+		await wrapper.setProps({ agentName: 'Research agent' });
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain(
+			'Research agent wants to use Send message',
+		);
+	});
+
+	it.each([
+		['allow-once', { approved: true }],
+		['deny', { approved: false }],
+	])('submits %s for the current approval', async (choice, resumeData) => {
+		const { wrapper, respondToApproval } = mountApproval();
+		await wrapper.get(`[data-test-id="approval-card-${choice}"]`).trigger('click');
+		expect(respondToApproval).toHaveBeenCalledWith({
+			runId: 'background-job-job-1',
+			toolCallId: 'gate-1',
+			resumeData,
+		});
+	});
+
+	it('preserves session approval when the backend supports it', async () => {
+		const { wrapper, respondToApproval } = mountApproval({
+			...suspendedTask,
+			approval: {
+				runId: 'background-job-job-1',
+				toolCallId: 'gate-1',
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'send_message',
+					supportsSessionApproval: true,
+					args: {},
 				},
-			],
-		});
-		await router.push('/');
-		const wrapper = mount(SessionBackgroundTaskItem, {
-			props: {
-				item: backgroundTasksToTimelineItems([
-					{
-						...task,
-						status: 'suspended',
-						approval: { runId: 'background-job-job-1', toolCallId: 'gate-1' },
-					},
-				])[0],
-				selected: false,
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				threadId: 'parent-thread',
 			},
-			global: { plugins: [router] },
 		});
-		const link = wrapper.get('[data-test-id="review-background-task-approval"]');
-		expect(link.text()).toBe('Approve');
-		const href = link.attributes('href');
-		expect(href).toBeDefined();
-		if (href === undefined) throw new Error('Approval link must have an href');
-		const destination = router.resolve(href);
-		expect(destination.name).toBe(AGENT_BUILDER_VIEW);
-		expect(destination.params).toEqual({ projectId: 'project-1', agentId: 'agent-1' });
-		expect(destination.query).toEqual({
-			[CONTINUE_SESSION_ID_PARAM]: 'parent-thread',
-			[OPEN_PREVIEW_PARAM]: 'true',
+		await wrapper.get('[data-test-id="approval-card-always-allow"]').trigger('click');
+		expect(respondToApproval).toHaveBeenCalledWith({
+			runId: 'background-job-job-1',
+			toolCallId: 'gate-1',
+			resumeData: { approved: true, scope: 'session' },
 		});
+	});
+
+	it('disables submissions while a response is pending and permits a retry', async () => {
+		const { wrapper, respondToApproval } = mountApproval();
+		await wrapper.setProps({ approvalPending: true });
+		await wrapper.get('[data-test-id="approval-card-allow-once"]').trigger('click');
+		expect(respondToApproval).not.toHaveBeenCalled();
+		await wrapper.setProps({ approvalPending: false });
+		await wrapper.get('[data-test-id="approval-card-allow-once"]').trigger('click');
+		expect(respondToApproval).toHaveBeenCalledOnce();
+	});
+
+	it('removes the card when the job resumes', async () => {
+		const { wrapper } = mountApproval();
 		await wrapper.setProps({ item: backgroundTasksToTimelineItems([task])[0] });
-		expect(wrapper.find('[data-test-id="review-background-task-approval"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-approval-card"]').exists()).toBe(false);
 	});
 
-	it('does not offer approval navigation without parent session context', () => {
+	it('does not show active choices without a response handler', () => {
 		const wrapper = mount(SessionBackgroundTaskItem, {
-			props: {
-				item: backgroundTasksToTimelineItems([
-					{
-						...task,
-						status: 'suspended',
-						approval: { runId: 'background-job-job-1', toolCallId: 'gate-1' },
-					},
-				])[0],
-				selected: false,
-			},
+			global: { plugins: [i18nInstance] },
+			props: { item: backgroundTasksToTimelineItems([suspendedTask])[0], selected: false },
 		});
-		expect(wrapper.find('[data-test-id="review-background-task-approval"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-approval-card"]').exists()).toBe(false);
 	});
 
-	it('does not offer approval navigation for a suspension without an approval', () => {
-		const wrapper = mount(SessionBackgroundTaskItem, {
-			props: {
-				item: backgroundTasksToTimelineItems([{ ...task, status: 'suspended' }])[0],
-				selected: false,
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				threadId: 'parent-thread',
-			},
-		});
-		expect(wrapper.find('[data-test-id="review-background-task-approval"]').exists()).toBe(false);
-	});
+	it.each([
+		{ ...task, status: 'suspended' },
+		{ ...suspendedTask, status: 'completed' },
+		{
+			...suspendedTask,
+			approval: { runId: 'run-1', toolCallId: 'gate-1', suspendPayload: { type: 'question' } },
+		},
+	] satisfies AgentBackgroundJobDto[])(
+		'does not show choices for a job without a live tool approval',
+		(job) => {
+			const { wrapper } = mountApproval(job);
+			expect(wrapper.find('[data-testid="agent-approval-card"]').exists()).toBe(false);
+		},
+	);
 
 	it('shows only the task name and grid spinner while running', () => {
 		const wrapper = mount(SessionBackgroundTaskItem, {
+			global: { plugins: [i18nInstance] },
 			props: { item: backgroundTasksToTimelineItems([task])[0], selected: false },
 		});
 		expect(wrapper.get('button').text()).toBe(task.title);
@@ -113,6 +160,7 @@ describe('SessionBackgroundTaskItem', () => {
 		'shows the current $status state',
 		({ status, label, icon }) => {
 			const wrapper = mount(SessionBackgroundTaskItem, {
+				global: { plugins: [i18nInstance] },
 				props: { item: backgroundTasksToTimelineItems([{ ...task, status }])[0], selected: false },
 			});
 			expect(wrapper.get('button').text()).toBe(`${task.title} • ${label}`);

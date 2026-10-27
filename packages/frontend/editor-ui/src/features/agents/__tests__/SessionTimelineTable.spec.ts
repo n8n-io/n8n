@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount, type VueWrapper } from '@vue/test-utils';
@@ -82,7 +83,7 @@ function mountTable(
 	return mount(SessionTimelineTable, {
 		...(attachTo ? { attachTo } : {}),
 		props,
-		global: { plugins: [makeRouter()] },
+		global: { plugins: [makeRouter(), i18nInstance] },
 	});
 }
 
@@ -91,7 +92,7 @@ describe('SessionTimelineTable', () => {
 		const items = makeItems();
 		const w = mount(SessionTimelineTable, {
 			props: { items, selectedIndex: null, visibleKinds: new Set<string>() },
-			global: { plugins: [makeRouter()], stubs: { SessionTimelineRow: true } },
+			global: { plugins: [makeRouter(), i18nInstance], stubs: { SessionTimelineRow: true } },
 		});
 		const original = w.get('[data-timeline-row-id="event-1"]').element;
 		const task: TimelineItem = {
@@ -106,6 +107,62 @@ describe('SessionTimelineTable', () => {
 			w.findAll('[data-timeline-row-id]').map((row) => row.attributes('data-timeline-row-id')),
 		).toEqual(['event-0', 'background-task-late-task', 'event-1', 'event-2', 'event-3']);
 		w.unmount();
+	});
+
+	it.each([0, 101])('supports inline approvals with %i other rows', async (otherRows) => {
+		const respondToApproval = vi.fn().mockResolvedValue(undefined);
+		const item: TimelineItem = {
+			kind: 'background-task',
+			executionId: 'job-1',
+			timestamp: 0,
+			backgroundTask: {
+				id: 'job-1',
+				title: 'Send update',
+				kind: 'subagent',
+				status: 'suspended',
+				startedAt: '2026-08-03T12:00:00.000Z',
+				approval: {
+					runId: 'run-1',
+					toolCallId: 'gate-1',
+					suspendPayload: { type: 'approval', toolName: 'send_message', args: {} },
+				},
+			},
+		};
+		const items = [
+			item,
+			...Array.from(
+				{ length: otherRows },
+				(_, index): TimelineItem => ({
+					kind: 'user',
+					executionId: `event-${index}`,
+					timestamp: index + 1,
+					content: 'Message',
+				}),
+			),
+		];
+		const wrapper = mountTable({
+			items,
+			selectedIndex: null,
+			visibleKinds: new Set<string>(),
+			respondToApproval,
+			pendingApprovalRunIds: new Set(['run-1']),
+		});
+		try {
+			const choice = wrapper.get('[data-test-id="approval-card-allow-once"]');
+			await choice.trigger('click');
+			expect(respondToApproval).not.toHaveBeenCalled();
+			await wrapper.setProps({ pendingApprovalRunIds: new Set<string>() });
+			await wrapper.get('[role="toolbar"]').trigger('keydown', { key: 'ArrowDown' });
+			await wrapper.get('[data-test-id="approval-card-deny"]').trigger('click');
+			expect(respondToApproval).toHaveBeenCalledWith({
+				runId: 'run-1',
+				toolCallId: 'gate-1',
+				resumeData: { approved: false },
+			});
+			expect(wrapper.emitted('select')).toBeUndefined();
+		} finally {
+			wrapper.unmount();
+		}
 	});
 
 	it('forwards virtual row size changes to the scroller', async () => {
@@ -667,7 +724,7 @@ describe('SessionTimelineTable', () => {
 			return mount(SessionTimelineTable, {
 				props: { items: makeItems(), selectedIndex: null, visibleKinds, noticeIndex: 2 },
 				slots: { notice: '<div data-test-id="notice-content" />' },
-				global: { plugins: [makeRouter()] },
+				global: { plugins: [makeRouter(), i18nInstance] },
 			});
 		}
 

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { Component } from 'vue';
 import { computed } from 'vue';
@@ -13,6 +13,8 @@ import SessionMessageItem from './timeline-items/SessionMessageItem.vue';
 
 const props = defineProps<{
 	item: TimelineItem;
+	respondToApproval?: (payload: AgentChatResumeDto) => Promise<void>;
+	pendingApprovalRunIds?: ReadonlySet<string>;
 	selected: boolean;
 	searchQuery?: string;
 	agentName?: string;
@@ -20,6 +22,7 @@ const props = defineProps<{
 	agentId?: string;
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	tools?: AgentJsonConfig['tools'];
 }>();
 
 const i18n = useI18n();
@@ -50,7 +53,13 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 	};
 
 	if (kind === 'background-task') {
+		const runId = props.item.backgroundTask?.approval?.runId;
 		return {
+			respondToApproval: props.respondToApproval,
+			agentName: props.agentName,
+			tools: props.tools,
+			personalisation: props.personalisation,
+			approvalPending: runId ? props.pendingApprovalRunIds?.has(runId) : false,
 			...baseProps,
 			projectId: props.projectId,
 			agentId: props.agentId,

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { vElementSize } from '@vueuse/components';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
@@ -14,11 +14,14 @@ const VIRTUALIZE_AFTER_ROWS = 100;
 
 const props = defineProps<{
 	items: TimelineItem[];
+	respondToApproval?: (payload: AgentChatResumeDto) => Promise<void>;
+	pendingApprovalRunIds?: ReadonlySet<string>;
 	agentName?: string;
 	projectId?: string;
 	agentId?: string;
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	tools?: AgentJsonConfig['tools'];
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
 	searchQuery?: string;
@@ -287,7 +290,10 @@ onBeforeUnmount(() => {
 							:agent-id="props.agentId"
 							:thread-id="props.threadId"
 							:item="row.item"
+							:respond-to-approval="props.respondToApproval"
+							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
+							:tools="props.tools"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
@@ -333,7 +339,10 @@ onBeforeUnmount(() => {
 							:agent-id="props.agentId"
 							:thread-id="props.threadId"
 							:item="row.item"
+							:respond-to-approval="props.respondToApproval"
+							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
+							:tools="props.tools"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
