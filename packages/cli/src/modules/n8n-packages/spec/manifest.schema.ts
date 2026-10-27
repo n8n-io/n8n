@@ -22,7 +22,7 @@ export const manifestEntrySchema = z.object({
 });
 
 export const workflowManifestEntrySchema = manifestEntrySchema.extend({
-	isArchived: z.boolean().optional(),
+	isArchived: z.boolean().default(false),
 });
 
 type ManifestEntryList = Array<z.infer<typeof manifestEntrySchema>>;

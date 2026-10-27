@@ -268,6 +268,7 @@ export async function buildImportPackageBuffer(
 			id: w.id,
 			name: w.name,
 			target: `workflows/wf-${idx}`,
+			isArchived: w.isArchived,
 		})),
 		...(options.credentials?.length
 			? {
@@ -432,6 +433,7 @@ async function writeEntityPackage(
 						id: workflow.id,
 						name: workflow.name,
 						target,
+						isArchived: workflow.isArchived,
 					})),
 				}
 			: {}),

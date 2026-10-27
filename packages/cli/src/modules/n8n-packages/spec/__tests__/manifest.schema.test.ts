@@ -34,14 +34,12 @@ describe('packageManifestSchema', () => {
 		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
 	});
 
-	it('keeps the archive flag of a workflow entry and accepts an entry without it', () => {
-		const workflows = [
-			{ ...validManifest.workflows[0], isArchived: true },
-			{ id: 'wf-def', name: 'Older package', target: 'workflows/older-def' },
-		];
-		expect(packageManifestSchema.parse({ ...validManifest, workflows }).workflows).toEqual(
-			workflows,
-		);
+	it('keeps the archive flag of a workflow entry and reads an entry without it as active', () => {
+		const archived = { ...validManifest.workflows[0], isArchived: true };
+		const older = { id: 'wf-def', name: 'Older package', target: 'workflows/older-def' };
+		expect(
+			packageManifestSchema.parse({ ...validManifest, workflows: [archived, older] }).workflows,
+		).toEqual([archived, { ...older, isArchived: false }]);
 	});
 
 	it('rejects a manifest with an unsupported packageFormatVersion', () => {

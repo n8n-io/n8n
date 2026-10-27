@@ -382,7 +382,7 @@ export class N8nPackagesService {
 		});
 
 		const agentEntries = agentExportResult?.agentEntries ?? [];
-		const manifest = packageManifestSchema.parse({
+		const written = {
 			packageFormatVersion: FORMAT_VERSION,
 			exportedAt: new Date().toISOString(),
 			sourceN8nVersion: N8N_VERSION,
@@ -402,7 +402,8 @@ export class N8nPackagesService {
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
-		});
+		} satisfies PackageManifest;
+		const manifest = packageManifestSchema.parse(written);
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
@@ -682,8 +683,8 @@ export class N8nPackagesService {
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 
-	private dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
-		const byId = new Map<string, ManifestEntry>();
+	private dedupeManifestEntries<T extends ManifestEntry>(entries: T[]): T[] {
+		const byId = new Map<string, T>();
 		for (const entry of entries) {
 			if (!byId.has(entry.id)) {
 				byId.set(entry.id, entry);

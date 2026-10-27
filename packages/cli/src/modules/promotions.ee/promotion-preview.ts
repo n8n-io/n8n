@@ -132,7 +132,7 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 
 	const add = (
 		collection: keyof typeof RESOURCE_TYPES,
-		entry: ManifestEntry & Partial<WorkflowManifestEntry>,
+		entry: ManifestEntry | WorkflowManifestEntry,
 		key: string,
 	) => {
 		const path = packagePath(collection, entry.target);
@@ -145,7 +145,7 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 			parentKey: containerKeys.get(containerTarget(collection, entry.target)) ?? null,
 			path,
 			blobSha: side.blobByPath.get(path) ?? null,
-			isArchived: entry.isArchived ?? false,
+			isArchived: 'isArchived' in entry && entry.isArchived,
 		});
 	};
 

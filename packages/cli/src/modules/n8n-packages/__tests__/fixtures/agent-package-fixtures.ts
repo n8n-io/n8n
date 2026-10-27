@@ -111,7 +111,12 @@ export function projectAgentsFixture(): AgentPackageFixture {
 			agents,
 			projects: [{ id: 'project_source', name: 'Operations', target: projectTarget }],
 			workflows: [
-				{ id: 'workflow_source', name: 'Lookup', target: `${projectTarget}/workflows/lookup` },
+				{
+					id: 'workflow_source',
+					name: 'Lookup',
+					target: `${projectTarget}/workflows/lookup`,
+					isArchived: false,
+				},
 			],
 		},
 		files: {

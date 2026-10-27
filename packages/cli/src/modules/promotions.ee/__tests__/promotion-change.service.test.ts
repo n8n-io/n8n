@@ -16,8 +16,18 @@ const manifest: PackageManifest = {
 		{ id: 'B', name: 'Beta', target: 'projects/beta-B' },
 	],
 	workflows: [
-		{ id: 'wfA', name: 'Alpha flow', target: 'projects/alpha-A/workflows/alpha-flow-wfA' },
-		{ id: 'wfB', name: 'Beta flow', target: 'projects/beta-B/workflows/beta-flow-wfB' },
+		{
+			id: 'wfA',
+			name: 'Alpha flow',
+			target: 'projects/alpha-A/workflows/alpha-flow-wfA',
+			isArchived: false,
+		},
+		{
+			id: 'wfB',
+			name: 'Beta flow',
+			target: 'projects/beta-B/workflows/beta-flow-wfB',
+			isArchived: false,
+		},
 	],
 	variables: [
 		{ id: 'varA', name: 'API_URL', target: 'projects/alpha-A/variables/api-url-varA' },
