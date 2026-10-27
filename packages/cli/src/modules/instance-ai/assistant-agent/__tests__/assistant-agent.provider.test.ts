@@ -5,7 +5,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentFormattedTurnError } from '@/modules/agents/agent-formatted-turn.error';
 import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
@@ -392,39 +391,15 @@ describe('AssistantAgentProvider', () => {
 				await expect(handle.formatError?.(masked)).resolves.not.toHaveProperty('code');
 			});
 
-			it('shows a credit error from the turn setup with its code', async () => {
-				const { provider, turnEnvironment } = setup();
-				turnEnvironment.create.mockRejectedValue(
-					new QuotaExhaustedStreamError(new Error('Assistant credits exhausted')),
-				);
-
-				const error = await provider.prepareTurn(startTurn()).catch((e: unknown) => e);
-
-				expect(error).toBeInstanceOf(AgentFormattedTurnError);
-				expect(error).toMatchObject({
-					message: QUOTA_EXHAUSTED_USER_MESSAGE,
-					errorCode: 'quota_exhausted',
-				});
-			});
-
-			it('keeps the setup error of a stopped turn as it is', async () => {
-				const { provider, turnEnvironment } = setup();
-				const stopped = new Error('This operation was aborted');
-				turnEnvironment.create.mockRejectedValue(stopped);
-				const controller = new AbortController();
-				controller.abort();
+			it('gives a credit error from the turn setup its text and code', async () => {
+				const { provider } = setup();
 
 				await expect(
-					provider.prepareTurn(startTurn({ abortSignal: controller.signal })),
-				).rejects.toBe(stopped);
-			});
-
-			it('keeps a setup error that already has a client code', async () => {
-				const { provider, turnEnvironment } = setup();
-				const formatted = new AgentFormattedTurnError({ message: 'Busy', code: 'busy' }, null);
-				turnEnvironment.create.mockRejectedValue(formatted);
-
-				await expect(provider.prepareTurn(startTurn())).rejects.toBe(formatted);
+					provider.formatSetupError(
+						user,
+						new QuotaExhaustedStreamError(new Error('Assistant credits exhausted')),
+					),
+				).resolves.toEqual({ message: QUOTA_EXHAUSTED_USER_MESSAGE, code: 'quota_exhausted' });
 			});
 		});
 

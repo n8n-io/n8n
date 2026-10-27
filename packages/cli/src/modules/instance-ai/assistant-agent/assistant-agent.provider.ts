@@ -23,8 +23,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
-import { AgentFormattedTurnError } from '@/modules/agents/agent-formatted-turn.error';
-import { chatErrorCode } from '@/modules/agents/agent-sse-stream';
 import type {
 	SystemAgentProvider,
 	SystemAgentStartTurn,
@@ -141,20 +139,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return parsed.success ? buildResumeData(toConfirmationData(parsed.data)) : resumeData;
 	}
 
-	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {
-		try {
-			return await this.buildTurn(turn);
-		} catch (error) {
-			// Setup fails before the runtime has the error hook of the turn, so format the
-			// error here. A stop and an error that already has a client code stay as they are.
-			if (turn.abortSignal.aborted || chatErrorCode(error) !== undefined) throw error;
-			throw new AgentFormattedTurnError(await this.formatTurnError(turn.user, error), error);
-		}
+	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
+	async formatSetupError(user: User, error: unknown): Promise<FormattedTurnError> {
+		return await this.formatTurnError(user, error);
 	}
 
-	private async buildTurn(
-		turn: SystemAgentTurn<AssistantSandboxLease>,
-	): Promise<SystemAgentTurnHandle> {
+	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {
 		const options = readAssistantTurnOptions(
 			turn.type === 'start'
 				? turn.options
