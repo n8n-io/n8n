@@ -3,6 +3,12 @@ import type { RuleListener } from '@typescript-eslint/utils/ts-eslint';
 
 import { designSystemComponentPath } from './design-system-component-path.js';
 import {
+	allowedElementPlusComponents,
+	elementPlusComponentPath,
+	elementPlusComponents,
+} from './element-plus-components.js';
+import { isPendingRekaImport } from './pending-reka-imports.js';
+import {
 	formatWrappedComponentReplacement,
 	wrappedComponentBans,
 	type WrappedComponentBan,
@@ -66,42 +72,90 @@ const matchesComponentPath = (source: string, segment: string): boolean => {
 	return next === undefined || next === '/';
 };
 
-const matchRekaExport = (name: string, filename: string): CompiledBan | undefined => {
+const pendingElementPlusNames: ReadonlySet<string> = new Set(allowedElementPlusComponents);
+const elementPlusComponentNames: ReadonlySet<string> = new Set(elementPlusComponents);
+
+const elementPlusNameBySegment = elementPlusComponents
+	.map((name) => ({ name, segment: elementPlusComponentPath(name) }))
+	.sort((left, right) => right.segment.length - left.segment.length);
+
+const directElementPlusTemplateNames = new Map<string, string>();
+
+for (const name of elementPlusComponents) {
+	if (pendingElementPlusNames.has(name) || elementPlusByName.has(name)) continue;
+	directElementPlusTemplateNames.set(name, name);
+	directElementPlusTemplateNames.set(`el-${elementPlusComponentPath(name)}`, name);
+}
+
+type ImportDecision =
+	| { kind: 'allow' }
+	| { kind: 'wrapped'; ban: CompiledBan }
+	| { kind: 'direct'; library: 'reka-ui' | 'element-plus'; name: string };
+
+const decideRekaName = (name: string, filename: string): ImportDecision => {
 	for (const entry of rekaPrefixes) {
 		if (!name.startsWith(entry.prefix)) continue;
-		if (entry.ban.allowedPath.test(filename)) return undefined;
-		return entry.ban;
+		if (entry.ban.allowedPath.test(filename)) return { kind: 'allow' };
+		return { kind: 'wrapped', ban: entry.ban };
 	}
-	return undefined;
+
+	if (isPendingRekaImport(name)) return { kind: 'allow' };
+	return { kind: 'direct', library: 'reka-ui', name };
 };
 
-const matchElementPlusName = (name: string, filename: string): CompiledBan | undefined => {
+const decideElementPlusName = (name: string, filename: string): ImportDecision => {
 	const ban = elementPlusByName.get(name);
-	if (ban === undefined || ban.allowedPath.test(filename)) return undefined;
-	return ban;
+	if (ban !== undefined) {
+		if (ban.allowedPath.test(filename)) return { kind: 'allow' };
+		return { kind: 'wrapped', ban };
+	}
+
+	if (pendingElementPlusNames.has(name)) return { kind: 'allow' };
+	if (elementPlusComponentNames.has(name)) return { kind: 'direct', library: 'element-plus', name };
+	return { kind: 'allow' };
 };
 
-const matchElementPlusModule = (source: string, filename: string): CompiledBan | undefined => {
+const decideElementPlusModule = (source: string, filename: string): ImportDecision | undefined => {
 	if (!source.startsWith(`${ELEMENT_PLUS}/`)) return undefined;
 
-	let best: { ban: CompiledBan; length: number } | undefined;
+	let wrapped: { ban: CompiledBan; length: number } | undefined;
 	for (const ban of compiledBans) {
 		if (ban.library !== 'element-plus') continue;
 		for (const segment of ban.componentPaths ?? []) {
 			if (!matchesComponentPath(source, segment)) continue;
-			if (best !== undefined && segment.length <= best.length) continue;
-			best = { ban, length: segment.length };
+			if (wrapped !== undefined && segment.length <= wrapped.length) continue;
+			wrapped = { ban, length: segment.length };
 		}
 	}
 
-	if (best === undefined || best.ban.allowedPath.test(filename)) return undefined;
-	return best.ban;
+	let component: { name: string; length: number } | undefined;
+	for (const entry of elementPlusNameBySegment) {
+		if (!matchesComponentPath(source, entry.segment)) continue;
+		component = { name: entry.name, length: entry.segment.length };
+		break;
+	}
+
+	const wrappedWins =
+		wrapped !== undefined && (component === undefined || wrapped.length >= component.length);
+	if (wrappedWins && wrapped !== undefined) {
+		if (wrapped.ban.allowedPath.test(filename)) return { kind: 'allow' };
+		return { kind: 'wrapped', ban: wrapped.ban };
+	}
+
+	if (component === undefined) return undefined;
+	return decideElementPlusName(component.name, filename);
 };
 
-const matchTemplateName = (name: string, filename: string): CompiledBan | undefined => {
+const decideTemplateName = (name: string, filename: string): ImportDecision | undefined => {
 	const ban = elementPlusByTemplateName.get(name);
-	if (ban === undefined || ban.allowedPath.test(filename)) return undefined;
-	return ban;
+	if (ban !== undefined) {
+		if (ban.allowedPath.test(filename)) return { kind: 'allow' };
+		return { kind: 'wrapped', ban };
+	}
+
+	const component = directElementPlusTemplateNames.get(name);
+	if (component === undefined) return undefined;
+	return { kind: 'direct', library: 'element-plus', name: component };
 };
 
 export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.withoutDocs({
@@ -109,26 +163,48 @@ export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.witho
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow direct use of Reka UI and Element Plus primitives that a design-system component already wraps.',
+				'Disallow a direct Reka UI or Element Plus primitive import. A primitive that is not migrated yet stays on the allowlist.',
 		},
 		messages: {
 			noDirectWrappedComponentImport:
 				'Do not use `{{name}}` from `{{library}}`. Use {{replacement}} from `@n8n/design-system` instead.',
+			noDirectPrimitiveImport:
+				'Do not import `{{name}}` from `{{library}}` directly. Add a reusable component in `@n8n/design-system` and use that component.',
 		},
 		schema: [],
 	},
 	defaultOptions: [],
 	create(context) {
-		const report = (node: TSESTree.Node, ban: CompiledBan, name: string) => {
+		const report = (node: TSESTree.Node, decision: ImportDecision, fallbackName: string) => {
+			if (decision.kind === 'allow') return;
+			if (decision.kind === 'wrapped') {
+				context.report({
+					node,
+					messageId: 'noDirectWrappedComponentImport',
+					data: {
+						name: fallbackName,
+						library: decision.ban.library,
+						replacement: formatWrappedComponentReplacement(decision.ban.replacement),
+					},
+				});
+				return;
+			}
+
 			context.report({
 				node,
-				messageId: 'noDirectWrappedComponentImport',
-				data: {
-					name,
-					library: ban.library,
-					replacement: formatWrappedComponentReplacement(ban.replacement),
-				},
+				messageId: 'noDirectPrimitiveImport',
+				data: { name: decision.name, library: decision.library },
 			});
+		};
+
+		const reportNamed = (node: TSESTree.Node, source: string, name: string) => {
+			const decision =
+				source === REKA_UI
+					? decideRekaName(name, context.filename)
+					: source === ELEMENT_PLUS || source.startsWith(`${ELEMENT_PLUS}/`)
+						? decideElementPlusName(name, context.filename)
+						: undefined;
+			if (decision !== undefined) report(node, decision, name);
 		};
 
 		// A deep component path names one primitive, so every import and re-export form is reported.
@@ -136,48 +212,39 @@ export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.witho
 		const scriptVisitor: RuleListener = {
 			ImportDeclaration(node) {
 				const source = node.source.value;
-				const moduleBan = matchElementPlusModule(source, context.filename);
-				if (moduleBan !== undefined) {
-					report(node, moduleBan, source);
+				const moduleDecision = decideElementPlusModule(source, context.filename);
+				if (moduleDecision?.kind === 'wrapped' || moduleDecision?.kind === 'direct') {
+					report(node, moduleDecision, source);
 					return;
 				}
 
+				if (source !== REKA_UI && source !== ELEMENT_PLUS && moduleDecision === undefined) return;
+
 				for (const specifier of node.specifiers) {
 					if (specifier.type !== TSESTree.AST_NODE_TYPES.ImportSpecifier) continue;
-					const name = getModuleName(specifier.imported);
-					const ban =
-						source === REKA_UI
-							? matchRekaExport(name, context.filename)
-							: source === ELEMENT_PLUS
-								? matchElementPlusName(name, context.filename)
-								: undefined;
-					if (ban !== undefined) report(specifier, ban, name);
+					reportNamed(specifier, source, getModuleName(specifier.imported));
 				}
 			},
 			ExportNamedDeclaration(node) {
 				if (!node.source) return;
 				const source = node.source.value;
-				const moduleBan = matchElementPlusModule(source, context.filename);
-				if (moduleBan !== undefined) {
-					report(node, moduleBan, source);
+				const moduleDecision = decideElementPlusModule(source, context.filename);
+				if (moduleDecision?.kind === 'wrapped' || moduleDecision?.kind === 'direct') {
+					report(node, moduleDecision, source);
 					return;
 				}
 
+				if (source !== REKA_UI && source !== ELEMENT_PLUS && moduleDecision === undefined) return;
+
 				for (const specifier of node.specifiers) {
-					const name = getModuleName(specifier.local);
-					const ban =
-						source === REKA_UI
-							? matchRekaExport(name, context.filename)
-							: source === ELEMENT_PLUS
-								? matchElementPlusName(name, context.filename)
-								: undefined;
-					if (ban !== undefined) report(specifier, ban, name);
+					reportNamed(specifier, source, getModuleName(specifier.local));
 				}
 			},
 			ExportAllDeclaration(node) {
-				const source = node.source.value;
-				const moduleBan = matchElementPlusModule(source, context.filename);
-				if (moduleBan !== undefined) report(node, moduleBan, source);
+				const decision = decideElementPlusModule(node.source.value, context.filename);
+				if (decision?.kind === 'wrapped' || decision?.kind === 'direct') {
+					report(node, decision, node.source.value);
+				}
 			},
 		};
 
@@ -194,8 +261,8 @@ export const NoDirectWrappedComponentImportsRule = ESLintUtils.RuleCreator.witho
 				VElement(node) {
 					const name = node.rawName;
 					if (name === undefined) return;
-					const ban = matchTemplateName(name, context.filename);
-					if (ban !== undefined) report(node, ban, name);
+					const decision = decideTemplateName(name, context.filename);
+					if (decision !== undefined) report(node, decision, name);
 				},
 			},
 			scriptVisitor,

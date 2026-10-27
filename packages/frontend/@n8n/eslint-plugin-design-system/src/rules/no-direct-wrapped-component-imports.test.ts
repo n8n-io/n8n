@@ -82,12 +82,20 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 			})),
 		),
 		{
-			name: 'unwrapped reka-ui primitive',
-			code: "import { CollapsibleRoot } from 'reka-ui';",
+			name: 'a reka primitive that is not migrated yet',
+			code: "import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';",
 		},
 		{
-			name: 'unwrapped element-plus component',
+			name: 'an element-plus component that is not migrated yet',
 			code: "import { ElDialog } from 'element-plus';",
+		},
+		{
+			name: 'an element-plus service stays available',
+			code: "import { ElNotification } from 'element-plus';",
+		},
+		{
+			name: 'an element-plus type stays available',
+			code: "import type { ElTooltipProps, UploadFile } from 'element-plus';",
 		},
 		{
 			name: 'same export name from an unrelated package',
@@ -113,7 +121,6 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 			filename: wrapperFile('components/N8nDialog', 'Dialog.vue'),
 		},
 		// Package-root namespace, star, and default forms do not name one primitive.
-		// Both libraries still export unwrapped components, so those forms stay out of scope.
 		{ name: 'namespace import bypass', code: "import * as Reka from 'reka-ui';" },
 		{ name: 'star re-export bypass', code: "export * from 'reka-ui';" },
 		{ name: 'namespace re-export bypass', code: "export * as Reka from 'reka-ui';" },
@@ -134,8 +141,8 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 			filename: wrapperFile('components/N8nNavigationDropdown', 'menu.ts'),
 		},
 		{
-			name: 'a longer element-plus path segment does not match',
-			code: "import Transition from 'element-plus/es/components/menu-item';",
+			name: 'a pending element-plus deep path',
+			code: "import Dialog from 'element-plus/es/components/dialog';",
 		},
 	],
 	invalid: [
@@ -252,6 +259,51 @@ ruleTester.run('no-direct-wrapped-component-imports', NoDirectWrappedComponentIm
 			name: 'element-plus named re-export',
 			code: "export { ElMenu } from 'element-plus';",
 			errors: [error('ElMenu', menuBan)],
+		},
+		{
+			name: 'a reka primitive that is not migrated and not allowlisted',
+			code: "import { SeparatorRoot } from 'reka-ui';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'SeparatorRoot', library: 'reka-ui' },
+				},
+			],
+		},
+		{
+			name: 'an element-plus component that is not migrated and not allowlisted',
+			code: "import { ElButton } from 'element-plus';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElButton', library: 'element-plus' },
+				},
+			],
+		},
+		{
+			name: 'only the unlisted specifier is flagged next to a pending import',
+			code: "import { ElDialog, ElButton } from 'element-plus';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElButton', library: 'element-plus' },
+				},
+			],
+		},
+		{
+			name: 'deep path of an unlisted element-plus component',
+			code: "import Button from 'element-plus/es/components/button';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElButton', library: 'element-plus' },
+				},
+			],
+		},
+		{
+			name: 'menu-item deep path uses the menu ban',
+			code: "import Item from 'element-plus/es/components/menu-item';",
+			errors: [error('element-plus/es/components/menu-item', menuBan)],
 		},
 	],
 });

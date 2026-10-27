@@ -136,7 +136,7 @@ export const wrappedComponentBans = [
 	{
 		library: 'element-plus',
 		names: ['ElMenu', 'ElSubMenu', 'ElMenuItem'],
-		componentPaths: ['menu', 'sub-menu'],
+		componentPaths: ['menu', 'menu-item', 'sub-menu'],
 		templateNames: ['el-menu', 'ElMenu', 'el-sub-menu', 'ElSubMenu', 'el-menu-item', 'ElMenuItem'],
 		allowedFolders: ['components/N8nNavigationDropdown'],
 		replacement: 'N8nNavigationDropdown',

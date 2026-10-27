@@ -10,17 +10,20 @@ Use ESLint rules to enforce Design System constraints that cannot be reliably en
 
 ESLint is appropriate when a constraint spans component composition or usage context and cannot be expressed through TypeScript or the component API.
 
-`configs.recommended` enables every rule for Vue files. `configs.componentImports` enables the import ban for TypeScript files. `@n8n/eslint-config/frontend` includes both.
+`configs.recommended` enables every rule for Vue files. `configs.componentImports` enables the import bans for TypeScript files. `@n8n/eslint-config/frontend` includes both.
 
 ## Rules
 
 ### `no-direct-wrapped-component-imports`
 
-Disallow use of Reka UI and Element Plus primitives that a design-system component already wraps.
+Disallow a direct import of a Reka UI or Element Plus primitive. Callers use the design-system component.
 
-Callers use the design-system component. The wrapper folder may still import the primitive. Add a row to `src/rules/wrapped-component-bans.ts` when a new wrapper replaces a primitive.
+Two lists select the exceptions:
 
-The rule checks script imports and re-exports. In Vue files it also checks Element Plus template tags. A deep Element Plus component path is reported for every import form and every re-export form. Namespace imports, star re-exports, and default imports of a package root (`reka-ui` or `element-plus`) stay out of scope, because both libraries still export primitives that are not wrapped yet.
+- `src/rules/pending-reka-imports.ts` and `allowedElementPlusComponents` in `src/rules/element-plus-components.ts` name primitives that are not migrated yet. Those imports are allowed in any file. Remove a name when that primitive is migrated.
+- `src/rules/wrapped-component-bans.ts` names a migrated primitive. Only the wrapper folder may import it. Add a row when a new wrapper replaces a primitive.
+
+The rule checks named script imports and named re-exports. In Vue files it also checks Element Plus template tags. A deep Element Plus component path is reported for every import form and every re-export form. Namespace imports, star re-exports, and default imports of a package root (`reka-ui` or `element-plus`) stay out of scope, because those forms do not name one primitive.
 
 ### `require-teleported-tooltip-in-dropdown`
 
