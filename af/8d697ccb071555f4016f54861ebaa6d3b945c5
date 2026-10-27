@@ -1,55 +1,43 @@
-packages/cli/src/modules/agents/integrations/resolve-imported-channels.ts
-  s_952e2dc69e6ab3::t_b2f8d41b2ef5e0 24-28,36-38,48-49
-  s_952e2dc69e6ab3::t_5d0f5a5533d4bc 47
-  s_952e2dc69e6ab3::t_db6baefa122f10 1-23,29-35,39-46,50-53
 packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
-  s_952e2dc69e6ab3::t_caaa8c692f1670 228-229
-  s_952e2dc69e6ab3::t_fdfae73708b114 1-2,15-18,47,181,187-190,242-248,275-282
-  s_952e2dc69e6ab3::t_d3b068f429e407 99-103,274
-  s_952e2dc69e6ab3::t_236462a21d9f14 283-284
-  s_952e2dc69e6ab3::t_25ef453ead4810 249-250
-packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
-  s_952e2dc69e6ab3::t_e69dfda8880640 2,568
-packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
-  s_952e2dc69e6ab3::t_f10b4f561a41e0 338-341
-  s_952e2dc69e6ab3::t_325618a1633464 275-283,316-326
-packages/@n8n/api-types/src/dto/index.ts
-  s_952e2dc69e6ab3::t_9b01fb784d8ec7 561
-packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
-  s_952e2dc69e6ab3::t_755e5b081c78cb 13-19,25,34,42,85-111,128-132
-packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
-  s_952e2dc69e6ab3::t_8bafb700159dcc 744-745
-  s_952e2dc69e6ab3::t_667dcfd680af1b 4,18,696-699,725,729-743
-  s_952e2dc69e6ab3::t_08465b551eaa2c 726-728
-packages/@n8n/cli/src/__tests__/package-import.test.ts
-  s_952e2dc69e6ab3::t_b67d04405d9e57 136,147-164,168-169
-packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
-  s_952e2dc69e6ab3::t_e69dfda8880640 1,32,40
-  s_952e2dc69e6ab3::t_64ce3676ba271d 5,15
-packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
-  s_952e2dc69e6ab3::t_9322dedf4e2907 37-38
+  s_952e2dc69e6ab3::t_603e0aab550d2e 1-2,15-18,47,99-103,181,187-190,228-229,242-250,274-282
+  s_952e2dc69e6ab3::t_cdf4d12e89c4c6 283-284
 packages/cli/src/modules/n8n-packages/entities/publishing.ts
-  s_952e2dc69e6ab3::t_e69dfda8880640 13-14
-packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
-  s_952e2dc69e6ab3::t_d7a9d5b16cebc5 18-27,103-112
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_952e2dc69e6ab3::t_2ca0d9c4e1068a 784,789-790,792-800,802-804,807,811-813
-  s_952e2dc69e6ab3::t_36c6164ae7afbf 419-427
-  s_952e2dc69e6ab3::t_1626b1776818a8 396-409
-  s_952e2dc69e6ab3::t_08465b551eaa2c 815
-  s_952e2dc69e6ab3::t_469127bcf0ad1c 748-783,785-788,791,801,805-806,808-810,814,816-875
-packages/cli/src/modules/agents/integrations/__tests__/resolve-imported-channels.test.ts
-  s_952e2dc69e6ab3::t_b3340201a6bca8 1-79
-packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
-  s_952e2dc69e6ab3::t_d3b068f429e407 305
-  s_952e2dc69e6ab3::t_322c1813cd3fc3 306
-packages/@n8n/cli/docs/commands/package.md
-  s_952e2dc69e6ab3::t_072fe692f3bd63 132,136-149
-  s_952e2dc69e6ab3::t_3af10fb9167b67 150
+  s_952e2dc69e6ab3::t_603e0aab550d2e 13-14
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 136,147-164,168-169
 packages/cli/src/modules/n8n-packages/engine/import-result.ts
-  s_952e2dc69e6ab3::t_e69dfda8880640 154,164
+  s_952e2dc69e6ab3::t_603e0aab550d2e 154,164
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 2,568
+packages/cli/src/modules/agents/integrations/__tests__/resolve-imported-channels.test.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 1-79
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 305-306
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 396-409,419-427,748-872
+  s_952e2dc69e6ab3::t_4c03bdc3ac72f2 873-875
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 275-283,316-326,338-341
+packages/@n8n/api-types/src/dto/index.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 561
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 37-38
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 18-27,103-112
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 13-19,25,34,42,85-111,128-132
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 1,5,15,32,40
+packages/@n8n/cli/docs/commands/package.md
+  s_952e2dc69e6ab3::t_603e0aab550d2e 132,136-149
+  s_952e2dc69e6ab3::t_dbdde8f88ed346 150
+packages/cli/src/modules/agents/integrations/resolve-imported-channels.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 1-53
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_952e2dc69e6ab3::t_603e0aab550d2e 4,18,696-699,725-743
+  s_952e2dc69e6ab3::t_9b870b64cc977c 744-745
 packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
-  s_952e2dc69e6ab3::t_8a5689e92b4aa0 49,59,67,72-114,123,181,191,199
+  s_952e2dc69e6ab3::t_1054ba0f26e9f1 49,59,67,72-114,123,181,191,199
 ---
 {
   "schema_version": "authorship/3.0.0",
