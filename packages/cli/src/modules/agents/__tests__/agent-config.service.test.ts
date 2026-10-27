@@ -42,7 +42,8 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import type { AgentPolicyService } from '../agent-policy.service';
+import type { CompleteAgentDefinition } from '../utils/agent-definition';
+import { AgentPolicyService } from '../agent-policy.service';
 import {
 	composeStoredJsonConfig,
 	createAgentSkillRefsService,
@@ -120,19 +121,21 @@ function makeService() {
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	Container.set(AgentPolicyService, agentPolicyService);
+	const configPreparation = new AgentConfigPreparationService(
+		credentialsService,
+		workflowRepository,
+		nodeToolAiGatewayService,
+		agentRepository,
+		agentTaskRepository,
+		skillRefs,
+		agentPolicyService,
+	);
 	const service = new AgentConfigService(
 		mockLogger(),
 		agentRepository,
 		agentTaskRepository,
-		new AgentConfigPreparationService(
-			credentialsService,
-			workflowRepository,
-			nodeToolAiGatewayService,
-			agentRepository,
-			agentTaskRepository,
-			skillRefs,
-			agentPolicyService,
-		),
+		configPreparation,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		transactionRunner,
 		new AgentSaveCompletionService(
@@ -151,6 +154,7 @@ function makeService() {
 
 	return {
 		service,
+		configPreparation,
 		chatIntegrationRegistry,
 		agentPolicyService,
 		agentRepository,
@@ -183,6 +187,81 @@ describe('AgentConfigService', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('prepareDefinition', () => {
+		it('reconciles enabled tools with the accessible credential types before a complete save', async () => {
+			const { configPreparation, credentialsService, nodeToolAiGatewayService } = makeService();
+			const enabledTool = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: 'n8n-nodes-base.slackTool',
+					nodeTypeVersion: 2,
+					nodeParameters: {},
+					credentials: {
+						slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+					},
+				},
+			} as const;
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: {
+					...baseConfig,
+					tools: [enabledTool, { ...enabledTool, name: 'Disabled Slack', enabled: false }],
+				},
+				skills: {},
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+			mockAccessibleCredentials(credentialsService, ['model-credential']);
+
+			await configPreparation.prepareDefinition(agentId, definition, projectId, user);
+
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith(
+				[enabledTool],
+				new Set(['openAiApi']),
+			);
+		});
+
+		it('rejects an inaccessible explicit node credential before gateway reconciliation', async () => {
+			const { configPreparation, nodeToolAiGatewayService } = makeService();
+			const inaccessibleCredential = {
+				id: 'missing-credential',
+				name: 'Slack',
+				__aiGatewayManaged: true,
+			};
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: {
+					...baseConfig,
+					tools: [
+						{
+							type: 'node',
+							name: 'Slack',
+							node: {
+								nodeType: 'n8n-nodes-base.slackTool',
+								nodeTypeVersion: 2,
+								nodeParameters: {},
+								credentials: {
+									slackApi: inaccessibleCredential,
+								},
+							},
+						},
+					],
+				},
+				skills: {},
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+
+			await expect(
+				configPreparation.prepareDefinition(agentId, definition, projectId, user),
+			).rejects.toThrow('Credential "missing-credential"');
+			expect(nodeToolAiGatewayService.assignManagedCredentials).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('validateConfig', () => {
