@@ -8,8 +8,10 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
   s_8056da22c66cb7::t_606ac862d77b72 2169
   s_8056da22c66cb7::t_5e1ec0f3c97d86 5
   s_8056da22c66cb7::t_410f4bb6c22c6d 9,1927-1928,1931-1933,1935-1940,1956-1959,1967-1983,1985-1987,2008,2011-2013,2019-2024,2026,2030,2190,2289-2292,2512
+  s_8056da22c66cb7::t_0f2144e04057cd 1934,2537
 packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
   s_8056da22c66cb7::t_f9de163639bc41 651
+  s_8056da22c66cb7::t_2035cfd4ad740e 527,556,675
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
   s_8056da22c66cb7::t_09a2e1aa4fd4b0 21,39,100,148,158
 packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
@@ -26,10 +28,13 @@ packages/cli/src/modules/promotions.ee/apply-preview.ts
   s_8056da22c66cb7::t_8bc15bf9d7dbcf 141
   s_8056da22c66cb7::t_1a900d66b93ca1 197-203
   s_8056da22c66cb7::t_c20b78234a8002 204
+  s_8056da22c66cb7::t_b6694272f5865d 209-213
+  s_8056da22c66cb7::t_152d41e91ca5aa 205
 packages/cli/src/modules/promotions.ee/apply-preview.service.ts
   s_8056da22c66cb7::t_b8f61ac3e56aeb 192,196
   s_8056da22c66cb7::t_1a900d66b93ca1 195,202
   s_8056da22c66cb7::t_6d7c031af80bdf 206-207
+  s_8056da22c66cb7::t_5b365862439b89 193-194,199
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
   s_8056da22c66cb7::t_09a2e1aa4fd4b0 17,42,176,189-193,195,302
 packages/cli/src/modules/promotions.ee/promotions.service.ts
@@ -43,12 +48,17 @@ packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_8056da22c66cb7::t_793799f55884e1 29
   s_8056da22c66cb7::t_1a900d66b93ca1 661-664,672-676,788-796,801-803,805-810,812-818,821,830-835,847,858,881-883,885-886,888,891-893,895-896,902-920,922-946,949,952-955,957-961,963,981,989,994,1027,1035
   s_8056da22c66cb7::t_a9377703947a34 1553
+  s_8056da22c66cb7::t_5e41c78236bc87 889-890
+  s_8056da22c66cb7::t_8a006e7b617c04 921
+  s_8056da22c66cb7::t_5b365862439b89 1004
 packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
   s_8056da22c66cb7::t_1a900d66b93ca1 157-166,179,188,210-211
 packages/cli/src/modules/promotions.ee/__tests__/cross-project-moves.test.ts
   s_8056da22c66cb7::t_dabee03b068121 82,91-92
 packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
   s_8056da22c66cb7::t_2594b6b4f9b836 1014-1046,1047-1048
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_8056da22c66cb7::t_58563dfff1232a 63,68
 ---
 {
   "schema_version": "authorship/3.0.0",
