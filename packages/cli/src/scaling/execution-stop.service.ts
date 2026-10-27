@@ -36,8 +36,8 @@ export class ExecutionStopService {
 
 	/**
 	 * Broadcast a request to stop an execution to all workers. Workers that are not running the
-	 * execution ignore it. Called from the main process when an execution cannot be reached
-	 * locally (e.g. a subworkflow running on a worker).
+	 * execution ignore it. The main calls this for every stop in queue mode, because it may not
+	 * hold the Bull job handle for the execution.
 	 */
 	async requestStop(executionId: string) {
 		if (this.instanceSettings.instanceType !== 'main') return;
