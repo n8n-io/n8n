@@ -54,24 +54,24 @@ defineSlots<{
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/breakpoints';
-
 .message {
+	container: chat-message / inline-size;
 	display: block;
 	width: 100%;
 }
 
 .userBubble,
 .assistantContent {
-	--n8n-markdown--font-size--base: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--chat--font-size);
 	font-size: var(--n8n-markdown--font-size--base);
 }
 
-/** Use larger text only on large desktop screens. */
-@include breakpoints.breakpoint('xl-only') {
+/** Use the message width so narrow panels keep compact text. */
+@container chat-message (min-width: 48rem) {
 	.userBubble,
 	.assistantContent {
-		--n8n-markdown--font-size--base: var(--font-size--md);
+		--chat--font-size: var(--chat--font-size--wide);
+		--n8n-markdown--font-size--base: var(--chat--font-size);
 	}
 }
 
