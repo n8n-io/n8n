@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
@@ -8,9 +9,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
-const { panelProps, sendMessageFromOutside } = vi.hoisted(() => ({
+const { panelProps, sendMessageFromOutside, telemetryTrack } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	sendMessageFromOutside: vi.fn(),
+	telemetryTrack: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
@@ -32,6 +38,7 @@ describe('AssistantAgentThreadView', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		sendMessageFromOutside.mockReset();
+		telemetryTrack.mockReset();
 		panelProps.current = {};
 	});
 
@@ -76,5 +83,42 @@ describe('AssistantAgentThreadView', () => {
 		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
 		onMessageAccepted();
 		expect(clientContext()).not.toHaveProperty('attachments');
+		expect(telemetryTrack).not.toHaveBeenCalled();
+	});
+
+	it('tracks the attached nodes of the first message once the server accepts it', async () => {
+		stashPendingAssistantAgentMessage({
+			threadId: 'thread-3',
+			text: 'Fix these nodes',
+			files: [],
+			references: [
+				{
+					type: 'nodes',
+					workflowId: 'wf-1',
+					sets: [
+						{
+							nodes: [
+								{ id: 'n1', name: 'Webhook' },
+								{ id: 'n2', name: 'Slack' },
+							],
+						},
+					],
+				},
+			],
+		});
+
+		renderView({ props: { threadId: 'thread-3', projectId: 'project-1' } });
+		await flushPromises();
+		expect(telemetryTrack).not.toHaveBeenCalled();
+
+		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
+		onMessageAccepted();
+		onMessageAccepted();
+
+		expect(telemetryTrack).toHaveBeenCalledTimes(1);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES,
+			{ node_count: 2 },
+		);
 	});
 });

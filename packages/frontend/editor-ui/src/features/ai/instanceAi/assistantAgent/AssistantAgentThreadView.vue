@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import type { AgentJsonConfig, InstanceAiAttachment } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import { ASSISTANT_AGENT_ID, consumePendingAssistantAgentMessage } from './assistantAgentThreads';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
+const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
@@ -40,6 +44,13 @@ function clientContext(): Record<string, unknown> {
 
 /** The references go with the first message, so a retry of a refused send keeps them. */
 function onMessageAccepted(): void {
+	// Tracked on acceptance, like the current runtime, so refused sends don't inflate the count.
+	const nodeCount = countAttachedNodes(pendingReferences);
+	if (nodeCount > 0) {
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+			node_count: nodeCount,
+		});
+	}
 	pendingReferences = [];
 }
 
