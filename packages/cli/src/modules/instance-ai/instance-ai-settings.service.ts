@@ -1679,10 +1679,17 @@ export class InstanceAiSettingsService {
 	}
 
 	/** Optional custom/* knobs from env override → known-model map → omit. */
-	private customModelOptionsFor(modelId: string): { supportsStructuredOutputs?: boolean } {
+	private customModelOptionsFor(modelId: string): {
+		supportsStructuredOutputs?: boolean;
+		includeUsage?: boolean;
+	} {
 		if (!modelId.startsWith('custom/')) return {};
-		const { supportsStructuredOutputs } = resolveCustomModelExperimentDefaultsFromEnv(modelId);
-		return supportsStructuredOutputs !== undefined ? { supportsStructuredOutputs } : {};
+		const { supportsStructuredOutputs, includeUsage } =
+			resolveCustomModelExperimentDefaultsFromEnv(modelId);
+		return {
+			...(supportsStructuredOutputs !== undefined ? { supportsStructuredOutputs } : {}),
+			...(includeUsage !== undefined ? { includeUsage } : {}),
+		};
 	}
 
 	private extractModelName(model: string): string {

@@ -22,6 +22,9 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	custom: apiKeyCreds.extend({
 		baseURL: z.string().min(1, 'baseURL is required'),
 		supportsStructuredOutputs: z.boolean().optional(),
+		// Sends stream_options.include_usage so streamed responses report token counts.
+		// Opt-in: strict OpenAI-compatible servers can reject the unknown field.
+		includeUsage: z.boolean().optional(),
 	}),
 	anthropic: apiKeyCreds,
 	/**
