@@ -17,10 +17,10 @@ describe('useChatMarkdownOptions', () => {
 		expect(html).not.toContain('data-markdown-token-idx');
 	});
 
-	it('stores code content only when actions are enabled', () => {
-		const { html, markdown } = render('```\ntext\n```', { codeActions: true });
-		expect(html).toContain('data-markdown-token-idx');
-		expect([...markdown.codeBlockContents.value!.values()]).toEqual(['text']);
+	it('leaves code fences escaped for the code block renderer', () => {
+		const { html } = render('```html\n<div>text</div>\n```');
+		expect(html).toContain('&lt;div&gt;text&lt;/div&gt;');
+		expect(html).not.toContain('n8n-markdown-code-block-actions');
 	});
 
 	it('renders footnote pills only when selected', () => {

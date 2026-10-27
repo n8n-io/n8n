@@ -1,22 +1,11 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
-import { type HLJSApi } from 'highlight.js';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type MarkdownIt from 'markdown-it';
 import markdownItKatex from '@vscode/markdown-it-katex';
 import markdownItFootnote from 'markdown-it-footnote';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import 'katex/dist/katex.min.css';
 import type StateCore from 'markdown-it/lib/rules_core/state_core';
-import type * as LanguageModules from './languageModules';
-
-let hljsInstance: HLJSApi | undefined;
-let asyncImport:
-	| {
-			status: 'inProgress';
-			promise: Promise<[HLJSApi, typeof LanguageModules]>;
-	  }
-	| { status: 'uninitialized' }
-	| { status: 'done' } = { status: 'uninitialized' };
 
 type FootnoteEnv = {
 	footnotes?: { list?: Array<{ label?: string; count?: number; content?: string }> };
@@ -75,73 +64,14 @@ function footnoteContentExtractor(state: StateCore) {
 export interface ChatMarkdownOptions {
 	math?: boolean;
 	footnotes?: 'pill' | 'normal' | false;
-	codeActions?: boolean;
 }
 
 export function useChatMarkdownOptions(
 	config: ChatMarkdownOptions = {},
-	codeBlockActionsClassName = 'n8n-markdown-code-block-actions',
 	tableContainerClassName = 'n8n-markdown-table-container',
 	footnoteRefClassName: string | null = 'n8n-markdown-footnote-ref',
 ) {
-	const forceReRenderKey = ref(0);
-	const codeBlockContents = ref<Map<string, string>>();
-
-	const options = {
-		breaks: true,
-		linkify: true,
-		highlight(str: string, lang: string) {
-			if (!lang) {
-				return '';
-			}
-
-			const normalizedLang = lang.toLowerCase();
-
-			if (hljsInstance?.getLanguage(normalizedLang)) {
-				try {
-					return hljsInstance.highlight(str, { language: normalizedLang }).value;
-				} catch {}
-			}
-
-			void loadLanguageModules();
-
-			return '';
-		},
-	};
-
-	async function loadLanguageModules() {
-		if (asyncImport.status === 'done') {
-			return;
-		}
-
-		if (asyncImport.status === 'inProgress') {
-			await asyncImport.promise;
-			forceReRenderKey.value++;
-			return;
-		}
-
-		try {
-			const promise = Promise.all([
-				import('highlight.js').then(({ default: highlight }) => highlight),
-				import('./languageModules'),
-			]);
-
-			asyncImport = { status: 'inProgress', promise };
-
-			const [hljs, languages] = await promise;
-
-			asyncImport = { status: 'done' };
-			hljsInstance = hljs.newInstance();
-
-			for (const [lang, module] of Object.entries(languages)) {
-				hljsInstance.registerLanguage(lang, module);
-			}
-
-			forceReRenderKey.value++;
-		} catch (error) {
-			console.warn('Failed to load syntax highlighting modules', error);
-		}
-	}
+	const options = { breaks: true, linkify: true };
 
 	const plugins = computed(() => {
 		const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
@@ -158,29 +88,6 @@ export function useChatMarkdownOptions(
 				}
 
 				return defaultLinkOpenRenderer(tokens, idx, options, env, self);
-			};
-		};
-
-		const codeBlockPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-			const defaultFenceRenderer = vueMarkdownItInstance.renderer.rules.fence;
-
-			codeBlockContents.value = new Map();
-
-			vueMarkdownItInstance.renderer.rules.fence = (tokens, idx, options, env, self) => {
-				const defaultRendered =
-					defaultFenceRenderer?.(tokens, idx, options, env, self) ??
-					self.renderToken(tokens, idx, options);
-
-				const content = tokens[idx]?.content.trim();
-
-				if (content) {
-					codeBlockContents.value?.set(String(idx), content);
-				}
-
-				return defaultRendered.replace(
-					'<pre>',
-					`<pre><div data-markdown-token-idx="${idx}" class="${codeBlockActionsClassName}"></div>`,
-				);
 			};
 		};
 
@@ -241,11 +148,10 @@ export function useChatMarkdownOptions(
 		return [
 			linksNewTabPlugin,
 			tablePlugin,
-			...(config.codeActions ? [codeBlockPlugin] : []),
 			...(config.math ? [mathPlugin] : []),
 			...(config.footnotes ? [footnotePlugin] : []),
 		];
 	});
 
-	return { options, forceReRenderKey, plugins, codeBlockContents };
+	return { options, plugins };
 }
