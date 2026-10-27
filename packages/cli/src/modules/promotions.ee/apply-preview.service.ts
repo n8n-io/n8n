@@ -271,9 +271,8 @@ function projectNotOnBranch(projectId: string, instance: InstancePackage): Promo
 			conflicts: [
 				{
 					kind: 'project',
-					code: 'import-blocked',
+					code: 'project-not-on-branch',
 					project: { id: projectId, name },
-					reason: 'project-not-on-branch',
 				},
 			],
 			warnings: [],

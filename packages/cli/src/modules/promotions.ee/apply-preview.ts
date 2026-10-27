@@ -64,6 +64,13 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 		for (const sourceId of scope.credentialPlan.successes.keys()) {
 			changes.set(resourceKey('credential', sourceId), { change: 'unchanged' });
 		}
+		// Apply writes the branch name and expression values to a credential that the project owns.
+		for (const { sourceId, targetName, name } of scope.credentialPlan.updates) {
+			changes.set(resourceKey('credential', sourceId), {
+				change: 'modified',
+				...(targetName !== name ? { previousName: targetName } : {}),
+			});
+		}
 		for (const { reason, sourceId } of scope.credentialPlan.failures) {
 			if (reason === 'access-required' || reason === 'incompatible-usage-scope') {
 				changes.set(resourceKey('credential', sourceId), { change: 'unchanged' });
@@ -100,6 +107,9 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 		}
 
 		const { dataTablePlan } = scope;
+		for (const id of dataTablePlan.matched) {
+			changes.set(resourceKey('dataTable', id), { change: 'unchanged' });
+		}
 		for (const { id } of dataTablePlan.columnAlignments) {
 			changes.set(resourceKey('dataTable', id), { change: 'unchanged' });
 		}

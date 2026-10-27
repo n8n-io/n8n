@@ -272,14 +272,16 @@ function applyOperationRules(
 		return resource;
 	}
 
-	// Apply binds credentials and variables, and never writes them. One that this instance lacks
-	// stays `added`, so the page can ask for it.
-	if ((type === 'credential' || type === 'variable') && change !== 'added') return unchanged();
-	// The import plan decides for projects, folders, tags and data tables. A tag can exist here
-	// under another name or id, so the files of the two sides do not tell. A folder that Apply
-	// moves or renames within its project keeps the change of the comparison.
+	// The import plan decides for projects, folders, tags, data tables and bound credentials. A tag
+	// can exist here under another name or id, so the files of the two sides do not tell. A folder
+	// that Apply moves or renames within its project keeps the change of the comparison.
 	const plannedChange = planned?.get(resource.key);
-	if (!plannedChange) return resource;
+	if (!plannedChange) {
+		// Without a plan entry, Apply does not write a credential or a variable. One that this
+		// instance lacks stays `added`, so the page can ask for it.
+		if ((type === 'credential' || type === 'variable') && change !== 'added') return unchanged();
+		return resource;
+	}
 	if (plannedChange.change === 'unchanged') {
 		return {
 			...unchanged(),
@@ -448,11 +450,15 @@ export function buildPreview({
 	for (const link of dependencies) {
 		if (listed.has(link.resourceKey) && link.included) listed.add(link.workflowKey);
 	}
-	// Promote selects whole containers, so it lists the workflows inside a changed one.
-	if (operation?.direction === 'promote') {
+	// Promote selects whole containers, so it lists the workflows inside a changed one. Apply moves
+	// or renames a folder only together with a selected workflow inside it, so it lists those too.
+	if (operation) {
 		for (const key of [...listed]) {
 			const container = desiredIndex.get(key);
-			if (container?.type !== 'folder' && container?.type !== 'project') continue;
+			const listsInside =
+				container?.type === 'folder' ||
+				(operation.direction === 'promote' && container?.type === 'project');
+			if (!container || !listsInside) continue;
 			for (const workflow of workflowsInside(desiredIndex, container.target))
 				listed.add(workflow.key);
 		}

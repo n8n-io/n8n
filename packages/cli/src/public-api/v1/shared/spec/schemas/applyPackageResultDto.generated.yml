@@ -1501,6 +1501,7 @@ oneOf:
                         - project-conflict
                         - check-not-run
                         - import-blocked
+                        - project-not-on-branch
                     project:
                       type: object
                       properties:

@@ -178,7 +178,11 @@ function conflictTitle(conflict: HardConflict) {
 			.join(', ');
 	}
 	if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
-		return conflict.name ?? conflict.id ?? '';
+		// An import-wide issue, such as a disabled module, names no table or tag.
+		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+		return (
+			conflict.name ?? conflict.id ?? i18n.baseText(`promotions.preview.blockers.type.${type}`)
+		);
 	}
 	return conflict.name;
 }

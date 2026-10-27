@@ -243,9 +243,27 @@ export class PromotionChangeService {
 		for (const { workflowKey } of dependencies) {
 			dependencyCounts.set(workflowKey, (dependencyCounts.get(workflowKey) ?? 0) + 1);
 		}
+		// The package path of a workflow holds its name and its folders, so renaming or moving a
+		// folder moves the workflow file too. The rows call a moved file `renamed`.
+		const byKey = new Map(resources.map((resource) => [resource.key, resource]));
+		const isMovedFile = (resource: PromotionResource): boolean => {
+			const { change, previousName, previousParentKey, parentKey } = resource;
+			if (
+				change === 'modified' &&
+				(previousName !== undefined || previousParentKey !== undefined)
+			) {
+				return true;
+			}
+			const parent = parentKey ? byKey.get(parentKey) : undefined;
+			return parent?.type === 'folder' && isMovedFile(parent);
+		};
 		const workflows = resources.filter(
-			({ type, selectable, key }) =>
-				type === 'workflow' && selectable && (changed.has(key) || usesChangedDependency.has(key)),
+			(resource) =>
+				resource.type === 'workflow' &&
+				resource.selectable &&
+				(changed.has(resource.key) ||
+					usesChangedDependency.has(resource.key) ||
+					isMovedFile(resource)),
 		);
 		const metadata = new Map(
 			(
@@ -255,13 +273,14 @@ export class PromotionChangeService {
 				)
 			).map((workflow) => [workflow.id, workflow]),
 		);
-		return workflows.map(({ id, key, name, change, previousName }) => {
+		return workflows.map((resource) => {
+			const { id, key, name } = resource;
 			const workflow = metadata.get(id);
 			return {
 				id,
 				name,
 				type: 'workflow',
-				status: applyStatus(change, previousName),
+				status: applyStatus(resource, isMovedFile(resource)),
 				version: workflow?.versionCounter ?? null,
 				updatedAt: workflow?.updatedAt.toISOString() ?? null,
 				updatedBy: null,
@@ -608,8 +627,8 @@ export function toDetail({
 }
 
 function applyStatus(
-	change: PromotionResource['change'],
-	previousName: string | undefined,
+	{ change, revision }: PromotionResource,
+	isMovedFile: boolean,
 ): PromotableResource['status'] {
 	switch (change) {
 		case 'added':
@@ -618,8 +637,8 @@ function applyStatus(
 		case 'deleted':
 			return change;
 		default:
-			// A rename always changes the file, because the file holds the name.
-			return previousName !== undefined ? 'renamed-and-modified' : 'modified';
+			if (!isMovedFile) return 'modified';
+			return revision.before === revision.after ? 'renamed' : 'renamed-and-modified';
 	}
 }
 

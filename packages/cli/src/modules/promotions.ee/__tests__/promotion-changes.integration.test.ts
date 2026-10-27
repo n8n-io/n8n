@@ -1138,11 +1138,11 @@ describe('resources in the preview', () => {
 		);
 	}, 30_000);
 
-	it('leaves out changes that Apply does not make and reuses a credential that already exists', async () => {
+	it('leaves out changes that Apply does not make and shows the credential name that Apply writes', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const folder = await createFolder(project, { name: 'Invoices' });
-		await createWorkflow(
+		const invoices = await createWorkflow(
 			{ name: 'Send invoices', nodes: [], connections: {}, parentFolder: folder },
 			project,
 		);
@@ -1157,8 +1157,8 @@ describe('resources in the preview', () => {
 		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await promoteBaseline(environments.promote.id, owner);
-		// Apply keeps the local credential name, but gives the folder the name on the branch. The
-		// credential stays, but no local workflow uses it, so the local export does not hold it.
+		// Apply gives the folder and the credential, which the project owns, the names on the branch.
+		// No local workflow uses the credential, so the local export does not hold it.
 		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
 		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
 		await Container.get(WorkflowRepository).delete(charge.id);
@@ -1177,12 +1177,83 @@ describe('resources in the preview', () => {
 				change: 'modified',
 			}),
 			expect.objectContaining({ key: `workflow:${charge.id}`, change: 'added' }),
+			// Apply renames the folder only together with a selected workflow inside it.
+			expect.objectContaining({ key: `workflow:${invoices.id}`, change: 'unchanged' }),
 			expect.objectContaining({
 				key: `credential:${credential.id}`,
-				name: 'Local billing API',
-				change: 'unchanged',
+				name: 'Billing API',
+				previousName: 'Local billing API',
+				change: 'modified',
 			}),
 		]);
+	}, 30_000);
+
+	it('lists the workflow of a credential that Apply updates when nothing else changes', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const credential = await saveCredential(
+			{ name: 'Billing API', type: 'httpHeaderAuth', data: {} },
+			{ project, role: 'credential:owner' },
+		);
+		const charge = await buildWorkflowReferencingCredential({
+			name: 'Charge customers',
+			project,
+			credential,
+		});
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
+
+		const { body } = await server
+			.authAgentFor(owner)
+			.get(`/promotions/${project.id}/changes/apply`)
+			.expect(200);
+
+		expect(body.data.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				name: 'Billing API',
+				previousName: 'Local billing API',
+				change: 'modified',
+			}),
+		);
+		expect(body.data.changes).toEqual([
+			expect.objectContaining({ id: charge.id, status: 'modified' }),
+		]);
+	}, 30_000);
+
+	it('lists a workflow inside a folder that Apply renames as renamed', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const folder = await createFolder(project, { name: 'Invoices' });
+		const workflow = await createWorkflow(
+			{ name: 'Send invoices', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
+
+		const { body } = await server
+			.authAgentFor(owner)
+			.get(`/promotions/${project.id}/changes/apply`)
+			.expect(200);
+
+		// Apply renames the folder only together with a selected workflow inside it.
+		expect(body.data.changes).toEqual([
+			expect.objectContaining({ id: workflow.id, status: 'renamed' }),
+		]);
+		expect(body.data.resources).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					key: `folder:${folder.id}`,
+					name: 'Invoices',
+					previousName: 'Local invoices',
+					change: 'modified',
+				}),
+				expect.objectContaining({ key: `workflow:${workflow.id}`, change: 'unchanged' }),
+			]),
+		);
 	}, 30_000);
 
 	it.each([

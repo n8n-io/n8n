@@ -127,7 +127,9 @@ const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 		return {
 			...row,
 			icon: resourceIcon(type),
-			name: conflict.name ?? conflict.id ?? '',
+			// An import-wide issue, such as a disabled module, names no table or tag.
+			name:
+				conflict.name ?? conflict.id ?? i18n.baseText(`promotions.preview.blockers.type.${type}`),
 			type,
 			usedBy: usedBy(conflict.consumers),
 		};

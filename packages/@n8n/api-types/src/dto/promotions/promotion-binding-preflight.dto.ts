@@ -220,7 +220,7 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	/** Stops every workflow of the project. */
 	z.object({
 		kind: z.literal('project'),
-		code: z.enum(['project-conflict', 'check-not-run', 'import-blocked']),
+		code: z.enum(['project-conflict', 'check-not-run', 'import-blocked', 'project-not-on-branch']),
 		project: promotionBindingProjectSchema,
 		reason: z.string().optional(),
 	}),
