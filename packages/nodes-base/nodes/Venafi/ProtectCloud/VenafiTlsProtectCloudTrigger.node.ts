@@ -13,6 +13,8 @@ import {
 import { venafiApiRequest } from './GenericFunctions';
 import { verifySignature } from './VenafiTlsProtectCloudTriggerHelpers';
 
+const connectorName = (webhookUrl: string | undefined) => `n8n-webhook (${webhookUrl})`;
+
 export class VenafiTlsProtectCloudTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TLS Protect Cloud Trigger',
@@ -106,20 +108,11 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 
 				const { connectors } = await venafiApiRequest.call(this, 'GET', '/v1/connectors');
 
-				for (const connector of connectors) {
-					const {
-						id,
-						status,
-						properties: {
-							target: {
-								connection: { url },
-							},
-						},
-					} = connector;
-
-					if (url === webhookUrl && status === 'Active') {
+				// The API does not return the connection URL, so match the name that `create` sets
+				const expectedName = connectorName(webhookUrl);
+				for (const { id, name } of connectors) {
+					if (name === expectedName) {
 						await venafiApiRequest.call(this, 'DELETE', `/v1/connectors/${id}`);
-						return false;
 					}
 				}
 				return false;
@@ -129,7 +122,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				const resource = this.getNodeParameter('resource') as string;
 				const webhookSecret = randomBytes(32).toString('hex');
 				const body = {
-					name: `n8n-webhook (${webhookUrl})`,
+					name: connectorName(webhookUrl),
 					properties: {
 						connectorKind: 'WEBHOOK',
 						target: {

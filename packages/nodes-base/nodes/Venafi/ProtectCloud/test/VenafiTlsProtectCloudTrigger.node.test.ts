@@ -66,6 +66,35 @@ describe('VenafiTlsProtectCloudTrigger', () => {
 		webhookFunctions.helpers = { returnJsonArray: vi.fn((data) => data) } as never;
 	});
 
+	describe('checkExists', () => {
+		// The API does not return the connection, so `connection` is always null.
+		const connector = (id: string, name: string, status = 'Active') => ({
+			id,
+			name,
+			status,
+			properties: { target: { type: 'generic', connection: null } },
+		});
+
+		it('should delete every connector for this webhook URL', async () => {
+			(venafiApiRequest as Mock).mockResolvedValueOnce({
+				connectors: [
+					connector('other', 'Splunk alerts'),
+					connector('ours', `n8n-webhook (${webhookUrl})`),
+					connector('ours-disabled', `n8n-webhook (${webhookUrl})`, 'Disabled'),
+					connector('other-url', `n8n-webhook (${webhookUrl}-test)`),
+				],
+			});
+
+			const exists = await trigger.webhookMethods.default.checkExists.call(hookFunctions);
+
+			expect(exists).toBe(false);
+			expect(venafiApiRequest).toHaveBeenCalledWith('DELETE', '/v1/connectors/ours');
+			expect(venafiApiRequest).toHaveBeenCalledWith('DELETE', '/v1/connectors/ours-disabled');
+			expect(venafiApiRequest).not.toHaveBeenCalledWith('DELETE', '/v1/connectors/other');
+			expect(venafiApiRequest).not.toHaveBeenCalledWith('DELETE', '/v1/connectors/other-url');
+		});
+	});
+
 	describe('create', () => {
 		it('should send a random secret with the connector and store it', async () => {
 			(venafiApiRequest as Mock).mockResolvedValue({ id: 'connector-1' });
