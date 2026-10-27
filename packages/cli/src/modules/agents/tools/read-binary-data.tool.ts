@@ -13,9 +13,7 @@ export const MAX_TEXT_FILE_BYTES = 200_000;
 
 const DESCRIPTION =
 	'Read a file by its fileId, such as a file from a tool result or a user upload. ' +
-	'Images and PDFs are attached for you to see. Text files are returned as text. ' +
-	'You get the content in your next step only. ' +
-	'Later steps show a short note, so read the file again when you need it again.';
+	'Images and PDFs are attached for you to see. Text files are returned as text.';
 
 const outputSchema = z.object({
 	fileId: z.string(),
@@ -72,7 +70,7 @@ export function createReadBinaryDataTool({
 			type: 'content',
 			value: [
 				{ type: 'text', text: JSON.stringify(output) },
-				// The runtime loads the bytes for the next model call only.
+				// The runtime loads the bytes before each model call.
 				{
 					type: 'file',
 					mediaType: output.mimeType,
