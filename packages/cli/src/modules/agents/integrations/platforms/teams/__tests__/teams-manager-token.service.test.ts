@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { BadRequestError } from '@n8n/errors';
 
 import { MicrosoftTeamsManagerOAuth2Api } from 'n8n-nodes-base/credentials/MicrosoftTeamsManagerOAuth2Api.credentials';
@@ -268,6 +269,61 @@ describe('TeamsManagerTokenService', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	it('redeems with the client of the app version stored on the sign-in', async () => {
+		credentialsService.decrypt.mockResolvedValue({
+			oauthTokenData: { refresh_token: 'refresh-1', n8n_managed_version: 2 },
+		} as never);
+		credentialsOverwrites.resolveBoundVersion.mockReturnValue(2);
+		respondWith(200, { access_token: 'graph-token', refresh_token: 'refresh-2' });
+
+		await service.acquire(credential, GRAPH_RESOURCE);
+
+		expect(credentialsOverwrites.resolveBoundVersion).toHaveBeenCalledWith(
+			'microsoftTeamsManagerOAuth2Api',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({ n8n_managed_version: 2 }),
+			}),
+		);
+		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith(
+			'microsoftTeamsManagerOAuth2Api',
+			2,
+		);
+		expect(credentialsService.update).toHaveBeenCalledWith(
+			'cred-1',
+			expect.anything(),
+			{ kind: 'system', reason: 'integration' },
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					refresh_token: 'refresh-2',
+					n8n_managed_version: 2,
+				}),
+			}),
+		);
+	});
+
+	it('refuses when the stored app version is no longer in the overwrites', async () => {
+		credentialsService.decrypt.mockResolvedValue({
+			oauthTokenData: { refresh_token: 'refresh-1', n8n_managed_version: 2 },
+		} as never);
+		credentialsOverwrites.resolveBoundVersion.mockReturnValue(2);
+		credentialsOverwrites.getOverwrites.mockImplementation(() => {
+			throw new ManagedAppUnavailableError('no app with version 2');
+		});
+
+		const error = await service.acquire(credential, GRAPH_RESOURCE).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(BadRequestError);
+		expect(error).toHaveProperty(
+			'message',
+			'Reconnect the Microsoft Teams credential to use the recommended setup.',
+		);
+		expect(credentialsOverwrites.getOverwrites).toHaveBeenCalledWith(
+			'microsoftTeamsManagerOAuth2Api',
+			2,
+		);
+		expect(request).not.toHaveBeenCalled();
+	});
+
 	it('refuses a credential of the wrong type', async () => {
 		const wrongType = mock<CredentialsEntity>({ id: 'cred-2', type: 'slackManagerOAuth2Api' });
 
@@ -277,7 +333,13 @@ describe('TeamsManagerTokenService', () => {
 	it('refuses when the instance has no manager client credentials', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue(undefined as never);
 
-		await expect(service.acquire(credential, GRAPH_RESOURCE)).rejects.toThrow(BadRequestError);
+		const error = await service.acquire(credential, GRAPH_RESOURCE).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(BadRequestError);
+		expect(error).toHaveProperty(
+			'message',
+			'The recommended Microsoft Teams setup is not available here.',
+		);
 		expect(request).not.toHaveBeenCalled();
 	});
 

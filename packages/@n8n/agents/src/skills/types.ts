@@ -190,6 +190,8 @@ export interface RuntimeSkillLoadError {
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
+	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
@@ -208,10 +210,16 @@ export interface RuntimeSkillStateScope {
 	agentName: string;
 }
 
-/** Stores active IDs separately from conversation text that memory can compact. */
+export interface RuntimeSkillState {
+	skillIds: string[];
+	/** Last loaded versions. Null keeps a revocation effective after compaction. */
+	versions?: Record<string, string | null>;
+}
+
+/** Stores active selections separately from conversation text that memory can compact. */
 export interface RuntimeSkillStateStore {
-	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
-	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+	load(scope: RuntimeSkillStateScope): Promise<RuntimeSkillState | undefined>;
+	save(scope: RuntimeSkillStateScope, state: RuntimeSkillState): Promise<void>;
 }
 
 export interface RuntimeSkillValidationError {

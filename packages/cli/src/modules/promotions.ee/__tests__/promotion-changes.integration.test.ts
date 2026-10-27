@@ -44,6 +44,7 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
@@ -52,11 +53,13 @@ import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
+import { PACKAGE_SUBFOLDER } from '../constants';
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionChangesController } from '../promotion-changes.controller';
+import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -71,7 +74,7 @@ beforeAll(async () => await testModules.loadModules(['agents']));
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:gitConnections', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin'],
 });
 
 let remoteFolder: string;
@@ -608,8 +611,13 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
+	const readFromGit = vi.spyOn(Container.get(PromotionsGitService), 'readFilesAtCommit');
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data.commitSha).toBe(baseline);
+	expect(readFromGit.mock.calls.flatMap(([{ filePaths }]) => filePaths)).toEqual([
+		`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+	]);
+	readFromGit.mockRestore();
 	expect(response.body.data.changes).toHaveLength(5);
 	expect(response.body.data.changes).toEqual(
 		expect.arrayContaining([
@@ -833,25 +841,25 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
-	// A project admin manages the project, but lacks the global git connection scopes.
+	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
-	server.license.disable('feat:gitConnections');
+	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
 	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
 
-// No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
-it('requires the global pull scope of Apply for the Apply check', () => {
+// No built-in role has the read scope without the apply scope, so the requests above cannot tell them apart.
+it('requires the global apply scope for the Apply check', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		PromotionChangesController as Controller,
 	);
 
 	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'gitConnection:pull',
+		scope: 'promotions:apply',
 		globalOnly: true,
 	});
 });

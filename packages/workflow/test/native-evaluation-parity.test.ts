@@ -2,6 +2,7 @@
 
 import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
+import { ExpressionError } from '../src/errors/expression.error';
 import type { IWorkflowDataProxyData } from '../src/interfaces';
 import { ExpressionExtensions } from '../src/extensions';
 import {
@@ -332,6 +333,33 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeError).toBeInstanceOf(engineError.constructor);
 			expect(nativeError.message).toBe(engineError.message);
 		});
+
+		// The editor shows these errors as pending input. A minified build renames
+		// the class, and the engines must still throw the same error.
+		describe.each([false, true])(
+			'missing input when the build renames the class (native: %s)',
+			(native) => {
+				const nameDescriptor = Object.getOwnPropertyDescriptor(ExpressionError, 'name')!;
+				beforeEach(() => {
+					Object.defineProperty(ExpressionError, 'name', { value: 'Xe' });
+				});
+				afterEach(() => {
+					Object.defineProperty(ExpressionError, 'name', nameDescriptor);
+				});
+
+				test.each([
+					['=Hello {{ $json.x }}', 'no_execution_data'],
+					["={{ $('Source').item.json.x }}", 'paired_item_intermediate_nodes'],
+				])('%s', (expr, type) => {
+					expect(() => evaluate(expr, native, emptyRunData, [])).toThrow(
+						expect.objectContaining({
+							constructor: ExpressionError,
+							context: expect.objectContaining({ type }),
+						}),
+					);
+				});
+			},
+		);
 	});
 
 	// Holes are not JSON. The isolates copy the data in and fill them with

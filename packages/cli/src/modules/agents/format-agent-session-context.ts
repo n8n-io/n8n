@@ -1,9 +1,6 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 
-import type {
-	AgentSessionThread,
-	AgentSessionTurn,
-} from '@/modules/agents/agent-context.contracts';
+import type { AgentSessionThread, AgentSessionTurn } from './agent-context.contracts';
 
 type TimelineEvent = NonNullable<AgentSessionTurn['timeline']>[number];
 

@@ -4,6 +4,7 @@ import { Container, Service } from '@n8n/di';
 import { NodeTypes } from '@/node-types';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
+import type { AgentImporter } from '../entities/agent/agent-importer';
 import {
 	credentialConflicts,
 	forbiddenCredentialUpdates,
@@ -11,17 +12,21 @@ import {
 } from '../entities/credential/credential-conflict-policy';
 import {
 	requiredAgentScopes,
+	type AgentImportOutcome,
 	type AgentImportPlan,
 	type PreparedAgent,
 	type PersistedAgentOutcome,
 } from '../entities/agent/agent-import.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
-import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
+import {
+	consumersBlockedByCredentials,
+	credentialMissingModeUsesPackageData,
+} from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
+	CredentialBindResult,
 	CredentialBindingRequest,
 	CredentialImportPlan,
-	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
 import { DataTableImporter } from '../entities/data-table/data-table-importer';
@@ -56,7 +61,7 @@ import type {
 import {
 	collectMissingNodeTypes,
 	missingNodeTypeBlockingFailures,
-	workflowsWithMissingNodeTypes,
+	consumersWithMissingNodeTypes,
 	type MissingNodeTypeRequirement,
 } from '../entities/workflow/missing-node-type-mode';
 import type {
@@ -67,8 +72,12 @@ import type {
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
 import { WorkflowRemover } from '../entities/workflow/workflow-remover';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
-import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
+import {
+	WorkflowPublisher,
+	type PackagePublishingRequest,
+	type PackagePublishingResults,
+} from '../entities/workflow/workflow-publisher';
+import type { PublishingBlockedReason } from '../entities/publishing';
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
@@ -76,7 +85,6 @@ import type {
 	ImportContext,
 	ImportedFolderSummary,
 	ImportWorkflowProperties,
-	MissingNodeTypeMode,
 	PackageImportBindings,
 	PackageImportSource,
 	RemovedFolderSummary,
@@ -93,9 +101,10 @@ import { ContentImportPolicyGate, contentImportTransport } from './content-impor
 import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import {
+	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
-	assertCredentialWritesAllowed,
 	assertDataTableWritesAllowed,
+	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
 } from './import-gates';
@@ -189,6 +198,14 @@ export class ImportOrchestrator {
 		plans: ImportPlan[],
 		options: { apiKeyScopes: string[] | undefined },
 	): Promise<void> {
+		assertTagWritesAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.tagPlan),
+		);
+		assertArchiveTransitionsAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.workflowPlan),
+		);
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
 		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 
@@ -202,13 +219,16 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
 		);
-		assertCredentialWritesAllowed(
-			options.apiKeyScopes,
-			plans.map(({ input, credentialPlan }) => ({
-				missingMode: input.credentialRequest.missingMode,
-				resolution: credentialPlan,
-			})),
-		);
+		if (
+			plans.some(
+				({ input, credentialPlan, agentPlan }) =>
+					credentialPlan.stubIds.size > 0 &&
+					(agentPlan !== undefined ||
+						credentialMissingModeUsesPackageData(input.credentialRequest.missingMode)),
+			)
+		) {
+			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
+		}
 		if (plans.length > 0) {
 			assertCredentialUpdatesAllowed(
 				options.apiKeyScopes,
@@ -238,8 +258,6 @@ export class ImportOrchestrator {
 		for (const plan of plans) {
 			if (!plan.agentPlan) continue;
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
-			if (plan.credentialPlan.stubIds.size > 0)
-				assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
 		}
 
 		const issues = await this.collectPackageBlockingIssues(plans);
@@ -330,39 +348,33 @@ export class ImportOrchestrator {
 		const plans: ImportPlan[] = [];
 		for (const input of inputs) plans.push(await this.planScope(input));
 		if (!plans.some((plan) => plan.agentPlan)) return plans;
-		const [{ AgentImporter }, { AgentImportBindings }] = await Promise.all([
-			import('../entities/agent/agent-importer.js'),
-			import('../entities/agent/agent-import-bindings.js'),
-		]);
-		await Container.get(AgentImportBindings).resolve(plans);
-		for (const plan of plans) {
-			if (!plan.agentPlan) continue;
-			await Container.get(AgentImporter).validate(
-				plan.agentPlan,
-				{
-					...plan.input.context,
-					projectPendingCreation: plan.input.projectPendingCreation,
-				},
-				plan.credentialPlan.stubIds.size > 0,
-			);
-			plan.blockingIssues.push(...plan.agentPlan.issues);
+
+		const agentImporter = await this.getAgentImporter();
+		const { AgentImportBindings } = await import('../entities/agent/agent-import-bindings.js');
+		const boundAgentPlans = await Container.get(AgentImportBindings).resolve(plans);
+		for (const [scope, agentPlan] of boundAgentPlans) {
+			scope.agentPlan = await agentImporter.validate(agentPlan, scope.input.context.projectId);
+			scope.blockingIssues.push(...scope.agentPlan.issues);
 		}
 		return plans;
 	}
 
-	private async planAgents(input: ImportOrchestrationInput): Promise<AgentImportPlan | undefined> {
-		if (!input.agents?.length) return undefined;
+	private async getAgentImporter(): Promise<AgentImporter> {
 		const { AgentImporter } = await import('../entities/agent/agent-importer.js');
-		return await Container.get(AgentImporter).plan(
-			{ ...input.context, projectPendingCreation: input.projectPendingCreation },
-			input.agents,
-			input.options,
-		);
+		return Container.get(AgentImporter);
 	}
 
 	private async planScope(input: ImportOrchestrationInput): Promise<ImportPlan> {
-		const agentPlan = await this.planAgents(input);
-		if (agentPlan) input = scopeAgentRequirements(input, agentPlan);
+		let agentPlan: AgentImportPlan | undefined;
+		if (input.agents?.length) {
+			const agentImporter = await this.getAgentImporter();
+			agentPlan = await agentImporter.plan(
+				{ ...input.context, projectPendingCreation: input.projectPendingCreation },
+				input.agents,
+				input.options,
+			);
+			input = scopeAgentRequirements(input, agentPlan);
+		}
 		const {
 			context,
 			folders,
@@ -378,7 +390,7 @@ export class ImportOrchestrator {
 			await this.workflowPublisher.assertCanPublish(
 				context.user,
 				context.projectId,
-				options.workflowPublishingPolicy,
+				options.publishingPolicy,
 				input.projectPendingCreation,
 			);
 
@@ -390,11 +402,8 @@ export class ImportOrchestrator {
 			layoutConflictPolicy: options.layoutConflictPolicy,
 		});
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
-		const tagPlan = await this.tagImporter.plan(
-			context,
-			tagRequest,
-			workflowPlan.items.filter((item) => item.action !== 'skip'),
-		);
+		const activeWorkflows = workflowPlan.items.filter((item) => item.action !== 'skip');
+		const tagPlan = await this.tagImporter.plan(context, tagRequest, activeWorkflows);
 		const folderContext = {
 			...context,
 			folderConflictPolicy: options.folderConflictPolicy,
@@ -428,7 +437,7 @@ export class ImportOrchestrator {
 
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
-			workflowPlan.items.filter((item) => item.action !== 'skip'),
+			activeWorkflows,
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 			(agentPlan?.items ?? [])
 				.filter(({ action }) => action !== 'skip')
@@ -455,25 +464,7 @@ export class ImportOrchestrator {
 			actor,
 		);
 
-		const blockingIssues = this.collectBlockingIssues({
-			workflowPlan,
-			credentialPlan,
-			credentialRequest,
-			folderPlan,
-			dataTableRequest,
-			dataTablePlan,
-			variableRequest,
-			variablePlan,
-			tagPlan,
-			removalPlan,
-			folderRemovalPlan,
-			missingNodeTypes,
-			missingNodeTypeMode: options.missingNodeTypeMode,
-		});
-
-		blockingIssues.push(...refusedByPolicy, ...refusedStubs);
-
-		return {
+		const plan = {
 			input,
 			agentPlan,
 			folderContext,
@@ -486,15 +477,14 @@ export class ImportOrchestrator {
 			removalPlan,
 			folderRemovalPlan,
 			missingNodeTypes,
-			blockingIssues,
+		};
+		return {
+			...plan,
+			blockingIssues: [...this.collectBlockingIssues(plan), ...refusedByPolicy, ...refusedStubs],
 		};
 	}
 
-	/**
-	 * Writes this scope's content. Workflows land unpublished: publishing needs every workflow in
-	 * the package present first, so the caller runs {@link WorkflowPublisher.applyToPackage} once
-	 * all scopes have been applied.
-	 */
+	/** Writes one scope's definitions. Call {@link publishPackage} after all scopes are applied. */
 	async apply(
 		plan: ImportPlan,
 		seedWorkflowBindings?: ImportBindingMap,
@@ -524,25 +514,8 @@ export class ImportOrchestrator {
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
 
-		// Which workflows the publish phase must leave inactive. Known only now, because it depends
-		// on which credentials actually ended up stubbed or incomplete.
-		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
-		// Weakest reason first, so a later, stronger reason overwrites it.
-		for (const sourceWorkflowId of workflowsBlockedFromPublish(
-			credentialRequest.requirements,
-			new Set(credentialBindResult.incomplete),
-		)) {
-			blockedFromPublish.set(sourceWorkflowId, 'incomplete-credential');
-		}
-		for (const sourceWorkflowId of workflowsBlockedFromPublish(
-			credentialRequest.requirements,
-			new Set(credentialBindResult.stubbed),
-		)) {
-			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
-		}
-		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
-			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
-		}
+		const workflowBlockers = publishingBlockers(plan, credentialBindResult, 'workflow');
+		const agentBlockers = publishingBlockers(plan, credentialBindResult, 'agent');
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
 			{ ...context, droppedTagIds: droppedTagIds(tagPlan) },
@@ -557,8 +530,11 @@ export class ImportOrchestrator {
 
 		let agentOutcomes: PersistedAgentOutcome[] = [];
 		if (plan.agentPlan) {
-			const { AgentImporter } = await import('../entities/agent/agent-importer.js');
-			agentOutcomes = await Container.get(AgentImporter).apply(context, plan.agentPlan);
+			const agentImporter = await this.getAgentImporter();
+			agentOutcomes = await agentImporter.apply(context, plan.agentPlan);
+		}
+		for (const { sourceAgentId, agent } of agentOutcomes) {
+			bindings.agents.set(sourceAgentId, agent.id);
 		}
 
 		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
@@ -586,9 +562,11 @@ export class ImportOrchestrator {
 		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
 
 		return {
-			agentOutcomes,
+			agentOutcomes: agentOutcomes.map((outcome) =>
+				withBlockedFromPublish(outcome, agentBlockers.get(outcome.sourceAgentId)),
+			),
 			workflowOutcomes: outcomes.map((outcome) =>
-				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
+				withBlockedFromPublish(outcome, workflowBlockers.get(outcome.sourceWorkflowId)),
 			),
 			removedWorkflows,
 			removedFolders,
@@ -602,35 +580,46 @@ export class ImportOrchestrator {
 		};
 	}
 
+	async publishPackage({
+		content,
+		...request
+	}: Omit<PackagePublishingRequest, 'persisted'> & { content: ImportContentResult[] }): Promise<{
+		workflows: PackagePublishingResults;
+		agentOutcomes: AgentImportOutcome[];
+	}> {
+		const workflows = await this.workflowPublisher.applyToPackage({
+			...request,
+			persisted: content.flatMap((scope) => scope.workflowOutcomes),
+		});
+		const persisted = content.flatMap((scope) => scope.agentOutcomes);
+		if (persisted.length === 0) return { workflows, agentOutcomes: [] };
+
+		// Workflow tools require published workflows. Subagents only require saved definitions.
+		const { AgentPublisher } = await import('../entities/agent/agent-publisher.js');
+		const agentOutcomes = await Container.get(AgentPublisher).applyToPackage(
+			request.user,
+			persisted,
+		);
+		return { workflows, agentOutcomes };
+	}
+
 	private collectBlockingIssues({
+		input: {
+			credentialRequest,
+			dataTableRequest,
+			variableRequest,
+			options: { missingNodeTypeMode },
+		},
 		workflowPlan,
 		credentialPlan,
-		credentialRequest,
 		folderPlan,
-		dataTableRequest,
 		dataTablePlan,
-		variableRequest,
 		variablePlan,
 		tagPlan,
 		removalPlan,
 		folderRemovalPlan,
 		missingNodeTypes,
-		missingNodeTypeMode,
-	}: {
-		workflowPlan: WorkflowImportPlan;
-		credentialPlan: CredentialResolution;
-		credentialRequest: CredentialBindingRequest;
-		folderPlan: FolderImportPlan;
-		dataTableRequest: DataTableImportRequest;
-		dataTablePlan: DataTableImportPlan;
-		variableRequest: VariableImportRequest;
-		variablePlan: VariableImportPlan;
-		tagPlan: TagImportPlan;
-		removalPlan: WorkflowRemovalPlan;
-		folderRemovalPlan: FolderRemovalPlan;
-		missingNodeTypes: MissingNodeTypeRequirement[];
-		missingNodeTypeMode: MissingNodeTypeMode;
-	}): BlockingIssue[] {
+	}: Omit<ImportPlan, 'blockingIssues'>): BlockingIssue[] {
 		return [
 			...workflowPlan.conflicts.map(
 				(conflict): BlockingIssue => ({ type: 'workflow-conflict', ...conflict }),
@@ -728,10 +717,36 @@ function scopeAgentRequirements(
 	};
 }
 
-function withBlockedFromPublish(
-	outcome: PersistedWorkflowOutcome,
-	blockedFromPublish: WorkflowPublishingBlockedReason | undefined,
-): PersistedWorkflowOutcome {
+function publishingBlockers(
+	plan: ImportPlan,
+	credentials: CredentialBindResult,
+	kind: PackageRequirementConsumer['kind'],
+): Map<string, PublishingBlockedReason> {
+	const blocked = new Map<string, PublishingBlockedReason>();
+	const credentialBlockers = [
+		['incomplete-credential', credentials.incomplete],
+		['stub-credential', credentials.stubbed],
+	] as const;
+	for (const [reason, sourceIds] of credentialBlockers) {
+		for (const id of consumersBlockedByCredentials(
+			plan.input.credentialRequest.requirements,
+			new Set(sourceIds),
+			kind,
+		)) {
+			blocked.set(id, reason);
+		}
+	}
+	// Missing node types take precedence because the definition cannot run.
+	for (const id of consumersWithMissingNodeTypes(plan.missingNodeTypes, kind)) {
+		blocked.set(id, 'missing-node-type');
+	}
+	return blocked;
+}
+
+function withBlockedFromPublish<T extends PersistedWorkflowOutcome | PersistedAgentOutcome>(
+	outcome: T,
+	blockedFromPublish: PublishingBlockedReason | undefined,
+): T {
 	if (outcome.status === 'skipped' || !blockedFromPublish) return outcome;
 	return { ...outcome, blockedFromPublish };
 }

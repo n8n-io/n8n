@@ -104,6 +104,46 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps the skill update content delivered for the response', () => {
+		const update = {
+			skillId: 'hub-example',
+			name: 'Writing style',
+			version: 'v2',
+			change: 'updated',
+			content: 'Private skill instructions.',
+		};
+		expect(
+			map(
+				{
+					type: 'message',
+					message: {
+						type: 'custom',
+						data: {
+							type: 'n8n:runtime-skill-update',
+							skillUpdate: update,
+						},
+					},
+				},
+				'response-1',
+			),
+		).toEqual({
+			type: 'skill-update',
+			runId,
+			agentId,
+			responseId: 'response-1',
+			payload: {
+				skillId: update.skillId,
+				name: update.name,
+				version: update.version,
+				change: update.change,
+				content: update.content,
+			},
+		});
+		expect(
+			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
+		).toBeNull();
+	});
+
 	it('preserves responseId when provided', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' }, 'response-1')).toEqual({
 			type: 'text-delta',

@@ -35,7 +35,7 @@ import type {
 } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
-import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
+import type { AgentTurnFinalizeOutcome, FormattedTurnError } from '../../types/agent-turn-outcome';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -132,6 +132,9 @@ function setup(
 		name: 'Test Assistant',
 		authorize: vi.fn(async (_user: User, _projectId: string) => true),
 		prepareTurn: vi.fn(async (_turn: SystemAgentTurn<TestLease>) => handle),
+		formatSetupError: vi.fn(
+			async (_user: User, _error: unknown): Promise<FormattedTurnError | undefined> => undefined,
+		),
 		normalizeResumeData: vi.fn((data: unknown) => ({ normalized: data })),
 		...(workspace ? { workspace } : {}),
 	} satisfies SystemAgentProvider<TestLease>;
@@ -1002,6 +1005,66 @@ describe('SystemAgentExecutionService', () => {
 			expect(toChatErrorEvent(running, 'Chat failed')).toMatchObject({
 				errorCode: 'turn_already_running',
 			});
+		});
+
+		it('formats an error that the turn setup threw', async () => {
+			const { service, provider, turnExecutionService } = setup([]);
+			const setupFailure = new Error('credits exhausted');
+			provider.prepareTurn.mockRejectedValue(setupFailure);
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			const error = await service
+				.consume(claimFor(), user, new AbortController().signal, vi.fn())
+				.catch((e: unknown) => e);
+
+			expect(provider.formatSetupError).toHaveBeenCalledWith(user, setupFailure);
+			expect(error).toBeInstanceOf(AgentFormattedTurnError);
+			expect(error).toMatchObject({ message: quotaError.message, errorCode: 'quota_exhausted' });
+			expect(toChatErrorEvent(error, 'Chat failed')).toEqual({
+				type: 'error',
+				message: quotaError.message,
+				errorCode: 'quota_exhausted',
+			});
+			expect(turnExecutionService.execute).not.toHaveBeenCalled();
+		});
+
+		it('keeps the setup error of a stopped turn', async () => {
+			const { service, provider } = setup([]);
+			const claimController = new AbortController();
+			const setupFailure = new Error('setup stopped');
+			provider.prepareTurn.mockImplementation(async () => {
+				claimController.abort();
+				throw setupFailure;
+			});
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			await expect(service.consume(claimFor(), user, claimController.signal, vi.fn())).rejects.toBe(
+				setupFailure,
+			);
+			expect(provider.formatSetupError).not.toHaveBeenCalled();
+		});
+
+		it('keeps a setup error that already has a client code', async () => {
+			const { service, provider } = setup([]);
+			const running = new AgentTurnAlreadyRunningError();
+			provider.prepareTurn.mockRejectedValue(running);
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(running);
+			expect(provider.formatSetupError).not.toHaveBeenCalled();
+		});
+
+		it('keeps the raw setup error when the setup formatter fails', async () => {
+			const { service, provider } = setup([]);
+			const setupFailure = new Error('no model');
+			provider.prepareTurn.mockRejectedValue(setupFailure);
+			provider.formatSetupError.mockRejectedValue(new Error('formatter broke'));
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(setupFailure);
 		});
 
 		it('formats the errors of a resumed turn', async () => {

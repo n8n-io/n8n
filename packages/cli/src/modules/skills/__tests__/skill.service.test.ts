@@ -699,7 +699,7 @@ describe('SkillService', () => {
 
 			const result = await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
-			expect(skillAgents.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skillAgents.markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 		});
 
@@ -981,8 +981,8 @@ describe('SkillService', () => {
 		});
 	});
 
-	describe('snapshotForPublish', () => {
-		it('locks the skills and resolves the version each ref runs', async () => {
+	describe('snapshotForSave', () => {
+		it('resolves each saved version without taking the publication lock', async () => {
 			skills.findLatestVersionIds.mockResolvedValue(
 				new Map([
 					['skill_a', 'skill_a-v3'],
@@ -998,7 +998,7 @@ describe('SkillService', () => {
 				]),
 			);
 
-			const versionByRef = await service.snapshotForPublish(
+			const versionByRef = await service.snapshotForSave(
 				[
 					{ id: 'skill_a' },
 					{ id: 'skill_b', versionId: 'skill_b-v1' },
@@ -1007,7 +1007,7 @@ describe('SkillService', () => {
 				TX_CTX,
 			);
 
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_c'], TX_CTX);
+			expect(skills.lockForPublish).not.toHaveBeenCalled();
 			expect([...versionByRef]).toEqual([
 				['skill_a', 'skill_a-v3'],
 				['skill_b', 'skill_b-v1'],
