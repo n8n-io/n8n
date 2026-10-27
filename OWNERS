@@ -366,6 +366,14 @@ packages/nodes-base/nodes/Aws/Cognito/                                   @n8n-io
 packages/nodes-base/nodes/Aws/AwsSns.node.ts                             @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Aws/AwsSnsTrigger.node.ts                      @n8n-io/enterprise-nodes
 packages/nodes-base/nodes/Aws/AwsSnsTriggerHelpers.ts                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSns.node.json                           @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/AwsSnsTrigger.node.json                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Aws/sns.svg                                    @n8n-io/enterprise-nodes
+packages/nodes-base/nodes/Microsoft/test/                                @n8n-io/enterprise-nodes
+packages/nodes-base/utils/atlassian.ts                                   @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/utils/databricks/                          @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/utils/aws/                                 @n8n-io/enterprise-nodes
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOracleDB/       @n8n-io/enterprise-nodes
 
 # Community engineering
 .agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
