@@ -114,16 +114,6 @@ describe('IdentityResolutionService', () => {
 			);
 		});
 
-		it('rejects an email that a service account owns, without creating a user', async () => {
-			userRepository.isServiceAccountEmail.mockResolvedValueOnce(true);
-
-			await expect(service.resolve(makeClaims(), undefined, ctx())).rejects.toThrow(
-				TokenExchangeAuthError,
-			);
-			expect(userRepository.isServiceAccountEmail).toHaveBeenCalledWith('user@example.com');
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
-		});
-
 		it('provisions a built-in global role without a license check', async () => {
 			await service.resolve(makeClaims({ role: 'global:member' }), undefined, ctx());
 

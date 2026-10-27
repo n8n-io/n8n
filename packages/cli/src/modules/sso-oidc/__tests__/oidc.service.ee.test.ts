@@ -868,18 +868,6 @@ describe('OidcService', () => {
 			);
 		});
 
-		it('rejects an email that a service account owns, without creating a user', async () => {
-			vi.mocked(authIdentityRepository.findOne).mockResolvedValue(null);
-			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
-			vi.mocked(userRepository.isServiceAccountEmail).mockResolvedValue(true);
-
-			await expect(oidcService.loginUser(callbackUrl, 'state', 'nonce')).rejects.toThrow(
-				ForbiddenError,
-			);
-			expect(userRepository.isServiceAccountEmail).toHaveBeenCalledWith(claims.email);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
-		});
-
 		it('returns ID token profile claims in the test callback when the endpoint is absent', async () => {
 			const result = await oidcService.processTestCallback(callbackUrl, 'state', 'nonce');
 

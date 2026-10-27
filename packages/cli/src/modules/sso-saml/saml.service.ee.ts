@@ -9,7 +9,6 @@ import {
 	isValidEmail,
 	PersonRepository,
 	SettingsRepository,
-	UserRepository,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -111,7 +110,6 @@ export class SamlService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly authIdentityRepository: AuthIdentityRepository,
 		private readonly eventService: EventService,
-		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -454,10 +452,6 @@ export class SamlService {
 					rawAttributes,
 					onboardingRequired,
 				};
-			}
-
-			if (await this.userRepository.isServiceAccountEmail(lowerCasedEmail)) {
-				throw new ForbiddenError('A service account owns this email');
 			}
 
 			// New users to be created JIT based on SAML attributes

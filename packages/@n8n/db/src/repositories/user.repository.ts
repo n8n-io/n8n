@@ -12,7 +12,7 @@ import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, Project, ProjectRelation, ServiceAccount, User } from '../entities';
+import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /**
@@ -74,14 +74,6 @@ export class UserRepository extends BaseRepository<User> {
 			where: { id },
 			relations: ['role'],
 		});
-	}
-
-	/**
-	 * Whether a service account owns `email`. The email is unique across both
-	 * kinds, so a person-only flow must not try to create a person with it.
-	 */
-	async isServiceAccountEmail(email: string): Promise<boolean> {
-		return await this.manager.existsBy(ServiceAccount, { email });
 	}
 
 	async findByEmailWithRole(email: string): Promise<User | null> {

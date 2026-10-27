@@ -141,13 +141,6 @@ export class IdentityResolutionService {
 			if (existingPerson) {
 				return await this.resolveByEmail(claims, email, existingPerson, allowedRoles, tokenContext);
 			}
-
-			if (await this.userRepository.isServiceAccountEmail(email)) {
-				throw new TokenExchangeAuthError(
-					TokenExchangeFailureReason.InvalidClaims,
-					'A service account owns this email',
-				);
-			}
 		}
 
 		// Path 3: JIT provisioning

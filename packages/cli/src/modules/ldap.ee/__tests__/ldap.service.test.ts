@@ -28,7 +28,6 @@ import {
 	getAuthIdentityByLdapId,
 	getUserByEmail,
 	createLdapUserOnLocalDb,
-	isServiceAccountEmail,
 } from '../helpers.ee';
 import { LdapService } from '../ldap.service.ee';
 
@@ -57,7 +56,6 @@ vi.mock('../helpers.ee', async () => ({
 	getAuthIdentityByLdapId: vi.fn(),
 	getUserByEmail: vi.fn(),
 	createLdapUserOnLocalDb: vi.fn(),
-	isServiceAccountEmail: vi.fn(),
 }));
 
 vi.mock('n8n-workflow', async () => ({
@@ -1853,21 +1851,6 @@ describe('LdapService', () => {
 
 				const result = await ldapService.handleLogin('jdoe', 'password');
 				expect(result).toEqual(mockUser);
-			});
-
-			it('should not allow login when a service account owns the email', async () => {
-				const ldapService = createDefaultLdapService({
-					...ldapConfig,
-					enforceEmailUniqueness: false,
-				});
-				(isServiceAccountEmail as Mock).mockResolvedValueOnce(true);
-
-				await ldapService.init();
-
-				const result = await ldapService.handleLogin('jdoe', 'password');
-				expect(result).toBeUndefined();
-				expect(isServiceAccountEmail).toHaveBeenCalledWith('jdoe@example.com');
-				expect(createLdapUserOnLocalDb).not.toHaveBeenCalled();
 			});
 
 			it('should not allow login when duplicates exist and enforcement is enabled', async () => {

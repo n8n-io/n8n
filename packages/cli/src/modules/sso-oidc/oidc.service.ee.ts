@@ -383,10 +383,6 @@ export class OidcService {
 			return { user: foundPerson, idToken: tokens.id_token };
 		}
 
-		if (await this.userRepository.isServiceAccountEmail(email)) {
-			throw new ForbiddenError('A service account owns this email');
-		}
-
 		const user = await this.userRepository.manager.transaction(async (trx) => {
 			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{

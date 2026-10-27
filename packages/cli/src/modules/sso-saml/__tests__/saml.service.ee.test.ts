@@ -10,7 +10,6 @@ import type {
 	PersonRepository,
 	Settings,
 	User,
-	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -171,7 +170,6 @@ describe('SamlService', () => {
 	let globalConfig: GlobalConfig;
 	let personRepository: PersonRepository;
 	let authIdentityRepository: MockProxy<AuthIdentityRepository>;
-	let userRepository: MockProxy<UserRepository>;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
 	let cacheService: Mocked<CacheService>;
@@ -223,7 +221,6 @@ describe('SamlService', () => {
 		provisioningService = mock<ProvisioningService>();
 		personRepository = mock<PersonRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
-		userRepository = mock<UserRepository>();
 		authIdentityRepository.findByProviderIdWithUser.mockResolvedValue(null);
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
@@ -259,7 +256,6 @@ describe('SamlService', () => {
 			outboundHttp,
 			authIdentityRepository,
 			eventService,
-			userRepository,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -514,28 +510,6 @@ describe('SamlService', () => {
 				ForbiddenError,
 			);
 			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
-		});
-
-		it('rejects an email that a service account owns, without creating a user', async () => {
-			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				mapped: {
-					email: 'foo@bar.com',
-					firstName: '',
-					lastName: '',
-					userPrincipalName: 'foo@bar.com',
-				},
-				raw: {},
-			});
-			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
-			userRepository.isServiceAccountEmail.mockResolvedValue(true);
-			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
-			const createUserSpy = vi.spyOn(samlHelpers, 'createUserFromSamlAttributes');
-
-			await expect(samlService.handleSamlLogin(mock<express.Request>(), 'post')).rejects.toThrow(
-				ForbiddenError,
-			);
-			expect(userRepository.isServiceAccountEmail).toHaveBeenCalledWith('foo@bar.com');
-			expect(createUserSpy).not.toHaveBeenCalled();
 		});
 
 		it('throws error for invalid email', async () => {

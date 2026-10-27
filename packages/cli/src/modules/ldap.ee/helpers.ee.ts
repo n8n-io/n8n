@@ -1,10 +1,8 @@
-import { Logger } from '@n8n/backend-common';
 import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
 import type { AuthProviderSyncHistory } from '@n8n/db';
 import {
 	AuthIdentity,
 	Person,
-	ServiceAccount,
 	User,
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
@@ -93,10 +91,6 @@ export const getUserByLdapId = async (idAttributeValue: string) => {
 export const getUserByEmail = async (email: string): Promise<Person | null> => {
 	return await Container.get(PersonRepository).findByEmail(email);
 };
-
-/** Whether a service account owns the email, so LDAP must not create a person with it. */
-export const isServiceAccountEmail = async (email: string): Promise<boolean> =>
-	await Container.get(UserRepository).isServiceAccountEmail(email);
 
 /**
  * Map attributes from the LDAP server to the proper columns in the database
@@ -196,14 +190,6 @@ export const processUsers = async (
 
 					const authIdentity = AuthIdentity.create(existingPerson, ldapId);
 					return await transactionManager.save(authIdentity);
-				}
-
-				// Skip this user, so one email conflict does not stop the whole sync.
-				if (await transactionManager.existsBy(ServiceAccount, { email: user.email })) {
-					Container.get(Logger).warn('LDAP sync skipped a user: A service account owns the email', {
-						ldapId,
-					});
-					return;
 				}
 
 				const { user: savedUser } = await userRepository.createUserWithProject(

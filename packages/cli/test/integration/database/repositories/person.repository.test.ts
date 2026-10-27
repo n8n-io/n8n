@@ -42,9 +42,9 @@ describe('PersonRepository', () => {
 	}
 
 	describe('lookups', () => {
-		it('finds a person by id and by email, but not a service account', async () => {
+		it('finds a person by id and by email, but not a service account by id', async () => {
 			const person = await createMember();
-			const serviceAccount = await createServiceAccount({ email: randomEmail() });
+			const serviceAccount = await createServiceAccount();
 
 			expect(await personRepository.findByIdWithRole(person.id)).toBeInstanceOf(Person);
 			expect(await personRepository.findByIdWithAuthIdentities(person.id)).toBeInstanceOf(Person);
@@ -54,9 +54,6 @@ describe('PersonRepository', () => {
 
 			expect(await personRepository.findByIdWithRole(serviceAccount.id)).toBeNull();
 			expect(await personRepository.findByIdWithAuthIdentities(serviceAccount.id)).toBeNull();
-			expect(await personRepository.findByEmail(serviceAccount.email)).toBeNull();
-			expect(await personRepository.findByEmailWithAuthIdentities(serviceAccount.email)).toBeNull();
-			expect(await personRepository.findSetUpByEmail(serviceAccount.email)).toBeNull();
 		});
 
 		it('finds a person by LDAP id, but not a service account', async () => {
@@ -72,7 +69,7 @@ describe('PersonRepository', () => {
 
 		it('returns the emails of people only', async () => {
 			const person = await createMember();
-			const serviceAccount = await createServiceAccount({ email: randomEmail() });
+			const serviceAccount = await createServiceAccount();
 
 			const emails = await personRepository.getEmailsByIds([person.id, serviceAccount.id]);
 
@@ -140,22 +137,21 @@ describe('PersonRepository', () => {
 
 		it('reports when another account already owns the target email', async () => {
 			const person = await createMember();
-			const serviceAccount = await createServiceAccount({ email: randomEmail() });
+			const otherPerson = await createMember();
 
-			const result = await personRepository.changeEmail(
-				person.id,
-				person.email,
-				serviceAccount.email,
-			);
+			const result = await personRepository.changeEmail(person.id, person.email, otherPerson.email);
 
 			expect(result).toBe('email-taken');
 		});
 
 		it('does not change the email of a service account', async () => {
-			const email = randomEmail();
-			const serviceAccount = await createServiceAccount({ email });
+			const serviceAccount = await createServiceAccount();
 
-			const result = await personRepository.changeEmail(serviceAccount.id, email, randomEmail());
+			const result = await personRepository.changeEmail(
+				serviceAccount.id,
+				randomEmail(),
+				randomEmail(),
+			);
 
 			expect(result).toBe('stale');
 		});
