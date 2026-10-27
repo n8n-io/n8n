@@ -91,67 +91,6 @@ describe('PersonRepository', () => {
 			});
 		});
 
-		describe('findEligibleByProjectOrGlobalRoles', () => {
-			const relations = { role: true, authIdentities: true };
-
-			it('matches a global role or a project role, with the role and the auth identities', async () => {
-				await repository.findEligibleByProjectOrGlobalRoles({
-					projectId: 'p-1',
-					projectRoleSlugs: ['project:editor'],
-					globalRoleSlugs: ['global:owner'],
-					ids: ['id-1'],
-				});
-
-				expect(entityManager.find).toHaveBeenCalledWith(Person, {
-					where: [
-						{ id: In(['id-1']), disabled: false, role: { slug: In(['global:owner']) } },
-						{
-							id: In(['id-1']),
-							disabled: false,
-							projectRelations: { projectId: 'p-1', role: { slug: In(['project:editor']) } },
-						},
-					],
-					relations,
-				});
-			});
-
-			it('matches all people when no ids are given', async () => {
-				await repository.findEligibleByProjectOrGlobalRoles({
-					projectId: 'p-1',
-					projectRoleSlugs: [],
-					globalRoleSlugs: ['global:owner'],
-				});
-
-				expect(entityManager.find).toHaveBeenCalledWith(Person, {
-					where: [{ disabled: false, role: { slug: In(['global:owner']) } }],
-					relations,
-				});
-			});
-
-			it('returns nothing without a query for an empty id list', async () => {
-				const found = await repository.findEligibleByProjectOrGlobalRoles({
-					projectId: 'p-1',
-					projectRoleSlugs: ['project:editor'],
-					globalRoleSlugs: ['global:owner'],
-					ids: [],
-				});
-
-				expect(found).toEqual([]);
-				expect(entityManager.find).not.toHaveBeenCalled();
-			});
-
-			it('returns nothing without a query when no role slugs are given', async () => {
-				const found = await repository.findEligibleByProjectOrGlobalRoles({
-					projectId: 'p-1',
-					projectRoleSlugs: [],
-					globalRoleSlugs: [],
-				});
-
-				expect(found).toEqual([]);
-				expect(entityManager.find).not.toHaveBeenCalled();
-			});
-		});
-
 		it('counts people with MFA enabled', async () => {
 			entityManager.count.mockResolvedValueOnce(3);
 

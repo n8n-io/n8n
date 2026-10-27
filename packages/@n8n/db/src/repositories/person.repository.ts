@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { FindOptionsWhere, Repository } from '@n8n/typeorm';
+import type { Repository } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
@@ -128,41 +128,6 @@ export class PersonRepository {
 
 	async findManyByIds(ids: string[]): Promise<Person[]> {
 		return await this.table.find({ where: { id: In(ids) }, order: { id: 'ASC' } });
-	}
-
-	/**
-	 * Enabled people in `ids` (or all of them) who hold one of `globalRoleSlugs`,
-	 * or one of `projectRoleSlugs` in `projectId`.
-	 */
-	async findEligibleByProjectOrGlobalRoles({
-		projectId,
-		projectRoleSlugs,
-		globalRoleSlugs,
-		ids,
-	}: {
-		projectId: string;
-		projectRoleSlugs: string[];
-		globalRoleSlugs: string[];
-		ids?: string[];
-	}): Promise<Person[]> {
-		if (ids?.length === 0) return [];
-
-		const requested = ids ? { id: In(ids) } : {};
-		const where: Array<FindOptionsWhere<Person>> = [];
-		if (globalRoleSlugs.length > 0) {
-			where.push({ ...requested, disabled: false, role: { slug: In(globalRoleSlugs) } });
-		}
-		if (projectRoleSlugs.length > 0) {
-			where.push({
-				...requested,
-				disabled: false,
-				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
-			});
-		}
-		if (where.length === 0) return [];
-
-		// `computeIsPending` reads the role and the auth identities on load.
-		return await this.table.find({ where, relations: { role: true, authIdentities: true } });
 	}
 
 	/**

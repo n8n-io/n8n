@@ -178,22 +178,6 @@ describe('UserRepository (both kinds)', () => {
 
 			expect(found.map(({ id }) => id)).toEqual([person.id]);
 		});
-
-		it('finds eligible people by role, but not service accounts', async () => {
-			const personRepository = Container.get(PersonRepository);
-			const person = await createMember();
-			const serviceAccount = await createServiceAccount();
-			const project = await createTeamProject();
-
-			const found = await personRepository.findEligibleByProjectOrGlobalRoles({
-				projectId: project.id,
-				projectRoleSlugs: [],
-				globalRoleSlugs: [GLOBAL_MEMBER_ROLE.slug],
-				ids: [person.id, serviceAccount.id],
-			});
-
-			expect(found.map(({ id }) => id)).toEqual([person.id]);
-		});
 	});
 
 	describe('relations', () => {
