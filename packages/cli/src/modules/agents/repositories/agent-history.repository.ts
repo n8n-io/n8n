@@ -59,6 +59,18 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 		return await repo.findOneByOrFail({ versionId: data.versionId });
 	}
 
+	async recordPublisher(
+		versionId: string,
+		publishedById: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			AgentHistory,
+			{ versionId },
+			{ publishedById, updatedAt: () => '"updatedAt"' },
+		);
+	}
+
 	async findByVersionAndAgentId(
 		versionId: string,
 		agentId: string,

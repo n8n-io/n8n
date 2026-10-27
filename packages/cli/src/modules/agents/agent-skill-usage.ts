@@ -108,7 +108,7 @@ export class AgentSkillUsage extends SkillUsage {
 
 	async markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]> {
 		const followingIds = await this.agentSkillRepository.findFollowingAgentIds([skillId], ctx);
-		await this.agentRepository.markDraftChangedIfInSync(followingIds, ctx);
+		await this.agentRepository.markFollowerDraftsChanged(followingIds, ctx);
 		return followingIds;
 	}
 

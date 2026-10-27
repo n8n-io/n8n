@@ -357,7 +357,7 @@ export class AgentSkillRefsService {
 	/**
 	 * The skill version id of each draft ref, keyed by skill id, in draft order. Pin
 	 * the versions once the `agent_history` row exists (see `pinVersion`). Call it in
-	 * the publish transaction: it takes the publish lock on the skills.
+	 * the transaction that saves the draft.
 	 */
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema'>,
@@ -366,15 +366,15 @@ export class AgentSkillRefsService {
 		if (!agent.schema) return new Map();
 		const refs = await this.refsForDraft(agent, ctx);
 		if (refs.length === 0) return new Map();
-		const versionByRef = await this.skillRuntime.snapshotForPublish(toServiceRefs(refs), ctx);
+		const versionByRef = await this.skillRuntime.snapshotForSave(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
+			throw new UserError(`Cannot save agent with missing skills: ${missing.join(', ')}`);
 		}
 		return versionByRef;
 	}
 
-	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
+	/** Pin the resolved skills after the history row exists, in the same transaction. */
 	async pinVersion(
 		agentVersionId: string,
 		pins: Map<string, string>,
@@ -386,6 +386,24 @@ export class AgentSkillRefsService {
 			[...pins].map(([skillId, skillVersionId]) => ({ agentVersionId, skillId, skillVersionId })),
 			ctx,
 		);
+	}
+
+	async assertVersionAccess(
+		agent: Pick<Agent, 'id' | 'projectId'>,
+		version: AgentHistory,
+		ctx: OperationContext,
+	): Promise<void> {
+		const ids = (await this.refsForVersion(version, ctx)).map(({ id }) => id);
+		if (ids.length === 0) return;
+		await this.skillRuntime.lockForPublish(ids, ctx);
+		const targets = await this.skillRuntime.findTargets(ids, ctx);
+		const accessible = (id: string) => {
+			const skill = targets.get(id);
+			return skill !== undefined && this.isAttachable(skill, agent);
+		};
+		if (!ids.every(accessible)) {
+			throw new UserError('A saved skill is no longer available to this agent');
+		}
 	}
 
 	async availabilityOf(

@@ -32,6 +32,7 @@ import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.n
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
@@ -645,7 +646,8 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 		expect(outcome).toMatchObject({ status: 'created', publishing: { state: 'published' } });
 		expect(applied.activeVersionId).toBeNull();
 		expect(outcome.agent.activeVersionId).toBe(applied.versionId);
-		expect(outcome.agent.revision).toBe(applied.revision + 1);
+		expect(outcome.agent.revision).toBe(applied.revision);
+		expect(outcome.agent.publicationRevision).toBe(applied.publicationRevision + 1);
 		expect(
 			await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
 				applied.versionId!,
@@ -970,37 +972,47 @@ it.each(['create', 'update'] as const)(
 	},
 );
 
-it.each(['draft', 'publication'] as const)(
-	'rejects a plan made before a concurrent %s change',
-	async (change) => {
-		const input = fixture();
-		input.manifest.agents.splice(1);
-		const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
-		const plan = await planFor(input);
-		const current = (await agents.findById(saved.id))!;
-		if (change === 'draft') {
-			current.name = 'Concurrent name';
-			await agents.saveDraftFenced(current);
-		} else {
-			await Container.get(AgentHistoryRepository).saveVersion({
-				agentId: saved.id,
-				versionId: saved.versionId!,
-				schema: saved.schema,
-				tools: saved.tools,
-				publishedBy: 'Test',
-			});
-			await agents.setActiveVersionFenced(saved.id, current.revision, {
-				activeVersionId: saved.versionId,
-				versionId: saved.versionId!,
-			});
-		}
-		const before = await agents.findById(saved.id);
-		const effects = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
-		await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);
-		expect(await agents.findById(saved.id)).toEqual(before);
-		expect(effects).not.toHaveBeenCalled();
-	},
-);
+it('rejects a plan made before a concurrent draft change', async () => {
+	const input = fixture();
+	input.manifest.agents.splice(1);
+	const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	const plan = await planFor(input);
+	const current = (await agents.findById(saved.id))!;
+	current.name = 'Concurrent name';
+	await agents.saveDraftFenced(current);
+	const before = await agents.findById(saved.id);
+	const effects = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
+	await expect(orchestrator.apply(plan)).rejects.toBeInstanceOf(ConflictError);
+	expect(await agents.findById(saved.id)).toEqual(before);
+	expect(effects).not.toHaveBeenCalled();
+});
+
+it('keeps a concurrent publication when applying a draft import', async () => {
+	const input = publishableFixture();
+	input.manifest.agents.splice(1);
+	const saved = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	source(input).config!.instructions = 'Updated draft instructions.';
+	const plan = await planFor(input);
+	const { agent: published } = await Container.get(AgentPublishService).publishAgent(
+		saved.id,
+		project.id,
+		owner,
+		{ by: 'user', trigger: 'explicit' },
+	);
+	const imported = await orchestrator.apply(plan);
+	const current = (await agents.findById(saved.id))!;
+	expect(imported.agentOutcomes[0]).toMatchObject({ status: 'updated', publishingAction: 'noop' });
+	expect(current).toMatchObject({
+		schema: { instructions: 'Updated draft instructions.' },
+		revision: saved.revision + 1,
+		activeVersionId: saved.versionId,
+		publicationRevision: published.publicationRevision,
+	});
+	expect(current.versionId).not.toBe(saved.versionId);
+	expect(
+		await Container.get(AgentHistoryRepository).findByVersionAndAgentId(saved.versionId!, saved.id),
+	).toMatchObject({ schema: saved.schema, tools: saved.tools });
+});
 
 it('keeps strict creation when a planned ID becomes occupied', async () => {
 	const input = fixture();

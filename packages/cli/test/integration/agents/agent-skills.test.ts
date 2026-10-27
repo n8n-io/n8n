@@ -75,6 +75,7 @@ describe('Agent skills in the skills module', () => {
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
 		const validation = mockInstance(AgentValidationService);
 		validation.validateAgentEntityConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
+		validation.validateAgentHistoryConfiguration.mockResolvedValue({ status: 'valid', issues: [] });
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
 		registerSkillUsage();

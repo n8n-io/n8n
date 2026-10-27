@@ -9,6 +9,7 @@ import type { SkillRuntimeService, SkillService, SkillTarget } from '@/modules/s
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
+import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSkillRepository } from '../repositories/agent-skill.repository';
 
@@ -562,12 +563,12 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillRuntime.snapshotForPublish.mockResolvedValue(versionByRef);
+			skillRuntime.snapshotForSave.mockResolvedValue(versionByRef);
 
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(skillRuntime.snapshotForPublish).toHaveBeenCalledWith(
+			expect(skillRuntime.snapshotForSave).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
@@ -585,10 +586,10 @@ describe('AgentSkillRefsService', () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
-			skillRuntime.snapshotForPublish.mockResolvedValue(new Map());
+			skillRuntime.snapshotForSave.mockResolvedValue(new Map());
 
 			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
-				'Cannot publish agent with missing skills: zeta',
+				'Cannot save agent with missing skills: zeta',
 			);
 		});
 
@@ -597,7 +598,7 @@ describe('AgentSkillRefsService', () => {
 			await service.pinVersion('version-1', snapshot, ctx);
 
 			expect(snapshot).toEqual(new Map());
-			expect(skillRuntime.snapshotForPublish).not.toHaveBeenCalled();
+			expect(skillRuntime.snapshotForSave).not.toHaveBeenCalled();
 			expect(agentSkillRepository.insertPins).not.toHaveBeenCalled();
 		});
 	});
@@ -721,6 +722,28 @@ describe('AgentSkillRefsService attach check', () => {
 		);
 
 		expect(agentSkills.replaceDependencies).toHaveBeenCalledWith('agent-1', [], TX_CTX);
+	});
+
+	describe('assertVersionAccess', () => {
+		const version = { versionId: 'agent-version-1' } as AgentHistory;
+
+		it.each([
+			[[]],
+			[[{ id: 'skill_a', where: { projectId: 'another-project' }, name: 'Pricing' }]],
+		])('refuses missing or inaccessible saved skills', async (skills) => {
+			agentSkills.findPinnedSkillIds.mockResolvedValue(['skill_a']);
+			givenSkills(skills);
+			await expect(
+				service.assertVersionAccess({ id: 'agent-1', projectId: PROJECT }, version, TX_CTX),
+			).rejects.toThrow('A saved skill is no longer available to this agent');
+		});
+
+		it('holds the skill lock through publication and accepts an accessible skill', async () => {
+			agentSkills.findPinnedSkillIds.mockResolvedValue(['skill_a']);
+			givenSkills([{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' }]);
+			await service.assertVersionAccess({ id: 'agent-1', projectId: PROJECT }, version, TX_CTX);
+			expect(skillRuntime.lockForPublish).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+		});
 	});
 
 	describe('isAttachable', () => {

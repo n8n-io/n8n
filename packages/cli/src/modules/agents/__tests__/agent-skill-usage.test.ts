@@ -48,7 +48,7 @@ describe('AgentSkillUsage', () => {
 		agentSkills.findDependencies.mockResolvedValue(new Map());
 		agentSkills.findFollowingAgents.mockResolvedValue([]);
 		agentSkills.findFollowingAgentIds.mockResolvedValue([]);
-		agents.markDraftChangedIfInSync.mockResolvedValue([]);
+		agents.markFollowerDraftsChanged.mockResolvedValue([]);
 		agents.findProjectIdsByIds.mockResolvedValue([]);
 	});
 
@@ -194,7 +194,7 @@ describe('AgentSkillUsage', () => {
 
 			expect(ids).toEqual(['agent-1', 'agent-2']);
 			expect(agentSkills.findFollowingAgentIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);
-			expect(agents.markDraftChangedIfInSync).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
+			expect(agents.markFollowerDraftsChanged).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
 		});
 	});
 
