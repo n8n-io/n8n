@@ -80,8 +80,10 @@ export class ResumeRequestService {
 
 		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
 			if (attempt > 0) await sleep(this.hold.delayMs);
-			const status = await this.loadStatus(executionId);
-			const step = await this.loadExecutionBoundWait(executionId);
+			const [status, step] = await Promise.all([
+				this.loadStatus(executionId),
+				this.loadExecutionBoundWait(executionId),
+			]);
 			if (!isLive(status)) return null;
 			if (step) return { stepId: step.id, nodeId: step.nodeId };
 		}
