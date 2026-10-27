@@ -39,9 +39,6 @@ export class CreateLlmUsageTable1793007369435 implements ReversibleMigration {
 				column('threadId').varchar(128),
 				column('projectId').varchar(36),
 				column('userId').uuid,
-				column('accountableUserId').uuid.comment(
-					'The user that budgets count: userId, else the publisher of the workflow',
-				),
 				column('credentialId').varchar(36),
 				column('managedBy')
 					.varchar(32)

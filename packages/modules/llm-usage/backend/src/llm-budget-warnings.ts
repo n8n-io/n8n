@@ -5,8 +5,8 @@ import { InstanceSettings } from 'n8n-core';
 
 import { windowStart } from './budget-window';
 import { LlmBudgetSpendService } from './llm-budget-spend.service';
-// Adds the budget events to `EventService`.
-import type {} from './llm-budget.events';
+// Also adds the budget events to `EventService`.
+import type { LlmBudgetEventMap } from './llm-budget.events';
 
 /** A rolling threshold fires again only after the spend drops this many points below it. */
 const REARM_MARGIN_PERCENT = 10;
@@ -42,12 +42,10 @@ export class LlmBudgetWarnings {
 				timeWindow.kind === 'calendar'
 					? windowStart(timeWindow, now, this.globalConfig.generic.timezone).getTime()
 					: 0;
-			const thresholds = budget.warnAtPercent.map((percent) => ({
-				percent,
-				event: 'llm-budget-threshold-reached' as const,
-			}));
+			const thresholds: Array<{ percent: number; event: keyof LlmBudgetEventMap }> =
+				budget.warnAtPercent.map((percent) => ({ percent, event: 'llm-budget-threshold-reached' }));
 			if (budget.action === 'warn') {
-				thresholds.push({ percent: 100, event: 'llm-budget-limit-reached' as const });
+				thresholds.push({ percent: 100, event: 'llm-budget-limit-reached' });
 			}
 
 			for (const counter of this.spend.countersOf(budget.id)) {

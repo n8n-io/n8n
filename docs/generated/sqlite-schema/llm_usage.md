@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "llm_usage" ("callId" varchar(64) PRIMARY KEY NOT NULL, "startedAt" datetime(3), "finishedAt" datetime(3) NOT NULL, "durationMs" integer, "callerType" varchar(32) NOT NULL, "subType" varchar(32), "workflowId" varchar(36), "executionId" varchar(36), "executionMode" varchar(32), "nodeName" text, "nodeType" text, "agentId" varchar(36), "threadId" varchar(128), "projectId" varchar(36), "userId" varchar, "accountableUserId" varchar, "credentialId" varchar(36), "managedBy" varchar(32), "provider" varchar(64) NOT NULL, "model" varchar(255) NOT NULL, "providerResponseId" varchar(255), "inputTokens" integer NOT NULL DEFAULT (0), "outputTokens" integer NOT NULL DEFAULT (0), "cacheReadTokens" integer NOT NULL DEFAULT (0), "cacheWriteTokens" integer NOT NULL DEFAULT (0), "estimatedCostUsd" real, "priced" boolean NOT NULL DEFAULT (false), CONSTRAINT "CHK_llm_usage_callerType" CHECK ("callerType" IN ('node', 'agent', 'instance-ai', 'workflow-builder', 'unknown')), CONSTRAINT "CHK_llm_usage_subType" CHECK ("subType" IN ('llm', 'http')), CONSTRAINT "CHK_llm_usage_managedBy" CHECK ("managedBy" IN ('aiGateway', 'assistant')))
+CREATE TABLE "llm_usage" ("callId" varchar(64) PRIMARY KEY NOT NULL, "startedAt" datetime(3), "finishedAt" datetime(3) NOT NULL, "durationMs" integer, "callerType" varchar(32) NOT NULL, "subType" varchar(32), "workflowId" varchar(36), "executionId" varchar(36), "executionMode" varchar(32), "nodeName" text, "nodeType" text, "agentId" varchar(36), "threadId" varchar(128), "projectId" varchar(36), "userId" varchar, "credentialId" varchar(36), "managedBy" varchar(32), "provider" varchar(64) NOT NULL, "model" varchar(255) NOT NULL, "providerResponseId" varchar(255), "inputTokens" integer NOT NULL DEFAULT (0), "outputTokens" integer NOT NULL DEFAULT (0), "cacheReadTokens" integer NOT NULL DEFAULT (0), "cacheWriteTokens" integer NOT NULL DEFAULT (0), "estimatedCostUsd" real, "priced" boolean NOT NULL DEFAULT (false), "accountableUserId" varchar, CONSTRAINT "CHK_llm_usage_callerType" CHECK (("callerType" IN ('node', 'agent', 'instance-ai', 'workflow-builder', 'unknown'))), CONSTRAINT "CHK_llm_usage_subType" CHECK (("subType" IN ('llm', 'http'))), CONSTRAINT "CHK_llm_usage_managedBy" CHECK (("managedBy" IN ('aiGateway', 'assistant'))))
 ```
 
 </details>
@@ -47,9 +47,9 @@ CREATE TABLE "llm_usage" ("callId" varchar(64) PRIMARY KEY NOT NULL, "startedAt"
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("callerType" IN ('node', 'agent', 'instance-ai', 'workflow-builder', 'unknown')) |
-| - | CHECK | CHECK ("subType" IN ('llm', 'http')) |
-| - | CHECK | CHECK ("managedBy" IN ('aiGateway', 'assistant')) |
+| - | CHECK | CHECK (("callerType" IN ('node', 'agent', 'instance-ai', 'workflow-builder', 'unknown'))) |
+| - | CHECK | CHECK (("subType" IN ('llm', 'http'))) |
+| - | CHECK | CHECK (("managedBy" IN ('aiGateway', 'assistant'))) |
 | callId | PRIMARY KEY | PRIMARY KEY (callId) |
 | sqlite_autoindex_llm_usage_1 | PRIMARY KEY | PRIMARY KEY (callId) |
 

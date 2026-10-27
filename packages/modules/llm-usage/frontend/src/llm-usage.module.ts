@@ -30,6 +30,8 @@ export const LlmUsageModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-llm-usage',
+			order: 80,
+			section: 'ai',
 			icon: 'circle-dollar-sign',
 			get label() {
 				return useI18n().baseText('settings.llmUsage');

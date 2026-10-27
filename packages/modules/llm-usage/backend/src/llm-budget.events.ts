@@ -1,3 +1,5 @@
+import type {} from '@n8n/backend-services';
+
 /** A budget counter that crossed a warning threshold, or the limit of a `warn` budget. */
 export interface LlmBudgetWarningEvent {
 	budgetId: string;
