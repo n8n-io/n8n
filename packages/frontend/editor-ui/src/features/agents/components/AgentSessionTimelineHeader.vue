@@ -362,6 +362,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 
 		:global(.n8n-text) {
 			flex: 1;
+			padding-top: var(--spacing--5xs);
 			@include utils.utils-ellipsis;
 		}
 	}
