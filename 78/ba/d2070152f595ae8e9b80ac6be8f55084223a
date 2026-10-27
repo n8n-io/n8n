@@ -1,0 +1,23 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_02f30e88687580::t_6288ac5017562d 44-46,50-53
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_02f30e88687580::t_583806a1aa329f 1974-1978
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_02f30e88687580::t_6288ac5017562d 747-749,751-754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78bad2070152f595ae8e9b80ac6be8f55084223a",
+  "prompts": {},
+  "sessions": {
+    "s_02f30e88687580": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1688e-5ff5-76a0-a4b7-22494ec8b06c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
