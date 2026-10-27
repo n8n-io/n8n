@@ -66,7 +66,7 @@ import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
-import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { McpAgentSlackSetup, SLACK_INTEGRATION_TYPE } from './agent-slack-setup';
 import {
@@ -1674,7 +1674,9 @@ export class McpAgentToolsService {
 				// The full catalog runs to hundreds of KB вЂ” far past MCP client
 				// token limits вЂ” so without a provider return a summary instead.
 				const catalog = filterOfferedAgentModelProviders(
-					await (await import('@n8n/agents')).fetchProviderCatalog(),
+					await (await import('@n8n/agents')).fetchProviderCatalog({
+						fetch: createAiProxyFetch(this.outboundHttp),
+					}),
 				);
 				return {
 					providers: Object.values(catalog).map((provider) => ({

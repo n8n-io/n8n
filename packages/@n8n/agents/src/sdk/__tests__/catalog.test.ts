@@ -107,6 +107,17 @@ describe('fetchProviderCatalog', () => {
 		});
 	});
 
+	it('uses an injected fetch', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => await Promise.resolve({}),
+		});
+
+		await fetchProviderCatalog({ fetch: fetchMock as typeof fetch });
+
+		expect(fetchMock).toHaveBeenCalledWith('https://models.dev/api.json', { signal: undefined });
+	});
+
 	it('rejects a malformed catalog response', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,

@@ -1,5 +1,5 @@
 import { generateText } from 'ai';
-import { createServer, request, type Server } from 'node:http';
+import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { createModel } from '../model/model-factory';
@@ -60,33 +60,5 @@ describe('createModel env-proxy fallback', () => {
 
 	it('sends other hosts through the proxy', async () => {
 		await expect(ping()).rejects.toThrow('ECONNREFUSED 127.0.0.1:1');
-	});
-
-	it('forwards plain HTTP to the proxy without CONNECT', async () => {
-		const requestLines: string[] = [];
-		const proxy = createServer((req, res) => {
-			requestLines.push(`${req.method} ${req.url}`);
-			const upstream = request(
-				req.url ?? '',
-				{ method: req.method, headers: req.headers },
-				(up) => {
-					res.writeHead(up.statusCode ?? 502, up.headers);
-					up.pipe(res);
-				},
-			);
-			req.pipe(upstream);
-		});
-		// Like a proxy that allows CONNECT only to port 443.
-		proxy.on('connect', (_req, socket) => socket.end('HTTP/1.1 403 Forbidden\r\n\r\n'));
-		await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
-		vi.stubEnv('HTTP_PROXY', `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`);
-
-		try {
-			await expect(ping()).resolves.toMatchObject({ text: 'pong' });
-			expect(requestLines).toEqual([`POST ${baseUrl}/chat/completions`]);
-		} finally {
-			proxy.closeAllConnections();
-			await new Promise((resolve) => proxy.close(resolve));
-		}
 	});
 });

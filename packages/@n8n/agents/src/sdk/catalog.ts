@@ -183,8 +183,11 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  */
 export async function fetchProviderCatalog(options?: {
 	signal?: AbortSignal;
+	fetch?: typeof globalThis.fetch;
 }): Promise<ProviderCatalog> {
-	const response = await (getProxyFetch() ?? fetch)(MODELS_DEV_URL, { signal: options?.signal });
+	const response = await (options?.fetch ?? getProxyFetch() ?? fetch)(MODELS_DEV_URL, {
+		signal: options?.signal,
+	});
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}

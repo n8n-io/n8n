@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SsrfProtectionConfig } from '@n8n/config';
-import { Agent, ProxyAgent } from 'undici';
+import { Agent, EnvHttpProxyAgent, ProxyAgent } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfProtectionService } from '../../ssrf';
@@ -20,10 +20,10 @@ function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
 }
 
 describe('transport getDispatcher proxy routing', () => {
-	it('defaults to env-based proxy (Agent that picks a ProxyAgent per request)', () => {
+	it('defaults to env-based proxy (EnvHttpProxyAgent dispatcher)', () => {
 		const dispatcher = makeTransport({ useDefaultSsrfPolicy: 'unsafe' }).getDispatcher();
 
-		expect(dispatcher).toBeInstanceOf(Agent);
+		expect(dispatcher).toBeInstanceOf(EnvHttpProxyAgent);
 	});
 
 	it('proxy: false → plain undici Agent', () => {
@@ -33,16 +33,17 @@ describe('transport getDispatcher proxy routing', () => {
 		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(Agent);
+		expect(dispatcher).not.toBeInstanceOf(EnvHttpProxyAgent);
 		expect(dispatcher).not.toBeInstanceOf(ProxyAgent);
 	});
 
-	it('proxy: env → Agent that picks a ProxyAgent per request', () => {
+	it('proxy: env → EnvHttpProxyAgent', () => {
 		const dispatcher = makeTransport({
 			proxy: 'env',
 			useDefaultSsrfPolicy: 'unsafe',
 		}).getDispatcher();
 
-		expect(dispatcher).toBeInstanceOf(Agent);
+		expect(dispatcher).toBeInstanceOf(EnvHttpProxyAgent);
 	});
 
 	it('proxy: explicit URL → ProxyAgent', () => {
@@ -53,6 +54,7 @@ describe('transport getDispatcher proxy routing', () => {
 
 		expect(dispatcher).toBeInstanceOf(ProxyAgent);
 		expect(dispatcher).not.toBeInstanceOf(Agent);
+		expect(dispatcher).not.toBeInstanceOf(EnvHttpProxyAgent);
 	});
 
 	it('returns the same dispatcher instance on repeated calls', () => {

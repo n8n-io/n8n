@@ -1,7 +1,6 @@
 import type { LookupFunction } from 'node:net';
-import { getProxyForUrl } from 'proxy-from-env';
 import type { Dispatcher } from 'undici';
-import { Agent, Pool, ProxyAgent, fetch as undiciFetch } from 'undici';
+import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 import type { ProxyOption } from '../node-agents';
 
@@ -135,8 +134,7 @@ function buildDispatcherFromProxy(
 	if (proxy === 'env') {
 		// The environment's proxies are part of the deployment, not of a request,
 		// so the policy does not decide them (see `buildNodeAgents`).
-		const options = { ...agentOptions, ...secureConnect(ssrf) };
-		return new Agent(options).compose(createEnvProxyInterceptor(options));
+		return new EnvHttpProxyAgent({ ...agentOptions, ...secureConnect(ssrf) });
 	}
 	assertProxyHostAllowed(ssrf, proxy);
 	return new ProxyAgent({
@@ -144,38 +142,6 @@ function buildDispatcherFromProxy(
 		...agentOptions,
 		...secureProxyConnect(ssrf),
 	});
-}
-
-/**
- * Sends each dispatch through the proxy that `proxy-from-env` picks for its origin. The Node agents
- * use the same resolver. `proxyTunnel: false` sends plain HTTP to an HTTP proxy without CONNECT.
- */
-function createEnvProxyInterceptor(
-	options: Agent.Options,
-): Dispatcher.DispatcherComposeInterceptor {
-	const proxyAgents = new Map<string, ProxyAgent>();
-	return (dispatch) => (opts, handler) => {
-		try {
-			const proxyUrl = getProxyForUrl(String(opts.origin));
-			if (!proxyUrl) return dispatch(opts, handler);
-			let agent = proxyAgents.get(proxyUrl);
-			if (!agent) {
-				agent = new ProxyAgent({
-					...options,
-					uri: proxyUrl,
-					proxyTunnel: false,
-					// undici builds the forward-proxy client without the agent options, so add them here.
-					factory: (origin, poolOptions) => new Pool(origin, { ...options, ...poolOptions }),
-				});
-				proxyAgents.set(proxyUrl, agent);
-			}
-			return agent.dispatch(opts, handler);
-		} catch (error: unknown) {
-			// A throw (e.g. an invalid proxy URL) would escape the async interceptors above and stall the request.
-			failDispatch(handler, ensureError(error));
-			return true;
-		}
-	};
 }
 
 /**
@@ -358,7 +324,7 @@ interface FailableDispatchHandler {
 
 /**
  * Coerces an unknown throw into an `Error`. Kept local so the pure transport core
- * (`@n8n/backend-network/transport`) has no runtime dependency beyond `undici` and `proxy-from-env`.
+ * (`@n8n/backend-network/transport`) has no runtime dependency beyond `undici`.
  */
 function ensureError(error: unknown): Error {
 	return error instanceof Error
