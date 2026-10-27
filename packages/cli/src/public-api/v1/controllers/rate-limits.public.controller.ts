@@ -46,11 +46,11 @@ export class RateLimitsPublicController {
 	constructor(private readonly settingsService: PublicApiRateLimitSettingsService) {}
 
 	@Get('/')
-	@ApiKeyScope('publicApiRateLimit:manage')
-	@GlobalScope('publicApiRateLimit:manage')
+	@ApiKeyScope('securitySettings:manage')
+	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Retrieve the Public API rate-limit settings')
 	@ApiDescription(
-		'Retrieve the configured Public API rate limits and windows, including fields controlled by environment variables. Stored changes take effect after restart. Requires the `publicApiRateLimit:manage` scope. API-key requests to this route count against the rate limits. Session requests are not limited.',
+		'Retrieve the configured Public API rate limits and windows, including fields controlled by environment variables. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. Session requests are not limited.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, RateLimitSettingsPublicDto)
@@ -63,11 +63,11 @@ export class RateLimitsPublicController {
 	}
 
 	@Put('/')
-	@ApiKeyScope('publicApiRateLimit:manage')
-	@GlobalScope('publicApiRateLimit:manage')
+	@ApiKeyScope('securitySettings:manage')
+	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Set the Public API rate-limit settings')
 	@ApiDescription(
-		'Replace the stored Public API rate-limit settings. Send every writable field. Set a limit to 0 to disable that layer. When rate limiting is enabled, at least one limit must be greater than 0. Changes take effect after restart, as with the internal settings API. Changing a field controlled by an environment variable returns 409 without saving any changes. Repeating its current value is accepted. The read-only `envManagedFields` array is ignored on writes, so a GET response can be sent back as a PUT body. Requires the `publicApiRateLimit:manage` scope. API-key requests to this route count against the rate limits. If a limit blocks access, use a session request or change the environment variables and restart the instance.',
+		'Replace the stored Public API rate-limit settings. Send every writable field. Set a limit to 0 to disable that layer. When rate limiting is enabled, at least one limit must be greater than 0. Changing a field controlled by an environment variable returns 409 without saving any changes. Repeating its current value is accepted. The read-only `envManagedFields` array is ignored on writes, so a GET response can be sent back as a PUT body. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. If a limit blocks access, use a session request or change the environment variables and restart the instance.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, RateLimitSettingsPublicDto)

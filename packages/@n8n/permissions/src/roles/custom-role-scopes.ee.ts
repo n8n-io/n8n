@@ -99,7 +99,6 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		// holds anyway live in BASELINE_INSTANCE_SCOPES, not in this bundle.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
-			'publicApiRateLimit:manage',
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
 			'credentialResolver:create',
 			'credentialResolver:update',

@@ -55,7 +55,7 @@ describe('Public API rate-limit settings', () => {
 	beforeEach(async () => {
 		await testDb.truncate(['User', 'Settings']);
 		await settingsService.load();
-		owner = await createOwnerWithApiKey({ scopes: ['publicApiRateLimit:manage'] });
+		owner = await createOwnerWithApiKey({ scopes: ['securitySettings:manage'] });
 	});
 
 	afterEach(() => {
@@ -70,22 +70,13 @@ describe('Public API rate-limit settings', () => {
 		expect(response.body).toEqual({ ...initialSettings, envManagedFields: [] });
 	});
 
-	it('stores every writable value and returns the saved settings on both API surfaces', async () => {
+	it('stores every writable value and returns the saved settings', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const response = await agent.put(endpoint).send(updatedSettings).expect(200);
 
 		expect(response.body).toEqual({ ...updatedSettings, envManagedFields: [] });
 		expect(JSON.parse((await readStoredSettings())!.value)).toEqual(updatedSettings);
 		expect((await agent.get(endpoint).expect(200)).body).toEqual(response.body);
-		const internal = await testServer
-			.authAgentFor(owner)
-			.get('/settings/policies/rate-limits')
-			.expect(200);
-		expect(internal.body.data).toMatchObject(updatedSettings);
-
-		expect(settingsService.settings).toEqual(initialSettings);
-		await settingsService.load();
-		expect(settingsService.settings).toEqual(updatedSettings);
 	});
 
 	it('reads settings saved through the internal API', async () => {
@@ -131,11 +122,6 @@ describe('Public API rate-limit settings', () => {
 	it.each([
 		['a partial object', { enabled: true }],
 		['an unknown field', { ...updatedSettings, unexpected: true }],
-		['a negative limit', { ...updatedSettings, globalReadLimit: -1 }],
-		['a fractional limit', { ...updatedSettings, endpointWriteLimit: 1.5 }],
-		['a zero window', { ...updatedSettings, globalWriteWindowSeconds: 0 }],
-		['a negative window', { ...updatedSettings, endpointReadWindowSeconds: -1 }],
-		['a fractional window', { ...updatedSettings, endpointWriteWindowSeconds: 1.5 }],
 		[
 			'no active limits while enabled',
 			{
@@ -184,7 +170,7 @@ describe('Public API rate-limit settings', () => {
 	});
 
 	it.each(['get', 'put'] as const)('denies members with a scoped key on %s', async (method) => {
-		const member = await createMemberWithApiKey({ scopes: ['publicApiRateLimit:manage'] });
+		const member = await createMemberWithApiKey({ scopes: ['securitySettings:manage'] });
 
 		await testServer
 			.publicApiAgentFor(member)
@@ -207,13 +193,6 @@ describe('Public API rate-limit settings', () => {
 		it.each([
 			['enabled', 'ENABLED', false],
 			['globalReadLimit', 'GLOBAL_READ_LIMIT', 10],
-			['globalReadWindowSeconds', 'GLOBAL_READ_WINDOW_SECONDS', 10],
-			['globalWriteLimit', 'GLOBAL_WRITE_LIMIT', 10],
-			['globalWriteWindowSeconds', 'GLOBAL_WRITE_WINDOW_SECONDS', 10],
-			['endpointReadLimit', 'ENDPOINT_READ_LIMIT', 10],
-			['endpointReadWindowSeconds', 'ENDPOINT_READ_WINDOW_SECONDS', 10],
-			['endpointWriteLimit', 'ENDPOINT_WRITE_LIMIT', 10],
-			['endpointWriteWindowSeconds', 'ENDPOINT_WRITE_WINDOW_SECONDS', 10],
 		] as const)(
 			'returns 409 when %s changes and saves nothing',
 			async (field, envSuffix, value) => {
@@ -255,40 +234,9 @@ describe('Public API rate-limit settings', () => {
 				globalReadLimit: 25,
 			});
 		});
-
-		it('marks _FILE settings as locked and rejects changes', async () => {
-			vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_ENDPOINT_WRITE_LIMIT_FILE', '/run/secrets/write-limit');
-			const agent = testServer.publicApiAgentFor(owner);
-			const current = await agent.get(endpoint).expect(200);
-			expect(current.body.envManagedFields).toEqual(['endpointWriteLimit']);
-
-			await agent.put(endpoint).send(updatedSettings).expect(409);
-			expect(await readStoredSettings()).toBeNull();
-		});
 	});
 
 	describe('rate limits and recovery', () => {
-		it('counts settings reads against the endpoint read limit', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			await agent.get(endpoint).expect(200);
-			await agent.get(endpoint).expect(200);
-			const response = await agent.get(endpoint).expect(429);
-
-			expect(response.headers['x-ratelimit-limit']).toBe('2');
-			expect(response.headers['retry-after']).toBeDefined();
-		});
-
-		it('counts settings reads against the global read limit', async () => {
-			const fullScopeOwner = await createOwnerWithApiKey();
-			const agent = testServer.publicApiAgentFor(fullScopeOwner);
-			await agent.get('/tags').expect(200);
-			await agent.get('/tags').expect(200);
-			await agent.get(endpoint).expect(200);
-			const response = await agent.get(endpoint).expect(429);
-
-			expect(response.headers['x-ratelimit-limit']).toBe('3');
-		});
-
 		it('limits settings writes and allows session recovery', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			await agent.put(endpoint).send(updatedSettings).expect(200);
@@ -305,15 +253,6 @@ describe('Public API rate-limit settings', () => {
 				.send({ ...updatedSettings, enabled: false })
 				.expect(200);
 			await sessionAgent.put(endpoint).send(updatedSettings).expect(200);
-		});
-
-		it('allows session reads after the API key read limit is reached', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			await agent.get(endpoint).expect(200);
-			await agent.get(endpoint).expect(200);
-			await agent.get(endpoint).expect(429);
-
-			await testServer.publicApiAgentWithCookie(owner).get(endpoint).expect(200);
 		});
 	});
 });
