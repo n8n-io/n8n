@@ -186,7 +186,7 @@ n8n-cli promotion-provider list-branches prov-1 acme/flows --search=release
 `list-repositories` shows `id`, `name`, `fullPath`, `remoteUrl`, and
 `defaultBranch`. It lists the repositories where the token has at least the
 Developer role. Use `remoteUrl` as `remote.remoteUrl` of an environment.
-`defaultBranch` is `-` for a repository without commits.
+`defaultBranch` is `null` (`-` in the table) for a repository without commits.
 
 `list-branches` shows `name` and `isDefault`. Give the repository as one of
 these values. Do not URL-encode it.
