@@ -130,6 +130,14 @@ describe('RunDataDisplayModeSelect', () => {
 	});
 
 	describe('selection', () => {
+		it('should mark the value as the selected mode', () => {
+			const { getByTestId } = renderComponent({ props: { value: 'json' } });
+
+			expect(getByTestId('radio-button-json')).toHaveAttribute('aria-checked', 'true');
+			expect(getByTestId('radio-button-schema')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('radio-button-table')).toHaveAttribute('aria-checked', 'false');
+		});
+
 		it('should emit change with the clicked mode', async () => {
 			const { getByTestId, emitted } = renderComponent({ props: { value: 'schema' } });
 
@@ -160,6 +168,16 @@ describe('RunDataDisplayModeSelect', () => {
 			expect(emitted('change')).toBeUndefined();
 
 			await rerender({ hasBinaryData: false });
+
+			await waitFor(() => expect(emitted('change')).toEqual([['schema']]));
+		});
+
+		it('should emit the first mode when the parent passes a value that is not offered', async () => {
+			const { emitted, rerender } = renderComponent({ props: { value: 'table' } });
+
+			expect(emitted('change')).toBeUndefined();
+
+			await rerender({ value: 'binary' });
 
 			await waitFor(() => expect(emitted('change')).toEqual([['schema']]));
 		});
