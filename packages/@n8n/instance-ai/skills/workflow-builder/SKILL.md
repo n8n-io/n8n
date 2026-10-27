@@ -275,8 +275,9 @@ workflow, load the `error-workflows` reference and follow its build → publish
    - Keep unrelated existing nodes and code, even when the build reports
      findings on them. The build can keep existing authentication and
      missing-output findings informational when their cause did not change.
-   - Warnings do not block the save. Resolve them or dismiss them on purpose,
-     within the requested scope.
+   - Errors and warnings block the save. Informational findings, including
+     all SDK source lint findings, do not block the save. Resolve them or
+     dismiss them on purpose, within the requested scope.
    - If the save stays blocked, report the blocker. Do not expand the scope.
    If a build fails with an error that you cannot understand, you can run
    `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
