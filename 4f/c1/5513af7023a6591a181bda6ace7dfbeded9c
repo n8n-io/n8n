@@ -1,0 +1,39 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_bf0dbe554b7b81::t_1c70b9cc090b83 26-28,30-31,36,56
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_bf0dbe554b7b81::t_9a5d6cc506f011 55
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_bf0dbe554b7b81::t_bed1e281138fd6 26,274,280-321,341,347-360,362-365,387,400
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_bf0dbe554b7b81::t_9a5d6cc506f011 149
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_bf0dbe554b7b81::t_eaedb2a2011f0b 103
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_bf0dbe554b7b81::t_1c70b9cc090b83 99
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_bf0dbe554b7b81::t_9a5d6cc506f011 125
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_bf0dbe554b7b81::t_9a5d6cc506f011 28-31,40,62-63,69-70,74,82,85-86,88,91-92,95,101
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_bf0dbe554b7b81::t_58847935f81290 128
+packages/cli/src/modules/n8n-packages/engine/__tests__/credential-save-policy.test.ts
+  s_bf0dbe554b7b81::t_9a5d6cc506f011 53
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_bf0dbe554b7b81::t_8ff8aea53c8117 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4fc15513af7023a6591a181bda6ace7dfbeded9c",
+  "prompts": {},
+  "sessions": {
+    "s_bf0dbe554b7b81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5160e371-204f-42b5-a23b-8eb7d3a31ac6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

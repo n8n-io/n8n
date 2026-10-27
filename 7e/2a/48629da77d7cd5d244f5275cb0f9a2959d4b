@@ -1,0 +1,24 @@
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_a1ffd067a33fea::t_a380e8d84ddaee 46-49
+  s_a1ffd067a33fea::t_1706337cb89efd 1-45,50-68
+packages/cli/src/public-api/v1/openapi.yml
+  s_a1ffd067a33fea::t_b1ee89baf24db7 26-31,33,36,39,42,45,47-58,60,63,66,68-82,84,87,90,93,96,98-118,120
+.agents/skills/public-api/SKILL.md
+  s_a1ffd067a33fea::t_3270f0c756210a 181-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e2a48629da77d7cd5d244f5275cb0f9a2959d4b",
+  "prompts": {},
+  "sessions": {
+    "s_a1ffd067a33fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57318cd2-38a2-4765-9b9f-5a07cf98cf54",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

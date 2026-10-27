@@ -1,0 +1,31 @@
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_e99de54a53d3e4::t_779f7137c0348c 1-9,14-19,53-56,73-116,121-153
+  s_e99de54a53d3e4::t_bcf5d92d80a3cb 117-120
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_e99de54a53d3e4::t_09e172f819007a 1-5,8-9,11,27,69-115
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_e99de54a53d3e4::t_09e172f819007a 2,19,25
+packages/nodes-base/credentials/common/google/index.ts
+  s_e99de54a53d3e4::t_09e172f819007a 1
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_e99de54a53d3e4::t_bcf5d92d80a3cb 122
+  s_e99de54a53d3e4::t_09e172f819007a 2,32
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_e99de54a53d3e4::t_09e172f819007a 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fa44bce1cac7087834917626573ed3d0dd90473",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

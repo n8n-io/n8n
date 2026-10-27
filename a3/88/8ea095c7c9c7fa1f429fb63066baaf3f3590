@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_983eea3c47ac98::t_c49da7903697f8 128
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_983eea3c47ac98::t_c49da7903697f8 22,58
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_983eea3c47ac98::t_c49da7903697f8 15,19,60,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3888ea095c7c9c7fa1f429fb63066baaf3f3590",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

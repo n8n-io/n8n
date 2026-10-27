@@ -1,0 +1,51 @@
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_fb30b1b6ca962d::t_a8c50b015cad22 1000-1001,1084,1111-1112,1161-1163,1166-1174
+  s_fb30b1b6ca962d::t_fba287f217d091 189-211,243,346,1007-1009,1014-1016,1025-1027,1037-1039,1043,1055-1057,1095,1108-1110,1113-1159,1164-1165
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_fb30b1b6ca962d::t_f69bb0031ade8e 961-1000
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_fb30b1b6ca962d::t_ac1c093c552545 68,165-169,171
+  s_fb30b1b6ca962d::t_b2fd005e0b25b9 38
+packages/cli/src/workflows/workflow.service.ts
+  s_fb30b1b6ca962d::t_720f1ae6ee971e 1926
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_fb30b1b6ca962d::t_f1fd65d28068ea 121-123,128,137,442
+  s_fb30b1b6ca962d::t_d88297392b6a07 387-389,394,422-423,425,438,446-448,454,456
+  s_fb30b1b6ca962d::t_75343da44bd502 409,426,434,437,444-445,449-453,455,457-464
+  s_385ba811ce4e58::t_2264af709513f9 407-408,410-413
+  s_fb30b1b6ca962d::t_529387ce212c89 386,406,414-421,424,427
+  s_fb30b1b6ca962d::t_b70cb59b002b2c 428-433,435-436,439-441,443
+  s_fb30b1b6ca962d::t_f415a204af4a0e 465
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_fb30b1b6ca962d::t_f1fd65d28068ea 518,523
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_fb30b1b6ca962d::t_eae742c7b3b7a9 1448,1454,1463,1477,1492,1507
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_fb30b1b6ca962d::t_e52fcdd6f96d70 46
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_fb30b1b6ca962d::t_eae742c7b3b7a9 20,47,68,311,315,317,322-326,331,333-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "151a6be4d2e9b6fecc84d51a5c5834004081f143",
+  "prompts": {},
+  "sessions": {
+    "s_385ba811ce4e58": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "658f3adb-54cd-43ba-99f7-bbf32082b0a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

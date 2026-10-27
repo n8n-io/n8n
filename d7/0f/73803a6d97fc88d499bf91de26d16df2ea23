@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_51377107c6724f::t_59b0a8c1b9d412 2381-2384,2399
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.read-only.test.ts
+  s_51377107c6724f::t_df15602fde3e6e 1-21
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_51377107c6724f::t_59b0a8c1b9d412 197,203
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_51377107c6724f::t_003d23e27d8fdc 400,435-440
+  s_51377107c6724f::t_26b0126df27dde 441-442
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_51377107c6724f::t_da44349e1558de 2604-2605,2614-2627
+  s_51377107c6724f::t_df9cd5401129dc 2628-2630
+  s_51377107c6724f::t_08c3102c1baebd 2631-2658
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d70f73803a6d97fc88d499bf91de26d16df2ea23",
+  "prompts": {},
+  "sessions": {
+    "s_51377107c6724f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b6f764b-f4cc-4a2e-84e0-e78a10703b30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

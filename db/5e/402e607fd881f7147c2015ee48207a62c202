@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/workflowDiff.utils.ts
+  s_983eea3c47ac98::t_c75e7f66485155 1-41,47-50
+  s_983eea3c47ac98::t_c14422383dfe31 42-46
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffSlot.vue
+  s_983eea3c47ac98::t_5e3b0baedbbdc3 4,9,15-23
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.workflow.test.ts
+  s_983eea3c47ac98::t_d5fc2b0c82bfd6 1-72
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionReview.workflow.ts
+  s_983eea3c47ac98::t_2065e2785045a5 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db5e402e607fd881f7147c2015ee48207a62c202",
+  "prompts": {},
+  "sessions": {
+    "s_983eea3c47ac98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6afe657c-702d-4003-8734-85a65b043c95",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

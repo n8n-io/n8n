@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  h_7555c3ee6524cf 49,53,59,61,67,82,88,90,99,132,138,141,166,169,178,181,198,201,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c20909d4b7d77c3199aee3e2c187563cfcf3455d",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

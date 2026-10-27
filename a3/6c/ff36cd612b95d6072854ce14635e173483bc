@@ -1,0 +1,56 @@
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_e99de54a53d3e4::t_4ee955f65f9968 16-18,1213-1220,1269,1277
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e99de54a53d3e4::t_4ee955f65f9968 62-64,663-669,715
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e99de54a53d3e4::t_e1b34c14b8badd 480-489,491-497,499-516,518-534,536-540,542-553
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_e99de54a53d3e4::t_e24937d2a85bdd 24,378-381
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_e99de54a53d3e4::t_de3b2ae5e07430 4-8,1210-1218,1220
+  s_e99de54a53d3e4::t_64f81d652adc63 1219
+  s_e99de54a53d3e4::t_89ea4dba57eb16 1,94,99,1113-1134
+  s_e99de54a53d3e4::t_89da8a1811e722 1135-1136
+  s_e99de54a53d3e4::t_b7aca8942c46e9 1221-1223
+packages/@n8n/agents/src/runtime/__tests__/google-vertex.test.ts
+  s_e99de54a53d3e4::t_63e4df67049ba6 86-96,103-104,117-118,142-143,145-147,177-178,181-184
+  s_e99de54a53d3e4::t_fb529e99092c14 163,173-176
+  s_e99de54a53d3e4::t_da75961796f4e1 40,100,114,116,119-130,132,134-141,148-162,165-172
+packages/@n8n/agents/src/runtime/model/prompt-cache.ts
+  s_e99de54a53d3e4::t_e24937d2a85bdd 62-66
+  s_e99de54a53d3e4::t_de3b2ae5e07430 7
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_e99de54a53d3e4::t_64f81d652adc63 90-95,111-116,220-225,278-297
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_e99de54a53d3e4::t_e24937d2a85bdd 8-11,199-201
+  s_e99de54a53d3e4::t_08bec7fb0ad267 7
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_e99de54a53d3e4::t_89ea4dba57eb16 42-49
+packages/@n8n/agents/src/runtime/model/google-vertex.ts
+  s_e99de54a53d3e4::t_e24937d2a85bdd 4,39-47
+  s_e99de54a53d3e4::t_739f9408dfd571 14-38,48-50,67
+packages/@n8n/agents/src/runtime/model/__tests__/raw-usage.test.ts
+  s_e99de54a53d3e4::t_de3b2ae5e07430 65-70,73-78
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_e99de54a53d3e4::t_de3b2ae5e07430 3,38-73
+  s_e99de54a53d3e4::t_94d62513e7ecf9 74-75
+packages/@n8n/agents/src/runtime/model/raw-usage.ts
+  s_e99de54a53d3e4::t_de3b2ae5e07430 83
+  s_e99de54a53d3e4::t_e24937d2a85bdd 4,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a36cff36cd612b95d6072854ce14635e173483bc",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

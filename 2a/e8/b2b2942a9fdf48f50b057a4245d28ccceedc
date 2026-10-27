@@ -1,0 +1,54 @@
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_4278dbfca6d1ae::t_18e133362ac6d7 330-341
+packages/@n8n/api-types/src/dto/index.ts
+  s_4278dbfca6d1ae::t_bf45714b8f16e1 257,262,268
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-public.dto.test.ts
+  s_4278dbfca6d1ae::t_51006366d27bb4 170,175-176,185,188-220,228-230
+  s_4278dbfca6d1ae::t_ecb61a6fc053bd 5-6
+  s_4278dbfca6d1ae::t_db71f7a8be9b62 221-227
+  s_4278dbfca6d1ae::t_e837d1f143537a 171-174
+  s_4278dbfca6d1ae::t_14ec308c355919 177-179,182-184
+  s_4278dbfca6d1ae::t_a753379f9f1718 186-187
+  s_4278dbfca6d1ae::t_e9c8fa28bd03e9 180-181
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_4278dbfca6d1ae::t_558002725f2d76 496
+  s_4278dbfca6d1ae::t_69b415cecd6f27 38
+  s_4278dbfca6d1ae::t_c1d097f38733bd 460
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_4278dbfca6d1ae::t_c7ea1d12e4e293 835-848
+  s_4278dbfca6d1ae::t_2385e8f0f9da63 1089-1121
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_4278dbfca6d1ae::t_fb107e37bd5a38 134-139
+  s_4278dbfca6d1ae::t_8b03f9f37e3f83 182
+  s_4278dbfca6d1ae::t_de2325f53907bc 122-125
+  s_4278dbfca6d1ae::t_ea9cf397ae7e1f 12
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_4278dbfca6d1ae::t_92911d801a1314 126-130
+  s_4278dbfca6d1ae::t_c3eb31620f25bb 305
+  s_4278dbfca6d1ae::t_8f4dd5e4b81465 275
+  s_4278dbfca6d1ae::t_31bf413bb4368a 382-385
+  s_4278dbfca6d1ae::t_fa4838252e3f11 354,361,369
+  s_4278dbfca6d1ae::t_45e9df2cf6585f 11
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_4278dbfca6d1ae::t_d04c0df006d869 302-305
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_4278dbfca6d1ae::t_6004638b3ef3d1 32-663
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_4278dbfca6d1ae::t_f3ba1a27b28960 546-554,573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ae8b2b2942a9fdf48f50b057a4245d28ccceedc",
+  "prompts": {},
+  "sessions": {
+    "s_4278dbfca6d1ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "406792df-803a-4699-9e40-be3371112120",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

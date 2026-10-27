@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_69eedd0dfc49cb 307-317
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_2e1fa95fc44f8f::t_42cd4039e6101c 357-381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b86b2fd2e4e63c0c2ba6a391e7c10aecaf4af451",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

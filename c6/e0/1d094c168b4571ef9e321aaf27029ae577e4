@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/ASSISTANT_V2_PLAN.md
+  s_77e9e1670f3960::t_efaeca4e894166 133-134,644-650,652-655,676-680,682,685,698,715,728,737,751,852
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6e01d094c168b4571ef9e321aaf27029ae577e4",
+  "prompts": {},
+  "sessions": {
+    "s_77e9e1670f3960": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952bcf85-d35b-473e-b75b-acb2d50f717c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/services/__tests__/active-workflows.service.test.ts
+  s_299c3d4284ed84::t_b3f3ad7aa79f15 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91936a0f239cfad7e74b7516904d35a50a077359",
+  "prompts": {},
+  "sessions": {
+    "s_299c3d4284ed84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b1f9764-d7fc-42f7-a0ed-1f8ecaee8e32",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

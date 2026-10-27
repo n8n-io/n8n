@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_876bd3b02bb892::t_2e697d0bef50b6 191,193,204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b73d6d4ac92c95442668aac36319efbb17a1abf",
+  "prompts": {},
+  "sessions": {
+    "s_876bd3b02bb892": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a143a3-cd90-7793-b24e-b8920f80d7e5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

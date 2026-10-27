@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/system-agents/system-agent-host-events.ts
+  s_47d1e4fb33b500::t_bd9026df2d2953 72-73
+packages/cli/src/modules/agents/__tests__/agent-session-langsmith-export.service.test.ts
+  s_47d1e4fb33b500::t_bd9026df2d2953 572-600
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_47d1e4fb33b500::t_bd9026df2d2953 145
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-host-events.test.ts
+  s_47d1e4fb33b500::t_281da2c8621a96 30-45
+packages/cli/src/modules/instance-ai/__tests__/format-agent-session-context.test.ts
+  s_47d1e4fb33b500::t_de35bdf80dcea4 222-227
+  s_47d1e4fb33b500::t_bd9026df2d2953 217-221,228-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3d41a42e4cfefc5f7ae41818168fd35e39b3ceb0",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e4fb33b500": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1f43985-5854-4ccc-ae33-ef01e0398c58",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

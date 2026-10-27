@@ -1,0 +1,50 @@
+packages/nodes-base/nodes/Affinity/__tests__/AffinityTriggerRequests.test.ts
+  s_2e1fa95fc44f8f::t_34af85c2dfa2c9 1-54
+packages/nodes-base/nodes/ApiTemplateIo/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_50ce7d7f988007 1-11,13-24
+  s_2e1fa95fc44f8f::t_320f5737c08cd9 12
+packages/nodes-base/nodes/Affinity/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_71a0290a1fd844 1-44
+packages/nodes-base/nodes/Asana/test/AsanaTriggerRequests.test.ts
+  s_2e1fa95fc44f8f::t_337a4cccbd514a 1-47
+packages/nodes-base/nodes/ActionNetwork/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_3902eaf168883c 51
+  s_2e1fa95fc44f8f::t_89ed504824c6eb 1-50,52-82
+packages/nodes-base/nodes/Asana/test/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_e259c4705e3b7a 1-15,17-89
+  s_2e1fa95fc44f8f::t_c8fb9c9ff947d4 16
+packages/nodes-base/nodes/AcuityScheduling/test/AcuitySchedulingTriggerRequests.test.ts
+  s_2e1fa95fc44f8f::t_d3b626ddf6e9d6 1-63
+packages/nodes-base/nodes/ActionNetwork/__tests__/workflow/workflow.json
+  s_550863f5a386da::t_c3816a36d3880c 1-768
+packages/nodes-base/nodes/Affinity/__tests__/workflow/workflow.json
+  s_550863f5a386da::t_0d643e86af89d8 1-530
+packages/nodes-base/nodes/ApiTemplateIo/__tests__/workflow/workflow.json
+  s_550863f5a386da::t_d43674d052cbad 1-90
+packages/nodes-base/nodes/Asana/test/workflow/workflow.json
+  s_550863f5a386da::t_a05b308ea0f0ce 1-721
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5905e3119923fce532df8e51584de2b932722161",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_550863f5a386da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a289b8ebdfbc91aa8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

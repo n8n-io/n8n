@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.test.ts
+  s_7f7a4dee511a6b::t_22ea14bdf74319 3,8,78-95
+  s_7f7a4dee511a6b::t_82b1527ae47d73 96
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7f7a4dee511a6b::t_5bbca75be7b47c 9839-9870
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_7f7a4dee511a6b::t_28b00893c59e20 130-139,278,293
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_7f7a4dee511a6b::t_5bbca75be7b47c 78,82,89-90,92-94,135-139
+  s_7f7a4dee511a6b::t_d3ba7d752ed6e7 12,212-220,222-224,227-237,240,242-247,251-256,259-260,262-270,275,286-288,290-296,299-310,314-448,450,478-498,500
+  s_7f7a4dee511a6b::t_be13986e97de50 178-180
+  s_7f7a4dee511a6b::t_5e1723d091a255 1-11,13-77,79-81,83-88,91,95-134,140-177,181-211,221,225-226,238-239,241,248-250,257-258,261,271-274,276-285,289,297-298,311-313,449,451-477,501-621
+  s_7f7a4dee511a6b::t_a1109c4720d06f 499
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_7f7a4dee511a6b::t_a0ac6ff64c409c 27,41,43,71-74,76,175-188,191,195-203,206-207,210-211,241
+  s_7f7a4dee511a6b::t_be13986e97de50 19,208-209,213-217,334-336,360-422,501-511
+  s_7f7a4dee511a6b::t_2cc516e956971a 212,512
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.ts
+  s_7f7a4dee511a6b::t_dcc560f67dd847 55-75,83-88,191
+  s_7f7a4dee511a6b::t_712cd93ebf83ff 76-82
+  s_7f7a4dee511a6b::t_28b00893c59e20 193-203
+  s_7f7a4dee511a6b::t_a0ac6ff64c409c 4,187-190
+  s_7f7a4dee511a6b::t_88af582715ee22 192
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_7f7a4dee511a6b::t_8d192d00ddeb99 344
+  s_7f7a4dee511a6b::t_b63bc10c2f0430 20-24,30-33,317-343,345-346
+  s_7f7a4dee511a6b::t_9616f234fd6507 347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20dd338ec4f203dc16e764463e428314740083d7",
+  "prompts": {},
+  "sessions": {
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

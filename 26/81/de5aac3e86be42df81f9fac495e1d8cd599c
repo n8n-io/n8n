@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/plans/agent-plan-tools.ts
+  s_fbba0b32ee6f59::t_74ae6568cfd6af 45-52,75-76,92-95,99-104,122-130,136-142,386-389
+  s_fbba0b32ee6f59::t_e5a85b83844f62 36-44,53-54,64-74,77-91,96-98,105-121,131-135,143-151,322-325,362-366,370,372-376
+  s_fbba0b32ee6f59::t_76686764792cf5 367
+packages/cli/src/modules/agents/plans/__tests__/agent-plan-tools.test.ts
+  s_fbba0b32ee6f59::t_dd27babae67659 161-163,173-174,177-186,195-202,213-224,238-240
+  s_fbba0b32ee6f59::t_74ae6568cfd6af 79-82,88-91,115-117,124-129,243-253,255-265,270-272
+  s_fbba0b32ee6f59::t_03b22a645e76a1 192-194
+  s_fbba0b32ee6f59::t_1a3be2d824fb79 65-78,83-87,92-114,118-123,130-160,241-242,254,266-269,273-275
+  s_fbba0b32ee6f59::t_7b6a9ed6504df9 164-172,175-176,187-191,203-212,225-237
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_fbba0b32ee6f59::t_55b9c7d112eb12 78-107
+packages/cli/test/integration/agent-plan.service.test.ts
+  s_fbba0b32ee6f59::t_55b9c7d112eb12 217-218,223-226,234-239,243-247,262-265,298-300,305-306,389-390,395,402
+  s_fbba0b32ee6f59::t_76686764792cf5 266-269,276,280-282
+  s_fbba0b32ee6f59::t_03b22a645e76a1 270-275,277-279
+  s_fbba0b32ee6f59::t_74ae6568cfd6af 228-232,248-261,283-297,301-304,307-312,408-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2681de5aac3e86be42df81f9fac495e1d8cd599c",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

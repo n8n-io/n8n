@@ -1,0 +1,21 @@
+.github/actions/setup-nodejs/action.yml
+  ai_agent 10,12
+.github/WORKFLOWS.md
+  ai_agent 572,655
+.github/workflows/test-workflow-scripts-reusable.yml
+  ai_agent 15
+.github/workflows/util-probe-npm-oidc-exchange.yml
+  ai_agent 46
+.github/workflows/test-linting-reusable.yml
+  ai_agent 15
+.github/workflows/ci-master.yml
+  ai_agent 43
+.github/workflows/test-unit-reusable.yml
+  ai_agent 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59e667ec92fab5f8717525f75364b23904493abc",
+  "prompts": {}
+}

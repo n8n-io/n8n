@@ -1,0 +1,31 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_71ad2034164515::t_b2694252d4549b 258
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_71ad2034164515::t_62cefa6bee1b38 56-64
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_71ad2034164515::t_a23212e9c1a18d 1042
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_71ad2034164515::t_602164774f27aa 2720
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_71ad2034164515::t_ad0e150d0c6d6d 26
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_71ad2034164515::t_2ea337a030453b 29
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_71ad2034164515::t_f4cc38b2c30680 25,92,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c754f57a9f91c1cefb0215160bcc75ac0f9adf9f",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

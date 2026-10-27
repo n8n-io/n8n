@@ -1,0 +1,47 @@
+docker/images/runners/Dockerfile
+  s_acb7dd0e5c50b6::t_2085df68b40d45 1,8,107
+docker/images/runners/Dockerfile.distroless
+  s_acb7dd0e5c50b6::t_2085df68b40d45 15
+.github/workflows/test-linting-reusable.yml
+  s_acb7dd0e5c50b6::t_2085df68b40d45 15
+.github/workflows/test-unit-reusable.yml
+  s_acb7dd0e5c50b6::t_2085df68b40d45 15
+.github/workflows/release-push-to-channel.yml
+  s_acb7dd0e5c50b6::t_2085df68b40d45 78
+packages/@n8n/benchmark/Dockerfile
+  s_acb7dd0e5c50b6::t_2085df68b40d45 2
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/binary-helper-functions.test.ts
+  s_acb7dd0e5c50b6::t_e5404ee8c9afba 36
+  s_acb7dd0e5c50b6::t_2085df68b40d45 38-39
+  s_acb7dd0e5c50b6::t_749ca20d912beb 12
+.github/workflows/docker-build-push.yml
+  s_acb7dd0e5c50b6::t_2085df68b40d45 10
+.github/actions/setup-nodejs/action.yml
+  s_acb7dd0e5c50b6::t_2085df68b40d45 10,12
+.github/workflows/ci-master.yml
+  s_acb7dd0e5c50b6::t_0cff428d5f147b 31
+  s_acb7dd0e5c50b6::t_2085df68b40d45 35
+docker/images/n8n/Dockerfile
+  s_acb7dd0e5c50b6::t_2085df68b40d45 1,6-8,12,53,57,77
+.github/workflows/test-workflow-scripts-reusable.yml
+  s_acb7dd0e5c50b6::t_2085df68b40d45 15
+.github/WORKFLOWS.md
+  s_acb7dd0e5c50b6::t_2085df68b40d45 354,393
+  s_acb7dd0e5c50b6::t_0cff428d5f147b 353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9471fb5775bcb3c9f330ebbfdecd13ffdc7a1204",
+  "prompts": {},
+  "sessions": {
+    "s_acb7dd0e5c50b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ea1fc0bd0ffe8WXs7znTkFdQLf",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

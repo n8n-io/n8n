@@ -1,0 +1,40 @@
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/utils.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 8,317,367-374
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/text/message.operation.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 27,537,602
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/video/generate.operation.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 6,173
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_b6e01b1ec1cd44 2,5
+  s_2e1fa95fc44f8f::t_6d4cc2f9af13dd 123-136,138-139,141-158
+  s_2e1fa95fc44f8f::t_e901832cb25835 137,140
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/transport/index.ts
+  s_2e1fa95fc44f8f::t_8fbd5d984eef75 8
+  s_2e1fa95fc44f8f::t_a1ccceab3205f8 26-48
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/audio/transcribe.operation.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 10,171
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/image/generate.operation.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 11,108,148
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/utils.test.ts
+  s_2e1fa95fc44f8f::t_d2de280a2e5855 1123-1129
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/image/edit.operation.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 6,200
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/baseAnalyze.ts
+  s_2e1fa95fc44f8f::t_5d0aa9421f3682 11,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33e65f0c433f93bbff045e2eb3b37f08129775c0",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

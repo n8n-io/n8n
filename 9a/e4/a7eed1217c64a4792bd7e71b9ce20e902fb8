@@ -1,0 +1,9 @@
+packages/cli/src/public-api/idempotency-key-cleanup.task.ts
+  ai_agent 5,15,17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ae4a7eed1217c64a4792bd7e71b9ce20e902fb8",
+  "prompts": {}
+}

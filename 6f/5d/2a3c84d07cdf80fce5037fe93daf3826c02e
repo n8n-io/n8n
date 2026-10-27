@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Mautic/test/workflow/Mautic.workflow.test.ts
+  s_2e1fa95fc44f8f::t_e42623113bfc8d 1-68
+  s_2e1fa95fc44f8f::t_4aecd0cc60e753 69-73
+packages/nodes-base/nodes/Mautic/test/workflow/requests.api.workflow.json
+  s_b36cb1be174a94::t_b0388ff78a26f0 1-586
+packages/nodes-base/nodes/Mautic/test/workflow/requests.oauth2.workflow.json
+  s_b36cb1be174a94::t_f30583b9bcf385 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f5d2a3c84d07cdf80fce5037fe93daf3826c02e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b36cb1be174a94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab0ca59030f03bf1c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

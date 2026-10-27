@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/Zulip/test/workflow/Zulip.workflow.test.ts
+  s_2e1fa95fc44f8f::t_bdb53a363deea1 1-39
+  s_2e1fa95fc44f8f::t_0939eac159ce3c 40-42
+  s_0f34e61c0d2ecc::t_1eed15f34e4170 43
+packages/nodes-base/nodes/Zoom/test/workflow/Zoom.workflow.test.ts
+  s_2e1fa95fc44f8f::t_e64bd5c98eb989 1-13,15-21,23-30
+  s_2e1fa95fc44f8f::t_07ed1c386a3cc4 14
+  s_2e1fa95fc44f8f::t_bbc0f1f6e4f5af 22
+packages/nodes-base/nodes/Zoom/test/workflow/requests.workflow.json
+  s_0f34e61c0d2ecc::t_f3c21520d08231 1-182
+packages/nodes-base/nodes/Zulip/test/workflow/requests.workflow.json
+  s_0f34e61c0d2ecc::t_c30b41c52cdb14 1-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39bcc047173d71dedea47acfacd963b2f479a6e6",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

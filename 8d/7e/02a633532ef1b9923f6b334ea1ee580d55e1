@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8ca503c5b8ef38 1-3,29-30,83-94
+  s_2e1fa95fc44f8f::t_2b1169d8a9d326 4-28,31-82
+packages/nodes-base/nodes/Google/Sheet/test/workflow/sheet.workflow.json
+  s_2e1fa95fc44f8f::t_c60025f332f9ff 1-377
+  s_2e1fa95fc44f8f::t_78ac13e8954f5a 378-380
+  s_07471f89218761::t_39aed91cc2b65d 381-458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d7e02a633532ef1b9923f6b334ea1ee580d55e1",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

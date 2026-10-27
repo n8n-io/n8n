@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Google/Calendar/test/workflow/event.workflow.test.ts
+  s_2e1fa95fc44f8f::t_78a75b053906ee 19-20
+packages/nodes-base/nodes/Google/Calendar/test/GoogleCalendarTrigger.node.test.ts
+  s_899dce43cb59a6::t_407d47fbaa6e69 192,223,249,344,400,483,573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "331d9a1fe132ef11b14f2b8449de590709b5ebac",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_899dce43cb59a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2ead17849041ef22",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

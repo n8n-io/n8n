@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/RunDataAiContent.test.ts
+  s_ec600d2173900f::t_2772b9c883b616 4,6-7
+  s_ec600d2173900f::t_1bb3027f590803 1-3,5,8-39,44-60
+  s_ec600d2173900f::t_14b5ee4e269a92 40-43
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/utils.ts
+  s_ec600d2173900f::t_9a1224314ac25c 17
+  s_ec600d2173900f::t_1181e44e04505d 2-8,13-16,18-32
+  s_ec600d2173900f::t_1bdb9e68187e3c 33
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ec600d2173900f::t_2ef6f3acb2b5c5 3394-3395
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/utils.test.ts
+  s_ec600d2173900f::t_1d094ca71e9c5a 1-44,48-78
+  s_ec600d2173900f::t_9a1224314ac25c 45-47
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/RunDataAiContent.vue
+  s_ec600d2173900f::t_4c0249c0f8a482 13-16
+  s_ec600d2173900f::t_64e68699fb39b5 121-132
+  s_ec600d2173900f::t_b67aefaed64b90 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c4a4fea61fff8e1d9ee423b7670dee11a10dc1a",
+  "prompts": {},
+  "sessions": {
+    "s_ec600d2173900f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09d1ff41-9e69-42c8-b7d0-443a98e154f1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_fed97bb708b207::t_6b060d61dc4e8f 23,64
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_fed97bb708b207::t_b465d057a1c472 61-66,141-145,171
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_fed97bb708b207::t_7a2c46d309a615 552-556,562,569-572,581,598,601
+  s_fed97bb708b207::t_6b060d61dc4e8f 534,537
+  s_fed97bb708b207::t_b2cfe30f7517dc 535-536
+  s_fed97bb708b207::t_f35a9381913bb5 217,219,227,232-250
+  s_fed97bb708b207::t_3a17fad3a32391 43-46,334,340,360,365-367,431,437
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_fed97bb708b207::t_3b799eea976814 343-355,357-363,365-385,429-448,753-763,808-809,811-817
+  s_fed97bb708b207::t_7f1d5ea3d694ab 356,364,822-829,833
+packages/cli/test/integration/agents/system-agent-turn-abort.test.ts
+  s_fed97bb708b207::t_857af0ef11b776 145-150
+  s_fed97bb708b207::t_8789ebfd1b6ad6 1-144,151-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9d7ec922bf3bb5451939b27202403b86a82c351d",
+  "prompts": {},
+  "sessions": {
+    "s_fed97bb708b207": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbcebc6a-186a-4e6c-b061-08c416ee2fd4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

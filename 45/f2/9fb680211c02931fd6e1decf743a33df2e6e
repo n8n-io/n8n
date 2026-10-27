@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_3e18a7e678cad8::t_03cc11c99899dd 25-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45f29fb680211c02931fd6e1decf743a33df2e6e",
+  "prompts": {},
+  "sessions": {
+    "s_3e18a7e678cad8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c95c0d3d-1a97-4ee1-885b-1fa9c9a8f98d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

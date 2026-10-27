@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1791794659012-CreatePromotionReviewTable.ts
+  s_baed01bb8131dd::t_32b4aa8d89a3bb 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5117dc055309bb75a8e01a4450e4f3bbdbdd7fd1",
+  "prompts": {},
+  "sessions": {
+    "s_baed01bb8131dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "29647ce9-c4b7-4a62-8dc8-858dbff270ec",
+        "model": "grok-4.7"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

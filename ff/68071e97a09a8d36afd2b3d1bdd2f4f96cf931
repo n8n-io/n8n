@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_0812994a150a1a 1362-1380
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_71ad2034164515::t_701156918820d2 141,145-148,277,281-284
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_754a5423d0414b 23,27-28,40,45-47,52,74,86-99,104,117-120,145,148-151,172-215,463-464,468,485-597,600-768
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_f1ef56b24f8748 13,19,59,70-75,457,487-488,520-522,524,538-560,687-716
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_71ad2034164515::t_d9175ae82314cd 4,33
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_71ad2034164515::t_a1f08954dcc5dc 207,209,292
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_71ad2034164515::t_52318bc5298f5e 187,189,233
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_a0c676e128adf2 11,39,42-48
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_71ad2034164515::t_b594814368da84 1-100
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_71ad2034164515::t_5f4f6d30ed4a5f 3-7,65-66,69,76-77
+packages/cli/src/modules/n8n-packages/entities/publishing.ts
+  s_71ad2034164515::t_815b29ea070985 1-31
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_71ad2034164515::t_0f7354f0afbe39 8,140-162,164-165,167-169
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_71ad2034164515::t_a476e813b343ed 4-5,53-58
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_71ad2034164515::t_6df9b448d8832e 24,182
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_71ad2034164515::t_18e7b314173072 24-29
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_71ad2034164515::t_1c3474cceb54b5 9-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff68071e97a09a8d36afd2b3d1bdd2f4f96cf931",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

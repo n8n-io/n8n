@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Telegram/tests/Telegram.node.test.ts
+  s_2e1fa95fc44f8f::t_c88059a7320cdc 101
+  s_2e1fa95fc44f8f::t_90cf139b544508 102-103
+packages/nodes-base/nodes/Telegram/tests/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e0ba95384cddac 149,151,153-166,168-170,173-181
+  s_2e1fa95fc44f8f::t_7ee37aae6df22b 15
+  s_2e1fa95fc44f8f::t_4a8e4a7e878156 182-184
+packages/nodes-base/nodes/Telegram/Telegram.node.ts
+  s_2e1fa95fc44f8f::t_e42719450b5dd7 24
+  s_2e1fa95fc44f8f::t_29e5308af169c5 2518
+packages/nodes-base/nodes/Telegram/tests/TelegramTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_9f7f41b1705a5c 150-151
+  s_2e1fa95fc44f8f::t_1cb19e8add57e0 149
+packages/nodes-base/nodes/Telegram/util/triggerUtils.ts
+  s_2e1fa95fc44f8f::t_0e18be9113e2d1 8
+  s_2e1fa95fc44f8f::t_a8d800b4af992c 68
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_9ac91e3bdb6b01 256-259
+  s_2e1fa95fc44f8f::t_f7ee22069e2299 12-13,15
+  s_2e1fa95fc44f8f::t_67bcc67a450b9a 218-227
+  s_2e1fa95fc44f8f::t_060701ae061eb2 242
+  s_2e1fa95fc44f8f::t_a0b001168e84d7 248,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffa123fc41b0fc1c33037abd8c485500c11d7cf6",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

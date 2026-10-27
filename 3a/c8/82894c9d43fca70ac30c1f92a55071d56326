@@ -1,0 +1,36 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_4d7f501095fc5f::t_8db037d04527c4 32-34
+  s_4d7f501095fc5f::t_26eac939d7d036 19-20,42-43,52-53,104-123,153-155
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_4d7f501095fc5f::t_26eac939d7d036 14,20-21,76,82-83
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_4d7f501095fc5f::t_26eac939d7d036 62,88-90,92-94,96,116,118,148-152,155-157,160,172,175-176,182-193,212,241-242,247,249
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_4d7f501095fc5f::t_26eac939d7d036 56-58
+packages/@n8n/instance-ai/src/skills/skills.ts
+  s_4d7f501095fc5f::t_e317cd01c904e0 15-16,46
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_4d7f501095fc5f::t_26eac939d7d036 213-216,259
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_4d7f501095fc5f::t_26eac939d7d036 24-33,64-71,82-95,103-104,106-107,110,113-116,128-136,219-236
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_4d7f501095fc5f::t_26eac939d7d036 11
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_4d7f501095fc5f::t_26eac939d7d036 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ac882894c9d43fca70ac30c1f92a55071d56326",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDataTablePreview.vue
+  s_45d9e2c5dbb756::t_95c0e94b56fa68 117-120,156-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17b42078e265797222ac26edc85c752982c69066",
+  "prompts": {},
+  "sessions": {
+    "s_45d9e2c5dbb756": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "395df3a0-0fd9-4acf-a26d-4b63e6a8f4e4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

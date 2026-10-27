@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 255
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 2375
+packages/@n8n/telemetry/src/events/agents.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 67,449,582,594,606,632,641,649,662,691,700,723,735,747,756,775,795,804,822,833,849,868,876,885,896,907,918,924
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 202
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 333,386
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 231
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 38
+packages/@n8n/telemetry/src/__tests__/registry-checks.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 175-176,179-184
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 334
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 450,478
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 209,327,331,505
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFilesPanel.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 103,112
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 28,37,56,69,81,90,105,109,114,135,149,163,172,198,216,225,234,242,256,285,296,316,331,347
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 34
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_ae841d0360228f::t_a777098bfe9c9d 307,414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ba337913d7d43773f32a61d5769f4f98ef719b6",
+  "prompts": {},
+  "sessions": {
+    "s_ae841d0360228f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1590f-b880-74e1-b9be-d0d8c9eab0b3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_458504fc575b5e::t_eed2ecdb975664 8,32,359-375
+packages/@n8n/agents/src/sdk/tool.ts
+  s_458504fc575b5e::t_9d5f0c7987e415 386-395
+  s_458504fc575b5e::t_11bd44583d4b8a 455
+  s_458504fc575b5e::t_849812edd564c6 248-249
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_458504fc575b5e::t_b321de3f344bbe 5797-5859
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_458504fc575b5e::t_5c93e599ccd9ed 210-214
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_458504fc575b5e::t_ce8a0cec782fdf 136
+packages/@n8n/agents/src/sdk/agent.ts
+  s_458504fc575b5e::t_5893d325943f94 563-564
+  s_458504fc575b5e::t_b57c5343c519fe 218-219,565-574,1180,1328
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_458504fc575b5e::t_a509a26f084f59 67-68
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_458504fc575b5e::t_e7015dae5cf3a8 199-229
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_458504fc575b5e::t_1a8ae698138e63 73-76,84-85
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_458504fc575b5e::t_01fd5cbbfd239d 244-246
+packages/@n8n/instance-ai/src/agent/sub-agent-factory.ts
+  s_458504fc575b5e::t_01fd5cbbfd239d 107-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f9eae2d368bc5cdd4fec5da113cd297850471a9c",
+  "prompts": {},
+  "sessions": {
+    "s_458504fc575b5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daa000ac-4122-4835-9d3f-6ab2ca4c7948",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/modules/inbox/frontend/src/components/InboxList.vue
+  s_5bccbc7a699958::t_4ddc11df66990b 51-58
+packages/modules/inbox/frontend/src/components/InboxList.test.ts
+  s_5bccbc7a699958::t_44bc23dd191e47 180
+  s_5bccbc7a699958::t_c273b4bd5a5164 195-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cff93f36c274cb89dc6c06567999782932fd1dc7",
+  "prompts": {},
+  "sessions": {
+    "s_5bccbc7a699958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e5b0e58-2af3-4528-9c2d-65dc92577865",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

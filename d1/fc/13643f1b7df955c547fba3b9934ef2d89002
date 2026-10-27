@@ -1,0 +1,45 @@
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_baed01bb8131dd::t_a552b84fe625b7 4
+packages/@n8n/db/src/migrations/common/1791794659012-CreatePromotionReviewTable.ts
+  s_baed01bb8131dd::t_5e16c76603d2ad 64
+  s_baed01bb8131dd::t_2dc70348abf73c 10
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_baed01bb8131dd::t_42a8c706652499 86,99,101-103
+  s_baed01bb8131dd::t_c00aea9eed8d84 131
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 15,21
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_baed01bb8131dd::t_4d4f134fb010f2 59
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 9,32
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_baed01bb8131dd::t_9b8d9f490b9606 119-122
+  s_baed01bb8131dd::t_46992c284aaacd 157-164
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_baed01bb8131dd::t_f6964d788751c6 5
+  s_baed01bb8131dd::t_7a9edd97707716 76
+  s_baed01bb8131dd::t_a9deed3ec3fdb6 121
+  s_baed01bb8131dd::t_f0d5eb722e5de1 143-144
+  s_baed01bb8131dd::t_b19d1e3bd7e994 85
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_baed01bb8131dd::t_fc7509647c8892 8,10
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_baed01bb8131dd::t_8111c23e36c84a 11
+  s_baed01bb8131dd::t_ad1f9c80e29bc0 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1fc13643f1b7df955c547fba3b9934ef2d89002",
+  "prompts": {},
+  "sessions": {
+    "s_baed01bb8131dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "29647ce9-c4b7-4a62-8dc8-858dbff270ec",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

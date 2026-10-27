@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_9ff4262de30095::t_23ba2ff92ddf68 1239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e545632b165671089e9b9c6fc69f8816a19d016d",
+  "prompts": {},
+  "sessions": {
+    "s_9ff4262de30095": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9868a5dd-91a6-459c-9b56-a6c634304b2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

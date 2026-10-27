@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_b51ca84edd5013::t_3d70a4a7d1bc47 6
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_b51ca84edd5013::t_eaced7c9f36d51 4-6
+  s_b51ca84edd5013::t_664ba8492ec3ec 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8e56bbd69665e2250f9f7041d2b8797a0d56e21",
+  "prompts": {},
+  "sessions": {
+    "s_b51ca84edd5013": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "601cf56e-0c69-4941-82dd-54aaa9ef5fda",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

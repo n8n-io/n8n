@@ -1,0 +1,60 @@
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_a4aeb83632341f::t_d375628015df71 122-123
+  s_a4aeb83632341f::t_26328e432072ff 15,203,213
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_a4aeb83632341f::t_71927da1100281 71,88,216,230
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_a4aeb83632341f::t_d375628015df71 177-184,201-206
+  s_a4aeb83632341f::t_ea270604625530 185-192,200
+  s_a4aeb83632341f::t_37f0d53f6310c6 193-199
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_a4aeb83632341f::t_71927da1100281 70,1050
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_a4aeb83632341f::t_97b313bf49ec6a 2518,2566,2569,2616,2715,2728,2759-2762,2767,2838,2881
+  s_a4aeb83632341f::t_a2164ee4b8d257 2562-2563,2612-2613,2834
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/stream-delivery.test.ts
+  s_a4aeb83632341f::t_acac30518d2ce6 1-10,15-19,52,126,183
+  s_a4aeb83632341f::t_c1e12eecb79aa0 35-36
+  s_a4aeb83632341f::t_79dcbb6564921d 56,73,157-159
+  s_a4aeb83632341f::t_13bdc20e3c6435 21,24,26
+  s_a4aeb83632341f::t_2c26bc5ab5e617 20,22-23,25,167
+  s_a4aeb83632341f::t_ed796181ac3a81 11-14,38,49-50,61,78,102-103,123,147,152-153,174-177
+  s_a4aeb83632341f::t_6709c8254768c5 34,37,39-48,51,53-55,57-60,62-72,74-77,79-101,104,107-109,118-122,124-125,127-138,154-156,160-166,168-173,181-182
+  s_a4aeb83632341f::t_37f0d53f6310c6 27-33,105-106
+  s_a4aeb83632341f::t_a2164ee4b8d257 110-117
+  s_a4aeb83632341f::t_ea270604625530 139-146,148-151,178-180
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_a4aeb83632341f::t_d5805a7b80b19f 205-206
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_a4aeb83632341f::t_d5805a7b80b19f 111-112,128
+  s_a4aeb83632341f::t_e3c7bd8e708769 113-114,118-119,126,133-141
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_a4aeb83632341f::t_d5805a7b80b19f 88,131-135,138,152,174-178,184-187,220,241,243-244,280-286,449-451,463-467,469-471,475
+  s_a4aeb83632341f::t_c1e12eecb79aa0 141,203,242,273-277
+  s_a4aeb83632341f::t_ed796181ac3a81 472-474
+  s_a4aeb83632341f::t_4d4fb795f0d7db 245
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_a4aeb83632341f::t_71927da1100281 49,147
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_a4aeb83632341f::t_d375628015df71 21
+  s_a4aeb83632341f::t_13bdc20e3c6435 22
+  s_a4aeb83632341f::t_e3c7bd8e708769 166-167,174,183,186-192,215-220
+  s_a4aeb83632341f::t_c1e12eecb79aa0 184-185
+  s_a4aeb83632341f::t_d5805a7b80b19f 19-20,23-24,127,140,142,169,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec28e2c99f58088e0c37d1dcc6a40fad4fa5aa5a",
+  "prompts": {},
+  "sessions": {
+    "s_a4aeb83632341f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15368-3c7d-7470-b502-ab57d8e6d1d1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

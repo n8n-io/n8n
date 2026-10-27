@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_154c402283a07c::t_64a23ed46b801d 18-20,177-178,181-184,189-192,236-274,596-604,672-689,747-755,847-864,1037-1038
+  s_154c402283a07c::t_87e4de4d6220ed 179-180,185-188
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/hostEventRenderers.test.ts
+  s_154c402283a07c::t_ddcaaf3de62a8d 210-226
+  s_154c402283a07c::t_64a23ed46b801d 1-209,227-239
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_154c402283a07c::t_ddcaaf3de62a8d 1659-1691
+  s_154c402283a07c::t_64a23ed46b801d 5-9,14,16,1513-1658,1692-1705
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension.ts
+  s_154c402283a07c::t_64a23ed46b801d 138
+  ai_agent 5,85-137
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_154c402283a07c::t_64a23ed46b801d 3-9,31-34,66-107,157-197,202-213,215-234
+  s_154c402283a07c::t_87e4de4d6220ed 198-201,214
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_154c402283a07c::t_87e4de4d6220ed 248-249
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  ai_agent 144-154,177-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f745f30070a37844c9632fb612f8172ffeb3b4c",
+  "prompts": {},
+  "sessions": {
+    "s_154c402283a07c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68ee74a7-401c-4a74-8bd5-be75118222f4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

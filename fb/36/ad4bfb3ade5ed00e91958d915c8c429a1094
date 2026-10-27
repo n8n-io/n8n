@@ -1,0 +1,23 @@
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_d601bc3096fe4d::t_58f5679a1fd22a 1171,1194,1245
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_d601bc3096fe4d::t_58f5679a1fd22a 364
+packages/cli/src/modules/otel/README.md
+  s_d601bc3096fe4d::t_58f5679a1fd22a 55-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb36ad4bfb3ade5ed00e91958d915c8c429a1094",
+  "prompts": {},
+  "sessions": {
+    "s_d601bc3096fe4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48fbda43-86ad-4b54-b85a-036da5f1f528",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

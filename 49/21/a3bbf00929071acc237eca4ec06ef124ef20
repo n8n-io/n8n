@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Google/Calendar/test/node/event.update.test.ts
+  s_2e1fa95fc44f8f::t_5a0975399b92b5 93-116
+packages/nodes-base/nodes/Google/Calendar/GoogleCalendarTrigger.node.ts
+  s_2e1fa95fc44f8f::t_0b6667457b7227 9-15,25-26,141-145
+packages/nodes-base/nodes/Google/Calendar/test/GoogleCalendarTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_9ffc8f94d65ad7 54,231-240,258
+packages/nodes-base/nodes/Google/Calendar/GoogleCalendar.node.ts
+  s_2e1fa95fc44f8f::t_a807a457c0e165 26,40,117,220-221,371-372,390-391,437-438,597-598
+packages/nodes-base/nodes/Google/Calendar/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_df965ee0c7a72a 18-24,311-313
+packages/nodes-base/nodes/Google/Calendar/test/node/calendar.availability.test.ts
+  s_2e1fa95fc44f8f::t_b06a66b9ad38f5 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4921a3bbf00929071acc237eca4ec06ef124ef20",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

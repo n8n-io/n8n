@@ -1,0 +1,43 @@
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_324130b4ee176b::t_4bc25da35d0274 1380-1381,1407-1408
+  s_9b756ba1f80666::t_d32ca306d91e3a 2,13,1327-1379,1382-1406,1409-1465
+packages/cli/src/modules/otel/README.md
+  s_9b756ba1f80666::t_c3c5815bdea7a9 65-86
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_324130b4ee176b::t_4bc25da35d0274 3,12,324,424-426
+  s_9b756ba1f80666::t_ede822ce048433 99-104,224,228,317,321,327-328
+  s_9b756ba1f80666::t_3f93e6c9f21543 79-90,94,97-98,105-106,213-223,225-227,229-230,318-320,322-323,325-326,329-331
+  s_324130b4ee176b::t_549cc34c299489 423
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_9b756ba1f80666::t_2a1bb34721dba5 111-115,159,223
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  s_9b756ba1f80666::t_3f93e6c9f21543 31,63
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_9b756ba1f80666::t_8bdcd8db54185e 28-29,224-281
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_9b756ba1f80666::t_f9ebbca258d21d 379-410,743-759,1084-1098
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29f907df1a1626b498c2535f22c2056af7266de8",
+  "prompts": {},
+  "sessions": {
+    "s_324130b4ee176b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0381db6c-4006-42f1-8957-e34e4773dd60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_9b756ba1f80666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b44936c5-6a25-4e1d-a9d5-02e0e688c96f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

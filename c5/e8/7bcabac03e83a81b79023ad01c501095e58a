@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  s_876cf265df54d0::t_ddd7a0f598938d 167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c5e87bcabac03e83a81b79023ad01c501095e58a",
+  "prompts": {},
+  "sessions": {
+    "s_876cf265df54d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd017e9d-923f-4119-982b-2ca129078fa1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

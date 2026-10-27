@@ -1,0 +1,81 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_2956cab75a6463::t_46200836ce134d 209-212
+  s_2956cab75a6463::t_9d85f1330d9965 45,213,442,490,540,560,588-593,595-606,609-610,614-618,620,622-641,643-644,648-656,671-673,675,677-681,738
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2956cab75a6463::t_08972debd57a30 4607-4614
+  s_f6cb9d564dd95e::t_a118a3e8a28c06 4598-4599
+packages/cli/src/modules/breaking-changes/database/repositories/migration-finding.repository.ts
+  s_f6cb9d564dd95e::t_c5207d19ca4aa3 35,67-69,71-76,203-219
+  s_2956cab75a6463::t_bafdb8e9be22d7 220
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
+  s_2956cab75a6463::t_6375d5b3857b47 22-23,34,97-100
+packages/cli/src/modules/breaking-changes/__tests__/migration-finding.repository.integration.test.ts
+  s_f6cb9d564dd95e::t_2123343fd38506 328-329,353-355
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_f6cb9d564dd95e::t_00b68cc8ecbee9 211,216,329
+  s_f6cb9d564dd95e::t_1b88052f7f4de2 212-215
+  s_f6cb9d564dd95e::t_a37789dabd1791 34,350
+  s_c938ce9c58f06e::t_e64cb0054c6dc1 301-328,330-342
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_2956cab75a6463::t_82badede48dce3 471
+  s_f6cb9d564dd95e::t_384507c0cfc5a3 250
+  s_f6cb9d564dd95e::t_baaa79a1357d39 21,251,257,439-444
+  s_f6cb9d564dd95e::t_a118a3e8a28c06 283-310,445-470
+  s_f6cb9d564dd95e::t_353402991ebde6 130-133,252-256,258,437-438
+  s_c938ce9c58f06e::t_c3fbc590a6dd89 313
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.test.ts
+  s_2956cab75a6463::t_4af5133f67e6fa 419-444
+packages/cli/src/modules/breaking-changes/query/migration-finding-query.service.ts
+  s_f6cb9d564dd95e::t_c5207d19ca4aa3 74-77,85-102,110-111
+  s_c938ce9c58f06e::t_349940f12cb012 112-117
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_2956cab75a6463::t_d948954d55a20d 691
+  s_2956cab75a6463::t_08972debd57a30 16,648,668-684,686-687,699-712
+  s_2956cab75a6463::t_6229d758488211 695-697
+  s_2956cab75a6463::t_4c428149e32e1e 223,688-690,692
+  s_2956cab75a6463::t_86e1cc26b8d616 529-552,554,556,563-566,568-584,587-592,594-619,631-647,649-653
+  s_2956cab75a6463::t_39a917799800c0 5,42,327-328
+  s_2956cab75a6463::t_00f9d7e2334303 210-211,214-215,220-222,226-228,230,234,236-237,242-255
+  s_2956cab75a6463::t_e997e40e451c9c 685,694
+  s_2956cab75a6463::t_c4d251251c5399 693,698
+  s_2956cab75a6463::t_4af5133f67e6fa 593
+  s_2956cab75a6463::t_4029c84e85a3e7 256
+packages/cli/src/modules/breaking-changes/README.md
+  s_f6cb9d564dd95e::t_465127c60be05e 149
+packages/cli/src/modules/breaking-changes/query/__tests__/migration-finding-query.service.test.ts
+  s_f6cb9d564dd95e::t_2123343fd38506 168,214,223,225-228,232,237-243,245-246
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  s_f6cb9d564dd95e::t_c5207d19ca4aa3 165,167-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8eb01855a18a30560c31ca5721b223b72a6d75bb",
+  "prompts": {},
+  "sessions": {
+    "s_2956cab75a6463": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23bc5d43-edd4-415c-b854-b3f0f4c7dc7c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_c938ce9c58f06e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8d9bb5-2240-4e4d-a0d8-81edd6deceb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_f6cb9d564dd95e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ea24e9-93d6-4835-b1aa-4d5102b51b13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

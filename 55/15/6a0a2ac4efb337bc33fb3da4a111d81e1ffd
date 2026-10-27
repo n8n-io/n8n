@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55156a0a2ac4efb337bc33fb3da4a111d81e1ffd",
+  "prompts": {},
+  "sessions": {
+    "s_cdb8e2d26dadad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1600a-d56d-71c5-97e1-b1e6fe7943fe",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

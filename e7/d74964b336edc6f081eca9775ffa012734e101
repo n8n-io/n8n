@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Metabase/AlertsDescription.ts
+  s_2e1fa95fc44f8f::t_2e38616dc0e234 22
+packages/nodes-base/nodes/Metabase/DatabasesDescription.ts
+  s_2e1fa95fc44f8f::t_4ecdac892b2160 56
+packages/nodes-base/nodes/Metabase/MetricsDescription.ts
+  s_2e1fa95fc44f8f::t_75267b23ae061d 22
+packages/nodes-base/nodes/Metabase/QuestionsDescription.ts
+  s_2e1fa95fc44f8f::t_b339c329c7ef08 23,47
+packages/nodes-base/nodes/Metabase/test/Metabase.node.test.ts
+  s_2e1fa95fc44f8f::t_b04191fcff3d53 1-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7d74964b336edc6f081eca9775ffa012734e101",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

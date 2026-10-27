@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_f29d90122d94d9 61-83
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/transport/index.ts
+  s_c044aa30e781c4::t_adfc576bfb1705 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d74443d7a07406c6ed7c64ed14ea87008fa43d2",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c044aa30e781c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afb1e7315084b9aef",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/FileMaker/__tests__/FileMaker.node.test.ts
+  s_2e1fa95fc44f8f::t_336a056fd33c69 2,22-26,32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de3f2bfbc13a755d645231295f8f0ecc8f42e5f5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

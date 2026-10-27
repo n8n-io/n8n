@@ -1,0 +1,43 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_48e6e9462a9f17::t_9ce92f5262ef0f 4253,4257,4274,4326,4334
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_48e6e9462a9f17::t_9ce92f5262ef0f 1473
+packages/cli/src/workflows/workflow-engine-defaults.ts
+  s_48e6e9462a9f17::t_e8fe6400e962b2 7-9,18-21,23,27-28
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_48e6e9462a9f17::t_9ce92f5262ef0f 1200,1246,1248,1252,1255,1262,1265,1267,1272
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_48e6e9462a9f17::t_9ce92f5262ef0f 2280,2300,2319,2322
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_48e6e9462a9f17::t_8879f9fa8ed931 55-58
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_48e6e9462a9f17::t_d52a8e39e6b9ca 190,786
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_48e6e9462a9f17::t_093cea5619623f 224
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_48e6e9462a9f17::t_73a45f012e3b32 233
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_48e6e9462a9f17::t_0448ce702a9c4a 260
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_48e6e9462a9f17::t_6738f01209c466 205,798
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_48e6e9462a9f17::t_18af4ed142f2cf 205
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_48e6e9462a9f17::t_662ef96e88b196 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f9561680e6b0dc4642a13f6f3002ff385845d74",
+  "prompts": {},
+  "sessions": {
+    "s_48e6e9462a9f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c7f54a3-87be-4530-a29a-2fd7dc52457c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

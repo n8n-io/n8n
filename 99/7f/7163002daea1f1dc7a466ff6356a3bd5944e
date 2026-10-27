@@ -1,0 +1,32 @@
+packages/cli/test/integration/inbound-auth-core/trusted-source-identity.service.integration.test.ts
+  s_60f5633681e4e3::t_2ff182213b6f68 1-296
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_60f5633681e4e3::t_ad1371bbee6a4b 55-61
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_60f5633681e4e3::t_ad1371bbee6a4b 30-47
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_60f5633681e4e3::t_ad1371bbee6a4b 15,23,27,46-47
+packages/cli/src/modules/inbound-auth-core/identity/trusted-source-identity.service.ts
+  s_60f5633681e4e3::t_ad1371bbee6a4b 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "997f7163002daea1f1dc7a466ff6356a3bd5944e",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

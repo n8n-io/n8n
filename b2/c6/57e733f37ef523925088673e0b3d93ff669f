@@ -1,0 +1,20 @@
+AGENTS.md
+  s_5ed2cb8858eccf::t_19c496d93ad4f0 72,330-332
+  s_5ed2cb8858eccf::t_d488cc8603ef47 74-80,322-329,333-335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2c657e733f37ef523925088673e0b3d93ff669f",
+  "prompts": {},
+  "sessions": {
+    "s_5ed2cb8858eccf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a120ae-541a-7353-968d-4fd2f89c04d7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

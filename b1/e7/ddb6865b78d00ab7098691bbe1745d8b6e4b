@@ -1,0 +1,25 @@
+packages/cli/src/modules/agent-evals/agent-eval-judge.ts
+  s_88c9d7f821237a::t_c2c6b2724f3d2c 11-14,46-47,87-93
+  s_88c9d7f821237a::t_f2876699010ff1 94
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-judge.test.ts
+  s_88c9d7f821237a::t_e3addee7d54027 10,130-153
+  s_88c9d7f821237a::t_40a1badd331a4b 154
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_88c9d7f821237a::t_b64cc5e5626002 720-736
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1e7ddb6865b78d00ab7098691bbe1745d8b6e4b",
+  "prompts": {},
+  "sessions": {
+    "s_88c9d7f821237a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15f40-80ed-74de-a3b5-a9bd631bdfd1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

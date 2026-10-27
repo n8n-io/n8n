@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 2,26,110
+packages/frontend/editor-ui/src/features/core/dataTable/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 2,19,98
+packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+  s_eafcbbb5f3dde6::t_fe554298e69a7d 3
+packages/frontend/@n8n/frontend-module-sdk/src/defineFrontendModule.ts
+  s_eafcbbb5f3dde6::t_74a72a9daf4c1f 1-29
+packages/frontend/editor-ui/src/features/ai/chatHub/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 1,26,208
+packages/modules/insights/frontend/src/insights.module.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 2,7,45
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 2,28,125
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_eafcbbb5f3dde6::t_8ff7dd78a99f56 14-26
+  s_eafcbbb5f3dde6::t_698bfd16732adc 27
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectFilter.slot.test.ts
+  s_eafcbbb5f3dde6::t_3885d2f1ad275d 10,54-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 2,52,218
+packages/frontend/@n8n/frontend-module-sdk/src/defineFrontendModule.test.ts
+  s_eafcbbb5f3dde6::t_54e21842aecb32 18-19,29-33,85-100,102-103
+  s_eafcbbb5f3dde6::t_b12f4a0c155866 1-17,20-28,34-84,101,104-126
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 1,11,34
+packages/@n8n/module-cli/src/templates/frontend/module.ts.template
+  s_eafcbbb5f3dde6::t_1583f6f3c91337 1,9,29
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_eafcbbb5f3dde6::t_3a5a650e5f73c0 150,152,158,161-172
+  s_eafcbbb5f3dde6::t_470aaed49e9d70 173
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 1,18,44
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_eafcbbb5f3dde6::t_b16ad9c8e45fc3 136-144
+packages/frontend/@n8n/frontend-module-sdk/README.md
+  s_eafcbbb5f3dde6::t_b9008b1ff50b1f 5-9,16,19-51
+  s_eafcbbb5f3dde6::t_151ebcd1f2f471 52
+packages/modules/otel/frontend/src/otel.module.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 1,12,50
+packages/modules/instance-registry/frontend/src/instance-registry.module.ts
+  s_eafcbbb5f3dde6::t_74c8b418015c6c 1,9,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a50c8455e2aaf512eff4187cf20584769bb19997",
+  "prompts": {},
+  "sessions": {
+    "s_eafcbbb5f3dde6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34c3f25e-7143-4221-b72e-777b5d0856f3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

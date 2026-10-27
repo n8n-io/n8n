@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.ts
+  s_4572c1d605e995::t_00c1685cdad32e 25
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_4572c1d605e995::t_d9cfa33fb3c2be 173,180
+  s_4572c1d605e995::t_93c98c9cec13c3 3-4,11-12,20,27-34,38,49-51,62-63,106-118,122-131,133-140,142,144,147-155,159-172,174-179,181-186,190-212,215-222,224-227,230-231,236
+  s_4572c1d605e995::t_61c78ba41c5fd4 119-121,156-158,187-189,213-214,228-229,232-233
+  s_4572c1d605e995::t_15a2f99ea5469d 234
+  s_13fdf695fc0ff1::t_5a89bbfb51793f 132,141,143,145-146,223,235
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.ts
+  s_4572c1d605e995::t_00c1685cdad32e 84-85,89,91
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_4572c1d605e995::t_00c1685cdad32e 62,196
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOutcome.ts
+  s_4572c1d605e995::t_00c1685cdad32e 20,22-23,42,45-46
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  s_4572c1d605e995::t_fed610a84980f2 18,46
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_4572c1d605e995::t_fed610a84980f2 5-12,14-16,20-35,37-48,50-95
+  s_4572c1d605e995::t_6697b43ce6d953 36,49
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.test.ts
+  s_4572c1d605e995::t_00c1685cdad32e 35
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_4572c1d605e995::t_fed610a84980f2 59,69,75
+  s_4572c1d605e995::t_00c1685cdad32e 7
+  s_4572c1d605e995::t_61c78ba41c5fd4 23-29
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_4572c1d605e995::t_61c78ba41c5fd4 24
+  s_4572c1d605e995::t_00c1685cdad32e 7
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4572c1d605e995::t_00c1685cdad32e 9744-9748,9801-9806
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_4572c1d605e995::t_00c1685cdad32e 8,183,235,243-245,281
+  s_13fdf695fc0ff1::t_3b96eaf69b15d7 236,242
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_4572c1d605e995::t_00c1685cdad32e 64
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_4572c1d605e995::t_61c78ba41c5fd4 15
+  s_4572c1d605e995::t_00c1685cdad32e 5,37,70,79,96,100,133,162,164-165,175,183,187,198,201,203-204,213-214,216,222,235,249,256,259,267,270,281,287
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.test.ts
+  s_4572c1d605e995::t_61c78ba41c5fd4 8,31
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_4572c1d605e995::t_00c1685cdad32e 120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7567101b1581c055362d5541e2225fc9aa257ae4",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_4572c1d605e995": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1592c-13b5-70d2-879c-dcb3b76c4814",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

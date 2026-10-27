@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  ai_agent 151-155,160-161,189-192,194
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  ai_agent 222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "201b82dc677fd0831e0bc0bc81959010ab62873f",
+  "prompts": {}
+}

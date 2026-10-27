@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_fcc77b2931f263::t_6d6d3ade98a5e2 1-89,91-94
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_fcc77b2931f263::t_22722b61c9f5a0 1-446,448-471,473-529,531-552,554-590
+packages/cli/src/modules/agents/system-agents/system-agent-access.ts
+  s_fcc77b2931f263::t_4c8e4eed74d291 1-22
+packages/cli/src/modules/agents/system-agents/system-agent-registry.ts
+  s_fcc77b2931f263::t_00953c44a401da 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e27153f6ccf41f7d811f2f11fe78e97ee6b0bf9",
+  "prompts": {},
+  "sessions": {
+    "s_fcc77b2931f263": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95e12481-8f3d-4649-a397-a7b2425a401f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,139 @@
+packages/@n8n/instance-ai/src/tools/shared/__tests__/ask-user.tool.test.ts
+  s_b51ca84edd5013::t_21e1325c0ef087 12-16
+packages/@n8n/api-types/src/builder-tool-names.ts
+  s_b51ca84edd5013::t_8bdcc7b71787bf 56,83,114
+packages/@n8n/instance-ai/evaluations/cli/report.ts
+  s_b51ca84edd5013::t_c01c833502fbdf 360,475
+packages/@n8n/instance-ai/evaluations/computer-use/graders/trace.ts
+  s_b51ca84edd5013::t_342cdd82ce114b 10,30
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/expected-tools-invoked.test.ts
+  s_b51ca84edd5013::t_e7839b9e24dea0 128,215,219,227,234,244,251,269,276
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_b51ca84edd5013::t_dee6caa2c1e64e 32,34,44,62,101,123,127,133,139,146-147,150,154,156,263,265,275,282,285,300,303,322,324,333,336
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_b51ca84edd5013::t_7f18b7886ff217 18
+packages/cli/src/modules/instance-ai/conversation-history-content.ts
+  s_b51ca84edd5013::t_d86b1442b060e4 1,14
+packages/@n8n/instance-ai/docs/architecture.md
+  s_08fccf4b5fc5e9::t_6cebe256162370 375
+packages/@n8n/instance-ai/docs/e2e-tests.md
+  s_08fccf4b5fc5e9::t_70d821d35fe74d 141
+packages/@n8n/instance-ai/docs/tools.md
+  s_08fccf4b5fc5e9::t_52d940eee8d942 64,1328,1551,1573,1578,1580
+packages/@n8n/instance-ai/evaluations/README.md
+  s_08fccf4b5fc5e9::t_2efc44b5059f1c 755
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_08fccf4b5fc5e9::t_8863373a048d42 567,576
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-text.test.ts
+  s_08fccf4b5fc5e9::t_30d2d491b41b39 275
+packages/@n8n/instance-ai/evaluations/__tests__/event-parser.test.ts
+  s_08fccf4b5fc5e9::t_dcc55994d557b3 885
+packages/@n8n/instance-ai/evaluations/__tests__/langsmith-seed.test.ts
+  s_08fccf4b5fc5e9::t_5333c5b76fd26b 402,407,417,434,481,492,508
+packages/@n8n/instance-ai/evaluations/__tests__/transcript-from-events.test.ts
+  s_08fccf4b5fc5e9::t_5095706bad7afc 236,241,246,278
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_08fccf4b5fc5e9::t_c3484eb93bb856 126,338
+packages/@n8n/instance-ai/evaluations/__tests__/workflow-report.test.ts
+  s_08fccf4b5fc5e9::t_1f27c6443a31e7 188,215
+packages/@n8n/instance-ai/evaluations/computer-use/types.ts
+  s_08fccf4b5fc5e9::t_47d3e892633528 138
+packages/@n8n/instance-ai/evaluations/data/discovery/intent-ambiguous-alert-response-clarifies.json
+  s_08fccf4b5fc5e9::t_e48d877caba7b5 11
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-credential-ask.json
+  s_08fccf4b5fc5e9::t_dd3099ddda4a84 17,21
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/confirmation-policy.test.ts
+  s_08fccf4b5fc5e9::t_a80fe1b1fb3e54 156,160,169,173,222
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_08fccf4b5fc5e9::t_4d7b75f4cb068f 241
+packages/@n8n/instance-ai/evaluations/outcome/transcript-from-events.ts
+  s_08fccf4b5fc5e9::t_c782b6bd35c948 99,206
+packages/@n8n/instance-ai/evaluations/utils/confirmation-payload.ts
+  s_08fccf4b5fc5e9::t_87a82573ce84d9 31
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/index.ts
+  s_08fccf4b5fc5e9::t_b1521c8ad111ce 444
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/prompts.ts
+  s_08fccf4b5fc5e9::t_a9f5f84f6241e3 28,62
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_08fccf4b5fc5e9::t_abb799dfce720e 256
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_08fccf4b5fc5e9::t_7198db43d2d257 229,704
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_08fccf4b5fc5e9::t_e2bc3748d8e447 18,39,150
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_08fccf4b5fc5e9::t_717429499dd721 21,172
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_08fccf4b5fc5e9::t_c0f5f65af4092f 12,40,73,109,128
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_08fccf4b5fc5e9::t_543b2955a81638 115,125,132
+packages/@n8n/instance-ai/skills/workflow-builder/references/credential-setup-with-computer-use.md
+  s_08fccf4b5fc5e9::t_bf165293ee8b5d 9,38,47
+packages/@n8n/instance-ai/skills/workflow-builder/references/one-off-operations.md
+  s_08fccf4b5fc5e9::t_fccd2c2b70da81 17
+packages/@n8n/instance-ai/skills/workflow-builder/references/post-build-flow.md
+  s_08fccf4b5fc5e9::t_644fed3fbaebda 9,497,681,703
+packages/@n8n/instance-ai/src/agent/credential-guardrails.prompt.ts
+  s_08fccf4b5fc5e9::t_43f74fbc3d8061 2
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_08fccf4b5fc5e9::t_a8058009bcd4f2 5,20
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_08fccf4b5fc5e9::t_7835de5cad3f14 279,290,310
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_08fccf4b5fc5e9::t_9655b112459a1c 74,115
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_08fccf4b5fc5e9::t_369f5d691e87ec 116,142
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_08fccf4b5fc5e9::t_0d475c9ee070dd 324,475
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_08fccf4b5fc5e9::t_3cd8192e0278da 299,365
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_08fccf4b5fc5e9::t_7550ccda428822 91-92,153
+packages/@n8n/instance-ai/src/tools/conversation-history.schema.ts
+  s_08fccf4b5fc5e9::t_26f9c1265f31ef 38
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_08fccf4b5fc5e9::t_19f8325fbdcae8 30
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_08fccf4b5fc5e9::t_e7ff21b456b23c 1784,1787,1790,2069,2072,2075
+packages/cli/src/modules/instance-ai/__tests__/conversation-history-content.fixtures.ts
+  s_08fccf4b5fc5e9::t_01bb860b24abdb 42
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_08fccf4b5fc5e9::t_c4b0e6fc8ea6f2 2102
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_08fccf4b5fc5e9::t_c0033bfe46169b 14
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_08fccf4b5fc5e9::t_931607fcb52dce 35,127,222,232,299
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_08fccf4b5fc5e9::t_305480ed54ae7a 8303
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_08fccf4b5fc5e9::t_c5516fa0cc41ef 388
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_08fccf4b5fc5e9::t_d5ccc262e33a57 1744
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.test.ts
+  s_08fccf4b5fc5e9::t_6890e788a693cf 149
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_08fccf4b5fc5e9::t_632a53726c24f8 573
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74f3e8853f275db92472f8b2baaa63811643b539",
+  "prompts": {},
+  "sessions": {
+    "s_08fccf4b5fc5e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62afc75-8662-48ae-b8e6-522033c7b295",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_b51ca84edd5013": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "601cf56e-0c69-4941-82dd-54aaa9ef5fda",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
