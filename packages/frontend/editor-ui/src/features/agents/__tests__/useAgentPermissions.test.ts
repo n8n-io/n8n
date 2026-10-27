@@ -190,4 +190,23 @@ describe('useAgentPermissions', () => {
 		expect(canPublish.value).toBe(false);
 		expect(canUnpublish.value).toBe(false);
 	});
+
+	it('keeps export available but blocks import in a read-only branch', () => {
+		projectsStore.myProjects = [makeProject(['agent:export', 'agent:import'])];
+		sourceControlStore.preferences = { branchReadOnly: true } as never;
+
+		const { canExport, canImport } = useAgentPermissions(PROJECT_ID);
+
+		expect(canExport.value).toBe(true);
+		expect(canImport.value).toBe(false);
+	});
+
+	it('grants import and export from project scopes', () => {
+		projectsStore.myProjects = [makeProject(['agent:export', 'agent:import'])];
+
+		const { canExport, canImport } = useAgentPermissions(PROJECT_ID);
+
+		expect(canExport.value).toBe(true);
+		expect(canImport.value).toBe(true);
+	});
 });

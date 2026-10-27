@@ -17,7 +17,14 @@ import {
 	useLocalStorage,
 	useStorage,
 } from '@vueuse/core';
-import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
+import {
+	onBeforeRouteLeave,
+	onBeforeRouteUpdate,
+	useRoute,
+	useRouter,
+	type RouteLocationRaw,
+} from 'vue-router';
+import { saveAs } from 'file-saver';
 import {
 	N8nAssistantIcon,
 	N8nCanvasPill,
@@ -39,6 +46,7 @@ import {
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type AgentSkillAvailability,
+	type ImportResultDto,
 	type InstanceAiHandoffContext,
 	type PushMessage,
 	type PushPayload,
@@ -119,7 +127,6 @@ import {
 	AGENT_DEFAULT_PANEL_WIDTH_RATIO,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
-	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
@@ -137,6 +144,8 @@ import {
 	type AgentCredentialHelpRequest,
 } from '../agents.eventBus';
 import { AGENTS_MODALS } from '../modals';
+import { exportPackage } from '@/features/shared/n8nPackages/n8nPackages.api';
+import { PACKAGE_IMPORT_MODAL_KEY } from '@/features/shared/n8nPackages/n8nPackages.constants';
 import {
 	AGENT_TEMPLATES,
 	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
@@ -791,9 +800,12 @@ const agentBuilderHref = computed(function getAgentBuilderHref() {
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const {
+	canCreate: canCreateAgent,
 	canUpdate: canEditAgent,
 	canDelete: canDeleteAgent,
 	canExecute: canExecuteAgent,
+	canImport: canImportPackage,
+	canExport: canExportPackage,
 } = useAgentPermissions(projectId);
 // True while an eval suggestion is being applied, see `runConfigWrite`.
 const configWriteInFlight = ref(false);
@@ -2773,20 +2785,7 @@ const headerActions = computed(() => {
 		});
 	}
 
-	actions.push({
-		id: 'export-json',
-		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'arrow-block-up',
-		divided: actions.length > 0,
-	});
-
-	if (effectiveCanEditAgent.value) {
-		actions.push({
-			id: 'import-json',
-			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'arrow-block-down',
-		});
-	}
+	actions.push(...getPackageActions(actions.length > 0));
 
 	actions.push({
 		id: 'version-history',
@@ -2808,38 +2807,106 @@ const headerActions = computed(() => {
 	return actions;
 });
 
-async function exportAgentJson() {
-	if (!localConfig.value) return;
+// An unsaved Agent has no row on the server yet, so there is nothing to export.
+const canExportAgentPackage = computed(() => canExportPackage.value && !isUnsaved.value);
+// The import can create new Agents or add a version to existing ones.
+const canImportAgentPackage = computed(
+	() =>
+		canImportPackage.value &&
+		(canCreateAgent.value || canEditAgent.value) &&
+		!isEditingLocked.value,
+);
+
+function getPackageActions(divided: boolean): Array<ActionDropdownItem<string>> {
+	const actions: Array<ActionDropdownItem<string>> = [];
+	if (canExportAgentPackage.value) {
+		actions.push({
+			id: 'export-package',
+			label: locale.baseText('agents.builder.exportPackage'),
+			icon: 'arrow-block-up',
+		});
+	}
+	if (canImportAgentPackage.value) {
+		actions.push({
+			id: 'import-package',
+			label: locale.baseText('agents.builder.importPackage'),
+			icon: 'arrow-block-down',
+		});
+	}
+	if (divided && actions.length > 0) actions[0].divided = true;
+	return actions;
+}
+
+const exportingPackage = ref(false);
+
+function getPackageFileName(): string {
+	const name = (localConfig.value?.name ?? agentName.value).trim();
+	return `${name.replace(/[\\/:*?"<>|]+/g, '-') || 'agent'}.n8np`;
+}
+
+async function exportAgentPackage() {
+	if (exportingPackage.value || !canExportAgentPackage.value) return;
+
+	exportingPackage.value = true;
+	try {
+		await flushAndSaveAgentPackage();
+	} finally {
+		exportingPackage.value = false;
+	}
+}
+
+async function flushAndSaveAgentPackage() {
+	// The export reads the saved Agent, so pending edits must land first.
+	// A failed save shows its own error, so stop without a second message.
+	try {
+		await flushAutosave();
+	} catch {
+		return;
+	}
+	try {
+		const blob = await exportPackage(rootStore.publicApiContext, {
+			agentIds: [agentId.value],
+			dependencyPolicy: 'include-in-package',
+		});
+		saveAs(blob, getPackageFileName());
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.exportPackage.error'));
+	}
+}
+
+function getImportedAgentRoute(agent: { localId: string; projectId: string }): RouteLocationRaw {
+	return {
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: agent.projectId, agentId: agent.localId },
+	};
+}
+
+/** Reloads the open Agent when the package changed it. Otherwise opens the first imported Agent. */
+async function onPackageImported(result: ImportResultDto): Promise<void> {
+	if (result.agents.some((imported) => imported.localId === agentId.value)) {
+		// A queued autosave holds the config from before the import and would overwrite it.
+		cancelQueuedAutosaves();
+		await onConfigUpdated();
+		return;
+	}
+	const [firstAgent] = result.agents;
+	if (firstAgent) await router.push(getImportedAgentRoute(firstAgent));
+}
+
+async function openImportPackageModal() {
+	if (!canImportAgentPackage.value) return;
 
 	try {
 		await flushAutosave();
 	} catch {
 		return;
 	}
-	if (!localConfig.value) return;
-
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
-		type: 'application/json',
-	});
-	const url = URL.createObjectURL(blob);
-	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
-	const link = Object.assign(document.createElement('a'), {
-		href: url,
-		download: `${name}.json`,
-	});
-	document.body.appendChild(link);
-	link.click();
-	link.remove();
-	URL.revokeObjectURL(url);
-}
-
-function openImportJsonModal() {
-	if (!effectiveCanEditAgent.value) return;
-
 	uiStore.openModalWithData({
-		name: AGENT_JSON_IMPORT_MODAL_KEY,
+		name: PACKAGE_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			projectId: projectId.value,
+			onImported: onPackageImported,
+			agentRoute: getImportedAgentRoute,
 		},
 	});
 }
@@ -2896,12 +2963,12 @@ async function onHeaderAction(action: string) {
 		onOpenVersionHistory();
 		return;
 	}
-	if (action === 'export-json') {
-		await exportAgentJson();
+	if (action === 'export-package') {
+		await exportAgentPackage();
 		return;
 	}
-	if (action === 'import-json') {
-		openImportJsonModal();
+	if (action === 'import-package') {
+		await openImportPackageModal();
 		return;
 	}
 	if (action === 'toggleFavorite') {
