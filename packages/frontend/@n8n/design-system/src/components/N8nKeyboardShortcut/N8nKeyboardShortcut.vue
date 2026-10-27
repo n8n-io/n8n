@@ -51,9 +51,9 @@ const keys = computed(() => {
 	min-width: 18px;
 	padding: 0 var(--spacing--4xs);
 	border: 0.5px solid var(--n8n--kbd-border, var(--border-color--subtle));
-	background-clip: padding-box;
 	box-shadow: var(--shadow--xs);
 	background: var(--n8n--kbd-bg, var(--color--background));
+	background-clip: padding-box;
 }
 
 .key {

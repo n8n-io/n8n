@@ -294,7 +294,7 @@ function onKeydown(event: KeyboardEvent) {
 					:data-test-id="option.testId ?? `approval-card-${option.key}`"
 					@click="selectOption(option.key)"
 					@focus="highlightedIndex = idx"
-					@mouseenter="focusOption(idx)"
+					@mouseenter="highlightedIndex = idx"
 				>
 					<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
 					<span :class="$style.label">
