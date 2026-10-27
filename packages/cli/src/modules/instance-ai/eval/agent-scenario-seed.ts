@@ -1,3 +1,4 @@
+import type { FetchFn } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { InstanceAiEvalAgentScenarioSeed } from '@n8n/api-types';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
@@ -26,6 +27,7 @@ export interface GenerateAgentScenarioSeedOptions {
 	instructions: string;
 	tools: AgentSeedToolSummary[];
 	scenarioHints?: string;
+	modelFetch?: FetchFn;
 }
 
 const SYSTEM_PROMPT = `You are a test data planner for n8n AI agents. An agent (system prompt + tools) is exercised by sending it ONE opening user chat message; its tool calls are served by an API mock server. Your job is to produce that opening message, a consistent data context, and per-tool hints that guide the mock server to generate realistic, coherent responses.
@@ -124,6 +126,7 @@ export async function generateAgentScenarioSeed(
 		try {
 			const agent = createEvalAgent('eval-agent-seed-generator', {
 				instructions: SYSTEM_PROMPT,
+				modelFetch: options.modelFetch,
 			});
 			const result = await agent.generate(userPrompt, {
 				providerOptions: { anthropic: { maxTokens: 8192 } },

@@ -100,7 +100,8 @@ export class RuntimeContextBuilder {
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(
 			this.config.model,
-			this.config.modelFetch,
+			// The runtime falls back to the global `fetch` until `modelFetch` is required.
+			this.config.modelFetch ?? fetch,
 			this.config.telemetry ?? execOptions?.telemetry,
 		);
 		this.nativeToolDeferral = this.config.nativeToolDeferral

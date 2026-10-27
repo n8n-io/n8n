@@ -2,13 +2,18 @@ import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
+import type { ModelConfig } from '../../types/sdk/agent';
 import {
 	mintAzureFoundryDeploymentsToken,
 	createEmbeddingModel,
-	createModel,
+	createModel as createModelWithFetch,
 	supportsSplitSystemMessages,
 } from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
+
+// Most tests do not exercise the transport, so they pass the global `fetch`.
+const createModel = (config: ModelConfig, fetch = globalThis.fetch) =>
+	createModelWithFetch(config, fetch);
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -311,11 +316,6 @@ vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
 		}),
 }));
 
-const { mockProxyAgent } = vi.hoisted(() => ({ mockProxyAgent: vi.fn() }));
-vi.mock('undici', () => ({
-	ProxyAgent: mockProxyAgent,
-}));
-
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
 type EndpointModel = {
 	doGenerate: (
@@ -337,19 +337,6 @@ function fakeEndpoint(routes: Record<string, number>) {
 }
 
 describe('createModel', () => {
-	const originalEnv = process.env;
-
-	beforeEach(() => {
-		process.env = { ...originalEnv };
-		delete process.env.HTTPS_PROXY;
-		delete process.env.HTTP_PROXY;
-		mockProxyAgent.mockClear();
-	});
-
-	afterAll(() => {
-		process.env = originalEnv;
-	});
-
 	it('should accept a string config', () => {
 		const model = createModel('anthropic/claude-opus-5') as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('anthropic');
@@ -556,25 +543,6 @@ describe('createModel', () => {
 		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
 	});
 
-	it('should not pass fetch when no proxy env vars are set', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
-		expect(model.fetch).toBeUndefined();
-	});
-
-	it('should pass proxy-aware fetch when HTTPS_PROXY is set', () => {
-		process.env.HTTPS_PROXY = 'http://proxy:8080';
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
-		expect(model.fetch).toBeInstanceOf(Function);
-		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:8080');
-	});
-
-	it('should pass proxy-aware fetch when HTTP_PROXY is set', () => {
-		process.env.HTTP_PROXY = 'http://proxy:9090';
-		const model = createModel('openai/gpt-4o') as unknown as Record<string, unknown>;
-		expect(model.fetch).toBeInstanceOf(Function);
-		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:9090');
-	});
-
 	it('should forward custom headers to the provider factory', () => {
 		const model = createModel({
 			id: 'anthropic/claude-sonnet-4-5',
@@ -585,13 +553,6 @@ describe('createModel', () => {
 			'x-proxy-auth': 'Bearer abc',
 			'anthropic-beta': 'tools-2024',
 		});
-	});
-
-	it('should prefer HTTPS_PROXY over HTTP_PROXY', () => {
-		process.env.HTTPS_PROXY = 'http://https-proxy:8080';
-		process.env.HTTP_PROXY = 'http://http-proxy:9090';
-		createModel('anthropic/claude-sonnet-4-5');
-		expect(mockProxyAgent).toHaveBeenCalledWith('http://https-proxy:8080');
 	});
 
 	describe('standard providers', () => {

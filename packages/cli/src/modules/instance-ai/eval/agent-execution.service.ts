@@ -15,7 +15,7 @@ import type {
 	InstanceAiEvalInterceptedRequest,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { OutboundHttp } from '@n8n/backend-network';
+import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -179,6 +179,12 @@ export class EvalAgentExecutionService {
 		private readonly outboundHttp: OutboundHttp,
 	) {}
 
+	private modelFetch?: CustomFetch;
+
+	private getModelFetch(): CustomFetch {
+		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	}
+
 	async executeWithLlmMock(
 		agentId: string,
 		user: User,
@@ -226,6 +232,7 @@ export class EvalAgentExecutionService {
 				instructions: config.instructions,
 				tools: toolSummaries,
 				scenarioHints: scenarioSignal,
+				modelFetch: this.getModelFetch(),
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -245,14 +252,12 @@ export class EvalAgentExecutionService {
 			scenarioHints: scenarioSignal,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
+			modelFetch: this.getModelFetch(),
 		});
 
 		const toolLedger: ToolLedger = new Map();
 		const credentialHelpers: EvalMockedCredentialsHelper[] = [];
-		const recorder = createAgentModelTurnRecorder(
-			createAiProxyFetch(this.outboundHttp),
-			this.logger,
-		);
+		const recorder = createAgentModelTurnRecorder(this.getModelFetch(), this.logger);
 		const evidence = { recorder, toolLedger, credentialHelpers };
 		const instrumentation = await this.createRuntimeInstrumentation(
 			config,
@@ -300,6 +305,7 @@ export class EvalAgentExecutionService {
 			serverHints: seed.toolHints,
 			knownToolsByServer,
 			logger: this.logger,
+			modelFetch: this.getModelFetch(),
 			onToolCall: (call) => {
 				const identity = mcpCallIdentity(call.serverName, call.toolName);
 				const calls = pendingMcpCalls.get(identity) ?? [];
@@ -339,6 +345,7 @@ export class EvalAgentExecutionService {
 			globalContext: seed.globalContext,
 			searchHint: seed.toolHints?.web_search,
 			logger: this.logger,
+			modelFetch: this.getModelFetch(),
 			onSearch: (args, result) => {
 				let entries = toolLedger.get('web_search');
 				if (!entries) {

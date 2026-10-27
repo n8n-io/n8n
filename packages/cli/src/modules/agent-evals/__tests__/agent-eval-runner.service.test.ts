@@ -1,4 +1,5 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AgentEvalDataset,
@@ -63,10 +64,14 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
 	evals: {
 		correctness: () => ({
-			model: () => ({ run: (...args: unknown[]) => correctnessRunMock(...args) }),
+			model: () => ({
+				modelFetch: () => ({ run: (...args: unknown[]) => correctnessRunMock(...args) }),
+			}),
 		}),
 		criteria: () => ({
-			model: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }),
+			model: () => ({
+				modelFetch: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }),
+			}),
 		}),
 	},
 }));
@@ -222,6 +227,9 @@ describe('AgentEvalRunnerService', () => {
 			agentsSettingsService,
 			agentConfigService,
 			credentialsService,
+			mock<OutboundHttp>({
+				transport: () => mock<HttpTransport>({ asCustomFetch: () => vi.fn() }),
+			}),
 		);
 	});
 

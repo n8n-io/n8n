@@ -1,5 +1,6 @@
 import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
 import {
@@ -30,6 +31,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { generateFixSuggestion } from './agent-eval-fix-suggestion';
 import { judgeAgentAnswer } from './agent-eval-judge';
@@ -96,7 +98,14 @@ export class AgentEvalRunnerService {
 		private readonly agentsSettingsService: AgentsSettingsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly credentialsService: CredentialsService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
+
+	private modelFetch?: CustomFetch;
+
+	private getModelFetch(): CustomFetch {
+		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	}
 
 	/**
 	 * Validate + create a run, seed one result per case, then execute the cases in
@@ -693,6 +702,7 @@ export class AgentEvalRunnerService {
 				agentConfigService: this.agentConfigService,
 				credentialsService: this.credentialsService,
 				logger: this.logger,
+				modelFetch: this.getModelFetch(),
 			},
 			{
 				input: resolvedCase.input,
@@ -725,6 +735,7 @@ export class AgentEvalRunnerService {
 				agentConfigService: this.agentConfigService,
 				credentialsService: this.credentialsService,
 				logger: this.logger,
+				modelFetch: this.getModelFetch(),
 			},
 			{ input: resolvedCase.input, output, rule, reasoning: verdict.reasoning },
 			ctx,

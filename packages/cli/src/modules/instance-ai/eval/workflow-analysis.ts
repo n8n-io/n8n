@@ -1,3 +1,4 @@
+import type { FetchFn } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -572,6 +573,7 @@ export interface GenerateMockHintsOptions {
 	scenarioHints?: string;
 	/** The node the run starts at when the hints name no start node. */
 	defaultStartNodeName?: string;
+	modelFetch?: FetchFn;
 }
 
 export const TRIGGER_CONTENT_CORRECTION =
@@ -716,6 +718,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
 				instructions: SYSTEM_PROMPT,
+				modelFetch: options.modelFetch,
 			});
 
 			// Explicit 16k output budget — the provider default truncates hints for

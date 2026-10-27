@@ -8,12 +8,14 @@ import {
 	normalizedScores,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository, EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { Telemetry } from '@/telemetry';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { runMetricScales } from '../metric-scales';
 import { InsightsContextBuilder } from './insights-context-builder';
@@ -94,6 +96,7 @@ export class EvalInsightsService {
 		private readonly logger: Logger,
 		private readonly modelResolver: InsightsModelResolver,
 		private readonly contextBuilder: InsightsContextBuilder,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async generateInsights(
@@ -279,6 +282,7 @@ export class EvalInsightsService {
 		// output. Adding a tool here would open an exfiltration channel — don't.
 		const agent = new Agent('eval-insights')
 			.model(resolved.modelConfig)
+			.modelFetch(createAiProxyFetch(this.outboundHttp))
 			.instructions(INSIGHTS_SYSTEM_PROMPT)
 			.structuredOutput(aiInsightsPayloadSchema);
 

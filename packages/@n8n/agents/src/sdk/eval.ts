@@ -1,5 +1,6 @@
 import { filterLlmMessages } from './message';
 import { AgentRuntime } from '../runtime/loop/agent-runtime';
+import type { FetchFn } from '../runtime/model/model-factory';
 import type { BuiltEval, CheckFn, EvalInput, EvalScore, JudgeFn, JudgeHandlerFn } from '../types';
 import type { ModelConfig } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
@@ -56,6 +57,8 @@ export class Eval {
 
 	private credentialName?: string;
 
+	private modelFetchValue?: FetchFn;
+
 	constructor(name: string) {
 		this.evalName = name;
 	}
@@ -76,6 +79,12 @@ export class Eval {
 	 */
 	model(modelConfig: ModelConfig): this {
 		this.modelConfig = modelConfig;
+		return this;
+	}
+
+	/** Set the `fetch` for the judge model and catalog calls. Defaults to the global `fetch`. */
+	modelFetch(fetch: FetchFn): this {
+		this.modelFetchValue = fetch;
 		return this;
 	}
 
@@ -156,6 +165,7 @@ export class Eval {
 		const runtime = new AgentRuntime({
 			name: `${name}-judge`,
 			model: modelConfig,
+			modelFetch: this.modelFetchValue,
 			instructions: 'You are an evaluation judge. Respond precisely as instructed.',
 		});
 

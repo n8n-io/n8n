@@ -47,6 +47,7 @@ function getOrCreateAgent(name: string, modelId: string, instructions: string): 
 			instructions,
 			cache: true,
 			judge: true,
+			modelFetch: fetch,
 		});
 		agentCache.set(key, agent);
 	}

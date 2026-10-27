@@ -281,10 +281,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/**
-	 * Provide a proxy-aware `fetch` for the agent's model and catalog calls. When unset, model
-	 * construction falls back to the ambient HTTP_PROXY resolver.
-	 */
+	/** Set the `fetch` for the agent's model and catalog calls. Defaults to the global `fetch`. */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
 		return this;

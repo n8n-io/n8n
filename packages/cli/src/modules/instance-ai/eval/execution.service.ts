@@ -7,6 +7,7 @@ import {
 	type InstanceAiEvalExecutionResult,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
@@ -58,6 +59,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { executeAgent } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -155,7 +157,14 @@ export class EvalExecutionService {
 		private readonly processedDataRepository: ProcessedDataRepository,
 		private readonly instanceAiConfig: InstanceAiConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
+
+	private modelFetch?: CustomFetch;
+
+	private getModelFetch(): CustomFetch {
+		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	}
 
 	async executeWithLlmMock(
 		workflowId: string,
@@ -305,6 +314,7 @@ export class EvalExecutionService {
 					nodeNames,
 					scenarioHints,
 					defaultStartNodeName: defaultStartNode?.name,
+					modelFetch: this.getModelFetch(),
 				}),
 		);
 
@@ -396,6 +406,7 @@ export class EvalExecutionService {
 								? { dataDescription: globalContext, testScenario: scenarioHints }
 								: undefined,
 						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
+						modelFetch: this.getModelFetch(),
 					}),
 			);
 
@@ -478,6 +489,7 @@ export class EvalExecutionService {
 						globalContext: hints.globalContext,
 						nodeHints: hints.nodeHints,
 						scenarioHints,
+						modelFetch: this.getModelFetch(),
 					}),
 			);
 			if (timestampedTables.length > 0) {
@@ -573,6 +585,7 @@ export class EvalExecutionService {
 			nodeHints: hints.nodeHints,
 			pinnedOutputs: summarizePinnedOutputs(hints.bypassPinData),
 			signal: mockAbort.signal,
+			modelFetch: this.getModelFetch(),
 		});
 
 		const runMockNodeNames = new Set(identifyNodesForRunMock(workflowEntity).map((n) => n.name));
@@ -583,6 +596,7 @@ export class EvalExecutionService {
 			nodeHints: hints.nodeHints,
 			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
 			signal: mockAbort.signal,
+			modelFetch: this.getModelFetch(),
 			onRun: (node, request, response) => {
 				this.mockedEntry(nodeResults, node.name).interceptedRequests.push({
 					url: '(no HTTP: node run mocked)',
@@ -651,6 +665,7 @@ export class EvalExecutionService {
 					scenarioHints,
 					globalContext: hints.globalContext,
 					nodeHints: hints.nodeHints,
+					modelFetch: this.getModelFetch(),
 				});
 				const timedAiTurnHandler: EvalLlmMockHandler = async (request, node) =>
 					await timings.time(
@@ -1211,6 +1226,7 @@ export class EvalExecutionService {
 			scenarioHints: run.scenarioHints,
 			globalContext: run.hints.globalContext,
 			logger: this.logger,
+			modelFetch: this.getModelFetch(),
 		};
 		const mocks = (async (): Promise<CalledAgentMocks> => ({
 			mcpFetch: createMcpMockFetch({

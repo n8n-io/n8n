@@ -1,3 +1,4 @@
+import type { FetchFn } from '@n8n/agents';
 import type { AgentEvalVerdict } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -12,6 +13,7 @@ type JudgeDependencies = {
 	agentConfigService: AgentConfigService;
 	credentialsService: CredentialsService;
 	logger: Logger;
+	modelFetch: FetchFn;
 };
 
 type JudgeSubject = {
@@ -41,7 +43,7 @@ type JudgeSubject = {
  * and never thrown. Grading is best-effort on top of a case that already ran.
  */
 export async function judgeAgentAnswer(
-	{ agentConfigService, credentialsService, logger }: JudgeDependencies,
+	{ agentConfigService, credentialsService, logger, modelFetch }: JudgeDependencies,
 	{ input, output, criteria, expectedOutput }: JudgeSubject,
 	ctx: { agentId: string; projectId: string; user: User },
 ): Promise<AgentEvalVerdict> {
@@ -71,10 +73,15 @@ export async function judgeAgentAnswer(
 		// have something to grade against.
 		const { evals } = await import('@n8n/agents');
 		const score = criteria
-			? await evals.criteria().model(modelConfig).run({ input, output, criteria })
+			? await evals
+					.criteria()
+					.model(modelConfig)
+					.modelFetch(modelFetch)
+					.run({ input, output, criteria })
 			: await evals
 					.correctness()
 					.model(modelConfig)
+					.modelFetch(modelFetch)
 					.run({ input, output, expected: expectedOutput ?? undefined });
 
 		return {

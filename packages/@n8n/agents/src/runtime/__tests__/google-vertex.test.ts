@@ -183,6 +183,6 @@ describe('Vertex model routing', () => {
 		{ id: 'google-vertex/meta/unknown-model-maas' },
 		{ id: 'google-vertex/claude-opus-5@default', sdk: '@ai-sdk/unknown' },
 	])('rejects unresolved Vertex routing for $id', (config) => {
-		expect(() => createModel({ ...credentials, ...config })).toThrow(/Vertex.*SDK/);
+		expect(() => createModel({ ...credentials, ...config }, fetch)).toThrow(/Vertex.*SDK/);
 	});
 });

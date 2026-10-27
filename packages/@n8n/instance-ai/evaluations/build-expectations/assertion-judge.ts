@@ -55,6 +55,7 @@ export async function judgeExpectations(
 			cache: true,
 			model: JUDGE_MODEL,
 			judge: true,
+			modelFetch: fetch,
 		}).structuredOutput(expectationResultSchema);
 
 		const abortController = new AbortController();
