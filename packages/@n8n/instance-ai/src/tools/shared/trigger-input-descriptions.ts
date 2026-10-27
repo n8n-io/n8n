@@ -1,14 +1,9 @@
 // Shared by `executions(action="run")` and `verify_built_workflow`. Both tools are
-// always loaded, so one short wording keeps the rules consistent and cheap.
+// always loaded, so the descriptions state the contract only. The per-trigger
+// shapes and the multi-trigger procedure live in the workflow-builder skill.
 
 export const TRIGGER_INPUT_DATA_DESCRIPTION =
-	'Trigger output to inject; works for any trigger type. Match the real trigger output: ' +
-	'Form Trigger -> flat fields like {name: "Alice"} (no formFields wrapper); Chat Trigger -> {chatInput: "..."}; ' +
-	'Schedule Trigger -> omit; event triggers -> the event payload. Webhook: a flat object becomes `body` only. ' +
-	'When an expression reads $json.query.*, $json.headers.* or $json.params.*, pass {body, query, headers, params}.';
+	'Output to inject as the trigger output. The shape depends on the trigger type; see the `trigger-input-data-shapes` reference.';
 
 export const TRIGGER_NODE_NAME_DESCRIPTION =
-	'Trigger node to start from. REQUIRED when the workflow has more than one trigger, otherwise the ' +
-	"other triggers' branches never run: call once per trigger. Names come from " +
-	'workflow_builder_build_workflow\'s `triggerNodes` or workflow_builder_workflows(action="get-as-code"). ' +
-	'Never disable, delete, edit or copy a workflow to reach a branch.';
+	'Name of the trigger node to start from, from `triggerNodes` in the build result. Required when the workflow has more than one trigger.';

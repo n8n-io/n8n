@@ -16,6 +16,8 @@ reject the call.
 
 The body payload, e.g. `{event: "signup", userId: "..."}`. The adapter wraps it
 under `body`, so downstream nodes reference `$json.body.<field>`.
+When the workflow reads request fields (`$json.query.*`, `$json.headers.*` or
+`$json.params.*`), pass the full envelope `{body, query, headers, params}`.
 
 ## Chat Trigger (`@n8n/n8n-nodes-langchain.chatTrigger`)
 
