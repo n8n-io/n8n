@@ -2,13 +2,18 @@ import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
 
+import type { ModelConfig } from '../../types/sdk/agent';
 import {
 	mintAzureFoundryDeploymentsToken,
 	createEmbeddingModel,
-	createModel,
+	createModel as createModelWithFetch,
 	supportsSplitSystemMessages,
 } from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
+
+// Most tests do not exercise the transport, so they pass the global `fetch`.
+const createModel = (config: ModelConfig, fetch = globalThis.fetch) =>
+	createModelWithFetch(config, fetch);
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -536,11 +541,6 @@ describe('createModel', () => {
 			headers: { 'x-custom-header': 'value' },
 		}) as unknown as Record<string, unknown>;
 		expect(model.headers).toEqual({ 'x-custom-header': 'value' });
-	});
-
-	it('should not pass fetch when none is injected', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
-		expect(model.fetch).toBeUndefined();
 	});
 
 	it('should forward custom headers to the provider factory', () => {

@@ -582,7 +582,7 @@ export function resolveNativeToolDeferral(config: ModelConfig): NativeToolDeferr
  */
 export function createModel(
 	config: ModelConfig,
-	fetch?: FetchFn,
+	fetch: FetchFn,
 	telemetry?: BuiltTelemetry,
 ): LanguageModel {
 	if (isLanguageModel(config)) {
@@ -634,7 +634,7 @@ export function createModel(
 	}
 
 	const resolvedFetch = telemetry?.traceModelRequests
-		? traceModelRequests(fetch ?? globalFetch, telemetry, provider, modelName)
+		? traceModelRequests(fetch, telemetry, provider, modelName)
 		: fetch;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
 	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);

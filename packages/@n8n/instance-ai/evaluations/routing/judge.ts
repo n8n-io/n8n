@@ -124,6 +124,7 @@ export async function judgeRoute(input: JudgeInput): Promise<JudgeVerdict> {
 			instructions: SYSTEM_PROMPT,
 			cache: true,
 			model: JUDGE_MODEL,
+			modelFetch: fetch,
 		}).structuredOutput(judgeVerdictSchema);
 		try {
 			const result = await agent.generate(renderJudgePrompt(input), {

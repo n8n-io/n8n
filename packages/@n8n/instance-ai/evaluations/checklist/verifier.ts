@@ -456,6 +456,7 @@ export async function verifyChecklist(
 					instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 					cache: true,
 					judge: true,
+					modelFetch: fetch,
 				}).structuredOutput(checklistResultSchema);
 
 				// The inactivity watchdog arms on the FIRST chunk (inside the consume

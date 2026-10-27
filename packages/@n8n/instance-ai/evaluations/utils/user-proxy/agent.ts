@@ -46,6 +46,7 @@ export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserPro
 				...(config.modelId ? { model: config.modelId } : {}),
 				instructions: `${SYSTEM_PROMPT}\n\n${toolDescriptions}`,
 				cache: true,
+				modelFetch: fetch,
 			}).structuredOutput(schema);
 
 			try {
