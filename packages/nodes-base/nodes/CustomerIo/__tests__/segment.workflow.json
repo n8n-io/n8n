@@ -1,0 +1,69 @@
+{
+	"name": "CustomerIo Segment Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "d1e2f3a4-0004-0004-0004-000000000001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "segment",
+				"operation": "add",
+				"segmentId": 1,
+				"customerIds": "2,3"
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "d1e2f3a4-0004-0004-0004-000000000002",
+			"name": "CustomerIo - Segment - Add",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "segment",
+				"operation": "remove",
+				"segmentId": 1,
+				"customerIds": "2,3"
+			},
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "d1e2f3a4-0004-0004-0004-000000000003",
+			"name": "CustomerIo - Segment - Remove",
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "CustomerIo account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"CustomerIo - Segment - Add": [{ "json": { "success": true } }],
+		"CustomerIo - Segment - Remove": [{ "json": { "success": true } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "CustomerIo - Segment - Add", "type": "main", "index": 0 },
+					{ "node": "CustomerIo - Segment - Remove", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
