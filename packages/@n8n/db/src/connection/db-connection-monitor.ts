@@ -49,9 +49,9 @@ interface PgPoolInternals {
 export const FORCE_CLOSE_GRACE_MS = 1_000;
 
 /**
- * The ping could not check a client out of the pool within the ping timeout, so it never
- * ran its query on a pooled connection. The pool is busy with other queries or cannot open
- * a new connection. An `OperationalError` so the ping does not report it to Sentry.
+ * The ping timed out before it could check a client out of the pool, so it never ran its
+ * query on a pooled connection. The pool is busy with other queries or slow to open a new
+ * connection. An `OperationalError` so the ping does not report it to Sentry.
  */
 class PooledConnectionUnavailableError extends OperationalError {
 	constructor(cause: Error) {
@@ -277,7 +277,13 @@ export class DbConnectionMonitor {
 				(late) => this.safeDestroyClient(late),
 				() => {},
 			);
-			throw new PooledConnectionUnavailableError(ensureError(error));
+			// Only the ping timeout means "pool busy". A rejection from pg-pool itself (refused
+			// connection, failed auth, server at max connections) is a connection error: it is
+			// reported and probed like any other, and the probe decides whether it counts.
+			if (error instanceof OperationalError) {
+				throw new PooledConnectionUnavailableError(error);
+			}
+			throw error;
 		}
 
 		try {

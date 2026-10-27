@@ -505,6 +505,32 @@ describe('DbConnectionMonitor', () => {
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
+		it('should treat a pool.connect() rejection as a connection error, not as a busy pool', async () => {
+			// pg-pool rejects fast when it cannot open a connection (refused, failed auth, server at
+			// max connections). That says nothing about busy slots, so the probe decides as usual.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			const connectError = new Error('connect ECONNREFUSED');
+			pool.connect.mockRejectedValue(connectError);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(connectError);
+			expect(postgres.Client).toHaveBeenCalledOnce();
+			// The probe answered, so the failure counts.
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(1);
+			expect(recoverSpy).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining('Database ping failed (1/3): connect ECONNREFUSED'),
+			);
+		});
+
 		it('should bound the probe outside the pool by the ping timeout', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
