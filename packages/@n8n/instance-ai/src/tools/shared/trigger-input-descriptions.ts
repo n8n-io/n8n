@@ -1,6 +1,8 @@
 // Shared by `executions(action="run")` and `verify_built_workflow`. Both tools are
-// always loaded, so the descriptions state the contract only. The per-trigger
-// shapes and the multi-trigger procedure live in the workflow-builder skill.
+// always loaded, so these descriptions go into every model call. Keep them to the
+// field contract. Do not append usage rules here: put them in the
+// `trigger-input-data-shapes` skill reference, a skill, an SDK check, or a hint on
+// the tool result. A unit test enforces the length.
 
 export const TRIGGER_INPUT_DATA_DESCRIPTION =
 	'Output to inject as the trigger output. The shape depends on the trigger type; see the `trigger-input-data-shapes` reference.';
