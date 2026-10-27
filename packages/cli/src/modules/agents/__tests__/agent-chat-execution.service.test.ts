@@ -119,6 +119,7 @@ describe('session stop cleanup', () => {
 		const controller = new AbortController();
 		service.register(context, controller);
 
+		service.stopSessionExecutions(context.agentId, context.threadId, [context.executionId]);
 		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
 
 		expect(controller.signal.reason).toBe(SESSION_STOPPED_REASON);
@@ -126,6 +127,39 @@ describe('session stop cleanup', () => {
 			context.agentId,
 			context.threadId,
 		);
+	});
+
+	it('signals local work without querying shared state', () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		const controller = new AbortController();
+		service.register(context, controller);
+
+		service.stopSessionExecutions(context.agentId, context.threadId, [context.executionId]);
+
+		expect(controller.signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(backgroundJobs.requestCancelForSession).toHaveBeenCalledExactlyOnceWith(
+			context.agentId,
+			context.threadId,
+		);
+		expect(repository.findLatestByThreadId).not.toHaveBeenCalled();
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+
+	it('clears a late suspension without repeating background cleanup', async () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({ ...running, hitlStatus: 'suspended', status: 'cancelled' }),
+		);
+
+		await service.cancelSessionSuspension(context.agentId, context.threadId, context.executionId);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledExactlyOnceWith(
+			'run-1',
+			checkpoint,
+			context.agentId,
+		);
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
 	});
 
 	it('removes a suspension recorded by a selected execution', async () => {
@@ -165,6 +199,8 @@ describe('session stop cleanup', () => {
 		);
 
 		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		await service.cancelSessionSuspension(context.agentId, context.threadId, context.executionId);
 
 		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
 		expect(checkpointStorage.delete).not.toHaveBeenCalled();

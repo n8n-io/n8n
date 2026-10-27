@@ -384,8 +384,11 @@ export class AgentExecutionService {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
 	}
 
-	stopExecution(executionId: string): void {
-		this.executionControllers.get(executionId)?.abort(SESSION_STOPPED_REASON);
+	stopExecution(executionId: string): boolean {
+		const controller = this.executionControllers.get(executionId);
+		if (!controller) return false;
+		controller.abort(SESSION_STOPPED_REASON);
+		return true;
 	}
 
 	reportUsage(

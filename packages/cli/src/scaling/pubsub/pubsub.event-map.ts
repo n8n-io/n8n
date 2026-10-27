@@ -165,6 +165,7 @@ export type PubSubCommandMap = {
 		agentId: string;
 		threadId: string;
 		executionIds: string[];
+		queueIds?: string[];
 	};
 
 	'relay-agent-message-queue-update': {

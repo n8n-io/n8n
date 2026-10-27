@@ -291,41 +291,65 @@ export class AgentChatExecutionService {
 		});
 	}
 
+	/** Signal only work held by this process. Shared cleanup belongs to the stop requester. */
+	stopSessionExecutions(agentId: string, threadId: string, executionIds: string[]): void {
+		if (executionIds.length > 0)
+			this.backgroundJobService.requestCancelForSession(agentId, threadId);
+		for (const executionId of executionIds) {
+			const execution = this.executions.get(executionId);
+			if (execution?.context.agentId === agentId && execution.context.threadId === threadId)
+				execution.controller.abort(SESSION_STOPPED_REASON);
+		}
+	}
+
 	/** Call only after authorizing access to the session. */
 	async cancelSessionWork(
 		agentId: string,
 		threadId: string,
 		executionIds: string[],
 	): Promise<void> {
-		for (const executionId of executionIds) {
-			const execution = this.executions.get(executionId);
-			if (execution?.context.agentId === agentId && execution.context.threadId === threadId)
-				execution.controller.abort(SESSION_STOPPED_REASON);
-		}
 		await this.withTurnLock(threadId, async () => {
 			const latest = await this.executionRepository.findLatestByThreadId(threadId);
 			if (!latest || !executionIds.includes(latest.id)) return;
 			await this.backgroundJobService.cancelForSession(agentId, threadId);
-			if (latest.hitlStatus !== 'suspended') return;
-			const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
-			if (!checkpoint?.persistence || checkpoint.persistence.delegated === true) return;
-			const pending = Object.values(checkpoint.pendingToolCalls ?? {}).find(
-				(call) => call.suspended,
-			);
-			if (!pending) return;
-			const thread = await this.executionService.findThreadById(threadId);
-			await this.clearSuspendedRun(
-				{
-					agentId,
-					runId: pending.runId,
-					resourceId: checkpoint.persistence.resourceId,
-					cancelBackgroundJobs: false,
-				},
-				checkpoint,
-				true,
-				thread,
-			);
+			await this.clearSessionSuspension(agentId, threadId, latest.hitlStatus);
 		});
+	}
+
+	async cancelSessionSuspension(
+		agentId: string,
+		threadId: string,
+		executionId: string,
+	): Promise<void> {
+		await this.withTurnLock(threadId, async () => {
+			const latest = await this.executionRepository.findLatestByThreadId(threadId);
+			if (latest?.id === executionId)
+				await this.clearSessionSuspension(agentId, threadId, latest.hitlStatus);
+		});
+	}
+
+	private async clearSessionSuspension(
+		agentId: string,
+		threadId: string,
+		hitlStatus: string | null,
+	): Promise<void> {
+		if (hitlStatus !== 'suspended') return;
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
+		if (!checkpoint?.persistence || checkpoint.persistence.delegated === true) return;
+		const pending = Object.values(checkpoint.pendingToolCalls ?? {}).find((call) => call.suspended);
+		if (!pending) return;
+		const thread = await this.executionService.findThreadById(threadId);
+		await this.clearSuspendedRun(
+			{
+				agentId,
+				runId: pending.runId,
+				resourceId: checkpoint.persistence.resourceId,
+				cancelBackgroundJobs: false,
+			},
+			checkpoint,
+			true,
+			thread,
+		);
 	}
 
 	async cancelSuspended(params: CancelSuspendedRunParams): Promise<boolean> {

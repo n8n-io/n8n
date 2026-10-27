@@ -4237,6 +4237,52 @@ describe('useAgentChatStream — queued submissions', () => {
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
+	it('clears discarded backend messages without sending them again', async () => {
+		const queued = { id: '2', message: 'Later', createdAt: new Date().toISOString() };
+		const streams: Array<ReturnType<typeof makeControllableSseResponse>> = [];
+		const fetchMock = vi.fn(async (_url, init: RequestInit) => {
+			const id = String(streams.length + 1);
+			const events: AgentSseEvent[] = [
+				{ type: 'message-queued', queueId: id, sessionId: 'thread-1' },
+			];
+			if (id === '1')
+				events.push({ type: 'execution-started', executionId: 'A', sessionId: 'thread-1' });
+			const stream = makeControllableSseResponse(events, init.signal ?? null);
+			streams.push(stream);
+			return stream.response;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-1');
+		await hook.sendMessage('Run');
+		getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
+		await hook.sendMessage('Later');
+		await flushPromises();
+		expect(hook.queuedMessages.value).toEqual([queued]);
+
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		for (const listener of [...pushListeners])
+			listener({
+				type: 'agentMessageQueueUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
+			});
+		streams[1].close();
+		await flushPromises();
+
+		expect(hook.queuedMessages.value).toEqual([]);
+		expect(hook.activeExecutionId.value).toBe('A');
+		expect(hook.isSubmitting.value).toBe(false);
+		expect(showQueueErrorMock).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		streams[0].close([
+			{ type: 'finish', finishReason: 'cancelled' },
+			{ type: 'done', executionId: 'A' },
+		]);
+		await flushPromises();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		hook.detachStream();
+	});
+
 	it('passes the queue item id to onAccepted when the message is queued', async () => {
 		vi.stubGlobal(
 			'fetch',

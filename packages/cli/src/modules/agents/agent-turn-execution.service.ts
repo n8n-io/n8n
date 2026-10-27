@@ -347,10 +347,10 @@ export class AgentTurnExecutionService {
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
 			// A checkpoint can finish saving after Stop first checks the session.
 			if (turn.options.abortSignal?.reason === SESSION_STOPPED_REASON)
-				await this.chatExecutionService.cancelSessionWork(
+				await this.chatExecutionService.cancelSessionSuspension(
 					config.context.agentId,
 					config.context.threadId,
-					[executionId],
+					executionId,
 				);
 		};
 		if (chatControl) {

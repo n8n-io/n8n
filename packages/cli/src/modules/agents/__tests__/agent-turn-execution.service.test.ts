@@ -234,13 +234,13 @@ describe('onBeforeFinalize', () => {
 
 		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
 		expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
-		expect(chatExecutions.cancelSessionWork).toHaveBeenCalledExactlyOnceWith(
+		expect(chatExecutions.cancelSessionSuspension).toHaveBeenCalledExactlyOnceWith(
 			'agent-1',
 			'thread-1',
-			['exec-1'],
+			'exec-1',
 		);
 		expect(executions.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
-			chatExecutions.cancelSessionWork.mock.invocationCallOrder[0],
+			chatExecutions.cancelSessionSuspension.mock.invocationCallOrder[0],
 		);
 	});
 

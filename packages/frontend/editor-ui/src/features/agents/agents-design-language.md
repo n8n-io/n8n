@@ -67,7 +67,9 @@ size. Disable the action while the request runs. Keep the session running until
 the server reports its final status. Then remove the stop icon and show
 `Session stopped` in the conversation. Keep the notice after a reload. Send the same
 notice to a user who talks to the Agent through a channel.
-Stop also cancels active background child jobs and clears suspensions for the
+Stop discards queued input, including steered messages, before it aborts the active
+execution. Clear the chat queue and close its waiting connections. Keep unsent
+composer drafts. Stop also cancels active background child jobs and clears suspensions for the
 stopped execution. Keep checkpoints from later executions.
 Wrap the header breadcrumbs and actions on narrow screens. Keep Stop and Close
 inside the available width.

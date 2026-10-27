@@ -786,21 +786,16 @@ export class AgentBackgroundJobService {
 		await this.cancelChildren(parentAgentId, parentThreadId);
 	}
 
+	requestCancelForSession(parentAgentId: string, parentThreadId: string): void {
+		this.markPendingChildrenCancelled(parentAgentId, parentThreadId);
+	}
+
 	private async cancelChildren(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId?: string,
 	): Promise<void> {
-		// A pending insert can finish after the query. Keep its cancellation intent until registration ends.
-		for (const registration of this.pendingSubAgentJobs) {
-			const { params } = registration;
-			if (
-				params.parentAgentId === parentAgentId &&
-				params.parentThreadId === parentThreadId &&
-				(parentResourceId === undefined || params.parentResourceId === parentResourceId)
-			)
-				registration.cancelRequested = true;
-		}
+		this.markPendingChildrenCancelled(parentAgentId, parentThreadId, parentResourceId);
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		for (const job of jobs) {
 			if (
@@ -811,6 +806,23 @@ export class AgentBackgroundJobService {
 			) {
 				await this.cancel(parentThreadId, job.id, { status: job.status });
 			}
+		}
+	}
+
+	private markPendingChildrenCancelled(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId?: string,
+	): void {
+		// A pending insert can finish after the query. Keep its cancellation intent until registration ends.
+		for (const registration of this.pendingSubAgentJobs) {
+			const { params } = registration;
+			if (
+				params.parentAgentId === parentAgentId &&
+				params.parentThreadId === parentThreadId &&
+				(parentResourceId === undefined || params.parentResourceId === parentResourceId)
+			)
+				registration.cancelRequested = true;
 		}
 	}
 

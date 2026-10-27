@@ -594,10 +594,10 @@ describe('AgentExecutionService', () => {
 		await startSnapshotExecution();
 		const signal = service.getAbortSignal('execution-1');
 
-		service.stopExecution('other-execution');
+		expect(service.stopExecution('other-execution')).toBe(false);
 		expect(signal.aborted).toBe(false);
 
-		service.stopExecution('execution-1');
+		expect(service.stopExecution('execution-1')).toBe(true);
 		expect(signal.aborted).toBe(true);
 		expect(signal.reason).toBe(SESSION_STOPPED_REASON);
 		expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();

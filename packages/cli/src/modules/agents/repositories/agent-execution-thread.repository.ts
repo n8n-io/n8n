@@ -8,7 +8,14 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	IsNull,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -62,6 +69,18 @@ function ownedSessionWhere(agentId: string, ownerId: string, threadId: string) {
 	};
 }
 
+function accessibleSessionWhere(
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	userId: string,
+): Array<FindOptionsWhere<AgentExecutionThread>> {
+	return [
+		{ id: threadId, projectId, agentId, accessScope: 'project' },
+		{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+	];
+}
+
 interface AgentSessionDeletionRefs {
 	attachmentBinaryDataIds: string[];
 	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
@@ -88,10 +107,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		agentId: string,
 		userId: string,
 	): Promise<AgentExecutionThread | null> {
-		return await this.findOneBy([
-			{ id: threadId, projectId, agentId, accessScope: 'project' },
-			{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
-		]);
+		return await this.findOneBy(accessibleSessionWhere(projectId, agentId, threadId, userId));
 	}
 
 	/**
@@ -641,10 +657,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
-			where: [
-				{ id: threadId, projectId, agentId, accessScope: 'project' },
-				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
-			],
+			where: accessibleSessionWhere(projectId, agentId, threadId, userId),
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});

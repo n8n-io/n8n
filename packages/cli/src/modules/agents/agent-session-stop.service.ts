@@ -9,18 +9,22 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
-import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 
 @Service()
 export class AgentSessionStopService {
 	constructor(
 		private readonly executionService: AgentExecutionService,
-		private readonly executionRepository: AgentExecutionRepository,
+		private readonly messageQueue: AgentMessageQueueService,
 		private readonly publisher: Publisher,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly queuedStreams: AgentQueuedPreviewStreamService,
+		private readonly attachments: AgentChatAttachmentService,
 	) {}
 
 	async stopSession(
@@ -39,31 +43,37 @@ export class AgentSessionStopService {
 			throw new NotFoundError('Session not found');
 		}
 
-		const running = await this.executionRepository.findRunningByThread(threadId, {});
-		const executionIds = running.map(({ id }) => id);
-		if (executionIds.length === 0) return { cancelRequested: false };
+		const { executionIds, queueIds, attachmentIds } =
+			await this.messageQueue.prepareSessionStop(threadId);
+		if (executionIds.length === 0 && queueIds.length === 0) return { cancelRequested: false };
 
-		const payload = { agentId, threadId, executionIds };
+		const payload = { agentId, threadId, executionIds, queueIds };
+		this.onStopSession(payload);
 		try {
-			await this.onStopSession(payload);
-		} finally {
 			if (this.executionsConfig.mode === 'queue') {
 				await this.publisher.publishCommand({
 					command: 'stop-agent-session',
 					payload,
 				});
 			}
+		} finally {
+			await Promise.all([
+				this.chatExecutionService.cancelSessionWork(agentId, threadId, executionIds),
+				this.attachments.deleteByIds(attachmentIds),
+			]);
 		}
 		return { cancelRequested: true };
 	}
 
 	@OnPubSubEvent('stop-agent-session')
-	async onStopSession({
+	onStopSession({
 		agentId,
 		threadId,
 		executionIds,
-	}: PubSubCommandMap['stop-agent-session']): Promise<void> {
-		for (const executionId of executionIds) this.executionService.stopExecution(executionId);
-		await this.chatExecutionService.cancelSessionWork(agentId, threadId, executionIds);
+		queueIds = [],
+	}: PubSubCommandMap['stop-agent-session']): void {
+		const localExecutionIds = executionIds.filter((id) => this.executionService.stopExecution(id));
+		this.chatExecutionService.stopSessionExecutions(agentId, threadId, localExecutionIds);
+		this.queuedStreams.closeQueuedStreams(queueIds);
 	}
 }
