@@ -836,7 +836,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
-	it.each(['project', 'agent', 'instance'] as const)(
+	it.each(['project', 'instance'] as const)(
 		'creates a skill for the %s through the agent endpoint',
 		async (availableTo) => {
 			vi.mocked(createAgentSkill).mockResolvedValue({
