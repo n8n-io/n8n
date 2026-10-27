@@ -660,11 +660,21 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					it('should read a page and return the newest message from the domain', async () => {
 						withParams({ senderDomain: 'example.com' });
+						// Graph returns the page newest first, as $orderby requests.
 						(microsoftApiRequest as Mock).mockResolvedValue({
 							value: [
-								fromAddress('newest', 'erin@other.com'),
-								fromAddress('newest-match', 'alice@example.com'),
-								fromAddress('older-match', 'bob@example.com'),
+								{
+									...fromAddress('newest', 'erin@other.com'),
+									receivedDateTime: '2023-01-01T12:02:00Z',
+								},
+								{
+									...fromAddress('newest-match', 'alice@example.com'),
+									receivedDateTime: '2023-01-01T12:01:00Z',
+								},
+								{
+									...fromAddress('older-match', 'bob@example.com'),
+									receivedDateTime: '2023-01-01T12:00:00Z',
+								},
 							],
 						});
 
@@ -674,8 +684,12 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							pollEndDate,
 						);
 
-						expect((microsoftApiRequest as Mock).mock.calls[0][4].$top).toBe(100);
-						expect(items.map((item) => item.json.id)).toEqual(['newest-match']);
+						const qs = (microsoftApiRequest as Mock).mock.calls[0][4];
+						expect(qs.$top).toBe(100);
+						expect(qs.$orderby).toBe('receivedDateTime desc');
+						expect(items.map((item) => [item.json.id, item.json.receivedDateTime])).toEqual([
+							['newest-match', '2023-01-01T12:01:00Z'],
+						]);
 					});
 
 					it('should keep reading a single message when no sender domain is set', async () => {
