@@ -57,7 +57,7 @@ describe('AssistantEventSink', () => {
 			} as unknown as InstanceAiEvent),
 		).not.toThrow();
 		expect(logger.warn).toHaveBeenCalledWith(
-			'Failed to send an n8n Assistant event to the chat',
+			'Failed to send an Assistant event to the chat',
 			expect.objectContaining({ type: 'tasks-update', error: 'too large' }),
 		);
 	});

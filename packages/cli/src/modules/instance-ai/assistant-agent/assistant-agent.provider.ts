@@ -119,7 +119,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return serializeAssistantTurnOptions(createAssistantTurnOptions(clientContext, this.logger));
 	}
 
-	/** Cards send the confirmation body of the Assistant chat. Tools expect their resume data. */
+	/**
+	 * Cards send the confirmation body of the Assistant chat, and tools expect their
+	 * resume data. Other bodies pass through unchanged, such as the cancellation that
+	 * the chat sends when the user types while a card waits.
+	 */
 	normalizeResumeData(resumeData: unknown): unknown {
 		const parsed = InstanceAiConfirmRequestDto.safeParse(resumeData);
 		return parsed.success ? buildResumeData(toConfirmationData(parsed.data)) : resumeData;

@@ -43,7 +43,7 @@ export class AssistantEventSink implements InstanceAiEventBus {
 			this.emitHostEvent(event.type, toJsonValue(payload), { key: keyOf(event) });
 		} catch (error) {
 			// An event that is too large or comes after the turn settled is not shown.
-			this.logger.warn('Failed to send an n8n Assistant event to the chat', {
+			this.logger.warn('Failed to send an Assistant event to the chat', {
 				type: event.type,
 				error: getErrorMessage(error),
 			});
