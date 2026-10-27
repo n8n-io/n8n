@@ -36,6 +36,12 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import {
+	getUserFacingErrorCode,
+	getUserFacingErrorMessage,
+	isAttachmentRejectedByProviderError,
+	isMaskedStreamFailure,
+} from '../user-facing-errors';
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
 import { AssistantTurnEnvironmentFactory } from '../turn-setup/assistant-turn-environment.factory';
 import {
@@ -57,6 +63,10 @@ import {
 	AssistantSandboxWorkspaceSource,
 	type AssistantSandboxLease,
 } from './assistant-workspace-source';
+
+type FormattedTurnError = NonNullable<
+	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
+>;
 
 /** The resource attachments that reach the agent. Node attachments need their gate. */
 function contextAttachmentsOf(
@@ -127,6 +137,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	normalizeResumeData(resumeData: unknown): unknown {
 		const parsed = InstanceAiConfirmRequestDto.safeParse(resumeData);
 		return parsed.success ? buildResumeData(toConfirmationData(parsed.data)) : resumeData;
+	}
+
+	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
+	async formatSetupError(user: User, error: unknown): Promise<FormattedTurnError> {
+		return await this.formatTurnError(user, error);
 	}
 
 	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {
@@ -224,6 +239,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await inputAccepted;
 				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
 			},
+			formatError: async (error) => await this.formatTurnError(user, error),
 		};
 	}
 
@@ -288,6 +304,30 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			buildMode: buildMode ?? null,
 			promptVersion: options.request.promptVersion ?? null,
 		};
+	}
+
+	/**
+	 * The text and code that the chat shows for a turn error. A masked stream
+	 * failure is shown as a credit error when the balance is used up, because a
+	 * credit stop at the model call can arrive in that form. A refused file stays
+	 * in the thread history, because the runtime saves the turn input first.
+	 */
+	private async formatTurnError(user: User, error: unknown): Promise<FormattedTurnError> {
+		let shown = error;
+		if (isMaskedStreamFailure(error)) {
+			try {
+				await this.turnEnvironment.assertAssistantCreditsAvailable(user);
+			} catch (creditsError) {
+				shown = creditsError;
+			}
+		}
+		const code = getUserFacingErrorCode(shown);
+		const message = getUserFacingErrorMessage(
+			shown,
+			undefined,
+			isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
+		);
+		return { message, ...(code ? { code } : {}) };
 	}
 
 	/** Claims the turn's model usage against the Assistant credits. Best effort. */

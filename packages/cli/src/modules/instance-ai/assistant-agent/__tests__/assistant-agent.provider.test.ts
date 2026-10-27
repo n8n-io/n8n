@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -22,6 +23,8 @@ import type {
 	AssistantTurnInputBuilder,
 } from '../../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
+import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
+import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider } from '../assistant-agent.provider';
 import type {
 	AssistantSandboxLease,
@@ -332,6 +335,72 @@ describe('AssistantAgentProvider', () => {
 				expect.any(Array),
 				'completed',
 			);
+		});
+
+		describe('formatError', () => {
+			it('shows the user-facing text of an error', async () => {
+				const { provider } = setup();
+				const handle = await provider.prepareTurn(startTurn());
+
+				await expect(handle.formatError?.(new UserError('Pick a project first.'))).resolves.toEqual(
+					{
+						message: 'Pick a project first.',
+					},
+				);
+			});
+
+			it('shows a credit error with its code', async () => {
+				const { provider } = setup();
+				const handle = await provider.prepareTurn(startTurn());
+
+				await expect(
+					handle.formatError?.(new QuotaExhaustedStreamError(new Error('402'))),
+				).resolves.toEqual({
+					message: QUOTA_EXHAUSTED_USER_MESSAGE,
+					code: 'quota_exhausted',
+				});
+			});
+
+			it('tells the user to start a new chat when the provider refuses a file', async () => {
+				const { provider } = setup();
+				const handle = await provider.prepareTurn(startTurn());
+
+				const formatted = await handle.formatError?.(
+					new Error('messages.0.content.1.image: image exceeds 10 MB maximum'),
+				);
+
+				expect(formatted?.message.toLowerCase()).toContain('new chat');
+				expect(formatted?.message.toLowerCase()).not.toContain('left it out');
+			});
+
+			it('shows a masked stream failure as a credit error when the credits are used up', async () => {
+				const { provider, turnEnvironment } = setup();
+				turnEnvironment.assertAssistantCreditsAvailable.mockRejectedValue(
+					new QuotaExhaustedStreamError(new Error('Assistant credits exhausted')),
+				);
+				const handle = await provider.prepareTurn(startTurn());
+				const masked = Object.assign(new Error('No output generated'), {
+					name: 'AI_NoOutputGeneratedError',
+				});
+
+				await expect(handle.formatError?.(masked)).resolves.toMatchObject({
+					code: 'quota_exhausted',
+				});
+
+				turnEnvironment.assertAssistantCreditsAvailable.mockResolvedValue(undefined);
+				await expect(handle.formatError?.(masked)).resolves.not.toHaveProperty('code');
+			});
+
+			it('gives a credit error from the turn setup its text and code', async () => {
+				const { provider } = setup();
+
+				await expect(
+					provider.formatSetupError(
+						user,
+						new QuotaExhaustedStreamError(new Error('Assistant credits exhausted')),
+					),
+				).resolves.toEqual({ message: QUOTA_EXHAUSTED_USER_MESSAGE, code: 'quota_exhausted' });
+			});
 		});
 
 		it('builds a resume turn from the options in the checkpoint, without new input', async () => {
