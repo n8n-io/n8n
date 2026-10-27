@@ -653,6 +653,35 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	/**
+	 * Every workflow in the given folders, with its owner sharing. `withNodes` adds the nodes of
+	 * the draft and of the published version, for policy checks.
+	 */
+	async findInFoldersForTransfer(
+		folderIds: string[],
+		{ withNodes }: { withNodes: boolean },
+	): Promise<WorkflowEntity[]> {
+		const workflows: WorkflowEntity[] = [];
+
+		for (const chunk of chunkIds(folderIds)) {
+			workflows.push(
+				...(await this.find({
+					select: [
+						'id',
+						'name',
+						'activeVersionId',
+						'shared',
+						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+					],
+					relations: ['shared', 'shared.project', ...(withNodes ? ['activeVersion'] : [])],
+					where: { parentFolder: { id: In(chunk) } },
+				})),
+			);
+		}
+
+		return workflows;
+	}
+
 	async findOneByAgentToolReference(
 		projectId: string,
 		reference: { workflowId?: string; workflowName: string },

@@ -26,6 +26,7 @@ interface SystemPromptOptions {
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	skillManagementEnabled?: boolean;
 	/** Setup panel v2 flag: `workflow_builder_workflows(action="setup")` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
 }
@@ -57,7 +58,7 @@ function getToolDiscoverySection(
 
 ${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
-Example: ${mcpExamples}search "create tasks" for \`workflow_builder_create_tasks\`.
+Example: ${mcpExamples}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions, both already loaded and needing no search, over web search, which is for third-party services and APIs.
 `;
@@ -187,7 +188,7 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
-function getReadOnlySection(branchReadOnly?: boolean): string {
+function getReadOnlySection(branchReadOnly?: boolean, skillManagementEnabled?: boolean): string {
 	if (!branchReadOnly) return '';
 	return `
 ## Read-Only Instance
@@ -203,8 +204,7 @@ The following operations remain available:
 - Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
-- Creating, editing, and deleting skills in the skills hub
-- Restoring workflow versions
+${skillManagementEnabled ? '- Creating, editing, and deleting skills in the skills hub\n' : ''}- Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 
 If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
@@ -233,9 +233,9 @@ If the user asks for a blocked action, explain that data sharing is turned off. 
  */
 function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
 	if (setupPanelEnabled) {
-		return '**Early credential setup**: announce each explicitly requested service as soon as its exact credential type is known from node definitions or credential type search. Do this before detailed workflow planning, SDK research, or reasoning about implementation. Do not wait to identify every service. Call `workflow_builder_credentials(action="setup", filePath, workflowName, credentials)` as the only tool call in that response. Wait for its successful `preBuild: true` result before planning the implementation or generating source. Never batch this call with workspace writes or workflow_builder_build_workflow. Pick the source filePath now and reuse it throughout the build. Include workflowId for an existing workflow and folderPath when creating in a known folder. This creates the workflow context and makes setup actionable immediately. Use the announced credential types when configuring matching nodes. Announce only supported service-specific types; leave ambiguous services and generic authentication to build-time discovery. Pass the complete known requirement list again if the plan changes, including an empty list if all requirements are dropped. Do not wait for the user to connect. The early result has `preBuild: true`: continue generating source, omit folderPath from workflow_builder_build_workflow, and do not end your turn. This early step overrides skill guidance that defers all setup until after building. After the build, **credential setup** uses `workflow_builder_workflows(action="setup")` when a workflowId is available. Requirements can appear in the setup panel while the workflow is being built. The user can complete them immediately. Do not describe setup as happening only after the build. When the result has `announced: true` without `preBuild: true`, the setup panel lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `workflow_builder_credentials(action="setup")` without filePath when the user explicitly asks to create a credential outside of any workflow context. Early credential announcements and final workflow setup are separate stages; do not repeat either without changed requirements. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
+		return '**Early credential setup**: announce each explicitly requested service as soon as its exact credential type is known from node definitions or credential type search. Do this before detailed workflow planning, SDK research, or reasoning about implementation. Do not wait to identify every service. Call `setup_credentials(filePath, workflowName, credentials)` as the only tool call in that response. Wait for its successful `preBuild: true` result before planning the implementation or generating source. Never batch this call with workspace writes or workflow_builder_build_workflow. Pick the source filePath now and reuse it throughout the build. Include workflowId for an existing workflow and folderPath when creating in a known folder. This creates the workflow context and makes setup actionable immediately. Use the announced credential types when configuring matching nodes. Announce only supported service-specific types; leave ambiguous services and generic authentication to build-time discovery. Pass the complete known requirement list again if the plan changes, including an empty list if all requirements are dropped. Do not wait for the user to connect. The early result has `preBuild: true`: continue generating source, omit folderPath from workflow_builder_build_workflow, and do not end your turn. This early step overrides skill guidance that defers all setup until after building. After the build, **credential setup** uses `workflow_builder_workflows(action="setup")` when a workflowId is available. Requirements can appear in the setup panel while the workflow is being built. The user can complete them immediately. Do not describe setup as happening only after the build. When the result has `announced: true` without `preBuild: true`, the setup panel lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `setup_credentials` without filePath when the user explicitly asks to create a credential outside of any workflow context. Early credential announcements and final workflow setup are separate stages; do not repeat either without changed requirements. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
 	}
-	return '**Credential setup** uses `workflow_builder_workflows(action="setup")` when a workflowId is available — it opens the inline setup card in the n8n Assistant panel and handles credentials, parameters, and triggers in one step. Use `workflow_builder_credentials(action="setup")` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the connected credential can\'t reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn\'t work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under `skippedByUser` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.';
+	return '**Credential setup** uses `workflow_builder_workflows(action="setup")` when a workflowId is available — it opens the inline setup card in the n8n Assistant panel and handles credentials, parameters, and triggers in one step. Use `setup_credentials` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the connected credential can\'t reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn\'t work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under `skippedByUser` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.';
 }
 
 /**
@@ -256,6 +256,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			workspaceRoot,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			skillManagementEnabled,
 			setupPanelEnabled,
 		} = options;
 
@@ -292,7 +293,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ## Safety
 
-- **Standalone credential setup intent** — When using \`workflow_builder_credentials(action="setup")\` outside workflow context, set \`requireUserSelection=true\` only when the user explicitly asks for a new, separate, or different credential, or asks to see the setup card or choose a credential even if one already exists. Omit it for ordinary setup requests so a sole existing service-scoped credential can still be selected automatically.
+- **Standalone credential setup intent** — When using \`setup_credentials\` outside workflow context, set \`requireUserSelection=true\` only when the user explicitly asks for a new, separate, or different credential, or asks to see the setup card or choose a credential even if one already exists. Omit it for ordinary setup requests so a sole existing service-scoped credential can still be selected automatically.
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
 - ${getCredentialSetupBullet(setupPanelEnabled)}
 - **Never expose credential secrets** — metadata only.
@@ -301,7 +302,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getBrowserUsePrompt({ state: browserUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
-${getReadOnlySection(branchReadOnly)}
+${getReadOnlySection(branchReadOnly, skillManagementEnabled)}
 ${getLimitedModeSection(parameterValuesHidden)}
 
 ## Reply language

@@ -111,7 +111,7 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 	});
 
 	it('keeps save effects silent when a custom tool loses the revision fence', async () => {
@@ -207,7 +207,7 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 	});
 
 	it('snapshots only configured custom tools', () => {

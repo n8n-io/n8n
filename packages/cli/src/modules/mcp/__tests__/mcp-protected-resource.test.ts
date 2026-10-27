@@ -25,7 +25,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -72,7 +72,7 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
-		Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: true }));
+		Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: true }));
 	});
 
 	describe('getScopeTools', () => {
@@ -84,8 +84,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools when the skills hub is off', async () => {
-			Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
+		it('withholds skill scopes and tools without an agents provider', async () => {
+			Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: false }));
 
 			expect(resource.scopes).toContain('agent:read');
 			expect(resource.scopes).not.toContain('skill:read');

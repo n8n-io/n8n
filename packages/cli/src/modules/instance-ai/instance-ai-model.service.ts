@@ -6,7 +6,7 @@ import {
 	type ProxyContext,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp } from '@n8n/backend-network';
+import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isEndpointModelConfig, type ModelConfig } from '@n8n/instance-ai';
@@ -46,6 +46,13 @@ export class InstanceAiModelService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly logger: Logger,
 	) {}
+
+	private modelFetch?: CustomFetch;
+
+	/** Transport for Instance AI model calls on the direct path (long AI timeouts, env proxy). */
+	getModelFetch(): CustomFetch {
+		return (this.modelFetch ??= createAiProxyFetch(this.outboundHttp));
+	}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
 	isProxyEnabled(): boolean {

@@ -629,3 +629,23 @@ export function buildThreadArtifactsBlock(
 
 	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${durableJson}${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
 }
+
+function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
+}
+
+/** The text parts of a stored message, joined by new lines. */
+export function extractStoredMessageText(content: unknown): string {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
+	}
+	return '';
+}

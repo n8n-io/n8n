@@ -1,4 +1,4 @@
-import { resolveOperatorPromptVersion } from '../instance-ai.service';
+import { resolveOperatorPromptVersion } from '../turn-setup/assistant-turn-environment.factory';
 
 describe('resolveOperatorPromptVersion', () => {
 	it.each(['', '   ', undefined])('treats %p as no pin', (configured) => {
