@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'DropInstanceAiIterationLogs1792834153953';
+const MIGRATION_NAME = 'DropInstanceAiIterationLogs1793117284364';
 
 describe('DropInstanceAiIterationLogs Migration', () => {
 	let dataSource: DataSource;

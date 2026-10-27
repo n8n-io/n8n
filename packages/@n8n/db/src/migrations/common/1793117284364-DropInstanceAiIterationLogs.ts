@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const iterationLogs = 'instance_ai_iteration_logs';
 
 /** Instance AI no longer reads or writes its iteration log. */
-export class DropInstanceAiIterationLogs1792834153953 implements ReversibleMigration {
+export class DropInstanceAiIterationLogs1793117284364 implements ReversibleMigration {
 	async up({ schemaBuilder: { dropTable } }: MigrationContext) {
 		await dropTable(iterationLogs);
 	}
