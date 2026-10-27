@@ -5058,6 +5058,21 @@ describe('useAgentChatStream — system channel', () => {
 		);
 	});
 
+	it('omits the project when it continues an existing session', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse([{ type: 'done' }])) as typeof fetch;
+
+		const hook = buildHook('thread-1', { channel: ref('system') });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(fetch).toHaveBeenCalledWith(
+			'http://localhost:5678/agents/system/a1/chat',
+			expect.objectContaining({
+				body: expect.stringContaining('"sessionId":"thread-1"'),
+			}),
+		);
+	});
+
 	it('does not fall back to the builder test chat without a session', async () => {
 		const hook = buildHook(undefined, { channel: ref('system') });
 		await hook.loadHistory();

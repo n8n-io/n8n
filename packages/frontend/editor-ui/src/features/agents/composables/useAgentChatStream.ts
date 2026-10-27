@@ -1594,13 +1594,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			params.agentId.value,
 			channel.value,
 		);
-		const url =
-			channel.value === 'system'
-				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
-				: baseUrl;
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
+		// The backend rejects a `projectId` that differs from an existing thread's project
+		// (e.g. after a move), so send it only when this request creates the session.
+		const url =
+			channel.value === 'system' && (!sessionId || newSession)
+				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
+				: baseUrl;
 		if (sessionId) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;
