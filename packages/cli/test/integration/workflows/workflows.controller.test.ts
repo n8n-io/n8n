@@ -35,6 +35,7 @@ import {
 import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { stringify } from 'flatted';
 import { DateTime } from 'luxon';
 import {
 	PROJECT_ROOT,
@@ -42,6 +43,7 @@ import {
 	type IDataObject,
 	type INode,
 	type IPinData,
+	type IRunExecutionData,
 	type ITaskData,
 	type IWorkflowBase,
 } from 'n8n-workflow';
@@ -56,7 +58,7 @@ import { WorkflowValidationService } from '@/workflows/workflow-validation.servi
 import { createFolder } from '@test-integration/db/folders';
 
 import { saveCredential } from '../shared/db/credentials';
-import { getAllExecutions } from '../shared/db/executions';
+import { createExecution, getAllExecutions } from '../shared/db/executions';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import {
@@ -79,7 +81,7 @@ let anotherMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({
-	endpointGroups: ['workflows'],
+	endpointGroups: ['workflows', 'executions'],
 	enabledFeatures: ['feat:sharing'],
 	quotas: {
 		'quota:maxTeamProjects': -1,
@@ -5906,6 +5908,91 @@ describe('DELETE /workflows/:workflowId', () => {
 });
 
 describe('GET /workflows/:workflowId/executions/last-successful', () => {
+	/*
+	 * Regression test — apply project role permissions to execution reads.
+	 * Ref: IAM-1648
+	 * 2026-10-27 8791d768
+	 */
+	test.each([
+		{
+			name: 'rejects a custom project role without execution read permission',
+			scopes: ['workflow:read', 'workflow:list'],
+			expectedStatus: 403,
+		},
+		{
+			name: 'returns run data for a custom project role with execution read permission',
+			scopes: ['workflow:read', 'workflow:list', 'execution:read'],
+			expectedStatus: 200,
+		},
+	])('$name', async ({ scopes, expectedStatus }) => {
+		const teamProject = await createTeamProject('Team Project', owner);
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, teamProject, role.slug);
+		const workflow = await createWorkflow(
+			{
+				settings: { redactionPolicy: 'none' },
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			},
+			teamProject,
+		);
+		const executionData: IRunExecutionData = {
+			version: 1,
+			resultData: {
+				runData: {
+					Code: [
+						{
+							startTime: Date.now(),
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							executionStatus: 'success',
+							data: { main: [[{ json: { value: uuid() } }]] },
+						},
+					],
+				},
+				lastNodeExecuted: 'Code',
+			},
+		};
+		const execution = await createExecution(
+			{ status: 'success', data: stringify(executionData) },
+			workflow,
+		);
+		await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		// Keep an accessible workflow so the execution lookup reaches its workflow filter.
+		await createWorkflow({}, member);
+		const executionResponse = await authMemberAgent.get(`/executions/${execution.id}`).expect(200);
+		if (expectedStatus === 403) {
+			expect(executionResponse.body).not.toHaveProperty('data');
+		} else {
+			expect(executionResponse.body.data).toMatchObject({ id: execution.id });
+		}
+
+		const response = await authMemberAgent.get(
+			`/workflows/${workflow.id}/executions/last-successful`,
+		);
+
+		expect.soft(response.statusCode).toBe(expectedStatus);
+		if (expectedStatus === 403) {
+			expect(response.body).not.toHaveProperty('data');
+		} else {
+			expect(response.body.data).toMatchObject({
+				id: execution.id,
+				workflowId: workflow.id,
+				data: executionData,
+			});
+		}
+	});
+
 	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
