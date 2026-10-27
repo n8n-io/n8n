@@ -30,7 +30,7 @@ describe('task summaries', () => {
 		expect(groups[0]).toMatchObject({ kind: 'toolRun', finalMessage: reply });
 	});
 
-	it('does not label unfinished or stopped plans as final summaries', () => {
+	it('does not label unfinished or paused plans as final summaries', () => {
 		for (const status of ['pending', 'in_progress', 'paused'] as const) {
 			const messages = [
 				planMessage(planView({ document: { title: 'Research', items: [planTask(1, status)] } }), {
@@ -40,6 +40,68 @@ describe('task summaries', () => {
 			expect(getTaskSummaryGroupIds(messages, buildAgentPlanDisplayGroups(messages)).size).toBe(0);
 		}
 		expect(isAgentPlanFinished(planView({ document: { title: 'Empty', items: [] } }))).toBe(false);
+	});
+
+	it.each(['done', 'failed', 'cancelled'] as const)(
+		'summarizes a %s task but keeps Stop reports separate',
+		(status) => {
+			const message = planMessage(
+				planView({ document: { title: 'Research', items: [planTask(1, status)] } }),
+				{ tool: 'update_plan' },
+			);
+			expect([
+				...getTaskSummaryGroupIds([message], buildAgentPlanDisplayGroups([message])),
+			]).toEqual([message.id]);
+			const stopped = { ...message, stopReport: true };
+			expect(getTaskSummaryGroupIds([stopped], buildAgentPlanDisplayGroups([stopped])).size).toBe(
+				0,
+			);
+		},
+	);
+
+	it.each([undefined, 'parent'])(
+		'finds a folded completion with execution ID %s',
+		(executionId) => {
+			const initial = planMessage(
+				planView({ document: { title: 'Research', items: [planTask(1)] } }),
+			);
+			const completed = {
+				...planMessage(
+					planView({ revision: 2, document: { title: 'Research', items: [planTask(1, 'done')] } }),
+					{ tool: 'update_plan' },
+				),
+				executionId,
+			};
+			const messages = [initial, completed];
+			expect([...getTaskSummaryGroupIds(messages, buildAgentPlanDisplayGroups(messages))]).toEqual([
+				initial.id,
+			]);
+		},
+	);
+
+	it('hides empty intermediate runs but keeps the final summary run', () => {
+		const initial = planMessage(
+			planView({ document: { title: 'Research', items: [planTask(1)] } }),
+		);
+		const progress = (revision: number, status: 'in_progress' | 'done') => ({
+			...planMessage(
+				planView({ revision, document: { title: 'Research', items: [planTask(1, status)] } }),
+				{ tool: 'update_plan' },
+			),
+			executionId: 'parent',
+		});
+		const hidden = progress(2, 'in_progress');
+		const final = progress(3, 'done');
+		const messages: ChatMessage[] = [
+			initial,
+			{ id: 'user', role: 'user', content: 'Start' },
+			hidden,
+			{ id: 'empty', role: 'assistant', content: '', executionId: 'parent' },
+			final,
+		];
+		const groups = buildAgentPlanDisplayGroups(messages);
+		expect(groups.map((group) => group.id)).toEqual([initial.id, 'user', final.id]);
+		expect([...getTaskSummaryGroupIds(messages, groups)]).toEqual([final.id]);
 	});
 
 	it('keeps final result turns separate from partial result cards', () => {

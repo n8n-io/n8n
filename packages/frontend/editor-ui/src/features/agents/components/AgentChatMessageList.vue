@@ -259,9 +259,9 @@ const displayGroups = computed(() => buildAgentPlanDisplayGroups(visibleMessages
 const taskSummaryGroupIds = computed(() =>
 	getTaskSummaryGroupIds(visibleMessages.value, displayGroups.value),
 );
-const summaryAtTail = computed(() => {
+const tailSummaryId = computed(() => {
 	const last = displayGroups.value.at(-1);
-	return last !== undefined && taskSummaryGroupIds.value.has(last.id);
+	return last && taskSummaryGroupIds.value.has(last.id) ? last.id : undefined;
 });
 
 interface GroupToolCalls {
@@ -747,7 +747,7 @@ watch(
 					<AgentChatTaskSummary
 						v-if="taskSummaryGroupIds.has(group.id)"
 						:content="group.finalMessage?.content"
-						:preparing="group.active"
+						:preparing="group.active || (!!preparingSummary && group.id === tailSummaryId)"
 						:trace-route="taskTraceRoute"
 						:retryable-error="isRetryableChatError(group.finalMessage)"
 						:retry-message-id="
@@ -901,7 +901,10 @@ watch(
 					<AgentChatTaskSummary
 						v-if="taskSummaryGroupIds.has(group.id)"
 						:content="group.message.content"
-						:preparing="group.message.status === CHAT_MESSAGE_STATUS.STREAMING"
+						:preparing="
+							group.message.status === CHAT_MESSAGE_STATUS.STREAMING ||
+							(!!preparingSummary && group.id === tailSummaryId)
+						"
 						:trace-route="taskTraceRoute"
 						:retryable-error="isRetryableChatError(group.message)"
 						:retry-message-id="
@@ -1081,11 +1084,11 @@ watch(
 			</div>
 		</template>
 
-		<div v-if="preparingSummary && !summaryAtTail" :class="$style.message">
+		<div v-if="preparingSummary && !tailSummaryId" :class="$style.message">
 			<AgentChatTaskSummary preparing :trace-route="taskTraceRoute" />
 		</div>
 		<div
-			v-else-if="messagingState === 'waitingFirstChunk' && !summaryAtTail"
+			v-else-if="messagingState === 'waitingFirstChunk' && !tailSummaryId"
 			:class="$style.message"
 		>
 			<div :class="$style.content">

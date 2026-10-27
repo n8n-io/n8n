@@ -358,12 +358,14 @@ export class AgentWakeService {
 
 		try {
 			const first = jobs[0];
+			const deliveredIds = new Set(jobs.map((job) => job.id));
 			const isFinal =
 				!first.pauseRequestId &&
 				!(await this.jobRepository.findByParentThread(threadId)).some(
 					(job) =>
 						this.hasSameParentIdentity(job, first) &&
-						['running', 'suspended', 'paused'].includes(job.status),
+						(['running', 'suspended', 'paused'].includes(job.status) ||
+							(job.notifiedAt === null && !deliveredIds.has(job.id))),
 				);
 			await this.orchestrator.executeForWake({
 				agentId: agent.id,

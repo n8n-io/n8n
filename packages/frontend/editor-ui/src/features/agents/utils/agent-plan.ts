@@ -87,11 +87,40 @@ export function isAgentPlanFinished(plan: AgentPlanView): boolean {
 	);
 }
 
-function taskSummaryExecutions(messages: ChatMessage[]): Set<string> {
+/** Live messages can arrive before the execution ID. Keep one key for their turn. */
+function messageTurnIds(messages: ChatMessage[]): Map<string, string> {
+	const ids = new Map<string, string>();
+	let turn: ChatMessage[] = [];
+	let executionId: string | undefined;
+	const flush = () => {
+		const key = executionId ?? turn[0]?.id;
+		if (key) for (const message of turn) ids.set(message.id, key);
+		turn = [];
+		executionId = undefined;
+	};
+	for (const message of messages) {
+		if (message.role !== 'assistant' || message.stopReport) {
+			flush();
+			continue;
+		}
+		if (executionId && message.executionId && executionId !== message.executionId) flush();
+		turn.push(message);
+		executionId ??= message.executionId;
+	}
+	flush();
+	return ids;
+}
+
+/** Put one summary at the end of each task result turn, including saved turns. */
+export function getTaskSummaryGroupIds(
+	messages: ChatMessage[],
+	groups: DisplayGroup[],
+): Set<string> {
+	const turnIds = messageTurnIds(messages);
 	const executions = new Set<string>();
 	for (const message of messages) {
-		if (message.role !== 'assistant' || message.stopReport) continue;
-		const key = message.executionId ?? message.id;
+		const key = turnIds.get(message.id);
+		if (!key) continue;
 		if (message.backgroundJobSignal?.isFinal) executions.add(key);
 		for (const call of message.toolCalls ?? []) {
 			if (
@@ -106,24 +135,10 @@ function taskSummaryExecutions(messages: ChatMessage[]): Set<string> {
 			else executions.delete(key);
 		}
 	}
-	return executions;
-}
-
-/** Put one summary at the end of each task result turn, including saved turns. */
-export function getTaskSummaryGroupIds(
-	messages: ChatMessage[],
-	groups: DisplayGroup[],
-): Set<string> {
-	const executions = taskSummaryExecutions(messages);
 	const lastGroups = new Map<string, string>();
 	for (const group of groups) {
-		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) continue;
-		if (group.kind === DISPLAY_GROUP_KIND.MESSAGE && group.message.role !== 'assistant') continue;
-		const key =
-			(group.kind === DISPLAY_GROUP_KIND.TOOL_RUN
-				? group.executionId
-				: group.message.executionId) ?? group.id;
-		if (executions.has(key)) lastGroups.set(key, group.id);
+		const key = turnIds.get(group.id);
+		if (key && executions.has(key)) lastGroups.set(key, group.id);
 	}
 	return new Set(lastGroups.values());
 }
@@ -263,7 +278,6 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 		}
 	}
 
-	const summaryExecutions = taskSummaryExecutions(messages);
 	const groups = buildDisplayGroups(
 		messages.map((message) =>
 			message.backgroundJobSignal?.isFinal
@@ -271,6 +285,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 				: message,
 		),
 	);
+	const summaryGroupIds = getTaskSummaryGroupIds(messages, groups);
 
 	return groups.flatMap((group): DisplayGroup[] => {
 		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return [group];
@@ -288,7 +303,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 
 		const toolCalls = group.toolCalls.filter((call) => !hiddenCalls.has(call.toolCallId));
 		if (
-			!summaryExecutions.has(group.executionId ?? group.id) &&
+			!summaryGroupIds.has(group.id) &&
 			!toolCalls.length &&
 			!group.active &&
 			!group.finalMessage?.content.trim() &&

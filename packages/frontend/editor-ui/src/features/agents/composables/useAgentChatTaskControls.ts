@@ -305,7 +305,9 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 				(currentPlan.value ? planStopped.value : tasksStopped.value)),
 	);
 
-	const planFinished = computed(() => currentPlan.value && isAgentPlanFinished(currentPlan.value));
+	const planFinished = computed(
+		() => currentPlan.value !== null && isAgentPlanFinished(currentPlan.value),
+	);
 
 	const showPlanCard = computed(
 		() => Boolean(currentPlan.value) && !hideStoppedStack.value && !planFinished.value,

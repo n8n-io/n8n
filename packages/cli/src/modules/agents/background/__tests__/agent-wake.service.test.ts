@@ -7,7 +7,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -158,13 +158,35 @@ describe('AgentWakeService', () => {
 			const { service, jobRepository, orchestrator } = setup();
 			jobRepository.findByParentThread.mockResolvedValue([
 				makeJob(),
-				makeJob({ id: 'other-job', status }),
+				makeJob({ id: 'other-job', status, notifiedAt: new Date() }),
 				makeJob({ id: 'other-author', status: 'running', parentResourceId: 'draft-chat:user-2' }),
 			]);
 			await service.attemptWake('thread-1');
 			expect(
 				orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal === true,
 			).toBe(['completed', 'failed', 'cancelled'].includes(status));
+		},
+	);
+
+	it.each(['completed', 'failed', 'cancelled'] as const)(
+		'waits for a %s sibling result that arrived after the batch was selected',
+		async (status) => {
+			const { service, jobRepository, orchestrator } = setup();
+			const first = makeJob();
+			const sibling = makeJob({ id: 'sibling', status });
+			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([first]);
+			jobRepository.findByParentThread.mockResolvedValue([first, sibling]);
+			await service.attemptWake('thread-1');
+			expect(orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal).not.toBe(
+				true,
+			);
+			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([sibling]);
+			jobRepository.findByParentThread.mockResolvedValue([
+				{ ...first, notifiedAt: new Date() },
+				sibling,
+			]);
+			await service.attemptWake('thread-1');
+			expect(orchestrator.executeForWake.mock.calls[1][0].backgroundJobSignal.isFinal).toBe(true);
 		},
 	);
 
