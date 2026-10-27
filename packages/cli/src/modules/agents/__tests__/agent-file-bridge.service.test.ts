@@ -129,4 +129,38 @@ describe('AgentFileBridge', () => {
 		expect(fileName).toBe(`${id}.png`);
 		expect(result.files[0]).toMatchObject({ fileId: id, fileName: `${id}.png` });
 	});
+
+	describe('file names', () => {
+		const storedName = async (binary: Partial<typeof pngBinary>) => {
+			await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: { ...pngBinary, ...binary } } }],
+				scope,
+			);
+			const { id, fileName } = attachmentService.storeInbound.mock.calls[0][0];
+			return { id, fileName };
+		};
+
+		it('replaces a name without an extension with the file ID and an extension', async () => {
+			const { id, fileName } = await storedName({ fileName: 'data' });
+
+			expect(fileName).toBe(`${id}.png`);
+		});
+
+		it('keeps a name that has an extension', async () => {
+			const { fileName } = await storedName({ fileName: 'report.pdf' });
+
+			expect(fileName).toBe('report.pdf');
+		});
+
+		it('keeps a name without an extension when no extension is known', async () => {
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('plain'));
+
+			const { fileName } = await storedName({
+				fileName: 'README',
+				mimeType: 'application/x-unknown',
+			});
+
+			expect(fileName).toBe('README');
+		});
+	});
 });

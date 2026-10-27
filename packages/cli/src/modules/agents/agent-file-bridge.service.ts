@@ -95,8 +95,8 @@ export class AgentFileBridge {
 			// ponytail: loads the whole file into memory, the same as storeInbound. Copy by ID if tools return large files.
 			const data = await this.binaryDataService.getAsBuffer(binary);
 			const mimeType = await resolveInboundMimeType(binary.mimeType, data);
-			if (!binary.fileName) {
-				// Some nodes set no file name. Use the file ID with an extension, so each file has a unique, usable name.
+			if (!hasExtension(fileName)) {
+				// Some nodes set no file name, or a fixed one such as "data". Use the file ID with an extension, so each file has a unique, usable name.
 				const ext = binary.fileExtension ?? (extension(mimeType) || undefined);
 				if (ext) fileName = `${id}.${ext}`;
 			}
@@ -124,4 +124,10 @@ function replaceBinaryIds(target: unknown, fileIdsByBinaryId: ReadonlyMap<string
 		if (fileId) Reflect.set(target, key, fileId);
 		else replaceBinaryIds(value, fileIdsByBinaryId);
 	}
+}
+
+/** True when the name has a non-empty part after its last dot. A leading dot only (".env") is not an extension. */
+function hasExtension(fileName: string): boolean {
+	const dot = fileName.lastIndexOf('.');
+	return dot > 0 && dot < fileName.length - 1;
 }
