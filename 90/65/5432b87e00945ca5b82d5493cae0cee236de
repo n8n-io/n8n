@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_b5e0881bc3cc3b::t_2b874484c3caa5 477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90655432b87e00945ca5b82d5493cae0cee236de",
+  "prompts": {},
+  "sessions": {
+    "s_b5e0881bc3cc3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41b0c920-b727-4852-b5fb-4b2dffdba2a8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

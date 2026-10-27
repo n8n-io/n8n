@@ -1,0 +1,29 @@
+packages/cli/src/public-api/__tests__/swagger-spec.test.ts
+  s_0636228609e6f6::t_a4656f5c60a0a8 1-67
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_0636228609e6f6::t_a4656f5c60a0a8 1-123
+.agents/skills/public-api/SKILL.md
+  s_0636228609e6f6::t_96843ca601a3e2 181-188
+packages/cli/src/public-api/v1/openapi.yml
+  s_0636228609e6f6::t_7162a2492aedf9 26,29,33,37,41,45,49,53,57,61,65,69,73,77,81,85,89,93,97,101,105,109,113,117,121,125,129,133,135-147
+packages/cli/src/public-api/swagger-spec.ts
+  s_0636228609e6f6::t_a4656f5c60a0a8 1-35
+packages/cli/src/public-api/index.ts
+  s_0636228609e6f6::t_49ab4fdc0bdf4e 14,90-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "837bec683a273ddd606a594dcf0ced9c504b244b",
+  "prompts": {},
+  "sessions": {
+    "s_0636228609e6f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86d6be62-09bc-43af-a121-ac7a4e0dc159",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
