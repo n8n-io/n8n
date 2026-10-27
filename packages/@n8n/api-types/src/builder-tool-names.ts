@@ -11,7 +11,6 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	WORKFLOWS: 'workflow_builder_workflows',
 	NODES: 'workflow_builder_nodes',
 	EXECUTIONS: 'workflow_builder_executions',
-	SEARCH_MODELS: 'workflow_builder_search_models',
 	BUILD_WORKFLOW: 'workflow_builder_build_workflow',
 	VERIFY_BUILT_WORKFLOW: 'workflow_builder_verify_built_workflow',
 	REPORT_VERIFICATION_VERDICT: 'workflow_builder_report_verification_verdict',
@@ -55,6 +54,7 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 /** Orchestrator tools that both builders use. These names have no builder prefix. */
 export const SHARED_BUILDER_TOOL_NAMES = {
 	ASK_USER: 'ask_user',
+	SEARCH_MODELS: 'search_models',
 	LIST_CREDENTIALS: 'list_credentials',
 	SEARCH_CREDENTIAL_TYPES: 'search_credential_types',
 	SETUP_CREDENTIALS: 'setup_credentials',
@@ -96,7 +96,8 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'ask-user': SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	workflow_builder_ask_user: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
-	searchModels: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	searchModels: SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	workflow_builder_search_models: SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS,
 	'build-workflow': WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	'verify-built-workflow': WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
 	'report-verification-verdict': WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,

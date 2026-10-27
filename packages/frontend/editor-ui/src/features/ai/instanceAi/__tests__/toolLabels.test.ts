@@ -250,7 +250,7 @@ describe('useToolLabel', () => {
 
 	test('getToolLabel drops the builder prefix when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('workflow_builder_search_models')).toBe('Search models');
+		expect(getToolLabel('search_models')).toBe('Search models');
 		expect(getToolLabel('finish_setup')).toBe('Finish setup');
 	});
 

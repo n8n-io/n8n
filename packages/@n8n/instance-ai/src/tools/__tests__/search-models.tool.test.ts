@@ -7,7 +7,7 @@ import { createSearchModelsTool } from '../search-models.tool';
 
 vi.mock('@n8n/agents/catalog', () => ({ fetchProviderCatalog: vi.fn() }));
 
-describe('workflow_builder_search_models tool', () => {
+describe('search_models tool', () => {
 	// INS-539: Keep external catalog results marked as untrusted.
 	it('declares catalog output as untrusted', () => {
 		expect(createSearchModelsTool(vi.fn()).outputTrust).toBe('untrusted');
@@ -42,7 +42,7 @@ describe('workflow_builder_search_models tool', () => {
 		expect(fetchProviderCatalog).toHaveBeenCalledWith(
 			expect.objectContaining({ fetch: modelFetch }),
 		);
-		expect(tool.name).toBe('workflow_builder_search_models');
+		expect(tool.name).toBe('search_models');
 		expect(result.models).toHaveLength(10);
 		expect(result.hasMore).toBe(true);
 		expect(result.credentialAccess).toBe('not_checked');

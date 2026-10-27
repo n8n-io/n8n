@@ -15,6 +15,7 @@ recommended_tools:
   - agent_builder_write_config
   - agent_builder_patch_config
   - agent_builder_resolve_llm
+  - search_models
   - agent_builder_finish_setup
   - agent_builder_call_agent
   - workflow_builder_build_workflow
@@ -66,9 +67,8 @@ to a workflow `filePath`.
 
 Naming or renaming the current Agent never silently creates another one.
 
-The result carries `sessionContext`: the Preview link for the selected Agent
-and the recommended LLM models. Use them as described below. Select the Agent
-again after you switch to a different Agent.
+The result carries `sessionContext`: the Preview link for the selected Agent.
+Select the Agent again after you switch to a different Agent.
 
 ## Target Agent
 
@@ -476,11 +476,11 @@ Use this to resolve the target Agent's main `model` and `credential`.
 
 Rules:
 
-- Model recommendations are in the "Recommended LLM models" part of
-  `sessionContext`. When `sessionContext` has none, do not name current, best,
-  latest, or fallback model ids from memory.
-- Prefer a provider the user already has credentials for when you choose from
-  recommendations.
+- When the user wants a model recommendation, call `search_models` with the
+  provider. Prefer a provider the user already has credentials for, and a
+  recent model with `toolCalling: true`. Then resolve the pick with
+  `agent_builder_resolve_llm`. Do not name current, best, latest, or fallback
+  model ids from memory.
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
   names a routed model, pass the routed id without another provider prefix.
 - Use `agent_builder_resolve_llm` only for the main model credential. Never

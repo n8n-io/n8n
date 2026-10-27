@@ -47,6 +47,13 @@ describe('resolveBuilderToolName', () => {
 		expect(resolveBuilderToolName(toolName)).toBe(SHARED_BUILDER_TOOL_NAMES.ASK_USER);
 	});
 
+	it.each(['searchModels', 'workflow_builder_search_models'])(
+		'maps the former model search tool %s to search_models',
+		(toolName) => {
+			expect(resolveBuilderToolName(toolName)).toBe(SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS);
+		},
+	);
+
 	it('maps the retired Agent Builder credential list to list_credentials', () => {
 		expect(resolveBuilderToolName('agent_builder_list_credentials')).toBe(
 			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
