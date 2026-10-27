@@ -1,0 +1,21 @@
+packages/cli/src/scaling/constants.ts
+  s_925dcfedebf0c9::t_b2c005dd3fdbd5 72
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_925dcfedebf0c9::t_8d5117c3d3b963 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d370786cb533eee50bc426dc099ec1c7a8ae621c",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
