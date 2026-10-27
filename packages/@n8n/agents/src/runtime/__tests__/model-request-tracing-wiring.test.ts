@@ -152,4 +152,36 @@ describe('model request tracing wiring', () => {
 
 		expect(requestSpans(spans)).toHaveLength(1);
 	});
+
+	it('memory observer and reflector send model requests through the agent transport', async () => {
+		const modelFetch = vi.fn(async () => new Response('{}'));
+
+		mockGenerateText.mockResolvedValue({ text: '' });
+		await createObservationLogObserveFn(MODEL)({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+			modelFetch,
+		});
+		await sendThroughLastModel();
+
+		mockGenerateText.mockResolvedValue({ text: '{"drop":[],"merge":[]}' });
+		await createObservationLogReflectFn(MODEL)({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '',
+			tokenCount: 10,
+			tokenBudget: 12_000,
+			modelFetch,
+		});
+		await sendThroughLastModel();
+
+		expect(modelFetch).toHaveBeenCalledTimes(2);
+		expect(globalThis.fetch).not.toHaveBeenCalled();
+	});
 });

@@ -2650,7 +2650,6 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 
 		try {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
@@ -2799,6 +2798,7 @@ export class InstanceAiService {
 				instanceContextEnabled,
 				nodeUsageEnabled,
 			} = environment;
+			const contextEventBus = this.createRunEventBus(observedContextWork, orchestrationContext);
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -2866,20 +2866,6 @@ export class InstanceAiService {
 			const { fullMessage, nonStructuredAttachments, contextInjection, aiPreferencesTurn } =
 				turnInput;
 			turnHadFileAttachments = turnInput.turnHadFileAttachments;
-			if (
-				aiPreferencesTurn &&
-				!aiPreferencesTurn.payload.injectedThisTurn &&
-				aiPreferencesTurn.payload.renderedLength > 0
-			) {
-				// A lookup failure only costs the run attribution, never the skip itself.
-				const carriedFromRunId = await this.bestEffort(
-					'Instance AI failed to resolve which run sent the AI preferences block',
-					{ threadId },
-					async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
-				);
-				if (carriedFromRunId)
-					aiPreferencesTurn.payload = { ...aiPreferencesTurn.payload, carriedFromRunId };
-			}
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -3994,7 +3980,7 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
+		const contextEventBus = this.createRunEventBus(observedContextWork, opts.orchestrationContext);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -5168,11 +5154,14 @@ export class InstanceAiService {
 		};
 	}
 
-	private observeInstanceContextEvents(workSummary: WorkSummaryAccumulator): InstanceAiEventBus {
+	private createRunEventBus(
+		workSummary: WorkSummaryAccumulator,
+		context?: OrchestrationContext,
+	): InstanceAiEventBus {
 		return {
 			publish: (threadId, event) => {
 				workSummary.observe(event);
-				this.eventBus.publish(threadId, event);
+				this.eventBus.publish(threadId, context?.mapSkillEventForDisplay?.(event) ?? event);
 			},
 			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
 		};
@@ -5323,6 +5312,7 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
+							modelFetch: this.modelService.getModelFetch(),
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -5341,7 +5331,9 @@ export class InstanceAiService {
 					releaseTraceClient(titleTracing.rootRun.traceId);
 				}
 			} else {
-				llmTitle = await generateTitleForRun(modelId, userText);
+				llmTitle = await generateTitleForRun(modelId, userText, {
+					modelFetch: this.modelService.getModelFetch(),
+				});
 			}
 			if (!llmTitle) return;
 

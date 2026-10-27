@@ -1,0 +1,32 @@
+operationId: getDataTableDependencies
+tags:
+  - DataTable
+summary: List data table dependencies
+description: List the workflows that use the data table.
+x-required-scope: dataTable:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/dependencyListPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

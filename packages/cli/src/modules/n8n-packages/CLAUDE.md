@@ -14,6 +14,9 @@ CLI flag is a silent bug, not a compile error.
 One exception: a policy that only promotions needs can stop at
 `ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy` and
 `tagConflictPolicy`. The public selection import keeps the fixed default.
+When the full directory import (`importPackageFromDirectory`) needs it too,
+declare it on an internal type such as `PromotionLayoutProperties`, never
+on `ImportRequest`.
 
 ```mermaid
 flowchart LR
