@@ -131,6 +131,7 @@ export class ResumeRequestService {
 
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {
 		try {
+			// TODO(CET-488): load only the status.
 			return (await this.executionStore.loadExecution(executionId)).status;
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) throw new ResumeRejectedError('not_found');
