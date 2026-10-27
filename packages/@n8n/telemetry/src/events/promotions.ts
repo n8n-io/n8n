@@ -94,7 +94,7 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 	USER_CONNECTED_PROMOTION_ENVIRONMENT: {
 		name: 'User connected promotion environment',
 		description:
-			'A user connected a promotion environment, which clones its branch into local storage on this instance. Fires once per attempt, on success and on failure.',
+			'A user connected n8n to a promotion environment. Fires once per attempt, on success and on failure.',
 		properties: z.object({
 			user_id: z.string(),
 			environment_id: z.string(),
