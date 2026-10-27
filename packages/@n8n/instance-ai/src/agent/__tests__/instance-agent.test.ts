@@ -649,14 +649,18 @@ describe('createInstanceAgent', () => {
 			config.namespaces.map((ns) => [ns.name, ns.tools.map((tool) => tool.name)]),
 		);
 		expect(byName).toEqual({
-			workflow_builder: ['workflow_builder_task_control-dynamic'],
-			executions: ['workflow_builder_executions-dynamic'],
-			research: ['research-dynamic', 'n8n-docs-dynamic'],
+			workflow_builder: [
+				'workflow_builder_workflows-dynamic',
+				'workflow_builder_build_workflow-dynamic',
+				'workflow_builder_task_control-dynamic',
+				'verify-built-workflow-dynamic',
+			],
 			mcp_notion: ['notion_search'],
 		});
 		const attached = getAttachedTools();
 		expect(attached['search_nodes-dynamic']).toBeDefined();
-		expect(attached['research-dynamic']).toBeUndefined();
+		expect(attached['research-dynamic']).toBeDefined();
+		expect(attached['workflow_builder_workflows-dynamic']).toBeUndefined();
 		expect(getSystemPrompt).toHaveBeenCalledWith(
 			expect.objectContaining({ toolSearchEnabled: false, dynamicToolsEnabled: true }),
 		);
