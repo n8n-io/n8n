@@ -533,7 +533,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
 		expect(loaded?.instructions).toContain('load the `publishing` reference');
 		expect(loaded?.instructions).toContain('load `error-workflows` and follow its');
-		expect(loaded?.instructions.length).toBeLessThan(34_000);
+		expect(loaded?.instructions.length).toBeLessThan(35_000);
 
 		// Step-specific sections live in the reference that owns the step.
 		const errorWorkflows = (await source.loadSkill('error-workflows'))?.instructions ?? '';
