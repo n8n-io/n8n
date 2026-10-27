@@ -35,7 +35,6 @@ export function toPackageSummary(manifest: PackageManifest): ImportPackageSummar
 	return {
 		sourceN8nVersion: manifest.sourceN8nVersion,
 		sourceId: manifest.sourceId,
-		exportedAt: manifest.exportedAt,
 	};
 }
 

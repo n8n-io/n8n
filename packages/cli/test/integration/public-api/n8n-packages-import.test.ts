@@ -78,7 +78,6 @@ async function buildImportPackage(
 		'manifest.json',
 		JSON.stringify({
 			packageFormatVersion: '1',
-			exportedAt: new Date().toISOString(),
 			sourceN8nVersion: '1.0.0',
 			sourceId: 'http-integration-source',
 			workflows: [{ id: wfId, name: 'HTTP Imported', target: `workflows/${wfId}` }],
@@ -239,7 +238,6 @@ describe('POST /n8n-packages/import', () => {
 			package: {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'http-integration-source',
-				exportedAt: expect.any(String),
 			},
 			workflows: [
 				{

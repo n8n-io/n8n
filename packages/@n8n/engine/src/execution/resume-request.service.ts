@@ -71,7 +71,7 @@ export class ResumeRequestService {
 	 * is live, this retries for a short time.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, or `ambiguous`
-	 * when the execution has two execution-bound waits.
+	 * when a live execution has two execution-bound waits.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
 		if (!verifyResumeToken(this.secret, token, executionId)) {
@@ -80,10 +80,14 @@ export class ResumeRequestService {
 
 		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
 			if (attempt > 0) await sleep(this.hold.delayMs);
-			const status = await this.loadStatus(executionId);
-			const step = await this.loadExecutionBoundWait(executionId);
+			const [status, waits] = await Promise.all([
+				this.loadStatus(executionId),
+				this.loadExecutionBoundWaits(executionId),
+			]);
+			// An execution ends before its waits are cancelled, so its status decides first.
 			if (!isLive(status)) return null;
-			if (step) return { stepId: step.id, nodeId: step.nodeId };
+			if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
+			if (waits[0]) return { stepId: waits[0].id, nodeId: waits[0].nodeId };
 		}
 		return null;
 	}
@@ -120,15 +124,13 @@ export class ResumeRequestService {
 		return step;
 	}
 
-	/** @throws {ResumeRejectedError} `ambiguous` when the execution has two. */
-	private async loadExecutionBoundWait(executionId: string): Promise<StepRecord | null> {
-		const waits = (await this.stepStore.loadWaitingSteps(executionId)).filter(acceptsRequest);
-		if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
-		return waits[0] ?? null;
+	private async loadExecutionBoundWaits(executionId: string): Promise<StepRecord[]> {
+		return (await this.stepStore.loadWaitingSteps(executionId)).filter(acceptsRequest);
 	}
 
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {
 		try {
+			// TODO(CET-488): load only the status.
 			return (await this.executionStore.loadExecution(executionId)).status;
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) throw new ResumeRejectedError('not_found');

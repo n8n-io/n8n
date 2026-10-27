@@ -8,7 +8,6 @@ import { Z } from '../../zod-class';
 const importPackageSummarySchema = z.object({
 	sourceN8nVersion: z.string(),
 	sourceId: z.string(),
-	exportedAt: z.string().datetime(),
 });
 
 const publishingOutcomeSchema = z.object({

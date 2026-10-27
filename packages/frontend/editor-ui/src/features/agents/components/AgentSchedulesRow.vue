@@ -262,6 +262,9 @@ watch(
 				data-testid="agent-capabilities-add-task"
 				@click="openTaskModal(null)"
 			>
+				<template #icon>
+					<N8nIcon icon="plus" :size="16" />
+				</template>
 				{{ i18n.baseText('agents.builder.tasks.add') }}
 			</N8nButton>
 

@@ -23,7 +23,8 @@
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
-    "prompts:print": "tsx scripts/print-prompts.ts"
+    "prompts:print": "tsx scripts/print-prompts.ts",
+    "context:budget": "CONTEXT_BUDGET_OUT=.output/context-budget.md vitest run src/context-budget/__tests__/orchestrator-context-budget.test.ts && cat .output/context-budget.md"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
