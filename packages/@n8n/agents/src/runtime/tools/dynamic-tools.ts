@@ -199,8 +199,6 @@ export class DynamicToolRegistry {
 			if (namespace.status !== 'ready') {
 				lines.push(this.unavailableMessage(namespace));
 			} else {
-				// A compact index first, so the model sees every name even when the list below is long.
-				lines.push(`Tools: ${[...namespace.tools.keys()].join(', ')}`);
 				for (const tool of namespace.tools.values()) {
 					const description = firstLine(tool.description);
 					const line = `- ${tool.name}: ${description}`;
