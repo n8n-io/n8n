@@ -3454,10 +3454,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		// The third argument keeps a card the woken turn raises addressed to the
 		// person the conversation belongs to, on platforms that can target one.
+		// The fourth is the agent thread, where files queued for the reply are read.
 		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith(
 			'slack:channel-1:1',
 			chunks,
 			'selected-user',
+			'thread-1',
 		);
 		expect(
 			readIntegrationMessageContext(runtime.agent.stream.mock.calls[0][1].persistence),

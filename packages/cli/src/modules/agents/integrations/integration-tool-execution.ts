@@ -54,6 +54,18 @@ export function isSilentActionOutput(output: unknown): boolean {
 	);
 }
 
+/** File IDs that a respond queued for the final reply, on its own or inside a batch. */
+export function readQueuedFileIds(output: unknown): string[] {
+	if (!isRecord(output) || output.ok !== true) return [];
+	if (Array.isArray(output.queuedFileIds)) {
+		return output.queuedFileIds.filter((fileId): fileId is string => typeof fileId === 'string');
+	}
+	if (!Array.isArray(output.results)) return [];
+	return output.results.flatMap((entry) =>
+		isRecord(entry) ? readQueuedFileIds(entry.result) : [],
+	);
+}
+
 export function integrationActionApprovalKey(connectionId: string, action: string): string {
 	return JSON.stringify(['integration_action', connectionId, action]);
 }

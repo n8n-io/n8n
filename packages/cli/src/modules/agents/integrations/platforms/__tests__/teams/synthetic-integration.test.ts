@@ -36,7 +36,7 @@ import {
 	TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
 	TEAMS_USER_ID,
 } from '../../../__tests__/helpers/teams/synthetic-fixtures';
-import type { AgentChatAttachmentService } from '../../../../agent-chat-attachment.service';
+import type { AgentOutboundFiles } from '../../../agent-outbound-files.service';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;
@@ -906,7 +906,7 @@ describe('Microsoft Teams reactions', () => {
 			service,
 			registry,
 			new ChannelRateLimitGuard(),
-			mock<AgentChatAttachmentService>(),
+			mock<AgentOutboundFiles>(),
 		);
 		const [descriptor] = getIntegrationToolConnectionDescriptors(
 			[{ type: 'teams', credentialId: 'cred-teams' }],
