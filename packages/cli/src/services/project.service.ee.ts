@@ -120,6 +120,12 @@ export class ProjectService {
 		);
 	}
 
+	private get variablesService() {
+		return import('@/environments.ee/variables/variables.service.ee.js').then(
+			({ VariablesService }) => Container.get(VariablesService),
+		);
+	}
+
 	private get dataTableService() {
 		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
@@ -328,6 +334,16 @@ export class ProjectService {
 
 		// 9. delete project
 		await this.projectRepository.remove(project);
+
+		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
+		try {
+			await (await this.variablesService).updateCache();
+		} catch (error) {
+			this.logger.warn('Failed to refresh the variables cache on project delete', {
+				projectId: project.id,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		// 10. delete project relations
 		// Cascading deletes take care of this.

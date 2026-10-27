@@ -849,6 +849,8 @@ describe('ProjectService', () => {
 			role: { slug: 'global:owner', scopes: [{ slug: 'project:delete' }] },
 		} as any;
 
+		const variablesService = { updateCache: vi.fn() };
+
 		beforeEach(() => {
 			Object.defineProperty(projectService, 'workflowService', {
 				configurable: true,
@@ -858,6 +860,65 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => ({ delete: vi.fn() }),
 			});
+			Object.defineProperty(projectService, 'variablesService', {
+				configurable: true,
+				get: async () => variablesService,
+			});
+		});
+
+		it('refreshes the variables cache after the project is removed', async () => {
+			// ARRANGE
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockReturnValue(false);
+			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+
+			// ACT
+			await projectService.deleteProject(user, project.id);
+
+			// ASSERT
+			expect(variablesService.updateCache).toHaveBeenCalledTimes(1);
+			expect(projectRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
+				variablesService.updateCache.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not refresh the variables cache when the user lacks the project:delete scope', async () => {
+			// ARRANGE
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(null);
+
+			// ACT & ASSERT
+			await expect(projectService.deleteProject(user, 'project-1')).rejects.toThrow();
+			expect(projectRepository.remove).not.toHaveBeenCalled();
+			expect(variablesService.updateCache).not.toHaveBeenCalled();
+		});
+
+		it('still finishes the delete when the variables cache refresh fails', async () => {
+			// ARRANGE
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockReturnValue(false);
+			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			variablesService.updateCache.mockRejectedValueOnce(new Error('cache unavailable'));
+
+			// ACT
+			await projectService.deleteProject(user, project.id);
+
+			// ASSERT
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to refresh the variables cache on project delete',
+				expect.objectContaining({ projectId: project.id, error: 'cache unavailable' }),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'team-project-deleted',
+				expect.objectContaining({ projectId: project.id }),
+			);
 		});
 
 		it('calls cleanupOrphanedEntriesForUsers with member IDs after project is deleted', async () => {
