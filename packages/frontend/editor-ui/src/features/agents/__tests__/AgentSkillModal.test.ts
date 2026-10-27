@@ -1027,7 +1027,7 @@ describe('AgentSkillModal', () => {
 			async (availableTo, label) => {
 				listAttachableSkills.mockResolvedValue([]);
 				const onConfirm = vi.fn();
-				const { container, getByTestId, findByText } = renderModal({
+				const { container, getByTestId } = renderModal({
 					hubSkillsEnabled: true,
 					canCreateInstanceSkills: true,
 					projectLabel: 'Marketing',
@@ -1043,6 +1043,7 @@ describe('AgentSkillModal', () => {
 					'Use for research',
 				);
 				await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+				expect(getByTestId(`agent-skill-scope-option-${availableTo}`)).toHaveTextContent(label);
 				await fireEvent.click(getByTestId(`agent-skill-scope-option-${availableTo}`));
 				await fireEvent.click(getByTestId('agent-skill-create-save'));
 
@@ -1226,7 +1227,7 @@ describe('AgentSkillModal', () => {
 
 			it('changes the target of a skill that no other agent uses', async () => {
 				const onConfirm = vi.fn();
-				const { getByTestId, findByText } = await renderEdit(
+				const { getByTestId } = await renderEdit(
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
