@@ -7,7 +7,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createArtifactPreviewMemory } from '../artifactPreviewMemory';
 import type { ArtifactThread } from '../artifactThread';
 import { useResourceRegistry } from '../useResourceRegistry';
-import { findLatestAssistantTasks, toAssistantArtifactMessages } from './assistantArtifactMessages';
+import {
+	findArchivedAssistantWorkflowIds,
+	findLatestAssistantTasks,
+	toAssistantArtifactMessages,
+} from './assistantArtifactMessages';
 
 interface UseAssistantArtifactThreadOptions {
 	threadId: string;
@@ -36,9 +40,12 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 	const currentTasks = computed(() => findLatestAssistantTasks(options.messages()));
 	const isHydratingThread = computed(() => options.isLoadingHistory());
 
+	const archivedWorkflowIds = computed(() => findArchivedAssistantWorkflowIds(options.messages()));
+
 	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
+		() => archivedWorkflowIds.value,
 	);
 
 	const thread: ArtifactThread = reactive({
