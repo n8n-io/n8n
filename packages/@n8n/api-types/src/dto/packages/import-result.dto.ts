@@ -22,7 +22,7 @@ const publishingOutcomeSchema = z.object({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
 			'(for example because the Agent or workflow uses an empty or incomplete credential, or a node type this ' +
-			'instance does not have, or an Agent channel needs setup). When a prior published version remains active, `state` is ' +
+			'instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
 	}),

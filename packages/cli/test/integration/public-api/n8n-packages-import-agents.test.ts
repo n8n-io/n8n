@@ -339,6 +339,14 @@ it.each(['loose', 'project'] as const)(
 			expect(saved!.integrations).toEqual(
 				index === 0 ? [{ type: 'slack', credentialId: '', settings: slackSettings }] : [],
 			);
+			const destinationCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { projectId },
+				relations: { credentials: true },
+			});
+			// A credential that only a channel uses is neither imported nor stubbed.
+			expect(destinationCredentials.map(({ credentials }) => credentials.type)).not.toContain(
+				'slackApi',
+			);
 			expect(await skillRefs.readDraft({ id: localId }, {})).toEqual(sourceSkills[index]);
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({

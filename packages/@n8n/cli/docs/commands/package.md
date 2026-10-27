@@ -144,9 +144,14 @@ destination Agent. Each entry in `channels` has one of these statuses:
   `new-channel` or `destination-draft`.
 
 The import does not import or stub a credential that only a channel uses.
-A channel that needs setup blocks a requested publication with the reason
-`channel-setup-required`. The definition import stays saved. The import removes
-destination channels that the package does not contain.
+When the publishing policy requests publication, a channel that needs setup
+blocks it with the reason `channel-setup-required`. The definition import stays
+saved. If no version of the Agent is active, `publishing.state` is `blocked`
+with `blockedReason`. If an earlier published version stays active,
+`publishing.state` is `unchanged` with `skippedPublishReason`.
+
+For created and updated Agents, the import removes destination channels that
+the package does not contain. Skipped Agents stay unchanged.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
