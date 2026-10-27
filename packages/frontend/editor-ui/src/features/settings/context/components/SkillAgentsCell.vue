@@ -61,11 +61,12 @@ const items = computed<Array<DropdownMenuItemProps<string, AgentRow>>>(() => {
 		},
 		...[...agents.value].map(
 			([id, agent]): DropdownMenuItemProps<string, AgentRow> => ({
-			id,
-			label: agent.agentName,
-			icon: { type: 'icon', value: 'bot' },
-			data: agent,
-		})),
+				id,
+				label: agent.agentName,
+				icon: { type: 'icon', value: 'bot' },
+				data: agent,
+			}),
+		),
 	];
 	const hidden = usage.value?.hiddenAgents ?? 0;
 	if (hidden > 0) {
