@@ -61,7 +61,7 @@ import { SelfHealingResultService } from '../self-healing-result.service';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
-import { createConfiguration, addReviewer } from './support/configuration';
+import { createConfiguration, addReviewer, disableInstanceAdmins } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -1742,9 +1742,16 @@ describe('Inbox source reads', () => {
 
 		it('keeps a member who edits the workflow through a share after a role downgrade', async () => {
 			testServer.license.enable('feat:sharing');
+			await disableInstanceAdmins();
 			const prepared = await prepareInvestigation('needs_you', false, { inTeamProject: true });
 			const { user, project, original, investigation } = prepared;
-			const enabler = await createUser({ role: GLOBAL_OWNER_ROLE });
+			// A global role gives the enabler access without project membership, so only the
+			// shared member keeps the project group eligible.
+			const enablerRole = await createCustomRoleWithScopeSlugs(
+				['workflow:read', 'workflow:update', 'execution:read'],
+				{ roleType: 'global' },
+			);
+			const enabler = await createUser({ role: enablerRole });
 			await useProjectMembersOnly(investigation.configurationId);
 			await Container.get(SelfHealingConfigurationRepository).update(
 				investigation.configurationId,

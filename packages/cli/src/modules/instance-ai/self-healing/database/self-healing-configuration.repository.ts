@@ -13,7 +13,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
-import { GLOBAL_ADMIN_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS } from '@n8n/permissions';
 import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8n/typeorm';
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
@@ -32,8 +32,9 @@ type ReviewerRoles = {
 	workflowRoleSlugs: string[];
 };
 
-// Edit-access conditions for member queries that alias the project relation as
-// `projectMember` and its user as `user`. Each returns null when no role grants access.
+// Edit-access conditions for member queries that alias the user as `user` and left-join
+// the project relation as `projectMember`. Implicit members have no relation, so only
+// their global role grants access. Each returns null when no role grants access.
 
 function editRoleCondition({ projectRoleSlugs, globalRoleSlugs }: ReviewerRoles) {
 	const conditions = [
@@ -73,26 +74,22 @@ function projectMemberCondition<T extends ObjectLiteral>(
 	userIdExpression: string,
 ) {
 	const explicit = query
-		.subQuery()
-		.select('1')
-		.from(ProjectRelation, 'reviewerMembership')
-		.where(`reviewerMembership.projectId = ${projectIdExpression}`)
-		.andWhere(`reviewerMembership.userId = ${userIdExpression}`)
-		.getQuery();
+		.createQueryBuilder()
+		.select('explicitMember.userId', 'member_id')
+		.from(ProjectRelation, 'explicitMember')
+		.where(`explicitMember.projectId = ${projectIdExpression}`);
 	const implicit = query
-		.subQuery()
-		.select('1')
+		.createQueryBuilder()
+		.select('implicitMember.id', 'member_id')
 		.from(User, 'implicitMember')
 		.innerJoin(Project, 'implicitProject', `implicitProject.id = ${projectIdExpression}`)
-		.where(`implicitMember.id = ${userIdExpression}`)
-		.andWhere('implicitProject.type = :teamProjectType')
-		.andWhere('implicitMember.role IN (:...implicitMemberRoles)')
-		.getQuery();
-	query.setParameters({
-		teamProjectType: 'team',
-		implicitMemberRoles: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
-	});
-	return `(EXISTS ${explicit} OR EXISTS ${implicit})`;
+		.where('implicitProject.type = :teamProjectType', { teamProjectType: 'team' })
+		.andWhere('implicitMember.role IN (:...implicitMemberRoles)', {
+			implicitMemberRoles: IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
+		});
+	query.setParameters(implicit.getParameters());
+	// One EXISTS over both sources lets PostgreSQL start from the members, not from every user.
+	return `EXISTS (SELECT 1 FROM (${explicit.getQuery()} UNION ALL ${implicit.getQuery()}) members WHERE members.member_id = ${userIdExpression})`;
 }
 
 /**
@@ -104,8 +101,9 @@ export function whereReviewer<T extends ObjectLiteral>(
 	query: SelectQueryBuilder<T>,
 	configurationAlias: string,
 	userIdExpression: string,
+	projectIdExpression = `${configurationAlias}.projectId`,
 ) {
-	const member = projectMemberCondition(query, `${configurationAlias}.projectId`, userIdExpression);
+	const member = projectMemberCondition(query, projectIdExpression, userIdExpression);
 	const explicit = query
 		.subQuery()
 		.select('1')
@@ -288,10 +286,12 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			.leftJoin(
 				ProjectRelation,
 				'projectMember',
-				'projectMember.userId = user.id AND projectMember.projectId = configuration.projectId',
+				'projectMember.userId = user.id AND projectMember.projectId = :projectId',
+				{ projectId: configuration.projectId },
 			)
 			.where('user.disabled = :disabled', { disabled: false });
-		return whereReviewer(query, 'configuration', 'user.id');
+		// A bound project keeps the member lookup independent of the user count on PostgreSQL.
+		return whereReviewer(query, 'configuration', 'user.id', ':projectId');
 	}
 
 	async hasReviewerWithEditRole(

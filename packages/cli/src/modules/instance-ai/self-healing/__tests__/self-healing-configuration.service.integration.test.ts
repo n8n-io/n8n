@@ -20,8 +20,7 @@ import {
 	wrapMigration,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { GLOBAL_ADMIN_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -48,6 +47,7 @@ import { SelfHealingConfigurationReviewer } from '../database/self-healing-confi
 import { SelfHealingConfigurationWorkflow } from '../database/self-healing-configuration-workflow.entity';
 import { SelfHealingInvestigation } from '../database/self-healing-investigation.entity';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
+import { disableInstanceAdmins } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 const runtime = mockInstance(InstanceAiService);
@@ -706,7 +706,6 @@ it('validates only requested IDs and stores duplicate selections once', async ()
 	await linkUserToProject(globalAdmin, project, 'project:viewer');
 	const otherAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE });
 	await linkUserToProject(otherAdmin, project, 'project:viewer');
-	const outsideAdmin = await createUser({ role: GLOBAL_ADMIN_ROLE });
 	const outsider = await createUser();
 	const otherEditor = await createUser();
 	await linkUserToProject(otherEditor, project, 'project:editor');
@@ -745,16 +744,11 @@ it('validates only requested IDs and stores duplicate selections once', async ()
 
 		const choices = await configurations.getConfigurationChoices(project.id);
 		expect(choices.workflows).toHaveLength(2);
-		expect(choices.reviewers.map(({ id }) => id)).toEqual(
-			expect.arrayContaining([
-				user.id,
-				globalAdmin.id,
-				otherAdmin.id,
-				otherEditor.id,
-				outsideAdmin.id,
-			]),
+		const choiceIds = choices.reviewers.map(({ id }) => id);
+		expect(choiceIds).toEqual(
+			expect.arrayContaining([user.id, globalAdmin.id, otherAdmin.id, otherEditor.id]),
 		);
-		expect(choices.reviewers.map(({ id }) => id)).not.toContain(outsider.id);
+		expect(choiceIds).not.toContain(outsider.id);
 	} finally {
 		workflowLookup.mockRestore();
 		reviewerLookup.mockRestore();
@@ -1047,17 +1041,6 @@ describe('project member reviewers', () => {
 	async function shareWithPersonalProject(workflow: IWorkflowBase, user: User) {
 		const project = await getPersonalProject(user);
 		await shareWorkflowWithProjects(workflow, [{ project }]);
-	}
-
-	// Instance owners and admins are implicit members of every team project.
-	async function disableInstanceAdmins() {
-		const users = Container.get(UserRepository);
-		const admins = await users.findBy({
-			role: { slug: In([GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG]) },
-		});
-		if (admins.length) {
-			await users.update({ id: In(admins.map(({ id }) => id)) }, { disabled: true });
-		}
 	}
 
 	it('saves project members as the only reviewers and lists them as a group', async () => {

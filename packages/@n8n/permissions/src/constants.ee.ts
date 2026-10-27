@@ -175,6 +175,11 @@ export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+/** Global roles that make a user an implicit member of every team project. */
+export const IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS = [
+	GLOBAL_OWNER_ROLE_SLUG,
+	GLOBAL_ADMIN_ROLE_SLUG,
+];
 export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 	key: 'security.personalSpacePublishing',
 	scopes: ['workflow:publish', 'agent:publish'],
