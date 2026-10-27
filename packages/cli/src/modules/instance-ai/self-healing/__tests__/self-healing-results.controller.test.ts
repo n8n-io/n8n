@@ -2,8 +2,6 @@ import { getRouteCases } from '@test/controller-route-metadata';
 
 import { SelfHealingResultsController } from '../self-healing-results.controller';
 
-vi.mock('../self-healing-result.service', () => ({ SelfHealingResultService: vi.fn() }));
-
 describe('SelfHealingResultsController route access', () => {
 	const routes = getRouteCases(SelfHealingResultsController);
 

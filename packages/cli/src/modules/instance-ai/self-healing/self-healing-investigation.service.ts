@@ -93,13 +93,7 @@ export class SelfHealingInvestigationService {
 		const existing = await this.findExisting(input);
 		if (existing) return existing;
 
-		// Skip a cooldown before the baseline capture and the locked claim. The claim checks again.
-		const inCooldown = await this.resultRepository.hasRecentCannotFixForActiveVersion({
-			workflowId: input.workflowId,
-			projectId: input.projectId,
-			completedAfter: this.cooldownStart(),
-		});
-		if (inCooldown) return null;
+		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) return null;
 
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
@@ -112,7 +106,7 @@ export class SelfHealingInvestigationService {
 			if (!claimed || 'kind' in claimed) return claimed;
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, actor).catch((error: unknown) => {
+			void this.run(claimed, baseline, actor).catch((error: unknown) => {
 				this.logger.error('Self-healing investigation failed.', {
 					investigationId: claimed.id,
 					error,
@@ -186,7 +180,7 @@ export class SelfHealingInvestigationService {
 			if (existing) return existing;
 
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
-			if (await this.isInCooldown(baseline, ctx)) return null;
+			if (await this.resultRepository.isInCooldown(this.cooldownQuery(input), ctx)) return null;
 
 			return await this.investigations.createInvestigation(
 				{
@@ -201,35 +195,28 @@ export class SelfHealingInvestigationService {
 		});
 	}
 
-	private async isInCooldown(baseline: WorkflowSuggestionBaseline, ctx: OperationContext) {
-		return await this.resultRepository.hasRecentCannotFixForVersion(
-			{
-				workflowId: baseline.workflowId,
-				projectId: baseline.projectId,
-				publishedVersionId: baseline.expectedBaseline.publishedVersionId,
-				completedAfter: this.cooldownStart(),
-			},
-			ctx,
-		);
+	private cooldownQuery({ workflowId, projectId }: StartInvestigation) {
+		const completedAfter = new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
+		return { workflowId, projectId, completedAfter };
 	}
 
-	private cooldownStart() {
-		return new Date(Date.now() - SELF_HEALING_CANNOT_FIX_COOLDOWN_MS);
-	}
-
-	private async run(investigation: SelfHealingInvestigation, user: User) {
+	private async run(
+		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
+		user: User,
+	) {
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
-					baseline: investigation.baseline,
+					baseline,
 					executionId: investigation.executionId,
 				},
 				{
 					threadId: investigation.threadId,
 					runId: investigation.runId,
 					onComplete: async (run, signal) =>
-						await this.handleRunCompletion(investigation, run, signal),
+						await this.handleRunCompletion(investigation, baseline, run, signal),
 				},
 			);
 		} catch (error) {
@@ -248,6 +235,7 @@ export class SelfHealingInvestigationService {
 
 	private async handleRunCompletion(
 		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
 		run: SelfHealingRunResult,
 		signal: AbortSignal,
 	) {
@@ -315,9 +303,9 @@ export class SelfHealingInvestigationService {
 			),
 		};
 
-		await this.suggestions.requireCurrentBaseline(investigation.baseline);
+		await this.suggestions.requireCurrentBaseline(baseline);
 		signal.throwIfAborted();
-		await this.results.complete({ investigationId: investigation.id, ...result, signal });
+		await this.results.complete({ investigationId: investigation.id, baseline, ...result, signal });
 	}
 
 	async reconcile(signal?: AbortSignal) {

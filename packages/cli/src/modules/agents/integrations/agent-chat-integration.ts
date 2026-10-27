@@ -31,7 +31,12 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
-import type { DecodedThread, OriginDraft, OriginInput } from './integration-origin-support';
+import type {
+	DecodedThread,
+	OriginDraft,
+	OriginInput,
+	OriginNames,
+} from './integration-origin-support';
 
 /**
  * The platform refused an attachment download for a reason the user can fix.
@@ -366,6 +371,12 @@ export abstract class AgentChatIntegration {
 	readonly singleStreamedRunPerTurn: boolean = false;
 
 	/**
+	 * Most characters of reply text in one platform message. Longer replies
+	 * continue in a new message. `undefined` (default) means no limit.
+	 */
+	readonly maxMessageLength: number | undefined = undefined;
+
+	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
 	 * chat) that must not appear in the public integrations catalog or the
 	 * add-trigger UI.
@@ -419,6 +430,16 @@ export abstract class AgentChatIntegration {
 		input: OriginInput,
 		decoded: DecodedThread,
 	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
+
+	/**
+	 * Looks up the display names of a built origin. The bridge calls it after the
+	 * message is enqueued, so a slow lookup never delays the turn. A failed or slow
+	 * lookup may reject. Channels without names leave this undefined.
+	 */
+	fetchOriginNames?(
+		input: OriginInput,
+		origin: AgentMessageIntegrationOrigin,
+	): Promise<OriginNames | undefined>;
 
 	/**
 	 * Decides who owns the episodic memories of an incoming chat turn. Every
@@ -645,6 +666,12 @@ export abstract class AgentChatIntegration {
 	 * the adapter's `editMessage()`.
 	 */
 	settleActionMessage?(params: SettleActionMessageParams): Promise<void>;
+
+	/** Filter inbound messages before attachments, session resets, or agent work. */
+	shouldHandleInboundMessage?(params: {
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
 
 	/**
 	 * Whether a new mention should subscribe the thread for follow-ups.

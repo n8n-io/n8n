@@ -141,7 +141,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
-| [public.skill](public.skill.md) | 8 |  | BASE TABLE |
+| [public.skill](public.skill.md) | 9 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -155,7 +155,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
 | [public.type_availability_policy_scope](public.type_availability_policy_scope.md) | 8 |  | BASE TABLE |
-| [public.user](public.user.md) | 15 |  | BASE TABLE |
+| [public.user](public.user.md) | 16 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
 | [public.variables](public.variables.md) | 5 |  | BASE TABLE |
@@ -1758,13 +1758,13 @@ erDiagram
 }
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId
@@ -1811,6 +1811,7 @@ erDiagram
 "public.skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
@@ -1959,6 +1960,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

@@ -10,7 +10,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 
 type Activity = Omit<WorkflowSuggestionActivity, 'action'> & {
-	action: WorkflowSuggestionActivity['action'] | 'completed' | 'dismissed';
+	action: WorkflowSuggestionActivity['action'] | 'completed' | 'dismissed' | 'closed';
 };
 
 const entries = computed<Activity[]>(() => {
@@ -28,6 +28,16 @@ const entries = computed<Activity[]>(() => {
 				createdAt: result.completedAt,
 			},
 		];
+	}
+
+	if (result.reviewState === 'closed') {
+		activity.push({
+			id: `${result.resultId}:closed`,
+			action: 'closed',
+			author: 'system',
+			actorId: null,
+			createdAt: result.completedAt,
+		});
 	}
 
 	if (result.dismissedAt) {
@@ -97,7 +107,7 @@ function actorLabel(author: Activity['author']) {
 	--review-activity--line-height: var(--height--2xs);
 	--review-activity--gap: var(--spacing--md);
 
-	padding-block: var(--spacing--sm);
+	padding-bottom: var(--spacing--md);
 }
 
 .heading {

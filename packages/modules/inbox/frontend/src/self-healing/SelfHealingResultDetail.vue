@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import type { SelfHealingResultDetail } from '@n8n/api-types';
+import type { SelfHealingResultActionResponse, SelfHealingResultDetail } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCallout, N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import {
+	capabilities,
+	capabilityRegistry,
+	type SelfHealingChatStartOutcome,
+} from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,10 +21,18 @@ import { useSelfHealingResultStore } from './selfHealingResult.store';
 import {
 	fetchSelfHealingResult,
 	reviewSelfHealingResult,
+	type SelfHealingPublishAccess,
 	type SelfHealingResultAction,
 	type SelfHealingReviewAction,
 	type SelfHealingSelection,
 } from './selfHealingResults.api';
+
+type ChatRetry = {
+	target: SelfHealingSelection;
+	projectId: string;
+	result: SelfHealingResultDetail;
+	reason: Exclude<SelfHealingChatStartOutcome, 'started'> | 'unconfirmed';
+};
 
 const props = defineProps<{
 	selection: SelfHealingSelection;
@@ -37,7 +49,8 @@ const router = useRouter();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
-const unresolvedResult = ref<SelfHealingResultDetail | null>(null);
+const chatRetry = ref<ChatRetry | null>(null);
+let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
 
 const workflowName = computed(
 	() =>
@@ -45,7 +58,10 @@ const workflowName = computed(
 		detail.value?.suggestion?.payload.original.name ??
 		props.selection.workflowId,
 );
-const canPublish = computed(() => workflow.value?.scopes.includes('workflow:publish') ?? false);
+const publishAccess = computed<SelfHealingPublishAccess>(() => {
+	if (!workflow.value) return 'unknown';
+	return workflow.value.scopes.includes('workflow:publish') ? 'allowed' : 'denied';
+});
 const errorKind = computed(() => {
 	if (error.value instanceof ResponseError) {
 		if (error.value.httpStatusCode === 404) return 'notFound';
@@ -57,11 +73,21 @@ const errorKind = computed(() => {
 watch(
 	[() => props.selection.id, () => props.selection.projectId, () => props.selection.workflowId],
 	() => {
-		unresolvedResult.value = null;
+		reconcileOnRetry = null;
+		chatRetry.value = null;
 		void store.select(props.selection);
 	},
 	{ immediate: true },
 );
+
+/** A client error status means the server rejected the action, so nothing was saved. */
+function isRejected(cause: unknown) {
+	return (
+		cause instanceof ResponseError &&
+		cause.httpStatusCode !== undefined &&
+		cause.httpStatusCode < 500
+	);
+}
 
 function notifyResultClosed(
 	before: SelfHealingResultDetail,
@@ -87,63 +113,99 @@ async function openEditor(workflowId: string) {
 	}
 }
 
+async function startChat(request: Omit<ChatRetry, 'reason'>) {
+	let outcome: SelfHealingChatStartOutcome;
+	try {
+		outcome = (await chat?.start(request.projectId, request.result)) ?? 'unavailable';
+	} catch (cause) {
+		outcome = 'failed';
+		if (store.isSelected(request.target)) {
+			showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
+		}
+	}
+
+	if (!store.isSelected(request.target)) return;
+	chatRetry.value = outcome === 'started' ? null : { ...request, reason: outcome };
+}
+
+async function retryChat() {
+	const retry = chatRetry.value;
+	if (!retry || !chat?.available.value || !store.isSelected(retry.target)) return;
+	if (!store.beginAction(retry.target, 'chat')) return;
+
+	try {
+		await startChat(retry);
+	} finally {
+		store.endAction(retry.target);
+	}
+}
+
 async function retryDetail() {
 	if (pendingAction.value) return;
 
-	const before = unresolvedResult.value;
-	const onItemChange = props.onItemChange;
+	const reconcile = reconcileOnRetry;
 	const result = await store.refreshDetail();
+	if (!reconcile || !result || reconcileOnRetry !== reconcile) return;
 
-	if (before && result) {
-		notifyResultClosed(before, result, onItemChange);
-		if (unresolvedResult.value === before) unresolvedResult.value = null;
-	}
+	reconcileOnRetry = null;
+	await reconcile(result);
 }
 
 async function onAction(action: SelfHealingResultAction) {
 	const before = detail.value;
-	if (!before || pendingAction.value || !store.isSelected(props.selection)) return;
-	const isClosedChat =
-		action === 'chat' && before.reviewState === 'closed' && before.outcome === 'could_not_fix';
-	if (before.reviewState !== 'open' && !isClosedChat) return;
-
-	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
+	if (before?.reviewState !== 'open' || pendingAction.value || !store.isSelected(props.selection))
 		return;
-	if (action === 'editor' && before.outcome !== 'fix_ready') return;
-	if (action === 'chat' && (before.outcome === 'fix_ready' || !chat?.available.value)) return;
+
+	if (
+		action === 'approve-and-publish' &&
+		(publishAccess.value !== 'allowed' || before.outcome !== 'fix_ready')
+	)
+		return;
+	if (action === 'chat' && !chat?.available.value) return;
 
 	const target = { ...props.selection };
+	if (!store.beginAction(target, action)) return;
+
 	const isSelected = props.isSelected;
 	const onItemChange = props.onItemChange;
+	const isContinuation = action === 'chat' || action === 'editor';
 
 	let reviewAction: SelfHealingReviewAction;
-	if (action === 'editor') {
-		reviewAction = 'apply';
-	} else if (action === 'chat') {
+	if (isContinuation) {
 		reviewAction = before.suggestion ? 'apply' : 'dismiss';
 	} else {
 		reviewAction = action;
 	}
+	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
+	let chatProjectId: string | null = null;
 
-	pendingAction.value = action;
-	try {
-		const result = isClosedChat
-			? await fetchSelfHealingResult(rootStore.restApiContext, target)
-			: await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
+	/**
+	 * Without a response, the saved state does not show which request closed the result.
+	 * So the chat waits for an explicit start, and publication stays unconfirmed.
+	 */
+	async function continueAfterClose(
+		result: SelfHealingResultActionResponse,
+		responseLost: boolean,
+	) {
+		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
+		const closed =
+			result.reviewState === closedState ||
+			(action === 'dismiss' && result.reviewState === 'discarded');
+		if (!isSelected(target.id) || !closed) return false;
 
-		store.acceptResult(result);
-		notifyResultClosed(before, result, onItemChange);
-
-		if (!isSelected(target.id) || action === 'dismiss') return;
-
-		if (action === 'chat') {
-			try {
-				await chat?.start(result);
-			} catch (cause) {
-				showError(cause, i18n.baseText('inbox.selfHealing.action.chatError'));
-			}
-		} else if (action === 'editor' || result.reviewState === 'applied') {
-			if (result.publishError !== undefined) {
+		if (chatProjectId) {
+			const request = { target, projectId: chatProjectId, result };
+			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
+			else await startChat(request);
+		} else if (action !== 'dismiss') {
+			if (responseLost && action === 'approve-and-publish') {
+				showMessage({
+					type: 'warning',
+					duration: 0,
+					title: i18n.baseText('inbox.selfHealing.action.publishUnconfirmed.title'),
+					message: i18n.baseText('inbox.selfHealing.action.publishUnconfirmed.message'),
+				});
+			} else if (result.publishError !== undefined) {
 				showMessage({
 					type: 'warning',
 					duration: 0,
@@ -154,22 +216,51 @@ async function onAction(action: SelfHealingResultAction) {
 
 			await openEditor(result.workflowId);
 		}
+		return true;
+	}
+
+	try {
+		if (action === 'chat') {
+			// Load the chat project before closing, so a failed lookup leaves the result open.
+			chatProjectId = (await chat?.resolveProjectId().catch(() => null)) ?? null;
+			if (!isSelected(target.id)) return;
+			if (!chatProjectId) {
+				showMessage({
+					type: 'error',
+					title: i18n.baseText('inbox.selfHealing.action.chatError'),
+					message: i18n.baseText('inbox.selfHealing.action.chatProjectError'),
+				});
+				return;
+			}
+		}
+
+		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
+
+		store.acceptResult(result);
+		await continueAfterClose(result, false);
+		notifyResultClosed(before, result, onItemChange);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
+		const reconcile = async (current: SelfHealingResultDetail) => {
+			const continued = !isRejected(cause) && (await continueAfterClose(current, true));
+			notifyResultClosed(before, current, onItemChange);
+			return continued;
+		};
+
 		try {
 			const current = await fetchSelfHealingResult(rootStore.restApiContext, target);
 
 			store.acceptResult(current);
-			notifyResultClosed(before, current, onItemChange);
 			if (isSelected(target.id)) void store.refreshWorkflow();
+			if (await reconcile(current)) return;
 		} catch (readError) {
 			store.setError(target, readError);
-			if (isSelected(target.id)) unresolvedResult.value = before;
+			if (isSelected(target.id)) reconcileOnRetry = reconcile;
 		}
 
 		if (isSelected(target.id)) showError(cause, i18n.baseText('inbox.selfHealing.action.error'));
 	} finally {
-		pendingAction.value = null;
+		store.endAction(target);
 	}
 }
 </script>
@@ -199,18 +290,35 @@ async function onAction(action: SelfHealingResultAction) {
 				:workflow-name="workflowName"
 				:tab="tab"
 				:pending-action="pendingAction"
-				:can-publish="canPublish"
+				:publish-access="publishAccess"
 				:can-chat="chat?.available.value ?? false"
 				@update:tab="emit('update:tab', $event)"
 				@action="onAction"
 			>
-				<template v-if="workflowError" #notice>
-					<N8nCallout theme="warning">
+				<template v-if="workflowError || chatRetry" #notice>
+					<N8nCallout v-if="workflowError" theme="warning">
 						{{ i18n.baseText('inbox.selfHealing.detail.metadataError') }}
 						<template #trailingContent>
 							<N8nButton variant="ghost" @click="store.refreshWorkflow()">{{
 								i18n.baseText('generic.retry')
 							}}</N8nButton>
+						</template>
+					</N8nCallout>
+					<N8nCallout
+						v-if="chatRetry"
+						:theme="chatRetry.reason === 'unconfirmed' ? 'info' : 'warning'"
+						data-test-id="self-healing-chat-retry"
+					>
+						{{ i18n.baseText(`inbox.selfHealing.chatRetry.${chatRetry.reason}`) }}
+						<template #trailingContent>
+							<N8nButton
+								variant="ghost"
+								:disabled="!chat?.available.value"
+								:loading="pendingAction === 'chat'"
+								data-test-id="self-healing-chat-retry-button"
+								@click="retryChat()"
+								>{{ i18n.baseText('inbox.selfHealing.action.continueWithAssistant') }}</N8nButton
+							>
 						</template>
 					</N8nCallout>
 				</template>

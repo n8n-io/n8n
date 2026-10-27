@@ -12,6 +12,7 @@ import { VIEWS } from '@/app/constants';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { billingPreview } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -57,16 +58,17 @@ describe('PromotionPreviewBadges', () => {
 			...settingsStore.settings,
 			envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
 		};
+		mockedStore(useSourceControlStore).preferences.environmentsVersion = 'v2';
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
 		projectsStore.currentProjectId = 'p1';
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
 		mockedStore(useUsersStore).currentUser = mock<IUser>({
 			globalScopes: [
-				'gitConnection:list',
-				'gitConnection:read',
-				'gitConnection:push',
-				'gitConnection:pull',
+				'promotions:list',
+				'promotions:read',
+				'promotions:promote',
+				'promotions:apply',
 			],
 		});
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
@@ -89,6 +91,38 @@ describe('PromotionPreviewBadges', () => {
 		expect(promote).toHaveAttribute('data-route', `${PROMOTION_PREVIEW_VIEWS.promote}:p1`);
 		expect(promote).toHaveAttribute('aria-label', '5 changes to promote');
 		// Wait for the apply preview too, so the check covers its loaded state.
+		await waitAllPromises();
+		expect(getByTestId('promotion-preview-badges').children).toHaveLength(1);
+	});
+
+	it('should show an arrow that does not link when an open review holds the promote changes', async () => {
+		vi.mocked(api.getPromotionPreview).mockImplementation(
+			async (_context, _projectId, direction) =>
+				direction === 'promote'
+					? billingPreview({
+							resources: [],
+							changes: [],
+							blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+						})
+					: billingPreview({ resources: [] }),
+		);
+
+		const { findByTestId, getByTestId } = renderComponent();
+
+		const promote = await findByTestId('promotion-preview-badge-promote');
+		// The badge informs only. The preview page still opens by URL and explains the review.
+		expect(promote).not.toHaveAttribute('data-route');
+		expect(promote).toHaveAttribute('aria-disabled', 'true');
+		// The span takes focus, so keyboard users reach the tooltip. The badge inside is disabled.
+		expect(promote).toHaveAttribute('tabindex', '0');
+		expect(promote.querySelector('.n8n-badge')).toBeDisabled();
+		expect(promote).toHaveAttribute(
+			'aria-label',
+			"A review is open. You can't promote until it's merged or closed.",
+		);
+		expect(promote).toHaveTextContent('');
+		// An empty label would add a gap next to the icon.
+		expect(promote.querySelector('.n8n-badge')?.querySelector('.n8n-text')).toBeNull();
 		await waitAllPromises();
 		expect(getByTestId('promotion-preview-badges').children).toHaveLength(1);
 	});
@@ -123,7 +157,7 @@ describe('PromotionPreviewBadges', () => {
 			} else {
 				users.currentUser = mock<IUser>({
 					globalScopes: users.currentUser?.globalScopes?.filter(
-						(scope) => scope !== `gitConnection:${requirement}`,
+						(scope) => scope !== `promotions:${requirement}`,
 					),
 				});
 			}
@@ -151,7 +185,7 @@ describe('PromotionPreviewBadges', () => {
 			expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', direction);
 
 			mockedStore(useUsersStore).currentUser = mock<IUser>({
-				globalScopes: ['gitConnection:list', 'gitConnection:read'],
+				globalScopes: ['promotions:list', 'promotions:read'],
 			});
 			await waitFor(() =>
 				expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument(),

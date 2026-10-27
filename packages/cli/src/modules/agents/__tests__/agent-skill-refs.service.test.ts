@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { AgentJsonSkillConfig, StoredAgentConfig } from '@n8n/api-types';
+import type { AgentJsonSkillConfig } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -9,14 +9,11 @@ import type { SkillVersion } from '@/modules/skills/skill-version.entity';
 import type { Skill } from '@/modules/skills/skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '@/modules/skills/skill.repository';
 import type { SkillService } from '@/modules/skills/skill.service';
-import type { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentSkillUsageService } from '../agent-skill-usage.service';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
-import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSkillRepository } from '../repositories/agent-skill.repository';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -45,8 +42,6 @@ describe('AgentSkillRefsService', () => {
 	let agentSkillRepository: Mocked<AgentSkillRepository>;
 	let skillService: Mocked<SkillService>;
 	let agentSkillUsage: Mocked<AgentSkillUsageService>;
-	let agentRepository: Mocked<AgentRepository>;
-	let rollout: { isEnabled: boolean };
 	let service: AgentSkillRefsService;
 
 	beforeEach(() => {
@@ -56,15 +51,11 @@ describe('AgentSkillRefsService', () => {
 		agentSkillRepository = mock<AgentSkillRepository>();
 		skillService = mock<SkillService>();
 		agentSkillUsage = mock<AgentSkillUsageService>();
-		agentRepository = mock<AgentRepository>();
-		rollout = { isEnabled: true };
 		service = new AgentSkillRefsService(
 			skillRepository,
 			agentSkillRepository,
 			skillService,
 			agentSkillUsage,
-			agentRepository,
-			rollout as SkillsHubRollout,
 		);
 		agentSkillRepository.findDependencies.mockResolvedValue(new Map());
 		agentSkillRepository.findPinned.mockResolvedValue(new Map());
@@ -100,10 +91,7 @@ describe('AgentSkillRefsService', () => {
 		it('reads the pinned skill ids in order, without the skill bodies', async () => {
 			agentSkillRepository.findPinnedSkillIds.mockResolvedValue(['zeta', 'alpha']);
 
-			const refs = await service.refsForVersion(
-				{ versionId: 'version-1', schema: null, skills: null },
-				ctx,
-			);
+			const refs = await service.refsForVersion({ versionId: 'version-1' }, ctx);
 
 			expect(refs).toEqual([
 				{ type: 'skill', id: 'zeta' },
@@ -122,10 +110,7 @@ describe('AgentSkillRefsService', () => {
 				]),
 			);
 
-			const result = await service.readVersion(
-				{ versionId: 'version-1', schema: null, skills: null },
-				ctx,
-			);
+			const result = await service.readVersion({ versionId: 'version-1' }, ctx);
 
 			expect(result.skillRefs).toEqual([
 				{ type: 'skill', id: 'zeta' },
@@ -149,7 +134,7 @@ describe('AgentSkillRefsService', () => {
 			];
 			skillService.resolveForAgentDraft.mockResolvedValue({});
 
-			await service.skillsForRefs(agent, refs, ctx);
+			await service.skillsForRefs(refs, ctx);
 
 			expect(skillService.resolveForAgentDraft).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
@@ -158,7 +143,7 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('reads nothing for a draft without skills', async () => {
-			await expect(service.skillsForRefs(agent, undefined, ctx)).resolves.toEqual({});
+			await expect(service.skillsForRefs(undefined, ctx)).resolves.toEqual({});
 			expect(skillService.resolveForAgentDraft).not.toHaveBeenCalled();
 		});
 	});
@@ -237,7 +222,7 @@ describe('AgentSkillRefsService', () => {
 
 		await service.restoreDraftRefs(
 			agent,
-			{ versionId: 'version-1', skills: null },
+			{ versionId: 'version-1' },
 			[{ type: 'skill', id: 'zeta' }],
 			ctx,
 		);
@@ -521,9 +506,7 @@ describe('AgentSkillRefsService', () => {
 	});
 
 	describe('versionSnapshot and pinVersion', () => {
-		const notes = { name: 'Notes', description: 'Take notes', instructions: 'Write it down.' };
-
-		it('writes the refs and the bodies the draft runs to the legacy columns, and pins them', async () => {
+		it('pins the versions the draft runs', async () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([
 					[
@@ -539,10 +522,7 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillService.snapshotForPublish.mockResolvedValue({
-				skills: { zeta: notes, alpha: notes },
-				versionByRef,
-			});
+			skillService.snapshotForPublish.mockResolvedValue(versionByRef);
 
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
@@ -551,12 +531,7 @@ describe('AgentSkillRefsService', () => {
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
-			// A rollback reads these columns, so a published agent keeps its skills.
-			expect(snapshot.schema?.skills).toEqual([
-				{ type: 'skill', id: 'zeta' },
-				{ type: 'skill', id: 'alpha' },
-			]);
-			expect(snapshot.skills).toEqual({ zeta: notes, alpha: notes });
+			expect(snapshot).toEqual(versionByRef);
 			expect(agentSkillUsage.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
 		});
 
@@ -564,133 +539,20 @@ describe('AgentSkillRefsService', () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
-			skillService.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef: new Map() });
+			skillService.snapshotForPublish.mockResolvedValue(new Map());
 
 			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
 				'Cannot publish agent with missing skills: zeta',
 			);
 		});
 
-		it('writes an empty skill list and pins nothing for a draft without skills', async () => {
+		it('pins nothing for a draft without skills', async () => {
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(snapshot.schema?.skills).toEqual([]);
-			expect(snapshot.skills).toEqual({});
+			expect(snapshot).toEqual(new Map());
 			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
 			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('with the skills hub off', () => {
-		const notes = { name: 'Notes', description: 'Take notes', instructions: 'Write.' };
-		const billing = { name: 'Billing', description: 'Bills', instructions: 'Bill.' };
-		const legacyAgent = (skills: unknown[], bodies = { notes, billing }) =>
-			({
-				id: 'agent-1',
-				projectId: 'project-1',
-				schema: { ...baseConfig, skills } as unknown as StoredAgentConfig,
-				skills: { ...bodies },
-			}) as unknown as Agent;
-
-		beforeEach(() => {
-			rollout.isEnabled = false;
-		});
-
-		it('reads the refs and bodies from the agent row and hides disabled refs', async () => {
-			const draft = legacyAgent([
-				{ type: 'skill', id: 'notes' },
-				{ type: 'skill', id: 'billing', enabled: false },
-			]);
-
-			await expect(service.readDraft(draft, ctx)).resolves.toEqual({
-				skillRefs: [{ type: 'skill', id: 'notes' }],
-				skills: { notes },
-			});
-			expect(agentSkillRepository.findDependencies).not.toHaveBeenCalled();
-		});
-
-		it('reads a published version from the agent_history row', async () => {
-			const version = {
-				versionId: 'version-1',
-				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'notes' }] },
-				skills: { notes },
-			} as unknown as AgentHistory;
-
-			await expect(service.readVersion(version, ctx)).resolves.toEqual({
-				skillRefs: [{ type: 'skill', id: 'notes' }],
-				skills: { notes },
-			});
-			expect(agentSkillRepository.findPinned).not.toHaveBeenCalled();
-		});
-
-		it('writes the refs to the stored config and drops refs without a body', async () => {
-			const draft = legacyAgent([{ type: 'skill', id: 'notes' }]);
-
-			await service.replaceDraftRefs(
-				draft,
-				[
-					{ type: 'skill', id: 'billing', versionId: pinId },
-					{ type: 'skill', id: 'unknown' },
-				],
-				ctx,
-			);
-
-			expect(draft.schema?.skills).toEqual([{ type: 'skill', id: 'billing' }]);
-			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);
-			expect(agentSkillUsage.checkRefs).not.toHaveBeenCalled();
-		});
-
-		it('creates skills as bodies on the agent row', async () => {
-			const draft = legacyAgent([], {} as never);
-
-			const ids = await service.createSkills(draft, [notes], 'user-1', 'agent', 'agent', ctx);
-
-			expect(draft.skills).toEqual({ [ids[0]]: notes });
-			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);
-			expect(skillService.create).not.toHaveBeenCalled();
-		});
-
-		it('restores the refs and bodies of a published version', async () => {
-			const draft = legacyAgent([{ type: 'skill', id: 'billing' }]);
-
-			await service.restoreDraftRefs(
-				draft,
-				{ versionId: 'version-1', skills: { notes } },
-				[{ type: 'skill', id: 'notes' }],
-				ctx,
-			);
-
-			expect(draft.schema?.skills).toEqual([{ type: 'skill', id: 'notes' }]);
-			expect(draft.skills).toEqual({ notes });
-			expect(agentSkillUsage.restoreFromVersion).not.toHaveBeenCalled();
-		});
-
-		it('copies the refs and bodies into a new published version', async () => {
-			const draft = legacyAgent([
-				{ type: 'skill', id: 'notes' },
-				{ type: 'skill', id: 'billing', enabled: false },
-			]);
-
-			await expect(service.versionSnapshot(draft, ctx)).resolves.toEqual({
-				schema: draft.schema,
-				skills: { notes },
-				pins: new Map(),
-			});
-		});
-
-		it('refuses to publish a ref without a body', async () => {
-			const draft = legacyAgent([{ type: 'skill', id: 'gone' }]);
-
-			await expect(service.versionSnapshot(draft, ctx)).rejects.toThrow(
-				'Cannot publish agent with missing skill bodies: gone',
-			);
-		});
-
-		it('reports no outdated skills', async () => {
-			await expect(
-				service.findOutdatedSkillIds([{ type: 'skill', id: 'notes', versionId: pinId }], {}, ctx),
-			).resolves.toEqual([]);
 		});
 	});
 });

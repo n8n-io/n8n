@@ -3,10 +3,13 @@ import type { SelfHealingResultDetail } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nDropdownMenu,
 	N8nHeading,
+	N8nIcon,
 	N8nMarkdown,
 	N8nTabs,
 	N8nText,
+	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
@@ -14,16 +17,17 @@ import { computed } from 'vue';
 
 import SelfHealingResultActivity from './SelfHealingResultActivity.vue';
 import SelfHealingResultMetadata from './SelfHealingResultMetadata.vue';
-import type { SelfHealingResultAction } from './selfHealingResults.api';
+import type { SelfHealingPublishAccess, SelfHealingResultAction } from './selfHealingResults.api';
 
 type DetailTab = 'activity' | 'changes';
+type MenuAction = Exclude<SelfHealingResultAction, 'dismiss'>;
 
 const props = defineProps<{
 	detail: SelfHealingResultDetail;
 	workflowName: string;
 	tab: DetailTab;
 	pendingAction: SelfHealingResultAction | null;
-	canPublish: boolean;
+	publishAccess: SelfHealingPublishAccess;
 	canChat: boolean;
 }>();
 const emit = defineEmits<{
@@ -40,18 +44,8 @@ const reportOptions = {
 };
 const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 const isOpen = computed(() => props.detail.reviewState === 'open');
-const isAutomaticallyClosed = computed(
-	() => props.detail.reviewState === 'closed' && props.detail.outcome === 'could_not_fix',
-);
 const isFixReady = computed(() => props.detail.outcome === 'fix_ready');
 const hasSuggestion = computed(() => props.detail.suggestion !== null);
-const chatLabel = computed(() =>
-	i18n.baseText(
-		hasSuggestion.value
-			? 'inbox.selfHealing.action.applyAndOpenInChat'
-			: 'inbox.selfHealing.action.openInChat',
-	),
-);
 const activeTab = computed(() =>
 	props.tab === 'changes' && hasSuggestion.value ? 'changes' : 'activity',
 );
@@ -70,11 +64,12 @@ const outcomeLabel = computed(() => {
 
 const statusLabel = computed(() => {
 	const state = props.detail.reviewState;
-	return state === 'open' ? outcomeLabel.value : i18n.baseText(`inbox.selfHealing.state.${state}`);
+	if (state === 'open' || state === 'closed') return outcomeLabel.value;
+	return i18n.baseText(`inbox.selfHealing.state.${state}`);
 });
 
 const statusClass = computed(() => {
-	if (!isOpen.value) return props.detail.reviewState === 'applied' ? 'applied' : 'closed';
+	if (!isOpen.value) return 'closed';
 	return isFixReady.value ? 'fixReady' : 'needsAttention';
 });
 
@@ -83,6 +78,42 @@ const tabOptions = computed(() => [
 	...(hasSuggestion.value
 		? [{ label: i18n.baseText('inbox.selfHealing.tabs.changes'), value: 'changes' }]
 		: []),
+]);
+
+const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
+	const continuation: Array<DropdownMenuItemProps<MenuAction>> = [
+		{
+			id: 'chat',
+			label: i18n.baseText('inbox.selfHealing.action.continueWithAssistant'),
+			icon: { type: 'icon', value: 'message-circle-plus' },
+			disabled: !props.canChat,
+			divided: isFixReady.value,
+		},
+		{
+			id: 'editor',
+			label: i18n.baseText('inbox.selfHealing.action.continueWithEditor'),
+			icon: { type: 'icon', value: 'square-pen' },
+		},
+	];
+	if (!isFixReady.value) return continuation;
+
+	return [
+		{
+			id: 'approve-and-publish',
+			label: i18n.baseText('inbox.selfHealing.action.applyAndPublish'),
+			icon: { type: 'icon', value: 'check' },
+			disabled: props.publishAccess !== 'allowed',
+		},
+		...continuation,
+	];
+});
+
+const menuNotes = computed(() => [
+	...(hasSuggestion.value ? [i18n.baseText('inbox.selfHealing.action.continueSavesDraft')] : []),
+	...(isFixReady.value && props.publishAccess === 'denied'
+		? [i18n.baseText('inbox.selfHealing.action.publishUnavailable')]
+		: []),
+	...(props.canChat ? [] : [i18n.baseText('inbox.selfHealing.action.chatUnavailable')]),
 ]);
 
 function onTabChange(tab: string) {
@@ -94,13 +125,7 @@ function onTabChange(tab: string) {
 	<section :class="$style.detail" data-test-id="self-healing-result-content">
 		<div :class="$style.columnTitle">
 			<span :class="[$style.statusDot, $style[statusClass]]" role="img" :aria-label="statusLabel" />
-			<N8nHeading
-				bold
-				tag="h2"
-				size="xlarge"
-				:class="$style.title"
-				data-test-id="self-healing-result-title"
-			>
+			<N8nHeading bold tag="h2" size="xlarge" data-test-id="self-healing-result-title">
 				{{ detail.summary }}
 			</N8nHeading>
 		</div>
@@ -108,102 +133,73 @@ function onTabChange(tab: string) {
 		<div :class="$style.container">
 			<div :class="$style.tabRow">
 				<N8nTabs
-					:class="$style.tabs"
 					:model-value="activeTab"
 					:options="tabOptions"
 					variant="modern"
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>
-				<div v-if="isOpen || isAutomaticallyClosed" :class="$style.decisionActions">
+				<div v-if="isOpen" :class="$style.actions">
 					<N8nButton
-						v-if="isFixReady"
-						size="small"
-						:label="i18n.baseText('inbox.selfHealing.action.applyAndPublish')"
-						:disabled="pending || !canPublish"
-						:loading="pendingAction === 'approve-and-publish'"
-						@click="emit('action', 'approve-and-publish')"
-					/>
-					<N8nButton
-						v-if="isFixReady"
-						variant="outline"
-						size="small"
-						:label="i18n.baseText('inbox.selfHealing.action.applyAndOpenInEditor')"
-						:disabled="pending"
-						:loading="pendingAction === 'editor'"
-						@click="emit('action', 'editor')"
-					/>
-					<N8nButton
-						v-if="!isFixReady"
-						variant="outline"
-						size="small"
-						icon="message-circle"
-						:label="chatLabel"
-						:disabled="pending || !canChat"
-						:loading="pendingAction === 'chat'"
-						@click="emit('action', 'chat')"
-					/>
-					<N8nButton
-						v-if="isOpen"
 						variant="ghost"
 						size="small"
-						:label="i18n.baseText('inbox.selfHealing.action.discard')"
+						:label="i18n.baseText('inbox.selfHealing.action.discardAndClose')"
 						:disabled="pending"
 						:loading="pendingAction === 'dismiss'"
+						data-test-id="self-healing-discard"
 						@click="emit('action', 'dismiss')"
 					/>
+					<N8nDropdownMenu
+						:items="menuItems"
+						placement="bottom-end"
+						:disabled="pending"
+						content-test-id="self-healing-review-menu"
+						@select="emit('action', $event)"
+					>
+						<template #trigger>
+							<N8nButton
+								size="small"
+								:disabled="pending"
+								:loading="pending && pendingAction !== 'dismiss'"
+								data-test-id="self-healing-review-trigger"
+							>
+								{{
+									i18n.baseText(
+										isFixReady
+											? 'inbox.selfHealing.action.review'
+											: 'inbox.selfHealing.action.continueIn',
+									)
+								}}
+								<N8nIcon icon="chevron-down" />
+							</N8nButton>
+						</template>
+						<template v-if="menuNotes.length" #footer>
+							<div :class="$style.menuNotes">
+								<N8nText v-for="note in menuNotes" :key="note" size="small" color="text-light">
+									{{ note }}
+								</N8nText>
+							</div>
+						</template>
+					</N8nDropdownMenu>
 				</div>
 			</div>
-			<N8nText
-				v-if="isFixReady && isOpen && !canPublish"
-				size="small"
-				color="text-light"
-				:class="$style.permissionHint"
-			>
-				{{ i18n.baseText('inbox.selfHealing.action.publishUnavailable') }}
-			</N8nText>
-			<N8nText
-				v-if="(isOpen || isAutomaticallyClosed) && !isFixReady && !canChat"
-				size="small"
-				color="text-light"
-				:class="$style.permissionHint"
-			>
-				{{ i18n.baseText('inbox.selfHealing.action.chatUnavailable') }}
-			</N8nText>
 			<div :class="$style.detailBody">
 				<div
 					v-if="activeTab === 'activity'"
 					:class="$style.activityPanel"
 					data-test-id="self-healing-activity-panel"
 				>
-					<div :class="$style.descriptionCard">
-						<N8nText tag="h3" bold color="text-light" size="medium">{{
-							i18n.baseText('inbox.selfHealing.report')
-						}}</N8nText>
+					<div :class="$style.reportCard">
+						<N8nText tag="h3" bold color="text-light" size="medium">
+							{{ i18n.baseText('inbox.selfHealing.report') }}
+						</N8nText>
 						<N8nCallout
-							v-if="!isFixReady"
-							theme="warning"
-							:class="$style.outcomeNotice"
+							v-if="detail.outcome === 'could_not_fix'"
+							theme="danger"
 							data-test-id="self-healing-outcome-notice"
 						>
 							<strong :class="$style.noticeTitle">{{ outcomeLabel }}</strong>
-							{{
-								i18n.baseText(
-									detail.outcome === 'needs_you'
-										? 'inbox.selfHealing.outcome.needsAttention'
-										: 'inbox.selfHealing.outcome.couldNotFix',
-								)
-							}}
-						</N8nCallout>
-						<N8nCallout
-							v-if="detail.reviewState === 'outdated'"
-							theme="secondary"
-							data-test-id="self-healing-outdated-notice"
-						>
-							<strong :class="$style.noticeTitle">{{
-								i18n.baseText('inbox.selfHealing.state.outdated')
-							}}</strong>
-							{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
+							{{ i18n.baseText('inbox.selfHealing.couldNotFix.body') }}
 						</N8nCallout>
 						<N8nMarkdown
 							:content="detail.report"
@@ -213,6 +209,26 @@ function onTabChange(tab: string) {
 						/>
 					</div>
 					<SelfHealingResultActivity :detail="detail" />
+					<N8nCallout
+						v-if="detail.reviewState === 'outdated'"
+						theme="warning"
+						data-test-id="self-healing-outdated-notice"
+					>
+						<strong :class="$style.noticeTitle">
+							{{ i18n.baseText('inbox.selfHealing.state.outdated') }}
+						</strong>
+						{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
+					</N8nCallout>
+					<N8nCallout
+						v-if="isOpen && detail.outcome === 'needs_you'"
+						theme="warning"
+						data-test-id="self-healing-outcome-notice"
+					>
+						<strong :class="$style.noticeTitle">
+							{{ i18n.baseText('inbox.selfHealing.needsAttention.title') }}
+						</strong>
+						{{ i18n.baseText('inbox.selfHealing.needsAttention.body') }}
+					</N8nCallout>
 				</div>
 				<div v-else :class="$style.changesPanel" data-test-id="self-healing-changes-panel">
 					<div v-if="WorkflowDiffView && detail.suggestion" :class="$style.diff">
@@ -227,9 +243,9 @@ function onTabChange(tab: string) {
 							show-fullscreen-button
 						/>
 					</div>
-					<N8nCallout v-else theme="warning">{{
-						i18n.baseText('inbox.selfHealing.changes.unavailable')
-					}}</N8nCallout>
+					<N8nCallout v-else theme="warning">
+						{{ i18n.baseText('inbox.selfHealing.changes.unavailable') }}
+					</N8nCallout>
 				</div>
 				<SelfHealingResultMetadata
 					:detail="detail"
@@ -262,9 +278,6 @@ function onTabChange(tab: string) {
 	gap: var(--spacing--2xs);
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
-}
-
-.title {
 	overflow-wrap: anywhere;
 }
 
@@ -283,43 +296,37 @@ function onTabChange(tab: string) {
 	background-color: var(--color--yellow-500);
 }
 
-.applied {
-	background-color: var(--color--green-500);
-}
-
 .closed {
 	background-color: var(--color--neutral-500);
 }
 
+/* Match the tab row of workflow reviews. */
 .tabRow {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: center;
-	gap: var(--spacing--sm);
-}
-
-.tabs {
-	/* Align the labels with the actions, as in the prototype. */
-	transform: translateY(var(--spacing--xs));
-}
-
-.decisionActions {
-	/* Let taller buttons use the space around the row without moving the cards. */
-	margin-block: calc(-1 * var(--spacing--5xs));
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	max-width: 100%;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding-bottom: var(--review-tab-bar--indicator-overhang);
+	border-bottom: var(--border);
 
-	> button {
-		--button--height: var(--height--md);
+	> :global(.n8n-tabs) {
+		transform: translateY(var(--spacing--sm));
 	}
 }
 
-.permissionHint {
-	align-self: flex-end;
-	margin-top: var(--spacing--2xs);
+.actions {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.menuNotes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	max-width: 16rem;
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 
 .detailBody {
@@ -327,20 +334,21 @@ function onTabChange(tab: string) {
 	flex: 1;
 	gap: var(--spacing--sm);
 	min-height: 0;
-	padding-top: calc(var(--review-tab-bar--gap) - var(--spacing--4xs));
+	overflow: auto;
+	padding-top: var(--spacing--sm);
 }
 
 .activityPanel {
-	padding-top: var(--spacing--5xs);
+	display: flex;
 	flex: 1;
-	min-height: 0;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 	min-width: 0;
-	overflow: auto;
-	max-width: var(--review-activity--max-width);
+	max-width: var(--review-activity--max-width, 45rem);
 	margin-inline-end: auto;
 }
 
-.descriptionCard {
+.reportCard {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -349,71 +357,28 @@ function onTabChange(tab: string) {
 	border-radius: var(--radius--2xs);
 }
 
-.outcomeNotice {
-	margin-block: var(--spacing--4xs);
-	gap: var(--spacing--sm);
-	flex-wrap: wrap;
-}
-
 .noticeTitle {
 	display: block;
-	margin-bottom: var(--spacing--4xs);
 }
 
+/* The global Markdown rules size paragraphs from this root. */
 .report:global(.n8n-markdown) {
 	--markdown--spacing: var(--spacing--4xs);
+	--n8n-markdown--base-font-size: var(--font-size--sm);
 
-	white-space: normal;
 	overflow-wrap: anywhere;
 	min-width: 0;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
-	p,
-	ul,
-	ol,
-	li,
-	strong,
-	em,
-	a,
-	span,
-	code,
-	pre,
-	blockquote {
-		font-size: inherit;
-		line-height: inherit;
-	}
-
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6,
-	:where(p:has(> strong:only-child)) {
-		margin-block: var(--spacing--sm) var(--spacing--5xs);
+	:is(h1, h2, h3, h4, h5, h6) {
+		margin-top: calc(var(--markdown--spacing) * 2);
 		font-size: var(--font-size--sm);
-		line-height: var(--line-height--lg);
+		line-height: inherit;
 
-		+ p {
+		&:first-child {
 			margin-top: 0;
 		}
-	}
-
-	h1 {
-		font-size: var(--font-size--md);
-	}
-
-	> div > :first-child {
-		margin-top: 0;
-	}
-
-	> div > :last-child {
-		margin-bottom: 0;
-	}
-
-	pre {
-		white-space: pre-wrap;
 	}
 }
 
@@ -431,30 +396,27 @@ function onTabChange(tab: string) {
 	border: var(--border);
 	border-radius: var(--radius--2xs);
 	overflow: hidden;
-	margin-top: var(--spacing--5xs);
 }
 
-/* Match the prototype's detail breakpoint. Container queries cannot use CSS variables. */
+/* Match the detail breakpoint of workflow reviews. Container queries cannot use CSS variables. */
 @container assistant-detail (max-width: 44rem) {
 	.tabRow {
-		grid-template-columns: minmax(0, 1fr);
-		row-gap: var(--spacing--lg);
+		flex-wrap: wrap;
 	}
 
-	.tabs {
-		transform: none;
+	/* A full row above the tabs keeps the active-tab indicator on the row border. */
+	.actions {
+		order: -1;
+		width: 100%;
+		justify-content: flex-end;
 	}
 
 	.detailBody {
 		flex-direction: column;
-		overflow: auto;
-		padding-top: var(--spacing--lg);
 	}
 
 	.activityPanel {
 		flex: 0 0 auto;
-		padding-top: 0;
-		overflow: visible;
 		max-width: none;
 		margin-inline-end: 0;
 	}
@@ -463,10 +425,6 @@ function onTabChange(tab: string) {
 		flex: 1 0 auto;
 		/* Keep the canvas usable above the metadata when the detail columns stack. */
 		min-height: calc(var(--spacing--5xl) + var(--spacing--4xl));
-	}
-
-	.diff {
-		margin-top: 0;
 	}
 }
 </style>

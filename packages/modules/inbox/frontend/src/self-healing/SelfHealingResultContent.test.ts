@@ -4,7 +4,7 @@ import { componentRegistry, type SlotWorkflowDiffProps } from '@n8n/frontend-mod
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -51,11 +51,16 @@ function renderContent(
 			workflowName: 'Daily report',
 			tab: 'activity',
 			pendingAction: null,
-			canPublish: true,
+			publishAccess: 'allowed',
 			canChat: true,
 			...props,
 		},
 	});
+}
+
+async function openMenu(name: 'Review' | 'Continue in…') {
+	await userEvent.click(screen.getByRole('button', { name }));
+	return await screen.findByRole('menu');
 }
 
 beforeEach(() => {
@@ -82,78 +87,114 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByRole('tab', { name: 'Trace' })).not.toBeInTheDocument();
 	});
 
-	it('offers publishing, the editor, and discard for a ready fix', async () => {
-		const user = userEvent.setup();
-		const { getByRole, getByTestId, queryByRole, queryByText, emitted } = renderContent({
-			canChat: false,
-		});
+	it('offers publishing and both continuations for a ready fix', async () => {
+		const { getByRole, getByTestId, emitted } = renderContent();
 
 		expect(getByTestId('self-healing-status-card')).toHaveTextContent(/^StatusFix ready$/);
-
-		await user.click(getByRole('button', { name: 'Apply and publish' }));
-		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
-		await user.click(getByRole('button', { name: 'Discard' }));
-
-		expect(queryByRole('button', { name: /open in chat/i })).not.toBeInTheDocument();
+		const menu = await openMenu('Review');
 		expect(
-			queryByText('Chat is unavailable. You can still review the report.'),
-		).not.toBeInTheDocument();
-		expect(emitted('action')).toEqual([['approve-and-publish'], ['editor'], ['dismiss']]);
-	});
+			within(menu)
+				.getAllByRole('menuitem')
+				.map((item) => item.textContent?.trim()),
+		).toEqual(['Apply and publish', 'Continue with Assistant', 'Continue with Editor']);
+		expect(menu).toHaveTextContent(
+			'Continuing saves the changes to the workflow draft. It does not publish them.',
+		);
+		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Apply and publish' }));
+		await userEvent.click(getByRole('button', { name: 'Discard and close' }));
 
-	it('keeps editing available when publication is not allowed', async () => {
-		const user = userEvent.setup();
-		const { getByRole, getByText, emitted } = renderContent({ canPublish: false });
-
-		expect(getByRole('button', { name: 'Apply and publish' })).toBeDisabled();
-		expect(getByText('Publish permission is required')).toBeInTheDocument();
-		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
-		expect(emitted('action')).toEqual([['editor']]);
-	});
-
-	it('disables every fix decision while a decision is pending', async () => {
-		const { getByRole, emitted } = renderContent({ pendingAction: 'editor' });
-
-		for (const name of ['Apply and publish', 'Apply and open in editor', 'Discard']) {
-			expect(getByRole('button', { name })).toBeDisabled();
-		}
-		await userEvent.click(getByRole('button', { name: 'Discard' }));
-		expect(emitted('action')).toBeUndefined();
+		expect(emitted('action')).toEqual([['approve-and-publish'], ['dismiss']]);
 	});
 
 	it.each([
-		{ outcome: 'needs_you', proposal: null },
-		{ outcome: 'needs_you', proposal: suggestion({ resultKind: 'needs_you' }) },
-	] as const)(
-		'offers chat and discard for $outcome and labels suggested changes explicitly',
-		async ({ outcome, proposal }) => {
+		['Continue with Assistant', 'chat'],
+		['Continue with Editor', 'editor'],
+	])('emits %s from the Review menu', async (name, action) => {
+		const { emitted } = renderContent();
+
+		const menu = await openMenu('Review');
+		await userEvent.click(within(menu).getByRole('menuitem', { name }));
+
+		expect(emitted('action')).toEqual([[action]]);
+	});
+
+	it('disables publishing and explains why when publication is not allowed', async () => {
+		renderContent({ publishAccess: 'denied' });
+
+		const menu = await openMenu('Review');
+
+		expect(within(menu).getByRole('menuitem', { name: 'Apply and publish' })).toHaveAttribute(
+			'data-disabled',
+		);
+		expect(
+			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
+		).not.toHaveAttribute('data-disabled');
+		expect(menu).toHaveTextContent('Publish permission is required to apply and publish.');
+	});
+
+	it('disables publishing without a permission note while access is unknown', async () => {
+		renderContent({ publishAccess: 'unknown' });
+
+		const menu = await openMenu('Review');
+
+		expect(within(menu).getByRole('menuitem', { name: 'Apply and publish' })).toHaveAttribute(
+			'data-disabled',
+		);
+		expect(menu).not.toHaveTextContent('Publish permission is required');
+	});
+
+	it('disables every decision while a decision is pending', () => {
+		const { getByRole } = renderContent({ pendingAction: 'editor' });
+
+		expect(getByRole('button', { name: 'Discard and close' })).toBeDisabled();
+		expect(getByRole('button', { name: /Review/ })).toBeDisabled();
+	});
+
+	it.each([
+		{ proposal: null, notice: false },
+		{ proposal: suggestion({ resultKind: 'needs_you' }), notice: true },
+	])(
+		'offers both continuations without publishing for Needs attention',
+		async ({ proposal, notice }) => {
 			const { getByRole, queryByRole, getByTestId, emitted } = renderContent({
-				detail: result({ outcome, suggestion: proposal }),
+				detail: result({ outcome: 'needs_you', suggestion: proposal }),
 			});
 
-			expect(getByTestId('self-healing-outcome-notice')).toBeInTheDocument();
-			expect(getByTestId('self-healing-status-card')).toHaveTextContent(
-				outcome === 'needs_you' ? /^StatusNeeds attention$/ : /^StatusCould not fix$/,
+			expect(getByTestId('self-healing-outcome-notice')).toHaveTextContent(
+				'Assistant needs your feedback',
 			);
-			expect(queryByRole('button', { name: 'Apply and publish' })).not.toBeInTheDocument();
-			expect(queryByRole('button', { name: /open in editor/i })).not.toBeInTheDocument();
+			expect(getByTestId('self-healing-status-card')).toHaveTextContent(/^StatusNeeds attention$/);
+			expect(queryByRole('button', { name: /Review/ })).not.toBeInTheDocument();
 			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposal !== null);
-			await userEvent.click(
-				getByRole('button', { name: proposal ? 'Apply and open in chat' : 'Open in chat' }),
-			);
-			await userEvent.click(getByRole('button', { name: 'Discard' }));
-			expect(emitted('action')).toEqual([['chat'], ['dismiss']]);
+
+			const menu = await openMenu('Continue in…');
+			expect(
+				within(menu)
+					.getAllByRole('menuitem')
+					.map((item) => item.textContent?.trim()),
+			).toEqual(['Continue with Assistant', 'Continue with Editor']);
+			expect(menu.textContent?.includes('Continuing')).toBe(notice);
+			await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Editor' }));
+			await userEvent.click(getByRole('button', { name: 'Discard and close' }));
+
+			expect(emitted('action')).toEqual([['editor'], ['dismiss']]);
 		},
 	);
 
-	it('offers only chat for an automatically closed cannot-fix result', async () => {
-		const { getByRole, getByTestId, queryByRole, emitted } = renderContent({
-			detail: result({ outcome: 'could_not_fix', reviewState: 'closed', suggestion: null }),
+	it('shows a closed Could not fix result without review actions', () => {
+		const { getByTestId, queryByRole } = renderContent({
+			detail: result({ outcome: 'could_not_fix', suggestion: null, reviewState: 'closed' }),
 		});
-		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed');
-		expect(queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
-		await userEvent.click(getByRole('button', { name: 'Open in chat' }));
-		expect(emitted('action')).toEqual([['chat']]);
+
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent(/^StatusCould not fix$/);
+		expect(getByTestId('self-healing-outcome-notice')).toHaveTextContent('closed automatically');
+		expect(getByTestId('self-healing-report')).toBeInTheDocument();
+		expect(getByTestId('self-healing-activity')).toHaveTextContent(
+			/System\s*\|\s*Closed automatically because no fix was possible/,
+		);
+		expect(queryByRole('button', { name: 'Discard and close' })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: /Continue in|Review/ })).not.toBeInTheDocument();
+		expect(queryByRole('tab', { name: 'Changes' })).not.toBeInTheDocument();
 	});
 
 	it('shows a closed result in its status and activity', () => {
@@ -177,15 +218,32 @@ describe('SelfHealingResultContent', () => {
 		);
 	});
 
-	it('retains the report and discard when chat is unavailable', () => {
-		const { getByRole, getByText } = renderContent({
+	it('keeps the editor and discard available when chat is unavailable', async () => {
+		const { getByRole } = renderContent({
 			detail: result({ outcome: 'needs_you', suggestion: null }),
 			canChat: false,
 		});
 
-		expect(getByRole('button', { name: 'Open in chat' })).toBeDisabled();
-		expect(getByRole('button', { name: 'Discard' })).toBeEnabled();
-		expect(getByText('Chat is unavailable. You can still review the report.')).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Discard and close' })).toBeEnabled();
+		const menu = await openMenu('Continue in…');
+		expect(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' })).toHaveAttribute(
+			'data-disabled',
+		);
+		expect(
+			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
+		).not.toHaveAttribute('data-disabled');
+		expect(menu).toHaveTextContent(
+			'Assistant is unavailable. You can still continue in the editor.',
+		);
+	});
+
+	it.each([
+		{ reviewState: 'applied', label: 'Applied' },
+		{ reviewState: 'dismissed', label: 'Closed' },
+	] as const)('uses the closed status color for $reviewState results', ({ reviewState, label }) => {
+		const { getByRole } = renderContent({ detail: result({ reviewState }) });
+
+		expect(getByRole('img', { name: label }).className).toMatch(/closed/);
 	});
 
 	it('does not claim that applied changes are published', () => {
@@ -201,9 +259,9 @@ describe('SelfHealingResultContent', () => {
 	it.each(['applied', 'outdated', 'discarded', 'dismissed'] as const)(
 		'keeps %s results read-only',
 		(reviewState) => {
-			const { getByTestId, queryByTestId, queryByRole, queryByText } = renderContent({
+			const { getByTestId, queryByTestId, queryByRole } = renderContent({
 				detail: result({ reviewState }),
-				canPublish: false,
+				publishAccess: 'denied',
 				canChat: false,
 			});
 
@@ -214,19 +272,8 @@ describe('SelfHealingResultContent', () => {
 			}
 			expect(getByTestId('self-healing-report')).toBeInTheDocument();
 			expect(getByTestId('self-healing-activity')).toBeInTheDocument();
-			for (const name of [
-				'Apply and publish',
-				'Apply and open in editor',
-				'Apply and open in chat',
-				'Open in chat',
-				'Discard',
-			]) {
-				expect(queryByRole('button', { name })).not.toBeInTheDocument();
-			}
-			expect(queryByText('Publish permission is required')).not.toBeInTheDocument();
-			expect(
-				queryByText('Chat is unavailable. You can still review the report.'),
-			).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Discard and close' })).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: /Review/ })).not.toBeInTheDocument();
 		},
 	);
 
@@ -251,15 +298,15 @@ describe('SelfHealingResultContent', () => {
 		expect(diffProps?.targetSnapshot).not.toHaveProperty('createdAt');
 	});
 
-	it('keeps partial-apply chat available while reviewing the saved changes', async () => {
-		const { getByRole, queryByRole, queryByTestId, emitted } = renderContent({
+	it('keeps continuation available while reviewing the suggested changes', async () => {
+		const { queryByTestId, emitted } = renderContent({
 			detail: result({ outcome: 'needs_you', suggestion: suggestion({ resultKind: 'needs_you' }) }),
 			tab: 'changes',
 		});
 
 		expect(queryByTestId('self-healing-activity-panel')).not.toBeInTheDocument();
-		expect(queryByRole('button', { name: /open in editor/i })).not.toBeInTheDocument();
-		await userEvent.click(getByRole('button', { name: 'Apply and open in chat' }));
+		const menu = await openMenu('Continue in…');
+		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' }));
 		expect(emitted('action')).toEqual([['chat']]);
 	});
 

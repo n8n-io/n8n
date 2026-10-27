@@ -17,7 +17,7 @@ function toWorkflow(
 	return toDiffWorkflow({
 		id: props.workflowId,
 		name: props.workflowName,
-		// Graph-only snapshots need separate canvas document identities.
+		// Graph-only snapshots still need separate canvas document identities.
 		versionId: snapshot.versionId ?? side,
 		createdAt: snapshot.createdAt,
 		nodes: snapshot.nodes,

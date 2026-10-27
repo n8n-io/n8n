@@ -117,6 +117,8 @@ const usageRows = computed(() => {
 					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: detail.workflowId } }"
 					theme="text"
 					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
 					data-test-id="self-healing-workflow-link"
 				>
 					<span :class="$style.link">
@@ -137,6 +139,8 @@ const usageRows = computed(() => {
 					}"
 					theme="text"
 					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
 					data-test-id="self-healing-execution-link"
 				>
 					{{
@@ -222,6 +226,11 @@ const usageRows = computed(() => {
 .link {
 	align-items: flex-start;
 	gap: var(--spacing--4xs);
+}
+
+.plainLink:hover,
+.plainLink:focus-visible {
+	text-decoration: underline;
 }
 
 .workflowIcon {

@@ -213,7 +213,7 @@ n8n-cli promotion-environment connect <promoteId>
 n8n-cli promotion-environment connect <applyId>
 
 # 4. Promote from this instance, or apply to it.
-n8n-cli promotion-environment promote <promoteId> -m "Promote team projects"
+n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
 ```
 
@@ -295,7 +295,7 @@ Key points:
   `preflight`.
 - The `--expected-*` flags go together: pass all three or none. The commit SHA
   must be the full SHA.
-- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+- API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 
 ## Other

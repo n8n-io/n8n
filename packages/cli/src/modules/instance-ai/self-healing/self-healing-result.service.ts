@@ -8,6 +8,7 @@ import {
 	type SelfHealingResultActionResponse,
 	type WorkflowSuggestionActionResult,
 	type WorkflowSuggestionAppliedVersion,
+	type WorkflowSuggestionBaseline,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import { RoleService } from '@n8n/backend-services';
@@ -20,7 +21,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
 
@@ -51,7 +52,6 @@ export function getSelfHealingReviewState(
 	result: Pick<SelfHealingResult, 'dismissedAt' | 'outcome'>,
 	suggestion: Pick<WorkflowSuggestionProposalDetail, 'closedReason'> | null,
 ): SelfHealingResultDetail['reviewState'] {
-	if (suggestion?.closedReason === 'applied') return 'applied';
 	if (result.dismissedAt) return 'dismissed';
 	if (result.outcome === 'could_not_fix') return 'closed';
 	return suggestion?.closedReason ?? 'open';
@@ -106,21 +106,34 @@ export class SelfHealingResultService {
 
 	async complete({
 		investigationId,
+		baseline,
 		signal,
 		...input
-	}: SelfHealingResultInput & { investigationId: string; signal?: AbortSignal }) {
+	}: SelfHealingResultInput & {
+		investigationId: string;
+		baseline: WorkflowSuggestionBaseline;
+		signal?: AbortSignal;
+	}) {
 		signal?.throwIfAborted();
 		const investigation = await this.investigations.findInvestigation(investigationId);
 		if (!investigation) return null;
 		if (investigation.resultId) {
 			return await this.results.getResult(investigation.resultId, investigation);
 		}
+		if (
+			baseline.workflowId !== investigation.workflowId ||
+			baseline.projectId !== investigation.projectId ||
+			baseline.backgroundUserId !== investigation.backgroundUserId ||
+			baseline.expectedBaseline.publishedVersionId !== investigation.publishedVersionId
+		) {
+			throw new UnexpectedError('The baseline does not belong to the investigation.');
+		}
 
 		const {
 			content,
 			completedAt,
 			suggestion: prepared,
-		} = await this.prepareResult(investigation, input);
+		} = await this.prepareResult(investigation, baseline, input);
 		signal?.throwIfAborted();
 
 		return await this.txRunner.run({}, async (ctx) => {
@@ -151,7 +164,7 @@ export class SelfHealingResultService {
 			}
 
 			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
-			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
+			await this.suggestions.requireCurrentBaseline(baseline, ctx);
 			signal?.throwIfAborted();
 
 			let suggestionId: string | null = null;
@@ -183,13 +196,13 @@ export class SelfHealingResultService {
 
 	private async prepareResult(
 		investigation: SelfHealingInvestigation,
+		baseline: WorkflowSuggestionBaseline,
 		input: SelfHealingResultInput,
 	) {
 		if (investigation.finishedAt) {
 			throw new ConflictError('The self-healing investigation has already finished.');
 		}
 
-		const { baseline } = investigation;
 		const { output, candidate } = input;
 
 		const content = selfHealingResultContentSchema.parse({
@@ -310,15 +323,11 @@ export class SelfHealingResultService {
 			resultId,
 		);
 		const suggestionId = result.suggestionId;
-
-		if (result.dismissedAt) {
-			throw new ConflictError('This result is already closed.');
-		}
-		if (!suggestionId || (action === 'approve-and-publish' && result.outcome !== 'fix_ready')) {
-			throw new ConflictError("This action isn't available for this result.");
+		const allowedOutcomes = action === 'apply' ? ['fix_ready', 'needs_you'] : ['fix_ready'];
+		if (!suggestionId || !allowedOutcomes.includes(result.outcome)) {
+			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
 
-		const options = { requirePending: true };
 		let actionResult: WorkflowSuggestionActionResult;
 		if (action === 'approve-and-publish') {
 			actionResult = await this.actions.approveAndPublish(
@@ -327,7 +336,6 @@ export class SelfHealingResultService {
 				workflowId,
 				suggestionId,
 				clientId,
-				options,
 			);
 		} else {
 			actionResult = await this.actions.apply(
@@ -336,16 +344,18 @@ export class SelfHealingResultService {
 				workflowId,
 				suggestionId,
 				clientId,
-				options,
 			);
 		}
 
-		const updatedResult = await this.getDetail(reviewer, projectId, workflowId, resultId);
+		const { publishError, ...suggestion } = actionResult;
+		const execution = await this.executionReferences.getReference(
+			reviewer,
+			workflowId,
+			result.executionId,
+		);
 		return {
-			...updatedResult,
-			...(actionResult.publishError !== undefined
-				? { publishError: actionResult.publishError }
-				: {}),
+			...this.toDetail(result, suggestion, execution),
+			...(publishError !== undefined ? { publishError } : {}),
 		};
 	}
 
@@ -358,7 +368,6 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-
 			if (result.dismissedAt) return 'already_closed';
 
 			const suggestionId = result.suggestionId;
@@ -370,28 +379,29 @@ export class SelfHealingResultService {
 					suggestionId,
 					ctx,
 				);
-
 				if (discardOutcome !== 'discarded') return discardOutcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 
-			if (result.outcome === 'needs_you') {
-				const dismissed = await this.results.dismissResult(result.id, user.id, ctx);
-				if (!dismissed) return 'already_closed';
+			if (
+				result.outcome === 'needs_you' &&
+				!(await this.results.dismissResult(result.id, user.id, ctx))
+			) {
+				throw new ConflictError('This result is already closed.');
 			}
-
-			return 'discarded';
+			return 'dismissed';
 		});
 
 		// Commit outdated reconciliation before rejecting a stale project route.
 		if (outcome === 'unavailable') {
-			throw new NotFoundError('This result is no longer available in this project.');
+			throw new NotFoundError(
+				'This result is no longer available in this project. Refresh the page.',
+			);
 		}
 		if (outcome === 'already_closed') {
 			throw new ConflictError('This result is already closed.');
 		}
-
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}
 
@@ -418,7 +428,9 @@ export class SelfHealingResultService {
 	) {
 		const owner = await this.ownership.getWorkflowOwningProject(workflowId, ctx);
 		if (owner?.id !== projectId) {
-			throw new NotFoundError('This result is no longer available in this project.');
+			throw new NotFoundError(
+				'This result is no longer available in this project. Refresh the page.',
+			);
 		}
 	}
 }
