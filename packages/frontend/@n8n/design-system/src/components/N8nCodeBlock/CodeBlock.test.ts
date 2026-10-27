@@ -24,6 +24,20 @@ describe('N8nCodeBlock', () => {
 		setClipboard({ writeText });
 	});
 
+	it('normalizes the language', () => {
+		const { container } = render(CodeBlock, {
+			props: { code: 'const active = true;', language: ' TypeScript ' },
+		});
+		expect(container.querySelector('.hljs-keyword')).toHaveTextContent('const');
+	});
+
+	it('escapes unknown languages', () => {
+		const code = '<img src=x onerror=alert(1)> & text';
+		const { container } = render(CodeBlock, { props: { code, language: 'unknown-language' } });
+		expect(container.querySelector('code')?.textContent).toBe(code);
+		expect(container.querySelector('code img')).toBeNull();
+	});
+
 	it('renders highlighted code', () => {
 		const { container } = render(CodeBlock, {
 			props: { code: 'const active = true;', language: 'typescript' },
@@ -41,9 +55,24 @@ describe('N8nCodeBlock', () => {
 
 		expect(writeText).toHaveBeenCalledWith(code);
 		expect(emitted('copy')).toEqual([[code]]);
-		expect(ElNotification).toHaveBeenCalledWith(
-			expect.objectContaining({ title: 'Copied to clipboard', type: 'success' }),
-		);
+		expect(getByRole('button', { name: 'Copied to clipboard' })).toBeInTheDocument();
+		expect(ElNotification).not.toHaveBeenCalled();
+	});
+
+	it('resets copy feedback after two seconds', async () => {
+		vi.useFakeTimers();
+		try {
+			const { getByRole, unmount } = render(CodeBlock, { props: { code: 'example' } });
+
+			await fireEvent.click(getByRole('button', { name: 'Copy code' }));
+			expect(getByRole('button', { name: 'Copied to clipboard' })).toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(getByRole('button', { name: 'Copy code' })).toBeInTheDocument();
+			unmount();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it.each([

@@ -482,10 +482,7 @@ onUpdated(() => {
 
 <template>
 	<div ref="wrapperRef" :class="$style.markdown" @click="handleLinkClick">
-		<ChatMarkdown
-			:content="source.content"
-			:options="{ math: true, footnotes: 'pill', codeActions: true }"
-		/>
+		<ChatMarkdown :content="source.content" :options="{ math: true, footnotes: 'pill' }" />
 	</div>
 </template>
 
