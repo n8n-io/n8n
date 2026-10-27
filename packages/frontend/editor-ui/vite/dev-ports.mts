@@ -54,6 +54,9 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 
 		return {
 			server: {
+				hmr: {
+					port: 6768,
+				},
 				// Let Node use IPv6 when available and fall back to IPv4.
 				host: true,
 				port: editorPort,
