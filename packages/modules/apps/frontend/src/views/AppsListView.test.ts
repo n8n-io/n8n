@@ -185,7 +185,7 @@ describe('AppsListView', () => {
 
 	it('moves the layout to the previous page when a delete empties the page', async () => {
 		vi.mocked(listApps).mockResolvedValue({ data: [app('51')], count: 51 });
-		const { findAllByTestId, getByTestId } = renderComponent();
+		const { findAllByTestId, getByTestId, queryByTestId } = renderComponent();
 		await findAllByTestId('app-card');
 		await userEvent.click(getByTestId('sort'));
 		await waitFor(() =>
@@ -195,17 +195,37 @@ describe('AppsListView', () => {
 				expect.objectContaining({ skip: 50 }),
 			),
 		);
+		let resolvePrevious: (value: { data: AppResponse[]; count: number }) => void = () => {};
+		vi.mocked(listApps).mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolvePrevious = resolve)),
+		);
 
 		await userEvent.click(getByTestId('delete-51'));
 
 		expect(setCurrentPage).toHaveBeenCalledWith(1);
-		await waitFor(() =>
-			expect(listApps).toHaveBeenLastCalledWith(
-				expect.anything(),
-				undefined,
-				expect.objectContaining({ skip: 0 }),
-			),
+		expect(listApps).toHaveBeenLastCalledWith(
+			expect.anything(),
+			undefined,
+			expect.objectContaining({ skip: 0 }),
 		);
+		expect(queryByTestId('apps-empty-state')).not.toBeInTheDocument();
+		resolvePrevious({ data: [app('1'), app('2')], count: 50 });
+		await waitFor(() => expect(getByTestId('delete-2')).toBeInTheDocument());
+	});
+
+	it('drops a response that is still in flight when a new fetch is scheduled', async () => {
+		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
+		let resolveFirst: (value: { data: AppResponse[]; count: number }) => void = () => {};
+		vi.mocked(listApps).mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveFirst = resolve)),
+		);
+		const { getByTestId, queryAllByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('sort'));
+		resolveFirst({ data: [app('1'), app('2'), app('3')], count: 3 });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(queryAllByTestId('app-card')).toHaveLength(0);
 	});
 
 	it('removes a deleted app and reloads the list', async () => {

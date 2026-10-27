@@ -68,6 +68,13 @@ const fetchAppsDebounced = debounce(fetchApps, {
 	trailing: true,
 });
 
+// Invalidate now, not when the debounced fetch starts: a response that is still in flight
+// must not overwrite the list while the new request waits.
+async function scheduleFetch() {
+	latestFetch.invalidate();
+	await fetchAppsDebounced();
+}
+
 // The layout emits `update:pagination-and-sort` right before it calls `initialize`.
 async function initialize() {
 	fetchAppsDebounced.cancel();
@@ -77,7 +84,7 @@ async function initialize() {
 async function onSearchUpdated(value: string) {
 	filters.value = { ...filters.value, search: value };
 	currentPage.value = 1;
-	await fetchAppsDebounced();
+	await scheduleFetch();
 }
 
 async function onPaginationAndSortUpdated(payload: {
@@ -90,17 +97,18 @@ async function onPaginationAndSortUpdated(payload: {
 	if (payload.sort && isSortKey(payload.sort)) {
 		currentSort.value = APPS_SORT_MAP[payload.sort];
 	}
-	await fetchAppsDebounced();
+	await scheduleFetch();
 }
 
 async function onAppDeleted(appId: string) {
-	apps.value = apps.value.filter((app) => app.id !== appId);
-	totalApps.value = Math.max(0, totalApps.value - 1);
-	if (apps.value.length === 0 && currentPage.value > 1 && layout.value) {
-		// Emits `update:pagination-and-sort`, which refetches.
+	if (apps.value.length === 1 && currentPage.value > 1 && layout.value) {
+		// Keep the card until the previous page loads, so the empty state does not flash.
 		await layout.value.setCurrentPage(currentPage.value - 1);
+		await initialize();
 		return;
 	}
+	apps.value = apps.value.filter((app) => app.id !== appId);
+	totalApps.value = Math.max(0, totalApps.value - 1);
 	await fetchApps();
 }
 </script>
