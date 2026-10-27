@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { scopeOf } from '@/modules/skills/skill.entity';
@@ -268,6 +269,66 @@ export class AgentSkillRefsService {
 		return toSkillRefs(next);
 	}
 
+	/**
+	 * Applies the skills of an agent package. Each skill keeps its id and belongs to the
+	 * agent's project. A skill that the project has already gets the package content, so
+	 * the user needs the edit permission on it. A new skill needs the create permission.
+	 */
+	async importDraftSkills(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
+		refs: AgentSkillRefs,
+		bodies: Record<string, AgentSkill>,
+		user: User,
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		const imported: AgentJsonSkillConfig[] = [];
+		const ids = (refs ?? []).map(({ id }) => id);
+		await this.skillRepository.lockForEdit(ids, ctx);
+		const existing = new Map(
+			(await this.skillRepository.findByIds(ids, ctx)).map((skill) => [skill.id, skill]),
+		);
+		const target = { projectId: agent.projectId };
+		for (const skill of existing.values()) {
+			if (skill.projectId !== target.projectId) {
+				throw new ConflictError('Imported skill ID belongs to another project or scope');
+			}
+		}
+		if (existing.size > 0) await this.skillService.assertCanEdit(user, [...existing.keys()], ctx);
+		if (ids.some((id) => !existing.has(id))) await this.skillService.assertCanCreate(user, target);
+		// Detach old refs to prevent partial Agent snapshots during skill saves.
+		await this.writeDependencies(agent.id, [], ctx);
+		for (const ref of refs ?? []) {
+			const skill = existing.get(ref.id);
+			if (skill) {
+				const current = await this.skillsForRefs([{ type: 'skill', id: ref.id }], ctx);
+				await this.skillService.save(
+					ref.id,
+					{
+						...bodies[ref.id],
+						references: bodies[ref.id].references ?? [],
+						baseSkillHash: getAgentSkillHash(current[ref.id]),
+					},
+					user.id,
+					ctx,
+				);
+			} else {
+				await this.skillService.create(
+					{
+						id: ref.id,
+						target,
+						skill: bodies[ref.id],
+						source: 'agent',
+						createdById: user.id,
+					},
+					ctx,
+				);
+			}
+			imported.push({ type: 'skill', id: ref.id });
+		}
+		await this.replaceDraftRefs(agent, imported, ctx);
+		return imported;
+	}
+
 	async createSkills(
 		agent: Pick<Agent, 'id' | 'projectId'>,
 		skills: AgentSkill[],
@@ -297,7 +358,7 @@ export class AgentSkillRefsService {
 	/**
 	 * The hub version id of each draft ref, keyed by skill id, in draft order. Pin
 	 * the versions once the `agent_history` row exists (see `pinVersion`). Call it in
-	 * the publish transaction: it takes the publish lock on the skills.
+	 * the transaction that saves the draft.
 	 */
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema'>,
@@ -306,15 +367,15 @@ export class AgentSkillRefsService {
 		if (!agent.schema) return new Map();
 		const refs = await this.refsForDraft(agent, ctx);
 		if (refs.length === 0) return new Map();
-		const versionByRef = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
+		const versionByRef = await this.skillService.snapshotForSave(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
+			throw new UserError(`Cannot save agent with missing skills: ${missing.join(', ')}`);
 		}
 		return versionByRef;
 	}
 
-	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
+	/** Pin the resolved skills after the history row exists, in the same transaction. */
 	async pinVersion(
 		agentVersionId: string,
 		pins: Map<string, string>,
@@ -322,6 +383,18 @@ export class AgentSkillRefsService {
 	): Promise<void> {
 		if (pins.size === 0) return;
 		await this.agentSkillUsage.pinForPublish(agentVersionId, pins, ctx);
+	}
+
+	async assertVersionAccess(
+		agent: Pick<Agent, 'id' | 'projectId'>,
+		version: AgentHistory,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.agentSkillUsage.assertVersionAccess(
+			agent,
+			await this.refsForVersion(version, ctx),
+			ctx,
+		);
 	}
 
 	async availabilityOf(

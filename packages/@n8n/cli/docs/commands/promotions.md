@@ -8,7 +8,7 @@ Setup has two parts:
 
 | Part | Command topic | What it holds |
 |------|---------------|---------------|
-| Provider | `promotion-provider` | The credentials for a Git host |
+| Provider | `promotion-provider` | The credentials for a Git host. A GitLab provider can also list its repositories and branches. |
 | Environment | `promotion-environment` | One direction: the repository, the provider, and the branch settings |
 
 An environment has one direction: `promote` pushes to Git, `apply` imports from
@@ -18,9 +18,9 @@ for each direction. A direction without a project environment uses the instance
 environment.
 
 Requires the Promotions feature to be licensed. The API key scopes are named
-`gitConnection:*`.
+`promotions:*`.
 
-## Setup example
+## Setup example: Git over SSH
 
 ```bash
 # 1. Create a provider. An SSH provider returns a public key.
@@ -67,6 +67,47 @@ n8n-cli promotion-environment apply env-2
 }
 ```
 
+## Setup example: GitLab
+
+A GitLab provider lists the repositories and branches that its token can
+access. Use these lists to fill in the environment JSON, so you do not have to
+type the remote URL or the branch names.
+
+```bash
+# 1. Create a GitLab provider. Keep the token in a file, not on the command line.
+PROVIDER_ID=$(n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only)
+
+# 2. Find the repository. Note its `remoteUrl` and `fullPath`.
+n8n-cli promotion-provider list-repositories "$PROVIDER_ID" --search=flows --json
+
+# 3. List the branches of that repository. The default branch has `isDefault: true`.
+n8n-cli promotion-provider list-branches "$PROVIDER_ID" acme/flows --json
+
+# 4. Create an environment for each direction. Use the `remoteUrl` from step 2
+#    and a branch name from step 3. Then connect, promote, and apply as in the
+#    SSH example.
+n8n-cli promotion-environment create --file=promote.json
+n8n-cli promotion-environment connect env-1
+```
+
+Steps 2 and 3 use `--json` because the table shortens values longer than 60
+characters and adds `...`. A remote URL in a nested GitLab group is often
+longer. JSON output shows the full values, so copy them from there.
+
+`gitlab-provider.json` for step 1:
+
+```json
+{
+  "name": "GitLab",
+  "type": "gitlab",
+  "config": { "schemaVersion": 1, "baseUrl": "https://gitlab.example.com" },
+  "auth": { "authType": "token", "password": "<GitLab access token>" }
+}
+```
+
+Give the token the `read_api` and `write_repository` scopes. Protected branches
+can require the Maintainer role to push.
+
 ## `promotion-provider create`
 
 Create a provider from JSON. Read the JSON from stdin or from a file. Secrets
@@ -77,17 +118,22 @@ stay out of the command line this way.
 echo '{"name":"GitHub","type":"git","auth":{"authType":"ssh-key","keyType":"ed25519"}}' \
   | n8n-cli promotion-provider create --stdin
 
-# HTTP(S). `token` means a username and a password, not a Git host API token.
+# HTTP(S). For `git`, `token` means a username and a password, not a Git host API token.
 n8n-cli promotion-provider create --file=provider.json
+
+# GitLab. `token` is a GitLab access token.
+n8n-cli promotion-provider create --file=gitlab-provider.json
 ```
 
 | Field | Description |
 |-------|-------------|
 | `name` | Display name. |
-| `type` | `git`. |
-| `auth.authType` | `ssh-key` or `token`. |
+| `type` | `git` for any Git remote. `gitlab` for a GitLab instance. |
+| `config.baseUrl` | For `gitlab`: required. The GitLab URL, for example `https://gitlab.example.com`. Set `config.schemaVersion` to `1`. A `git` provider does not take a `config`. |
+| `auth.authType` | `ssh-key` or `token` for `git`. Only `token` for `gitlab`. |
 | `auth.keyType` | For `ssh-key`: `ed25519` (default) or `rsa`. |
-| `auth.username`, `auth.password` | For `token`: the HTTP(S) credentials. Both are required. |
+| `auth.username`, `auth.password` | For `git` with `token`: the HTTP(S) credentials. Both are required. |
+| `auth.password` | For `gitlab`: the GitLab access token. n8n ignores `auth.username` and uses `n8n` as the Git username. |
 
 The response holds the provider fields at the top level, with `publicKey` beside
 them. `publicKey` is `null` for a `token` provider. Add an SSH public key to the
@@ -124,6 +170,48 @@ you rotate the key.
 
 `delete` fails while an environment still uses the provider.
 
+## `promotion-provider list-repositories` / `list-branches`
+
+List the repositories and branches that a GitLab provider can access. No
+environment is necessary.
+
+```bash
+n8n-cli promotion-provider list-repositories prov-1
+n8n-cli promotion-provider list-repositories prov-1 --search=flows --limit=10
+n8n-cli promotion-provider list-branches prov-1 acme/flows
+n8n-cli promotion-provider list-branches prov-1 acme/flows --search=release
+```
+
+| Flag | Description |
+|------|-------------|
+| `--search` | For `list-repositories`: show only repositories whose name or namespace matches. For `list-branches`: show only branches whose name matches. |
+| `--limit` | Maximum number of results. Without it, the CLI reads every page. |
+
+`list-repositories` shows `id`, `name`, `fullPath`, `remoteUrl`, and
+`defaultBranch`. It lists the repositories where the token has at least the
+Developer role. Use `remoteUrl` as `remote.remoteUrl` of an environment.
+`defaultBranch` is `null` (`-` in the table) for a repository without commits.
+
+The table shortens values longer than 60 characters and adds `...`. Use
+`--json` to see the full `fullPath` and `remoteUrl` values before you copy them.
+
+`list-branches` shows `name` and `isDefault`. Give the repository as one of
+these values. Do not URL-encode it.
+
+- The `fullPath` from `list-repositories`, for example `acme/flows`.
+- The `id` from `list-repositories`.
+- The `remote.repositoryPath` of a GitLab environment.
+
+```bash
+REPOSITORY=$(n8n-cli promotion-environment get env-1 --json | jq -r '.remote.repositoryPath')
+n8n-cli promotion-provider list-branches prov-1 "$REPOSITORY"
+```
+
+`--format=id-only` prints the repository IDs or the branch names.
+
+A `git` provider has no Git host API, so both commands fail with an error. The
+API key needs the `gitConnection:discover` scope.
+
 ## `promotion-environment create`
 
 Create an environment for one direction on an existing provider, from JSON.
@@ -137,7 +225,7 @@ n8n-cli promotion-environment create --file=promote.json
 | `name` | Display name. |
 | `scope` | `instance` covers the whole instance. `projects` covers the linked projects. The instance can have one environment for each direction. |
 | `providerId` | The provider to use. |
-| `remote.remoteUrl` | The SSH or HTTP(S) remote URL. Do not put credentials in the URL. |
+| `remote.remoteUrl` | The SSH or HTTP(S) remote URL. Do not put credentials in the URL. For `gitlab`, use a `remoteUrl` from `promotion-provider list-repositories`. |
 | `direction` | `promote` or `apply`. |
 | `settings.branchName` | For `apply`: the branch to import from. |
 | `settings.baseBranchName` | For `promote`: the branch to push to. |
@@ -229,8 +317,8 @@ n8n-cli promotion-environment list-changes proj-abc apply
 | `--order` | Sort order: `asc` or `desc`. The default is `asc`. |
 
 For `promote` the rows are what a promotion would send to the branch, and the
-API key needs `gitConnection:push`. For `apply` the rows are what applying the
-branch would change on this instance, and the key needs `gitConnection:pull`.
+API key needs `promotions:promote`. For `apply` the rows are what applying the
+branch would change on this instance, and the key needs `promotions:apply`.
 `commitSha` is the commit the rows were read from. Table output shows the rows
 only. Use `--json` to get the rows and `commitSha` together. Connect the
 environment first. Use the `id` of each row to build a selective promote.
@@ -302,7 +390,7 @@ instance hold in different projects is refused before any write, and nothing is
 imported.
 
 Connect the environment first. This command works on an `instance` Apply
-environment only. The API key needs `gitConnection:pull`.
+environment only. The API key needs `promotions:apply`.
 
 ## `promotion-environment apply-continue`
 
@@ -386,7 +474,7 @@ the `apply-selection-continue` command to run after you resolve the bindings; it
 resends the same workflow ids. With `--json`, the output is the full result for
 each status.
 
-Connect the environment first. The API key needs `gitConnection:pull`. The
+Connect the environment first. The API key needs `promotions:apply`. The
 environment is the project's own Apply environment when it has one, otherwise
 the instance Apply environment.
 

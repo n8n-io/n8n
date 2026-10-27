@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { AgentJsonSkillConfig } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -449,6 +449,73 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('importDraftSkills', () => {
+		const body = { name: 'Imported', description: 'Imported description', instructions: 'Do it.' };
+		const user = mock<User>({ id: 'user-1' });
+		const refs = [{ type: 'skill' as const, id: 'pkg_skill' }];
+
+		beforeEach(() => {
+			agentSkillUsage.checkRefs.mockImplementation(async (_agent, checked) => checked);
+			skillService.create.mockResolvedValue('pkg_skill');
+		});
+
+		it('creates a new skill with its package id in the project of the agent', async () => {
+			skillRepository.findByIds.mockResolvedValue([]);
+
+			await expect(
+				service.importDraftSkills(agent, refs, { pkg_skill: body }, user, ctx),
+			).resolves.toEqual([{ type: 'skill', id: 'pkg_skill' }]);
+
+			expect(skillService.assertCanCreate).toHaveBeenCalledWith(user, { projectId: 'project-1' });
+			expect(skillService.create).toHaveBeenCalledWith(
+				{
+					id: 'pkg_skill',
+					target: { projectId: 'project-1' },
+					skill: body,
+					source: 'agent',
+					createdById: 'user-1',
+				},
+				ctx,
+			);
+		});
+
+		it('refuses a new skill without the create permission in the project', async () => {
+			skillRepository.findByIds.mockResolvedValue([]);
+			skillService.assertCanCreate.mockRejectedValue(new ForbiddenError('No'));
+
+			await expect(
+				service.importDraftSkills(agent, refs, { pkg_skill: body }, user, ctx),
+			).rejects.toThrow(ForbiddenError);
+			expect(skillService.create).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['another project', 'project-2'],
+			['the instance', null],
+		])('refuses a skill id of %s and writes nothing', async (_label, projectId) => {
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'pkg_skill', projectId })]);
+
+			await expect(
+				service.importDraftSkills(agent, refs, { pkg_skill: body }, user, ctx),
+			).rejects.toThrow(ConflictError);
+			expect(agentSkillRepository.replaceDependencies).not.toHaveBeenCalled();
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses to change a skill of the project that the user cannot edit', async () => {
+			skillRepository.findByIds.mockResolvedValue([
+				mock<Skill>({ id: 'pkg_skill', projectId: 'project-1' }),
+			]);
+			skillService.assertCanEdit.mockRejectedValue(new ForbiddenError('No'));
+
+			await expect(
+				service.importDraftSkills(agent, refs, { pkg_skill: body }, user, ctx),
+			).rejects.toThrow(ForbiddenError);
+			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['pkg_skill'], ctx);
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('createSkills', () => {
 		it.each([
 			['project', { projectId: 'project-1' }],
@@ -524,12 +591,12 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillService.snapshotForPublish.mockResolvedValue(versionByRef);
+			skillService.snapshotForSave.mockResolvedValue(versionByRef);
 
 			const snapshot = await service.versionSnapshot(agent, ctx);
 			await service.pinVersion('version-1', snapshot, ctx);
 
-			expect(skillService.snapshotForPublish).toHaveBeenCalledWith(
+			expect(skillService.snapshotForSave).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
@@ -541,10 +608,10 @@ describe('AgentSkillRefsService', () => {
 			agentSkillRepository.findDependencies.mockResolvedValue(
 				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
 			);
-			skillService.snapshotForPublish.mockResolvedValue(new Map());
+			skillService.snapshotForSave.mockResolvedValue(new Map());
 
 			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
-				'Cannot publish agent with missing skills: zeta',
+				'Cannot save agent with missing skills: zeta',
 			);
 		});
 
@@ -553,7 +620,7 @@ describe('AgentSkillRefsService', () => {
 			await service.pinVersion('version-1', snapshot, ctx);
 
 			expect(snapshot).toEqual(new Map());
-			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
+			expect(skillService.snapshotForSave).not.toHaveBeenCalled();
 			expect(agentSkillUsage.pinForPublish).not.toHaveBeenCalled();
 		});
 	});

@@ -3510,9 +3510,13 @@ describe('TelemetryEventRelay', () => {
 				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
+				agentIds: ['agent1', 'agent2'],
 				options: {
 					workflowConflictPolicy: 'new-version',
-					workflowIdPolicy: 'new',
+					conflictPolicy: 'new-version',
+					agentIdPolicy: 'source',
+					agentPublishingPolicy: 'match-source',
+					workflowIdPolicy: 'source',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					credentialConflictPolicy: 'fail',
@@ -3538,6 +3542,7 @@ describe('TelemetryEventRelay', () => {
 					updated: [],
 				},
 				counts: {
+					agents: { created: 1, updated: 1, skipped: 1 },
 					workflows: {
 						created: 2,
 						updated: 1,
@@ -3584,7 +3589,13 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User imported n8n package', {
 				user_id: 'user123',
 				workflow_conflict_policy: 'new-version',
-				workflow_id_policy: 'new',
+				conflict_policy: 'new-version',
+				agent_id_policy: 'source',
+				agent_publishing_policy: 'match-source',
+				agents_created: 1,
+				agents_updated: 1,
+				agents_skipped: 1,
+				workflow_id_policy: 'source',
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				credential_conflict_policy: 'fail',

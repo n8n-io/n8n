@@ -535,6 +535,17 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ 0/0 }}', data, caller)).toBeNaN();
 	});
 
+	it('should keep undefined Map values and Set values', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Map([["a", undefined]]) }}', data, caller)).toStrictEqual(
+			new Map([['a', undefined]]),
+		);
+		expect(evaluator.evaluate('{{ new Set([undefined]) }}', data, caller)).toStrictEqual(
+			new Set([undefined]),
+		);
+	});
+
 	it('should honor locale and options in toLocaleString/toLocaleTimeString', () => {
 		const data = { $json: { n: 1234.5, iso: '2024-01-15T10:30:00.000Z' } };
 
@@ -685,12 +696,28 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ ({ __isNaN: true }) }}', data, caller)).toEqual({
 			__isNaN: true,
 		});
+		expect(evaluator.evaluate('{{ ({ __isUndefined: true }) }}', data, caller)).toEqual({
+			__isUndefined: true,
+		});
 		expect(
 			evaluator.evaluate('{{ ({ nested: { __isSet: true, __values: [1] } }) }}', data, caller),
 		).toEqual({ nested: { __isSet: true, __values: [1] } });
 		expect(evaluator.evaluate('{{ ({ __isEscaped: true, __value: 1 }) }}', data, caller)).toEqual({
 			__isEscaped: true,
 			__value: 1,
+		});
+	});
+
+	it('should keep an __isUndefined key on a class instance property that also has __isError', () => {
+		const data = { $json: {} };
+		const fromClass = (property: string) =>
+			`{{ (() => { class C { constructor() { this.x = ${property}; } } return new C(); })() }}`;
+
+		expect(
+			evaluator.evaluate(fromClass('{ __isError: true, __isUndefined: true }'), data, caller),
+		).toEqual({ x: { __isError: true, __isUndefined: true } });
+		expect(evaluator.evaluate(fromClass('undefined'), data, caller)).toStrictEqual({
+			x: undefined,
 		});
 	});
 
