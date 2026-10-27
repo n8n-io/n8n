@@ -2,7 +2,7 @@
 import { useResizeObserver } from '@vueuse/core';
 import { ElNotification as Notification } from 'element-plus';
 import hljs from 'highlight.js/lib/core';
-import xss from 'xss';
+import * as xss from 'xss';
 import json from 'highlight.js/lib/languages/json';
 import python from 'highlight.js/lib/languages/python';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -13,6 +13,9 @@ import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
+
+/** The default export carries the helpers when xss loads as CommonJS. */
+const { escapeHtml } = { ...xss, ...xss.default };
 
 hljs.registerLanguage('json', json);
 hljs.registerLanguage('python', python);
@@ -67,7 +70,7 @@ const highlightedCode = computed(() => {
 	}
 
 	if (!hljs.getLanguage(normalizedLanguage.value)) {
-		return xss.escapeHtml(props.code.replace(/&/g, '&amp;'));
+		return escapeHtml(props.code.replace(/&/g, '&amp;'));
 	}
 
 	return hljs.highlight(props.code, {
