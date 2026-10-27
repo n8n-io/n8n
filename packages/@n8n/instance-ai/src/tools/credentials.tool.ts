@@ -523,7 +523,8 @@ function getSetupDescription(context: InstanceAiContext): string {
 }
 
 const TEST_CREDENTIAL_DESCRIPTION =
-	'Test whether a credential is valid and can connect to its service.';
+	'Test whether a credential is valid and can connect to its service. ' +
+	'Test a credential only when a node call fails with an authentication or permission error or if the user explicitly asks to test a credential.';
 
 const DELETE_CREDENTIAL_DESCRIPTION =
 	'Permanently delete a credential by ID. The user confirms first unless an admin allows deletion without confirmation.';

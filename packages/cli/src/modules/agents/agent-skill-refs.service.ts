@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
@@ -276,6 +277,52 @@ export class AgentSkillRefsService {
 		}
 		await this.replaceDraftRefs(agent, next, ctx);
 		return toSkillRefs(next);
+	}
+
+	async importDraftSkills(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
+		refs: AgentSkillRefs,
+		bodies: Record<string, AgentSkill>,
+		creatorId: string,
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		const imported: AgentJsonSkillConfig[] = [];
+		const ids = (refs ?? []).map(({ id }) => id);
+		await this.skillRuntime.lockForEdit(ids, ctx);
+		const existing = await this.skillRuntime.findTargets(ids, ctx);
+		for (const ref of refs ?? []) {
+			const target = existing.get(ref.id);
+			if (target) {
+				if (target.agentId !== agent.id || target.projectId !== null) {
+					throw new ConflictError('Imported skill ID belongs to another agent or scope');
+				}
+				const current = await this.skillsForRefs([{ type: 'skill', id: ref.id }], ctx);
+				await this.skillService.saveTrusted(
+					ref.id,
+					{
+						...bodies[ref.id],
+						references: bodies[ref.id].references ?? [],
+						baseSkillHash: getAgentSkillHash(current[ref.id]),
+					},
+					creatorId,
+					ctx,
+				);
+			} else {
+				await this.skillService.createTrusted(
+					{
+						id: ref.id,
+						target: { projectId: null, agentId: agent.id },
+						skill: bodies[ref.id],
+						source: 'agent',
+						createdById: creatorId,
+					},
+					ctx,
+				);
+			}
+			imported.push({ type: 'skill', id: ref.id });
+		}
+		await this.replaceDraftRefs(agent, imported, ctx);
+		return imported;
 	}
 
 	async createSkills(

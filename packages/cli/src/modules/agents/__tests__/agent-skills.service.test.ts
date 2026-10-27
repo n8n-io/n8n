@@ -541,7 +541,7 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(skillRefs.unpinDraftRef).toHaveBeenCalledWith(agent, 'skill_a', {});
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },
@@ -691,7 +691,7 @@ describe('AgentSkillsService', () => {
 				[{ type: 'skill', id: 'skill_b' }],
 				{},
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(skillService.delete).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});

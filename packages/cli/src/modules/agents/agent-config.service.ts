@@ -5,31 +5,43 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@n8n/errors';
 
-import type { AgentActor } from './agent-modification-telemetry.service';
+import {
+	buildAgentMutationEvent,
+	diffAgentConfigParts,
+	type AgentActor,
+} from './agent-modification-telemetry.service';
 import {
 	AgentConfigPreparationService,
 	writesField,
 	type ConfigReplacement,
 } from './agent-config-preparation.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import type { ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { assertSingleConnections } from './integrations/single-connection';
-import { composeJsonConfig } from './json-config/agent-config-composition';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
+import type {
+	CompleteAgentDefinition,
+	AgentDefinitionMetadata,
+	PlannedAgentDestinations,
+} from './utils/agent-definition';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 
 interface AgentConfigUpdateOptions {
@@ -74,6 +86,102 @@ export class AgentConfigService {
 
 	async validateConfig(raw: unknown) {
 		return await this.configPreparation.validateConfig(raw);
+	}
+
+	async replaceDefinition(
+		agentId: string,
+		projectId: string,
+		definition: CompleteAgentDefinition,
+		user: User,
+		options: {
+			expectedRevision: number;
+			metadata?: AgentDefinitionMetadata;
+			plannedDestinations?: PlannedAgentDestinations;
+		},
+	): Promise<ProjectAgent> {
+		await Container.get(AgentsSettingsService).assertEnabled();
+		await this.configPreparation.assertCanSaveDefinition(projectId, user, 'update');
+		const agent = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
+		if (agent.revision !== options.expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently; please retry');
+		}
+		const prepared = await this.configPreparation.prepareDefinition(
+			agentId,
+			definition,
+			projectId,
+			user,
+			options.plannedDestinations,
+		);
+		const content = prepared.definition;
+		const previousSkills = await this.agentSkillRefs.readDraft(agent, {});
+		const previousConfig = composeJsonConfig(agent, previousSkills.skillRefs);
+		const previousIntegrations = agent.integrations ?? [];
+		await Container.get(AgentPolicyService).enforceSave(
+			projectId,
+			agentId,
+			content.config ?? { name: content.name },
+			agent.schema,
+			{ kind: 'user', user },
+		);
+		const sidecarChanges = {
+			skills: !isEqual(previousSkills.skills, content.skills),
+			tools: !isEqual(agent.tools, content.tools),
+		};
+		const decomposed = content.config
+			? decomposeJsonConfig(content.config)
+			: { schemaConfig: null, integrations: [] };
+		const { config, skillRefs: incomingSkillRefs } = decomposed.schemaConfig
+			? fromAgentDocument(decomposed.schemaConfig)
+			: { config: null, skillRefs: undefined };
+		agent.name = content.config?.name ?? content.name;
+		agent.integrations = decomposed.integrations;
+		agent.schema = config;
+		agent.tools = structuredClone(content.tools);
+		markAgentDraftDirty(agent);
+		const { skillRefs, tasksChanged } = await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, agent, ctx, options.metadata);
+			const skillRefs = await this.agentSkillRefs.importDraftSkills(
+				agent,
+				incomingSkillRefs,
+				content.skills,
+				user.id,
+				ctx,
+			);
+			const tasksChanged = await this.agentTaskRepository.replaceForAgent(
+				agent.id,
+				content.tasks,
+				ctx,
+			);
+			return { skillRefs, tasksChanged };
+		});
+		await this.saveCompletion.definitionSaved(
+			buildAgentMutationEvent(
+				agent,
+				skillRefs,
+				projectId,
+				{ user, modifiedBy: 'user' },
+				diffAgentConfigParts(
+					previousConfig,
+					content.config,
+					previousIntegrations,
+					agent.integrations,
+					{
+						...sidecarChanges,
+						tasks: tasksChanged,
+					},
+				),
+			),
+			previousIntegrations,
+			prepared.credentialProvider,
+			content.tasks,
+			'update',
+		);
+		return agent;
 	}
 
 	/**

@@ -98,6 +98,10 @@ export class SkillRuntimeService {
 		);
 	}
 
+	async lockForEdit(skillIds: string[], ctx: OperationContext): Promise<void> {
+		await this.skillRepository.lockForEdit(skillIds, ctx);
+	}
+
 	async lockForAttach(skillIds: string[], ctx: OperationContext): Promise<void> {
 		await this.skillRepository.lockForPublish(skillIds, ctx);
 	}

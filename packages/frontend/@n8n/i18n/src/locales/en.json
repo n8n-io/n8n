@@ -5164,6 +5164,7 @@
 	"template.buttons.startWithAi": "Customize with AI",
 	"template.buttons.tryTemplate": "Try template",
 	"template.buttons.useThisWorkflowButton": "Use this workflow",
+	"template.buttons.useWorkflowButton": "Use workflow",
 	"template.details.appsInTheCollection": "This collection features",
 	"template.details.appsInTheWorkflow": "Apps in this workflow",
 	"template.details.by": "by",
