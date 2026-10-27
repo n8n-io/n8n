@@ -9,6 +9,7 @@ import {
 	type NodeCredentialSlots,
 	type ParsedUsage,
 } from '@n8n/ai-utilities/llm-usage';
+import { UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 
 /**
@@ -76,12 +77,18 @@ export function inspectRequest(input: {
 		onResponse: (response: unknown) => report(parseProviderUsage(response)),
 		onStreamChunk: (chunk: Buffer) => (reader ??= createUsageReader()).push(chunk),
 		onStreamEnd: () => report(reader?.result()),
-		check: async () =>
-			await checkLlmCall({
-				context: input.context,
-				credential,
-				provider: credentialProvider,
-				model: requestedModel,
-			}),
+		check: async () => {
+			try {
+				await checkLlmCall({
+					context: input.context,
+					credential,
+					provider: credentialProvider,
+					model: requestedModel,
+				});
+			} catch (error) {
+				// Nodes read an HTTP status from a request error, and a 403 reads as a credential problem.
+				throw new UserError(error instanceof Error ? error.message : String(error));
+			}
+		},
 	};
 }

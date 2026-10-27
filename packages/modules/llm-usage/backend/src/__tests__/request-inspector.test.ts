@@ -172,6 +172,23 @@ describe('inspectRequest provider', () => {
 		});
 	});
 
+	it('blocks with the message only, so a node does not read the policy status as an HTTP 403', async () => {
+		const blocked = Object.assign(new Error('LLM budget "Daily" reached'), { errorCode: 403 });
+		setLlmCallGuard(async () => await Promise.reject(blocked));
+
+		try {
+			const check = inspectRequest({
+				context: { callerType: 'node' },
+				credentialTypes: [],
+				requestBody: { model: 'gpt-x', messages: [] },
+			})?.check();
+			await expect(check).rejects.toThrow('LLM budget "Daily" reached');
+			await expect(check).rejects.not.toHaveProperty('errorCode');
+		} finally {
+			setLlmCallGuard(undefined);
+		}
+	});
+
 	it('records the credential that the helper authenticates with, else the only LLM one', () => {
 		const call = (
 			credentials: Record<string, { id: string | null; __aiGatewayManaged?: boolean }>,

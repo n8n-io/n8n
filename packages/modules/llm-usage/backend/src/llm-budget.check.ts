@@ -16,6 +16,10 @@ import { WorkflowPublisherCache } from './workflow-publisher-cache';
 
 const NO_VIOLATIONS: PolicyCheckResult = { violations: [] };
 
+/** Cents, or two significant digits below a cent, so a small spend or limit does not read $0.00. */
+const usd = (amount: number) =>
+	`$${amount >= 0.01 || amount === 0 ? amount.toFixed(2) : amount.toPrecision(2)}`;
+
 /** Blocks an LLM call when a `block` budget that applies to it is spent. Reads memory only. */
 @PolicyCheck()
 export class LlmBudgetCheck implements RegisteredPolicyCheck {
@@ -49,7 +53,7 @@ export class LlmBudgetCheck implements RegisteredPolicyCheck {
 				{
 					kind: POLICY_VIOLATION_KIND.llmBudgetExceeded,
 					checkId: this.id,
-					message: `LLM budget "${budget.name}" reached: $${spent.toFixed(2)} of $${budget.limitAmount.toFixed(2)} ${describeWindow(budget.timeWindow)} (LLM usage estimate)`,
+					message: `LLM budget "${budget.name}" reached: ${usd(spent)} of ${usd(budget.limitAmount)} ${describeWindow(budget.timeWindow)} (LLM usage estimate)`,
 					subject: budget.id,
 					subjectType: POLICY_VIOLATION_SUBJECT_TYPE.llmBudget,
 					scope: 'instance',

@@ -70,6 +70,14 @@ describe('LlmBudgetCheck', () => {
 		]);
 	});
 
+	it('shows a spend and a limit below a cent with two significant digits', async () => {
+		withSpend([budget({ limitAmount: 0.0001 })], { 'budget-1:user=user-1': 0.0041 });
+
+		const [{ message }] = (await check.onLlmCall(call())).violations;
+
+		expect(message).toContain('reached: $0.0041 of $0.00010 in the last 24 hours');
+	});
+
 	it('lets the call of another user go', async () => {
 		withSpend([budget()], { 'budget-1:user=user-1': 5.2 });
 
