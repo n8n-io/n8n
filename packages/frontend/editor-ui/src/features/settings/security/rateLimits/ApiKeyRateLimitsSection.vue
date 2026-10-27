@@ -20,12 +20,14 @@ import { VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import * as rateLimitSettingsApi from '@n8n/rest-api-client/api/public-api-rate-limit-settings';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import ApiKeyRateLimitsDialog from './ApiKeyRateLimitsDialog.vue';
 import { RATE_LIMIT_GROUP_KEYS, summarizeLimits } from './rateLimits';
 
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
@@ -48,7 +50,16 @@ const settings = computed((): PublicApiRateLimitSettings | undefined => {
 	return values;
 });
 
-const isToggleLocked = computed(() => state.value?.envManagedFields.includes('enabled') ?? false);
+const areApiKeysDisabled = computed(() => !settingsStore.isPublicApiEnabled);
+const isEnabledEnvManaged = computed(
+	() => state.value?.envManagedFields.includes('enabled') ?? false,
+);
+const isToggleLocked = computed(() => areApiKeysDisabled.value || isEnabledEnvManaged.value);
+const toggleLockedReason = computed(() =>
+	areApiKeysDisabled.value
+		? i18n.baseText('settings.security.rateLimits.apiKeysDisabled')
+		: i18n.baseText('settings.security.rateLimits.envLocked.toggle'),
+);
 
 const toggleValue = computed({
 	get: () => settings.value?.enabled ?? false,
@@ -121,10 +132,7 @@ async function save(next: PublicApiRateLimitSettings) {
 					</N8nText>
 				</template>
 				<template #action>
-					<N8nTooltip
-						:disabled="!isToggleLocked"
-						:content="i18n.baseText('settings.security.rateLimits.envLocked.toggle')"
-					>
+					<N8nTooltip :disabled="!isToggleLocked" :content="toggleLockedReason">
 						<N8nSwitch
 							v-model="toggleValue"
 							size="large"
@@ -159,6 +167,7 @@ async function save(next: PublicApiRateLimitSettings) {
 								size="small"
 								icon-only
 								:aria-label="i18n.baseText('settings.security.rateLimits.edit')"
+								:disabled="areApiKeysDisabled"
 								data-test-id="rate-limits-edit"
 								@click="openDialog('edit')"
 							>

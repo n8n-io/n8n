@@ -1,9 +1,12 @@
 import type { PublicApiRateLimitSettingsResponse } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 
 import ApiKeyRateLimitsSection from './ApiKeyRateLimitsSection.vue';
 import { RATE_LIMIT_ROW_KEYS } from './rateLimits';
@@ -49,9 +52,11 @@ const response = (
 
 const { defaults: _defaults, envManagedFields: _envManagedFields, ...settingsOf } = response();
 
-const renderSection = createComponentRenderer(ApiKeyRateLimitsSection, {
-	pinia: createTestingPinia(),
-});
+const pinia = createTestingPinia();
+setActivePinia(pinia);
+const settingsStore = mockedStore(useSettingsStore);
+
+const renderSection = createComponentRenderer(ApiKeyRateLimitsSection, { pinia });
 
 async function renderLoaded(overrides: Partial<PublicApiRateLimitSettingsResponse> = {}) {
 	getSettings.mockResolvedValue(response(overrides));
@@ -72,6 +77,7 @@ async function clearAllLimits() {
 describe('ApiKeyRateLimitsSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		settingsStore.isPublicApiEnabled = true;
 		updateSettings.mockImplementation(async (_context, data) => response(data));
 	});
 
@@ -304,6 +310,31 @@ describe('ApiKeyRateLimitsSection', () => {
 			expect(
 				await screen.findByText(
 					'This limit is set by an environment variable. To change it, edit the variable.',
+				),
+			).toBeInTheDocument();
+		});
+	});
+
+	describe('API keys turned off', () => {
+		beforeEach(() => {
+			settingsStore.isPublicApiEnabled = false;
+		});
+
+		it('locks the toggle and the edit button', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true });
+
+			expect(getByTestId('rate-limits-toggle')).toBeDisabled();
+			expect(getByTestId('rate-limits-edit')).toBeDisabled();
+		});
+
+		it('explains that the limits do not apply', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true, envManagedFields: ['enabled'] });
+
+			await userEvent.hover(getByTestId('rate-limits-toggle').parentElement!);
+
+			expect(
+				await screen.findByText(
+					'API keys are turned off on this instance, so these limits do not apply.',
 				),
 			).toBeInTheDocument();
 		});

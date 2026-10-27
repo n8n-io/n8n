@@ -6343,6 +6343,7 @@
 	"settings.security.rateLimits.enable.title": "Enable API key rate limits",
 	"settings.security.rateLimits.enable.description": "Cap how many requests your {apiKeys} can make.",
 	"settings.security.rateLimits.enable.description.apiKeys": "API keys",
+	"settings.security.rateLimits.apiKeysDisabled": "API keys are turned off on this instance, so these limits do not apply.",
 	"settings.security.rateLimits.envLocked.toggle": "These limits are set through an environment variable. To change them or turn them off, edit the variable.",
 	"settings.security.rateLimits.envLocked.field": "This limit is set by an environment variable. To change it, edit the variable.",
 	"settings.security.rateLimits.group.allEndpoints": "All endpoints",
