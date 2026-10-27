@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { WAIT_TOOL_NAME } from '@n8n/api-types';
-import { computed } from 'vue';
-import { describe, expect, it } from 'vitest';
+import { computed, defineComponent, h } from 'vue';
+import { describe, expect, it, vi } from 'vitest';
 
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
@@ -71,6 +71,34 @@ describe('InteractiveCard', () => {
 		await wrapper.find('[data-testid="test-card-answer"]').trigger('click');
 
 		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }]]);
+	});
+
+	it('passes the callback for an accepted answer from the card to the chat', async () => {
+		const onAccepted = vi.fn();
+		const AcceptingCard = defineComponent({
+			emits: ['submit'],
+			setup(_props, { emit }) {
+				return () =>
+					h('button', {
+						'data-testid': 'accepting-card',
+						onClick: () => emit('submit', { answer: 'yes' }, onAccepted),
+					});
+			},
+		});
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: extensionPayload },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [
+						{ key: TEST_EXTENSION_KEY, parse: () => undefined, component: AcceptingCard },
+					]),
+				},
+			},
+		});
+
+		await wrapper.find('[data-testid="accepting-card"]').trigger('click');
+
+		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }, onAccepted]]);
 	});
 
 	it('disables a host extension card that has no run to resume', () => {

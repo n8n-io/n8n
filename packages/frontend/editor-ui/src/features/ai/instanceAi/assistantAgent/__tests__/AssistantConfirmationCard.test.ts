@@ -51,6 +51,11 @@ vi.mock('../../components/InstanceAiQuestions.vue', () => ({
 	},
 }));
 
+/** The resume data of each submit, without the `onAccepted` callback that the card passes along. */
+function sent(submits: unknown[][] | undefined) {
+	return (submits ?? []).map(([resumeData]) => [resumeData]);
+}
+
 const renderComponent = createComponentRenderer(AssistantConfirmationCard, {
 	pinia: createTestingPinia(),
 });
@@ -75,7 +80,7 @@ describe('AssistantConfirmationCard', () => {
 
 		await fireEvent.click(getByTestId('assistant-agent-questions'));
 
-		expect(emitted().submit).toEqual([
+		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'questions', answers: [{ questionId: 'q1', selectedOptions: ['a'] }] }],
 		]);
 	});
@@ -93,7 +98,7 @@ describe('AssistantConfirmationCard', () => {
 
 		await fireEvent.click(getByTestId('domain-access-allow-once'));
 
-		expect(emitted().submit).toEqual([
+		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'domainAccessApprove', domainAccessAction: 'allow_once' }],
 		]);
 	});
@@ -111,7 +116,7 @@ describe('AssistantConfirmationCard', () => {
 			await rerender({ input: continueInput, disabled: true });
 			await fireEvent.click(getByTestId('assistant-agent-continue'));
 
-			expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true }]]);
+			expect(sent(emitted().submit)).toEqual([[{ kind: 'approval', approved: true }]]);
 		});
 
 		it('can be answered again when the chat is busy and refuses the answer', async () => {
@@ -154,7 +159,7 @@ describe('AssistantConfirmationCard', () => {
 		await fireEvent.update(getByPlaceholderText('Type your answer...'), '#general');
 		await fireEvent.click(getByTestId('assistant-agent-text-submit'));
 
-		expect(emitted().submit).toEqual([
+		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'approval', approved: true, userInput: '#general' }],
 		]);
 	});
@@ -174,7 +179,9 @@ describe('AssistantConfirmationCard', () => {
 
 		await fireEvent.click(getByTestId('approval-card-always-allow'));
 
-		expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true, scope: 'session' }]]);
+		expect(sent(emitted().submit)).toEqual([
+			[{ kind: 'approval', approved: true, scope: 'session' }],
+		]);
 	});
 
 	it('titles a plain approval with the tool phrase and shows the details, not the raw arguments', () => {
@@ -227,7 +234,7 @@ describe('AssistantConfirmationCard', () => {
 
 		await fireEvent.click(getByTestId('assistant-agent-mcp-connect'));
 
-		expect(emitted().submit).toEqual([
+		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'mcpConnect', approved: true, connectedSlugs: ['linear'] }],
 		]);
 	});
@@ -245,7 +252,7 @@ describe('AssistantConfirmationCard', () => {
 
 		await fireEvent.click(getByText('Use destination'));
 
-		expect(emitted().submit).toEqual([
+		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'credentialDestination', approved: true, origin: 'https://api.example.com' }],
 		]);
 	});
@@ -281,7 +288,7 @@ describe('AssistantConfirmationCard', () => {
 
 			await fireEvent.click(getByTestId('assistant-agent-test-listener-cancel'));
 
-			expect(emitted().submit).toEqual([[{ kind: 'approval', approved: false }]]);
+			expect(sent(emitted().submit)).toEqual([[{ kind: 'approval', approved: false }]]);
 		});
 
 		it('settles from the test webhook push event of its workflow', () => {
@@ -292,37 +299,41 @@ describe('AssistantConfirmationCard', () => {
 				listener({ type: 'testWebhookReceived', data: { workflowId: 'wf-1', executionId: 'e-1' } });
 			}
 
-			expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true, userInput: 'e-1' }]]);
+			expect(sent(emitted().submit)).toEqual([
+				[{ kind: 'approval', approved: true, userInput: 'e-1' }],
+			]);
 		});
 	});
 
 	describe('telemetry', () => {
-		/**
-		 * Renders the card in the open thread. With `accept`, the card unmounts on submit,
-		 * as the chat removes a card when it takes the answer.
-		 */
-		function renderInThread(input: AssistantConfirmationInput, accept = true) {
-			const holder: { unmount?: () => void } = {};
+		/** Renders the card in the open thread. `accept` runs the callback that the chat runs once the server accepts the answer. */
+		function renderInThread(input: AssistantConfirmationInput) {
 			const result = renderComponent({
-				props: { input, ...(accept ? { onSubmit: () => holder.unmount?.() } : {}) },
+				props: { input },
 				global: { provide: { [ASSISTANT_AGENT_THREAD_ID]: 'thread-1' } },
 			});
-			holder.unmount = result.unmount;
-			return result;
+			const lastOnAccepted = () => {
+				const submits = result.emitted().submit as Array<[unknown, (() => void) | undefined]>;
+				return submits.at(-1)?.[1];
+			};
+			return { ...result, lastOnAccepted, accept: () => lastOnAccepted()?.() };
 		}
 
-		it('tracks an approval with the same event as the current Assistant once the chat takes it', async () => {
-			const { getByTestId } = renderInThread({
-				requestId: 'req-aa',
-				inputThreadId: 'input-thread-1',
-				message: 'Run the workflow',
-				severity: 'info',
-				toolName: 'workflow_builder_executions',
-				args: { action: 'run', workflowId: 'wf-1' },
-			});
+		const runApproval: AssistantConfirmationInput = {
+			requestId: 'req-aa',
+			inputThreadId: 'input-thread-1',
+			message: 'Run the workflow',
+			severity: 'info',
+			toolName: 'workflow_builder_executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+		};
+
+		it('tracks an approval with the same event as the current Assistant once the server accepts it', async () => {
+			const { getByTestId, accept } = renderInThread(runApproval);
 
 			await fireEvent.click(getByTestId('approval-card-allow-once'));
-			await nextTick();
+			expect(telemetryTrack).not.toHaveBeenCalled();
+			accept();
 
 			expect(telemetryTrack).toHaveBeenCalledTimes(1);
 			expect(telemetryTrack).toHaveBeenCalledWith('User finished providing input', {
@@ -343,16 +354,10 @@ describe('AssistantConfirmationCard', () => {
 		});
 
 		it('tracks always allow as approve_always', async () => {
-			const { getByTestId } = renderInThread({
-				requestId: 'req-aa',
-				message: 'Run the workflow',
-				severity: 'info',
-				toolName: 'workflow_builder_executions',
-				args: { action: 'run', workflowId: 'wf-1' },
-			});
+			const { getByTestId, accept } = renderInThread(runApproval);
 
 			await fireEvent.click(getByTestId('approval-card-always-allow'));
-			await nextTick();
+			accept();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
@@ -363,7 +368,7 @@ describe('AssistantConfirmationCard', () => {
 		});
 
 		it('tracks the answers of a questions card with the number of questions', async () => {
-			const { getByTestId } = renderInThread({
+			const { getByTestId, accept } = renderInThread({
 				requestId: 'req-q',
 				message: 'A few questions',
 				inputType: 'questions',
@@ -371,7 +376,7 @@ describe('AssistantConfirmationCard', () => {
 			});
 
 			await fireEvent.click(getByTestId('assistant-agent-questions'));
-			await nextTick();
+			accept();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
@@ -393,14 +398,14 @@ describe('AssistantConfirmationCard', () => {
 		});
 
 		it('tracks a skipped text card as a skipped input', async () => {
-			const { getByText } = renderInThread({
+			const { getByText, accept } = renderInThread({
 				requestId: 'req-t',
 				message: 'What is the channel?',
 				inputType: 'text',
 			});
 
 			await fireEvent.click(getByText('Skip'));
-			await nextTick();
+			accept();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
@@ -419,11 +424,12 @@ describe('AssistantConfirmationCard', () => {
 			);
 		});
 
-		it('does not track an answer that the busy chat refuses', async () => {
-			const { getByTestId } = renderInThread(
-				{ requestId: 'req-2', message: 'Paused', inputType: 'continue' },
-				false,
-			);
+		it('does not track an answer that the server has not accepted, such as a refused or failed send', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-2',
+				message: 'Paused',
+				inputType: 'continue',
+			});
 
 			await fireEvent.click(getByTestId('assistant-agent-continue'));
 			await nextTick();
@@ -431,8 +437,8 @@ describe('AssistantConfirmationCard', () => {
 			expect(telemetryTrack).not.toHaveBeenCalled();
 		});
 
-		it('does not track a test listener that a push event settles', async () => {
-			renderInThread({
+		it('does not track a test listener that a push event settles', () => {
+			const { lastOnAccepted } = renderInThread({
 				requestId: 'req-11',
 				message: 'Send a test request',
 				testListener: {
@@ -447,22 +453,20 @@ describe('AssistantConfirmationCard', () => {
 			for (const listener of push.listeners) {
 				listener({ type: 'testWebhookReceived', data: { workflowId: 'wf-1', executionId: 'e-1' } });
 			}
-			await nextTick();
 
-			expect(telemetryTrack).not.toHaveBeenCalled();
+			expect(lastOnAccepted()).toBeUndefined();
 		});
 
 		it('does not track domain access, like the current Assistant', async () => {
-			const { getByTestId } = renderInThread({
+			const { getByTestId, lastOnAccepted } = renderInThread({
 				requestId: 'req-1',
 				message: 'Allow access?',
 				domainAccess: { url: 'https://example.com/a', host: 'example.com' },
 			});
 
 			await fireEvent.click(getByTestId('domain-access-allow-once'));
-			await nextTick();
 
-			expect(telemetryTrack).not.toHaveBeenCalled();
+			expect(lastOnAccepted()).toBeUndefined();
 		});
 	});
 });

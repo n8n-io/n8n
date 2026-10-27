@@ -16,7 +16,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, nextTick, onBeforeUnmount, onUnmounted, ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -46,7 +46,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	submit: [resumeData: InstanceAiConfirmRequest];
+	/** `onAccepted` runs once the server accepts the answer. */
+	submit: [resumeData: InstanceAiConfirmRequest, onAccepted?: () => void];
 }>();
 
 const i18n = useI18n();
@@ -90,12 +91,7 @@ const variant = computed(() => {
 	return 'approval';
 });
 
-let unmounted = false;
-onUnmounted(() => {
-	unmounted = true;
-});
-
-/** The same event as the current Assistant panel, for an answer that the chat took. */
+/** The same event as `InstanceAiConfirmationPanel` sends, for an answer that the server accepted. */
 function trackAnswer(inputs: ConfirmationInputs) {
 	trackInputCompleted(
 		telemetry,
@@ -111,21 +107,19 @@ function trackAnswer(inputs: ConfirmationInputs) {
 	);
 }
 
-/** `inputs` is the telemetry of the answer. A card that the backend settles has none. */
+/**
+ * `inputs` is the telemetry of the answer, sent once the server accepts it. A card
+ * that the backend settles has none.
+ */
 function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	emit('submit', body);
-	// The chat removes a card as soon as it takes the answer, in the same render. A busy
-	// chat refuses the answer and keeps the card, so the card takes the answer back.
-	// After a failed send, the chat renders the card again as a new instance.
-	void nextTick(() => {
-		if (!unmounted) {
-			reopen();
-			return;
-		}
-		if (inputs) trackAnswer(inputs);
-	});
+	if (inputs) emit('submit', body, () => trackAnswer(inputs));
+	else emit('submit', body);
+	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
+	// answer and keeps the card, so the card takes the answer back. After a failed
+	// send, the chat renders the card again as a new instance.
+	void nextTick(reopen);
 }
 
 function onQuestionsSubmit(answers: QuestionAnswer[]) {

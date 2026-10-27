@@ -1189,6 +1189,40 @@ describe('AgentChatMessageList', () => {
 		).toBeTruthy();
 	});
 
+	it('resumes an open card with the callback that the card passes for an accepted answer', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-open-card',
+						role: 'assistant',
+						content: '',
+						interactives: [
+							{
+								toolName: 'chat_action',
+								toolCallId: 'tc-open',
+								runId: 'run-open',
+								input: { card: { components: [{ type: 'section', text: 'Continue?' }] } },
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+		const onAccepted = vi.fn();
+
+		const card = wrapper.findComponent('[data-testid="interactive-card-stub"]');
+		card.vm.$emit('submit', { answer: 'yes' }, onAccepted);
+		card.vm.$emit('submit', { answer: 'no' });
+
+		expect(wrapper.emitted('resume')).toEqual([
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'yes' } }, onAccepted],
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'no' } }],
+		]);
+	});
+
 	it('renders multiple n8n chat cards from one assistant message', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
