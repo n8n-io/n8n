@@ -1,0 +1,45 @@
+{
+	"type": "object",
+	"properties": {
+		"animationUrl": {
+			"type": ["string", "null"]
+		},
+		"completed_at": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"error": {
+			"type": "string"
+		},
+		"files": {
+			"type": "object"
+		},
+		"metadata": {
+			"type": "string"
+		},
+		"movUrl": {
+			"type": ["string", "null"]
+		},
+		"mp4Url": {
+			"type": ["string", "null"]
+		},
+		"progress": {
+			"type": "integer"
+		},
+		"self": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"template": {
+			"type": "string"
+		},
+		"uid": {
+			"type": "string"
+		}
+	},
+	"version": 2
+}

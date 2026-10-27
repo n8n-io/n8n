@@ -1,0 +1,48 @@
+{
+	"type": "object",
+	"properties": {
+		"api_write_access": {
+			"type": "string"
+		},
+		"config": {
+			"type": "object"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"duration_seconds": {
+			"type": "number"
+		},
+		"frame_rate": {
+			"type": "integer"
+		},
+		"height": {
+			"type": "integer"
+		},
+		"name": {
+			"type": "string"
+		},
+		"preview": {
+			"type": "string"
+		},
+		"tags": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"ui_write_access": {
+			"type": "string"
+		},
+		"uid": {
+			"type": "string"
+		},
+		"width": {
+			"type": "integer"
+		}
+	},
+	"version": 2
+}
