@@ -580,6 +580,20 @@ export class JobProcessor {
 		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
 	}
 
+	/**
+	 * Stop the running top-level job for an execution, if this worker runs it. A main that
+	 * did not enqueue the job has no Bull job handle, so it addresses the job by execution id.
+	 */
+	stopJobByExecutionId(executionId: string): boolean {
+		const entry = Object.entries(this.runningJobs).find(
+			([, runningJob]) => runningJob.executionId === executionId,
+		);
+		if (!entry) return false;
+
+		this.cancelJob(entry[0], 'manual');
+		return true;
+	}
+
 	private cancelJob(jobId: JobId, reason: CancellationReason) {
 		const runningJob = this.runningJobs[jobId];
 		if (!runningJob) return;

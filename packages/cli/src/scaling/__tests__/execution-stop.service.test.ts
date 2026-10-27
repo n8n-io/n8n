@@ -5,11 +5,13 @@ import { ManualExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import type { JobProcessor } from '@/scaling/job-processor';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 describe('ExecutionStopService', () => {
 	const publisher = mock<Publisher>();
 	const activeExecutions = mock<ActiveExecutions>();
+	const jobProcessor = mock<JobProcessor>();
 
 	const createService = (instanceType: InstanceSettings['instanceType']) => {
 		const logger = mock<Logger>();
@@ -19,10 +21,13 @@ describe('ExecutionStopService', () => {
 			mock<InstanceSettings>({ instanceType }),
 			publisher,
 			activeExecutions,
+			jobProcessor,
 		);
 	};
 
 	afterEach(() => vi.clearAllMocks());
+
+	beforeEach(() => jobProcessor.stopJobByExecutionId.mockReturnValue(false));
 
 	describe('requestStop', () => {
 		it('should broadcast a stop-execution command from a main process', async () => {
@@ -56,6 +61,16 @@ describe('ExecutionStopService', () => {
 				'exec-1',
 				expect.any(ManualExecutionCancelledError),
 			);
+		});
+
+		it('should stop the running top-level job when this worker runs it', () => {
+			const service = createService('worker');
+			jobProcessor.stopJobByExecutionId.mockReturnValue(true);
+
+			service.handleStopExecution({ executionId: 'exec-1' });
+
+			expect(jobProcessor.stopJobByExecutionId).toHaveBeenCalledWith('exec-1');
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing when this worker is not running the execution', () => {
