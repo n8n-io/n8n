@@ -222,6 +222,27 @@ export class AgentSkillRefsService {
 	}
 
 	/**
+	 * `replaceDraftRefs` for a complete save, such as a package import: a ref to a skill
+	 * that does not exist fails the save instead of being dropped. Returns the saved refs.
+	 */
+	async replaceAllDraftRefs(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
+		refs: AgentSkillRefs,
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		await this.replaceDraftRefs(agent, refs, ctx);
+		const saved = await this.refsForDraft(agent, ctx);
+		const savedIds = new Set(saved.map(({ id }) => id));
+		const missing = (refs ?? []).filter(({ id }) => !savedIds.has(id)).map(({ id }) => id);
+		if (missing.length > 0) {
+			throw new ConflictError(
+				`Skills ${missing.join(', ')} no longer exist. Plan the import again.`,
+			);
+		}
+		return saved;
+	}
+
+	/**
 	 * Revert: set the refs of the agent draft to the refs of a published version,
 	 * each pinned to the version that the published version ran. This writes no
 	 * skill row and needs no skill permission.

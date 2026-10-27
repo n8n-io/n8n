@@ -195,6 +195,37 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('replaceAllDraftRefs', () => {
+		it('returns the saved refs when every ref exists', async () => {
+			checkRefs.mockResolvedValue([{ id: 'zeta' }]);
+			agentSkillRepository.findDependencies.mockResolvedValue(
+				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
+			);
+
+			await expect(
+				service.replaceAllDraftRefs(agent, [{ type: 'skill', id: 'zeta' }], ctx),
+			).resolves.toEqual([{ type: 'skill', id: 'zeta' }]);
+		});
+
+		it('fails when a ref points to a skill that no longer exists', async () => {
+			checkRefs.mockResolvedValue([{ id: 'zeta' }]);
+			agentSkillRepository.findDependencies.mockResolvedValue(
+				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
+			);
+
+			await expect(
+				service.replaceAllDraftRefs(
+					agent,
+					[
+						{ type: 'skill', id: 'zeta' },
+						{ type: 'skill', id: 'gone' },
+					],
+					ctx,
+				),
+			).rejects.toThrow('Skills gone no longer exist. Plan the import again.');
+		});
+	});
+
 	describe('replaceDraftRefs', () => {
 		it('checks the refs and writes the dependency rows', async () => {
 			checkRefs.mockResolvedValue([{ id: 'zeta' }, { id: 'alpha', versionId: pinId }]);
