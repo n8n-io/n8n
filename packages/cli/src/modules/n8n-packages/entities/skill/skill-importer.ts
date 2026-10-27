@@ -109,23 +109,31 @@ export class SkillImporter {
 	/**
 	 * Rechecks the permission for every planned write, then writes the project and instance
 	 * skills. Call it before the Agents are written: the Agent transactions check nothing.
+	 * Each new skill version raises the revision of the Agents that follow the skill by one.
+	 * Returns how many times the revision of each Agent went up, keyed by Agent ID.
 	 */
-	async applyShared(user: User, plan: SkillImportPlan): Promise<void> {
+	async applyShared(user: User, plan: SkillImportPlan): Promise<Map<string, number>> {
 		await this.assertCanWrite(user, allWrites(plan));
-		if (plan.shared.length === 0) return;
+		const raised = new Map<string, number>();
+		if (plan.shared.length === 0) return raised;
 		const following = await this.transactionRunner.run({}, async (ctx) => {
 			const agentIds: string[] = [];
 			for (const write of plan.shared) agentIds.push(...(await this.write(user, write, ctx)));
 			return agentIds;
 		});
-		await this.skillService.refreshFollowingAgents(following);
+		for (const agentId of following) raised.set(agentId, (raised.get(agentId) ?? 0) + 1);
+		await this.skillService.refreshFollowingAgents([...raised.keys()]);
+		return raised;
 	}
 
 	/** The writer for the skills of one Agent, for that Agent's save transaction. */
 	writerFor(user: User, plan: SkillImportPlan, agentId: string): AgentSkillWriter | undefined {
 		const writes = plan.owned.get(agentId) ?? [];
 		if (writes.length === 0) return undefined;
+		const saved = writes.filter(({ base }) => base).map(({ skill }) => skill.id);
 		return async (ctx) => {
+			// The save transaction attaches the refs again after the writes.
+			await this.agentSkillRefs.detachDraftRefs(agentId, saved, ctx);
 			for (const write of writes) await this.write(user, write, ctx);
 		};
 	}

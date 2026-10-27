@@ -243,6 +243,21 @@ export class AgentSkillRefsService {
 	}
 
 	/**
+	 * Removes the draft refs to the given skills. A skill save marks every Agent that
+	 * follows the skill as changed and captures a version of it. Call this before the
+	 * skills of an Agent are saved in its own save transaction, then attach the refs again
+	 * with `replaceAllDraftRefs`.
+	 */
+	async detachDraftRefs(agentId: string, skillIds: string[], ctx: OperationContext): Promise<void> {
+		if (skillIds.length === 0) return;
+		const detached = new Set(skillIds);
+		const current = await this.refsForDraft({ id: agentId }, ctx);
+		const kept = current.filter(({ id }) => !detached.has(id));
+		if (kept.length === current.length) return;
+		await this.writeDependencies(agentId, toServiceRefs(kept), ctx);
+	}
+
+	/**
 	 * Revert: set the refs of the agent draft to the refs of a published version,
 	 * each pinned to the version that the published version ran. This writes no
 	 * skill row and needs no skill permission.
