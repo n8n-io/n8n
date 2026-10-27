@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid';
 /** Id of the n8n Assistant instance agent in the Agents tables. */
 export const ASSISTANT_AGENT_ID = 'assistant';
 
-export const ASSISTANT_AGENT_NAME = 'n8n Assistant';
+export const ASSISTANT_AGENT_NAME = 'Assistant';
 
 /** Checkpoint host metadata key that carries the turn options to a resume. */
 export const ASSISTANT_TURN_METADATA_KEY = 'assistantTurn';
