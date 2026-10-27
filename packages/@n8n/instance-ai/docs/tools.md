@@ -860,7 +860,8 @@ Only the description is written. Credential secrets and settings stay unchanged.
 
 The instance MCP tool uses the same name and fields. MCP also accepts `null`
 to clear the description. It requires the OAuth scope `credential:write` in
-addition to the user's credential update permission. Existing scoped grants need
+addition to the user's credential update permission. Clients that also need
+`list_credentials` must request `credential:read`. Existing scoped grants need
 authorization for the new scope. Legacy unscoped authentication keeps its existing
 behavior.
 

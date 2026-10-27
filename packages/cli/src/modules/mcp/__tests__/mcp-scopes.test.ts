@@ -680,6 +680,7 @@ describe('McpService scope enforcement', () => {
 		{ scopes: ['credential:read'], enabled: true, available: false },
 		{ scopes: ['credential:write'], enabled: true, available: true },
 		{ scopes: ['credential:write'], enabled: false, available: false },
+		{ scopes: ['credential:read', 'credential:write'], enabled: true, available: true },
 	])(
 		'gates credential description writes with $scopes and flag $enabled',
 		async ({ scopes, enabled, available }) => {
@@ -689,7 +690,9 @@ describe('McpService scope enforcement', () => {
 				undefined,
 				{ grantedScopes: scopes },
 			);
-			expect(getRegisteredToolNames(server).has('update_credential_description')).toBe(available);
+			const registeredTools = getRegisteredToolNames(server);
+			expect(registeredTools.has('update_credential_description')).toBe(available);
+			expect(registeredTools.has('list_credentials')).toBe(scopes.includes('credential:read'));
 		},
 	);
 

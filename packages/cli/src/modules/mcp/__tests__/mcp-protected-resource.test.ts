@@ -88,7 +88,7 @@ describe('McpProtectedResource', () => {
 				);
 				const scopeTools = await resource.getScopeTools();
 				expect(scopeTools['credential:write']).toEqual(
-					enabled === true ? ['list_credentials', 'update_credential_description'] : undefined,
+					enabled === true ? ['update_credential_description'] : undefined,
 				);
 				expect(scopeTools['credential:read']).toContain('list_credentials');
 				expect(
