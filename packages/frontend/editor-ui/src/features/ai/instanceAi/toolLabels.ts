@@ -7,6 +7,7 @@ import {
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
+	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
@@ -141,6 +142,8 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 	}
 }
 
+const REMOVED_WORKFLOWS_TOOL_LABEL_NAME = 'workflow_builder_workflows';
+
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
 	if (toolName.endsWith('-with-agent')) return 'share';
@@ -235,13 +238,17 @@ export function useToolLabel() {
 			return i18n.baseText('instanceAi.tools.workspace_execute_command.skill');
 		}
 
+		// Stored calls of removed workflows actions keep the former tool's labels.
+		const labelToolName = isFormerWorkflowsTool(toolName)
+			? REMOVED_WORKFLOWS_TOOL_LABEL_NAME
+			: toolName;
 		const action = typeof args?.action === 'string' ? args.action : undefined;
 		if (action) {
-			const actionKey = `instanceAi.tools.${toolName}.${action}` as BaseTextKey;
+			const actionKey = `instanceAi.tools.${labelToolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);
 			if (actionTranslated !== actionKey) return actionTranslated;
 		}
-		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
+		const key = `instanceAi.tools.${labelToolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
 		return translated === key
 			? formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName

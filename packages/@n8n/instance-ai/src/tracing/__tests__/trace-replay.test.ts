@@ -238,6 +238,21 @@ describe('TraceIndex', () => {
 		expect(e3.stepId).toBe(3);
 	});
 
+	it('matches a recorded former workflows call to the tool that owns its action', () => {
+		const events: TraceEvent[] = [
+			{ ...makeToolCall(1, 'orchestrator', 'workflows'), input: { action: 'list' } },
+			{
+				...makeToolCall(2, 'orchestrator', 'workflow_builder_workflows'),
+				input: { action: 'get-as-code', workflowId: 'wf-1' },
+			},
+		];
+
+		const index = new TraceIndex(events);
+
+		expect(index.next('orchestrator', 'list_workflows').stepId).toBe(1);
+		expect(index.nextMatching('orchestrator', 'get_workflow_as_code')?.stepId).toBe(2);
+	});
+
 	it('should throw on tool name mismatch', () => {
 		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
 

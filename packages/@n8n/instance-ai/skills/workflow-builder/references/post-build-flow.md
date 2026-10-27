@@ -8,6 +8,7 @@ description: >-
 recommended_tools:
   - workflow_builder_ask_user
   - workflow_builder_verify_built_workflow
+  - get_workflow
   - get_workflow_as_code
   - setup_workflow
   - validate_workflow

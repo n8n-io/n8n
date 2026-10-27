@@ -13,7 +13,8 @@ describe('createSaveFailureRemediation', () => {
 			shouldEdit: true,
 			reason: 'workflow_modified_externally',
 		});
-		expect(remediation.guidance).toContain('get-as-code');
+		expect(remediation.guidance).not.toContain('get-as-code');
+		expect(remediation.guidance).toContain('get_workflow_as_code');
 		expect(remediation.guidance).toContain('status "conflict"');
 	});
 

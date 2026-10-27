@@ -8386,6 +8386,8 @@
 	"instanceAi.tools.unpublish_workflow": "Unpublishing workflow",
 	"instanceAi.tools.unpublish_workflow.imperative": "unpublish workflow",
 	"instanceAi.tools.unpublish_workflow.imperativeWithResource": "unpublish",
+	"instanceAi.tools.workflow_builder_workflows": "Workflows",
+	"instanceAi.tools.workflow_builder_workflows.get-version": "Reading workflow version",
 	"instanceAi.tools.list_workflow_versions": "Listing workflow versions",
 	"instanceAi.tools.update_workflow_version": "Updating workflow version",
 	"instanceAi.tools.update_workflow_version.imperative": "update workflow version",

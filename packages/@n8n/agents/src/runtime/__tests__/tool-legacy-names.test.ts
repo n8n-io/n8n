@@ -137,7 +137,15 @@ describe('tool legacy names', () => {
 			const manager = new DeferredToolManager([publish, remove]);
 
 			expect(manager.getTool('items', { action: 'delete' })).toBe(remove);
+			expect(manager.getTool('items', '{"action":"publish","id":"1"}')).toBe(publish);
 			expect(manager.getTool('items', { action: 'unknown' })).toBeUndefined();
+		});
+
+		it('lets a registered deferred tool with the former name win over legacy actions', () => {
+			const items = makeTool('items');
+			const manager = new DeferredToolManager([publish, items]);
+
+			expect(manager.getTool('items', { action: 'publish' })).toBe(items);
 		});
 
 		it('repairs a model call of the former name and drops the action', async () => {

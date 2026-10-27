@@ -238,8 +238,9 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 ## Workflow tools
 
-Each action of the former `workflow_builder_workflows` tool is now its own tool.
+Each supported action of the former `workflow_builder_workflows` tool is now its own tool.
 A suspended call of the former tool resumes in the tool that owns its action.
+Removed actions, such as `update`, have no replacement tool.
 `get_workflow_node_usage` and the version tools are registered only when their
 backend methods are available. Use `get_workflow` to inspect a workflow. Use
 `get_workflow_as_code`, workspace edits, and `workflow_builder_build_workflow` to change a workflow.

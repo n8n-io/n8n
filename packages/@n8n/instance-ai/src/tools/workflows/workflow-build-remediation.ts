@@ -58,7 +58,7 @@ export function createWorkflowModifiedExternallyRemediation(): RemediationMetada
 	return createCodeFixableRemediation({
 		reason: 'workflow_modified_externally',
 		guidance:
-			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call get_workflow_as_code(workflowId): it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then call workflow_builder_build_workflow again with the same filePath. If get-as-code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, call get-as-code again, and re-apply the change before building.',
+			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call get_workflow_as_code(workflowId): it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then call workflow_builder_build_workflow again with the same filePath. If get_workflow_as_code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, call get_workflow_as_code again, and re-apply the change before building.',
 	});
 }
 

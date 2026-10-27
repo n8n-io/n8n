@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';
 import type { BuiltTool } from '../../types/sdk/tool';
+import { callAction } from './tool-adapter';
 
 export const SEARCH_TOOLS_TOOL_NAME = 'search_tools';
 export const LOAD_TOOL_TOOL_NAME = 'load_tool';
@@ -165,10 +166,11 @@ export class DeferredToolManager {
 
 	/**
 	 * A registered deferred tool, loaded or not. Resolves legacy names, and
-	 * resolves a former split tool by the call's `input.action`.
+	 * resolves a former split tool by the call's `input.action`. A registered
+	 * current name wins over a legacy action, as in `resolveToolForCall`.
 	 */
 	getTool(name: string, input?: unknown): BuiltTool | undefined {
-		const action = isRecord(input) && typeof input.action === 'string' ? input.action : undefined;
+		const action = this.toolsByName.has(name) ? undefined : callAction(input);
 		const byAction =
 			action === undefined ? undefined : this.currentNameByLegacyAction.get(name)?.get(action);
 		return this.toolsByName.get(byAction ?? this.resolveName(name));

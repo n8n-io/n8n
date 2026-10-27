@@ -745,7 +745,7 @@ const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	current:
 		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call workflow_builder_build_workflow with this filePath.',
 	conflict:
-		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
+		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get_workflow_as_code again to start from the saved workflow.',
 };
 
 /**

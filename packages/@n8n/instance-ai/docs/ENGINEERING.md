@@ -226,7 +226,7 @@ can omit it.
 // Domain tools are action-based: one tool, a discriminated union of actions.
 const listAction = z.object({
   action: z.literal('list'),
-  limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
+  projectId: z.string().optional().describe('Project to list data tables from'),
 });
 
 export function createDataTablesTool(context: InstanceAiContext) {
@@ -236,7 +236,7 @@ export function createDataTablesTool(context: InstanceAiContext) {
     .handler(async (input) => {
       // `input` is narrowed by `action`, so each branch is type-checked
       if (input.action === 'list') {
-        const tables = await context.dataTableService.list(input);
+        const tables = await context.dataTableService.list({ projectId: input.projectId });
         return { tables };
       }
       // ...

@@ -209,7 +209,7 @@ function legacyActionKey(toolName: string, action: string): string {
 }
 
 /** The call's `action` input. Persisted and repaired calls can carry the input as JSON text. */
-function callAction(input: unknown): string | undefined {
+export function callAction(input: unknown): string | undefined {
 	let value = input;
 	if (typeof value === 'string') {
 		try {

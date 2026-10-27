@@ -1,4 +1,4 @@
-import { createWorkflowToolRouter } from './workflow-tools-test-utils';
+import { createWorkflowToolMap, createWorkflowToolRouter } from './workflow-tools-test-utils';
 import { zodToJsonSchema } from '@n8n/agents';
 import {
 	buildCredentialDestinationGrantKey,
@@ -267,6 +267,54 @@ describe('workflows tool', () => {
 					'update_workflow_version',
 				].sort(),
 			);
+		});
+
+		describe('registered tools with action-free input', () => {
+			const run = async (
+				context: InstanceAiContext,
+				toolName: string,
+				input: Record<string, unknown>,
+				ctx: Record<string, unknown> = {},
+			) => {
+				const tool = createWorkflowToolMap(context, 'full').get(toolName);
+				expect(tool).toBeDefined();
+				return await executeTool(tool!, parseInput(tool, input) as never, ctx as never);
+			};
+
+			it('lists workflows', async () => {
+				const context = fullContext();
+				await run(context, 'list_workflows', {});
+				expect(context.workflowService.list).toHaveBeenCalled();
+			});
+
+			it('reads a workflow', async () => {
+				const context = fullContext();
+				await run(context, 'get_workflow', { workflowId: 'wf1' });
+				expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
+			});
+
+			it('suspends publish for approval, then publishes on resume', async () => {
+				const context = fullContext();
+				const suspend = vi.fn();
+				await run(context, 'publish_workflow', { workflowId: 'wf1' }, { suspend });
+				expect(suspend).toHaveBeenCalled();
+				expect(context.workflowService.publish).not.toHaveBeenCalled();
+
+				await run(
+					context,
+					'publish_workflow',
+					{ workflowId: 'wf1' },
+					{ suspend, resumeData: { approved: true } },
+				);
+				expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', expect.anything());
+			});
+
+			it('drops an action field from split tool input', () => {
+				const tool = createWorkflowToolMap(fullContext(), 'full').get('setup_workflow');
+				expect(parseInput(tool, { action: 'setup', workflowId: 'wf1' })).not.toHaveProperty(
+					'action',
+				);
+			});
 		});
 
 		it('takes input without an action field', () => {

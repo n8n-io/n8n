@@ -141,8 +141,12 @@ describe('domain tool construction', () => {
 			list_workflows: { id: 'workflow:list' },
 			get_workflow: { id: 'workflow:get' },
 			get_workflow_as_code: { id: 'workflow:get-as-code' },
+			archive_workflow: { id: 'workflow:delete' },
+			unarchive_workflow: { id: 'workflow:unarchive' },
 			setup_workflow: { id: 'workflow:setup' },
+			validate_workflow: { id: 'workflow:validate' },
 			publish_workflow: { id: 'workflow:publish' },
+			unpublish_workflow: { id: 'workflow:unpublish' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
 			list_credentials: { id: 'list_credentials' },
 			search_credential_types: { id: 'search_credential_types' },
@@ -161,6 +165,8 @@ describe('domain tool construction', () => {
 			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
+		expect(orchestratorTools.has('workflow_builder_workflows')).toBe(false);
+		expect(orchestratorTools.has('workflows')).toBe(false);
 		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
