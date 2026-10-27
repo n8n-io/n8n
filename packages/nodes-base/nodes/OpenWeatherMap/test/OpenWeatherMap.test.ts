@@ -8,10 +8,10 @@ describe('OpenWeatherMap', () => {
 		beforeAll(() => {
 			nock('https://api.openweathermap.org')
 				.get('/data/2.5/weather')
-				.query({ APPID: 'test-key', units: 'metric', q: 'berlin,de', lang: 'en' })
+				.query({ units: 'metric', q: 'berlin,de', lang: 'en' })
 				.reply(200, currentWeatherResponse)
 				.get('/data/2.5/weather')
-				.query({ APPID: 'test-key', units: 'metric', q: 'invalid', lang: 'en' })
+				.query({ units: 'metric', q: 'invalid', lang: 'en' })
 				.reply(404, { cod: '404', message: 'city not found' });
 		});
 

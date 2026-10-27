@@ -43,29 +43,10 @@ describe('OpenWeatherMap Node - request building', () => {
 		return ctx;
 	};
 
-	describe('v1', () => {
-		it('should call the hardcoded host and add the key as APPID', async () => {
-			const ctx = setup(1, {
-				accessToken: 'test-key',
-				url: 'https://gateway.example.com/v1/gateway/openweathermap',
-			});
-
-			const result = await new OpenWeatherMap().execute.call(ctx);
-
-			expect(ctx.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
-			expect(ctx.helpers.request).toHaveBeenCalledWith({
-				method: 'GET',
-				qs: { APPID: 'test-key', units: 'metric', q: 'berlin,de', lang: 'en' },
-				uri: 'https://api.openweathermap.org/data/2.5/weather',
-				json: true,
-			});
-			expect(result).toEqual([[{ json: currentWeatherResponse, pairedItem: { item: 0 } }]]);
-		});
-	});
-
-	describe('v1.1', () => {
-		it('should use the credential base URL and authentication', async () => {
-			const ctx = setup(1.1, {
+	it.each([1, 1.1])(
+		'should use the credential base URL and authentication in v%s',
+		async (typeVersion) => {
+			const ctx = setup(typeVersion, {
 				accessToken: 'test-key',
 				url: 'https://gateway.example.com/v1/gateway/openweathermap/',
 			});
@@ -80,22 +61,22 @@ describe('OpenWeatherMap Node - request building', () => {
 				json: true,
 			});
 			expect(result).toEqual([[{ json: currentWeatherResponse, pairedItem: { item: 0 } }]]);
-		});
+		},
+	);
 
-		it.each([undefined, '', '  '])(
-			'should fall back to the public API host when the base URL is %j',
-			async (url) => {
-				const ctx = setup(1.1, { accessToken: 'test-key', url }, { operation: '5DayForecast' });
+	it.each([undefined, '', '  '])(
+		'should fall back to the public API host when the base URL is %j',
+		async (url) => {
+			const ctx = setup(1.1, { accessToken: 'test-key', url }, { operation: '5DayForecast' });
 
-				await new OpenWeatherMap().execute.call(ctx);
+			await new OpenWeatherMap().execute.call(ctx);
 
-				expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-					'openWeatherMapApi',
-					expect.objectContaining({
-						url: 'https://api.openweathermap.org/data/2.5/forecast',
-					}),
-				);
-			},
-		);
-	});
+			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'openWeatherMapApi',
+				expect.objectContaining({
+					url: 'https://api.openweathermap.org/data/2.5/forecast',
+				}),
+			);
+		},
+	);
 });
