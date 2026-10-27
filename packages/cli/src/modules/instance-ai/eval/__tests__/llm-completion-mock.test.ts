@@ -379,6 +379,8 @@ describe('createLlmCompletionMockHandler', () => {
 
 		expect(promptCapture.prompt).toContain('client_project');
 		expect(promptCapture.prompt?.toLowerCase()).toContain('schema');
+		expect(promptCapture.prompt).toContain('structuredContent');
+		expect(promptCapture.prompt).not.toContain('final `content` MUST');
 	});
 
 	it('leaves final content unchanged when the request declares no schema', async () => {

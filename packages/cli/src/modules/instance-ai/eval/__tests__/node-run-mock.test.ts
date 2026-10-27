@@ -187,6 +187,36 @@ describe('createNodeRunMockHandler', () => {
 		expect(output).toEqual([[{ json: {}, pairedItem: { item: 1 } }]]);
 	});
 
+	it('shows parameters that are the same for every item once, so more items fit', async () => {
+		const newsletter: INode = {
+			...sendEmail,
+			parameters: { ...sendEmail.parameters, html: `<p>${'trends '.repeat(500)}</p>` },
+		};
+		const recipients = Array.from({ length: 20 }, (_, i) => ({
+			json: { email: `user${i}@example.com` },
+		}));
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		submitQueue.push({ items: [{ inputIndex: 19, json: {} }] });
+
+		await handler(contextFor(newsletter, recipients));
+
+		const prompt = promptCapture.prompts[0];
+		expect(prompt).toContain('user19@example.com');
+		expect(prompt).not.toContain('fit in this message');
+		expect(prompt.split('<p>trends').length - 1).toBe(1);
+	});
+
+	it('tells the model the layout of a Chat node reply', async () => {
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });
+
+		await handler(contextFor(sendEmail, twoRecipients));
+
+		const { instructions } = vi.mocked(createEvalAgent).mock.calls[0][1];
+		expect(instructions).toContain('@n8n/n8n-nodes-langchain.chat');
+		expect(instructions).toContain('chatInput');
+	});
+
 	it('ends the model loop once the output is accepted, but not after a rejection', async () => {
 		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
 		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });
