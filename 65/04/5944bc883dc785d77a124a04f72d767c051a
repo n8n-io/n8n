@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_7ac939127c29b2::t_baa88fc49ac0b4 8,66-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65045944bc883dc785d77a124a04f72d767c051a",
+  "prompts": {},
+  "sessions": {
+    "s_7ac939127c29b2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e8408a368ffeobflnCqMtU25IR",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
