@@ -1,11 +1,9 @@
-packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
-  s_952e2dc69e6ab3::t_fdeabd6f57ec97 1-6,337
-  s_952e2dc69e6ab3::t_92661bcf8eb911 33
-packages/cli/src/modules/agents/utils/agent-channel.ts
-  s_952e2dc69e6ab3::t_fdeabd6f57ec97 1-2,23-32
-  s_952e2dc69e6ab3::t_398c9ef40eaa31 33
 packages/cli/src/modules/agents/agent-integration-management.service.ts
-  s_952e2dc69e6ab3::t_fdeabd6f57ec97 29,476-477
+  s_952e2dc69e6ab3::t_58ff7d1447ba17 29,476-477
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_952e2dc69e6ab3::t_538c30ba6e5a61 1-6,33,337
+packages/cli/src/modules/agents/utils/agent-channel.ts
+  s_952e2dc69e6ab3::t_eee196ff11076c 1-2,23-33
 ---
 {
   "schema_version": "authorship/3.0.0",
