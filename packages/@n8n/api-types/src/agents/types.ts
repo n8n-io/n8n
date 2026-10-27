@@ -159,6 +159,11 @@ export interface AgentIntegrationStatusEntry {
 	errorMessage?: string;
 }
 
+export interface AgentIntegrationDraftEntry {
+	type: string;
+	settings?: AgentIntegrationSettings;
+}
+
 export interface AgentIntegrationStatusResponse {
 	/**
 	 * Rollup across `integrations`, for callers that only need one word:
@@ -166,6 +171,8 @@ export interface AgentIntegrationStatusResponse {
 	 */
 	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
+	/** Channels saved without a credential. Setup forms start from their settings. */
+	drafts: AgentIntegrationDraftEntry[];
 	n8nChat: { draftEnabled: boolean; publishedEnabled: boolean };
 }
 
