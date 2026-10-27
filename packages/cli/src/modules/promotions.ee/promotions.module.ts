@@ -5,13 +5,13 @@ import { Container } from '@n8n/di';
 
 @BackendModule({
 	name: 'promotions',
-	// The entitlement is unchanged; only the module name moved.
-	licenseFlag: LICENSE_FEATURES.GIT_CONNECTIONS,
+	licenseFlag: LICENSE_FEATURES.PROMOTIONS,
 	instanceTypes: ['main'],
 })
 export class PromotionsModule implements ModuleInterface {
 	async init() {
 		await import('./promotion-changes.controller.js');
+		await import('./promotion-reviews.controller.js');
 
 		const { PromotionsService } = await import('./promotions.service.js');
 		Container.get(PromotionsService);

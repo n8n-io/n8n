@@ -483,22 +483,6 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.status).toBe('blocked');
 		expect(obligation.blockingReason).toBe('submit failed');
 	});
-
-	it('derives planned ownership from the workflow-loop state', () => {
-		const obligation = deriveWorkflowVerificationObligation('thread-1', {
-			state: makeState({ plannedTaskId: 'planned-1' }),
-			attempts: [makeAttempt()],
-			lastBuildOutcome: makeOutcome({ verificationReadiness: { status: 'ready' } }),
-		});
-
-		expect(obligation).toEqual(
-			expect.objectContaining({
-				owner: { type: 'planned', taskId: 'planned-1' },
-				source: 'planned',
-				plannedTaskId: 'planned-1',
-			}),
-		);
-	});
 });
 
 describe('deriveWorkflowVerificationObligationFromOutcome', () => {
@@ -506,16 +490,12 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 		const obligation = deriveWorkflowVerificationObligationFromOutcome(
 			'thread-1',
 			makeOutcome({ verificationReadiness: { status: 'ready' } }),
-			{ source: 'planned', plannedTaskId: 'task-1' },
 		);
 
 		expect(obligation).toEqual(
 			expect.objectContaining({
 				workItemId: 'wi-1',
 				workflowId: 'wf-1',
-				owner: { type: 'planned', taskId: 'task-1' },
-				source: 'planned',
-				plannedTaskId: 'task-1',
 				status: 'ready_to_verify',
 				policy: 'required',
 			}),
@@ -569,13 +549,11 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 					failureSignature: 'Sheet with name Registrations not found',
 				},
 			}),
-			{ source: 'planned', plannedTaskId: 'task-1' },
 		);
 
 		expect(obligation.status).toBe('not_verifiable');
 		expect(obligation.policy).toBe('manual');
 		expect(obligation.blockingReason).toContain('Sheet with name Registrations not found');
-		expect(obligation.plannedTaskId).toBe('task-1');
 	});
 
 	it('marks setup-blocked failed evidence as needs setup from outcome-only records', () => {
@@ -595,16 +573,14 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 					failureSignature: 'Missing credentials',
 				},
 			}),
-			{ source: 'planned', plannedTaskId: 'task-1' },
 		);
 
 		expect(obligation.status).toBe('needs_setup');
-		expect(obligation.plannedTaskId).toBe('task-1');
 	});
 });
 
 // One-off builds settle immediately: executionIntent 'one-off' must never
-// derive an unsettled obligation, or the planned scheduler re-issues
+// derive an unsettled obligation, or the host re-issues
 // verification follow-ups forever (the historical death loop — see the spec's
 // loop-safety audit in .agents/specs/instance-ai-one-off-operations.md).
 // The intent is deliberately a plain optional outcome field, NOT a new
@@ -626,11 +602,10 @@ describe('one-off builds (executionIntent: one-off)', () => {
 		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
 	});
 
-	it('stays settled from outcome-only records (the planned scheduler path)', () => {
+	it('stays settled from outcome-only records', () => {
 		const obligation = deriveWorkflowVerificationObligationFromOutcome(
 			'thread-1',
 			makeOutcome({ executionIntent: 'one-off' }),
-			{ source: 'planned', plannedTaskId: 'task-1' },
 		);
 
 		expect(obligation.status).toBe('not_verifiable');

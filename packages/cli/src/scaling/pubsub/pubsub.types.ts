@@ -84,6 +84,7 @@ export namespace PubSub {
 		export type ReloadPublicApiRateLimitSettings =
 			ToCommand<'reload-public-api-rate-limit-settings'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
+		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
@@ -142,6 +143,7 @@ export namespace PubSub {
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadPublicApiRateLimitSettings
 		| Commands.ReloadInstanceAiSettings
+		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection

@@ -44,7 +44,6 @@ function assertNoDuplicateIds(
 export const packageManifestSchema = z
 	.object({
 		packageFormatVersion: z.literal(FORMAT_VERSION),
-		exportedAt: z.string().datetime(),
 		sourceN8nVersion: z.string().min(1),
 		sourceId: z.string().min(1),
 		workflows: z.array(manifestEntrySchema).optional(),

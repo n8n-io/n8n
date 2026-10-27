@@ -113,10 +113,10 @@ describe('workflow package export', () => {
 			expect(entries[0].name).toBe('manifest.json');
 			expect(manifest).toMatchObject({
 				packageFormatVersion: FORMAT_VERSION,
-				exportedAt: expect.any(String),
 				sourceN8nVersion: expect.any(String),
 				sourceId: expect.any(String),
 			});
+			expect(manifest).not.toHaveProperty('exportedAt');
 			expect(manifest.workflows).toEqual([
 				{ id: workflow.id, name: 'My Workflow', target: expect.any(String) },
 			]);

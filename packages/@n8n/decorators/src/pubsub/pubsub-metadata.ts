@@ -45,6 +45,7 @@ export type PubSubEventName =
 	| 'reload-otel-config'
 	| 'reload-public-api-rate-limit-settings'
 	| 'reload-instance-ai-settings'
+	| 'self-healing-failure'
 	| 'reload-agents-settings'
 	| 'cancel-test-run'
 	| 'cancel-collection'

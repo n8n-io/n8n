@@ -339,6 +339,34 @@ describe('AgentSkillRepository', () => {
 		});
 	});
 
+	describe('findSkillIdsUsedByAgent', () => {
+		it('lists the skills of its draft refs and of its published pins, once each', async () => {
+			const drafted = await createSkill({ projectId: project.id });
+			const pinned = await createSkill({ projectId: project.id });
+			const both = await createSkill({ projectId: project.id });
+			const otherAgentOnly = await createSkill({ projectId: project.id });
+			const agent = await createAgent('Agent');
+			const other = await createAgent('Other');
+			await agentSkills.replaceDependencies(agent.id, [{ skillId: drafted }, { skillId: both }]);
+			await agentSkills.replaceDependencies(other.id, [{ skillId: otherAgentOnly }]);
+			const versionId = await publish(agent.id);
+			await agentSkills.insertPins(
+				await Promise.all(
+					[pinned, both].map(async (skillId) => ({
+						agentVersionId: versionId,
+						skillId,
+						skillVersionId: await latestVersionId(skillId),
+					})),
+				),
+			);
+
+			expect((await agentSkills.findSkillIdsUsedByAgent(agent.id)).sort()).toEqual(
+				[drafted, pinned, both].sort(),
+			);
+			expect(await agentSkills.findSkillIdsUsedByAgent('agent-gone')).toEqual([]);
+		});
+	});
+
 	describe('findAgents', () => {
 		it('lists the agents of the given projects', async () => {
 			const support = await createAgent('Support');
@@ -366,30 +394,30 @@ describe('AgentSkillRepository', () => {
 		});
 	});
 
-	describe('AgentRepository.markDraftChangedIfInSync', () => {
+	describe('AgentRepository.markFollowerDraftsChanged', () => {
 		it('gives an agent in sync with its published version a new draft version id', async () => {
 			const agent = await createAgent('Support', { inSync: true });
 
-			const changed = await agents.markDraftChangedIfInSync([agent.id]);
+			const changed = await agents.markFollowerDraftsChanged([agent.id]);
 
 			const reloaded = await agents.findOneByOrFail({ id: agent.id });
 			expect(changed).toEqual([agent.id]);
 			expect(reloaded.versionId).not.toBe(reloaded.activeVersionId);
-			expect(reloaded.revision).toBe(agent.revision);
+			expect(reloaded.revision).toBe(agent.revision + 1);
 		});
 
-		it('leaves an agent that already has unpublished changes alone', async () => {
+		it('gives an already modified draft a new fixed-content ID', async () => {
 			const agent = await createAgent('Support');
 
-			const changed = await agents.markDraftChangedIfInSync([agent.id]);
+			const changed = await agents.markFollowerDraftsChanged([agent.id]);
 
 			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([]);
-			expect(reloaded.versionId).toBe(agent.versionId);
+			expect(changed).toEqual([agent.id]);
+			expect(reloaded.versionId).not.toBe(agent.versionId);
 		});
 
 		it('writes nothing for no agents', async () => {
-			expect(await agents.markDraftChangedIfInSync([])).toEqual([]);
+			expect(await agents.markFollowerDraftsChanged([])).toEqual([]);
 			expect(await agents.findProjectIdsByIds([])).toEqual([]);
 		});
 

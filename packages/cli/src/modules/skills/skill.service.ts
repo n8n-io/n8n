@@ -1,6 +1,12 @@
 import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import {
+	ProjectScopeService,
+	type AssistantSkillContext,
+	type AssistantSkillContent,
+	type AssistantSkillFileContent,
+	type AssistantSkillSummary,
+} from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -15,7 +21,14 @@ import { getSkillHash } from './skill-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
 import type { SkillFrontmatter } from './skill-version.entity';
 import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository, type ResolvedSkillRow, type SkillTarget } from './skill.repository';
+import {
+	SkillRepository,
+	type AssistantSkillAccess,
+	type ResolvedSkillRow,
+	type SkillTarget,
+} from './skill.repository';
+
+export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -59,6 +72,10 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 			? { references: row.files.map(({ path, content }) => ({ path, content })) }
 			: {}),
 	};
+}
+
+function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
+	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
 }
 
 function assertHasInstructions(skill: AgentSkill): void {
@@ -106,7 +123,7 @@ export type SkillMoveOptions = {
 
 /**
  * The rules of skills: which version a skill ref runs, save, edit permission, moves and
- * the delete guard. The runtime loads skills by id with no permission check. What
+ * the delete guard. The agent runtime loads skills by id with no permission check. What
  * depends on agents (who uses a skill, the project of an agent skill) comes from
  * `SkillAgentsProxy`.
  */
@@ -121,6 +138,106 @@ export class SkillService {
 	) {}
 
 	// ---------------------------------------------------------------- reads
+
+	async listForAssistant(context: AssistantSkillContext): Promise<AssistantSkillSummary[]> {
+		return await this.skillRepository.findAssistantSkillSummaries(
+			await this.authorizedAssistantProject(context),
+		);
+	}
+
+	async readForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId?: string,
+	): Promise<AssistantSkillContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkill(skillId, projectId, versionId);
+		if (!row) return null;
+		const { skill, version, files } = row;
+		if (!(await this.canReadForAssistant(context, skill, projectId))) return null;
+		const skillProjectId = skill.projectId;
+		return {
+			id: skill.id,
+			projectId: skillProjectId,
+			name: version.name,
+			description: version.description,
+			versionId: version.id,
+			version: version.version,
+			instructions: version.instructions,
+			frontmatter: version.frontmatter,
+			files: files.map(({ path }) => ({ path })),
+		};
+	}
+
+	async listForMcp(
+		user: User,
+		skip: number,
+		take: number,
+	): Promise<{ count: number; skills: McpSkillContent[] }> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const page = await this.skillRepository.findVisiblePage(
+			{ projectIds: projectIds ?? 'all', agentIds: [] },
+			{ skip, take },
+		);
+		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
+		return {
+			count: page.count,
+			skills: page.skills.flatMap((skill) => {
+				const row = rows.get(skill.id);
+				return row ? [toMcpSkillContent(row)] : [];
+			}),
+		};
+	}
+
+	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
+		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		if (!row || row.skill.agentId !== null || !(await this.canAccess(user, row.skill, 'read'))) {
+			return null;
+		}
+		return toMcpSkillContent(row);
+	}
+
+	async readFileForAssistant(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null> {
+		const projectId = await this.authorizedAssistantProject(context);
+		const row = await this.skillRepository.findAssistantSkillFile(
+			skillId,
+			projectId,
+			versionId,
+			path,
+		);
+		if (!row || !(await this.canReadForAssistant(context, row.skill, projectId))) return null;
+		return { skillId, versionId, path: row.file.path, content: row.file.content };
+	}
+
+	private async canReadForAssistant(
+		context: AssistantSkillContext,
+		skill: AssistantSkillAccess,
+		projectId: string | null,
+	): Promise<boolean> {
+		return (
+			skill.agentId === null &&
+			skill.availableToAssistant &&
+			(skill.projectId === null || skill.projectId === projectId) &&
+			(await this.canAccess(context.user, skill, 'read'))
+		);
+	}
+
+	private async authorizedAssistantProject({
+		user,
+		projectId,
+	}: AssistantSkillContext): Promise<string | null> {
+		if (!projectId) return null;
+		const projects = await this.projectScopeService.getProjectIds(user, [
+			'projectSkill:list',
+			'projectSkill:read',
+		]);
+		return projects === null || projects.includes(projectId) ? projectId : null;
+	}
 
 	/**
 	 * What an agent draft runs, keyed by ref id: the latest version, or the pinned version
@@ -189,6 +306,7 @@ export class SkillService {
 	 */
 	async create(
 		input: {
+			id?: string;
 			target: SkillTarget;
 			skill: AgentSkill;
 			source: SkillSource;
@@ -202,7 +320,7 @@ export class SkillService {
 		if (input.checkNameTaken) {
 			await this.assertNameFree(skill.name, input.target, undefined, ctx);
 		}
-		const id = `skill_${generateNanoId()}`;
+		const id = input.id ?? `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
 			toSkillContent(skill),
@@ -210,6 +328,28 @@ export class SkillService {
 		);
 		this.logger.debug('Created skill', { skillId: id });
 		return id;
+	}
+
+	async setAssistantAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([skillId], txCtx);
+			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
+			if (!skill) throw new NotFoundError('Skill not found');
+			if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+			}
+			if (available && skill.agentId !== null) {
+				throw new UserError(
+					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
+				);
+			}
+			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
+		});
 	}
 
 	/**
@@ -336,21 +476,26 @@ export class SkillService {
 		}
 	}
 
-	// ---------------------------------------------------------------- publish
+	// ---------------------------------------------------------------- snapshots
 
-	/**
-	 * Publish, step 1: the version each ref resolves to. Publish
-	 * creates no version. Needs the caller's transaction for the publish lock.
-	 */
-	async snapshotForPublish(
-		refs: SkillRef[],
-		ctx: OperationContext,
-	): Promise<{ skills: Record<string, AgentSkill>; versionByRef: Map<string, string> }> {
+	/** Read immutable skill versions without reversing the skill-edit lock order. */
+	async snapshotForSave(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
-		await this.skillRepository.lockForPublish(refIds, ctx);
-		const rows = await this.resolveRows(refs, ctx);
-		const versionByRef = new Map([...rows].map(([refId, row]) => [refId, row.version.id]));
-		return { skills: toRecord(rows), versionByRef };
+		// Use the same resolution rule as runtime without loading skill content.
+		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
+		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		const versionByRef = new Map<string, string>();
+		for (const ref of refs) {
+			const versionId =
+				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+					? ref.versionId
+					: latest.get(ref.id);
+			if (versionId) versionByRef.set(ref.id, versionId);
+		}
+		return versionByRef;
 	}
 
 	// ---------------------------------------------------------------- move

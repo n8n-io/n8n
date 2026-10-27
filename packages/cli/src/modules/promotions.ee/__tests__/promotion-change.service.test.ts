@@ -1,14 +1,18 @@
+import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
+
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { scopeManifestToProject } from '../promotion-change.service';
+import { PromotionChangeService } from '../promotion-change.service';
+import { scopeManifestToProject } from '../promotion-preview';
 
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 
 // The global entry comes last on purpose: a name-keyed map would keep it for every project.
 const manifest: PackageManifest = {
 	packageFormatVersion: FORMAT_VERSION,
-	exportedAt: '2026-09-17T00:00:00.000Z',
 	sourceN8nVersion: '2.0.0',
 	sourceId: 'source',
 	projects: [
@@ -71,4 +75,37 @@ describe('scopeManifestToProject', () => {
 		expect(ids(scoped.variables)).toEqual(['varG', 'varT']);
 		expect(scoped.requirements?.variables).toBeUndefined();
 	});
+});
+
+describe('PromotionChangeService preview permission', () => {
+	const service = new PromotionChangeService(
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
+	// The read scope passes the route decorator, but not the check for each direction.
+	const reader = { role: { slug: 'custom', scopes: [{ slug: 'promotions:read' }] } } as User;
+
+	it.each(['promote', 'apply'] as const)(
+		'names the promotions:%s scope when the user lacks it',
+		async (direction) => {
+			const details = service.getDetails(reader, 'project1', direction, {
+				commitSha: null,
+				keys: [],
+			});
+
+			await expect(details).rejects.toThrow(ForbiddenError);
+			await expect(details).rejects.toThrow(`requires the promotions:${direction} scope`);
+		},
+	);
 });

@@ -150,10 +150,6 @@ vi.mock('../components/AgentSessionsFilter.vue', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
@@ -161,10 +157,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../utils/thread-title', () => ({
 	useThreadTitle: () => (thread: { title?: string | null; firstMessage?: string | null }) =>
 		thread.title ?? thread.firstMessage ?? 'Session',
-}));
-
-vi.mock('@/app/constants', () => ({
-	MODAL_CONFIRM: 'modal-confirm',
 }));
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({

@@ -21,7 +21,7 @@ const emit = defineEmits<{ close: [] }>();
 		>
 			<template #tag>
 				<N8nIcon icon="sparkles" size="small" :class="$style.icon" />
-				<N8nText size="small" compact :class="$style.label">
+				<N8nText size="small" :class="$style.label">
 					{{ i18n.baseText('parameterOverride.overridePanelText') }}
 				</N8nText>
 				<N8nIconButton
@@ -76,6 +76,7 @@ const emit = defineEmits<{ close: [] }>();
 
 .label {
 	min-width: 0;
+	line-height: var(--line-height--md);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

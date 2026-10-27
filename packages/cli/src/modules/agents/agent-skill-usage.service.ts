@@ -1,4 +1,4 @@
-import type { SkillUsage } from '@n8n/api-types';
+import type { SkillAgentOption, SkillUsage } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -138,6 +138,22 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 		return kept;
 	}
 
+	async assertVersionAccess(
+		agent: { id: string; projectId: string | null },
+		refs: SkillRef[],
+		ctx: OperationContext,
+	): Promise<void> {
+		const ids = refs.map(({ id }) => id);
+		if (ids.length === 0) return;
+		await this.skillRepository.lockForPublish(ids, ctx);
+		const skills = await this.skillRepository.findByIds(ids, ctx);
+		const accessible = new Set(
+			skills.filter((skill) => this.isAttachable(skill, agent)).map(({ id }) => id),
+		);
+		if (ids.some((id) => !accessible.has(id)))
+			throw new UserError('A saved skill is no longer available to this agent');
+	}
+
 	// ---------------------------------------------------------------- SkillAgentsProvider
 
 	async findAgents(agentIds: string[], ctx: OperationContext) {
@@ -162,6 +178,21 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 
 	async findUsingAgentIds(skillId: string, ctx: OperationContext) {
 		return await this.agentSkillRepository.findUsingAgentIds(skillId, ctx);
+	}
+
+	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext) {
+		return await this.agentSkillRepository.findSkillIdsUsedByAgent(agentId, ctx);
+	}
+
+	async findAgentSummaries(
+		projectIds: string[] | null,
+		filter: { search?: string; limit: number },
+	): Promise<SkillAgentOption[]> {
+		const agents = await this.agentRepository.findSummariesByProjectIds(projectIds, {
+			query: filter.search,
+			limit: filter.limit,
+		});
+		return agents.map(({ id, name }) => ({ id, name }));
 	}
 
 	async assertRenameKeepsNamesApart(
@@ -198,7 +229,7 @@ export class AgentSkillUsageService implements SkillAgentsProvider {
 
 	async markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]> {
 		const followingIds = await this.agentSkillRepository.findFollowingAgentIds([skillId], ctx);
-		await this.agentRepository.markDraftChangedIfInSync(followingIds, ctx);
+		await this.agentRepository.markFollowerDraftsChanged(followingIds, ctx);
 		return followingIds;
 	}
 

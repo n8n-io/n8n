@@ -409,6 +409,9 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		workflowSuggestionsEnabled: boolean;
+		/** Whether new threads can run on the n8n Assistant agent of the agents runtime. */
+		assistantAgentEnabled: boolean;
 	};
 
 	/**
@@ -459,8 +462,6 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
-		/** Whether agents use the skills hub (`N8N_AGENTS_SKILLS_HUB_ENABLED`, read at startup). */
-		skillsHubEnabled?: boolean;
 	};
 };
 

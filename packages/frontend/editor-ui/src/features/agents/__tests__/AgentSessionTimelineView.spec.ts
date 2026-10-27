@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
 import { N8nEmptyState } from '@n8n/design-system';
 import type * as AgentBuilderSessionModule from '@/features/agents/composables/useAgentBuilderSession';
@@ -147,6 +148,7 @@ async function renderPrivateTimeline() {
 
 describe('AgentSessionTimelineView', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		agentPermissions.canUpdate.value = true;
 		deleteSession.mockClear();
@@ -166,6 +168,153 @@ describe('AgentSessionTimelineView', () => {
 		const wrapper = await renderPrivateTimeline();
 
 		expect(wrapper.findComponent(AgentPreviewDock).props('canDeleteSession')).toBe(false);
+	});
+
+	it('shows live turn usage in the header and replaces it with saved totals', async () => {
+		const wrapper = await renderPrivateTimeline();
+		const panel = wrapper.findComponent(AgentSessionTimelinePanel);
+		const header = wrapper.findComponent(AgentSessionTimelineHeader);
+		const thread = {
+			...privateThread('thread-a'),
+			totalPromptTokens: 0,
+			totalCompletionTokens: 0,
+			totalCost: 0,
+		};
+		panel.vm.$emit('loaded', { thread, executions: [] });
+		await nextTick();
+		const dock = wrapper.findComponent(AgentPreviewDock);
+		const update = {
+			sessionId: 'thread-a',
+			executionId: 'execution-1',
+			complete: false,
+			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+		};
+		dock.vm.$emit('usage-updated', update);
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 30, totalCost: 0.05 });
+		dock.vm.$emit('usage-updated', { ...update, sessionId: 'thread-c', executionId: 'other' });
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 30, totalCost: 0.05 });
+		const next = {
+			...update,
+			usage: { promptTokens: 40, completionTokens: 20, totalTokens: 60, cost: 0.1 },
+		};
+		dock.vm.$emit('usage-updated', next);
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.1 });
+		dock.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.1 });
+		panel.vm.$emit('loaded', {
+			thread: { ...thread, totalPromptTokens: 40, totalCompletionTokens: 20, totalCost: 0.11 },
+			executions: [{ id: 'execution-1', status: 'success', totalTokens: 60, cost: 0.11 }],
+		});
+		await nextTick();
+		expect(header.props()).toMatchObject({ totalTokens: 60, totalCost: 0.11 });
+		wrapper.unmount();
+	});
+
+	it('uses server duration in the closed preview trace and ignores late snapshots', async () => {
+		vi.useFakeTimers();
+		const start = Date.parse('2026-10-23T12:00:00Z');
+		vi.setSystemTime(start);
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		try {
+			await flushPromises();
+			const panel = wrapper.findComponent(AgentSessionTimelinePanel);
+			const thread = {
+				...privateThread('thread-a'),
+				totalPromptTokens: 0,
+				totalCompletionTokens: 0,
+				totalCost: 0,
+				totalDuration: 0,
+			};
+			panel.vm.$emit('loaded', {
+				thread,
+				executions: [{ id: 'execution-1', status: 'running', duration: 0 }],
+			});
+			await nextTick();
+			const header = wrapper.findComponent(AgentSessionTimelineHeader);
+			expect(header.props('isPreviewOpen')).toBeFalsy();
+			expect(header.props('durationLabel')).toBe('');
+			for (const listener of pushListeners)
+				listener({
+					type: 'agentExecutionUpdated',
+					data: {
+						projectId: 'p1',
+						agentId: 'a1',
+						threadId: 'thread-a',
+						executionId: 'execution-1',
+						duration: 2000,
+						usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+					},
+				});
+			for (const listener of pushListeners)
+				listener({
+					type: 'agentExecutionUpdated',
+					data: {
+						projectId: 'p1',
+						agentId: 'a1',
+						threadId: 'thread-a',
+						executionId: 'execution-1',
+						duration: 1500,
+						usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+					},
+				});
+			wrapper.findComponent(AgentPreviewDock).vm.$emit('usage-updated', {
+				sessionId: 'thread-a',
+				executionId: 'execution-1',
+				duration: 1000,
+				complete: false,
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+			});
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(header.props()).toMatchObject({
+				totalTokens: 30,
+				totalCost: 0.05,
+				durationLabel: '2.0s',
+			});
+			for (const snapshot of [
+				{ duration: 2300, complete: true },
+				{ duration: 4000, complete: false },
+			]) {
+				for (const listener of pushListeners)
+					listener({
+						type: 'agentExecutionUpdated',
+						data: {
+							projectId: 'p1',
+							agentId: 'a1',
+							threadId: 'thread-a',
+							executionId: 'execution-1',
+							...snapshot,
+						},
+					});
+			}
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(header.props('durationLabel')).toBe('2.3s');
+			panel.vm.$emit('loaded', {
+				thread: {
+					...thread,
+					totalPromptTokens: 20,
+					totalCompletionTokens: 10,
+					totalCost: 0.06,
+					totalDuration: 2300,
+				},
+				executions: [
+					{ id: 'execution-1', status: 'success', duration: 2300, totalTokens: 30, cost: 0.06 },
+				],
+			});
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(header.props()).toMatchObject({
+				totalTokens: 30,
+				totalCost: 0.06,
+				durationLabel: '2.3s',
+			});
+		} finally {
+			wrapper.unmount();
+			vi.useRealTimers();
+		}
 	});
 
 	it.each([
@@ -197,6 +346,42 @@ describe('AgentSessionTimelineView', () => {
 		pushListeners.clear();
 		routerPush.mockClear();
 		routerReplace.mockClear();
+	});
+
+	it.each([
+		{ triggerSource: null, totalTokens: 0, separators: 0 },
+		{ triggerSource: 'chat', totalTokens: 0, separators: 0 },
+		{ triggerSource: null, totalTokens: 125, separators: 0 },
+		{ triggerSource: 'chat', totalTokens: 125, separators: 1 },
+	])('hides unknown duration without extra separators for %j', async (metrics) => {
+		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			props: {
+				breadcrumbItems: [],
+				projectIcon: { type: 'icon', value: 'user' },
+				sessionTitle: '',
+				sessionOptions: [],
+				showMetrics: true,
+				triggerSource: metrics.triggerSource,
+				triggerIcon: 'bolt-filled',
+				triggerLabel: metrics.triggerSource ? 'Chat' : '',
+				totalTokens: metrics.totalTokens,
+				totalCost: 0,
+				durationLabel: '',
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
+				showPreview: false,
+			},
+		});
+		expect(wrapper.find('[icon="clock"]').exists()).toBe(false);
+		expect(wrapper.text().split('·').length - 1).toBe(metrics.separators);
+		if (metrics.totalTokens) expect(wrapper.text()).toContain('125t');
+		await wrapper.setProps({ durationLabel: '2.0s' });
+		expect(wrapper.find('[icon="clock"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('2.0s');
+		expect(wrapper.text().split('·').length - 1).toBe(
+			metrics.separators + (metrics.triggerSource || metrics.totalTokens ? 1 : 0),
+		);
+		wrapper.unmount();
 	});
 
 	it('shows Preview controls before a new session has metrics', () => {

@@ -44,7 +44,7 @@ function agentFiles(entry: ManifestEntry, availableInMCP: boolean): Record<strin
 		objective: 'Summarize the open requests.',
 		cronExpression: '0 9 * * *',
 	};
-	const skillId = 'shared-skill';
+	const skillId = `${entry.id}_skill`;
 	const toolId = 'shared_tool';
 	const taskId = `${entry.id}_task`;
 	const agent: z.input<typeof serializedAgentSchema> = {
@@ -83,7 +83,6 @@ export function looseAgentsFixture(): AgentPackageFixture {
 	return {
 		manifest: {
 			packageFormatVersion: '1',
-			exportedAt: '2026-10-01T12:00:00.000Z',
 			sourceN8nVersion: '2.0.0',
 			sourceId: 'source-instance',
 			agents,

@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH, isNodeIdTooLong } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -272,6 +273,9 @@ export class WorkflowValidationService {
 	 *
 	 * An absent id is the same defect as a shared one — `undefined` is just an id
 	 * that every id-less node has in common — so both are reported together.
+	 *
+	 * An id longer than `NODE_ID_MAX_LENGTH` does not fit the columns keyed on it.
+	 * External clients can supply such ids, so they are rejected here at publish time.
 	 */
 	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
 		const violations: string[] = [];
@@ -281,6 +285,12 @@ export class WorkflowValidationService {
 			if (!node.id) {
 				violations.push(`trigger "${node.name}" has no node ID`);
 				continue;
+			}
+
+			if (isNodeIdTooLong(node.id)) {
+				violations.push(
+					`trigger "${node.name}" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters`,
+				);
 			}
 
 			const names = namesById.get(node.id);

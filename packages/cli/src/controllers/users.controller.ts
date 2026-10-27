@@ -10,6 +10,7 @@ import type { PublicUser } from '@n8n/db';
 import {
 	User,
 	UserRepository,
+	PersonRepository,
 	AuthenticatedRequest,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -32,17 +33,19 @@ import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserRequest } from '@/requests';
-import { JwtService, UrlService } from '@n8n/backend-services';
+import { JwtService, RoleService, UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 
 @RestController('/users')
 export class UsersController {
 	constructor(
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
+		private readonly roleService: RoleService,
 	) {}
 
 	private removeSupplementaryFields(
@@ -85,7 +88,9 @@ export class UsersController {
 	) {
 		await this.userService.assertGetUsersAccess(req.user, listQueryOptions.filter?.projectId);
 
-		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
+		const scope = listQueryOptions.filter?.scope;
+		const roleSlugs = scope ? await this.roleService.rolesWithScope('global', scope) : undefined;
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions, roleSlugs);
 		const response = await userQuery.getManyAndCount();
 
 		const [users, count] = response;
@@ -117,22 +122,19 @@ export class UsersController {
 	@Get('/:id/password-reset-link')
 	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: req.params.id },
-			relations: ['role'],
-		});
-		if (!user) {
+		const person = await this.personRepository.findByIdWithRole(req.params.id);
+		if (!person) {
 			throw new NotFoundError('User not found');
 		}
 
 		if (
 			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			user.role.slug === GLOBAL_OWNER_ROLE.slug
+			person.role.slug === GLOBAL_OWNER_ROLE.slug
 		) {
 			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
-		const link = this.authService.generatePasswordResetUrl(user);
+		const link = this.authService.generatePasswordResetUrl(person);
 		return { link };
 	}
 
@@ -142,9 +144,9 @@ export class UsersController {
 		const inviterId = req.user.id;
 		const inviteeId = req.params.id;
 
-		const targetUser = await this.userRepository.findOne({ where: { id: inviteeId } });
+		const targetPerson = await this.personRepository.findById(inviteeId);
 
-		if (!targetUser) {
+		if (!targetPerson) {
 			throw new NotFoundError('User to generate invite link for not found');
 		}
 
