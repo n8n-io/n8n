@@ -91,10 +91,10 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			environment_scope: z.enum(['instance', 'projects']),
 		}),
 	},
-	USER_CLONED_PROMOTION_REPOSITORY: {
-		name: 'User cloned promotion repository',
+	USER_CONNECTED_PROMOTION_ENVIRONMENT: {
+		name: 'User connected promotion environment',
 		description:
-			'A user cloned the repository of a promotion environment. Fires once per attempt, on success and on failure.',
+			'A user connected a promotion environment, which clones its branch into local storage on this instance. Fires once per attempt, on success and on failure.',
 		properties: z.object({
 			user_id: z.string(),
 			environment_id: z.string(),

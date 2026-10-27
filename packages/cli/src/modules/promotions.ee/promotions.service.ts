@@ -174,7 +174,7 @@ export class PromotionsService {
 		return await observePromotion(
 			async () => await this.cloneResolved(input),
 			(observed) =>
-				this.eventService.emit('promotion-repository-cloned', {
+				this.eventService.emit('promotion-environment-connected', {
 					user: actor,
 					environmentId: input.environmentId,
 					direction: input.config.direction,

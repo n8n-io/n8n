@@ -1398,7 +1398,7 @@ export type RelayEventMap = {
 		environmentScope: PromotionEnvironmentScope;
 	};
 
-	'promotion-repository-cloned': {
+	'promotion-environment-connected': {
 		user: UserLike;
 		environmentId: string;
 		direction: PromotionDirection;

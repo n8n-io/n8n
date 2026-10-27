@@ -359,7 +359,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
 			'promotion-environment-updated': (event) => this.promotionEnvironmentUpdated(event),
 			'promotion-environment-deleted': (event) => this.promotionEnvironmentDeleted(event),
-			'promotion-repository-cloned': (event) => this.promotionRepositoryCloned(event),
+			'promotion-environment-connected': (event) => this.promotionEnvironmentConnected(event),
 			'promotion-promoted': (event) => this.promotionPromoted(event),
 			'promotion-applied': (event) => this.promotionApplied(event),
 			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
@@ -2783,15 +2783,15 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private promotionRepositoryCloned({
+	private promotionEnvironmentConnected({
 		user,
 		environmentId,
 		direction,
 		outcome,
 		failureKind,
 		durationMs,
-	}: RelayEventMap['promotion-repository-cloned']) {
-		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CLONED_PROMOTION_REPOSITORY, {
+	}: RelayEventMap['promotion-environment-connected']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CONNECTED_PROMOTION_ENVIRONMENT, {
 			user_id: user.id,
 			environment_id: environmentId,
 			direction,

@@ -209,7 +209,7 @@ describe('PromotionsService', () => {
 				branchName: 'staging',
 				hasCheckout: true,
 			});
-			expect(eventService.emit).toHaveBeenCalledWith('promotion-repository-cloned', {
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-connected', {
 				user: actor,
 				environmentId: ENVIRONMENT_ID,
 				direction: 'promote',
@@ -225,7 +225,7 @@ describe('PromotionsService', () => {
 			await expect(service.clone(ENVIRONMENT_ID, actor)).rejects.toThrow(BadRequestError);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
-				'promotion-repository-cloned',
+				'promotion-environment-connected',
 				expect.objectContaining({ outcome: 'failed', failureKind: 'user' }),
 			);
 		});
@@ -239,7 +239,7 @@ describe('PromotionsService', () => {
 			await expect(service.clone(ENVIRONMENT_ID, actor)).rejects.toThrow(PromotionGitError);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
-				'promotion-repository-cloned',
+				'promotion-environment-connected',
 				expect.objectContaining({ outcome: 'failed', failureKind: 'git_remote' }),
 			);
 		});

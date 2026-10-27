@@ -5462,8 +5462,8 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
-		it('should track a failed clone with its failure kind', () => {
-			eventService.emit('promotion-repository-cloned', {
+		it('should track a failed connect with its failure kind', () => {
+			eventService.emit('promotion-environment-connected', {
 				user,
 				environmentId: 'env-1',
 				direction: 'apply',
@@ -5481,11 +5481,11 @@ describe('TelemetryEventRelay', () => {
 				duration_ms: 120,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.PROMOTIONS.USER_CLONED_PROMOTION_REPOSITORY,
+				TELEMETRY_EVENT.PROMOTIONS.USER_CONNECTED_PROMOTION_ENVIRONMENT,
 				payload,
 			);
 			expect(
-				TELEMETRY_EVENT.PROMOTIONS.USER_CLONED_PROMOTION_REPOSITORY.getValidationError(payload),
+				TELEMETRY_EVENT.PROMOTIONS.USER_CONNECTED_PROMOTION_ENVIRONMENT.getValidationError(payload),
 			).toBeNull();
 		});
 
