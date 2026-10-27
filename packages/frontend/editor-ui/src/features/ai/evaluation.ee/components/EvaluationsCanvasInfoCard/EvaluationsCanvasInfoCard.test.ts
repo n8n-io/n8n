@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { useProductionChecklistStore } from '@/app/stores/productionChecklist.store';
 
 const mockAllNodes = ref<Array<{ name: string; type: string }>>([]);
 const mockActive = ref(true);
@@ -78,6 +82,7 @@ const PLAIN_NODE = { name: 'Set', type: 'n8n-nodes-base.set' };
 
 describe('EvaluationsCanvasInfoCard', () => {
 	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 		mockAllNodes.value = [PLAIN_NODE, AI_NODE];
 		mockActive.value = true;
 		mockWorkflowId.value = `wf-${Math.random().toString(36).slice(2, 8)}`;
@@ -97,6 +102,30 @@ describe('EvaluationsCanvasInfoCard', () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('evaluations-canvas-info-card');
 		expect(listEvaluationConfigs).toHaveBeenCalled();
+	});
+
+	it('waits for the checklist to close before showing the evaluations card', async () => {
+		const pinia = createTestingPinia();
+		const checklistStore = useProductionChecklistStore(pinia);
+		checklistStore.activeWorkflowId = mockWorkflowId.value;
+		const { queryByTestId, findByTestId } = renderComponent({ pinia });
+		await flushPromises();
+		expect(listEvaluationConfigs).toHaveBeenCalled();
+		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+
+		checklistStore.activeWorkflowId = null;
+		await findByTestId('evaluations-canvas-info-card');
+
+		checklistStore.activeWorkflowId = mockWorkflowId.value;
+		await nextTick();
+		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+	});
+
+	it('does not block the card for another workflow', async () => {
+		const pinia = createTestingPinia();
+		useProductionChecklistStore(pinia).activeWorkflowId = 'another-workflow';
+		const { findByTestId } = renderComponent({ pinia });
+		await findByTestId('evaluations-canvas-info-card');
 	});
 
 	it('hides when the experiment flag is off', async () => {
