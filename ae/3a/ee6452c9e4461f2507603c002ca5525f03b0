@@ -1,0 +1,29 @@
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_02f30e88687580::t_6a9df12ee8db70 188-189,191
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_02f30e88687580::t_4e467cfa57916f 1799
+  s_02f30e88687580::t_063dfbe390ab4d 1837-1848
+  s_02f30e88687580::t_6a9df12ee8db70 55,119,169,1804-1806,1852-1903,1910,1955
+packages/@n8n/instance-ai/docs/tools.md
+  s_02f30e88687580::t_6a9df12ee8db70 845
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_02f30e88687580::t_6a9df12ee8db70 76
+packages/cli/src/credentials/credentials.service.ts
+  s_02f30e88687580::t_6a9df12ee8db70 62,281,1137-1145,1165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae3aee6452c9e4461f2507603c002ca5525f03b0",
+  "prompts": {},
+  "sessions": {
+    "s_02f30e88687580": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1688e-5ff5-76a0-a4b7-22494ec8b06c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
