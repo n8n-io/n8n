@@ -1,0 +1,26 @@
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_127a9acd7ce7b7::t_23baf4c73c7d48 100-104,114
+packages/cli/src/modules/n8n-packages/entities/skill/skill-import.types.ts
+  s_127a9acd7ce7b7::t_c2fe6d2ff6ec4a 8
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_127a9acd7ce7b7::t_54f27b6f2e016a 76-78
+  s_127a9acd7ce7b7::t_56383d15624c35 6,43,64,69-75,79-83,328-329,335,341-344
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_127a9acd7ce7b7::t_54f27b6f2e016a 834-863
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "001798ff993ea29906b9f03b63b1762168473d43",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
