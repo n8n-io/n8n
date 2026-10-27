@@ -14,6 +14,8 @@ import type {
 	SandboxConfig,
 } from '@n8n/instance-ai';
 
+import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
+
 /** The thread memory that the turn setup reads and the agent writes. */
 export type AssistantTurnMemory = ObservationLogObserverMemory;
 
@@ -76,6 +78,11 @@ export interface AssistantTurnRuntime
 		resolveConfig(): Promise<SandboxConfig>;
 		getOrCreateWorkspace(context: InstanceAiContext): Promise<Workspace | undefined>;
 	};
+	/**
+	 * Where the Assistant keeps its temporary workflows. Without it, the
+	 * workflow tools use the temporary workflow table of the current runtime.
+	 */
+	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 	/** Detached background tasks of the thread that still run. */
 	getRunningBackgroundTasks?(): ManagedBackgroundTask[];
 }
