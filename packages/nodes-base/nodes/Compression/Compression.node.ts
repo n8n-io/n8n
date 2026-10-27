@@ -11,6 +11,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { parse } from 'node:path';
 import { buffer } from 'node:stream/consumers';
 import { promisify } from 'util';
 
@@ -80,7 +81,7 @@ export class Compression implements INodeType {
 		iconColor: 'green',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Compress and decompress files',
 		defaults: {
 			name: 'Compression',
@@ -355,7 +356,11 @@ export class Compression implements INodeType {
 						} else if (['gz', 'gzip'].includes(fileExtension)) {
 							const file = await boundedGunzip(binaryDataBuffer, maxDecompressedSize);
 
-							const fileName = binaryData.fileName?.split('.')[0];
+							// The extension is added again below, so keep all of the name except the last extension
+							const fileName =
+								nodeVersion >= 1.2 && binaryData.fileName
+									? parse(binaryData.fileName.replace(/\.(gz|gzip)$/i, '')).name
+									: binaryData.fileName?.split('.')[0];
 							let fileExtension;
 							let mimeType;
 
@@ -451,7 +456,11 @@ export class Compression implements INodeType {
 
 								fileName = this.getNodeParameter('fileName', i, '') as string;
 								if (!fileName) {
-									fileName = binaryData.fileName?.split('.')[0];
+									// The extension is added again below, so keep all of the name except the last extension
+									fileName =
+										nodeVersion >= 1.2 && binaryData.fileName
+											? parse(binaryData.fileName).name
+											: binaryData.fileName?.split('.')[0];
 								} else {
 									fileName = fileName.replace('.gz', '').replace('.gzip', '');
 								}

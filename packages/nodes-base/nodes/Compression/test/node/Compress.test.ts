@@ -105,3 +105,72 @@ describe('Compression Node - Compress Operation (tar)', () => {
 		expect(Object.keys(extracted).sort()).toEqual(['a.txt', 'b.txt']);
 	});
 });
+
+describe('Compression Node - Compress Operation (gzip)', () => {
+	let compression: Compression;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+
+	const mockNode: INode = {
+		id: 'test-node',
+		name: 'Compression',
+		type: 'n8n-nodes-base.compression',
+		typeVersion: 1.1,
+		position: [0, 0],
+		parameters: {},
+	};
+
+	beforeEach(() => {
+		compression = new Compression();
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { test: 'data' } }]);
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		// an empty file name makes the node build the name from the input file
+		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			const params: Record<string, string> = {
+				operation: 'compress',
+				binaryPropertyName: 'data',
+				outputFormat: 'gzip',
+				fileName: '',
+				binaryPropertyOutput: 'data',
+			};
+			return params[paramName];
+		});
+		vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue({
+			data: 'base64data',
+			mimeType: 'text/csv',
+			fileName: 'report.final.csv',
+			fileExtension: 'csv',
+		});
+		vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+			Buffer.from('a,b'),
+		);
+		vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+			async (buffer, fileName) =>
+				({
+					data: buffer.toString('base64'),
+					mimeType: 'application/gzip',
+					fileName,
+					fileExtension: 'gz',
+				}) as IBinaryData,
+		);
+	});
+
+	afterEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it.each([
+		{ typeVersion: 1.1, expectedFileName: 'report.csv.gz' },
+		{ typeVersion: 1.2, expectedFileName: 'report.final.csv.gz' },
+	])(
+		'should name the output file $expectedFileName on version $typeVersion',
+		async ({ typeVersion, expectedFileName }) => {
+			mockExecuteFunctions.getNode.mockReturnValue({ ...mockNode, typeVersion });
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.data?.fileName).toBe(expectedFileName);
+		},
+	);
+});
