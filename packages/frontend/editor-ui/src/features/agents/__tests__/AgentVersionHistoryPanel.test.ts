@@ -15,6 +15,7 @@ const versionHistoryMock = {
 	hasLoadError: ref(false),
 	refresh: vi.fn().mockResolvedValue(undefined),
 	fetchMore: vi.fn(),
+	retry: vi.fn(),
 	revertToVersion: vi.fn(),
 	publishVersion: vi.fn(),
 	editVersion: vi.fn(),
@@ -132,6 +133,17 @@ describe('AgentVersionHistoryPanel — RBAC gating of row actions', () => {
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const actions = list.props('actions') as Array<{ value: string }>;
 		expect(actions).toEqual([]);
+	});
+
+	it('does not run a history action while editing is locked', async () => {
+		const wrapper = mountPanel({ editingLocked: true });
+		await flushPromises();
+		versionHistoryMock.revertToVersion.mockClear();
+		wrapper
+			.findComponent({ name: 'AgentVersionList' })
+			.vm.$emit('action', { action: 'revert', versionId: 'v1' });
+		await flushPromises();
+		expect(versionHistoryMock.revertToVersion).not.toHaveBeenCalled();
 	});
 });
 
@@ -265,23 +277,29 @@ describe('AgentVersionHistoryPanel — unpublish action', () => {
 	});
 });
 
-it('does not run a history action while editing is locked', async () => {
-	const wrapper = mountPanel({ editingLocked: true });
-	await flushPromises();
-	versionHistoryMock.revertToVersion.mockClear();
-	wrapper
-		.findComponent({ name: 'AgentVersionList' })
-		.vm.$emit('action', { action: 'revert', versionId: 'v1' });
-	await flushPromises();
-	expect(versionHistoryMock.revertToVersion).not.toHaveBeenCalled();
-});
+describe('AgentVersionHistoryPanel — history loading', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
 
-it('refreshes history when a new draft version is saved', async () => {
-	const wrapper = mountPanel({ currentVersionId: 'v1' });
-	await flushPromises();
-	versionHistoryMock.refresh.mockClear();
-	await wrapper.setProps({ currentVersionId: 'v2' });
-	expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
+	it('refreshes history when a new draft version is saved', async () => {
+		const wrapper = mountPanel({ currentVersionId: 'v1' });
+		await flushPromises();
+		versionHistoryMock.refresh.mockClear();
+		await wrapper.setProps({ currentVersionId: 'v2' });
+		expect(versionHistoryMock.refresh).toHaveBeenCalledWith('project-1', 'agent-1');
+	});
+
+	it('retries the failed history request', async () => {
+		const wrapper = mountPanel();
+		await flushPromises();
+		versionHistoryMock.refresh.mockClear();
+		wrapper.findComponent({ name: 'AgentVersionList' }).vm.$emit('retry');
+		await flushPromises();
+		expect(versionHistoryMock.retry).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(versionHistoryMock.refresh).not.toHaveBeenCalled();
+		expect(versionHistoryMock.fetchMore).not.toHaveBeenCalled();
+	});
 });
 
 it('switches between Versions and Publish Timeline', async () => {

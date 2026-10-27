@@ -219,6 +219,66 @@ describe('useAgentVersionHistory', () => {
 		});
 	});
 
+	describe('retry', () => {
+		it.each([0, 1, 20])(
+			'retries a failed refresh with %i loaded rows from the first page',
+			async (count) => {
+				const rows = Array.from({ length: count }, (_, i) => makeVersion(`v${i}`));
+				const updatedRows = [makeVersion('new')];
+				mocks.listAgentVersions
+					.mockResolvedValueOnce(rows)
+					.mockRejectedValueOnce(new Error('Failed'))
+					.mockResolvedValueOnce(updatedRows);
+				const history = useAgentVersionHistory();
+				await history.refresh('project', 'agent');
+				await history.refresh('project', 'agent');
+				expect(history.items.value).toEqual(rows);
+				expect(history.hasLoadError.value).toBe(true);
+
+				await history.fetchMore('project', 'agent');
+				expect(mocks.listAgentVersions).toHaveBeenCalledTimes(2);
+				const retry = history.retry('project', 'agent');
+				await history.retry('project', 'agent');
+				await retry;
+
+				expect(mocks.listAgentVersions).toHaveBeenCalledTimes(3);
+				expect(mocks.listAgentVersions).toHaveBeenLastCalledWith(
+					expect.anything(),
+					'project',
+					'agent',
+					{ take: 20, skip: 0 },
+				);
+				expect(history.items.value).toEqual(updatedRows);
+				expect(history.hasLoadError.value).toBe(false);
+			},
+		);
+
+		it('retries a failed next page at the same offset and keeps loaded rows', async () => {
+			const rows = Array.from({ length: 20 }, (_, i) => makeVersion(`v${i}`));
+			const nextPage = [makeVersion('older')];
+			mocks.listAgentVersions
+				.mockResolvedValueOnce(rows)
+				.mockRejectedValueOnce(new Error('Failed'))
+				.mockResolvedValueOnce(nextPage);
+			const history = useAgentVersionHistory();
+			await history.refresh('project', 'agent');
+			await history.fetchMore('project', 'agent');
+			expect(history.items.value).toEqual(rows);
+			expect(history.hasLoadError.value).toBe(true);
+
+			await history.retry('project', 'agent');
+
+			expect(mocks.listAgentVersions).toHaveBeenLastCalledWith(
+				expect.anything(),
+				'project',
+				'agent',
+				{ take: 20, skip: 20 },
+			);
+			expect(history.items.value).toEqual([...rows, ...nextPage]);
+			expect(history.hasLoadError.value).toBe(false);
+		});
+	});
+
 	describe('revertToVersion', () => {
 		it('opens the confirmation modal before calling the API', async () => {
 			mocks.openAgentConfirmationModal.mockResolvedValue('cancel');

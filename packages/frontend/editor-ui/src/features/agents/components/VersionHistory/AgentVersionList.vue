@@ -27,17 +27,20 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const listElement = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
+const canLoadMore = computed(() => props.hasMore && !props.isLoading && !props.hasLoadError);
 
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: listElement,
 	threshold: 0.01,
-	onIntersect: () => emit('loadMore'),
+	onIntersect: () => {
+		if (canLoadMore.value) emit('loadMore');
+	},
 });
 
 watch(
-	[loadMoreSentinel, () => props.hasMore, () => props.items.length],
-	([sentinel, canLoadMore]) => {
-		if (sentinel && canLoadMore) {
+	[loadMoreSentinel, canLoadMore, () => props.items.length],
+	([sentinel, canObserve]) => {
+		if (sentinel && canObserve) {
 			observeForLoadMore(sentinel);
 		}
 	},
@@ -82,13 +85,13 @@ function getActions(item: AgentVersionListItemDto) {
 				@action="(value) => emit('action', value)"
 			/>
 			<li
-				v-if="hasMore"
+				v-if="hasMore || hasLoadError || isLoading"
 				ref="loadMoreSentinel"
 				:class="$style.sentinel"
 				data-test-id="agent-version-history-sentinel"
 			>
 				<N8nLoading v-if="isLoading" :loading="true" :rows="1" animated />
-				<N8nButton v-else-if="hasLoadError" variant="ghost" @click="emit('loadMore')">{{
+				<N8nButton v-else-if="hasLoadError" variant="ghost" @click="emit('retry')">{{
 					i18n.baseText('generic.retry')
 				}}</N8nButton>
 			</li>

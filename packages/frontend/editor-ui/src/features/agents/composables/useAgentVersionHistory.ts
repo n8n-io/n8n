@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { AgentVersionListItemDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -28,7 +28,8 @@ export function useAgentVersionHistory() {
 	const isInitialLoad = ref(true);
 	const hasMore = ref(true);
 	const acting = ref(false);
-	const hasLoadError = ref(false);
+	const failedLoad = ref<'refresh' | 'fetchMore' | null>(null);
+	const hasLoadError = computed(() => failedLoad.value !== null);
 	const agentKey = ref('');
 	let fetchedCount = 0;
 
@@ -47,7 +48,7 @@ export function useAgentVersionHistory() {
 			fetchedCount = 0;
 		}
 
-		hasLoadError.value = false;
+		failedLoad.value = null;
 		const token = ++requestToken;
 		isLoading.value = true;
 
@@ -65,7 +66,7 @@ export function useAgentVersionHistory() {
 		} catch (error) {
 			if (token !== requestToken) return;
 
-			hasLoadError.value = true;
+			failedLoad.value = 'refresh';
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
 			if (token === requestToken) {
@@ -76,7 +77,7 @@ export function useAgentVersionHistory() {
 	}
 
 	async function fetchMore(projectId: string, agentId: string): Promise<void> {
-		if (isLoading.value || !hasMore.value) return;
+		if (isLoading.value || !hasMore.value || failedLoad.value === 'refresh') return;
 		const token = ++requestToken;
 		isLoading.value = true;
 
@@ -92,17 +93,26 @@ export function useAgentVersionHistory() {
 				...new Map([...items.value, ...data].map((item) => [item.versionId, item])).values(),
 			];
 			fetchedCount += data.length;
-			hasLoadError.value = false;
+			failedLoad.value = null;
 			hasMore.value = data.length === PAGE_SIZE;
 		} catch (error) {
 			if (token !== requestToken) return;
 
-			hasLoadError.value = true;
+			failedLoad.value = 'fetchMore';
 			showError(error, locale.baseText('agents.versionHistory.error.load'));
 		} finally {
 			if (token === requestToken) {
 				isLoading.value = false;
 			}
+		}
+	}
+
+	async function retry(projectId: string, agentId: string): Promise<void> {
+		if (isLoading.value) return;
+		if (failedLoad.value === 'refresh') {
+			await refresh(projectId, agentId);
+		} else if (failedLoad.value === 'fetchMore') {
+			await fetchMore(projectId, agentId);
 		}
 	}
 
@@ -222,6 +232,7 @@ export function useAgentVersionHistory() {
 		pageSize: PAGE_SIZE,
 		refresh,
 		fetchMore,
+		retry,
 		revertToVersion,
 		publishVersion,
 		editVersion,

@@ -50,6 +50,7 @@ const {
 	hasLoadError,
 	refresh,
 	fetchMore,
+	retry,
 	revertToVersion,
 	publishVersion,
 	editVersion,
@@ -204,7 +205,7 @@ defineExpose({
 			:is-loading="isLoading"
 			@action="onAction"
 			@load-more="onLoadMore"
-			@retry="refresh(projectId, agentId)"
+			@retry="retry(projectId, agentId)"
 		/>
 		<AgentPublishTimeline
 			v-else
