@@ -290,9 +290,9 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 }
 
 .inProgress {
-	--animation--shimmer--duration: var(--duration--slowest);
-	--animation--shimmer--foreground: var(--text-color--subtle);
-	--animation--shimmer--background: var(--text-color--subtler);
+	--n8n-animation--shimmer--duration: var(--duration--slowest);
+	--n8n-animation--shimmer--foreground: var(--text-color--subtle);
+	--n8n-animation--shimmer--background: var(--text-color--subtler);
 	@include motion.shimmer;
 }
 
@@ -381,7 +381,7 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 	height: calc(var(--font-size--2xs) * var(--line-height--lg));
 	flex-shrink: 0;
 	color: var(--color--foreground--shade-2);
-	--animation--spin--duration: var(--duration--slow);
+	--n8n-animation--spin--duration: var(--duration--slow);
 
 	&[data-status='in_progress'] {
 		color: var(--color--primary);

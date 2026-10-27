@@ -747,7 +747,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 .emoji-button {
 	.isReadOnly & {
 		pointer-events: none;
-		background-color: var(--input--color--background--disabled);
+		background-color: var(--n8n-input--color--background--disabled);
 	}
 }
 
@@ -839,17 +839,17 @@ function handlePickerKeyup(event: KeyboardEvent) {
 	.searchWithActiveItem > div:focus-within {
 		outline: none;
 		box-shadow:
-			var(--input--shadow),
-			inset var(--input--border--shadow);
+			var(--n8n-input--shadow),
+			inset var(--n8n-input--border--shadow);
 	}
 
 	[data-active='true'] {
 		@include focus.focus-ring;
-		--button--border-color: var(--focus--border-color) !important;
-		background-color: var(--button--color--background-hover);
+		--n8n-button--border-color: var(--focus--border-color) !important;
+		background-color: var(--n8n-button--color--background-hover);
 		box-shadow:
-			inset var(--button--border--shadow--hover),
-			var(--button--shadow--hover);
+			inset var(--n8n-button--border--shadow--hover),
+			var(--n8n-button--shadow--hover);
 	}
 
 	.emoji {

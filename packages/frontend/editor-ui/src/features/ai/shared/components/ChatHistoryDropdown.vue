@@ -292,7 +292,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 
 <style lang="scss" module>
 .menuContent {
-	width: var(--n8n--dropdown-menu-width);
+	width: var(--n8n-dropdown-menu--width);
 }
 
 .itemLabel {

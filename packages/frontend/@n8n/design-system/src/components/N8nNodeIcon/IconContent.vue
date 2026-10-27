@@ -122,11 +122,11 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 
 .badge {
 	position: absolute;
-	background: var(--node--icon--badge--color--background, var(--color--background));
+	background: var(--n8n-node-icon--badge--color--background, var(--color--background));
 	border-radius: 50%;
-	// Drive the nested icon's color (its wrapper reads `--node--icon--color`) so an
+	// Drive the nested icon's color (its wrapper reads `--n8n-node-icon--color`) so an
 	// icon badge stays readable against the badge background in both themes.
 	// File/image badges are unaffected.
-	--node--icon--color: var(--color--text--shade-1);
+	--n8n-node-icon--color: var(--color--text--shade-1);
 }
 </style>

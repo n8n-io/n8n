@@ -231,7 +231,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 }
 
 .remember {
-	--checkbox--label--font-size: var(--font-size--xs);
+	--n8n-checkbox--label--font-size: var(--font-size--xs);
 	margin-top: var(--spacing--sm);
 }
 

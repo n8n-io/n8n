@@ -136,6 +136,28 @@ The `@n8n/css-var-naming` rule enforces a structured naming pattern for CSS cust
 --p--gray-740: #2e3440;
 ```
 
+## Public component variables
+
+The design-system enables `@n8n/component-css-vars` for component styles.
+It checks custom property declarations and `var()` references. Variables must
+exist in a configured theme file or use `--n8n-component--modifier`.
+
+```scss
+.input {
+  background: var(--n8n-input--color--background, var(--background--surface));
+}
+```
+
+The rule accepts these secondary options:
+
+- `themeFiles`: Absolute paths to SCSS files that declare theme variables.
+- `ignoreVariables`: Exact names for private variables supplied at runtime.
+  Limit these exceptions to the files that need them with Stylelint overrides.
+
+The rule skips inline style attributes, strings, comments, and Sass variables.
+The existing `@n8n/css-var-naming` rule also accepts the public component pattern
+when shared stylesheets use these overrides.
+
 ## Property Vocabulary
 
 The following properties are recognized:

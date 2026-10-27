@@ -243,7 +243,7 @@ defineExpose({ currentSettings, validationError, isDirty });
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	border: var(--border);
 	border-radius: var(--radius);
-	background-color: var(--input--color--background, var(--color--foreground--tint-2));
+	background-color: var(--n8n-input--color--background, var(--color--foreground--tint-2));
 	cursor: text;
 	min-height: 36px;
 

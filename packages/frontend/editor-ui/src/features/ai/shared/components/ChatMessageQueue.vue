@@ -283,9 +283,9 @@ watch(
 }
 
 .queueLabelPending {
-	--animation--shimmer--duration: var(--duration--slowest);
-	--animation--shimmer--foreground: var(--text-color--subtle);
-	--animation--shimmer--background: var(--text-color--subtler);
+	--n8n-animation--shimmer--duration: var(--duration--slowest);
+	--n8n-animation--shimmer--foreground: var(--text-color--subtle);
+	--n8n-animation--shimmer--background: var(--text-color--subtler);
 	@include motion.shimmer;
 }
 

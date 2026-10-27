@@ -544,59 +544,59 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	position: relative;
 	gap: var(--spacing--3xs);
 	width: 100%;
-	border-radius: var(--input--radius--top-left, var(--input--radius))
-		var(--input--radius--top-right, var(--input--radius))
-		var(--input--radius--bottom-right, var(--input--radius))
-		var(--input--radius--bottom-left, var(--input--radius));
-	font-size: var(--input--font-size);
-	background-color: var(--input--color--background);
+	border-radius: var(--n8n-input--radius--top-left, var(--n8n-input--radius))
+		var(--n8n-input--radius--top-right, var(--n8n-input--radius))
+		var(--n8n-input--radius--bottom-right, var(--n8n-input--radius))
+		var(--n8n-input--radius--bottom-left, var(--n8n-input--radius));
+	font-size: var(--n8n-input--font-size);
+	background-color: var(--n8n-input--color--background);
 	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
-	min-height: var(--input--height);
-	padding: 0 var(--input--padding);
-	color: var(--input--color--text);
+		var(--n8n-input--shadow),
+		inset var(--n8n-input--border--shadow);
+	min-height: var(--n8n-input--height);
+	padding: 0 var(--n8n-input--padding);
+	color: var(--n8n-input--color--text);
 
 	@include focus.focus-within-ring;
 
 	&:not([data-disabled]):hover:not(:focus-within):not(:has(.clearButton:hover)) {
 		cursor: text;
 		box-shadow:
-			var(--input--shadow--hover),
-			inset var(--input--border--shadow--hover);
+			var(--n8n-input--shadow--hover),
+			inset var(--n8n-input--border--shadow--hover);
 	}
 
 	&:focus-within {
 		box-shadow:
-			var(--input--shadow--focus),
-			inset var(--input--border--shadow--focus);
+			var(--n8n-input--shadow--focus),
+			inset var(--n8n-input--border--shadow--focus);
 	}
 
 	&[data-disabled] {
 		cursor: not-allowed;
 		opacity: 0.6;
 		box-shadow:
-			var(--input--shadow),
-			inset var(--input--border--shadow);
+			var(--n8n-input--shadow),
+			inset var(--n8n-input--border--shadow);
 
 		&:focus-within {
 			outline: none;
 			box-shadow:
-				var(--input--shadow),
-				inset var(--input--border--shadow);
+				var(--n8n-input--shadow),
+				inset var(--n8n-input--border--shadow);
 		}
 	}
 
 	&.multiple {
-		--tags-input--padding: var(--spacing--4xs);
-		--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
-		padding: var(--tags-input--padding);
-		padding-inline-end: var(--input--padding);
+		--n8n-tags-input--padding: var(--spacing--4xs);
+		--n8n-tag--height: calc(var(--n8n-input--height) - 2 * var(--n8n-tags-input--padding));
+		padding: var(--n8n-tags-input--padding);
+		padding-inline-end: var(--n8n-input--padding);
 
 		.clearButton,
 		.comboboxTrigger {
 			align-self: flex-end;
-			height: var(--tag--height);
+			height: var(--n8n-tag--height);
 		}
 	}
 }
@@ -639,7 +639,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	align-self: stretch;
 	min-width: 0;
 	width: 100%;
-	min-height: var(--input--height);
+	min-height: var(--n8n-input--height);
 	padding: 0;
 	border: none;
 	background: transparent;
@@ -648,7 +648,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	color: inherit;
 
 	&::placeholder {
-		color: var(--input--placeholder--color);
+		color: var(--n8n-input--placeholder--color);
 	}
 
 	&:focus,
@@ -658,10 +658,10 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 	&:disabled {
 		cursor: not-allowed;
-		color: var(--input--color--disabled);
+		color: var(--n8n-input--color--disabled);
 
 		&::placeholder {
-			color: var(--input--placeholder--color--disabled);
+			color: var(--n8n-input--placeholder--color--disabled);
 		}
 	}
 }
@@ -680,8 +680,8 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	&::after {
 		content: '';
 		position: absolute;
-		width: var(--input--height);
-		height: var(--input--height);
+		width: var(--n8n-input--height);
+		height: var(--n8n-input--height);
 		inset-block-start: 50%;
 		inset-inline-start: 50%;
 		transform: translate(-50%, -50%);
@@ -696,7 +696,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	display: inline-flex;
 	align-items: center;
 	align-self: flex-end;
-	height: var(--tag--height);
+	height: var(--n8n-tag--height);
 }
 
 .clearButton {
@@ -726,11 +726,11 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 .trailingIcon {
 	flex-shrink: 0;
-	color: var(--input--color--text);
+	color: var(--n8n-input--color--text);
 }
 
 .comboboxAnchor[data-empty] .trailingIcon {
-	color: var(--input--placeholder--color);
+	color: var(--n8n-input--placeholder--color);
 }
 
 .comboboxAnchor:not([data-disabled])[data-empty] .comboboxTrigger:hover .trailingIcon {
@@ -738,38 +738,38 @@ function onTagsUpdate(value: TagsInputValue[]) {
 }
 
 .comboboxAnchor[data-disabled][data-empty] .trailingIcon {
-	color: var(--input--placeholder--color--disabled);
+	color: var(--n8n-input--placeholder--color--disabled);
 }
 
 .comboboxAnchor[data-disabled]:not([data-empty]) .trailingIcon {
-	color: var(--input--color--disabled);
+	color: var(--n8n-input--color--disabled);
 }
 
 .comboboxContent {
-	--combobox-content--radius: var(--radius--xs);
-	--popover-content--radius: var(--combobox-content--radius);
+	--n8n-combobox-content--radius: var(--radius--xs);
+	--n8n-popover-content--radius: var(--n8n-combobox-content--radius);
 
 	@include popover.popover-surface;
 	@include popover.popover-placement-offsets;
 
-	--combobox-content--max-height: 500px;
+	--n8n-combobox-content--max-height: 500px;
 
 	display: flex;
 	flex-direction: column;
 	min-width: var(--reka-combobox-trigger-width);
 	max-height: min(
-		var(--combobox-content--max-height),
+		var(--n8n-combobox-content--max-height),
 		var(--reka-combobox-content-available-height, 75dvh)
 	);
 }
 
 .comboboxViewport {
-	--combobox-viewport--padding: var(--spacing--4xs);
+	--n8n-combobox-viewport--padding: var(--spacing--4xs);
 
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--combobox-viewport--padding);
+	padding: var(--n8n-combobox-viewport--padding);
 }
 
 .comboboxEmpty {
@@ -786,17 +786,17 @@ function onTagsUpdate(value: TagsInputValue[]) {
 }
 
 .comboboxGroup {
-	--combobox-separator-outline-inset: 1px;
+	--n8n-combobox-separator--outline-inset: 1px;
 
 	&:not([hidden]) ~ &:not([hidden]) {
 		border-top: 1px solid var(--border-color);
-		margin-block-start: var(--combobox-viewport--padding);
+		margin-block-start: var(--n8n-combobox-viewport--padding);
 		margin-inline: calc(
-			-1 * var(--combobox-viewport--padding) + var(--combobox-separator-outline-inset)
+			-1 * var(--n8n-combobox-viewport--padding) + var(--n8n-combobox-separator--outline-inset)
 		);
-		padding-block-start: var(--combobox-viewport--padding);
+		padding-block-start: var(--n8n-combobox-viewport--padding);
 		padding-inline: calc(
-			var(--combobox-viewport--padding) - var(--combobox-separator-outline-inset)
+			var(--n8n-combobox-viewport--padding) - var(--n8n-combobox-separator--outline-inset)
 		);
 	}
 }

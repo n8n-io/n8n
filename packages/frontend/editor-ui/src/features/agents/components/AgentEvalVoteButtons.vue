@@ -75,15 +75,15 @@ const labelFor = (vote: AgentEvalVote) =>
    for, so the tint comes from the background token instead.
 
    `!important` is load-bearing, not laziness: every variant sets
-   `--button--color--background` from a `.button.outline`-style selector, so a
+   `--n8n-button--color--background` from a `.button.outline`-style selector, so a
    single class here loses on specificity and the highlight silently never
    appears. Importance is the only way to win without reaching for the
    component's hashed class names. */
 .selectedUp {
-	--button--color--background: var(--background--success) !important;
+	--n8n-button--color--background: var(--background--success) !important;
 }
 
 .selectedDown {
-	--button--color--background: var(--background--danger) !important;
+	--n8n-button--color--background: var(--background--danger) !important;
 }
 </style>

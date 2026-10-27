@@ -133,17 +133,17 @@ function onOpenChange(open: boolean) {
 }
 
 .content {
-	--n8n--dropdown--offset--slide-x: 0;
-	--n8n--dropdown--offset--slide-y: 0;
-	--n8n--dropdown--offset--origin-x: left;
-	--n8n--dropdown--offset--origin-y: top;
-	--n8n--dropdown-menu-width: 24rem;
+	--n8n-dropdown--offset--slide-x: 0;
+	--n8n-dropdown--offset--slide-y: 0;
+	--n8n-dropdown--offset--origin-x: left;
+	--n8n-dropdown--offset--origin-y: top;
+	--n8n-dropdown-menu--width: 24rem;
 
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
-	max-width: var(--n8n--dropdown-menu-width);
+	min-width: calc(var(--n8n-dropdown-menu--width) / 4);
+	max-width: var(--n8n-dropdown-menu--width);
 	max-height: var(--reka-dropdown-menu-content-available-height);
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
@@ -153,7 +153,7 @@ function onOpenChange(open: boolean) {
 		var(--shadow--md),
 		inset var(--shadow--outline);
 	will-change: transform, opacity;
-	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	transform-origin: var(--n8n-dropdown--offset--origin-x) var(--n8n-dropdown--offset--origin-y);
 	scrollbar-width: none;
 
 	&[data-state='open'] {

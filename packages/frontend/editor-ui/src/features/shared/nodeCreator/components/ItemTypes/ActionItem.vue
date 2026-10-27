@@ -124,12 +124,12 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 @use '@/app/css/variables' as *;
 
 .action {
-	--node-creator--name--font-size: var(--font-size--2xs);
-	--node-creator--name--font-weight: var(--font-weight--regular);
+	--n8n-node-creator--name--font-size: var(--font-size--2xs);
+	--n8n-node-creator--name--font-weight: var(--font-weight--regular);
 	--trigger-icon--color--background: #{$trigger-icon-background-color};
 	--trigger-icon--border-color: #{$trigger-icon-border-color};
-	--node--icon--size: 20px;
-	--node--icon--margin-right: var(--spacing--xs);
+	--n8n-node-icon--size: 20px;
+	--n8n-node-icon--margin-right: var(--spacing--xs);
 
 	margin-left: var(--spacing--sm);
 	margin-right: var(--spacing--sm);

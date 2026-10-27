@@ -100,7 +100,7 @@ export type ContextMenuProps<T extends ContextMenuId = ContextMenuId> = {
 	loadingItemCount?: number;
 	/**
 	 * Extra CSS class for every panel (root and submenus). Use it for max-height
-	 * and to set `--context-menu--width` when the panel must use a fixed width
+	 * and to set `--n8n-context-menu--width` when the panel must use a fixed width
 	 * instead of hugging its content.
 	 */
 	contentClass?: ClassValue;

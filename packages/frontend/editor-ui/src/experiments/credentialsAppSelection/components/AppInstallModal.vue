@@ -289,7 +289,7 @@ watch(
 }
 
 .nodeIcon {
-	--node--icon--size: 40px;
+	--n8n-node-icon--size: 40px;
 	margin-right: var(--spacing--sm);
 }
 

@@ -159,7 +159,7 @@ const isOpen = computed({
 	transition: opacity var(--animation--duration) var(--animation--easing);
 
 	button {
-		--button--color--text: var(--color--text--tint-1);
+		--n8n-button--color--text: var(--color--text--tint-1);
 	}
 }
 
@@ -168,13 +168,13 @@ const isOpen = computed({
 	opacity: 1;
 
 	:global(.button) {
-		--button--color--text: var(--color--text--tint-1);
+		--n8n-button--color--text: var(--color--text--tint-1);
 	}
 }
 
 .dangerAction {
 	&:hover {
-		--button--color--text--hover: var(--color--danger);
+		--n8n-button--color--text--hover: var(--color--danger);
 	}
 }
 
@@ -188,7 +188,7 @@ const isOpen = computed({
 .header:hover {
 	.actions {
 		button {
-			--button--color--text: var(--color--text--shade-1);
+			--n8n-button--color--text: var(--color--text--shade-1);
 		}
 	}
 
@@ -200,7 +200,7 @@ const isOpen = computed({
 	}
 
 	.actionsAlwaysVisible :global(.button) {
-		--button--color--text: var(--color--text--shade-1);
+		--n8n-button--color--text: var(--color--text--shade-1);
 	}
 }
 
@@ -226,6 +226,6 @@ const isOpen = computed({
 }
 
 .noAnimation {
-	--animation--collapsible-slide--duration: 0s;
+	--n8n-animation--collapsible-slide--duration: 0s;
 }
 </style>

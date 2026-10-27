@@ -37,16 +37,16 @@ const modalName = computed(() => props.modalName ?? TRIAL_INTRO_MODAL_KEY);
 // Same overrides as the trial banner's upgrade CTA (TrialBanner.vue), applied
 // inline because the button variant defines these custom properties itself.
 const upgradeButtonStyle: Record<string, string> = {
-	'--button--color--background': 'var(--color--success)',
-	'--button--color--background-hover': 'var(--color--success--shade-1)',
-	'--button--color--background-active': 'var(--color--success--shade-1)',
-	'--button--color': 'var(--color--neutral-white)',
-	'--button--shadow': '0 0 0 1px var(--color--success)',
-	'--button--shadow--hover': '0 0 0 1px var(--color--success--shade-1)',
-	'--button--shadow--active': '0 0 0 1px var(--color--success--shade-1)',
-	'--button--border-color': 'var(--color--success)',
-	'--button--border-color--hover': 'var(--color--success--shade-1)',
-	'--button--border-color--active': 'var(--color--success--shade-1)',
+	'--n8n-button--color--background': 'var(--color--success)',
+	'--n8n-button--color--background-hover': 'var(--color--success--shade-1)',
+	'--n8n-button--color--background-active': 'var(--color--success--shade-1)',
+	'--n8n-button--color': 'var(--color--neutral-white)',
+	'--n8n-button--shadow': '0 0 0 1px var(--color--success)',
+	'--n8n-button--shadow--hover': '0 0 0 1px var(--color--success--shade-1)',
+	'--n8n-button--shadow--active': '0 0 0 1px var(--color--success--shade-1)',
+	'--n8n-button--border-color': 'var(--color--success)',
+	'--n8n-button--border-color--hover': 'var(--color--success--shade-1)',
+	'--n8n-button--border-color--active': 'var(--color--success--shade-1)',
 };
 
 const step = ref<1 | 2>(1);
@@ -432,13 +432,13 @@ async function onUpgradeClick() {
 }
 
 .headerIconButton {
-	--button--color: var(--color--info);
-	--button--color--background-hover: transparent;
-	--button--color--background-active: transparent;
+	--n8n-button--color: var(--color--info);
+	--n8n-button--color--background-hover: transparent;
+	--n8n-button--color--background-active: transparent;
 
 	&:hover,
 	&:active {
-		--button--color: var(--color--primary);
+		--n8n-button--color: var(--color--primary);
 	}
 }
 

@@ -147,7 +147,7 @@ const errorTooltip = computed(() =>
 	&::after {
 		top: calc(var(--spacing--xs) + calc(var(--spacing--3xs) + var(--spacing--4xs)));
 		/** Extends the rail through the parent timeline gap when that shared value is set. */
-		bottom: calc(var(--n8n--ai-activity-step-gap, 0px) * -1);
+		bottom: calc(var(--n8n-ai-activity-step--gap, 0px) * -1);
 	}
 }
 

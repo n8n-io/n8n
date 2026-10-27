@@ -102,18 +102,18 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 }
 
 .personalisationIcon.personalisationIcon {
-	--button--height: var(--height--3xl);
-	--button--padding: 0;
-	--button--radius: 16px;
-	--button--color--background: transparent;
-	--button--color--background-hover: transparent;
-	--button--color--background-active: transparent;
-	--button--shadow: none;
-	--button--shadow--hover: none;
-	--button--shadow--active: none;
-	--button--border--shadow: none;
-	--button--border--shadow--hover: none;
-	--button--border--shadow--active: none;
+	--n8n-button--height: var(--height--3xl);
+	--n8n-button--padding: 0;
+	--n8n-button--radius: 16px;
+	--n8n-button--color--background: transparent;
+	--n8n-button--color--background-hover: transparent;
+	--n8n-button--color--background-active: transparent;
+	--n8n-button--shadow: none;
+	--n8n-button--shadow--hover: none;
+	--n8n-button--shadow--active: none;
+	--n8n-button--border--shadow: none;
+	--n8n-button--border--shadow--hover: none;
+	--n8n-button--border--shadow--active: none;
 
 	display: flex;
 	align-items: center;

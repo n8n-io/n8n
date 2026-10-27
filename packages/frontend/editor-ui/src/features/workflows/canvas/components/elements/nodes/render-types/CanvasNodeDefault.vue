@@ -131,7 +131,7 @@ const nodeBorderOpacityStyle = calculateNodeBorderOpacityStyle();
 const styles = computed(() => ({
 	'--canvas-node--width': `${nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
-	'--node--icon--size': `${iconSize.value}px`,
+	'--n8n-node-icon--size': `${iconSize.value}px`,
 	...nodeBorderOpacityStyle.value,
 }));
 
@@ -271,7 +271,6 @@ function onActivate(event: MouseEvent) {
 	@include styles.canvas-node-border-defaults;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
-	--node--icon--color: var(--color--foreground--shade-1);
 
 	position: relative;
 	height: var(--canvas-node--height);
@@ -314,7 +313,7 @@ function onActivate(event: MouseEvent) {
 
 	&.configurable {
 		.icon {
-			margin-left: calc(40px - (var(--node--icon--size)) / 2 - var(--canvas-node--border-width));
+			margin-left: calc(40px - (var(--n8n-node-icon--size)) / 2 - var(--canvas-node--border-width));
 		}
 
 		.description {
@@ -342,7 +341,7 @@ function onActivate(event: MouseEvent) {
 		&.configuration {
 			.icon {
 				// 4px represents calc(var(--handle--indicator--width) - configuration node offset) / 2)
-				margin-left: calc((var(--canvas-node--height) - var(--node--icon--size) - 4px) / 2);
+				margin-left: calc((var(--canvas-node--height) - var(--n8n-node-icon--size) - 4px) / 2);
 			}
 
 			.statusIcons {

@@ -646,7 +646,7 @@ const redirectToDataTables = () => {
 	:global(.column-type-excluded.n8n-select) {
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--el-disabled-bg-color: var(--color--background--light-3);
-		--input--color--background--disabled: var(--color--background--light-3);
+		--n8n-input--color--background--disabled: var(--color--background--light-3);
 		pointer-events: none;
 		cursor: not-allowed;
 		opacity: 0.6;

@@ -620,9 +620,9 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
  * the focus after a failed check, so the focus border turns red too.
  */
 .codeInvalid :global(.n8n-input) {
-	--input--border-color: var(--color--danger);
-	--input--border-color--hover: var(--color--danger);
-	--input--border-color--focus: var(--color--danger);
+	--n8n-input--border-color: var(--color--danger);
+	--n8n-input--border-color--hover: var(--color--danger);
+	--n8n-input--border-color--focus: var(--color--danger);
 }
 
 /* Puts the description where the dialog header would: the header's own title–description gap. */
@@ -650,7 +650,7 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 }
 
 .iconSwap {
-	--animation--blur-swap--blur: 2px;
+	--n8n-animation--blur-swap--blur: 2px;
 
 	position: relative;
 	display: inline-flex;

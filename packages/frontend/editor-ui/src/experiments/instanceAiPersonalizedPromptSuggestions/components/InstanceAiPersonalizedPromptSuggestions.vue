@@ -280,7 +280,7 @@ function toggleSuggestions() {
 		transform var(--duration--snappy) var(--easing--ease-out);
 
 	@include motion.fade-in-up;
-	--animation--fade-in-up--translate: var(--spacing--3xs);
+	--n8n-animation--fade-in-up--translate: var(--spacing--3xs);
 	animation-delay: var(--suggestion-enter-delay, 0ms);
 	/* Hold the start state during the stagger delay so toggling doesn't flicker. */
 	animation-fill-mode: backwards;

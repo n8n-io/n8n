@@ -468,7 +468,7 @@ function hasActiveToolCall(): boolean {
 	overflow: hidden;
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
-	--input--font-size: var(--font-size--2xs);
+	--n8n-input--font-size: var(--font-size--2xs);
 }
 
 .toolDataList {

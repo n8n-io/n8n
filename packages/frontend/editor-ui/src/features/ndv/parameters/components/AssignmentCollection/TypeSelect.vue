@@ -88,12 +88,16 @@ const onSelect = (type: string): void => {
 	height: 100%;
 	min-height: var(--height--md);
 	padding: 0 var(--spacing--2xs);
-	border: var(--border-width) var(--border-style) var(--input--border-color, var(--border-color));
-	border-top-left-radius: var(--input--radius--top-left, var(--input--radius, 0));
-	border-bottom-left-radius: var(--input--radius--bottom-left, var(--input--radius, 0));
-	border-top-right-radius: var(--input-triple--radius--top-right, var(--input--radius, 0));
-	border-bottom-right-radius: var(--input-triple--radius--bottom-right, var(--input--radius, 0));
-	background-color: var(--input--color--background);
+	border: var(--border-width) var(--border-style)
+		var(--n8n-input--border-color, var(--border-color));
+	border-top-left-radius: var(--n8n-input--radius--top-left, var(--n8n-input--radius, 0));
+	border-bottom-left-radius: var(--n8n-input--radius--bottom-left, var(--n8n-input--radius, 0));
+	border-top-right-radius: var(--n8n-input-triple--radius--top-right, var(--n8n-input--radius, 0));
+	border-bottom-right-radius: var(
+		--n8n-input-triple--radius--bottom-right,
+		var(--n8n-input--radius, 0)
+	);
+	background-color: var(--n8n-input--color--background);
 	color: var(--color--text);
 	font-size: var(--font-size--xs);
 	font-family: var(--font-family);

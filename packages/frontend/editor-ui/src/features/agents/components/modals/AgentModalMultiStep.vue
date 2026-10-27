@@ -134,8 +134,8 @@ watch(
 }
 
 .stepChanged {
-	--animation--fade-in--duration: var(--duration--snappy);
-	--animation--fade-in--translate: var(--spacing--2xs);
+	--n8n-animation--fade-in--duration: var(--duration--snappy);
+	--n8n-animation--fade-in--translate: var(--spacing--2xs);
 
 	@include motion.fade-in;
 }

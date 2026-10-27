@@ -247,7 +247,7 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 		0 32px 32px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
 		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));
 	z-index: 1950; // See APP_Z_INDEXES in useStyles.ts
-	max-width: var(--dialog--max-width);
+	max-width: var(--n8n-dialog--max-width);
 
 	&:focus {
 		outline: none;
@@ -276,52 +276,52 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 }
 
 .small {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 
 	@media (min-width: 640px) {
-		--dialog--max-width: 360px;
+		--n8n-dialog--max-width: 360px;
 	}
 }
 
 .medium {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 
 	@media (min-width: 640px) {
-		--dialog--max-width: 480px;
+		--n8n-dialog--max-width: 480px;
 	}
 }
 
 .large {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 
 	@media (min-width: 640px) {
-		--dialog--max-width: 564px;
+		--n8n-dialog--max-width: 564px;
 	}
 }
 
 .xlarge {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 
 	@media (min-width: 640px) {
-		--dialog--max-width: 640px;
+		--n8n-dialog--max-width: 640px;
 	}
 }
 
 .\32xlarge {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 
 	@media (min-width: 640px) {
-		--dialog--max-width: 780px;
+		--n8n-dialog--max-width: 780px;
 	}
 }
 
 .fit {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 	width: fit-content;
 }
 
 .full {
-	--dialog--max-width: calc(100dvw - var(--spacing--lg));
+	--n8n-dialog--max-width: calc(100dvw - var(--spacing--lg));
 }
 
 .cover {

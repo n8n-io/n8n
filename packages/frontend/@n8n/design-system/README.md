@@ -135,6 +135,20 @@ sass toolchain can use the mixins and the token maps:
 
 The `breakpoint` mixin compiles to `@media screen and (width<=991px)`.
 
+### Component CSS variables
+
+Public component overrides use `--n8n-component--modifier`. For example, use
+`--n8n-input--color--background` to change the input background. Update the component,
+its mixins, and all callers when you rename an override.
+
+Components can use or override existing theme tokens, such as `--background--surface`,
+without adding an alias for each token. Keep these token names unchanged.
+
+Stylelint checks declarations and `var()` references in component style blocks and
+SCSS files, including v2 components. The rule reads the theme token files directly.
+For a private variable set by component code or a layout library, add an exact,
+file-scoped exception to `runtimeVariables` in `stylelint.config.mjs`.
+
 ## Exports
 
 Every subpath resolves from `dist`. The package has no CommonJS build and no `require`

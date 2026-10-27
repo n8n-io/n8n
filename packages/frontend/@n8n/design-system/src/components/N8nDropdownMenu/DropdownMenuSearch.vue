@@ -98,7 +98,7 @@ defineExpose({ focus, inputRef });
 	outline: none;
 	font-family: inherit;
 	font-size: var(--font-size--sm);
-	color: var(--color--text--base);
+	color: var(--text-color);
 	padding: 0 var(--spacing--3xs);
 	height: var(--height--sm);
 

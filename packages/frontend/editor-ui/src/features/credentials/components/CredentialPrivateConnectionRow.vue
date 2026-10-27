@@ -244,8 +244,8 @@ function onDisconnectConfirm() {
 	height: 9px;
 	border-radius: 50%;
 	background-color: var(--color--green-700);
-	animation: connectedPulse var(--animation--pulse-glow--duration, 6s) infinite
-		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+	animation: connectedPulse var(--n8n-animation--pulse-glow--duration, 6s) infinite
+		var(--n8n-animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
 
 	@media (prefers-reduced-motion: reduce) {
 		animation: none;

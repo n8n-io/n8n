@@ -255,27 +255,27 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 
 	display: inline-flex;
 	width: 100%;
-	min-height: var(--input--height);
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
+	min-height: var(--n8n-input--height);
+	border-radius: var(--n8n-input--radius);
+	background-color: var(--n8n-input--color--background);
 	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
-	font-size: var(--input--font-size);
-	color: var(--input--color--text);
+		var(--n8n-input--shadow),
+		inset var(--n8n-input--border--shadow);
+	font-size: var(--n8n-input--font-size);
+	color: var(--n8n-input--color--text);
 
 	@include focus.focus-within-ring;
 
 	&:hover:not(.isDisabled):not(:focus-within) {
 		box-shadow:
-			var(--input--shadow--hover),
-			inset var(--input--border--shadow--hover);
+			var(--n8n-input--shadow--hover),
+			inset var(--n8n-input--border--shadow--hover);
 	}
 
 	&:focus-within {
 		box-shadow:
-			var(--input--shadow--focus),
-			inset var(--input--border--shadow--focus);
+			var(--n8n-input--shadow--focus),
+			inset var(--n8n-input--border--shadow--focus);
 	}
 }
 
@@ -287,21 +287,21 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 .input {
 	flex: 1;
 	min-width: 0;
-	min-height: var(--input--height);
+	min-height: var(--n8n-input--height);
 	border: none;
 	background: transparent;
 	outline: none;
-	font-size: var(--input--font-size);
-	color: var(--input--color--text);
-	padding: 0 var(--input--padding);
+	font-size: var(--n8n-input--font-size);
+	color: var(--n8n-input--color--text);
+	padding: 0 var(--n8n-input--padding);
 
 	&::placeholder {
-		color: var(--input--placeholder--color);
+		color: var(--n8n-input--placeholder--color);
 	}
 
 	&:disabled {
 		cursor: not-allowed;
-		color: var(--input--color--disabled);
+		color: var(--n8n-input--color--disabled);
 	}
 }
 
@@ -314,7 +314,7 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	padding-left: var(--input--padding);
+	padding-left: var(--n8n-input--padding);
 	color: var(--color--text--shade-1);
 	opacity: 0.7;
 }
@@ -342,35 +342,35 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 }
 
 .buttonDecrement {
-	width: var(--input--height);
-	border-right: var(--border-width, 1px) solid var(--input--border-color);
-	border-radius: var(--input--radius) 0 0 var(--input--radius);
+	width: var(--n8n-input--height);
+	border-right: var(--border-width, 1px) solid var(--n8n-input--border-color);
+	border-radius: var(--n8n-input--radius) 0 0 var(--n8n-input--radius);
 
 	&:hover:not(:disabled):not([data-disabled]) {
-		border-right-color: var(--input--border-color--hover);
+		border-right-color: var(--n8n-input--border-color--hover);
 	}
 }
 
 .buttonIncrement {
-	width: var(--input--height);
-	border-left: var(--border-width, 1px) solid var(--input--border-color);
-	border-radius: 0 var(--input--radius) var(--input--radius) 0;
+	width: var(--n8n-input--height);
+	border-left: var(--border-width, 1px) solid var(--n8n-input--border-color);
+	border-radius: 0 var(--n8n-input--radius) var(--n8n-input--radius) 0;
 
 	&:hover:not(:disabled):not([data-disabled]) {
-		border-left-color: var(--input--border-color--hover);
+		border-left-color: var(--n8n-input--border-color--hover);
 	}
 }
 
 .controlsWrapper {
 	display: flex;
 	flex-direction: column;
-	border-left: var(--border-width, 1px) solid var(--input--border-color);
+	border-left: var(--border-width, 1px) solid var(--n8n-input--border-color);
 
 	&:hover:has(button:not(:disabled):not([data-disabled])) {
-		border-left-color: var(--input--border-color--hover);
+		border-left-color: var(--n8n-input--border-color--hover);
 
 		.buttonUp {
-			border-bottom-color: var(--input--border-color--hover);
+			border-bottom-color: var(--n8n-input--border-color--hover);
 		}
 	}
 }
@@ -381,12 +381,12 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 }
 
 .buttonUp {
-	border-bottom: var(--border-width, 1px) solid var(--input--border-color);
-	border-radius: 0 var(--input--radius) 0 0;
+	border-bottom: var(--border-width, 1px) solid var(--n8n-input--border-color);
+	border-radius: 0 var(--n8n-input--radius) 0 0;
 }
 
 .buttonDown {
-	border-radius: 0 0 var(--input--radius) 0;
+	border-radius: 0 0 var(--n8n-input--radius) 0;
 }
 
 .mini {

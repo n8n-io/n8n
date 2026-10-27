@@ -207,8 +207,8 @@ const steps = computed((): TimelineStep[] => {
 }
 
 .toggleTrigger {
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
+	--n8n-button--padding: 0;
+	--n8n-button--font-size: var(--font-size--sm);
 
 	padding-inline: 0;
 	font-size: var(--font-size--sm);

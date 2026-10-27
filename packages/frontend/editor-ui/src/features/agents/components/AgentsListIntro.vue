@@ -118,7 +118,7 @@ function onSelectTemplate(template: AgentTemplate) {
 
 	/* The button sets its own text color, so the parent color property does not reach it. */
 	:deep(button) {
-		--button--color: var(--text-color--subtle);
+		--n8n-button--color: var(--text-color--subtle);
 	}
 }
 

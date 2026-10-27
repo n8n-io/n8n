@@ -116,6 +116,6 @@ function getCredentialWithIcon(name: string | null): ICredentialType | null {
 
 <style lang="scss" module>
 .icon {
-	--node--icon--color: var(--color--foreground--shade-1);
+	--n8n-node-icon--color: var(--color--foreground--shade-1);
 }
 </style>

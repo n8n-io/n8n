@@ -6,7 +6,7 @@
 @use '../../css/mixins/motion';
 
 .blinking-cursor {
-	--animation--blink-background--duration: 1s;
+	--n8n-animation--blink-background--duration: 1s;
 
 	display: inline-block;
 	height: var(--font-size--md);

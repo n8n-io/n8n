@@ -283,7 +283,7 @@ const tooltipPlacement = computed(() => {
 .scrollLabelOnOverflow {
 	// In px per second. The duration follows the overflow distance, so every label
 	// scrolls at the same pace whatever its length.
-	--menu-item--label-scroll-speed: 70;
+	--n8n-menu-item--label-scroll-speed: 70;
 	container-type: inline-size;
 	margin-inline-end: calc(var(--spacing--4xs) * -1);
 
@@ -309,7 +309,7 @@ const tooltipPlacement = computed(() => {
 		.menuItemText {
 			transform: translateX(min(0px, calc(-100% + 100cqi)));
 			transition-duration: calc(
-				var(--menu-item--label-overflow, 0) / var(--menu-item--label-scroll-speed) * 1s
+				var(--menu-item--label-overflow, 0) / var(--n8n-menu-item--label-scroll-speed) * 1s
 			);
 			transition-delay: var(--duration--base);
 			transition-timing-function: linear;

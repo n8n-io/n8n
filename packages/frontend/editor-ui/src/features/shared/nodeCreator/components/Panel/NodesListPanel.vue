@@ -366,7 +366,7 @@ function onBackButton() {
 	padding: 0;
 }
 .nodeIcon {
-	--node--icon--size: 20px;
+	--n8n-node-icon--size: 20px;
 	--node-creator--icon--color: var(--node--icon--color--neutral);
 	margin-right: var(--spacing--sm);
 }
@@ -388,7 +388,7 @@ function onBackButton() {
 	background: var(--color--background--light-3);
 	height: 100%;
 	background-color: $node-creator-background-color;
-	--node--icon--badge--color--background: var(--color--background--light-3);
+	--n8n-node-icon--badge--color--background: var(--color--background--light-3);
 	width: var(--node-creator--width);
 	display: flex;
 	flex-direction: column;

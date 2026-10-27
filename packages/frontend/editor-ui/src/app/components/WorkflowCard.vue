@@ -918,8 +918,8 @@ const tags = computed(
 
 @include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
-		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
-		--card--append--width: 100%;
+		--n8n-card--padding: 0 var(--spacing--sm) var(--spacing--sm);
+		--n8n-card--append--width: 100%;
 
 		flex-direction: column;
 	}

@@ -506,22 +506,22 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	width: 100%;
-	min-height: var(--input--height);
-	padding: 0 var(--input--padding);
-	border-radius: var(--input--radius);
-	font-size: var(--input--font-size);
+	min-height: var(--n8n-input--height);
+	padding: 0 var(--n8n-input--padding);
+	border-radius: var(--n8n-input--radius);
+	font-size: var(--n8n-input--font-size);
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--md);
-	border: 1px solid var(--input--border-color);
-	background-color: var(--input--color--background);
-	color: var(--input--color--text);
+	border: 1px solid var(--n8n-input--border-color);
+	background-color: var(--n8n-input--color--background);
+	color: var(--n8n-input--color--text);
 	position: relative;
 	outline: none;
-	box-shadow: var(--input--shadow);
+	box-shadow: var(--n8n-input--shadow);
 
 	&:hover:not([data-disabled]):not(:focus-visible):not(:has(.clearButton:hover)) {
-		border-color: var(--input--border-color--hover);
-		box-shadow: var(--input--shadow--hover);
+		border-color: var(--n8n-input--border-color--hover);
+		box-shadow: var(--n8n-input--shadow--hover);
 		cursor: pointer;
 	}
 
@@ -529,27 +529,27 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		@include focus.focus-visible-ring;
 
 		&:focus-visible {
-			border-color: var(--input--border-color--focus);
-			box-shadow: var(--input--shadow--focus);
+			border-color: var(--n8n-input--border-color--focus);
+			box-shadow: var(--n8n-input--shadow--focus);
 			z-index: 1;
 		}
 	}
 
 	&[data-placeholder] {
-		color: var(--input--placeholder--color);
+		color: var(--n8n-input--placeholder--color);
 	}
 
 	&[data-disabled] {
-		color: var(--input--color--disabled);
+		color: var(--n8n-input--color--disabled);
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
 }
 
 .variantGhost {
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--shadow--hover: 0 0 0 0 transparent;
+	--n8n-input--border-color: transparent;
+	--n8n-input--border-color--hover: transparent;
+	--n8n-input--shadow--hover: 0 0 0 0 transparent;
 
 	border-color: transparent;
 	background-color: transparent;
@@ -561,11 +561,11 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .variantFlush {
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--shadow--hover: 0 0 0 0 transparent;
-	--input--shadow--focus: 0 0 0 0 transparent;
+	--n8n-input--border-color: transparent;
+	--n8n-input--border-color--hover: transparent;
+	--n8n-input--border-color--focus: transparent;
+	--n8n-input--shadow--hover: 0 0 0 0 transparent;
+	--n8n-input--shadow--focus: 0 0 0 0 transparent;
 
 	border-color: transparent;
 	background-color: transparent;
@@ -649,7 +649,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectContent {
-	--select-viewport--padding: var(--spacing--4xs);
+	--n8n-select-viewport--padding: var(--spacing--4xs);
 
 	display: flex;
 	flex-direction: column;
@@ -657,7 +657,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	width: max-content;
 	min-width: max(var(--reka-select-trigger-width, 0px), var(--spacing--4xl));
 	max-height: min(var(--reka-select-content-available-height, 50vh), calc(var(--height--5xl) * 3));
-	border-radius: var(--input--radius);
+	border-radius: var(--n8n-input--radius);
 	background-color: var(--background--surface);
 	--shadow-color--outline: var(--border-color);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
@@ -676,7 +676,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 .selectViewport {
 	display: flex;
 	flex-direction: column;
-	padding: var(--select-viewport--padding);
+	padding: var(--n8n-select-viewport--padding);
 }
 
 .empty {
@@ -712,7 +712,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 .selectItem {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
-	border-radius: var(--input--radius);
+	border-radius: var(--n8n-input--radius);
 	display: flex;
 	align-items: flex-start;
 	min-height: var(--spacing--xl);
@@ -743,10 +743,12 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectSeparator {
-	--select-separator-outline-inset: 1px;
+	--n8n-select-separator--outline-inset: 1px;
 
-	margin-block: var(--select-viewport--padding);
-	margin-inline: calc(-1 * var(--select-viewport--padding) + var(--select-separator-outline-inset));
+	margin-block: var(--n8n-select-viewport--padding);
+	margin-inline: calc(
+		-1 * var(--n8n-select-viewport--padding) + var(--n8n-select-separator--outline-inset)
+	);
 	border-top: var(--border);
 }
 

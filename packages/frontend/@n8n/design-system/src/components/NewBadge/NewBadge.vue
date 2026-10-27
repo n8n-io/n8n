@@ -39,7 +39,7 @@ const { t } = useI18n();
 	);
 
 	/** Keep the shimmer and both gleams on the same cycle. */
-	--new-badge--cycle: 5000ms;
+	--n8n-new-badge--cycle: 5000ms;
 
 	position: relative;
 
@@ -87,7 +87,7 @@ const { t } = useI18n();
 	@media (hover: hover) {
 		&:hover .shimmer::after,
 		:global(:hover) > & .shimmer::after {
-			animation: newBadgeShimmer var(--new-badge--cycle) var(--easing--ease-in-out) infinite;
+			animation: newBadgeShimmer var(--n8n-new-badge--cycle) var(--easing--ease-in-out) infinite;
 			@include motion.reduced-motion;
 		}
 
@@ -95,14 +95,14 @@ const { t } = useI18n();
 		&:hover::after,
 		:global(:hover) > &::before,
 		:global(:hover) > &::after {
-			animation: newBadgeGleam var(--new-badge--cycle) var(--easing--ease-out) infinite;
+			animation: newBadgeGleam var(--n8n-new-badge--cycle) var(--easing--ease-out) infinite;
 			@include motion.reduced-motion;
 		}
 
 		&:hover::after,
 		:global(:hover) > &::after {
 			/** Start the second gleam when the first one finishes. */
-			animation-delay: calc(var(--new-badge--cycle) * 0.125);
+			animation-delay: calc(var(--n8n-new-badge--cycle) * 0.125);
 		}
 	}
 

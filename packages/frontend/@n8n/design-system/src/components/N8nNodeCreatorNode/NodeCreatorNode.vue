@@ -112,7 +112,7 @@ const { t } = useI18n();
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--action--arrow--color--hover, var(--color--text--tint-1));
+	color: var(--n8n-node-creator--arrow-color--hover, var(--color--text--tint-1));
 }
 .disabled {
 	cursor: not-allowed;
@@ -152,7 +152,7 @@ const { t } = useI18n();
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: var(--spacing--2xs);
-	color: var(--action--arrow--color, var(--color--text--tint-2));
+	color: var(--n8n-node-creator--arrow-color, var(--color--text--tint-2));
 	cursor: pointer;
 	background: transparent;
 	border: none;
@@ -169,11 +169,11 @@ const { t } = useI18n();
 }
 .nodeIcon {
 	display: flex;
-	margin-right: var(--node--icon--margin-right, var(--spacing--sm));
+	margin-right: var(--n8n-node-icon--margin-right, var(--spacing--sm));
 }
 .name {
-	font-weight: var(--node-creator--name--font-weight, var(--font-weight--medium));
-	font-size: var(--node-creator--name--font-size, var(--font-size--sm));
+	font-weight: var(--n8n-node-creator--name--font-weight, var(--font-weight--medium));
+	font-size: var(--n8n-node-creator--name--font-size, var(--font-size--sm));
 	line-height: 1.115rem;
 }
 .description {
@@ -181,7 +181,7 @@ const { t } = useI18n();
 	font-size: var(--font-size--2xs);
 	line-height: 1rem;
 	font-weight: var(--font-weight--regular);
-	color: var(--node-creator--description--color, var(--color--text));
+	color: var(--n8n-node-creator--description--color, var(--color--text));
 }
 
 .aiIcon {

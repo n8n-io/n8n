@@ -121,7 +121,7 @@ function increase() {
 
 <style lang="scss" module>
 .card {
-	--card--padding: var(--spacing--sm);
+	--n8n-card--padding: var(--spacing--sm);
 
 	width: 90%;
 	max-width: 90%;

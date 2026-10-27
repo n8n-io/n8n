@@ -283,7 +283,7 @@ const previewDocumentId = computed(() =>
 // button; the doubled class selector outranks N8nButton's background rules.
 .startWithAi.startWithAi {
 	// Icon inherits currentColor; the label is repainted with the gradient below.
-	--button--color: var(--assistant--color--highlight-2);
+	--n8n-button--color: var(--assistant--color--highlight-2);
 	border: 1px solid transparent;
 	background:
 		var(--assistant--button--color--background--gradient) padding-box,

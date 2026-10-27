@@ -655,9 +655,9 @@ onBeforeUnmount(() => {
  * input element itself with a more specific selector to turn the border red.
  */
 .fieldInvalid :global(.n8n-input) {
-	--input--border-color: var(--color--danger);
-	--input--border-color--hover: var(--color--danger);
-	--input--border-color--focus: var(--color--danger);
+	--n8n-input--border-color: var(--color--danger);
+	--n8n-input--border-color--hover: var(--color--danger);
+	--n8n-input--border-color--focus: var(--color--danger);
 }
 
 /* Keep the link's hover padding without making the description line taller than its neighbours. */

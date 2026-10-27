@@ -274,15 +274,15 @@ function valueChanged(parameterData: IUpdateInformation) {
 	:global(.button) {
 		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight--regular);
-		--button--border-color: var(--color--foreground);
-		--button--color--background: var(--color--background);
+		--n8n-button--border-color: var(--color--foreground);
+		--n8n-button--color--background: var(--color--background);
 
-		--button--color--text--hover: var(--button--color--text--secondary);
-		--button--border-color--hover: var(--color--foreground);
-		--button--color--background--hover: var(--color--background);
+		--n8n-button--color--text--hover: var(--button--color--text--secondary);
+		--n8n-button--border-color--hover: var(--color--foreground);
+		--n8n-button--color--background--hover: var(--color--background);
 
 		--button--color--text--active: var(--button--color--text--secondary);
-		--button--border-color--active: var(--color--foreground);
+		--n8n-button--border-color--active: var(--color--foreground);
 		--button--color--background--active: var(--color--background);
 
 		--button--color--text--focus: var(--button--color--text--secondary);

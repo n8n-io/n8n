@@ -165,12 +165,12 @@ export const Embedded = {
 			</p>
 			<div
 				style="
-					--tags-input--padding: var(--spacing--4xs);
+					--n8n-tags-input--padding: var(--spacing--4xs);
 					display: flex;
 					align-items: center;
 					width: 100%;
 					min-height: var(--height--lg);
-					padding: var(--tags-input--padding);
+					padding: var(--n8n-tags-input--padding);
 					padding-inline-end: var(--spacing--xs);
 					border-radius: var(--radius--2xs);
 					background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
@@ -209,7 +209,7 @@ export const Trailing = {
 				flexShrink: 0,
 				alignItems: 'center',
 				alignSelf: 'flex-end',
-				height: 'calc(var(--input--height) - 2px)',
+				height: 'calc(var(--n8n-input--height) - 2px)',
 				marginTop: '0',
 				paddingInline: 'var(--spacing--2xs)',
 				color: 'var(--text-color--subtle)',
@@ -385,7 +385,7 @@ export const Scrollable = {
 			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
 		},
 		template: `
-		<div style="${storyContainerStyle}; --tags-input--max-height: 72px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="${storyContainerStyle}; --n8n-tags-input--max-height: 72px; display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<TagsInput v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
 			<TagsInput v-model="largeValue" size="large" placeholder="large (36px, default)" />
 			<TagsInput v-model="mediumValue" size="medium" placeholder="medium (32px)" />

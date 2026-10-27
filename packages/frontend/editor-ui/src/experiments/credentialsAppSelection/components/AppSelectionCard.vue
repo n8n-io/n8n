@@ -244,9 +244,9 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 }
 
 .skeletonIcon {
-	--animation--skeleton-pulse--duration: 1.5s;
-	--animation--skeleton-pulse--opacity-start: 0.6;
-	--animation--skeleton-pulse--opacity-end: 0.3;
+	--n8n-animation--skeleton-pulse--duration: 1.5s;
+	--n8n-animation--skeleton-pulse--opacity-start: 0.6;
+	--n8n-animation--skeleton-pulse--opacity-end: 0.3;
 
 	width: 32px;
 	height: 32px;
@@ -256,9 +256,9 @@ const nodeTypeForIcon = computed((): SimplifiedNodeType | null => {
 }
 
 .skeletonText {
-	--animation--skeleton-pulse--duration: 1.5s;
-	--animation--skeleton-pulse--opacity-start: 0.6;
-	--animation--skeleton-pulse--opacity-end: 0.3;
+	--n8n-animation--skeleton-pulse--duration: 1.5s;
+	--n8n-animation--skeleton-pulse--opacity-start: 0.6;
+	--n8n-animation--skeleton-pulse--opacity-end: 0.3;
 
 	width: 80px;
 	height: 14px;

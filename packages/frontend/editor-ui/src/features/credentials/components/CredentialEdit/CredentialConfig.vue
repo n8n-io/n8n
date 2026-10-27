@@ -817,7 +817,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 <style lang="scss" module>
 .config {
-	--notice--margin: 0;
+	--n8n-notice--margin: 0;
 	flex-grow: 1;
 
 	> * + * {
@@ -859,12 +859,12 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 // Outline button tinted for the destructive "Disconnect" action so it reads as
 // the primary action without the heaviness of a filled destructive button.
 .disconnectButton {
-	--button--color: var(--color--danger);
+	--n8n-button--color: var(--color--danger);
 	--button--color--hover: var(--color--danger);
 	--button--color--active: var(--color--danger);
-	--button--border-color: var(--color--danger);
-	--button--border-color--hover: var(--color--danger);
-	--button--border-color--active: var(--color--danger);
+	--n8n-button--border-color: var(--color--danger);
+	--n8n-button--border-color--hover: var(--color--danger);
+	--n8n-button--border-color--active: var(--color--danger);
 }
 
 .askAssistantButton {

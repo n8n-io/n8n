@@ -213,10 +213,10 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 }
 
 .content {
-	--animation--popover-in--duration: 200ms;
-	--animation--popover-in--easing: cubic-bezier(0.16, 1, 0.3, 1);
-	--animation--popover-in--translate-x: 0;
-	--animation--popover-in--translate-y: 0;
+	--n8n-animation--popover-in--duration: 200ms;
+	--n8n-animation--popover-in--easing: cubic-bezier(0.16, 1, 0.3, 1);
+	--n8n-animation--popover-in--translate-x: 0;
+	--n8n-animation--popover-in--translate-y: 0;
 	--canvas-chat-session-dropdown--transform-origin-x: center;
 	--canvas-chat-session-dropdown--transform-origin-y: center;
 
@@ -240,12 +240,12 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 	}
 
 	&[data-side='bottom'] {
-		--animation--popover-in--translate-y: 2px;
+		--n8n-animation--popover-in--translate-y: 2px;
 		--canvas-chat-session-dropdown--transform-origin-y: top;
 	}
 
 	&[data-side='top'] {
-		--animation--popover-in--translate-y: -2px;
+		--n8n-animation--popover-in--translate-y: -2px;
 		--canvas-chat-session-dropdown--transform-origin-y: bottom;
 	}
 }

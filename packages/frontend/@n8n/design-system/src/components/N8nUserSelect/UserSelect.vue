@@ -164,8 +164,8 @@ const getLabel = (user: IUser) => {
 
 <style lang="scss" module>
 .itemContainer {
-	--select--option--padding: var(--spacing--2xs) var(--spacing--sm);
-	--select--option--line-height: 1;
+	--n8n-select--option--padding: var(--spacing--2xs) var(--spacing--sm);
+	--n8n-select--option--line-height: 1;
 }
 
 /* The select reserves room for an icon. The avatar is wider, so the text starts after it. */

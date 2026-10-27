@@ -139,9 +139,9 @@ const handleCopy = async (value: string) => {
 		align-items: center;
 
 		:global(.n8n-input__wrapper) {
-			--input--border--shadow: 0 0 0 0 transparent;
-			--input--border--shadow--hover: 0 0 0 0 transparent;
-			--input--border--shadow--focus: 0 0 0 0 transparent;
+			--n8n-input--border--shadow: 0 0 0 0 transparent;
+			--n8n-input--border--shadow--hover: 0 0 0 0 transparent;
+			--n8n-input--border--shadow--focus: 0 0 0 0 transparent;
 
 			&:focus-within {
 				outline: none;

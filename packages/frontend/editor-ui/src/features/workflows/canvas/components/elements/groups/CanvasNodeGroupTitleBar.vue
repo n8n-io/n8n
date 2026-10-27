@@ -842,7 +842,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 /* Hovering anywhere on the header highlights the toggle */
 .titleBar:hover .toggle:not(:active) {
-	background-color: var(--button--color--background-hover);
+	background-color: var(--n8n-button--color--background-hover);
 }
 
 // Stacks the title and, when expanded, the description within the header box.

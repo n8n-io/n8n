@@ -326,7 +326,7 @@ function onAddToChat() {
 	pointer-events: auto;
 
 	:global(.button) {
-		--button--color--text: var(--color--text--tint-1);
+		--n8n-button--color: var(--color--text--tint-1);
 	}
 }
 

@@ -332,10 +332,10 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 <style lang="scss" module>
 .timeline {
 	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
-	--n8n--ai-activity-step-gap: var(--spacing--2xs);
+	--n8n-ai-activity-step--gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--n8n--ai-activity-step-gap);
+	gap: var(--n8n-ai-activity-step--gap);
 }
 
 .timelineItem {

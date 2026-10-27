@@ -1128,8 +1128,8 @@ function handleNewThreadClick() {
 }
 
 .agentPreviewLayoutTransition {
-	--animation--width-transition--duration: var(--duration--snappy);
-	--animation--width-transition--easing: var(--easing--ease-in-out);
+	--n8n-animation--width-transition--duration: var(--duration--snappy);
+	--n8n-animation--width-transition--easing: var(--easing--ease-in-out);
 
 	@include motion.width-transition;
 }
@@ -1275,23 +1275,23 @@ function handleNewThreadClick() {
 }
 
 .preview-panel-slide-enter-active {
-	--animation--fade-in-right--easing: var(--preview-panel-slide-easing);
-	--animation--fade-in-right--duration: var(
+	--n8n-animation--fade-in-right--easing: var(--preview-panel-slide-easing);
+	--n8n-animation--fade-in-right--duration: var(
 		--instance-ai-panel-transition-duration,
 		var(--duration--snappy)
 	);
-	--animation--fade-in-right--translate: var(--spacing--sm);
+	--n8n-animation--fade-in-right--translate: var(--spacing--sm);
 
 	@include motion.fade-in-right;
 }
 
 .preview-panel-slide-leave-active {
-	--animation--fade-out-right--easing: var(--preview-panel-slide-easing);
-	--animation--fade-out-right--duration: var(
+	--n8n-animation--fade-out-right--easing: var(--preview-panel-slide-easing);
+	--n8n-animation--fade-out-right--duration: var(
 		--instance-ai-panel-transition-duration,
 		var(--duration--snappy)
 	);
-	--animation--fade-out-right--translate: var(--spacing--sm);
+	--n8n-animation--fade-out-right--translate: var(--spacing--sm);
 
 	@include motion.fade-out-right;
 }
@@ -1327,18 +1327,18 @@ function handleNewThreadClick() {
 .artifacts-panel-fade-leave-active {
 	--artifacts-panel-slide-enter-easing: var(--easing--ease-out);
 	--artifacts-panel-slide-exit-easing: var(--easing--ease-in);
-	--animation--fade-in-right--duration: var(
+	--n8n-animation--fade-in-right--duration: var(
 		--instance-ai-panel-transition-duration,
 		var(--duration--snappy)
 	);
-	--animation--fade-in-right--easing: var(--artifacts-panel-slide-enter-easing);
-	--animation--fade-in-right--translate: 100%;
-	--animation--fade-out-right--duration: var(
+	--n8n-animation--fade-in-right--easing: var(--artifacts-panel-slide-enter-easing);
+	--n8n-animation--fade-in-right--translate: 100%;
+	--n8n-animation--fade-out-right--duration: var(
 		--instance-ai-panel-transition-duration,
 		var(--duration--snappy)
 	);
-	--animation--fade-out-right--easing: var(--artifacts-panel-slide-exit-easing);
-	--animation--fade-out-right--translate: 100%;
+	--n8n-animation--fade-out-right--easing: var(--artifacts-panel-slide-exit-easing);
+	--n8n-animation--fade-out-right--translate: 100%;
 
 	will-change: opacity, transform;
 

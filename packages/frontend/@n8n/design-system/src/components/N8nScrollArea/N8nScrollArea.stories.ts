@@ -113,7 +113,7 @@ WithEdgeFade.parameters = {
 	docs: {
 		description: {
 			story:
-				'Fades the content out at the given edge or axis of the viewport, as a hint that more of it scrolls into view. Set `--scroll-area--fade-size` to change its depth.',
+				'Fades the content out at the given edge or axis of the viewport, as a hint that more of it scrolls into view. Set `--n8n-scroll-area--fade-size` to change its depth.',
 		},
 	},
 };

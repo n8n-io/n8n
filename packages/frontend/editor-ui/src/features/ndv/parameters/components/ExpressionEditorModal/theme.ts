@@ -4,9 +4,9 @@ import { highlighter } from '@/features/shared/editors/plugins/codemirror/resolv
 const commonThemeProps = (isReadOnly = false) => ({
 	'&': {
 		borderWidth: 'var(--border-width)',
-		borderStyle: 'var(--input--border-style, var(--border-style))',
-		borderColor: 'var(--input--border-color, var(--border-color))',
-		borderRadius: 'var(--input--radius, var(--radius))',
+		borderStyle: 'var(--n8n-input--border-style, var(--border-style))',
+		borderColor: 'var(--n8n-input--border-color, var(--border-color))',
+		borderRadius: 'var(--n8n-input--radius, var(--radius))',
 		backgroundColor: 'var(--expression-editor--color--background)',
 	},
 	'.cm-cursor, .cm-dropCursor': {
@@ -22,7 +22,7 @@ const commonThemeProps = (isReadOnly = false) => ({
 	'.cm-content': {
 		fontFamily: 'var(--font-family--monospace)',
 		padding: 'var(--spacing--xs)',
-		color: 'var(--input--color--text, var(--color--text--shade-1))',
+		color: 'var(--n8n-input--color--text, var(--color--text--shade-1))',
 		caretColor: isReadOnly ? 'transparent' : 'var(--code--caret--color)',
 	},
 	'.cm-line': {

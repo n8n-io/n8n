@@ -114,15 +114,15 @@
 }
 
 .dialog-fade-enter-active {
-	--animation--fade-in-down--duration: 0.3s;
-	--animation--fade-in-down--translate: 20px;
+	--n8n-animation--fade-in-down--duration: 0.3s;
+	--n8n-animation--fade-in-down--translate: 20px;
 
 	@include motion.fade-in-down;
 }
 
 .dialog-fade-leave-active {
-	--animation--fade-out-up--duration: 0.3s;
-	--animation--fade-out-up--translate: 20px;
+	--n8n-animation--fade-out-up--duration: 0.3s;
+	--n8n-animation--fade-out-up--translate: 20px;
 
 	@include motion.fade-out-up;
 }

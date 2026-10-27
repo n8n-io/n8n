@@ -184,7 +184,7 @@ function resetFilters() {
 	display: inline-flex;
 
 	&[data-state='open'] button {
-		background-color: var(--button--color--background-active);
+		background-color: var(--n8n-button--color--background-active);
 	}
 }
 

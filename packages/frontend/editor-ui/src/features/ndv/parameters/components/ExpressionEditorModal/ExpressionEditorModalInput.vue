@@ -102,12 +102,12 @@ defineExpose({ editor, focus });
 	:global(.cm-content) {
 		border-radius: var(--radius);
 		&[aria-readonly='true'] {
-			--input--color--background--disabled: var(--color--background);
+			--n8n-input--color--background--disabled: var(--color--background);
 			background-color: var(
-				--input--color--background--disabled,
+				--n8n-input--color--background--disabled,
 				var(--color--background--light-2)
 			);
-			color: var(--input--color--disabled, var(--color--text));
+			color: var(--n8n-input--color--disabled, var(--color--text));
 			cursor: not-allowed;
 		}
 	}

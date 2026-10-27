@@ -316,7 +316,7 @@ watch(isActive, (active, wasActive) => {
 	gap: var(--spacing--2xs);
 }
 
-.actionButton {
-	--button--font-size: var(--font-size--2xs);
+.footerActions .actionButton {
+	--n8n-button--font-size: var(--font-size--2xs);
 }
 </style>

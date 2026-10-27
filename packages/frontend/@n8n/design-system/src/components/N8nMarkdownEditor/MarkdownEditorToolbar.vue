@@ -558,7 +558,7 @@ const setTextStyle = (value: string | number) => {
 	overflow-y: hidden;
 	overscroll-behavior-inline: contain;
 	scrollbar-width: none;
-	background-color: var(--n8n--markdown-editor--background-color, var(--background--surface));
+	background-color: var(--n8n-markdown-editor--background-color, var(--background--surface));
 	transition:
 		opacity var(--duration--snappy) var(--easing--ease-out),
 		visibility var(--duration--snappy) var(--easing--ease-out);
@@ -595,11 +595,11 @@ const setTextStyle = (value: string | number) => {
 }
 
 .linkButtonActive {
-	--button--color--background: var(--background--active);
+	--n8n-button--color--background: var(--background--active);
 }
 
 .invalidInput {
-	--input--border-color: var(--color--danger);
+	--n8n-input--border-color: var(--color--danger);
 }
 
 .linkActions {
@@ -639,7 +639,7 @@ const setTextStyle = (value: string | number) => {
 
 .expandedViewGroup {
 	margin-inline-start: auto;
-	background-color: var(--n8n--markdown-editor--background-color, var(--background--surface));
+	background-color: var(--n8n-markdown-editor--background-color, var(--background--surface));
 }
 
 .addLinkFormLabel {

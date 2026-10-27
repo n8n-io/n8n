@@ -90,7 +90,10 @@ const onColorSelect = (value: string | null) => {
 
 .input {
 	margin-left: var(--spacing--3xs);
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	--n8n-input--color--background: light-dark(
+		var(--color--neutral-white),
+		var(--color--neutral-950)
+	);
 }
 </style>
 

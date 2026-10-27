@@ -1784,10 +1784,10 @@ onBeforeUnmount(() => {
 .backgroundJobs {
 	min-width: 0;
 
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
+	--n8n-ai-activity-step--height: auto;
+	--n8n-ai-activity-step--min-height: var(--height--xl);
+	--n8n-ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--n8n-ai-activity-step--color: var(--text-color);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);
@@ -1873,9 +1873,9 @@ onBeforeUnmount(() => {
 }
 
 .jobStopButton {
-	--button--color: var(--color--text);
-	--button--color--background-hover: transparent;
-	--button--color--background-active: transparent;
+	--n8n-button--color: var(--color--text);
+	--n8n-button--color--background-hover: transparent;
+	--n8n-button--color--background-active: transparent;
 
 	padding: 0;
 	font-size: var(--font-size--2xs);

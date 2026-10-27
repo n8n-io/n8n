@@ -41,7 +41,7 @@ defineSlots<TreeNodeDefaultSlots>();
 				[$style.treeItemDisabled]: disabled,
 			},
 		]"
-		:style="{ '--tree-indent': indentLevel }"
+		:style="{ '--n8n-tree--indent': indentLevel }"
 		:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
 	>
 		<template v-if="indentLevel > 0">
@@ -124,11 +124,11 @@ defineSlots<TreeNodeDefaultSlots>();
 	align-items: center;
 	gap: var(--spacing--3xs);
 	width: 100%;
-	height: var(--tree-item-height);
+	height: var(--n8n-tree--item-height);
 	position: relative;
-	padding-block: var(--tree-item-padding-block);
+	padding-block: var(--n8n-tree--item-padding-block);
 	padding-left: calc(
-		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--tree-indent, 0)
+		var(--n8n-tree--item-padding-inline) + var(--n8n-tree--indent-unit) * var(--n8n-tree--indent, 0)
 	);
 	border-radius: var(--radius);
 	outline: none;
@@ -138,7 +138,7 @@ defineSlots<TreeNodeDefaultSlots>();
 	background-color: transparent;
 
 	&[data-has-toggle] {
-		padding-right: calc(var(--tree-item-padding-inline) * 2);
+		padding-right: calc(var(--n8n-tree--item-padding-inline) * 2);
 	}
 
 	&:hover:not([data-disabled]) {
@@ -189,8 +189,8 @@ defineSlots<TreeNodeDefaultSlots>();
 	top: 0;
 	bottom: 0;
 	left: calc(
-		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--indent) +
-			var(--tree-icon-size) / 2
+		var(--n8n-tree--item-padding-inline) + var(--n8n-tree--indent-unit) * var(--indent) +
+			var(--n8n-tree--icon-size) / 2
 	);
 	z-index: 1;
 	width: 1px;
@@ -203,8 +203,8 @@ defineSlots<TreeNodeDefaultSlots>();
 	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
-	width: var(--tree-icon-size);
-	height: var(--tree-icon-size);
+	width: var(--n8n-tree--icon-size);
+	height: var(--n8n-tree--icon-size);
 	border-radius: var(--radius--sm);
 	color: var(--icon-color);
 }

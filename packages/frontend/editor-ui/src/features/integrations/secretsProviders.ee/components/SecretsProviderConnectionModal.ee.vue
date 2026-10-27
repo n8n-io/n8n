@@ -533,10 +533,10 @@ onMounted(async () => {
 
 <style module lang="scss">
 .secretsProviderConnectionModal {
-	--dialog--max-width: 1200px;
-	--dialog--close--spacing--top: 31px;
-	min-height: var(--dialog--min-height);
-	max-height: var(--dialog--max-height);
+	--n8n-dialog--max-width: 1200px;
+	--n8n-dialog--close--spacing--top: 31px;
+	min-height: var(--n8n-dialog--min-height);
+	max-height: var(--n8n-dialog--max-height);
 
 	:global(.el-dialog__header) {
 		padding-bottom: 0;

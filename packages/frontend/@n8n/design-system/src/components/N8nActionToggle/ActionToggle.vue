@@ -138,7 +138,7 @@ defineExpose({
 .trigger {
 	display: inline-flex;
 	&[aria-expanded='true'] button {
-		background-color: var(--background-active);
+		background-color: var(--background--active);
 	}
 }
 
