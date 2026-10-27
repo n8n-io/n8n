@@ -4,7 +4,8 @@ import type {
 } from '@n8n/api-types';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { Logger, parseFlatted } from '@n8n/backend-common';
-import { SharedWorkflowRepository, type IExecutionFlattedDb, type User } from '@n8n/db';
+import { SharedWorkflowRepository, type IExecutionBase, type User } from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import {
@@ -24,6 +25,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { ActiveExecutions } from '@/active-executions';
 import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { hasExternalBinaryData } from '@/executions/sum-binary-data-bytes';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -123,19 +125,26 @@ export class FailedExecutionPortabilityService {
 			throw new BadRequestError('Engine v2 executions are not portable');
 		}
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: false,
+			includeData: false,
 		});
 		if (!execution) throw new NotFoundError('Execution not found');
 
-		await this.assertWorkflowAccess(user, execution.workflowId, projectId, 'workflow:read');
+		// Reading run data needs `execution:read` too, as in the executions API.
+		await this.assertWorkflowAccess(user, execution.workflowId, projectId, [
+			'workflow:read',
+			'execution:read',
+		]);
 		this.assertPortableExecution(execution, executionId);
 
-		const data = await this.parsePortableData(execution.data, executionId);
+		// Read the content as the user may see it. A run redacted for them is then
+		// refused by `assertPortableData`, so an export never reveals hidden data.
+		const viewed = await loadExecutionForViewer(executionId, user);
+		if (!viewed?.data) throw new NotFoundError('Execution not found');
+		const data = await this.parsePortableData(stringify(viewed.data), executionId);
 		this.assertPortableData(data);
 		this.removeSourceOperationalMetadata(data);
 
-		const workflowData = this.toHistoricalSnapshot(execution.workflowData);
+		const workflowData = this.toHistoricalSnapshot(viewed.workflowData);
 		if (workflowData.id !== execution.workflowId) {
 			throw new BadRequestError('Execution workflow snapshot does not match its owning workflow');
 		}
@@ -169,7 +178,7 @@ export class FailedExecutionPortabilityService {
 		workflowId: string,
 		envelope: InstanceAiEvalFailedExecutionEnvelope,
 	): Promise<FailedExecutionRestoreResult> {
-		await this.assertWorkflowAccess(user, workflowId, projectId, 'workflow:execute');
+		await this.assertWorkflowAccess(user, workflowId, projectId, ['workflow:execute']);
 		this.assertEnvelopeConsistency(envelope);
 		// Export never produces one, but the envelope schema accepts every mode.
 		if (envelope.execution.mode === 'retry') {
@@ -281,20 +290,19 @@ export class FailedExecutionPortabilityService {
 		user: User,
 		workflowId: string,
 		projectId: string,
-		scope: 'workflow:read' | 'workflow:execute',
+		scopes: Scope[],
 	): Promise<void> {
 		const [workflow, owner] = await Promise.all([
-			this.workflowFinderService.findWorkflowForUser(workflowId, user, [scope]),
+			this.workflowFinderService.findWorkflowForUser(workflowId, user, scopes),
 			this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
 		]);
 		if (!workflow || owner?.id !== projectId) throw new NotFoundError('Workflow not found');
 	}
 
 	private assertPortableExecution(
-		execution: IExecutionFlattedDb,
+		execution: IExecutionBase,
 		executionId: string,
-	): asserts execution is IExecutionFlattedDb & {
-		data: string;
+	): asserts execution is IExecutionBase & {
 		status: 'error' | 'crashed';
 		startedAt: Date;
 		stoppedAt: Date;
@@ -312,9 +320,6 @@ export class FailedExecutionPortabilityService {
 		}
 		if (execution.usedPrivateCredentials) {
 			throw dependencyError('usedPrivateCredentials is true');
-		}
-		if (typeof execution.data !== 'string') {
-			throw new BadRequestError('Execution data is not in native serialized form');
 		}
 	}
 
