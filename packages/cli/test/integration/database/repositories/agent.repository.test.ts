@@ -328,7 +328,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
-			const agent = await createAgent();
+			const agent = await createAgent({ availableInMCP: true });
 			await Container.get(SkillRepository).createSkill(
 				{
 					id: 'writing',
@@ -398,6 +398,7 @@ describe('AgentRepository', () => {
 				tools: definition.tools,
 				revision: 1,
 				updatedAt: agent.updatedAt,
+				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
 			// The skill refs live in the dependency rows. The skill body stays in the hub.
@@ -407,7 +408,11 @@ describe('AgentRepository', () => {
 			expect(tasks).toHaveLength(2);
 			expect(tasks).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({ id: 'task-keep', objective: 'Restored objective', createdAt }),
+					expect.objectContaining({
+						id: 'task-keep',
+						objective: 'Restored objective',
+						createdAt,
+					}),
 					expect.objectContaining({ id: 'task-new', objective: taskBody.objective }),
 				]),
 			);
@@ -626,6 +631,17 @@ describe('AgentRepository', () => {
 			expect(row?.name).toBe('Renamed Agent');
 			expect(row?.schema?.model).toBe('m2');
 			expect(row?.revision).toBe(1);
+		});
+
+		it('rejects a stale import after MCP availability changes', async () => {
+			const agent = await createAgent({ availableInMCP: false });
+			await agentRepo.setAvailableInMCP([agent.id], true);
+
+			const won = await agentRepo.saveDraftFenced(agent, {}, { availableInMCP: false });
+
+			expect(won).toBe(false);
+			const row = await agentRepo.findById(agent.id);
+			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
 		});
 
 		it('cannot roll back a publish that won between load and save', async () => {

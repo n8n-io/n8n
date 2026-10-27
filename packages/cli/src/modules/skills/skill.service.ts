@@ -306,6 +306,7 @@ export class SkillService {
 	 */
 	async create(
 		input: {
+			id?: string;
 			target: SkillTarget;
 			skill: AgentSkill;
 			source: SkillSource;
@@ -319,7 +320,7 @@ export class SkillService {
 		if (input.checkNameTaken) {
 			await this.assertNameFree(skill.name, input.target, undefined, ctx);
 		}
-		const id = `skill_${generateNanoId()}`;
+		const id = input.id ?? `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
 			toSkillContent(skill),

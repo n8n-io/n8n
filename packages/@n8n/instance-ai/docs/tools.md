@@ -905,7 +905,9 @@ credential".
 
 ### `test_credential`
 
-Test whether a credential is valid and can connect to its service.
+Test whether a credential is valid and can connect to its service. The
+description tells the agent to test a listed credential only after a node call
+fails with an authentication or permission error.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
