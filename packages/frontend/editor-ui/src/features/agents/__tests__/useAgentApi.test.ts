@@ -200,6 +200,22 @@ describe('useAgentApi', () => {
 		);
 	});
 
+	describe('system channel', () => {
+		it('builds system-agent chat URLs without a project', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ items: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'assistant', 'thread-1', 'system');
+			await getAgentChatQueue(restApiContext, 'project-1', 'assistant', 'thread-1', 'system');
+			await cancelAgentChatRun(restApiContext, 'project-1', 'assistant', 'run-1', 'system');
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(1, 3))).toEqual([
+				['GET', '/agents/system/assistant/chat/thread-1/messages'],
+				['GET', '/agents/system/assistant/chat/thread-1/queue'],
+				['DELETE', '/agents/system/assistant/chat/runs/run-1'],
+			]);
+		});
+	});
+
 	describe('background task routes on both channels', () => {
 		it.each([
 			{ request: getAgentBackgroundJobs, method: 'GET', suffix: '' },

@@ -52,6 +52,7 @@ erDiagram
   boolean enabled
   varchar enabledById FK
   INTEGER id
+  BOOLEAN includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt

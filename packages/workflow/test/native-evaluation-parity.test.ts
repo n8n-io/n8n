@@ -2,6 +2,7 @@
 
 import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
+import { ExpressionError } from '../src/errors/expression.error';
 import type { IWorkflowDataProxyData } from '../src/interfaces';
 import { ExpressionExtensions } from '../src/extensions';
 import {
@@ -260,9 +261,11 @@ describe('Expression - fast native evaluation parity', () => {
 
 			expect(evaluateNatively('{{ $now.toMillis() }}', dataWith(new Date()))).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_method',
 			});
 			expect(evaluateNatively('{{ $now.year }}', dataWith({ year: 2026 }))).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_method',
 			});
 			expect(evaluateNatively('{{ $now.year }}', dataWith(DateTime.now()))).toEqual({
 				handled: true,
@@ -332,6 +335,33 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeError).toBeInstanceOf(engineError.constructor);
 			expect(nativeError.message).toBe(engineError.message);
 		});
+
+		// The editor shows these errors as pending input. A minified build renames
+		// the class, and the engines must still throw the same error.
+		describe.each([false, true])(
+			'missing input when the build renames the class (native: %s)',
+			(native) => {
+				const nameDescriptor = Object.getOwnPropertyDescriptor(ExpressionError, 'name')!;
+				beforeEach(() => {
+					Object.defineProperty(ExpressionError, 'name', { value: 'Xe' });
+				});
+				afterEach(() => {
+					Object.defineProperty(ExpressionError, 'name', nameDescriptor);
+				});
+
+				test.each([
+					['=Hello {{ $json.x }}', 'no_execution_data'],
+					["={{ $('Source').item.json.x }}", 'paired_item_intermediate_nodes'],
+				])('%s', (expr, type) => {
+					expect(() => evaluate(expr, native, emptyRunData, [])).toThrow(
+						expect.objectContaining({
+							constructor: ExpressionError,
+							context: expect.objectContaining({ type }),
+						}),
+					);
+				});
+			},
+		);
 	});
 
 	// Holes are not JSON. The isolates copy the data in and fill them with
@@ -426,7 +456,10 @@ describe('Expression - fast native evaluation parity', () => {
 		test('a whole-value DateTime read hands off to the engine', () => {
 			expect(nativeOutcome('={{ $json.item.my_object }}').handled).toBe(true);
 			const data = { $json: exotic.json } as never;
-			expect(evaluateNatively('{{ $json.item.dt }}', data)).toEqual({ handled: false });
+			expect(evaluateNatively('{{ $json.item.dt }}', data)).toEqual({
+				handled: false,
+				fallbackReason: 'unsupported_type',
+			});
 		});
 
 		// The vm and quickjs serialiser drops an own `__proto__` key; legacy
@@ -438,6 +471,7 @@ describe('Expression - fast native evaluation parity', () => {
 				evaluate('={{ $json.item }}', native, data, [payload as never]) as object;
 			expect(evaluateNatively('{{ $json.item }}', { $json: payload.json } as never)).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_type',
 			});
 			expect(run(true)).toStrictEqual(run(false));
 			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
@@ -457,9 +491,16 @@ describe('Expression - fast native evaluation parity', () => {
 			class SubArray extends Array<number> {}
 			const subclassed = SubArray.from([1]);
 
-			for (const item of [fanOut, cyclic, sparse, subclassed]) {
+			const cases = [
+				[fanOut, 'too_large'],
+				[cyclic, 'too_deep'],
+				[sparse, 'too_large'],
+				[subclassed, 'unsupported_type'],
+			] as const;
+			for (const [item, fallbackReason] of cases) {
 				expect(evaluateNatively('{{ $json.item }}', { $json: { item } } as never)).toEqual({
 					handled: false,
+					fallbackReason,
 				});
 			}
 		});
@@ -480,8 +521,14 @@ describe('Expression - fast native evaluation parity', () => {
 		test('join and toSorted hand nested elements to the engine', () => {
 			const big = new Array<number>(600_000).fill(0);
 			const rows = { $json: { rows: [big, big], flat: [3, 1, 2] } };
-			expect(nativeOn('{{ $json.rows.join() }}', rows)).toEqual({ handled: false });
-			expect(nativeOn('{{ $json.rows.toSorted() }}', rows)).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.rows.join() }}', rows)).toEqual({
+				handled: false,
+				fallbackReason: 'unsupported_type',
+			});
+			expect(nativeOn('{{ $json.rows.toSorted() }}', rows)).toEqual({
+				handled: false,
+				fallbackReason: 'unsupported_type',
+			});
 			// The hand-off happens before any element is stringified.
 			let stringified = false;
 			const spy = {
@@ -492,9 +539,11 @@ describe('Expression - fast native evaluation parity', () => {
 			};
 			expect(nativeOn('{{ $json.list.join() }}', { $json: { list: [spy, 1] } })).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_type',
 			});
 			expect(nativeOn('{{ $json.list.toSorted() }}', { $json: { list: [spy, 1] } })).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_type',
 			});
 			expect(stringified).toBe(false);
 			expect(nativeOn('{{ $json.flat.toSorted() }}', rows)).toEqual({
@@ -515,13 +564,17 @@ describe('Expression - fast native evaluation parity', () => {
 			const list = (count: number) => ({ $json: { list: new Array<string>(count).fill(big) } });
 			for (const method of ['includes', 'indexOf', 'lastIndexOf']) {
 				const expr = `{{ $json.list.${method}("y") }}`;
-				expect(nativeOn(expr, list(fits + 2))).toEqual({ handled: false });
+				expect(nativeOn(expr, list(fits + 2))).toEqual({
+					handled: false,
+					fallbackReason: 'too_much_work',
+				});
 				expect(nativeOn(expr, list(fits)).handled).toBe(true);
 			}
 			// Twice the content times log2 of the count: 3 elements cost 12
 			// receivers, 2 cost 8.
 			expect(nativeOn('{{ $json.list.toSorted().length }}', list(3))).toEqual({
 				handled: false,
+				fallbackReason: 'too_much_work',
 			});
 			expect(nativeOn('{{ $json.list.toSorted().length }}', list(2))).toEqual({
 				handled: true,
@@ -536,6 +589,7 @@ describe('Expression - fast native evaluation parity', () => {
 			const a = ['p'.repeat(300_000), 'q'.repeat(300_000)];
 			expect(nativeOn('{{ $json.a.concat($json.a).length }}', { $json: { a } })).toEqual({
 				handled: false,
+				fallbackReason: 'too_large',
 			});
 			expect(
 				nativeOn('{{ $json.a.concat($json.one).length }}', { $json: { a, one: [1] } }),
@@ -546,6 +600,7 @@ describe('Expression - fast native evaluation parity', () => {
 			const n = [{ k: 'r'.repeat(400_000) }];
 			expect(nativeOn('{{ $json.n.concat($json.n, $json.n).length }}', { $json: { n } })).toEqual({
 				handled: false,
+				fallbackReason: 'too_large',
 			});
 			// Fan-out of one payload string into hundreds of references bails
 			// before anything is cloned.
@@ -553,6 +608,7 @@ describe('Expression - fast native evaluation parity', () => {
 			const start = performance.now();
 			expect(nativeOn(fanOut, { $json: { big: ['x'.repeat(MAX_RESULT_LENGTH)] } })).toEqual({
 				handled: false,
+				fallbackReason: 'too_large',
 			});
 			expect(performance.now() - start).toBeLessThan(200);
 		});
@@ -572,6 +628,7 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOutcome('={{ $json.item.names.flat() }}').handled).toBe(true);
 			expect(nativeOn('{{ $json.rows.flat() }}', { $json: { rows: [big, big] } })).toEqual({
 				handled: false,
+				fallbackReason: 'too_large',
 			});
 			expect(nativeOn('{{ $json.rows.flat(0).length }}', { $json: { rows: [big, big] } })).toEqual({
 				handled: true,
@@ -589,9 +646,7 @@ describe('Expression - fast native evaluation parity', () => {
 			const plain = 'x'.repeat(800);
 			expect(
 				nativeOn('{{ $json.text.replace("b", $json.to) }}', { $json: { text, to: context } }),
-			).toEqual({
-				handled: false,
-			});
+			).toEqual({ handled: false, fallbackReason: 'replace_pattern' });
 			expect(
 				nativeOn('{{ $json.text.replace("b", $json.to).length }}', { $json: { text, to: plain } }),
 			).toEqual({ handled: true, value: 1_800 });
@@ -599,7 +654,10 @@ describe('Expression - fast native evaluation parity', () => {
 
 		test('an inherited member below the root hands off to the engine', () => {
 			const $json = { item: Object.create({ inherited: 1 }) as object };
-			expect(nativeOn('{{ $json.item.inherited }}', { $json })).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.item.inherited }}', { $json })).toEqual({
+				handled: false,
+				fallbackReason: 'unsupported_type',
+			});
 			expect(nativeOn('{{ $json.item.missing }}', { $json })).toEqual({
 				handled: true,
 				value: undefined,
@@ -629,12 +687,12 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 			expect(
 				nativeOn('{{ $json.half.map(n => n).filter(n => n).length }}', { $json: { half } }),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_much_work' });
 			expect(
 				nativeOn('{{ $json.half.map(n => n).length + $json.half.map(n => n).length }}', {
 					$json: { half },
 				}),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_much_work' });
 		});
 
 		// Visits are cheap to count but not to run: a body can scan or copy a
@@ -650,7 +708,7 @@ describe('Expression - fast native evaluation parity', () => {
 				nativeOn(`{{ $json.many.every(n => ${literal}.length > n) }}`, {
 					$json: { many: new Array<number>(visits + 1).fill(0) },
 				}),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_much_work' });
 			expect(
 				nativeOn(`{{ $json.few.every(n => ${literal}.length > n) }}`, {
 					$json: { few: new Array<number>(5).fill(0) },
@@ -664,12 +722,12 @@ describe('Expression - fast native evaluation parity', () => {
 			const visits = Math.ceil(MAX_WORK / MAX_RESULT_LENGTH);
 			expect(
 				nativeOn('{{ $json.many.some(n => $json.big.includes(n)) }}', { $json: { many, big } }),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_much_work' });
 			expect(
 				nativeOn('{{ $json.many.some(n => ($json.big + "").length < n.length) }}', {
 					$json: { many, big },
 				}),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_much_work' });
 			expect(
 				nativeOn('{{ $json.many.some(n => $json.small.includes(n)) }}', {
 					$json: { many, small: 'z' },
@@ -686,7 +744,7 @@ describe('Expression - fast native evaluation parity', () => {
 				nativeOn('{{ $json.few.some(n => $json.big.includes(n)) }}', {
 					$json: { few: many.slice(0, visits), big },
 				}),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_much_work' });
 		});
 
 		// A `$parameter` read resolves a nested expression in its own evaluation,
@@ -717,7 +775,7 @@ describe('Expression - fast native evaluation parity', () => {
 			const two = [1, 2];
 			expect(
 				nativeOn('{{ $json.two.map(n => $json.big).length }}', { $json: { two, big } }),
-			).toEqual({ handled: false });
+			).toEqual({ handled: false, fallbackReason: 'too_large' });
 			expect(
 				nativeOn('{{ $json.two.map(n => $json.big.length) }}', { $json: { two, big } }),
 			).toEqual({ handled: true, value: [600_000, 600_000] });
@@ -727,12 +785,16 @@ describe('Expression - fast native evaluation parity', () => {
 			const list = [Object.create({ inherited: 1 }) as object];
 			expect(nativeOn('{{ $json.list.map(n => n.inherited) }}', { $json: { list } })).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_type',
 			});
 		});
 
 		test('an own property shadowing a method hands off to the engine', () => {
 			const $json = { list: Object.assign(['a'], { join: null }) };
-			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({
+				handled: false,
+				fallbackReason: 'unsupported_method',
+			});
 			expect(nativeOn('{{ $json.list.at(0) }}', { $json })).toEqual({ handled: true, value: 'a' });
 		});
 
@@ -753,7 +815,10 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 			const expr = '{{ $json.list.some(n => $input.all().length === -1) }}';
 			const fits = MAX_WORK / MAX_RESULT_LENGTH - 1;
-			expect(nativeOn(expr, visits(fits + 2))).toEqual({ handled: false });
+			expect(nativeOn(expr, visits(fits + 2))).toEqual({
+				handled: false,
+				fallbackReason: 'too_much_work',
+			});
 			expect(nativeOn(expr, visits(fits))).toEqual({ handled: true, value: false });
 		});
 
@@ -766,9 +831,11 @@ describe('Expression - fast native evaluation parity', () => {
 			};
 			expect(nativeOn("{{ $('hasOwnProperty').all().name }}", prototypeNode)).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_type',
 			});
 			expect(nativeOn("{{ $('hasOwnProperty').first() }}", prototypeNode)).toEqual({
 				handled: false,
+				fallbackReason: 'unsupported_type',
 			});
 			const item = { json: { a: 1 } };
 			const node = { $: () => ({ all: () => [item], first: () => item, last: () => undefined }) };
