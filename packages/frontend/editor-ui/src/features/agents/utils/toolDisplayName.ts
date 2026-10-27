@@ -56,6 +56,7 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	[AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL]: 'instanceAi.tools.agent_builder_ask_credential',
 	[AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL]:
 		'instanceAi.tools.agent_builder_ask_embedding_credential',
+	[AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS]: 'instanceAi.tools.agent_builder_ask_questions',
 	[AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL]: 'instanceAi.tools.agent_builder_configure_channel',
 	[AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES]: 'instanceAi.tools.agent_builder_search_nodes',
 	[AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES]: 'instanceAi.tools.agent_builder_get_node_types',
@@ -87,8 +88,11 @@ export function getToolNameTranslationKey(
 	if (name === FLAG_MEMORY_TOOL_NAME && isMemoryNotedOutput(output)) {
 		return FLAG_MEMORY_TOOL_NAME_KEY;
 	}
-	if (Object.prototype.hasOwnProperty.call(BUILDER_TOOL_TRANSLATION_KEYS, name)) {
-		return BUILDER_TOOL_TRANSLATION_KEYS[name];
+	const builderKeyName = [trimmed, name].find((candidate) =>
+		Object.prototype.hasOwnProperty.call(BUILDER_TOOL_TRANSLATION_KEYS, candidate),
+	);
+	if (builderKeyName) {
+		return BUILDER_TOOL_TRANSLATION_KEYS[builderKeyName];
 	}
 
 	return WEB_SEARCH_TOOL_NAME_PATTERN.test(name) ? WEB_SEARCH_TOOL_NAME_KEY : undefined;

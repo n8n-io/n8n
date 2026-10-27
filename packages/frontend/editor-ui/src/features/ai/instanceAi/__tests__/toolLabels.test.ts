@@ -6,6 +6,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.ask_user': 'Asking user',
+				'instanceAi.tools.agent_builder_ask_questions': 'Asking questions',
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.agent_builder_build_agent': 'Working with agent',
@@ -240,6 +242,13 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
+	});
+
+	test('getToolLabel keeps the legacy questions label and resolves current aliases', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('agent_builder_ask_questions')).toBe('Asking questions');
+		expect(getToolLabel('ask-user')).toBe('Asking user');
+		expect(getToolLabel('ask_user')).toBe('Asking user');
 	});
 
 	test('getToolLabel formats the tool name when no label exists', () => {
