@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_0440b66f4e17fa::t_d1c496774b6584 711-723
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c394eb087c9b668e470565848d6023555de354a",
+  "prompts": {},
+  "sessions": {
+    "s_0440b66f4e17fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3075bf0b-31fb-44a4-8415-0ce389fbd13b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
