@@ -15,6 +15,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -38,9 +39,13 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 const DialogStub = {
 	props: ['header', 'description'],
+	emits: ['update:open'],
 	template: `
 		<div role="dialog">
 			<h2 v-if="header">{{ header }}</h2>
+			<button type="button" aria-label="Close dialog" @click="$emit('update:open', false)">
+				Close
+			</button>
 			<p v-if="description">{{ description }}</p>
 			<slot />
 		</div>
@@ -58,6 +63,14 @@ const dialogStubs = {
 };
 
 vi.mock('vue-router');
+
+const mockRunWorkflow = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock('@/app/composables/useRunWorkflow', () => ({
+	useRunWorkflow: () => ({
+		runWorkflow: mockRunWorkflow,
+	}),
+}));
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -176,6 +189,52 @@ describe('FromAiParametersModal', () => {
 		nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue(mockTools);
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProjectId = 'test-project-id';
+	});
+
+	it('closes the modal when the dialog reports closed', async () => {
+		const uiStore = useUIStore();
+		const closeModal = vi.spyOn(uiStore, 'closeModal');
+		const { getByRole } = renderModal({
+			props: {
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
+				data: {
+					nodeName: 'Test Node',
+				},
+			},
+			global: {
+				stubs: {
+					...dialogStubs,
+				},
+			},
+			pinia,
+		});
+
+		await userEvent.click(getByRole('button', { name: 'Close dialog' }));
+
+		expect(closeModal).toHaveBeenCalledWith(FROM_AI_PARAMETERS_MODAL_KEY);
+	});
+
+	it('closes the modal after execute', async () => {
+		const uiStore = useUIStore();
+		const closeModal = vi.spyOn(uiStore, 'closeModal');
+		const { getByTestId } = renderModal({
+			props: {
+				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
+				data: {
+					nodeName: 'Test Node',
+				},
+			},
+			global: {
+				stubs: {
+					...dialogStubs,
+				},
+			},
+			pinia,
+		});
+
+		await userEvent.click(getByTestId('execute-workflow-button'));
+
+		expect(closeModal).toHaveBeenCalledWith(FROM_AI_PARAMETERS_MODAL_KEY);
 	});
 
 	it('renders correctly with node data', () => {

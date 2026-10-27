@@ -234,6 +234,10 @@ function onDialogOpenUpdate(open: boolean) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	/* Previews size their children with percentages. A max-height alone leaves
+	   the dialog at its content height, so a PDF collapses. */
+	height: 90dvh;
+	max-height: calc(100dvh - var(--spacing--lg));
 }
 </style>
 

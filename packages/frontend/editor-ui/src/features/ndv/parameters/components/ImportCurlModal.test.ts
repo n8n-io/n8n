@@ -170,6 +170,26 @@ describe('ImportCurlModal', () => {
 		});
 	});
 
+	it('closes the modal when the dialog reports closed', async () => {
+		const uiStore = mockedStore(useUIStore);
+		uiStore.modalStateById = {
+			[IMPORT_CURL_MODAL_KEY]: {
+				open: true,
+				data: { curlCommands: {} },
+			},
+		};
+		uiStore.modalStack = [IMPORT_CURL_MODAL_KEY];
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
+		ndvStore.activeNode = testNode;
+
+		const { getByRole } = renderModal();
+		await nextTick();
+
+		await userEvent.click(getByRole('button', { name: 'Close dialog' }));
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(IMPORT_CURL_MODAL_KEY);
+	});
+
 	it('should show error toast and track failure telemetry when import throws (e.g. WASM load failure)', async () => {
 		mockImportCurlCommand.mockImplementation(() => {
 			throw new Error('WASM failed to load');

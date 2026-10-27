@@ -153,6 +153,7 @@ async function onImport() {
 <style module lang="scss">
 .notice {
 	margin: 0;
+	margin-inline-end: auto;
 }
 
 .container > * {
