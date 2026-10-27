@@ -237,7 +237,7 @@ describe('Public API rate-limit settings', () => {
 	});
 
 	describe('rate limits and recovery', () => {
-		it('limits settings writes and allows session recovery', async () => {
+		it('keeps API-key limits active after a session saves disabled settings', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			await agent.put(endpoint).send(updatedSettings).expect(200);
 			const response = await agent
@@ -248,10 +248,16 @@ describe('Public API rate-limit settings', () => {
 
 			const sessionAgent = testServer.publicApiAgentWithCookie(owner);
 			await sessionAgent.get(endpoint).expect(200);
-			await sessionAgent
+			const saved = await sessionAgent
 				.put(endpoint)
 				.send({ ...updatedSettings, enabled: false })
 				.expect(200);
+			expect(saved.body.enabled).toBe(false);
+			expect(JSON.parse((await readStoredSettings())!.value).enabled).toBe(false);
+
+			const stillLimited = await agent.put(endpoint).send(updatedSettings).expect(429);
+			expect(stillLimited.headers['x-ratelimit-limit']).toBe('1');
+
 			await sessionAgent.put(endpoint).send(updatedSettings).expect(200);
 		});
 	});
