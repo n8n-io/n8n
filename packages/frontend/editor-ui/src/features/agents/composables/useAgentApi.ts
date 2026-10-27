@@ -44,6 +44,8 @@ import type {
 	SkillCreateMethod,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
+	SkillVersionDetail,
+	SkillVersionSummary,
 	ListAgentMemoryEntriesQueryDto,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
@@ -859,6 +861,31 @@ export const getHubSkill = async (
 	skillId: string,
 ): Promise<SkillDetail> => {
 	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+/** Every saved version of a skill, newest first. */
+export const listSkillVersions = async (
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillVersionSummary[]> => {
+	return await makeRestApiRequest<SkillVersionSummary[]>(
+		context,
+		'GET',
+		`/skills/${skillId}/versions`,
+	);
+};
+
+/** One saved version of a skill, with its content. */
+export const getSkillVersion = async (
+	context: IRestApiContext,
+	skillId: string,
+	version: number,
+): Promise<SkillVersionDetail> => {
+	return await makeRestApiRequest<SkillVersionDetail>(
+		context,
+		'GET',
+		`/skills/${skillId}/versions/${version}`,
+	);
 };
 
 /** A name like `name` that no skill in the scope has yet, such as "New skill 2". */

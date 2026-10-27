@@ -397,7 +397,8 @@ function scopeLock(
 	return {};
 }
 
-async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+/** `showVersions` opens the editor with the Versions panel shown. */
+async function openEditModal(item: Pick<SkillListItem, 'id'>, showVersions = false) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
@@ -424,6 +425,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
+			initialVersionsOpen: showVersions,
 			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 			deleteDisabledReason: deleteBlockedReason(detail),
 			onConfirm: async ({ skill, scope, availableToAssistant }) =>
@@ -671,7 +673,8 @@ onMounted(async () => {
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none'"
 			:show-assistant-availability="assistantSkillsEnabled"
-			@open="openEditModal"
+			@open="openEditModal($event)"
+			@timeline="openEditModal($event, true)"
 			@download="onDownload"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"

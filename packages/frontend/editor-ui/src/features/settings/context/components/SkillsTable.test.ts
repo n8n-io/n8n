@@ -272,4 +272,17 @@ describe('SkillsTable', () => {
 
 		expect(emitted('download')).toEqual([[row]]);
 	});
+
+	it('emits timeline for any skill, also one the user cannot change', async () => {
+		const row = skill({ canEdit: false });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-timeline"]')).toBeInTheDocument(),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-timeline"]')!);
+
+		expect(emitted('timeline')).toEqual([[row]]);
+	});
 });
