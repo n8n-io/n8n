@@ -842,7 +842,7 @@ response never contains credential secret data.
 
 Set, replace, or clear a description only when the user requests it. This tool
 requires the description feature flag and `credential:update` access. A chat bound
-to a project can edit only credentials owned by that project. Managed credentials
+to a project cannot edit credentials owned by another project. Managed credentials
 cannot be edited.
 
 | Field | Type | Required | Description |

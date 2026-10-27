@@ -73,6 +73,7 @@ describe('CredentialsController', () => {
 		mock(), // transactionRunner
 		mock(), // policyEnforcementService
 		credentialDescriptions,
+		credentialsOverwrites,
 	);
 
 	// Spy on methods that need to be mocked in tests

@@ -185,9 +185,10 @@ describe('McpProtectedResource', () => {
 		it('checks the activity flag without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledWith(
-				INSTANCE_ACTIVITY_CONTEXT_FLAG,
+			const activityFlagCalls = postHogClient.getFeatureFlagForInstance.mock.calls.filter(
+				([flag]) => flag === INSTANCE_ACTIVITY_CONTEXT_FLAG,
 			);
+			expect(activityFlagCalls).toEqual([[INSTANCE_ACTIVITY_CONTEXT_FLAG]]);
 		});
 
 		it('should drop tools this instance does not expose', async () => {

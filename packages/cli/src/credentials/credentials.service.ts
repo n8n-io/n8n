@@ -59,6 +59,7 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
@@ -277,6 +278,7 @@ export class CredentialsService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -1132,6 +1134,15 @@ export class CredentialsService {
 		});
 		if (cleared === null) throw new NotFoundError('Credential not found or access denied');
 
+		// Derive event flags before writing. Keep the stored data out of the event and response.
+		const storedData = await this.decryptOrFail(credential);
+		const authMetadata = {
+			usesExternalSecrets: getExternalSecretExpressionPaths(storedData).length > 0,
+			jweEnabled: storedData.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(credential.type, storedData),
+		};
+
 		// Persist only the description to preserve concurrent secret and token updates.
 		const updated = await this.transactionRunner.run(
 			{ policyCleared: cleared },
@@ -1151,6 +1162,7 @@ export class CredentialsService {
 			credentialType: updated.type,
 			credentialDescriptionLength: updated.description?.length ?? 0,
 			isDynamic: credential.isResolvable ?? false,
+			...authMetadata,
 		});
 		return {
 			id: updated.id,
