@@ -51,6 +51,26 @@ describe('AgentQueuedPreviewStreamService', () => {
 
 	afterEach(() => vi.useRealTimers());
 
+	it('closes discarded message connections without closing the active turn', async () => {
+		const pending = service.subscribe('pending', stream);
+		pending.accepted();
+		const activeStream = mock<ReturnType<typeof initSseStream>>({
+			abortSignal: new AbortController().signal,
+		});
+		const active = service.subscribe('active', activeStream);
+		active.accepted();
+
+		service.closeQueuedStreams(['pending', 'missing']);
+		await pending.done;
+
+		expect(stream.close).toHaveBeenCalledOnce();
+		expect(activeStream.close).not.toHaveBeenCalled();
+		expect(repository.findDeliveryState).not.toHaveBeenCalled();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		service.closeQueuedStreams(['active']);
+		await active.done;
+	});
+
 	it('forwards remote SSE events once and closes on a missing sequence', async () => {
 		const subscription = service.subscribe('queue', stream);
 		const event = { type: 'text-delta', id: 'text', delta: 'reply' } as const;

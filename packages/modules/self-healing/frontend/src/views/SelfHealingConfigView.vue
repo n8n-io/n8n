@@ -9,7 +9,6 @@ import {
 	N8nIconButton,
 	N8nSegmentControl,
 	N8nText,
-	N8nUserInfo,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -21,12 +20,19 @@ import {
 	type SegmentOption,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	PERSONAL_SELF_HEALING_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, onMounted, ref, toRaw, watch } from 'vue';
-import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
+import ProjectMembersIcon from '../components/ProjectMembersIcon.vue';
 import { useSelfHealingStore } from '../self-healing.store';
+
+const PROJECT_MEMBERS_OPTION = '__project-members__';
 
 const props = defineProps<{ projectId: string; configurationId: string }>();
 const store = useSelfHealingStore();
@@ -35,6 +41,7 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const router = useRouter();
+const route = useRoute();
 
 const pageRef = ref<HTMLElement | null>(null);
 const loading = ref(true);
@@ -45,10 +52,12 @@ const form = ref<SaveSelfHealingConfigurationDto>({
 	scope: 'all',
 	workflowIds: [],
 	reviewerIds: [],
+	includeAllProjectMembers: false,
 	enabled: true,
 });
 
 const isNew = computed(() => props.configurationId === 'new');
+const isPersonalTab = computed(() => route.name === PERSONAL_SELF_HEALING_CONFIGURATION_VIEW);
 const choices = computed(() => store.options[props.projectId]);
 const otherConfigurations = computed(() =>
 	(store.configurations[props.projectId] ?? []).filter(
@@ -111,15 +120,22 @@ const selectedReviewers = computed(() =>
 	})),
 );
 
-const reviewerPickerItems = computed(() =>
-	(choices.value?.reviewers ?? [])
+const projectMembersLabel = computed(() =>
+	i18n.baseText('selfHealing.config.projectMembers', {
+		interpolate: { project: choices.value?.project.name ?? '' },
+	}),
+);
+
+const reviewerPickerItems = computed<ComboboxItem[]>(() => [
+	{ value: PROJECT_MEMBERS_OPTION, label: projectMembersLabel.value },
+	...(choices.value?.reviewers ?? [])
 		.filter(({ id }) => !form.value.reviewerIds.includes(id))
 		.map((reviewer) => ({
 			value: reviewer.id,
 			label: reviewerName(reviewer.id),
 			keywords: [reviewer.email],
 		})),
-);
+]);
 
 function addWorkflow(value: ComboboxValue | ComboboxValue[] | undefined) {
 	if (typeof value === 'string' && value && !form.value.workflowIds.includes(value)) {
@@ -128,7 +144,9 @@ function addWorkflow(value: ComboboxValue | ComboboxValue[] | undefined) {
 }
 
 function addReviewer(value: ComboboxValue | ComboboxValue[] | undefined) {
-	if (typeof value === 'string' && value && !form.value.reviewerIds.includes(value)) {
+	if (value === PROJECT_MEMBERS_OPTION) {
+		form.value.includeAllProjectMembers = true;
+	} else if (typeof value === 'string' && value && !form.value.reviewerIds.includes(value)) {
 		form.value.reviewerIds.push(value);
 	}
 }
@@ -138,8 +156,11 @@ onMounted(() => pageRef.value?.scrollIntoView({ block: 'start' }));
 const dirty = computed(
 	() => !!savedForm.value && JSON.stringify(form.value) !== JSON.stringify(savedForm.value),
 );
+const hasReviewers = computed(
+	() => form.value.includeAllProjectMembers || form.value.reviewerIds.length > 0,
+);
 const isFormValid = computed(() => {
-	if (form.value.reviewerIds.length === 0) {
+	if (!hasReviewers.value) {
 		return false;
 	}
 
@@ -174,7 +195,13 @@ async function load() {
 			({ id }) => String(id) === props.configurationId,
 		);
 		if (!isNew.value && !configuration) {
-			throw new Error(i18n.baseText('selfHealing.config.notFound'));
+			throw new Error(
+				i18n.baseText(
+					isPersonalTab.value
+						? 'selfHealing.config.personalNotFound'
+						: 'selfHealing.config.notFound',
+				),
+			);
 		}
 
 		if (configuration) {
@@ -182,15 +209,23 @@ async function load() {
 				scope: configuration.scope,
 				workflowIds: [...configuration.workflowIds],
 				reviewerIds: [...configuration.reviewerIds],
+				includeAllProjectMembers: configuration.includeAllProjectMembers,
 				enabled: configuration.enabled,
 			};
 		} else {
+			const currentUserId = users.currentUser?.id;
 			form.value = {
 				scope: hasAllWorkflowsConfiguration.value ? 'selected' : 'all',
 				workflowIds: [],
-				reviewerIds: users.currentUser ? [users.currentUser.id] : [],
+				reviewerIds: currentUserId && reviewersById.value.has(currentUserId) ? [currentUserId] : [],
+				includeAllProjectMembers: false,
 				enabled: true,
 			};
+		}
+
+		if (isPersonalTab.value) {
+			form.value.reviewerIds = [];
+			form.value.includeAllProjectMembers = true;
 		}
 
 		savedForm.value = structuredClone(toRaw(form.value));
@@ -215,11 +250,15 @@ function discard() {
 }
 
 function back() {
-	void router.push({
-		name: VIEWS.PROJECT_SETTINGS,
-		params: { projectId: props.projectId },
-		hash: '#self-healing',
-	});
+	void router.push(
+		isPersonalTab.value
+			? { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: props.projectId } }
+			: {
+					name: VIEWS.PROJECT_SETTINGS,
+					params: { projectId: props.projectId },
+					hash: '#self-healing',
+				},
+	);
 }
 
 async function save() {
@@ -231,10 +270,10 @@ async function save() {
 			payload.workflowIds = [];
 		}
 
-		const { scope, workflowIds, reviewerIds } = payload;
+		const { enabled, ...edit } = payload;
 		await store.save(
 			props.projectId,
-			isNew.value ? payload : { scope, workflowIds, reviewerIds },
+			isNew.value ? payload : edit,
 			isNew.value ? undefined : Number(props.configurationId),
 		);
 
@@ -286,13 +325,21 @@ onBeforeRouteUpdate(async (to, from) => {
 		<div :class="$style.backBar">
 			<N8nButton variant="ghost" size="small" :class="$style.backButton" @click="back">
 				<template #icon><N8nIcon icon="arrow-left" /></template>
-				{{ i18n.baseText('selfHealing.config.back') }}
+				{{
+					i18n.baseText(isPersonalTab ? 'selfHealing.config.heading' : 'selfHealing.config.back')
+				}}
 			</N8nButton>
 		</div>
 		<N8nSettingsLayout :class="$style.layout" data-test-id="self-healing-config-page">
 			<N8nSettingsPageHeader
 				:title="title"
-				:description="i18n.baseText('selfHealing.config.description')"
+				:description="
+					i18n.baseText(
+						isPersonalTab
+							? 'selfHealing.config.personalDescription'
+							: 'selfHealing.config.description',
+					)
+				"
 				:show-docs-link="false"
 			/>
 			<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
@@ -338,13 +385,6 @@ onBeforeRouteUpdate(async (to, from) => {
 									}}</N8nText>
 								</template>
 							</N8nCombobox2>
-							<N8nText
-								v-if="!selectedWorkflows.length"
-								size="small"
-								color="text-light"
-								:class="$style.hint"
-								>{{ i18n.baseText('selfHealing.config.noWorkflows') }}</N8nText
-							>
 						</N8nSettingsRow>
 						<N8nSettingsRow
 							v-for="workflow in selectedWorkflows"
@@ -368,6 +408,7 @@ onBeforeRouteUpdate(async (to, from) => {
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
 				<N8nSettingsSection
+					v-if="!isPersonalTab"
 					:title="i18n.baseText('selfHealing.config.reviewers')"
 					:description="i18n.baseText('selfHealing.config.reviewersHelp')"
 				>
@@ -377,7 +418,7 @@ onBeforeRouteUpdate(async (to, from) => {
 								id="self-healing-reviewers"
 								model-value=""
 								:items="reviewerPickerItems"
-								:disabled="saving"
+								:disabled="saving || form.includeAllProjectMembers"
 								:aria-label="i18n.baseText('selfHealing.config.reviewers')"
 								:placeholder="i18n.baseText('selfHealing.config.chooseReviewers')"
 								data-test-id="self-healing-reviewers"
@@ -385,20 +426,51 @@ onBeforeRouteUpdate(async (to, from) => {
 								@keydown.enter.prevent
 							>
 								<template #item-leading="{ item }">
+									<ProjectMembersIcon
+										v-if="item.value === PROJECT_MEMBERS_OPTION"
+										:icon="choices?.project.icon"
+									/>
 									<N8nAvatar
+										v-else
 										:first-name="reviewersById.get(item.value)?.firstName"
 										:last-name="reviewersById.get(item.value)?.lastName"
 										size="small"
 									/>
 								</template>
 							</N8nCombobox2>
+							<N8nText v-if="!hasReviewers" size="small" color="text-light" :class="$style.hint">{{
+								i18n.baseText('selfHealing.config.noReviewers')
+							}}</N8nText>
 							<N8nText
-								v-if="!form.reviewerIds.length"
+								v-else-if="form.includeAllProjectMembers"
 								size="small"
 								color="text-light"
 								:class="$style.hint"
-								>{{ i18n.baseText('selfHealing.config.noReviewers') }}</N8nText
+								>{{ i18n.baseText('selfHealing.config.projectMembersIncluded') }}</N8nText
 							>
+						</N8nSettingsRow>
+						<N8nSettingsRow
+							v-if="form.includeAllProjectMembers"
+							data-test-id="self-healing-project-members"
+						>
+							<template #info>
+								<div :class="$style.projectMembers">
+									<ProjectMembersIcon :icon="choices?.project.icon" size="medium" />
+									<N8nText bold color="text-dark" :class="$style.truncate">{{
+										projectMembersLabel
+									}}</N8nText>
+								</div>
+							</template>
+							<template #action>
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="small"
+									:disabled="saving"
+									:aria-label="i18n.baseText('selfHealing.config.removeProjectMembers')"
+									@click="form.includeAllProjectMembers = false"
+								/>
+							</template>
 						</N8nSettingsRow>
 						<N8nSettingsRow
 							v-for="reviewer in selectedReviewers"
@@ -406,14 +478,27 @@ onBeforeRouteUpdate(async (to, from) => {
 							data-test-id="self-healing-selected-reviewer"
 						>
 							<template #info>
-								<N8nUserInfo
-									v-if="reviewer.user"
-									v-bind="reviewer.user"
-									:is-current-user="reviewer.id === users.currentUser?.id"
-								/>
-								<N8nText v-else>{{
-									i18n.baseText('selfHealing.config.unavailableReviewer')
-								}}</N8nText>
+								<div :class="$style.person">
+									<N8nAvatar
+										:first-name="reviewer.user?.firstName"
+										:last-name="reviewer.user?.lastName"
+										size="small"
+									/>
+									<div :class="$style.personText">
+										<N8nText bold size="medium" color="text-dark" :class="$style.truncate">{{
+											reviewerName(reviewer.id)
+										}}</N8nText>
+										<N8nText
+											v-if="
+												reviewer.user?.email && (reviewer.user.firstName || reviewer.user.lastName)
+											"
+											size="small"
+											color="text-light"
+											:class="$style.truncate"
+											>{{ reviewer.user.email }}</N8nText
+										>
+									</div>
+								</div>
 							</template>
 							<template #action>
 								<N8nIconButton
@@ -481,6 +566,33 @@ onBeforeRouteUpdate(async (to, from) => {
 
 .searchPicker [data-icon='search'] {
 	color: var(--input--placeholder--color);
+}
+
+.person {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.personText {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.truncate {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.projectMembers {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	min-width: 0;
 }
 
 .hint {

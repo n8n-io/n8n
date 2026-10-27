@@ -58,6 +58,7 @@ const activeSkillStatesSchema = z.array(
 		agentName: z.string(),
 		resourceId: z.string(),
 		skillIds: z.array(z.string()),
+		versions: z.record(z.string().nullable()).optional(),
 	}),
 );
 
@@ -198,11 +199,14 @@ export class TypeORMAgentMemory
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) => {
 			const thread = await this.getThread(threadId);
-			return activeSkillStates(thread?.metadata).find(
+			const state = activeSkillStates(thread?.metadata).find(
 				(state) => state.resourceId === resourceId && state.agentName === agentName,
-			)?.skillIds;
+			);
+			return state
+				? { skillIds: state.skillIds, ...(state.versions ? { versions: state.versions } : {}) }
+				: undefined;
 		},
-		save: async ({ threadId, resourceId, agentName }, skillIds) => {
+		save: async ({ threadId, resourceId, agentName }, state) => {
 			const updated = await this.patchThread({
 				threadId,
 				update: (thread) => ({
@@ -212,7 +216,7 @@ export class TypeORMAgentMemory
 							...activeSkillStates(thread.metadata).filter(
 								(state) => state.resourceId !== resourceId || state.agentName !== agentName,
 							),
-							{ resourceId, agentName, skillIds },
+							{ resourceId, agentName, ...state },
 						],
 					},
 				}),
