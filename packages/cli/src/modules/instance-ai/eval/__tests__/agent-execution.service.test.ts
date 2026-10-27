@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { EvalAgentExecutionService, mcpUrlsMatch } from '../agent-execution.service';
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
@@ -208,6 +209,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		const seedArgs = vi.mocked(generateAgentScenarioSeed).mock.calls[0]?.[0];
 		expect(seedArgs?.scenarioHints).not.toContain(secret);
 		expect(seedArgs?.scenarioHints).toContain('Refund order #123');
+		expect(seedArgs?.modelFetch).toBe(vi.mocked(createAiProxyFetch).mock.results[0]?.value);
 		// ...but the agent still receives the verbatim case input.
 		expect(generate).toHaveBeenCalledWith(caseInput, expect.anything());
 	});

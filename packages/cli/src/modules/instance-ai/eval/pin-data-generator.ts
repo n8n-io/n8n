@@ -11,6 +11,7 @@
  * LLM call (`createEvalAgent`) and the `__schema__` lookup wiring.
  */
 
+import type { FetchFn } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type {
@@ -55,6 +56,7 @@ export interface GeneratePinDataOptions {
 	 * Absent lookup degrades to API-knowledge-only generation.
 	 */
 	outputSchemaLookup?: OutputSchemaLookup;
+	modelFetch?: FetchFn;
 }
 
 /**
@@ -91,6 +93,7 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 	const agent = createEvalAgent('eval-pin-data-generator', {
 		instructions: PIN_DATA_SYSTEM_PROMPT,
 		cache: true,
+		modelFetch: options.modelFetch,
 	});
 
 	const generateOnce = async (prompt: string): Promise<PinData> => {

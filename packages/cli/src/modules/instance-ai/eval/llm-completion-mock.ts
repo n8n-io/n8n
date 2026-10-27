@@ -5,6 +5,7 @@
  * a provider envelope the adapter can't read a tool call from.
  */
 
+import type { FetchFn } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -56,6 +57,7 @@ export interface LlmCompletionMockOptions {
 	scenarioHints?: string;
 	globalContext?: string;
 	nodeHints?: Record<string, string>;
+	modelFetch?: FetchFn;
 }
 
 const submitStepSchema = z.object({
@@ -272,6 +274,7 @@ export function createLlmCompletionMockHandler(
 		const agent = createEvalAgent('eval-llm-completion-mock', {
 			instructions: COMPLETION_MOCK_PROMPT,
 			cache: true,
+			modelFetch: options?.modelFetch,
 		}).tool(
 			new Tool('submit_agent_step')
 				.description("Submit the agent's next step: one tool call, or a final answer.")

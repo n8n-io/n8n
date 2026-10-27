@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -252,6 +253,7 @@ describe('EvalExecutionService', () => {
 	const processedDataRepository = mock<ProcessedDataRepository>();
 	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
 	const moduleRegistry = mock<ModuleRegistry>();
+	const aiFetch = vi.fn();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -291,6 +293,9 @@ describe('EvalExecutionService', () => {
 			processedDataRepository,
 			instanceAiConfig,
 			moduleRegistry,
+			mock<OutboundHttp>({
+				transport: () => mock<HttpTransport>({ asCustomFetch: () => aiFetch }),
+			}),
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -384,6 +389,7 @@ describe('EvalExecutionService', () => {
 				expect.objectContaining({
 					workflow: expect.objectContaining({ id: 'wf-1' }),
 					nodeNames: ['Webhook'],
+					modelFetch: aiFetch,
 				}),
 			);
 		});

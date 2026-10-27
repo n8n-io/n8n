@@ -8,6 +8,7 @@
  * CLI test suite.
  */
 
+import type { FetchFn } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -164,6 +165,7 @@ interface MockHandlerOptions {
 	maxRetries?: number;
 	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
 	signal?: AbortSignal;
+	modelFetch?: FetchFn;
 }
 
 // A real request never answers in zero time. Instant cache hits let a node that
@@ -394,6 +396,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				priorWrites: formatWriteLedger(writeLedger, hostname),
 				nodeConfig: nodeConfigCache.get(node.name) ?? '',
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
+				modelFetch: options?.modelFetch,
 			});
 
 			if (cacheKey) {
@@ -515,6 +518,7 @@ interface MockResponseContext {
 	priorWrites?: string;
 	nodeConfig: string;
 	maxRetries: number;
+	modelFetch?: FetchFn;
 }
 
 async function generateMockResponse(
@@ -645,6 +649,7 @@ async function generateMockResponse(
 				},
 				attempt === 0 ? LLM_CALL_TIMEOUT_MS : LLM_CALL_RETRY_TIMEOUT_MS,
 				dateConstraints,
+				context.modelFetch,
 			);
 			applyEndpointNormalizers(request, spec);
 			applyProviderShapeNormalizers(
@@ -1009,6 +1014,7 @@ async function callLlm(
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 	timeoutMs: number,
 	dateConstraints: DateFilterConstraint[] = [],
+	modelFetch?: FetchFn,
 ): Promise<{ spec: MockResponseSpec; softOnly: boolean }> {
 	const capture: SubmitCapture = {};
 
@@ -1016,6 +1022,7 @@ async function callLlm(
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 		cache: true,
+		modelFetch,
 	})
 		.tool(
 			createQuirksLookupTool(

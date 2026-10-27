@@ -6,6 +6,7 @@
  * with no `pairedItem`.
  */
 
+import type { FetchFn } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { createEvalAgent } from '@n8n/instance-ai';
 import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
@@ -71,6 +72,7 @@ export interface NodeRunMockOptions {
 	signal?: AbortSignal;
 	/** Records each run: the output items, the scenario error, or an `_evalMockError` marker. */
 	onRun?: (node: INode, request: NodeRunRequest, response: unknown) => void;
+	modelFetch?: FetchFn;
 }
 
 export function createNodeRunMockHandler(options: NodeRunMockOptions): EvalNodeMockHandler {
@@ -145,6 +147,7 @@ async function generateOutput(
 	const agent = createEvalAgent('eval-node-mock', {
 		instructions: NODE_MOCK_PROMPT,
 		cache: true,
+		modelFetch: options.modelFetch,
 	}).tool(
 		new Tool('submit_output')
 			.description('Submit the output items of this node run.')

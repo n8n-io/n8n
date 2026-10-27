@@ -5,6 +5,7 @@
  * the same run wrote earlier.
  */
 
+import type { FetchFn } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
@@ -57,6 +58,7 @@ export interface GenerateDataTableRowsOptions {
 	globalContext: string;
 	nodeHints: Record<string, string>;
 	scenarioHints?: string;
+	modelFetch?: FetchFn;
 }
 
 export interface GeneratedDataTableRows {
@@ -184,6 +186,7 @@ export async function generateDataTableRows(
 	const agent = createEvalAgent('eval-data-table-rows', {
 		instructions: SYSTEM_PROMPT,
 		cache: true,
+		modelFetch: options.modelFetch,
 	});
 	const prompt = buildUserPrompt(options);
 

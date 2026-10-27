@@ -51,6 +51,7 @@ export interface McpMockFetchOptions {
 	knownToolsByServer?: Record<string, McpMockCanonicalTool[]>;
 	onToolCall: (call: McpMockToolCall) => void;
 	logger: Logger;
+	modelFetch?: FetchFn;
 }
 
 interface McpMockTool {
@@ -198,6 +199,7 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 					sections.join('\n'),
 					validateToolsList,
 					logger,
+					options.modelFetch,
 				);
 				// Canonical catalogs (from the MCP registry) are authoritative: the
 				// real server exposes these names, so the mock must too, whatever
@@ -273,6 +275,7 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 					sections.join('\n'),
 					validateToolResult,
 					logger,
+					options.modelFetch,
 				);
 				return (
 					generated ?? {
