@@ -170,6 +170,7 @@ function renderModal({
 		| 'onDelete'
 		| 'deleteDisabledReason'
 		| 'initialVersionsOpen'
+		| 'initialCompare'
 		| 'latestVersion'
 	>;
 } & Pick<
@@ -1962,5 +1963,63 @@ describe('Versions panel', () => {
 		const { queryByTestId } = renderModal({ settings });
 
 		expect(queryByTestId('agent-skill-versions-button')).not.toBeInTheDocument();
+	});
+});
+
+describe('Compare mode', () => {
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+		latestVersion: 2,
+	};
+	const v1 = { name: 'research-sources', description: 'Cite the source.', instructions: 'Read.' };
+	const v2 = { name: 'research-search', description: 'Cite the evidence.', instructions: 'Read.' };
+
+	beforeEach(() => {
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v2', version: 2, createdBy: null, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `v${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: version === 1 ? v1 : v2,
+		}));
+	});
+
+	it('opens comparing the latest version with the one before it', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialCompare: true },
+		});
+
+		expect(await findByTestId('agent-skill-compare-bar')).toBeInTheDocument();
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
+		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
+		// The footer is hidden while comparing.
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
+	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-compare-1'));
+
+		expect(await findByTestId('skill-version-diff')).toBeInTheDocument();
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 2);
+
+		await userEvent.click(getByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-compare-bar')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
 });

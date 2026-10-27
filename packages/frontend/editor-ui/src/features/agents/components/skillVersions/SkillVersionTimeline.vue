@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SkillVersionSummary } from '@n8n/api-types';
-import { N8nActionDropdown, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -20,6 +20,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	open: [version: number];
 	restore: [version: number];
+	/** Compare this version with the version the editor shows. */
+	compare: [version: number];
 }>();
 
 const i18n = useI18n();
@@ -87,7 +89,20 @@ function onAction(version: number, action: VersionAction) {
 					</N8nText>
 					<N8nText size="xsmall" color="text-light">{{ savedBy(version) }}</N8nText>
 				</div>
-				<span @click.stop>
+				<span :class="$style.actions" @click.stop>
+					<N8nIconButton
+						v-if="version.version !== props.shownVersion"
+						variant="ghost"
+						size="small"
+						icon="file-diff"
+						:aria-label="
+							i18n.baseText('agents.builder.skills.versions.compare', {
+								interpolate: { from: version.version, to: props.shownVersion ?? '' },
+							})
+						"
+						:data-testid="`skill-version-compare-${version.version}`"
+						@click="emit('compare', version.version)"
+					/>
 					<N8nActionDropdown
 						:items="actionsFor(index)"
 						activator-icon="ellipsis"
@@ -171,5 +186,10 @@ function onAction(version: number, action: VersionAction) {
 	flex-direction: column;
 	flex: 1;
 	min-width: 0;
+}
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 </style>

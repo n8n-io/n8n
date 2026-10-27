@@ -16,6 +16,8 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 	const versions = ref<SkillVersionSummary[] | null>(null);
 	/** An older version the user opened. Null shows the latest. */
 	const viewedVersion = ref<SkillVersionDetail | null>(null);
+	// A saved version never changes, so a fetched one is kept for the life of the editor.
+	const fetched = new Map<number, SkillVersionDetail>();
 
 	function reportLoadError(error: unknown) {
 		showError(error, i18n.baseText('agents.builder.skills.versions.loadError'));
@@ -34,8 +36,12 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 	async function fetchVersion(version: number): Promise<SkillVersionDetail | undefined> {
 		const id = toValue(skillId);
 		if (!id) return undefined;
+		const cached = fetched.get(version);
+		if (cached) return cached;
 		try {
-			return await getSkillVersion(rootStore.restApiContext, id, version);
+			const detail = await getSkillVersion(rootStore.restApiContext, id, version);
+			fetched.set(version, detail);
+			return detail;
 		} catch (error) {
 			reportLoadError(error);
 			return undefined;
