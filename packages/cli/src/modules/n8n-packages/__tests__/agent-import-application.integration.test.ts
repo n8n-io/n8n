@@ -393,10 +393,20 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		...first.tasks[`${first.id}_task`],
 	});
 	expect(saved.schema!.tasks![0].id).toBe(savedTask.id);
-	expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-chat' })).toMatchObject(
-		{ type: 'slackApi' },
-	);
-	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'source-chat' }]);
+	// A channel credential never connects an imported channel, so the import does not stub it.
+	expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-chat' })).toBeNull();
+	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	expect(outcomes[0]).toMatchObject({
+		blockedFromPublish: 'channel-setup-required',
+		channels: [
+			{
+				type: 'slack',
+				status: 'setup-required',
+				reason: 'new-channel',
+				setupUrl: expect.stringContaining(`/projects/${project.id}/agents/${first.id}`),
+			},
+		],
+	});
 	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
 	expect(observed).toHaveBeenCalledTimes(2);
 	expect(runtimes.clearRuntimes).not.toHaveBeenCalled();
@@ -406,17 +416,20 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	const setupCompleted = telemetry.track.mock.calls.filter(([event]) =>
 		Object.is(event, TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED),
 	);
-	expect(setupCompleted).toHaveLength(2);
+	// The channel of the first Agent still needs setup, so only the child is complete.
+	expect(setupCompleted).toEqual([
+		[
+			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+			expect.objectContaining({ agent_id: child.id, project_id: project.id, user_id: owner.id }),
+		],
+	]);
+	expect(await agents.findById(saved.id)).toMatchObject({ setupCompletedAt: null });
+	expect(await agents.findById(child.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
 	for (const agent of [saved, child]) {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 			expect.objectContaining({ agent_id: agent.id, event_version: '3' }),
 		);
-		expect(await agents.findById(agent.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
-		expect(setupCompleted).toContainEqual([
-			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
-			expect.objectContaining({ agent_id: agent.id, project_id: project.id, user_id: owner.id }),
-		]);
 	}
 	expect(input).toEqual(original);
 });
@@ -729,6 +742,134 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	expect(unpublished.agentOutcomes[0]).toMatchObject({
 		agent: { activeVersionId: null },
 		publishing: { state: 'unpublished' },
+	});
+});
+
+describe('channels', () => {
+	const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
+
+	/** Publish the Agent, then connect Slack on the destination as the channel UI would. */
+	async function publishWithDestinationSlack(input: AgentPackageFixture) {
+		const initial = await importSelected(input, { publishingPolicy: 'publish-all' });
+		const published = initial.agentOutcomes[0].agent;
+		expect(published.activeVersionId).not.toBeNull();
+		const slack = await createCredentials(
+			{ id: 'destination-slack', name: 'Slack', type: 'slackApi', data: '' },
+			project,
+		);
+		await agents.update(published.id, {
+			integrations: [{ type: 'slack', credentialId: slack.id }],
+		});
+		return published;
+	}
+
+	function withSourceSlack(input: AgentPackageFixture) {
+		const agent = source(input);
+		agent.config!.integrations = [
+			{ type: 'slack', credentialId: 'source-slack', settings: slackSettings },
+		];
+		input.manifest.requirements = {
+			credentials: [
+				{
+					id: 'source-slack',
+					name: 'Source Slack',
+					type: 'slackApi',
+					usedBy: [{ kind: 'agent', id: agent.id }],
+				},
+			],
+		};
+		return agent;
+	}
+
+	it('reuses the destination connection when publication fails or stays unchanged', async () => {
+		const input = publishableFixture();
+		input.manifest.agents.splice(1);
+		const published = await publishWithDestinationSlack(input);
+		withSourceSlack(input);
+		const disconnect = vi.spyOn(Container.get(ChatIntegrationService), 'disconnect');
+		deniedPublishName = published.name;
+
+		const failed = await importSelected(input, {
+			credentialMissingMode: 'create-stub',
+			publishingPolicy: 'publish-all',
+		});
+		input.files[`${input.manifest.agents[0].target}/agent-metadata.json`] = {
+			versionId: 'selected-draft',
+			publishedVersionId: 'absent-published-version',
+		};
+		const unchanged = await importSelected(input, { credentialMissingMode: 'create-stub' });
+
+		expect(failed.agentOutcomes[0].publishing.state).toBe('failed');
+		expect(unchanged.agentOutcomes[0].publishing).toEqual({ state: 'unchanged' });
+		for (const imported of [failed, unchanged]) {
+			expect(imported.agentOutcomes[0]).toMatchObject({
+				status: 'updated',
+				agent: { activeVersionId: published.activeVersionId },
+				channels: [{ type: 'slack', status: 'reused' }],
+			});
+		}
+		expect((await agents.findById(published.id))?.integrations).toEqual([
+			{ type: 'slack', credentialId: 'destination-slack', settings: slackSettings },
+		]);
+		expect(disconnect).not.toHaveBeenCalled();
+		expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-slack' })).toBeNull();
+	});
+
+	it('keeps the verified connection when a new channel blocks publication', async () => {
+		const input = publishableFixture();
+		input.manifest.agents.splice(1);
+		const published = await publishWithDestinationSlack(input);
+		const agent = withSourceSlack(input);
+		agent.config!.integrations!.push({
+			type: 'telegram',
+			credentialId: 'source-telegram',
+			settings: { accessMode: 'private', allowedUsers: ['alice'] },
+		});
+		const disconnect = vi.spyOn(Container.get(ChatIntegrationService), 'disconnect');
+
+		const imported = await importSelected(input, { publishingPolicy: 'publish-all' });
+
+		expect(imported.agentOutcomes[0]).toMatchObject({
+			agent: { activeVersionId: published.activeVersionId },
+			publishing: { state: 'unchanged', skippedPublishReason: 'channel-setup-required' },
+			channels: [
+				{ type: 'slack', status: 'reused' },
+				{ type: 'telegram', status: 'setup-required', reason: 'new-channel' },
+			],
+		});
+		expect((await agents.findById(published.id))?.integrations).toEqual([
+			{ type: 'slack', credentialId: 'destination-slack', settings: slackSettings },
+			{
+				type: 'telegram',
+				credentialId: '',
+				settings: { accessMode: 'private', allowedUsers: ['alice'] },
+			},
+		]);
+		expect(disconnect).not.toHaveBeenCalled();
+	});
+
+	it('does not set up a channel because the destination has the same credential', async () => {
+		const input = publishableFixture();
+		input.manifest.agents.splice(1);
+		withSourceSlack(input);
+		// The same credential ID exists here, for example on another instance with this Agent ID.
+		await createCredentials(
+			{ id: 'source-slack', name: 'Source Slack', type: 'slackApi', data: '' },
+			project,
+		);
+		const connect = vi.spyOn(Container.get(ChatIntegrationService), 'connect');
+
+		const imported = await importSelected(input, { publishingPolicy: 'publish-all' });
+
+		expect(imported.agentOutcomes[0]).toMatchObject({
+			status: 'created',
+			publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+			channels: [{ type: 'slack', status: 'setup-required', reason: 'new-channel' }],
+		});
+		expect(imported.agentOutcomes[0].agent.integrations).toEqual([
+			{ type: 'slack', credentialId: '', settings: slackSettings },
+		]);
+		expect(connect).not.toHaveBeenCalled();
 	});
 });
 
