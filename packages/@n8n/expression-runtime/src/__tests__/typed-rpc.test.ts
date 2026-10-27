@@ -950,12 +950,24 @@ describe('Typed RPC: items that structured clone rejects (e.g. vm2 proxies)', ()
 		['a symbol', Symbol('s')],
 		['a Map that contains a function', new Map([['k', () => 1]])],
 		['a Set that contains a symbol', new Set([Symbol('s')])],
+		['a WeakMap', new WeakMap()],
+		['a WeakSet', new WeakSet()],
+		['a Promise', Promise.resolve(1)],
 	])('throws when reading a value that is %s', (kind, value) => {
 		const data = { $: () => ({ first: () => new Proxy({ json: { value } }, {}) }) };
 
 		expect(() => evaluator.evaluate("{{ $('Code').first().json.value }}", data, caller)).toThrow(
 			`Can't use json.value from node 'Code' in an expression: it is ${kind}`,
 		);
+	});
+
+	it('keeps an own __proto__ key as data instead of setting the prototype', () => {
+		const json = JSON.parse('{"name": "Alice", "__proto__": {"injected": true}}') as object;
+		const data = { $: () => ({ first: () => new Proxy({ json }, {}) }) };
+		const evaluate = (expr: string) => evaluator.evaluate(`{{ ${expr} }}`, data, caller);
+
+		expect(evaluate("Object.keys($('Code').first().json)")).toEqual(['name', '__proto__']);
+		expect(evaluate("$('Code').first().json.injected")).toBeUndefined();
 	});
 
 	it('throws when reading a circular reference', () => {

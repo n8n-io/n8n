@@ -16,8 +16,8 @@ const UNUSABLE = Symbol('unusable');
 /**
  * Rebuild a value that structured clone rejects, for example the Proxy objects
  * that vm2 hands out, from plain objects, arrays, Dates, Maps and Sets.
- * Functions, symbols and circular references are left out, and their paths
- * are returned in `unusable`.
+ * Functions, symbols, WeakMaps, WeakSets, Promises and circular references are
+ * left out, and their paths are returned in `unusable`.
  */
 export function toTransferSafe(root: unknown): TransferSafeValue {
 	const unusable: UnusableValue[] = [];
@@ -63,6 +63,9 @@ export function toTransferSafe(root: unknown): TransferSafeValue {
 		) {
 			return value;
 		}
+		if (value instanceof WeakMap) return markUnusable('a WeakMap');
+		if (value instanceof WeakSet) return markUnusable('a WeakSet');
+		if (value instanceof Promise) return markUnusable('a Promise');
 		if (ancestors.has(value)) return markUnusable('a circular reference');
 
 		ancestors.add(value);
@@ -92,7 +95,17 @@ export function toTransferSafe(root: unknown): TransferSafeValue {
 			const copy: Record<string, unknown> = {};
 			for (const key of Object.keys(value)) {
 				const child = walkChild(key, (value as Record<string, unknown>)[key]);
-				if (child !== UNUSABLE) copy[key] = child;
+				if (child === UNUSABLE) continue;
+				if (key === '__proto__') {
+					Object.defineProperty(copy, key, {
+						value: child,
+						enumerable: true,
+						writable: true,
+						configurable: true,
+					});
+				} else {
+					copy[key] = child;
+				}
 			}
 			return copy;
 		} finally {
