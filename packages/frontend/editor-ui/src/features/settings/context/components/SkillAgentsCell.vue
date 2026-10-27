@@ -59,7 +59,8 @@ const items = computed<Array<DropdownMenuItemProps<string, AgentRow>>>(() => {
 			label: i18n.baseText('settings.context.skills.versions.agents.title'),
 			header: true,
 		},
-		...[...agents.value].map(([id, agent]) => ({
+		...[...agents.value].map(
+			([id, agent]): DropdownMenuItemProps<string, AgentRow> => ({
 			id,
 			label: agent.agentName,
 			icon: { type: 'icon', value: 'bot' },
