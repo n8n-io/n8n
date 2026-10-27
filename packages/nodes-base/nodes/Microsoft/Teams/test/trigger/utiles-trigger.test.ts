@@ -747,7 +747,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 		});
 
 		describe('deleteSubscriptions', () => {
-			it('deletes each id once, in order, and treats 404 as done', async () => {
+			// Parallel, so a Watch All cleanup inside an activation stays within core's publication deadline.
+			it('deletes each id once, all in parallel, and treats 404 as done', async () => {
 				const { ctx } = arrange();
 				let releaseFirst: (value: unknown) => void = () => {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
@@ -763,15 +764,28 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				const pending = deleteSubscriptions.call(ctx, ['sub1', 'sub1', 'sub2']);
 				await new Promise((resolve) => setImmediate(resolve));
-				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
-				releaseFirst({});
-
-				await expect(pending).resolves.toEqual([]);
 				expect(calls('DELETE').map((call) => call[2])).toEqual([
 					'/v1.0/subscriptions/sub1',
 					'/v1.0/subscriptions/sub2',
 				]);
+				releaseFirst({});
+
+				await expect(pending).resolves.toEqual([]);
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('returns the refused ids in input order', async () => {
+				const { ctx } = arrange();
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, path: string) => {
+						if (path === '/v1.0/subscriptions/ok') return {};
+						throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+					},
+				);
+
+				const result = await deleteSubscriptions.call(ctx, ['b', 'ok', 'a']);
+
+				expect(result).toEqual(['b', 'a']);
 			});
 
 			it.each([

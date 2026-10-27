@@ -68,39 +68,41 @@ export function getStoredIds(webhookData: IDataObject): string[] {
 }
 
 /**
- * Deletes every id once, one after the other, and returns the ids Graph refused to remove.
- * Never throws: a 404 counts as done, an id that fails validation is warned only, and every
+ * Deletes every id once, all in parallel, and returns the ids Graph refused to remove, in input
+ * order. Never throws: a 404 counts as done, an id that fails validation is warned only, and every
  * other refusal is warned and returned, so the caller decides what it means.
  */
 export async function deleteSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
 ): Promise<string[]> {
-	const refused: string[] = [];
-	for (const id of new Set(ids)) {
-		let path: string;
-		try {
-			path = buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]);
-		} catch (error) {
-			// No Graph call can ever succeed for this id, so it is not reported.
-			logTrigger.call(this, 'warn', 'failed to remove subscription', {
-				subscriptionId: id,
-				error: ensureError(error).message,
-			});
-			continue;
-		}
-		try {
-			await microsoftApiRequest.call(this, 'DELETE', path);
-		} catch (error) {
-			if (error instanceof NodeApiError && error.httpCode === '404') continue;
-			logTrigger.call(this, 'warn', 'failed to remove subscription', {
-				subscriptionId: id,
-				error: ensureError(error).message,
-			});
-			refused.push(id);
-		}
-	}
-	return refused;
+	const refused = await Promise.all(
+		[...new Set(ids)].map(async (id) => {
+			let path: string;
+			try {
+				path = buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]);
+			} catch (error) {
+				// No Graph call can ever succeed for this id, so it is not reported.
+				logTrigger.call(this, 'warn', 'failed to remove subscription', {
+					subscriptionId: id,
+					error: ensureError(error).message,
+				});
+				return [];
+			}
+			try {
+				await microsoftApiRequest.call(this, 'DELETE', path);
+				return [];
+			} catch (error) {
+				if (error instanceof NodeApiError && error.httpCode === '404') return [];
+				logTrigger.call(this, 'warn', 'failed to remove subscription', {
+					subscriptionId: id,
+					error: ensureError(error).message,
+				});
+				return [id];
+			}
+		}),
+	);
+	return refused.flat();
 }
 
 export async function fetchAllTeams(
