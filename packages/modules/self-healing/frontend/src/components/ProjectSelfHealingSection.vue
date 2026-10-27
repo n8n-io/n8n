@@ -20,6 +20,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
+import ProjectMembersIcon from './ProjectMembersIcon.vue';
 
 const props = defineProps<{ projectId: string }>();
 const store = useSelfHealingStore();
@@ -71,6 +72,12 @@ const configActions = computed(() => [
 const reviewersById = computed(
 	() =>
 		new Map(store.options[props.projectId]?.reviewers.map((reviewer) => [reviewer.id, reviewer])),
+);
+const project = computed(() => store.options[props.projectId]?.project);
+const projectMembersLabel = computed(() =>
+	i18n.baseText('selfHealing.config.projectMembers', {
+		interpolate: { project: project.value?.name ?? '' },
+	}),
 );
 
 function scopeLabel(configuration: SelfHealingConfigurationDto) {
@@ -196,6 +203,20 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 				</template>
 				<template #[`item.reviewerIds`]="{ item }">
 					<div :class="$style.people">
+						<div
+							v-if="item.includeAllProjectMembers"
+							:class="$style.person"
+							data-test-id="self-healing-project-members"
+						>
+							<ProjectMembersIcon :icon="project?.icon" size="xsmall" />
+							<N8nText
+								size="medium"
+								color="text-dark"
+								:class="$style.personName"
+								:title="projectMembersLabel"
+								>{{ projectMembersLabel }}</N8nText
+							>
+						</div>
 						<div v-for="id in item.reviewerIds" :key="id" :class="$style.person">
 							<N8nAvatar
 								:first-name="reviewersById.get(id)?.firstName"

@@ -26,7 +26,10 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
+import ProjectMembersIcon from '../components/ProjectMembersIcon.vue';
 import { useSelfHealingStore } from '../self-healing.store';
+
+const PROJECT_MEMBERS_OPTION = '__project-members__';
 
 const props = defineProps<{ projectId: string; configurationId: string }>();
 const store = useSelfHealingStore();
@@ -45,6 +48,7 @@ const form = ref<SaveSelfHealingConfigurationDto>({
 	scope: 'all',
 	workflowIds: [],
 	reviewerIds: [],
+	includeAllProjectMembers: false,
 	enabled: true,
 });
 
@@ -111,15 +115,22 @@ const selectedReviewers = computed(() =>
 	})),
 );
 
-const reviewerPickerItems = computed(() =>
-	(choices.value?.reviewers ?? [])
+const projectMembersLabel = computed(() =>
+	i18n.baseText('selfHealing.config.projectMembers', {
+		interpolate: { project: choices.value?.project.name ?? '' },
+	}),
+);
+
+const reviewerPickerItems = computed<ComboboxItem[]>(() => [
+	{ value: PROJECT_MEMBERS_OPTION, label: projectMembersLabel.value },
+	...(choices.value?.reviewers ?? [])
 		.filter(({ id }) => !form.value.reviewerIds.includes(id))
 		.map((reviewer) => ({
 			value: reviewer.id,
 			label: reviewerName(reviewer.id),
 			keywords: [reviewer.email],
 		})),
-);
+]);
 
 function addWorkflow(value: ComboboxValue | ComboboxValue[] | undefined) {
 	if (typeof value === 'string' && value && !form.value.workflowIds.includes(value)) {
@@ -128,7 +139,9 @@ function addWorkflow(value: ComboboxValue | ComboboxValue[] | undefined) {
 }
 
 function addReviewer(value: ComboboxValue | ComboboxValue[] | undefined) {
-	if (typeof value === 'string' && value && !form.value.reviewerIds.includes(value)) {
+	if (value === PROJECT_MEMBERS_OPTION) {
+		form.value.includeAllProjectMembers = true;
+	} else if (typeof value === 'string' && value && !form.value.reviewerIds.includes(value)) {
 		form.value.reviewerIds.push(value);
 	}
 }
@@ -138,8 +151,11 @@ onMounted(() => pageRef.value?.scrollIntoView({ block: 'start' }));
 const dirty = computed(
 	() => !!savedForm.value && JSON.stringify(form.value) !== JSON.stringify(savedForm.value),
 );
+const hasReviewers = computed(
+	() => form.value.includeAllProjectMembers || form.value.reviewerIds.length > 0,
+);
 const isFormValid = computed(() => {
-	if (form.value.reviewerIds.length === 0) {
+	if (!hasReviewers.value) {
 		return false;
 	}
 
@@ -182,13 +198,16 @@ async function load() {
 				scope: configuration.scope,
 				workflowIds: [...configuration.workflowIds],
 				reviewerIds: [...configuration.reviewerIds],
+				includeAllProjectMembers: configuration.includeAllProjectMembers,
 				enabled: configuration.enabled,
 			};
 		} else {
+			const currentUserId = users.currentUser?.id;
 			form.value = {
 				scope: hasAllWorkflowsConfiguration.value ? 'selected' : 'all',
 				workflowIds: [],
-				reviewerIds: users.currentUser ? [users.currentUser.id] : [],
+				reviewerIds: currentUserId && reviewersById.value.has(currentUserId) ? [currentUserId] : [],
+				includeAllProjectMembers: false,
 				enabled: true,
 			};
 		}
@@ -231,10 +250,10 @@ async function save() {
 			payload.workflowIds = [];
 		}
 
-		const { scope, workflowIds, reviewerIds } = payload;
+		const { enabled, ...edit } = payload;
 		await store.save(
 			props.projectId,
-			isNew.value ? payload : { scope, workflowIds, reviewerIds },
+			isNew.value ? payload : edit,
 			isNew.value ? undefined : Number(props.configurationId),
 		);
 
@@ -377,7 +396,7 @@ onBeforeRouteUpdate(async (to, from) => {
 								id="self-healing-reviewers"
 								model-value=""
 								:items="reviewerPickerItems"
-								:disabled="saving"
+								:disabled="saving || form.includeAllProjectMembers"
 								:aria-label="i18n.baseText('selfHealing.config.reviewers')"
 								:placeholder="i18n.baseText('selfHealing.config.chooseReviewers')"
 								data-test-id="self-healing-reviewers"
@@ -385,20 +404,51 @@ onBeforeRouteUpdate(async (to, from) => {
 								@keydown.enter.prevent
 							>
 								<template #item-leading="{ item }">
+									<ProjectMembersIcon
+										v-if="item.value === PROJECT_MEMBERS_OPTION"
+										:icon="choices?.project.icon"
+									/>
 									<N8nAvatar
+										v-else
 										:first-name="reviewersById.get(item.value)?.firstName"
 										:last-name="reviewersById.get(item.value)?.lastName"
 										size="small"
 									/>
 								</template>
 							</N8nCombobox2>
+							<N8nText v-if="!hasReviewers" size="small" color="text-light" :class="$style.hint">{{
+								i18n.baseText('selfHealing.config.noReviewers')
+							}}</N8nText>
 							<N8nText
-								v-if="!form.reviewerIds.length"
+								v-else-if="form.includeAllProjectMembers"
 								size="small"
 								color="text-light"
 								:class="$style.hint"
-								>{{ i18n.baseText('selfHealing.config.noReviewers') }}</N8nText
+								>{{ i18n.baseText('selfHealing.config.projectMembersIncluded') }}</N8nText
 							>
+						</N8nSettingsRow>
+						<N8nSettingsRow
+							v-if="form.includeAllProjectMembers"
+							data-test-id="self-healing-project-members"
+						>
+							<template #info>
+								<div :class="$style.projectMembers">
+									<ProjectMembersIcon :icon="choices?.project.icon" size="medium" />
+									<N8nText bold color="text-dark" :class="$style.truncate">{{
+										projectMembersLabel
+									}}</N8nText>
+								</div>
+							</template>
+							<template #action>
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="small"
+									:disabled="saving"
+									:aria-label="i18n.baseText('selfHealing.config.removeProjectMembers')"
+									@click="form.includeAllProjectMembers = false"
+								/>
+							</template>
 						</N8nSettingsRow>
 						<N8nSettingsRow
 							v-for="reviewer in selectedReviewers"
@@ -486,5 +536,18 @@ onBeforeRouteUpdate(async (to, from) => {
 .hint {
 	display: block;
 	margin-top: var(--spacing--2xs);
+}
+
+.projectMembers {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	min-width: 0;
+}
+
+.truncate {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>

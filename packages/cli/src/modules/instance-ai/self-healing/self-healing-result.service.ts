@@ -22,7 +22,6 @@ import {
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
-import type { Scope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
@@ -36,7 +35,10 @@ import type { SelfHealingInvestigation } from './database/self-healing-investiga
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
-import { SelfHealingConfigurationService } from './self-healing-configuration.service';
+import {
+	REVIEWER_SCOPES,
+	SelfHealingConfigurationService,
+} from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 
 export type SelfHealingResultInput = {
@@ -78,12 +80,11 @@ export class SelfHealingResultService {
 		if (!user || user.disabled) {
 			throw new ForbiddenError('Workflow edit access is required.');
 		}
-		const scopes: Scope[] = ['workflow:read', 'workflow:update'];
 		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roles.rolesWithScope('project', scopes),
-			this.roles.rolesWithScope('workflow', scopes),
+			this.roles.rolesWithScope('project', REVIEWER_SCOPES),
+			this.roles.rolesWithScope('workflow', REVIEWER_SCOPES),
 		]);
-		return { user, globalScopes: scopes, projectRoles, workflowRoles };
+		return { user, globalScopes: REVIEWER_SCOPES, projectRoles, workflowRoles };
 	}
 
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxSelfHealingItem[]> {

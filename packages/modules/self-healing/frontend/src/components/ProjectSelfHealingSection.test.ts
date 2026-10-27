@@ -18,15 +18,17 @@ const configuration: SelfHealingConfigurationDto = {
 	scope: 'all',
 	workflowIds: [],
 	reviewerIds: ['reviewer'],
+	includeAllProjectMembers: false,
 	enabled: false,
 	enabledById: null,
 	lastActivity: null,
 };
 
-async function renderSection() {
+async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
 	const store = useSelfHealingStore();
-	store.configurations.project = [{ ...configuration }];
+	store.configurations.project = [{ ...configuration, ...saved }];
 	store.options.project = {
+		project: { name: 'Acme project', icon: { type: 'emoji', value: '🚀' } },
 		workflows: [],
 		reviewers: [
 			{ id: 'reviewer', firstName: 'Test', lastName: 'Reviewer', email: 'reviewer@example.com' },
@@ -116,4 +118,20 @@ it('opens a new configuration in the current project', async () => {
 			params: { projectId: 'project', configurationId: 'new' },
 		}),
 	);
+});
+
+it('lists project members as a group before individual reviewers', async () => {
+	const { view } = await renderSection({ includeAllProjectMembers: true });
+	const group = view.getByTestId('self-healing-project-members');
+	expect(group).toHaveTextContent('People from Acme project');
+	expect(group).toHaveTextContent('🚀');
+	expect(group.compareDocumentPosition(view.getByText('Test Reviewer'))).toBe(
+		Node.DOCUMENT_POSITION_FOLLOWING,
+	);
+});
+
+it('lists only individual reviewers when the project group is not selected', async () => {
+	const { view } = await renderSection();
+	expect(view.getByText('Test Reviewer')).toBeVisible();
+	expect(view.queryByTestId('self-healing-project-members')).not.toBeInTheDocument();
 });
