@@ -245,7 +245,10 @@ describe('AgentRepository', () => {
 			expect(created.configHash).toBe(getAgentConfigHash(created.config));
 			expect(
 				await agentHistoryRepo.findByVersionAndAgentId(created.agent.versionId!, created.agent.id),
-			).toMatchObject({ schema: { skills: [{ id: skillId }] } });
+			).toMatchObject({ schema: { instructions: 'Help users' } });
+			expect(
+				await Container.get(AgentSkillRepository).findPinnedSkillIds(created.agent.versionId!),
+			).toEqual([skillId]);
 			expect(await agentRepo.findById(id)).toMatchObject({
 				schema: { instructions: 'Help users' },
 			});
