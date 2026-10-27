@@ -13,19 +13,13 @@ import {
 	resolveCredentialConflictPolicy,
 } from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
-import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
-import {
-	assertArchiveTransitionsAllowed,
-	assertPackageImportApiKeyScopes,
-	assertTagWritesAllowed,
-} from './import-gates';
+import { assertPackageImportApiKeyScopes, packageImportScopes } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -38,12 +32,11 @@ import {
 } from './import-result';
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { PackageImportPreflight } from './package-import-preflight';
 import {
-	needsBundledCredentialData,
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
 	placeByPolicy,
-	placeCredentialData,
 } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
@@ -56,7 +49,7 @@ export class WorkflowPackageImporter {
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly importOrchestrator: ImportOrchestrator,
-		private readonly workflowPublisher: WorkflowPublisher,
+		private readonly importPreflight: PackageImportPreflight,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly licenseState: LicenseState,
@@ -78,7 +71,7 @@ export class WorkflowPackageImporter {
 			request.projectId,
 			request.folderId,
 			folders.length > 0,
-			!manifest.workflows?.length && manifest.agents?.length ? 'agent:read' : 'workflow:import',
+			packageImportScopes(manifest),
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
@@ -151,7 +144,7 @@ export class WorkflowPackageImporter {
 			conflictPolicy: request.tagConflictPolicy,
 		};
 
-		const plan = await this.importOrchestrator.plan({
+		const draftPlan = await this.importOrchestrator.plan({
 			context,
 			folders,
 			workflows,
@@ -170,31 +163,14 @@ export class WorkflowPackageImporter {
 			checkRootPlacement: false,
 		});
 
-		const plannedCredentialRequest = plan.input.credentialRequest;
-		const missingCredentialIds = new Set(
-			plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
-		);
-		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
-			plannedCredentialRequest.requirements = placeCredentialData({
-				requirements: plannedCredentialRequest.requirements,
-				bundledCredentials:
-					plannedCredentialRequest.packageCredentials ??
-					(await this.packageParser.getCredentials(reader, missingCredentialIds)),
-			});
-		}
-
-		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
-		assertArchiveTransitionsAllowed(request.apiKeyScopes, [plan.workflowPlan]);
-		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
+		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
 
 		const content = await this.importOrchestrator.apply(plan);
 
-		// Publishing waits until every workflow is written: activation rejects a parent whose
-		// referenced sub-workflow is not yet published, so the order is resolved across the batch.
-		const published = await this.workflowPublisher.applyToPackage({
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
-			persisted: content.workflowOutcomes,
-			policy: request.workflowPublishingPolicy,
+			content: [content],
+			policy: request.publishingPolicy,
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
 		});
 
@@ -202,7 +178,7 @@ export class WorkflowPackageImporter {
 			{
 				context,
 				imported: content,
-				credentialRequest: plannedCredentialRequest,
+				credentialRequest: plan.input.credentialRequest,
 				dataTableRequest: plan.input.dataTableRequest,
 				variableRequest: plan.input.variableRequest,
 				tagRequest,
@@ -211,6 +187,7 @@ export class WorkflowPackageImporter {
 
 		const result = buildImportResult({
 			package: toPackageSummary(manifest),
+			agentOutcomes,
 			workflows: toImportedWorkflowSummaries(
 				content.workflowOutcomes,
 				context.projectId,
@@ -232,7 +209,7 @@ export class WorkflowPackageImporter {
 			tags: toTagSummary(content.tagPlan),
 		});
 
-		return { result, scopes };
+		return { result, scopes, agentOutcomes };
 	}
 
 	private assertFoldersLicensed(): void {
@@ -248,11 +225,11 @@ export class WorkflowPackageImporter {
 		projectId: string | undefined,
 		folderId: string | undefined,
 		needsFolderCreate: boolean,
-		importScope: 'workflow:import' | 'agent:read',
+		importScopes: Scope[],
 	): Promise<ImportContext> {
 		const scopes: Scope[] = needsFolderCreate
-			? [importScope, 'folder:create', 'folder:update']
-			: [importScope];
+			? [...importScopes, 'folder:create', 'folder:update']
+			: importScopes;
 		const project = await this.resolveImportProject(user, projectId, scopes);
 		await this.assertFolderExistsInProject(folderId, project.id);
 
@@ -269,7 +246,7 @@ export class WorkflowPackageImporter {
 			if (!personalProject) {
 				throw new NotFoundError('Personal project not found');
 			}
-			return personalProject;
+			projectId = personalProject.id;
 		}
 
 		const project = await this.projectService.getProjectWithScope(user, projectId, scopes);

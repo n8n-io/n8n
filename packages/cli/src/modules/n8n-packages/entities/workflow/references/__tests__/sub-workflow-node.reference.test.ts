@@ -30,6 +30,7 @@ const resourceLocator = (value: string, mode = 'list') => ({ __rl: true, mode, v
 const workflow = (nodes: INode[], id = 'parent'): WorkflowEntity =>
 	({ id, nodes }) as WorkflowEntity;
 const bindings = (workflows: Map<string, string>): PackageImportBindings => ({
+	agents: new Map(),
 	workflows,
 	credentials: new Map(),
 });
