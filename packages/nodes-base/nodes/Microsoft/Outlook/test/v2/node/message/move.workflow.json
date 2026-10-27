@@ -28,6 +28,9 @@
           "mode": "list",
           "cachedResultName": "Folder 42",
           "cachedResultUrl": "https://outlook.office365.com/mail/AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De%2FLkrSqpPI8eyjUmAAAFXBAEHAAA%3D"
+        },
+        "options": {
+          "immutableIds": true
         }
       },
       "id": "baff6798-0304-4255-bdb0-dd3f2659373b",
@@ -50,7 +53,8 @@
     "Microsoft Outlook": [
       {
         "json": {
-          "success": true
+          "success": true,
+          "id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEJAABZf4De-LkrSqpPI8eyjUmAAAFXBEVwAAA="
         }
       }
     ]

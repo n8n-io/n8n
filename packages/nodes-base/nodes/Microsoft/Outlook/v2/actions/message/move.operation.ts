@@ -33,10 +33,16 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		destinationId,
 	};
 
-	await microsoftApiRequest.call(this, 'POST', `/messages/${messageId}/move`, index, body);
+	const response: IDataObject = await microsoftApiRequest.call(
+		this,
+		'POST',
+		`/messages/${messageId}/move`,
+		index,
+		body,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray({ success: true }),
+		this.helpers.returnJsonArray({ success: true, id: response.id }),
 		{ itemData: { item: index } },
 	);
 
