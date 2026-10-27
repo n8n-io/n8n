@@ -16,7 +16,11 @@ export class SkillsModule implements ModuleInterface {
 		const { Skill } = await import('./database/entities/skill.entity.js');
 		const { SkillVersion } = await import('./database/entities/skill-version.entity.js');
 		const { SkillFile } = await import('./database/entities/skill-file.entity.js');
+		const { SkillSourceConnection } = await import(
+			'./database/entities/skill-source-connection.entity.js'
+		);
+		const { SkillSourceLink } = await import('./database/entities/skill-source-link.entity.js');
 
-		return [Skill, SkillVersion, SkillFile];
+		return [Skill, SkillVersion, SkillFile, SkillSourceConnection, SkillSourceLink];
 	}
 }

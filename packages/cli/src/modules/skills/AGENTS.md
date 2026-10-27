@@ -22,7 +22,7 @@ skills/
   controllers/         REST routes
   services/            services, gates, the SkillUsage contract and its proxy
   database/
-    entities/          Skill, SkillVersion, SkillFile
+    entities/          Skill, SkillVersion, SkillFile, SkillSourceConnection, SkillSourceLink
     repositories/      SkillRepository
   errors/              SkillNameTakenError, SkillParseError, SkillSyncedError
   utils/               shared types, content helpers, hashes, name rules

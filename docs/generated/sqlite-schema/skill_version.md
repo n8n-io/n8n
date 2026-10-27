@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varchar(36) NOT NULL, "version" integer NOT NULL, "name" varchar(128) NOT NULL, "description" varchar(1024) NOT NULL, "instructions" text NOT NULL, "frontmatter" text, "contentHash" varchar(64) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_93bb78a1eb4e0890fac6b69df95" UNIQUE ("skillId", "version"), CONSTRAINT "CHK_skill_version_version" CHECK ("version" > 0), CONSTRAINT "FK_f87064c0a29efd2d5195328d91a" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9565d0fbf32cd463f9b47c7adab" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varchar(36) NOT NULL, "version" integer NOT NULL, "name" varchar(128) NOT NULL, "description" varchar(1024) NOT NULL, "instructions" text NOT NULL, "frontmatter" text, "contentHash" varchar(64) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "sourceRevision" varchar(255), CONSTRAINT "UQ_93bb78a1eb4e0890fac6b69df95" UNIQUE ("skillId", "version"), CONSTRAINT "CHK_skill_version_version" CHECK ("version" > 0), CONSTRAINT "FK_f87064c0a29efd2d5195328d91a" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9565d0fbf32cd463f9b47c7adab" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -24,6 +24,7 @@ CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varch
 | instructions | TEXT |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | skillId | varchar(36) |  | false |  | [skill](skill.md) |  |
+| sourceRevision | varchar(255) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | version | INTEGER |  | false |  |  |  |
 
@@ -66,6 +67,7 @@ erDiagram
   TEXT instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   datetime_3_ updatedAt
   INTEGER version
 }
