@@ -29,7 +29,6 @@ export default defineConfig(
 		files: [
 			'src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts',
 			'src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts',
-			'src/execution-engine/routing-node.ts',
 		],
 		rules: { '@typescript-eslint/no-base-to-string': 'warn' },
 	},
