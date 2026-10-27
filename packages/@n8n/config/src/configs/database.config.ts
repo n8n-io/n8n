@@ -184,10 +184,11 @@ export class DatabaseConfig {
 
 	/**
 	 * Number of consecutive failed health-check pings before n8n rebuilds the
-	 * Postgres connection pool. A failed ping counts only when a new connection
-	 * opened outside the pool still answers within the ping timeout. When that
-	 * connection fails too, the database is unreachable or stalled, so n8n keeps
-	 * the pool and waits for the next ping. Raise this if n8n rebuilds the pool on
+	 * Postgres connection pool. A failed ping counts only when a pooled connection
+	 * was free and did not answer, while a new connection opened outside the pool
+	 * still answers within the ping timeout. A ping that found every pooled
+	 * connection busy, or that failed while the database was unreachable, does not
+	 * count, so n8n keeps the pool and waits for the next ping. Raise this if n8n rebuilds the pool on
 	 * brief network hiccups. Lower it to react faster to dead connections. Must be
 	 * at least 1. Has no effect on SQLite.
 	 */

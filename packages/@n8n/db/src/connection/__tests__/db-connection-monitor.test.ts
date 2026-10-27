@@ -469,10 +469,40 @@ describe('DbConnectionMonitor', () => {
 			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
 			expect(logger.warn).toHaveBeenLastCalledWith(
 				expect.stringContaining(
-					'Database ping failed (not counted towards recovery, 0/3): Database connection timed out',
+					'Database ping failed (not counted, database unreachable, 0/3): Database connection timed out',
 				),
 			);
 			expect(probeClient.end).toHaveBeenCalledTimes(4);
+		});
+
+		it('should not count a ping that got no pooled connection and should not probe', async () => {
+			// Every pooled connection is busy with other queries, so the ping waits for a free one
+			// and times out. The database may be healthy, and a rebuild would abort those queries.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			pool.connect.mockReturnValue(new Promise(() => {}));
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			for (let i = 0; i < 4; i++) {
+				// @ts-expect-error private property
+				await monitor.ping();
+			}
+
+			expect(recoverSpy).not.toHaveBeenCalled();
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(0);
+			expect(postgres.Client).not.toHaveBeenCalled();
+			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining(
+					'Database ping failed (not counted, no pooled connection free, 0/3): No pooled connection available for the ping: Database connection timed out',
+				),
+			);
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
 		it('should bound the probe outside the pool by the ping timeout', async () => {

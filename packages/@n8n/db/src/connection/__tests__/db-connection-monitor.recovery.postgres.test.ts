@@ -571,7 +571,7 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				// Three timed-out pings, none counted: the probe could not reach the backend either.
 				expect(recoverSpy).not.toHaveBeenCalled();
 				expect(logger.warn).toHaveBeenCalledWith(
-					expect.stringContaining('Database ping failed (not counted towards recovery, 0/1)'),
+					expect.stringContaining('Database ping failed (not counted, database unreachable, 0/1)'),
 				);
 				expect(logger.warn).not.toHaveBeenCalledWith(
 					expect.stringContaining('Triggering database connection recovery'),
@@ -645,6 +645,57 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 					await dataSource.destroy();
 				}
 				await proxy.close();
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'does not count a ping that waits for a busy pool on a healthy backend',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			// One pooled connection, held by a slow query for longer than the ping timeout.
+			const dataSource = newDataSource(connection, { poolSize: 1 });
+			await dataSource.initialize();
+
+			const logger = mock<Logger>();
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({ pingTimeoutMs: 200, pingMaxFailuresBeforeRecovery: 1 }),
+				logger,
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			monitor.start();
+			const internals = monitor as unknown as MonitorInternals;
+			const recoverSpy = vi.spyOn(internals, 'recoverDataSource').mockResolvedValue(undefined);
+
+			try {
+				const slowQuery = dataSource.query('SELECT pg_sleep(1)');
+				await setTimeoutP(100); // let the slow query check the only connection out
+				await internals.ping();
+
+				// The ping waited for a free pooled connection and gave up. The backend answered
+				// the slow query all along, so no failure counts and no rebuild starts.
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining(
+						'Database ping failed (not counted, no pooled connection free, 0/1)',
+					),
+				);
+				expect(recoverSpy).not.toHaveBeenCalled();
+
+				await slowQuery;
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
 			}
 		},
 		TEST_TIMEOUT_MS,
