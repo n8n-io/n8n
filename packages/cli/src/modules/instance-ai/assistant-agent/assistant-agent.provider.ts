@@ -1,5 +1,6 @@
 import type { JSONObject, TokenUsage } from '@n8n/agents';
 import {
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
@@ -244,7 +245,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
 				// A suspended turn can still be building the workflows it marked.
 				if (outcome.status !== 'suspended') {
-					await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
+					const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
+					this.emitArchivedWorkflows(turn, thread.id, archived);
 				}
 			},
 			formatError: async (error) => await this.formatTurnError(user, error),
@@ -347,31 +349,53 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		environment: AssistantTurnEnvironment,
 		runtime: AssistantTurnRuntime,
 		threadId: string,
-	): Promise<void> {
+	): Promise<string[]> {
 		const markers = runtime.temporaryWorkflowMarkers;
-		if (!markers) return;
+		if (!markers) return [];
 		let workflowIds: string[] = [];
 		try {
 			workflowIds = await markers.list();
 		} catch (error) {
-			this.logger.warn('Failed to read the temporary workflows of an n8n Assistant thread', {
+			this.logger.warn('Failed to read the temporary workflows of an Assistant thread', {
 				threadId,
 				error: getErrorMessage(error),
 			});
 		}
+		const archived: string[] = [];
 		for (const workflowId of workflowIds) {
 			try {
-				const archived = await environment.context.workflowService.archiveIfAiTemporary(workflowId);
+				if (await environment.context.workflowService.archiveIfAiTemporary(workflowId)) {
+					archived.push(workflowId);
+					continue;
+				}
 				// A marked workflow that is not archived was deleted or is out of reach.
 				// Thread metadata has no foreign key to drop it, so drop the marker here.
-				if (!archived) await markers.unmark(workflowId);
+				await markers.unmark(workflowId);
 			} catch (error) {
-				this.logger.warn('Failed to archive a temporary n8n Assistant workflow', {
+				this.logger.warn('Failed to archive a temporary Assistant workflow', {
 					threadId,
 					workflowId,
 					error: getErrorMessage(error),
 				});
 			}
+		}
+		return archived;
+	}
+
+	/** Tells the chat which workflows the turn end archived, so it can mark their artifacts. */
+	private emitArchivedWorkflows(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		threadId: string,
+		workflowIds: string[],
+	): void {
+		if (workflowIds.length === 0) return;
+		try {
+			turn.emitHostEvent(ASSISTANT_WORKFLOWS_ARCHIVED_EVENT, { workflowIds }, { key: 'turn' });
+		} catch (error) {
+			this.logger.warn('Failed to send the archived Assistant workflows to the chat', {
+				threadId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 

@@ -1,3 +1,4 @@
+import { ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -362,13 +363,45 @@ describe('AssistantAgentProvider', () => {
 				expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-2');
 			});
 
+			it('tells the chat which workflows it archived', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(turn.emitHostEvent).toHaveBeenCalledWith(
+					ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+					{ workflowIds: ['wf-1'] },
+					{ key: 'turn' },
+				);
+			});
+
+			it('sends no archived event when it archived nothing', async () => {
+				const { provider, archiveIfAiTemporary } = setup();
+				archiveIfAiTemporary.mockResolvedValue(false);
+				const turn = turnWithMarkedWorkflows();
+
+				const handle = await provider.prepareTurn(turn);
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'completed' });
+
+				expect(turn.emitHostEvent).not.toHaveBeenCalledWith(
+					ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
 			it('keeps them while the turn waits for the user', async () => {
 				const { provider, archiveIfAiTemporary } = setup();
+				const turn = turnWithMarkedWorkflows();
 
-				const handle = await provider.prepareTurn(turnWithMarkedWorkflows());
+				const handle = await provider.prepareTurn(turn);
 				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
 
 				expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+				expect(turn.emitHostEvent).not.toHaveBeenCalled();
 			});
 
 			it('drops the marker of a workflow that it cannot archive', async () => {
