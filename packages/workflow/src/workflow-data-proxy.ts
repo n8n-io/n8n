@@ -76,6 +76,11 @@ const readOwnKey = (source: unknown, key: string): unknown => {
 	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
 };
 
+// `$parameter` resolves a nested expression through a new proxy, so the
+// parameters being resolved are tracked here and not on the proxy. Resolution
+// is synchronous, so the set holds only the chain of the current read.
+const parametersBeingResolved = new Set<string>();
+
 const isCodeGenerationAllowed = (): boolean => {
 	if (codeGenerationAllowed === undefined) {
 		try {
@@ -387,9 +392,6 @@ export class WorkflowDataProxy {
 					returnValue = node.parameters[name];
 				}
 
-				// Avoid recursion
-				if (returnValue === `={{ $parameter.${name} }}`) return undefined;
-
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
 						const extracted = safeRegex.exec(returnValue.__regex, returnValue.value);
@@ -404,21 +406,29 @@ export class WorkflowDataProxy {
 				}
 
 				if (resolveValue && typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
-					// The found value is an expression so resolve it
-					return that.workflow.expression.getParameterValue(
-						returnValue,
-						that.runExecutionData,
-						that.runIndex,
-						that.itemIndex,
-						that.activeNodeName,
-						that.connectionInputData,
-						that.mode,
-						that.additionalKeys,
-						that.executeData,
-						false,
-						{},
-						that.contextNodeName,
-					);
+					// A parameter that references itself, also through other parameters, resolves to undefined
+					const resolutionKey = JSON.stringify([nodeName, name]);
+					if (parametersBeingResolved.has(resolutionKey)) return undefined;
+
+					parametersBeingResolved.add(resolutionKey);
+					try {
+						return that.workflow.expression.getParameterValue(
+							returnValue,
+							that.runExecutionData,
+							that.runIndex,
+							that.itemIndex,
+							that.activeNodeName,
+							that.connectionInputData,
+							that.mode,
+							that.additionalKeys,
+							that.executeData,
+							false,
+							{},
+							that.contextNodeName,
+						);
+					} finally {
+						parametersBeingResolved.delete(resolutionKey);
+					}
 				}
 
 				return returnValue;

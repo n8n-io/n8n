@@ -431,6 +431,12 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
+		// If registration crashes the process, this is the last line that names the workflow
+		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowName: dbWorkflow.name,
+			workflowId: dbWorkflow.id,
+		});
+
 		try {
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,
