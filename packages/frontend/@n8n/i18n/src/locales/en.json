@@ -1,7 +1,23 @@
 {
 	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
+<<<<<<< HEAD
 	"experiments.mcpDiscovery.cta.connectToN8n": "Connect to n8n",
 	"experiments.mcpDiscovery.cta.build": "Build with Claude",
+=======
+	"experiments.mcpDiscovery.cta.build": "Build in Claude",
+	"experiments.mcpDiscovery.footer.prefix": "Prefer Claude?",
+	"experiments.mcpDiscovery.footer.build": "Build your workflow in Claude",
+	"experiments.mcpDiscovery.sidebar.title": "Build workflows in Claude",
+	"experiments.mcpDiscovery.sidebar.description": "Describe it in Claude, it appears in n8n.",
+	"agentSessions.timeline.mocks.scenario.label": "Sample scenario",
+	"agentSessions.timeline.mocks.scenario.simple": "Simple",
+	"agentSessions.timeline.mocks.scenario.fanout": "Fanout",
+	"agentSessions.timeline.mocks.scenario.background": "Background",
+	"agentSessions.timeline.mocks.title": "Toggle sample data",
+	"agentSessions.timeline.mocks.execution": "Toggle {status} executions",
+	"agentSessions.timeline.mocks.jobs": "Toggle background jobs",
+	"agentSessions.timeline.mocks.cycleJobs": "Next job state",
+>>>>>>> 39bbedfd (feat(editor): Update Surface MCP to Claude users in trial experiment enrollment and nudges (no-changelog) (#42299))
 	"inbox.title": "Reviews",
 	"inbox.tabs.open": "Open",
 	"inbox.tabs.closed": "Closed",
