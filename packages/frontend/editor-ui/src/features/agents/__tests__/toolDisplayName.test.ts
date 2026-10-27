@@ -70,9 +70,9 @@ describe('formatToolNameForDisplay', () => {
 		);
 	});
 
-	it('keeps the legacy questions label and resolves current aliases', () => {
+	it('resolves legacy question tools to the ask_user label', () => {
 		expect(getToolNameTranslationKey('agent_builder_ask_questions')).toBe(
-			'instanceAi.tools.agent_builder_ask_questions',
+			'instanceAi.tools.ask_user',
 		);
 		expect(getToolNameTranslationKey(' ask_questions ')).toBe('instanceAi.tools.ask_user');
 
@@ -82,7 +82,7 @@ describe('formatToolNameForDisplay', () => {
 		};
 		const translator = { baseText: (key: BaseTextKey) => translations[key] ?? key };
 		expect(resolveToolNameForDisplay('agent_builder_ask_questions', translator)).toBe(
-			'Asking questions',
+			'Asking user',
 		);
 		expect(resolveToolNameForDisplay('ask_user', translator)).toBe('Asking user');
 		expect(resolveToolNameForDisplay('ask-user', translator)).toBe('Asking user');

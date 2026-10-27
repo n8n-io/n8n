@@ -240,16 +240,15 @@ export function useToolLabel() {
 			const actionTranslated = i18n.baseText(actionKey);
 			if (actionTranslated !== actionKey) return actionTranslated;
 		}
+		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
+		const translated = i18n.baseText(key);
+		if (translated !== key) return translated;
 		if (rawToolName !== toolName) {
 			const rawKey = `instanceAi.tools.${rawToolName}` as BaseTextKey;
 			const rawTranslated = i18n.baseText(rawKey);
 			if (rawTranslated !== rawKey) return rawTranslated;
 		}
-		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
-		const translated = i18n.baseText(key);
-		return translated === key
-			? formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName
-			: translated;
+		return formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName;
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {

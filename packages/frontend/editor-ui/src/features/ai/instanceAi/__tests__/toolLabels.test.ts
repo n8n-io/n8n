@@ -244,9 +244,9 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
 	});
 
-	test('getToolLabel keeps the legacy questions label and resolves current aliases', () => {
+	test('getToolLabel resolves legacy question tools to the ask_user label', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('agent_builder_ask_questions')).toBe('Asking questions');
+		expect(getToolLabel('agent_builder_ask_questions')).toBe('Asking user');
 		expect(getToolLabel('ask-user')).toBe('Asking user');
 		expect(getToolLabel('ask_user')).toBe('Asking user');
 	});
