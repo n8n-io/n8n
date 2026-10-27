@@ -4,6 +4,7 @@ import type {
 	CredentialSaveContext,
 	CredentialTransferContext,
 	EnforcementPoint,
+	LlmCallPolicyContext,
 	PolicyDecision,
 	WorkflowPublishContext,
 	WorkflowSaveContext,
@@ -23,6 +24,7 @@ type PolicyContexts = {
 	credentialTransfer: CredentialTransferContext;
 	credentialDecrypt: CredentialDecryptContext;
 	contentImport: ContentImportContext;
+	llmCall: LlmCallPolicyContext;
 };
 
 export type PolicyContext<Point extends EnforcementPoint> = PolicyContexts[Point];

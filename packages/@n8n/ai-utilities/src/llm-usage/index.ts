@@ -2,12 +2,14 @@
 // importing this entry does not load `@langchain/core`.
 export type {
 	LlmCallContext,
+	LlmCallGuard,
+	LlmGuardedCall,
 	LlmUsage,
 	LlmUsageCredential,
 	LlmUsageRecord,
 	LlmUsageSink,
 } from './types';
-export { getLlmUsageSink, setLlmUsageSink } from './state';
+export { checkLlmCall, getLlmUsageSink, setLlmCallGuard, setLlmUsageSink } from './state';
 export {
 	credentialFromNode,
 	type NodeCredentialSlots,

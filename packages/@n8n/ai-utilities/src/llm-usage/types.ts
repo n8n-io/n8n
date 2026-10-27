@@ -48,6 +48,17 @@ export interface LlmUsageRecord extends LlmUsage {
 	context: LlmCallContext;
 }
 
+/** What a capture site knows about an LLM call before it sends it. */
+export interface LlmGuardedCall {
+	context: LlmCallContext;
+	credential?: LlmUsageCredential;
+	provider?: string;
+	model?: string;
+}
+
+/** Decides if an LLM call may be sent. Throws to block it. The host sets it at startup. */
+export type LlmCallGuard = (call: LlmGuardedCall) => Promise<void>;
+
 /** Receives every reported call. The llm-usage module sets it at startup. */
 export interface LlmUsageSink {
 	/** Must not block and must not throw. */

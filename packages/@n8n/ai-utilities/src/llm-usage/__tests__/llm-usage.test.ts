@@ -7,6 +7,7 @@ import { AIMessage } from '@langchain/core/messages';
 import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 
 import {
+	checkLlmCall,
 	credentialFromNode,
 	enrichLlmCallContext,
 	getLlmCallContext,
@@ -359,6 +360,12 @@ describe('llm-usage', () => {
 			{ id: 'cred-1' },
 			undefined,
 		]);
+	});
+
+	describe('checkLlmCall', () => {
+		it('lets the call go when no guard is set', async () => {
+			await expect(checkLlmCall({ context: { callerType: 'node' } })).resolves.toBeUndefined();
+		});
 	});
 
 	describe('credentialFromNode', () => {

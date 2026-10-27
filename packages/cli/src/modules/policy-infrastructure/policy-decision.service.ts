@@ -23,7 +23,7 @@ import type { DecisionAuditInput } from './policy-decision-audit';
 import { auditedActor, decisionAudit } from './policy-decision-audit';
 
 /**
- * How long one check gets. Tight on the two points that sit inside a running execution: a wedged
+ * How long one check gets. Tight on the points that sit inside a running execution: a wedged
  * policy store there pins worker slots rather than failing a single request.
  */
 const DEADLINES_MS = {
@@ -35,6 +35,7 @@ const DEADLINES_MS = {
 	credentialTransfer: 1_000,
 	credentialDecrypt: 250,
 	contentImport: 1_000,
+	llmCall: 250,
 } as const satisfies Record<EnforcementPoint, number>;
 
 type CheckRunner<Point extends EnforcementPoint> = (
