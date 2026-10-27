@@ -17,6 +17,7 @@ import type {
 	AgentMessage,
 	ContentCustom,
 	ContentFile,
+	ContentFileWithRef,
 	ContentReasoning,
 	ContentReasoningFile,
 	ContentText,
@@ -280,9 +281,18 @@ function fileDataToText(data: NonNullable<ContentFile['data']>): string {
 }
 
 /**
+ * Text for a file that a tool read for the model and that is outside the
+ * hydration budget now. Keep it stable, so the prompt prefix stays cached.
+ */
+function viewedFileText(part: ContentFileWithRef): string {
+	const name = part.fileRef.fileName ?? 'file';
+	return `[You viewed file "${name}" (fileId: ${part.fileRef.id}) earlier. It is no longer attached. Read it again if you need to look at it.]`;
+}
+
+/**
  * Map file parts with a `fileRef` in a tool output to AI SDK parts. A loaded
  * text file becomes text, other loaded files become file parts, and a part
- * without data becomes its text metadata.
+ * without data becomes a short text.
  */
 function toModelContentOutput(output: ContentToolResultOutput): ContentToolResultOutput {
 	if (toolOutputFileParts(output).length === 0) return output;
@@ -291,7 +301,7 @@ function toModelContentOutput(output: ContentToolResultOutput): ContentToolResul
 		value: output.value.map((part) => {
 			const candidate: unknown = part;
 			if (!isFileRefPart(candidate)) return part;
-			if (candidate.data === undefined) return { type: 'text', text: fileMetadataText(candidate) };
+			if (candidate.data === undefined) return { type: 'text', text: viewedFileText(candidate) };
 			if (isTextMediaType(candidate.mediaType)) {
 				return { type: 'text', text: fileDataToText(candidate.data) };
 			}

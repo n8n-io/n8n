@@ -25,6 +25,7 @@ import type {
 	ModelGuardrail,
 } from '../../types/sdk/guardrail';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
+import { stripHydratedFileData } from '../../types/sdk/message';
 import type {
 	BuiltTool,
 	InterruptibleToolContext,
@@ -36,6 +37,7 @@ import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
+import { MAX_HYDRATED_FILE_PARTS } from '../loop/hydrate-file-parts';
 import { StreamSink } from '../loop/stream-sink';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
@@ -12172,7 +12174,18 @@ describe('AgentRuntime — tool output files', () => {
 		});
 	}
 
-	it('sends the bytes of ten reads to the next model call only', async () => {
+	function readFileCalls(count: number) {
+		for (let i = 0; i < count; i++) {
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall(`call-${i}`, 'read', { fileId: `file-${i}` }),
+			);
+		}
+		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+	}
+
+	const attached = { type: 'file', data: { type: 'data', data: bytes }, mediaType: 'image/png' };
+
+	it('keeps a file attached in later steps of the turn without loading it again', async () => {
 		const load = vi.fn().mockResolvedValue(bytes);
 		const runtime = new AgentRuntime({
 			name: 'tool-file-test',
@@ -12181,28 +12194,71 @@ describe('AgentRuntime — tool output files', () => {
 			tools: [readTool],
 			fileStore: { load },
 		});
-		for (let i = 0; i < 10; i++) {
-			generateText.mockResolvedValueOnce(
-				makeGenerateWithToolCall(`call-${i}`, 'read', { fileId: `file-${i}` }),
-			);
-		}
-		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+		readFileCalls(2);
 
 		const result = await runtime.generate('Read the files', { maxIterations: 20 });
 
 		expect(result.error).toBeUndefined();
-		expect(generateText).toHaveBeenCalledTimes(11);
 		expect(filePartsOfCall(0)).toHaveLength(0);
-		for (let i = 1; i <= 10; i++) {
-			expect(filePartsOfCall(i)).toEqual([
-				{ type: 'file', data: { type: 'data', data: bytes }, mediaType: 'image/png' },
-			]);
-		}
-		expect(load).toHaveBeenCalledTimes(10);
-		const lastCall: aiModule.ModelMessage[] = generateText.mock.calls[10][0].messages ?? [];
+		expect(filePartsOfCall(1)).toEqual([attached]);
+		// Step 3 still has the file of step 1.
+		expect(filePartsOfCall(2)).toEqual([attached, attached]);
+		expect(load).toHaveBeenCalledTimes(2);
+	});
+
+	it('shows a short text for the oldest file when the file count budget is used up', async () => {
+		const runtime = new AgentRuntime({
+			name: 'tool-file-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			tools: [readTool],
+			fileStore: { load: vi.fn().mockResolvedValue(bytes) },
+		});
+		readFileCalls(MAX_HYDRATED_FILE_PARTS + 1);
+
+		await runtime.generate('Read the files', { maxIterations: 30 });
+
+		const lastIndex = MAX_HYDRATED_FILE_PARTS + 1;
+		expect(filePartsOfCall(lastIndex)).toHaveLength(MAX_HYDRATED_FILE_PARTS);
+		const lastCall: aiModule.ModelMessage[] = generateText.mock.calls[lastIndex][0].messages ?? [];
 		expect(JSON.stringify(lastCall)).toContain(
-			JSON.stringify('You viewed file "file" (fileId: file-0) in an earlier step').slice(1, -1),
+			JSON.stringify(
+				'[You viewed file "file" (fileId: file-0) earlier. It is no longer attached. Read it again if you need to look at it.]',
+			).slice(1, -1),
 		);
+	});
+
+	it('keeps a file attached in the next turn and does not store its bytes', async () => {
+		const persistence = { threadId: 'tool-file-thread', resourceId: 'user-1' };
+		const memory = new InMemoryMemory();
+		// Store messages the way the n8n backend does.
+		const save = memory.saveMessages.bind(memory);
+		const saved: string[] = [];
+		memory.saveMessages = async (args) => {
+			const messages = structuredClone(args.messages.map(stripHydratedFileData));
+			saved.push(JSON.stringify(messages));
+			await save({ ...args, messages });
+		};
+		const load = vi.fn().mockResolvedValue(bytes);
+		const build = () =>
+			new AgentRuntime({
+				name: 'tool-file-test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				tools: [readTool],
+				memory,
+				fileStore: { load },
+			});
+		readFileCalls(1);
+		await build().generate('Read the file', { persistence });
+		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await build().generate('What was in it?', { persistence });
+
+		expect(filePartsOfCall(2)).toEqual([attached]);
+		expect(load).toHaveBeenCalledTimes(2);
+		expect(saved.join()).toContain('"fileRef":{"id":"file-0"}');
+		expect(saved.join()).not.toContain('"data"');
 	});
 
 	it('sends a text file as text', async () => {
