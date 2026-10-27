@@ -49,10 +49,6 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Remove Label',
 				value: 'removeLabels',
 				action: 'Remove label from message',
-				builderHint: {
-					propertyHint:
-						"To archive a message, remove the INBOX label: `operation: 'removeLabels'` with `labelIds: ['INBOX']`. Gmail has no archive operation and no ARCHIVE label.",
-				},
 			},
 			{
 				name: 'Reply',
