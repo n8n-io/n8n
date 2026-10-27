@@ -4,7 +4,6 @@ import { baseConfig } from './base.js';
 export const frontendConfig = defineConfig({
 	extends: [baseConfig],
 	plugins: ['vue'],
-	// The alias matches the ESLint plugin key so the rule id stays the same.
 	jsPlugins: [{ name: '@n8n/design-system', specifier: '@n8n/eslint-plugin-design-system' }],
 	env: { browser: true, node: true },
 	rules: {
