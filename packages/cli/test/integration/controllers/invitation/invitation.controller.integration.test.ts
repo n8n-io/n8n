@@ -185,6 +185,7 @@ describe('InvitationController', () => {
 				),
 			};
 
+			const outcomes = [];
 			for (const [description, token] of Object.entries(forgedTokens)) {
 				const response = await testServer.authlessAgent.post('/invitations/accept').send({
 					token,
@@ -193,13 +194,24 @@ describe('InvitationController', () => {
 					password: randomValidPassword(),
 				});
 
-				expect(response.statusCode).toBe(400);
-				expect(response.headers['set-cookie']).toBeUndefined();
-
-				const stored = await userRepository.findOneByOrFail({ email: memberShell.email });
-				expect(stored.password).toBeNull();
-				expect(stored.firstName).toBeNull();
+				outcomes.push({
+					description,
+					status: response.statusCode,
+					cookie: response.headers['set-cookie'],
+				});
 			}
+
+			expect(outcomes).toEqual(
+				Object.keys(forgedTokens).map((description) => ({
+					description,
+					status: 400,
+					cookie: undefined,
+				})),
+			);
+
+			const stored = await userRepository.findOneByOrFail({ email: memberShell.email });
+			expect(stored.password).toBeNull();
+			expect(stored.firstName).toBeNull();
 		});
 
 		test('should fail with already accepted invite', async () => {
