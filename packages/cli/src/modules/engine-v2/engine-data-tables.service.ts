@@ -29,6 +29,12 @@ const MODULE_DISABLED_MESSAGE = 'Attempted to use Data table node but the module
  * nodes, and the project is the workflow's home project. The token proves the
  * caller is the engine, not which project it may touch, so the project is
  * resolved here on every call and never read from the request.
+ *
+ * The workflow id itself is trusted from the data plane, as the credentials
+ * route trusts it: an engine execution has no control plane row to check it
+ * against, and the data plane holds the shared secret, so it is trusted with
+ * every workflow it runs. Binding a token to one execution is a change to the
+ * action token model, not to this route.
  */
 @Service()
 export class EngineDataTablesService {

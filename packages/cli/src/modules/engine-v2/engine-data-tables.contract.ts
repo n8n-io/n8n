@@ -52,7 +52,15 @@ const aggregateCallSchemas = [
 	z.object({
 		kind: z.literal('getManyAndCount'),
 		options: z.object({
-			filter: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
+			// Only what the node filters by. A project filter is not accepted: the
+			// control plane pins the project, and the wire must not look otherwise.
+			filter: z
+				.object({
+					id: z.union([z.string(), z.array(z.string())]).optional(),
+					name: z.union([z.string(), z.array(z.string())]).optional(),
+				})
+				.strict()
+				.optional(),
 			sortBy: z
 				.enum([
 					'name:asc',

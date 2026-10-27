@@ -112,6 +112,15 @@ describe('dataTableCallRequestSchema', () => {
 		expect(dataTableCallRequestSchema.safeParse(request).success).toBe(true);
 	});
 
+	it('rejects a list filter that names a project, because the control plane pins it', () => {
+		const request = {
+			...envelope,
+			call: { kind: 'getManyAndCount', options: { filter: { projectId: 'other-project' } } },
+		};
+
+		expect(dataTableCallRequestSchema.safeParse(request).success).toBe(false);
+	});
+
 	it('rejects a kind the control plane does not serve', () => {
 		const request = { ...envelope, call: { kind: 'deleteDataTableAll' } };
 

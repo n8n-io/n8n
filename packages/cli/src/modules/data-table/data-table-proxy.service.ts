@@ -259,9 +259,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async getManyAndCount(options: ListDataTableOptions = {}) {
+				// The pinned project last, so a filter cannot list another project.
 				const serviceOptions: DataTableListOptions = {
 					...options,
-					filter: { projectId, ...(options.filter ?? {}) },
+					filter: { ...(options.filter ?? {}), projectId },
 				};
 				return await dataTableService.getManyAndCount(serviceOptions);
 			},
