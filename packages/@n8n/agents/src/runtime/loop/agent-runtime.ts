@@ -1432,7 +1432,10 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(getCatalogModelId(this.config.model));
+			this.modelCost = await getModelCost(
+				getCatalogModelId(this.config.model),
+				this.config.modelFetch,
+			);
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}
