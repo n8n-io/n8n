@@ -149,6 +149,9 @@ function onOperation(value: string) {
 
 <style lang="scss" module>
 .operation {
+	// The radio group aligns its children to the start.
+	// Stretch this block so the fields use the full width.
+	align-self: stretch;
 	padding: 0 0 var(--spacing--lg) var(--spacing--lg);
 }
 </style>

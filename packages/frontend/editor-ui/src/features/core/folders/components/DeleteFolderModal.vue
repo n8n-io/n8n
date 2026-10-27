@@ -252,6 +252,9 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	}
 }
 .optionInput {
+	// The radio group aligns its children to the start.
+	// Stretch this block so the fields use the full width.
+	align-self: stretch;
 	padding-left: var(--spacing--lg);
 }
 
