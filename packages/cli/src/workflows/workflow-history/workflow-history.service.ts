@@ -20,6 +20,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
+import { formatVersionAuthors } from './workflow-history-authors';
 
 type WorkflowHistoryVersionInput = {
 	user: User | string;
@@ -249,12 +250,7 @@ export class WorkflowHistoryService {
 		}
 
 		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
-		const authors =
-			source === 'n8n-mcp'
-				? `${name} (via MCP)`
-				: source === 'n8n-ai'
-					? `${name} (with n8n Assistant)`
-					: name;
+		const authors = formatVersionAuthors(name, source);
 
 		return {
 			authors,
