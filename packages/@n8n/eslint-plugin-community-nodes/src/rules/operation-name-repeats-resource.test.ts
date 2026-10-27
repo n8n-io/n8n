@@ -100,6 +100,26 @@ ruleTester.run('operation-name-repeats-resource', OperationNameRepeatsResourceRu
 			],
 		},
 		{
+			name: 'upsert operation suggests "Create or Update" whatever its name says',
+			code: createOperations("'contact'", "{ name: 'Upsert Contact', value: 'upsert' }"),
+			errors: [
+				{
+					messageId: 'repeatsResource',
+					data: { name: 'Upsert Contact', resource: 'contact', verb: 'Create or Update' },
+				},
+			],
+		},
+		{
+			name: 'upsert operation keeps another standard name',
+			code: createOperations("'row'", "{ name: 'Insert or Update Row', value: 'upsert' }"),
+			errors: [
+				{
+					messageId: 'repeatsResource',
+					data: { name: 'Insert or Update Row', resource: 'row', verb: 'Insert or Update' },
+				},
+			],
+		},
+		{
 			name: 'operation name that is the resource',
 			code: createOperations("'search'", "{ name: 'Search', value: 'search' }"),
 			errors: [

@@ -1,6 +1,6 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
 
-import { OperationGetManyActionRule } from './operation-get-many-action.js';
+import { OperationStandardActionRule } from './operation-standard-action.js';
 
 const ruleTester = new RuleTester();
 
@@ -23,7 +23,7 @@ function createOperations(options: string): string {
 	`;
 }
 
-ruleTester.run('operation-get-many-action', OperationGetManyActionRule, {
+ruleTester.run('operation-standard-action', OperationStandardActionRule, {
 	valid: [
 		{
 			name: 'getAll action that starts with "Get many"',
@@ -36,6 +36,22 @@ ruleTester.run('operation-get-many-action', OperationGetManyActionRule, {
 		{
 			name: 'action that starts with "Get all", which another rule fixes',
 			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'Get all contacts' }"),
+		},
+		{
+			name: 'miscased action, which another rule reports',
+			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'Get Many contacts' }"),
+		},
+		{
+			name: 'upsert action that starts with "Create or update"',
+			code: createOperations(
+				"{ name: 'Create or Update', value: 'upsert', action: 'Create or update a contact' }",
+			),
+		},
+		{
+			name: 'upsert action of a database node',
+			code: createOperations(
+				"{ name: 'Insert or Update', value: 'upsert', action: 'Insert or update rows in a table' }",
+			),
 		},
 		{
 			name: 'other operations',
@@ -57,12 +73,47 @@ ruleTester.run('operation-get-many-action', OperationGetManyActionRule, {
 		{
 			name: 'getAll action with another verb',
 			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'List contacts' }"),
-			errors: [{ messageId: 'wrongAction', data: { action: 'List contacts' } }],
+			errors: [
+				{
+					messageId: 'wrongAction',
+					data: {
+						value: 'getAll',
+						action: 'List contacts',
+						expected: '"Get many"',
+						example: 'Get many',
+					},
+				},
+			],
 		},
 		{
 			name: 'getAll action without "many"',
 			code: createOperations("{ name: 'Get Many', value: 'getAll', action: 'Get contacts' }"),
-			errors: [{ messageId: 'wrongAction', data: { action: 'Get contacts' } }],
+			errors: [
+				{
+					messageId: 'wrongAction',
+					data: {
+						value: 'getAll',
+						action: 'Get contacts',
+						expected: '"Get many"',
+						example: 'Get many',
+					},
+				},
+			],
+		},
+		{
+			name: 'upsert action with another verb',
+			code: createOperations("{ name: 'Upsert', value: 'upsert', action: 'Upsert a contact' }"),
+			errors: [
+				{
+					messageId: 'wrongAction',
+					data: {
+						value: 'upsert',
+						action: 'Upsert a contact',
+						expected: '"Create or update", "Insert or update", or "Append or update"',
+						example: 'Create or update',
+					},
+				},
+			],
 		},
 	],
 });

@@ -7,7 +7,21 @@ import {
 	isOperationParameter,
 	operationAction,
 	repeatsResource,
+	STANDARD_OPERATION_NAMES,
 } from '../utils/index.js';
+
+/** The action of the name, or the standard name when the value has one and the name uses another word. */
+function suggestedName(name: string, value: string | null): string {
+	const action = operationAction(name);
+	const standardNames = value === null ? undefined : STANDARD_OPERATION_NAMES.get(value);
+	if (
+		standardNames === undefined ||
+		standardNames.some((standard) => standard.toLowerCase() === action.toLowerCase())
+	) {
+		return action;
+	}
+	return standardNames[0] ?? action;
+}
 
 export const OperationNameRepeatsResourceRule = createRule({
 	name: 'operation-name-repeats-resource',
@@ -48,7 +62,7 @@ export const OperationNameRepeatsResourceRule = createRule({
 							data: {
 								name,
 								resource,
-								verb: value === 'getAll' ? 'Get Many' : operationAction(name),
+								verb: suggestedName(name, value),
 							},
 						});
 					}

@@ -45,8 +45,20 @@ export function getShownResources(node: TSESTree.ObjectExpression): string[] {
 
 const ARTICLES = new Set(['a', 'an', 'the']);
 
+/** The names the UX guidelines give the operations with these values, the first one being the default. */
+export const STANDARD_OPERATION_NAMES = new Map([
+	['getAll', ['Get Many']],
+	['upsert', ['Create or Update', 'Insert or Update', 'Append or Update']],
+]);
+
 /** Standard operation names from the UX guidelines that have more than one word. */
-const MULTI_WORD_ACTIONS = ['Get Many', 'Create or Update', 'Insert or Append'];
+const MULTI_WORD_ACTIONS = [
+	'Get Many',
+	'Create or Update',
+	'Insert or Update',
+	'Append or Update',
+	'Insert or Append',
+];
 
 /** A note in brackets, like "(Account View)", is not part of the name. */
 const BRACKETED_TEXT = /\([^)]*\)/g;
