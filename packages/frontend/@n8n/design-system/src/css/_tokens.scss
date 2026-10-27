@@ -146,8 +146,8 @@
 	// AI Chat text and icon colors
 	--assistant--color--text--subtle: var(--color--neutral-500);
 	--assistant--icon-color--subtle: var(--color--neutral-500);
-	--assistant--color--text: var(--color--neutral-800);
-	--assistant--color--text--user-bubble: var(--color--neutral-750);
+	--assistant--color--text: var(--text-color--subtle);
+	--assistant--color--text--user-bubble: var(--text-color);
 	--assistant--color--background--user-bubble: var(--color--neutral-150);
 	--assistant--text-message--collapsed--max-height: 200px;
 
@@ -1241,6 +1241,9 @@
 }
 
 :root {
+	--chat--font-size: var(--font-size--sm);
+	--chat--font-size--wide: var(--font-size--md);
+
 	color-scheme: light dark;
 	@include theme;
 }

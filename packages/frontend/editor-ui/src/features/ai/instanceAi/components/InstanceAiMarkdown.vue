@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import ChatMarkdown from '@/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue';
 import {
 	buildAgentTestHref,
 	resolveAgentTestLink,
@@ -466,12 +466,20 @@ onUpdated(() => {
 </script>
 
 <template>
-	<div ref="wrapperRef" @click="handleLinkClick">
-		<ChatMarkdownChunk :source="source" />
+	<div ref="wrapperRef" :class="$style.markdown" @click="handleLinkClick">
+		<ChatMarkdown
+			:content="source.content"
+			:options="{ math: true, footnotes: 'pill', codeActions: true }"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
+.markdown {
+	--n8n-markdown--font-size--base: var(--chat--font-size);
+	font-size: var(--n8n-markdown--font-size--base);
+}
+
 .resourceChip {
 	display: inline !important;
 	padding: 0 !important;

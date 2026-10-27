@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nChatMessage,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+} from '@n8n/design-system';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
@@ -503,6 +510,7 @@ function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 	);
 }
 
+/** Keep actions on the full assistant run, not on each display group. */
 function shouldShowAssistantFooter(groupId: string): boolean {
 	const index = displayGroups.value.findIndex((group) => group.id === groupId);
 	if (index === -1) return false;
@@ -664,13 +672,15 @@ watch(
 				v-if="group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL"
 				:class="[$style.message, $style.assistant]"
 			>
-				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+				<N8nChatMessage role="assistant">
+					<AgentChatBackgroundJobSignal :signal="group.signal" />
+				</N8nChatMessage>
 			</div>
 			<div
 				v-else-if="group.kind === DISPLAY_GROUP_KIND.TOOL_RUN"
 				:class="[$style.message, $style.assistant]"
 			>
-				<div :class="$style.content">
+				<N8nChatMessage role="assistant">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
@@ -722,10 +732,7 @@ watch(
 					/>
 					<div
 						v-else-if="group.finalMessage?.content"
-						:class="[
-							$style.chatMessage,
-							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
-						]"
+						:class="{ [$style.chatMessageError]: group.finalMessage.status === 'error' }"
 					>
 						<div :class="$style.markdownContent">
 							<AgentMarkdownChunk
@@ -744,47 +751,45 @@ watch(
 						@increase="emit('increase-budget', $event)"
 					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
-					<AiThinkingBlock
-						v-if="group.thinkingSegments.length"
-						:segments="group.thinkingSegments"
-						:active="group.active || group.awaitingInput"
-						:awaiting-input="group.awaitingInput"
-						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-						test-id="agent-chat-thinking-block"
-					>
-						<AiReasoningBlock
-							v-for="segment in group.thinkingSegments"
-							:key="segment.id"
-							:entry="segment"
-							:streaming="group.active && segment.endTime === undefined"
-						/>
-					</AiThinkingBlock>
-					<div
-						v-if="shouldShowAssistantFooter(group.id)"
-						:class="[
-							$style.messageFooter,
-							{ [$style.messageFooterVisible]: openMemoryFooterGroupId === group.id },
-						]"
-					>
-						<AgentChatMemoryUsed
-							:memories="getMemoriesUsedInAssistantRun(group.id)"
-							@update:open="setMemoryFooterOpen(group.id, $event)"
-						/>
-						<AgentChatMessageActions
-							v-if="getAssistantRunContent(group.id)"
-							:content="getAssistantRunContent(group.id)"
-							:can-send-to-assistant="canSendToAssistant"
-							@send-to-assistant="emit('sendToAssistant')"
+					<template #after-actions>
+						<AiThinkingBlock
+							v-if="group.thinkingSegments.length"
+							:segments="group.thinkingSegments"
+							:active="group.active || group.awaitingInput"
+							:awaiting-input="group.awaitingInput"
+							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							test-id="agent-chat-thinking-block"
 						>
-							<template v-if="group.finalMessage" #extra-actions>
-								<slot
-									name="message-actions"
-									:message="group.finalMessage"
-									:execution-id="group.executionId ?? group.finalMessage.executionId"
-								/>
-							</template>
-						</AgentChatMessageActions>
-					</div>
+							<AiReasoningBlock
+								v-for="segment in group.thinkingSegments"
+								:key="segment.id"
+								:entry="segment"
+								:streaming="group.active && segment.endTime === undefined"
+							/>
+						</AiThinkingBlock>
+					</template>
+					<template #actions v-if="shouldShowAssistantFooter(group.id)">
+						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
+							<AgentChatMemoryUsed
+								:memories="getMemoriesUsedInAssistantRun(group.id)"
+								@update:open="setMemoryFooterOpen(group.id, $event)"
+							/>
+							<AgentChatMessageActions
+								v-if="getAssistantRunContent(group.id)"
+								:content="getAssistantRunContent(group.id)"
+								:can-send-to-assistant="canSendToAssistant"
+								@send-to-assistant="emit('sendToAssistant')"
+							>
+								<template v-if="group.finalMessage" #extra-actions>
+									<slot
+										name="message-actions"
+										:message="group.finalMessage"
+										:execution-id="group.executionId ?? group.finalMessage.executionId"
+									/>
+								</template>
+							</AgentChatMessageActions>
+						</div>
+					</template>
 					<AgentTypingIndicator
 						v-if="
 							group.id === streamingGroupId &&
@@ -794,7 +799,7 @@ watch(
 						"
 						:class="$style.typingIndicator"
 					/>
-				</div>
+				</N8nChatMessage>
 			</div>
 			<div
 				v-else
@@ -803,7 +808,22 @@ watch(
 					group.message.role === CHAT_MESSAGE_ROLE.USER ? $style.user : $style.assistant,
 				]"
 			>
-				<div :class="$style.content">
+				<AgentChatMessageAttachments
+					v-if="group.message.attachments?.length && projectId && agentId"
+					:attachments="group.message.attachments"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
+				<N8nText
+					v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
+					size="xsmall"
+					color="text-light"
+					:class="$style.author"
+					data-testid="agent-chat-message-author"
+				>
+					{{ group.message.author.name }}
+				</N8nText>
+				<N8nChatMessage :role="group.message.role">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
@@ -837,27 +857,9 @@ watch(
 						</N8nText>
 					</template>
 
-					<AgentChatMessageAttachments
-						v-if="group.message.attachments?.length && projectId && agentId"
-						:attachments="group.message.attachments"
-						:project-id="projectId"
-						:agent-id="agentId"
-					/>
-					<N8nText
-						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
-						size="xsmall"
-						color="text-light"
-						:class="$style.author"
-						data-testid="agent-chat-message-author"
-					>
-						{{ group.message.author.name }}
-					</N8nText>
-					<div
-						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
-						:class="[$style.chatMessage, $style.chatMessageUser]"
-					>
+					<span v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content">
 						{{ group.message.content }}
-					</div>
+					</span>
 					<template v-else>
 						<AgentChatRetryError
 							v-if="isRetryableChatError(group.message)"
@@ -871,10 +873,7 @@ watch(
 						<template v-for="item in getMessageRenderItems(group.message)" v-else :key="item.key">
 							<div
 								v-if="item.type === 'text'"
-								:class="[
-									$style.chatMessage,
-									{ [$style.chatMessageError]: group.message.status === 'error' },
-								]"
+								:class="{ [$style.chatMessageError]: group.message.status === 'error' }"
 							>
 								<div :class="$style.markdownContent">
 									<AgentMarkdownChunk
@@ -901,84 +900,83 @@ watch(
 						/>
 					</template>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
-					<N8nCallout
-						v-if="group.id === changeRequestGroupId"
-						theme="info"
-						icon="wand-sparkles"
-						slim
-						:class="$style.changeRequestNote"
-						data-testid="agent-preview-change-request-note"
-					>
-						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
-						<template #actions>
-							<N8nIconButton
-								icon="x"
-								variant="ghost"
-								size="xsmall"
-								:class="$style.changeRequestDismiss"
-								:aria-label="i18n.baseText('generic.dismiss')"
-								:title="i18n.baseText('generic.dismiss')"
-								data-testid="agent-preview-change-request-dismiss"
-								@click="changeNoteDismissed = true"
-							/>
-						</template>
-						<template #trailingContent>
-							<N8nButton
-								size="small"
-								variant="outline"
-								:class="$style.changeRequestAction"
-								data-testid="agent-preview-change-request-link"
-								@click="onEditWithAssistant(group.message.content)"
-							>
-								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
-								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
-							</N8nButton>
-						</template>
-					</N8nCallout>
-					<AiThinkingBlock
-						v-if="group.thinkingSegments.length"
-						:segments="group.thinkingSegments"
-						:active="isThinkingActive(group.message)"
-						:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-						test-id="agent-chat-thinking-block"
-					>
-						<AiReasoningBlock
-							v-for="segment in group.thinkingSegments"
-							:key="segment.id"
-							:entry="segment"
-							:streaming="
-								group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
-								segment.endTime === undefined
-							"
-						/>
-					</AiThinkingBlock>
-					<div
-						v-if="shouldShowAssistantFooter(group.id)"
-						:class="[
-							$style.messageFooter,
-							{ [$style.messageFooterVisible]: openMemoryFooterGroupId === group.id },
-						]"
-					>
-						<AgentChatMessageActions
-							v-if="getAssistantRunContent(group.id)"
-							:content="getAssistantRunContent(group.id)"
-							:can-send-to-assistant="canSendToAssistant"
-							@send-to-assistant="emit('sendToAssistant')"
+					<template #after-actions>
+						<N8nCallout
+							v-if="group.id === changeRequestGroupId"
+							theme="info"
+							icon="wand-sparkles"
+							slim
+							:class="$style.changeRequestNote"
+							data-testid="agent-preview-change-request-note"
 						>
-							<template #extra-actions>
-								<slot
-									name="message-actions"
-									:message="group.message"
-									:execution-id="group.message.executionId"
+							{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+							<template #actions>
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="xsmall"
+									:class="$style.changeRequestDismiss"
+									:aria-label="i18n.baseText('generic.dismiss')"
+									:title="i18n.baseText('generic.dismiss')"
+									data-testid="agent-preview-change-request-dismiss"
+									@click="changeNoteDismissed = true"
 								/>
 							</template>
-						</AgentChatMessageActions>
-						<AgentChatMemoryUsed
-							:memories="getMemoriesUsedInAssistantRun(group.id)"
-							@update:open="setMemoryFooterOpen(group.id, $event)"
-						/>
-					</div>
+							<template #trailingContent>
+								<N8nButton
+									size="small"
+									variant="outline"
+									:class="$style.changeRequestAction"
+									data-testid="agent-preview-change-request-link"
+									@click="onEditWithAssistant(group.message.content)"
+								>
+									<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+									{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+								</N8nButton>
+							</template>
+						</N8nCallout>
+
+						<AiThinkingBlock
+							v-if="group.thinkingSegments.length"
+							:segments="group.thinkingSegments"
+							:active="isThinkingActive(group.message)"
+							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
+							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							test-id="agent-chat-thinking-block"
+						>
+							<AiReasoningBlock
+								v-for="segment in group.thinkingSegments"
+								:key="segment.id"
+								:entry="segment"
+								:streaming="
+									group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
+									segment.endTime === undefined
+								"
+							/>
+						</AiThinkingBlock>
+					</template>
+					<template #actions v-if="shouldShowAssistantFooter(group.id)">
+						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
+							<AgentChatMessageActions
+								v-if="getAssistantRunContent(group.id)"
+								:content="getAssistantRunContent(group.id)"
+								:can-send-to-assistant="canSendToAssistant"
+								@send-to-assistant="emit('sendToAssistant')"
+							>
+								<template #extra-actions>
+									<slot
+										name="message-actions"
+										:message="group.message"
+										:execution-id="group.message.executionId"
+									/>
+								</template>
+							</AgentChatMessageActions>
+							<AgentChatMemoryUsed
+								:memories="getMemoriesUsedInAssistantRun(group.id)"
+								@update:open="setMemoryFooterOpen(group.id, $event)"
+							/>
+						</div>
+					</template>
 					<AgentTypingIndicator
 						v-if="
 							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
@@ -989,7 +987,7 @@ watch(
 						"
 						:class="$style.typingIndicator"
 					/>
-				</div>
+				</N8nChatMessage>
 			</div>
 		</template>
 
@@ -1012,19 +1010,31 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	scrollbar-width: none;
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
 
+	// AGENT: use mixin instead
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
+	// AGENT: Use mixin insteasd
+	scrollbar-width: none;
 	&::-webkit-scrollbar {
 		display: none;
 	}
 }
 
+.assistant {
+	padding-inline: var(--spacing--xs);
+}
+
 .message {
 	padding-top: var(--spacing--4xs);
+}
+
+.user {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
 }
 
 .timestampDivider {
@@ -1038,25 +1048,16 @@ watch(
 	align-items: stretch;
 }
 
+/** Keep the actions visible while the memory popover is open. */
+.message :has(> .messageFooter[data-open='true']) {
+	opacity: 1;
+}
+
 .messageFooter {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--4xs);
-	opacity: 0;
-}
-
-.message.assistant:hover .messageFooter,
-.message.assistant:focus-within .messageFooter,
-.messageFooter:hover,
-.messageFooter:focus-within,
-.messageFooterVisible {
-	opacity: 1;
-}
-
-.message.user .content {
-	align-items: flex-end;
 }
 
 /**
@@ -1101,25 +1102,6 @@ watch(
 	align-self: flex-start;
 }
 
-.chatMessage {
-	overflow-wrap: break-word;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-
-	& + .chatMessage {
-		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
-	}
-}
-
-.chatMessageUser {
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-radius: var(--radius--xl);
-	background: var(--assistant--color--background--user-bubble);
-	white-space: pre-wrap;
-	width: fit-content;
-	max-width: 100%;
-}
-
 .author {
 	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
@@ -1133,7 +1115,8 @@ watch(
 }
 
 .markdownContent {
-	--n8n-markdown--base-font-size: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--chat--font-size);
+	font-size: var(--n8n-markdown--font-size--base);
 	color: var(--text-color);
 	line-height: var(--line-height--xl);
 

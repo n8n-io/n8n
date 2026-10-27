@@ -55,8 +55,22 @@ defineSlots<{
 
 <style lang="scss" module>
 .message {
+	container: chat-message / inline-size;
 	display: block;
 	width: 100%;
+}
+
+.userBubble,
+.assistantContent {
+	font-size: var(--chat--font-size);
+}
+
+/** Use the message width so narrow panels keep compact text on large screens. */
+@container chat-message (min-width: 48rem) {
+	.userBubble,
+	.assistantContent {
+		--chat--font-size: var(--chat--font-size--wide);
+	}
 }
 
 .userMessage {
@@ -66,13 +80,14 @@ defineSlots<{
 }
 
 .userBubble {
-	max-width: 90%;
+	max-width: 80%;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	background: var(--assistant--color--background--user-bubble);
-	color: var(--assistant--color--text--user-bubble);
+	color: var(--assistant--color--text--user-bubble, var(--text-color));
 	white-space: pre-wrap;
 	word-break: break-word;
+	line-height: var(--line-height--lg);
 }
 
 .assistantMessage {
