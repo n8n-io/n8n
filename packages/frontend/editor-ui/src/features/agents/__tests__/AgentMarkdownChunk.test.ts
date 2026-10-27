@@ -14,10 +14,10 @@ describe('AgentMarkdownChunk', () => {
 	beforeEach(() => {
 		routerPush.mockReset();
 	});
-	it('keeps the master markdown behavior outside the standalone Agents UI', async () => {
-		const openAgentChatPreview = vi.fn();
+	it('opens agent Preview links outside the standalone Agents UI through the provider', async () => {
+		const openAgentChatPreview = vi.fn(() => true);
 		const wrapper = mount(AgentMarkdownChunk, {
-			props: { source: '[Preview](/projects/p1/agents/a1/preview) [Open Build](#agent-build)' },
+			props: { source: '[Preview](/projects/p1/agents/a1/preview)' },
 			global: { provide: { openAgentChatPreview } },
 		});
 		let prevented: boolean | undefined;
@@ -26,12 +26,38 @@ describe('AgentMarkdownChunk', () => {
 			event.preventDefault();
 		});
 		await wrapper.get('a').trigger('click');
-		expect(prevented).toBe(false);
-		expect(openAgentChatPreview).not.toHaveBeenCalled();
+		expect(prevented).toBe(true);
+		expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('a1', 'p1');
 		expect(routerPush).not.toHaveBeenCalled();
-		expect(wrapper.findAll('a')).toHaveLength(2);
-		expect(wrapper.get('a').attributes('href')).toBe('/projects/p1/agents/a1/preview');
+		expect(wrapper.get('a').attributes('href')).toBe('/projects/p1/agents/a1?openPreview=true');
 	});
+
+	it('routes agent Preview links outside the standalone Agents UI without a provider', async () => {
+		const wrapper = mount(AgentMarkdownChunk, {
+			props: { source: '[Preview](/projects/p1/agents/a1/preview)' },
+		});
+		await wrapper.get('a').trigger('click');
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/projects/p1/agents/a1?openPreview=true');
+	});
+
+	it.each(['#agent-build', '#agent-edit'])(
+		'keeps %s as a native link outside the standalone Agents UI',
+		async (href) => {
+			const wrapper = mount(AgentMarkdownChunk, {
+				props: { source: `[Build](${href})`, canOpenBuild: true },
+			});
+			let prevented: boolean | undefined;
+			wrapper.element.addEventListener('click', (event: Event) => {
+				prevented = event.defaultPrevented;
+				event.preventDefault();
+			});
+			await wrapper.get('a').trigger('click');
+			expect(prevented).toBe(false);
+			expect(wrapper.emitted('open-build')).toBeUndefined();
+			expect(routerPush).not.toHaveBeenCalled();
+			expect(wrapper.get('a').attributes('href')).toBe(href);
+		},
+	);
 
 	it.each([
 		['#agent-build', false],
@@ -82,21 +108,37 @@ describe('AgentMarkdownChunk', () => {
 		expect(routerPush).not.toHaveBeenCalled();
 	});
 
+	it.each([{ metaKey: true }, { ctrlKey: true }])(
+		'keeps master modifier-click handling outside the standalone Agents UI: %o',
+		async (modifier) => {
+			const openAgentChatPreview = vi.fn(() => true);
+			const wrapper = mount(AgentMarkdownChunk, {
+				props: { source: '[Preview](/projects/p1/agents/a1/preview)' },
+				global: { provide: { openAgentChatPreview } },
+			});
+			await wrapper.get('a').trigger('click', modifier);
+			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('a1', 'p1');
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each([
-		{ metaKey: true, embedded: false },
-		{ ctrlKey: true, embedded: false },
-		{ metaKey: true, embedded: true },
-		{ ctrlKey: true, embedded: true },
+		{ metaKey: true, embedded: false, standalone: true },
+		{ ctrlKey: true, embedded: false, standalone: true },
+		{ metaKey: true, embedded: true, standalone: true },
+		{ ctrlKey: true, embedded: true, standalone: true },
+		{ metaKey: true, embedded: false, standalone: false },
+		{ ctrlKey: true, embedded: false, standalone: false },
 	])(
-		'preserves modifier-click navigation with provider $embedded',
-		async ({ embedded, ...modifier }) => {
+		'preserves modifier-click navigation with provider $embedded in standalone $standalone',
+		async ({ embedded, standalone, ...modifier }) => {
 			const openAgentChatPreview = vi.fn(() => true);
 			const wrapper = mount(AgentMarkdownChunk, {
 				props: { source: '[Preview](/projects/project-1/agents/agent-1/preview)' },
 				global: {
 					provide: {
 						...(embedded ? { openAgentChatPreview } : {}),
-						[AGENT_BUILDER_STANDALONE_KEY as symbol]: true,
+						[AGENT_BUILDER_STANDALONE_KEY as symbol]: standalone,
 					},
 				},
 			});

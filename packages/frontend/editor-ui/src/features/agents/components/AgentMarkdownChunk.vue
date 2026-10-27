@@ -41,13 +41,16 @@ const openAgentChatPreview = inject<((agentId: string, projectId: string) => boo
 );
 
 function handleLinkClick(event: MouseEvent) {
-	if (!standaloneBuilder || !(event.target instanceof Element)) return;
+	if (!(event.target instanceof Element)) return;
 
 	const link = event.target.closest('a');
 	if (!link) return;
 	const href = link.getAttribute('href');
 	if (!href) return;
-	if (href === AGENT_PREVIEW_BUILD_HREF || href === AGENT_PREVIEW_EDIT_HREF) {
+	if (
+		standaloneBuilder &&
+		(href === AGENT_PREVIEW_BUILD_HREF || href === AGENT_PREVIEW_EDIT_HREF)
+	) {
 		event.preventDefault();
 		if (props.canOpenBuild) emit('open-build', href === AGENT_PREVIEW_EDIT_HREF);
 		return;
@@ -55,7 +58,7 @@ function handleLinkClick(event: MouseEvent) {
 	const previewTarget = resolveAgentPreviewLink(href);
 	if (!previewTarget) return;
 	link.setAttribute('href', previewTarget.href);
-	if (event.metaKey || event.ctrlKey) return;
+	if (standaloneBuilder && (event.metaKey || event.ctrlKey)) return;
 
 	if (openAgentChatPreview) {
 		event.preventDefault();
@@ -63,6 +66,7 @@ function handleLinkClick(event: MouseEvent) {
 		return;
 	}
 
+	if (event.metaKey || event.ctrlKey) return;
 	event.preventDefault();
 	void router.push(previewTarget.href);
 }
