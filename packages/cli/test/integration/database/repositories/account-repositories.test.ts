@@ -1,5 +1,6 @@
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import {
+	accountFullName,
 	AiPreferenceRepository,
 	User,
 	UserRepository,
@@ -11,6 +12,7 @@ import {
 	ServiceAccountRepository,
 	Person,
 	PersonRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
@@ -156,6 +158,31 @@ describe('UserRepository (both kinds)', () => {
 			await personTable.delete({});
 
 			expect(await serviceAccountTable.existsBy({ id: serviceAccount.id })).toBe(true);
+		});
+	});
+
+	describe('service account details', () => {
+		it('loads the details of a service account without asking for them', async () => {
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			const users = await userRepository.find({ relations: ['role'] });
+			const byId = new Map(users.map((user) => [user.id, user]));
+
+			expect(accountFullName(byId.get(serviceAccount.id)!)).toBe('Deploy bot');
+			expect(accountFullName(byId.get(person.id)!)).toBe(`${person.firstName} ${person.lastName}`);
+		});
+
+		it('loads the details of a service account reached through a relation', async () => {
+			const serviceAccount = await createServiceAccount();
+			const project = await createTeamProject(undefined, serviceAccount);
+
+			const relations = await Container.get(ProjectRelationRepository).find({
+				where: { projectId: project.id },
+				relations: { user: true },
+			});
+
+			expect(relations.map(({ user }) => accountFullName(user))).toEqual(['Deploy bot']);
 		});
 	});
 

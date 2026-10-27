@@ -9,6 +9,7 @@ import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	DbLock,
 	DbLockService,
+	isPerson,
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowHistoryRepository,
@@ -18,6 +19,7 @@ import {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
+	type Person,
 	type User,
 	type WorkflowReviewRequest,
 } from '@n8n/db';
@@ -62,7 +64,7 @@ export class WorkflowReviewRequestSubmissionService {
 		private readonly stateNotifier: WorkflowReviewStateNotifier,
 	) {}
 
-	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
+	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<Person[]> {
 		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
 			this.roleService.rolesWithScope('project', ['workflow:read']),
 			this.roleService.rolesWithScope('global', ['workflow:read']),
@@ -74,7 +76,9 @@ export class WorkflowReviewRequestSubmissionService {
 			globalRoleSlugs,
 		});
 
+		// Only a person can review a workflow.
 		return users
+			.filter(isPerson)
 			.filter((user) => !user.isPending && user.id !== excludeUserId)
 			.sort((a, b) => a.email.localeCompare(b.email));
 	}

@@ -4,7 +4,7 @@ import type {
 } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { type EventService, type RoleService } from '@n8n/backend-services';
-import { DbLock, User } from '@n8n/db';
+import { DbLock, Person } from '@n8n/db';
 import type {
 	AuthIdentity,
 	DbLockService,
@@ -22,6 +22,7 @@ import type {
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	User,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -36,12 +37,13 @@ import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.servi
 import { WorkflowReviewRequestMutationGuard } from '../workflow-review-request-mutation-guard.service';
 import { WorkflowReviewRequestSubmissionService } from '../workflow-review-request-submission.service';
 import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
+import { mockServiceAccount } from '@test/mock-objects';
 
 const user = mock<User>({ id: 'user-1' });
 
-/** Build a loaded user with the computed pending state. */
-function loadedUser(fields: Partial<User> & { id: string; email: string }): User {
-	const loaded = Object.assign(new User(), { password: 'hashed', authIdentities: [], ...fields });
+/** Build a loaded person with the computed pending state. */
+function loadedUser(fields: Partial<User> & { id: string; email: string }): Person {
+	const loaded = Object.assign(new Person(), { password: 'hashed', authIdentities: [], ...fields });
 	loaded.computeIsPending();
 	return loaded;
 }
@@ -356,6 +358,21 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 				);
 			});
 
+			it('refuses a service account as a reviewer, whatever its role', async () => {
+				mockSuccessfulCreatePath();
+				roleService.rolesWithScope.mockResolvedValue(['some-role']);
+				userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+					loadedUser({ id: 'user-2', email: 'user-2@n8n.io' }),
+					mockServiceAccount({ id: 'service-1' }),
+				]);
+
+				await expect(
+					service.create(user, { ...dto, reviewerUserIds: ['user-2', 'service-1'] }),
+				).rejects.toThrow('These users are not eligible to review this workflow: service-1');
+
+				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+			});
+
 			// The service still validates this if DTO validation is bypassed.
 			it.each<[string, string[] | undefined]>([
 				['omitted', undefined],
@@ -520,6 +537,25 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 			expect(result.data).toEqual([
 				{ id: 'user-sso', email: 'sso@n8n.io', firstName: null, lastName: null },
 			]);
+		});
+
+		it('does not list a service account, whatever its role', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			roleService.rolesWithScope.mockResolvedValue(['some-role']);
+			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+				loadedUser({ id: 'user-2', email: 'user-2@n8n.io' }),
+				mockServiceAccount({ id: 'service-1' }),
+			]);
+
+			const result = await service.getEligibleReviewers(user, query);
+
+			expect(result).toEqual({
+				count: 1,
+				data: [{ id: 'user-2', email: 'user-2@n8n.io', firstName: null, lastName: null }],
+			});
 		});
 	});
 });

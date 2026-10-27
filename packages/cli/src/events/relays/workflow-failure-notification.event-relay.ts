@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -15,7 +15,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 	constructor(
 		eventService: EventService,
 		private readonly mailer: UserManagementMailer,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -47,8 +47,8 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 		}
 
 		try {
-			// Get the user to send email to
-			const user = await this.userRepository.findOneBy({ id: userId });
+			// Only a person has an email, so a service account owner gets nothing
+			const user = await this.personRepository.findById(userId);
 
 			if (!user?.email) {
 				this.logger.warn(

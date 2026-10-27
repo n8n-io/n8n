@@ -26,6 +26,7 @@ import {
 } from '@n8n/db';
 import {
 	FolderRepository,
+	PersonRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -149,6 +150,7 @@ describe('SourceControlImportService', () => {
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			userRepository,
+			Container.get(PersonRepository),
 			variablesRepository,
 			workflowRepository,
 			workflowTagMappingRepository,
