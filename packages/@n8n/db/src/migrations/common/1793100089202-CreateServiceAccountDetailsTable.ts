@@ -6,7 +6,7 @@ const tableName = 'service_account_details';
  * Data of a service account that does not belong on the `user` table. Each
  * service account has at most one row, keyed by its `user.id`.
  */
-export class CreateServiceAccountDetailsTable1793014644208 implements ReversibleMigration {
+export class CreateServiceAccountDetailsTable1793100089202 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(

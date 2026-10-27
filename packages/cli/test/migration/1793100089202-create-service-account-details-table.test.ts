@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const MIGRATION_NAME = 'CreateServiceAccountDetailsTable1793014644208';
+const MIGRATION_NAME = 'CreateServiceAccountDetailsTable1793100089202';
 
 type UserRow = Record<string, unknown> & { id: string };
 
