@@ -606,6 +606,11 @@ describe('GlobalConfig', () => {
 		},
 		memoryGuard: {
 			enabled: false,
+			holdLevel: 0.8,
+			resumeLevel: 0.75,
+			stopLevel: 0.85,
+			criticalLevel: 0.95,
+			stopsToUnpublish: 3,
 		},
 		diagnostics: {
 			enabled: true,
@@ -745,7 +750,6 @@ describe('GlobalConfig', () => {
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
-			skillsHubEnabled: false,
 			modules: [],
 			backgroundTasksEnabled: false,
 			sandboxEnabled: false,
@@ -802,15 +806,6 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingRecordOutputs).toBe(false);
-	});
-
-	it('should parse N8N_AGENTS_SKILLS_HUB_ENABLED from env variables', () => {
-		process.env = {
-			N8N_AGENTS_SKILLS_HUB_ENABLED: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.skillsHubEnabled).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
@@ -974,6 +969,49 @@ describe('GlobalConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
 		);
+	});
+
+	describe('memory guard config', () => {
+		it('should read the levels and the stops to unpublish from env variables', () => {
+			process.env = {
+				N8N_MEMORY_GUARD_RESUME_LEVEL: '0.6',
+				N8N_MEMORY_GUARD_HOLD_LEVEL: '0.7',
+				N8N_MEMORY_GUARD_STOP_LEVEL: '0.8',
+				N8N_MEMORY_GUARD_CRITICAL_LEVEL: '0.9',
+				N8N_MEMORY_GUARD_STOPS_TO_UNPUBLISH: '0',
+			};
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard).toMatchObject({
+				resumeLevel: 0.6,
+				holdLevel: 0.7,
+				stopLevel: 0.8,
+				criticalLevel: 0.9,
+				stopsToUnpublish: 0,
+			});
+		});
+
+		it('should fall back to the default levels when the levels do not increase', () => {
+			process.env = { N8N_MEMORY_GUARD_HOLD_LEVEL: '0.9' };
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard).toMatchObject({
+				resumeLevel: 0.75,
+				holdLevel: 0.8,
+				stopLevel: 0.85,
+				criticalLevel: 0.95,
+			});
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('Memory guard levels must increase'),
+			);
+		});
+
+		it('should reject a level above 1 and fall back to its default', () => {
+			process.env = { N8N_MEMORY_GUARD_CRITICAL_LEVEL: '95' };
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard.criticalLevel).toBe(0.95);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_MEMORY_GUARD_CRITICAL_LEVEL'),
+			);
+		});
 	});
 
 	describe('database recovery config validation', () => {

@@ -1129,7 +1129,11 @@ export class ChatIntegrationService {
 				`Credential ${credentialId} not found or not accessible to project ${projectId}`,
 			);
 		}
-		const decrypted = await this.credentialsService.decrypt(credential, true);
+		const decrypted = await this.credentialsService.decryptForUse(
+			credential,
+			{ kind: 'system', reason: 'integration' },
+			projectId,
+		);
 		return decrypted;
 	}
 

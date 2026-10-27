@@ -12,6 +12,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { mailchimpApiRequest } from './GenericFunctions';
+import { verifySignature } from './MailchimpTriggerHelpers';
 
 export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -240,6 +241,11 @@ export class MailchimpTrigger implements INodeType {
 				webhookData.webhookId = webhook.id as string;
 				webhookData.events = events;
 				webhookData.sources = sources;
+				if (typeof webhook.signing_secret === 'string') {
+					webhookData.webhookSecret = webhook.signing_secret;
+				} else {
+					delete webhookData.webhookSecret;
+				}
 				return true;
 			},
 
@@ -256,6 +262,7 @@ export class MailchimpTrigger implements INodeType {
 					delete webhookData.webhookId;
 					delete webhookData.events;
 					delete webhookData.sources;
+					delete webhookData.webhookSecret;
 				}
 				return true;
 			},
@@ -273,6 +280,14 @@ export class MailchimpTrigger implements INodeType {
 				noWebhookResponse: true,
 			};
 		}
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const req = this.getRequestObject();
 		if (req.body.id !== webhookData.id) {
 			return {};

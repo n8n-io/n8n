@@ -26,6 +26,9 @@ export class Skill extends WithTimestamps {
 	@Column({ type: 'boolean', default: false })
 	availableToAssistant: boolean;
 
+	@Column({ type: 'boolean', default: false })
+	availableToMCP: boolean;
+
 	@Column({ type: 'varchar', length: 16 })
 	source: SkillSource;
 
