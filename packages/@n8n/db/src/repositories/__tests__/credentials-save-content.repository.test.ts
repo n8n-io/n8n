@@ -40,6 +40,40 @@ describe('CredentialsRepository sealed writes', () => {
 		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	});
 
+	describe('updateDescription', () => {
+		it('writes only description metadata with a matching clearance', async () => {
+			entityManager.findOne.mockResolvedValue({
+				id: 'cred-1',
+				name: 'Reporting',
+				type: 'postgres',
+				description: 'New',
+			});
+			const result = await repository.updateDescription('cred-1', 'New', {
+				policyCleared: forId('cred-1'),
+			});
+			expect(entityManager.update).toHaveBeenCalledWith(CredentialsEntity, 'cred-1', {
+				description: 'New',
+			});
+			expect(entityManager.findOne).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: 'cred-1' },
+				select: { id: true, name: true, type: true, description: true },
+			});
+			expect(result).toEqual({
+				id: 'cred-1',
+				name: 'Reporting',
+				type: 'postgres',
+				description: 'New',
+			});
+		});
+
+		it('rejects a clearance for another credential', async () => {
+			await expect(
+				repository.updateDescription('cred-1', null, { policyCleared: forId('cred-2') }),
+			).rejects.toThrow();
+			expect(entityManager.update).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('createContent', () => {
 		it('writes through the manager when the clearance matches the type', async () => {
 			const credential = newCredential('slackApi');

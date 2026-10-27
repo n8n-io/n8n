@@ -1099,6 +1099,64 @@ export class CredentialsService {
 		return await createCredentialsFromCredentialsEntity(credential).getData();
 	}
 
+	async updateDescription(user: User, credentialId: string, description: string | null) {
+		if (!(await this.credentialDescriptions.isEnabled())) {
+			throw new BadRequestError('Credential descriptions are not enabled on this instance');
+		}
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:update'],
+		);
+		if (!credential) throw new NotFoundError('Credential not found or access denied');
+		if (credential.isManaged) throw new BadRequestError('Managed credentials cannot be updated');
+
+		const payload = {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			data: credential.data,
+			description: parseCredentialDescription(description),
+		};
+		await this.externalHooks.run('credentials.update', [payload]);
+		const normalizedDescription = parseCredentialDescription(payload.description);
+		if (!(await this.credentialDescriptions.isEnabled())) {
+			throw new BadRequestError('Credential descriptions are not enabled on this instance');
+		}
+		const cleared = await this.enforceCredentialUpdate(credentialId, undefined, {
+			kind: 'user',
+			user,
+		});
+		if (cleared === null) throw new NotFoundError('Credential not found or access denied');
+
+		// Persist only the description to preserve concurrent secret and token updates.
+		const updated = await this.transactionRunner.run(
+			{ policyCleared: cleared },
+			async (ctx) =>
+				await this.credentialsRepository.updateDescription(
+					credentialId,
+					normalizedDescription,
+					ctx,
+				),
+		);
+		if (!updated) throw new NotFoundError('Credential not found or access denied');
+
+		this.eventService.emit('credentials-updated', {
+			user,
+			credentialId: updated.id,
+			credentialName: updated.name,
+			credentialType: updated.type,
+			credentialDescriptionLength: updated.description?.length ?? 0,
+			isDynamic: credential.isResolvable ?? false,
+		});
+		return {
+			id: updated.id,
+			name: updated.name,
+			type: updated.type,
+			description: updated.description ?? null,
+		};
+	}
+
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,

@@ -247,6 +247,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		await this.managerFor(ctx).update(CredentialsEntity, id, content);
 	}
 
+	async updateDescription(
+		id: string,
+		description: string | null,
+		ctx: OperationContext,
+	): Promise<Pick<CredentialsEntity, 'id' | 'name' | 'type' | 'description'> | null> {
+		await this.updateContent(id, { description }, ctx);
+		return await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id },
+			select: { id: true, name: true, type: true, description: true },
+		});
+	}
+
 	/**
 	 * Writes re-encrypted credential data only while the row still holds `expectedData`, the
 	 * ciphertext the caller decrypted. Returns false when another write landed in between, so the

@@ -1,5 +1,6 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
@@ -96,6 +97,7 @@ export class McpProtectedResource implements ProtectedResource {
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
+		const credentialDescriptionsEnabled = await this.areCredentialDescriptionsEnabled();
 		// Consent and tool registration use the same instance activity gate.
 		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
 		let instanceContextEnabled = false;
@@ -110,6 +112,7 @@ export class McpProtectedResource implements ProtectedResource {
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
 				.filter(([scope]) => supportedScopes.has(scope))
+				.filter(([scope]) => credentialDescriptionsEnabled || scope !== 'credential:write')
 				.map(([scope, tools]) => [
 					scope,
 					tools.filter(
@@ -191,12 +194,24 @@ export class McpProtectedResource implements ProtectedResource {
 			user,
 		);
 		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
+		const credentialDescriptionsEnabled = await this.areCredentialDescriptionsEnabled();
 
 		return this.scopes.filter(
 			(scope) =>
 				(installAvailable || scope !== 'communityPackage:install') &&
+				(credentialDescriptionsEnabled || scope !== 'credential:write') &&
 				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
 		);
+	}
+
+	private async areCredentialDescriptionsEnabled(): Promise<boolean> {
+		try {
+			return (
+				(await this.postHogClient.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true
+			);
+		} catch {
+			return false;
+		}
 	}
 
 	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {

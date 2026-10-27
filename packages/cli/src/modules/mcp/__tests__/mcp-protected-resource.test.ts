@@ -3,6 +3,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -76,6 +77,20 @@ describe('McpProtectedResource', () => {
 	});
 
 	describe('getScopeTools', () => {
+		it.each([true, false, undefined])(
+			'advertises credential writes only when the description flag is true (%s)',
+			async (enabled) => {
+				postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+					flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
+				);
+				const scopeTools = await resource.getScopeTools();
+				expect(scopeTools['credential:write']).toEqual(
+					enabled === true ? ['list_credentials', 'update_credential_description'] : undefined,
+				);
+				expect(scopeTools['credential:read']).toContain('list_credentials');
+			},
+		);
+
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
 			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
 			const scopeTools = await resource.getScopeTools();
@@ -162,7 +177,7 @@ describe('McpProtectedResource', () => {
 		it('checks the activity flag without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledExactlyOnceWith(
+			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledWith(
 				INSTANCE_ACTIVITY_CONTEXT_FLAG,
 			);
 		});
@@ -359,6 +374,24 @@ describe('McpProtectedResource', () => {
 
 	describe('getGrantableScopes', () => {
 		const user = Object.assign(new User(), { id: 'user-1' });
+
+		it.each([true, false, undefined])(
+			'offers credential:write only when descriptions are enabled (%s)',
+			async (enabled) => {
+				postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+					flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
+				);
+				expect((await resource.getGrantableScopes(user)).includes('credential:write')).toBe(
+					enabled === true,
+				);
+			},
+		);
+
+		it('withholds credential:write when the flag cannot be read', async () => {
+			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Unavailable'));
+			expect(await resource.getGrantableScopes(user)).not.toContain('credential:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('credential:write');
+		});
 
 		it('offers the install scope to a user whose role allows installing', async () => {
 			hasGlobalScope.mockReturnValue(true);

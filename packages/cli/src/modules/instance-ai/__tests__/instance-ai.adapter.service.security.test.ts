@@ -741,6 +741,25 @@ describe('bound project write guard', () => {
 		await expect(write).rejects.toThrow(OutsideThreadProjectError);
 	};
 
+	it.each(['bound-project', 'other-project'])(
+		'checks credential description ownership in %s',
+		async (owningProjectId) => {
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+				id: owningProjectId,
+			} as never);
+			const ctx = service.createContext(user, { projectId: 'bound-project' });
+			if (owningProjectId === 'other-project') {
+				await expectRejectedOutsideProject(
+					ctx.credentialService.updateDescription!('cred-1', 'New'),
+				);
+				expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+			} else {
+				await ctx.credentialService.updateDescription!('cred-1', 'New');
+				expect(credentialsService.updateDescription).toHaveBeenCalledWith(user, 'cred-1', 'New');
+			}
+		},
+	);
+
 	it('rejects tagWorkflow on a workflow owned by another project before loading it', async () => {
 		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project']);
 

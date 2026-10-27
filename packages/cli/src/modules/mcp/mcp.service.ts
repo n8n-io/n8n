@@ -116,6 +116,7 @@ import {
 	createGetInstanceActivityTool,
 } from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
+import { createUpdateCredentialDescriptionTool } from './tools/update-credential-description.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
@@ -671,6 +672,11 @@ export class McpService {
 			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
+		if (featureFlags.credentialDescriptionsEnabled === true) {
+			registerIfAllowed(
+				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry),
+			);
+		}
 		registerIfAllowed(listN8nGatewayServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {

@@ -28,6 +28,7 @@ export const MCP_INSTANCE_SCOPES = [
 	...MCP_AGENT_SCOPES,
 	...MCP_SKILL_SCOPES,
 	'credential:read',
+	'credential:write',
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',

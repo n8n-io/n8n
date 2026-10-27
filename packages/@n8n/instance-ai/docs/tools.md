@@ -52,7 +52,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `workflow_builder_credentials` | 6 |
+| `workflow_builder_credentials` | 7 |
 | `workflow_builder_nodes` | 7 |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
@@ -872,7 +872,7 @@ Cancel a running execution.
 
 ---
 
-## `workflow_builder_credentials` (6 actions)
+## `workflow_builder_credentials` (7 actions)
 
 The instance PostHog flag `120_credential_descriptions` controls description
 fields and selection guidance. Only boolean `true` enables them. When the flag
@@ -911,6 +911,31 @@ Get credential metadata. Never returns decrypted secrets.
 **Returns**: `{ id, name, type, description, nodesWithAccess? }`.
 The description contains the full stored text, or `null` when unset.
 The response never contains credential secret data.
+
+### `workflow_builder_credentials(action="update-description")`
+
+Set, replace, or clear a description only when the user requests it. This action
+requires the description feature flag and `credential:update` access. A chat bound
+to a project can edit only credentials owned by that project. Managed credentials
+cannot be edited. Existing actions keep their input and output contracts.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `credentialId` | string | yes | Credential to describe |
+| `description` | string | yes | Plain text, trimmed before the 512-character limit. Blank text clears the description. |
+
+Describe the account, environment, and intended use. This helps people and AI
+choose between credentials of the same type. Use facts the user supplied or
+confirmed. Do not include secrets or infer permissions. Descriptions provide
+context and do not change access.
+
+**Returns**: `{ id, name, type, description }`, with the saved description in full.
+Only the description is written. Credential secrets and settings stay unchanged.
+
+The instance MCP equivalent is `update_credential_description`, with the same
+fields. MCP also accepts `null` to clear the description. It requires the OAuth scope `credential:write` in addition to the user's
+credential update permission. Existing scoped grants need authorization for the
+new scope. Legacy unscoped authentication keeps its existing behavior.
 
 ### `workflow_builder_credentials(action="delete")`
 

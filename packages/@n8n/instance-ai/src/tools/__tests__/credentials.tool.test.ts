@@ -35,6 +35,12 @@ function createMockContext(
 		credentialService: {
 			list: vi.fn().mockResolvedValue([]),
 			get: vi.fn().mockResolvedValue({}),
+			updateDescription: vi.fn().mockResolvedValue({
+				id: '1',
+				name: 'Reporting',
+				type: 'postgres',
+				description: 'Production reporting',
+			}),
 			delete: vi.fn().mockResolvedValue(undefined),
 			test: vi.fn().mockResolvedValue({ success: true }),
 			searchCredentialTypes: vi.fn().mockResolvedValue([]),
@@ -130,6 +136,78 @@ describe('credentials tool', () => {
 			expect(credential.description).toBe('Read-only reporting account');
 		},
 	);
+
+	describe('update-description', () => {
+		it.each(['Production reporting', ''])(
+			'writes description %j and returns metadata',
+			async (description) => {
+				const context = createMockContext();
+				const result = await executeTool(
+					createCredentialsTool(context),
+					{ action: 'update-description', credentialId: '1', description },
+					noSuspendCtx(),
+				);
+				expect(context.credentialService.updateDescription).toHaveBeenCalledWith(
+					'1',
+					description === '' ? null : description,
+				);
+				expect(result).toEqual({
+					id: '1',
+					name: 'Reporting',
+					type: 'postgres',
+					description: 'Production reporting',
+				});
+			},
+		);
+
+		it.each([false, undefined])(
+			'hides and rejects the action when the flag is %s',
+			async (credentialDescriptionsEnabled) => {
+				const context = createMockContext({ credentialDescriptionsEnabled });
+				const tool = createCredentialsTool(context);
+				expect(getDescription(tool)).not.toContain('update descriptions');
+				await expect(
+					executeTool(
+						tool,
+						{ action: 'update-description', credentialId: '1', description: 'New' },
+						noSuspendCtx(),
+					),
+				).rejects.toThrow();
+				expect(context.credentialService.updateDescription).not.toHaveBeenCalled();
+			},
+		);
+
+		it('supports service implementations without description writes', () => {
+			const context = createMockContext();
+			delete context.credentialService.updateDescription;
+			expect(getDescription(createCredentialsTool(context))).not.toContain('update descriptions');
+		});
+
+		it.each([{}, { description: 'x'.repeat(513) }, { description: 123 }])(
+			'rejects invalid description input %j',
+			async (input) => {
+				const context = createMockContext();
+				await expect(
+					executeTool(
+						createCredentialsTool(context),
+						{ action: 'update-description', credentialId: '1', ...input },
+						noSuspendCtx(),
+					),
+				).rejects.toThrow();
+				expect(context.credentialService.updateDescription).not.toHaveBeenCalled();
+			},
+		);
+
+		it('explains the purpose and limits of description text', () => {
+			const description = property(
+				inputJsonSchema(createCredentialsTool(createMockContext())),
+				'description',
+			).description;
+			expect(description).toContain('account, environment, and intended use');
+			expect(description).toContain('only when the user asks');
+			expect(description).toContain('does not grant permissions');
+		});
+	});
 
 	describe('action filtering', () => {
 		const builderCredentialActions = [

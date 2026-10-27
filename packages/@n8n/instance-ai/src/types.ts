@@ -819,6 +819,8 @@ export interface InstanceAiCredentialService {
 		projectId?: string;
 	}): Promise<CredentialSummary[]>;
 	get(credentialId: string): Promise<CredentialDetail>;
+	/** Set or clear description metadata without changing credential secrets. */
+	updateDescription?(credentialId: string, description: string | null): Promise<CredentialDetail>;
 	delete(credentialId: string): Promise<void>;
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
 	/** Whether a credential type has a test function. When false, skip testing. */

@@ -82,6 +82,7 @@ const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFl
 	// On by default so the drift guards below cover `get_user_preferences`. Its own
 	// registration tests set it explicitly either way.
 	aiPreferencesEnabled: true,
+	credentialDescriptionsEnabled: true,
 	...overrides,
 });
 
@@ -647,6 +648,23 @@ describe('McpService scope enforcement', () => {
 			]),
 		);
 	});
+
+	it.each([
+		{ scopes: ['credential:read'], enabled: true, available: false },
+		{ scopes: ['credential:write'], enabled: true, available: true },
+		{ scopes: ['credential:write'], enabled: false, available: false },
+	])(
+		'gates credential description writes with $scopes and flag $enabled',
+		async ({ scopes, enabled, available }) => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ credentialDescriptionsEnabled: enabled }),
+				undefined,
+				{ grantedScopes: scopes },
+			);
+			expect(getRegisteredToolNames(server).has('update_credential_description')).toBe(available);
+		},
+	);
 
 	it('registers no tools for an empty grant', async () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
