@@ -36,7 +36,6 @@
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "pinia": "catalog:frontend",
-    "reka-ui": "^2.5.0",
     "vue": "catalog:frontend",
     "vue-i18n": "catalog:frontend",
     "vue-router": "catalog:frontend"
