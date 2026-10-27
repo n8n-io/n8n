@@ -342,14 +342,14 @@ const onCheckboxChange = (index: number) => {
 		<div
 			v-if="!loading"
 			ref="editor"
-			:class="$style[theme]"
+			:class="theme === 'sticky' ? $style.sticky : undefined"
 			@click="onClick"
 			@mousedown="onMouseDown"
 			@change="onChange"
 			v-html="htmlContent"
 		/>
 		<!-- eslint-enable vue/no-v-html -->
-		<div v-else :class="$style.markdown">
+		<div v-else>
 			<div v-for="(_, index) in loadingBlocks" :key="index">
 				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
@@ -361,79 +361,23 @@ const onCheckboxChange = (index: number) => {
 	</div>
 </template>
 
+<style lang="scss">
+@use '../../css/markdown.scss';
+</style>
+
 <style lang="scss" module>
-.markdown {
-	color: color-mix(in oklch, var(--color--text), transparent 8%);
-
-	*:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
-		line-height: var(--line-height--xl);
-	}
-
-	h1:not(:where(:global(.not-prose), :global(.not-prose) *)),
-	h2:not(:where(:global(.not-prose), :global(.not-prose) *)),
-	h3:not(:where(:global(.not-prose), :global(.not-prose) *)),
-	h4:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		margin-bottom: var(--spacing--sm);
-		font-weight: var(--font-weight--medium);
-	}
-
-	p:not(:where(:global(.not-prose), :global(.not-prose) *)),
-	span:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		margin-bottom: var(--spacing--sm);
-	}
-
-	ul:not(:where(:global(.not-prose), :global(.not-prose) *)),
-	ol:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		margin-bottom: var(--spacing--sm);
-		padding-left: var(--spacing--md);
-
-		li:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-			margin-top: 0.25em;
-		}
-	}
-
-	// The pre box (background + padding) comes from the global .n8n-markdown
-	// styles in css/markdown.scss; a second box on code doubles it up.
-	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		background-color: transparent;
-		color: var(--color--text--shade-1);
-	}
-
-	li > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
-	p > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		padding: 0 var(--spacing--4xs);
-		color: var(--color--text--shade-1);
-		background-color: var(--color--background);
-	}
-
-	.label:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		color: var(--color--text);
-	}
-
-	img:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		max-width: 100%;
-		border-radius: var(--radius--lg);
-	}
-
-	blockquote:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		padding-left: 10px;
-		font-style: italic;
-		border-left: var(--border-color) 2px solid;
-	}
-}
-
-input[type='checkbox'] {
-	accent-color: var(--color--primary);
-}
-
-input[type='checkbox'] + label {
-	cursor: pointer;
-}
-
+/** Stickies opt-out of base Markdown styling, so they provide their own **/
 .sticky {
 	color: var(--sticky--color--text);
 	overflow-wrap: break-word;
+
+	input[type='checkbox'] {
+		accent-color: var(--color--primary);
+	}
+
+	input[type='checkbox'] + label {
+		cursor: pointer;
+	}
 
 	h1:not(:where(:global(.not-prose), :global(.not-prose) *)),
 	h2:not(:where(:global(.not-prose), :global(.not-prose) *)),
@@ -495,6 +439,8 @@ input[type='checkbox'] + label {
 	}
 
 	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
+		display: block;
+		overflow-x: auto;
 		padding: var(--spacing--sm);
 		background-color: var(--sticky--code--color--background);
 		color: var(--sticky--code--color--text);
@@ -598,18 +544,10 @@ input[type='checkbox'] + label {
 			width: 100%;
 		}
 	}
-}
 
-.sticky,
-.markdown {
 	pre:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--sm);
 		display: grid;
-	}
-
-	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		display: block;
-		overflow-x: auto;
 	}
 
 	iframe:not(:where(:global(.not-prose), :global(.not-prose) *)) {
