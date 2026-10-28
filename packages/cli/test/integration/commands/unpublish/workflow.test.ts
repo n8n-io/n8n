@@ -8,6 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
+	AuthRolesService,
 	type User,
 	WebhookRepository,
 	WorkflowPublicationOutboxRepository,
@@ -23,6 +24,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
+import { removeAllRoleScopes } from '../../shared/db/roles';
 import { createOwner } from '../../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
@@ -263,6 +265,28 @@ describe('with the workflow publication service off', () => {
 			{ event: 'activated', versionId: workflow.versionId, userId: owner.id },
 			{ event: 'deactivated', versionId: workflow.versionId, userId: owner.id },
 		]);
+	});
+});
+
+describe('on a database that n8n never started', () => {
+	beforeEach(async () => await removeAllRoleScopes());
+
+	afterEach(async () => await Container.get(AuthRolesService).init());
+
+	test('unpublish:workflow --id unpublishes as the owner', async () => {
+		const [workflow] = await createManyActiveWorkflows(1, {}, owner);
+
+		await command.run([`--id=${workflow.id}`]);
+
+		expect((await getWorkflowById(workflow.id))?.activeVersionId).toBeNull();
+	});
+
+	test('unpublish:workflow --all unpublishes as the owner', async () => {
+		const [workflow] = await createManyActiveWorkflows(1, {}, owner);
+
+		await command.run(['--all']);
+
+		expect((await getWorkflowById(workflow.id))?.activeVersionId).toBeNull();
 	});
 });
 

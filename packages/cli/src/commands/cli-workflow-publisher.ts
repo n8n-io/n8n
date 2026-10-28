@@ -1,5 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { AuthRolesService, type User, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ResponseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -28,6 +29,8 @@ export class CliWorkflowPublisher {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowService: WorkflowService,
+		private readonly authRolesService: AuthRolesService,
+		private readonly logger: Logger,
 	) {}
 
 	async publish(workflowId: string, versionId?: string): Promise<void> {
@@ -36,31 +39,23 @@ export class CliWorkflowPublisher {
 			throw new UserError(REPUBLISH_NOT_SUPPORTED);
 		}
 
-		await this.workflowService.activateWorkflow(
-			await this.ownershipService.getInstanceOwner(),
-			workflowId,
-			{
-				versionId,
-				source: 'cli',
-			},
-		);
+		await this.workflowService.activateWorkflow(await this.instanceOwner(), workflowId, {
+			versionId,
+			source: 'cli',
+		});
 	}
 
 	async unpublish(workflowId: string): Promise<void> {
 		await this.findWorkflow(workflowId);
 
-		await this.workflowService.deactivateWorkflow(
-			await this.ownershipService.getInstanceOwner(),
-			workflowId,
-			{
-				source: 'cli',
-			},
-		);
+		await this.workflowService.deactivateWorkflow(await this.instanceOwner(), workflowId, {
+			source: 'cli',
+		});
 	}
 
 	/** Unpublishes every published workflow, and reports the ones that failed in one error at the end. */
 	async unpublishAll(): Promise<void> {
-		const owner = await this.ownershipService.getInstanceOwner();
+		const owner = await this.instanceOwner();
 		const failures: string[] = [];
 
 		for (const workflowId of await this.workflowRepository.getActiveIds()) {
@@ -83,6 +78,20 @@ export class CliWorkflowPublisher {
 		return this.canReplaceRunningTriggers()
 			? 'A running n8n applies this change shortly. If n8n is stopped, it applies the change when it starts.'
 			: 'Restart n8n to apply this change to a running instance.';
+	}
+
+	/** Only `n8n start` syncs role scopes, so the owner has none on a database it never ran on. */
+	private async instanceOwner(): Promise<User> {
+		let owner = await this.ownershipService.getInstanceOwner();
+		if (owner.role.scopes.length === 0) {
+			this.logger.info(
+				'The role scopes are missing because n8n never started on this database. The CLI syncs them now.',
+			);
+			await this.authRolesService.init();
+			owner = await this.ownershipService.getInstanceOwner();
+		}
+
+		return owner;
 	}
 
 	private async findWorkflow(

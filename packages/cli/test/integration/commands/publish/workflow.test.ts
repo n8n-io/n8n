@@ -10,6 +10,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
+	AuthRolesService,
+	RoleRepository,
 	type User,
 	WebhookRepository,
 	WorkflowPublicationOutboxRepository,
@@ -27,6 +29,7 @@ import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
+import { createScope, removeAllRoleScopes } from '../../shared/db/roles';
 import { createOwner } from '../../shared/db/users';
 import { createWorkflowHistoryItem } from '../../shared/db/workflow-history';
 
@@ -335,6 +338,40 @@ test('publish:workflow tells the operator that a running n8n applies the change'
 	await command.run([`--id=${workflow.id}`]);
 
 	expect(info).toHaveBeenCalledWith(APPLIES_SHORTLY_NOTE);
+});
+
+describe('on a database that n8n never started', () => {
+	beforeEach(async () => await removeAllRoleScopes());
+
+	afterEach(async () => await Container.get(AuthRolesService).init());
+
+	test('publish:workflow publishes as the owner', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
+
+		await command.run([`--id=${workflow.id}`]);
+
+		expect(await publishEvents(workflow.id)).toEqual([
+			{ event: 'activated', versionId: workflow.versionId, userId: owner.id },
+		]);
+	});
+});
+
+describe('on a database that a newer n8n started', () => {
+	afterEach(async () => await Container.get(AuthRolesService).init());
+
+	test('publish:workflow keeps the role scopes that the CLI does not know', async () => {
+		const newerScope = await createScope();
+		const roleRepository = Container.get(RoleRepository);
+		const ownerRole = await roleRepository.findOneByOrFail({ slug: owner.role.slug });
+		ownerRole.scopes.push(newerScope);
+		await roleRepository.save(ownerRole);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
+
+		await command.run([`--id=${workflow.id}`]);
+
+		const { scopes } = await roleRepository.findOneByOrFail({ slug: owner.role.slug });
+		expect(scopes.map(({ slug }) => slug)).toContain(newerScope.slug);
+	});
 });
 
 describe('failure output', () => {
