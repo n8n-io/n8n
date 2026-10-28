@@ -2438,7 +2438,6 @@ describe('AgentBuilderView — preview routing', () => {
 
 	it('uses the full editor area for the building indicator when the test chat has a host', async () => {
 		const wrapper = await renderView();
-		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview', 'primary');
 		await flushPromises();
 		wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:building', true);
