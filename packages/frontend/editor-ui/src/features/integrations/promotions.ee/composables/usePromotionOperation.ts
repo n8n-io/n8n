@@ -1,4 +1,4 @@
-import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,6 +11,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
 import { promoteProjectSelection } from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import type { ApplyCheckResult } from '../promotions.types';
 import { applyProjectSelection, continueApplyProjectSelection } from '../promotionsSettings.api';
 import { usePromotionOutcome } from './usePromotionOutcome';
 

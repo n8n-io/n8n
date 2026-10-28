@@ -1,4 +1,3 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
 import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -18,6 +17,7 @@ import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import type { ApplyCheckResult } from '../promotions.types';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
 

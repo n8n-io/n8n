@@ -1,11 +1,11 @@
 import type {
-	ApplyCheckResult,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
 	PromotionResource,
 	PromotionVariableScope,
 } from '@n8n/api-types';
 
+import type { ApplyCheckResult } from './promotions.types';
 import type { ResourceKey, SelectionGraph } from './promotionPreview.selection';
 
 /**

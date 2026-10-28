@@ -1,4 +1,11 @@
-import type { ApplyPackageResultDto, PromotionVariableScope } from '@n8n/api-types';
+import type {
+	ApplyPackageResultDto,
+	PromotionPreviewCheck,
+	PromotionVariableScope,
+} from '@n8n/api-types';
+
+export type ApplyCheckResult = Pick<ApplyPackageResultDto, 'environmentId' | 'git'> &
+	PromotionPreviewCheck;
 
 export type BlockedApplyResult = Extract<ApplyPackageResultDto, { status: 'blocked' }>;
 export type AppliedResult = Extract<ApplyPackageResultDto, { status: 'applied' }>;

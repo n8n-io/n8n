@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type {
-	ApplyCheckResult,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
 	PromotionResourceType,
@@ -19,7 +18,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
-import type { BlockedApplyResult } from '../../promotions.types';
+import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 

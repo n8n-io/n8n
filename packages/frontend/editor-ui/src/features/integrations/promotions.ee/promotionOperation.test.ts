@@ -1,4 +1,4 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
+import type { ApplyCheckResult } from './promotions.types';
 
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
 import { billingPreview, billingResources } from './__tests__/preview.fixtures';

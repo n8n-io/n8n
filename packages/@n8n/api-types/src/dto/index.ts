@@ -837,7 +837,6 @@ export {
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,
-	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,

@@ -7,7 +7,6 @@ import { Z } from '../../zod-class';
 import {
 	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
-	promotionPreviewCheckSchema,
 } from './promotion-apply-check.dto';
 import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
@@ -218,7 +217,3 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
-
-const applyCheckResultSchema = applyPackageIdentitySchema.merge(promotionPreviewCheckSchema);
-
-export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;
