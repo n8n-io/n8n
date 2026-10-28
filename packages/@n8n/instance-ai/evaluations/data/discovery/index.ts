@@ -5,6 +5,13 @@ import { z } from 'zod';
 import type { BrowserUseState } from '../../../src/types';
 import type { DiscoveryMcpState } from '../../discovery/stub-mcp-registry';
 import type { DiscoveryConfirmations, DiscoveryTestCase } from '../../discovery/types';
+import { CaseSeedSchema, type CaseSeed } from '../../harness/schema';
+
+/** The stub instance serves inline seeds only; a replay seed needs a real thread. */
+const inlineSeedSchema = CaseSeedSchema.refine(
+	(seed): seed is Extract<CaseSeed, { mode: 'inline' }> => seed.mode === 'inline',
+	{ message: 'discovery cases support only an inline seed' },
+);
 
 const forbiddenToolCallSchema = z
 	.object({
@@ -84,6 +91,7 @@ export const discoveryTestCaseSchema = z
 			.strict()
 			.optional(),
 		confirmations: confirmationsSchema.optional(),
+		seed: inlineSeedSchema.optional(),
 		expectedToolInvocations: z
 			.object({
 				// min(1) on every list: an empty expectation array is dead config that
