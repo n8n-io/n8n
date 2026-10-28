@@ -136,8 +136,8 @@ export class StepReadyHandler {
 		// that cannot start fails the step, as an awaited one does, while the
 		// node's outcome is still ours to record.
 		if (run.kind === 'outputs' && run.detached.length > 0) {
-			const notStarted = await this.startDetachedSubExecutions(step, execution, run.detached);
-			if (notStarted) run = { kind: 'error', error: notStarted };
+			const started = await this.startDetachedSubExecutions(step, execution, run.detached);
+			if (started.kind === 'error') run = { kind: 'error', error: started.error };
 		}
 
 		let recorded: boolean;
@@ -210,20 +210,20 @@ export class StepReadyHandler {
 	}
 
 	/**
-	 * Starts the detached sub-executions in order, and returns the error of the
-	 * first that could not start, or null when all did. The rest are not
-	 * started: the step fails, and the node reported ids that will not run.
+	 * Starts the detached sub-executions in order, and stops at the first that
+	 * could not start. The rest are not started: the step fails, and the node
+	 * reported ids that will not run.
 	 */
 	private async startDetachedSubExecutions(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		subExecutions: SubExecutionDeclaration[],
-	): Promise<unknown> {
+	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
 		for (const subExecution of subExecutions) {
 			const started = await this.startSubExecution(step, execution, subExecution, false);
-			if (started.kind === 'error') return started.error;
+			if (started.kind === 'error') return started;
 		}
-		return null;
+		return { kind: 'started' };
 	}
 
 	/**
