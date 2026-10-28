@@ -157,6 +157,16 @@ export type WaitDeclaration =
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding: ResumeBinding;
+	  }
+	| {
+			/**
+			 * The sub-execution this step waits for. Only the sub-execution's end resumes
+			 * the step: the engine does that itself when the sub-execution finishes.
+			 */
+			subExecutionId: string;
+			resumeAt?: never;
+			outputsAtDeadline?: never;
+			resumeBinding?: never;
 	  };
 
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
@@ -180,7 +190,8 @@ export function hasResumeCondition(wait: WaitDeclaration): boolean {
 	return (
 		wait.resumeBinding === 'execution' ||
 		wait.resumeBinding === 'step' ||
-		wait.resumeAt !== undefined
+		wait.resumeAt !== undefined ||
+		'subExecutionId' in wait
 	);
 }
 
