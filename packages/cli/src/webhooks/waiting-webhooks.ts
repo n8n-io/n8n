@@ -441,7 +441,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { token, webhookPath } = this.parseSignatureParam(req);
 		if (!token) return this.respondInvalidToken(res);
 
-		const located = await this.dataPlane.locateResumeTarget(executionId, { token });
+		const located = await this.dataPlane.locateResume({ id: executionId, token });
 		if (!located.ok) {
 			if (located.status === 401) return this.respondInvalidToken(res);
 			throw toLocateRefusal(executionId, located.status, located.error);

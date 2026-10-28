@@ -129,7 +129,7 @@ describe('EngineDataPlaneProxyService resume requests', () => {
 	it('answers both phases as not found without a provider', async () => {
 		const proxy = new EngineDataPlaneProxyService();
 
-		await expect(proxy.locateResumeTarget(executionId, { token: 't' })).resolves.toEqual({
+		await expect(proxy.locateResume({ id: executionId, token: 't' })).resolves.toEqual({
 			ok: false,
 			status: 404,
 			error: 'not_found',
@@ -149,16 +149,16 @@ describe('EngineDataPlaneProxyService resume requests', () => {
 			ok: true as const,
 			value: { execution: mock<ExecutionSnapshot>(), target: null },
 		};
-		provider.locateResumeTarget.mockResolvedValue(located);
+		provider.locateResume.mockResolvedValue(located);
 		const resolved = { ok: true as const, value: { executionId, stepId: 'step-1' } };
 		provider.resolveStep.mockResolvedValue(resolved);
 
-		await expect(proxy.locateResumeTarget(executionId, { token: 't' })).resolves.toBe(located);
+		await expect(proxy.locateResume({ id: executionId, token: 't' })).resolves.toBe(located);
 		await expect(proxy.resolveStep('step-1', { token: 't', outputs: [[]] })).resolves.toBe(
 			resolved,
 		);
 
-		expect(provider.locateResumeTarget).toHaveBeenCalledWith(executionId, { token: 't' });
+		expect(provider.locateResume).toHaveBeenCalledWith({ id: executionId, token: 't' });
 		expect(provider.resolveStep).toHaveBeenCalledWith('step-1', { token: 't', outputs: [[]] });
 	});
 });
