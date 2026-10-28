@@ -1,0 +1,25 @@
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_e6e6896cf1d991::t_793cad85278050 279-282,284,286,303
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_e6e6896cf1d991::t_793cad85278050 59-61
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_e6e6896cf1d991::t_793cad85278050 12001-12002
+packages/cli/src/modules/agents/tools/read-binary-data.tool.ts
+  s_e6e6896cf1d991::t_793cad85278050 21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94b4dedaa5a75992424e50c8544bfbedb4edff44",
+  "prompts": {},
+  "sessions": {
+    "s_e6e6896cf1d991": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "884568dd-6dcc-4d96-9920-be27c6b89d06",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
