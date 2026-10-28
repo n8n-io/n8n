@@ -597,7 +597,7 @@ describe('project shell import', () => {
 		const plan = await Container.get(N8nPackagesService).planPackage(
 			importPackageRequest({ user: owner, packageBuffer, conflictPolicy: 'new-version' }),
 			new TarPackageReader(packageBuffer, Container.get(PackageImportConfig)),
-			'check',
+			'enforce',
 		);
 		expect(plan.issues).toEqual([
 			{ type: 'project-conflict', kind: 'not-team', sourceProjectId: personal.id, name: 'brie' },

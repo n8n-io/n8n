@@ -33,6 +33,156 @@ const source = createRuntimeSkillSource([
 	},
 ]);
 
+const turnSource = createRuntimeSkillSource([
+	{
+		id: 'router',
+		name: 'router',
+		description: 'Route requests.',
+		instructions: 'Pick a route.',
+		policy: { lifetime: 'turn' },
+	},
+	{
+		id: 'builder',
+		name: 'builder',
+		description: 'Build workflows.',
+		instructions: 'Build one workflow.',
+	},
+]);
+
+const FIVE_MINUTES = 5 * 60_000;
+const NOW = new Date('2026-10-23T12:00:00Z');
+
+/** A thread whose last turn loaded the skills `idleMs` ago, plus the new user input. */
+function threadWithLoads(idleMs: number, ...skillIds: string[]): AgentMessageList {
+	const list = new AgentMessageList();
+	list.addHistory([
+		{
+			id: 'turn-1',
+			createdAt: new Date(NOW.getTime() - idleMs),
+			role: 'assistant',
+			content: skillIds.map((skillId) => ({
+				type: 'tool-call' as const,
+				toolName: 'load_skill',
+				toolCallId: `load-${skillId}`,
+				input: { skillId },
+				state: 'resolved' as const,
+				output: { type: 'content', value: [{ type: 'text', text: 'loaded' }] },
+			})),
+		},
+	]);
+	list.addInput([
+		{ id: 'turn-2', createdAt: NOW, role: 'user', content: [{ type: 'text', text: 'Next' }] },
+	]);
+	return list;
+}
+
+function freshRun(): { freshRun: true; cacheTtlMs: number; now: Date } {
+	return { freshRun: true, cacheTtlMs: FIVE_MINUTES, now: NOW };
+}
+
+function visibleText(active: ActiveSkills, list: AgentMessageList): string {
+	return (
+		JSON.stringify(active.modelMessages(list.forLlm('').messages, list)) +
+		(active.instructions() ?? '')
+	);
+}
+
+describe('skill lifetime', () => {
+	it('expires a turn-lifetime skill when a fresh run starts on a cold cache', async () => {
+		const memory = new InMemoryMemory();
+		const active = new ActiveSkills(turnSource, 'assistant', memory.skillState);
+		const list = threadWithLoads(FIVE_MINUTES + 1, 'router', 'builder');
+
+		await active.restore(list, scope, freshRun());
+
+		const text = visibleText(active, list);
+		expect(text).toContain('Build one workflow.');
+		expect(text).not.toContain('Pick a route.');
+		expect(text).toContain('{"skillId":"router","active":false}');
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual({
+			skillIds: ['builder'],
+		});
+	});
+
+	// A null version marks a revoked skill. Expiry is not a revocation, so the model
+	// can load the skill again on a later turn.
+	it('does not mark an expired skill with tracked versions as revoked', async () => {
+		const versionedSource: RuntimeSkillSource = {
+			...turnSource,
+			shouldAppendSkillUpdates: () => true,
+		};
+		const memory = new InMemoryMemory();
+		const routerHash = turnSource.registry.skills.find(({ id }) => id === 'router')?.hash;
+		await memory.skillState.save(
+			{ ...scope, agentName: 'assistant' },
+			{ skillIds: ['router'], versions: { router: routerHash ?? null } },
+		);
+		const active = new ActiveSkills(versionedSource, 'assistant', memory.skillState);
+		const list = threadWithLoads(FIVE_MINUTES + 1, 'router');
+
+		await active.restore(list, scope, freshRun());
+
+		expect(list.activeSkillIds).not.toContain('router');
+		expect(list.activeSkillVersions).toEqual({ router: routerHash });
+		const stored = await memory.skillState.load({ ...scope, agentName: 'assistant' });
+		expect(stored?.versions).toEqual({ router: routerHash });
+	});
+
+	// Collapsing the early load rewrites every cached message after it. While the
+	// cache is warm that costs more than the skill body saves on later calls.
+	it('keeps a turn-lifetime skill when a fresh run starts on a warm cache', async () => {
+		const active = new ActiveSkills(turnSource, 'assistant', new InMemoryMemory().skillState);
+		const list = threadWithLoads(60_000, 'router');
+
+		await active.restore(list, scope, freshRun());
+
+		expect(visibleText(active, list)).toContain('Pick a route.');
+	});
+
+	// A masked load would move the skill into the system block, which rewrites the
+	// whole prompt and keeps the body for the rest of the thread.
+	it('expires a turn-lifetime skill whose load observational memory masked', async () => {
+		const active = new ActiveSkills(turnSource, 'assistant', new InMemoryMemory().skillState);
+		const list = mask(threadWithLoads(60_000, 'router'));
+
+		await active.restore(list, scope, freshRun());
+
+		expect(list.activeSkillIds).toEqual([]);
+		expect(active.instructions()).toBeUndefined();
+	});
+
+	// The skill already rides in the system block, so dropping it would rewrite the warm cache.
+	it('keeps a stored turn-lifetime skill that has no load record on a warm cache', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, { skillIds: ['router'] });
+		const active = new ActiveSkills(turnSource, 'assistant', memory.skillState);
+		const list = threadWithLoads(60_000);
+
+		await active.restore(list, scope, freshRun());
+
+		expect(list.activeSkillIds).toEqual(['router']);
+	});
+
+	it('keeps a turn-lifetime skill when a run resumes', async () => {
+		const active = new ActiveSkills(turnSource, 'assistant', new InMemoryMemory().skillState);
+		const list = threadWithLoads(FIVE_MINUTES + 1, 'router');
+
+		await active.restore(list, scope);
+
+		expect(visibleText(active, list)).toContain('Pick a route.');
+	});
+
+	it('keeps a turn-lifetime skill that loads during a fresh run', async () => {
+		const active = new ActiveSkills(turnSource, 'assistant', new InMemoryMemory().skillState);
+		const list = new AgentMessageList();
+		await active.restore(list, scope, freshRun());
+
+		await active.load('router');
+
+		expect(active.instructions()).toContain('Pick a route.');
+	});
+});
+
 describe('active skills', () => {
 	it('does not rewrite unchanged stored skills on later turns', async () => {
 		const memory = new InMemoryMemory();
