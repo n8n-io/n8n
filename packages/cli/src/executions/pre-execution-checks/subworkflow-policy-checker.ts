@@ -38,18 +38,9 @@ export class SubworkflowPolicyChecker {
 
 		const denial = await this.findDenial(subworkflow, parentWorkflowId);
 
-		if (policy === 'any') return;
+		if (!denial) return;
 
-		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId)) return;
-
-		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
-			parentWorkflowId,
-			subworkflowId,
-		});
-
-		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
-
-		if (policy === 'workflowsFromSameOwner' && areOwnedBySameProject) return;
+		const { policy, subworkflowProject } = denial;
 
 		this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
