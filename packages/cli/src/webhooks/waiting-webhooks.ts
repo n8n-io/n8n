@@ -483,14 +483,11 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		if (target === null) return this.answerEngineV2WithoutTarget(executionId, snapshot, res);
 
-		const execution = await this.executionReader.fromSnapshot(snapshot);
-		if (!execution) throw new NotFoundError(`The execution "${executionId}" does not exist.`);
-
-		const node = execution.workflowData.nodes.find((candidate) => candidate.id === target.nodeId);
-		if (!node) throw new NotFoundError('Could not find node to process webhook.');
+		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);
+		if (!standIn) throw new NotFoundError('Could not find node to process webhook.');
+		const { execution, node } = standIn;
 
 		this.sanitizeEngineV2Request(req, node);
-		seedResumingNode(execution, node);
 
 		// A form wait reached through the webhook route: send the browser to the
 		// form route, as v1 does.
@@ -513,6 +510,23 @@ export class WaitingWebhooks implements IWebhookManager {
 			suffix,
 			engineResume: { stepId: target.stepId, token },
 		});
+	}
+
+	/**
+	 * The execution that the v1 resume code reads, built from the data plane's
+	 * snapshot, with the waiting node seeded. Undefined when the run's workflow
+	 * document lacks what the v1 code reads or lacks the node.
+	 */
+	protected async buildEngineV2StandIn(
+		snapshot: ExecutionSnapshot,
+		nodeId: string,
+	): Promise<{ execution: IExecutionResponse; node: INode } | undefined> {
+		const execution = await this.executionReader.fromSnapshot(snapshot);
+		const node = execution?.workflowData.nodes.find((candidate) => candidate.id === nodeId);
+		if (!execution || !node) return undefined;
+
+		seedResumingNode(execution, node);
+		return { execution, node };
 	}
 
 	protected respondInvalidToken(res: express.Response): IWebhookResponseCallbackData {
