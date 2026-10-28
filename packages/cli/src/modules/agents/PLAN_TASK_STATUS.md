@@ -34,7 +34,7 @@ existing project and thread access checks.
 ## Development upgrade
 
 Plan format 2 replaces the unreleased format 1. The irreversible
-`ResetAgentPlansForJobStatus1793024571925` migration deletes old plans and their
+`ResetAgentPlansForJobStatus1793207494016` migration deletes old plans and their
 revision history. It clears their job links and plan references in Stop and
 checkpoint metadata. It preserves chat messages, executions, jobs, outcomes,
 and unrelated checkpoint data.
