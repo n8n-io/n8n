@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 456-457
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 333-340,343,345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a2cc4829798fed4cc58d48c7ca7831848026553",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
