@@ -75,6 +75,9 @@ describe('BlockingIssue / ImportBlockingIssue contract', () => {
 		expectTypeOf<Extract<BlockingIssue, { type: 'policy-violation' }>>().branded.toEqualTypeOf<
 			Extract<ImportBlockingIssue, { type: 'policy-violation' }>
 		>();
+		expectTypeOf<Extract<BlockingIssue, { type: 'policy-check-failed' }>>().branded.toEqualTypeOf<
+			Extract<ImportBlockingIssue, { type: 'policy-check-failed' }>
+		>();
 		expectTypeOf<
 			Extract<BlockingIssue, { type: 'credential-policy-violation' }>
 		>().branded.toEqualTypeOf<

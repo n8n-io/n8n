@@ -99,6 +99,7 @@ export class FolderImporter {
 				sourceFolderId: folder.sourceFolderId,
 				name: folder.name,
 				targetParentFolderId: match.parentFolderId,
+				existingName: match.name,
 			});
 		}
 
