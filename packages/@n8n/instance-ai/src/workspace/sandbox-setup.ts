@@ -427,24 +427,26 @@ async function writeWorkspaceFileBatch(
 		path: joinWorkspacePath(root, path),
 		content,
 	}));
-	if (filesystem.writeFiles) {
-		try {
-			await filesystem.writeFiles(absoluteFiles);
-			return;
-		} catch (error) {
-			// The per-file path below keeps its own command fallback.
-			await traceSandboxOperation(
-				'batch-write-fallback',
-				{ inputs: { fileCount: absoluteFiles.length, error: getErrorMessage(error) } },
-				async () => await Promise.resolve(),
-			);
-		}
+	const writeEach = async () =>
+		await Promise.all(
+			absoluteFiles.map(
+				async ({ path, content }) => await writeWorkspaceFile(workspace, filesystem, path, content),
+			),
+		);
+	if (!filesystem.writeFiles) {
+		await writeEach();
+		return;
 	}
-	await Promise.all(
-		absoluteFiles.map(
-			async ({ path, content }) => await writeWorkspaceFile(workspace, filesystem, path, content),
-		),
-	);
+	try {
+		await filesystem.writeFiles(absoluteFiles);
+	} catch (error) {
+		// Single writes keep their own command fallback.
+		await traceSandboxOperation(
+			'batch-write-fallback',
+			{ inputs: { fileCount: absoluteFiles.length, error: getErrorMessage(error) } },
+			writeEach,
+		);
+	}
 }
 
 async function createWorkspaceDirectory(

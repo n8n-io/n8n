@@ -111,7 +111,7 @@ describe('formatComparison', () => {
 
 		const text = formatComparison(baseline, [run('after', { firstWorkspaceToolMs: 7_000 })]);
 
-		expect(text).toMatch(/baseline.*aaa1111.*bbb2222/);
-		expect(text).not.toMatch(/after.*mixes/);
+		const warnings = text.split('\n').filter((line) => line.startsWith('Warning:'));
+		expect(warnings).toEqual(['Warning: baseline mixes builds aaa1111, bbb2222']);
 	});
 });
