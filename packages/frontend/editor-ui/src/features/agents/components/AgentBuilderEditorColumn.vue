@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
@@ -24,6 +25,7 @@ import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -56,12 +58,16 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	chatFirst?: boolean;
+	isPreviewOpen?: boolean;
+	hidePreviewButton?: boolean;
 	preventScroll?: boolean;
 	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 	/** n8n Chat's saved description, forwarded to the channel modal. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description, forwarded to the channel modal. */
@@ -73,10 +79,19 @@ provideAgentPersonalisation(
 	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
 );
 const isKnowledgeAdvancedExpanded = ref(false);
+const isMemoryViewAll = ref(false);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
+
+// The full memory list replaces the Knowledge cards, so leaving the tab must close it.
+watch(
+	() => props.activeMainTab,
+	() => {
+		isMemoryViewAll.value = false;
+	},
 );
 
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
@@ -107,21 +122,34 @@ const emit = defineEmits<{
 	'remove-vector-store': [vectorStore: AgentJsonVectorStoreConfig];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'trigger-removed': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
-	'open-preview': [];
+	'open-preview': [source: 'primary' | 'icon'];
+	'close-preview': [];
 	'publish-agent': [];
 	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
+
+function onMainTabSelect(tab: AgentBuilderMainTab) {
+	if (tab !== 'evals') {
+		agentTelemetry.trackClickedAgentsTab({
+			agentId: props.agentId,
+			name: tab === 'agent' ? 'build' : tab,
+		});
+	}
+	emit('update:activeMainTab', tab);
+}
 
 function onSetupTaskAction(task: SetupTask) {
 	if (task.id === 'publish-agent') {
@@ -154,18 +182,36 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
+		:class="[
+			$style.editorColumn,
+			{
+				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
+				[$style.chatFirst]: props.chatFirst,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
 		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
-				<AgentIdentityHeader
-					:config="localConfig"
-					:disabled="childrenDisabled"
-					:class="$style.identityHeader"
-					@update:config="emit('update:config', $event)"
-				/>
+				<div :class="$style.identityHeader">
+					<AgentIdentityHeader
+						:class="$style.identityContent"
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						@update:config="emit('update:config', $event)"
+					/>
+					<AgentPreviewButton
+						v-if="!props.hidePreviewButton"
+						:disabled-reason="props.previewDisabledReason"
+						:is-runnable="props.agent?.isRunnable === true"
+						:is-preview-open="props.isPreviewOpen"
+						:validation-issues="props.configValidationIssues ?? []"
+						test-id="agent-header-preview-btn"
+						@open-preview="emit('open-preview', 'primary')"
+						@close-preview="emit('close-preview')"
+					/>
+				</div>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
 				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
@@ -174,7 +220,7 @@ defineExpose({ onSetupTaskAction });
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
 						data-testid="agent-header-tabs"
-						@update:model-value="emit('update:activeMainTab', $event)"
+						@update:model-value="onMainTabSelect"
 					/>
 				</div>
 			</div>
@@ -212,14 +258,16 @@ defineExpose({ onSetupTaskAction });
 					>
 						<template #header-actions>
 							<AgentPreviewButton
+								:disabled-reason="props.previewDisabledReason"
 								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"
-								@open-preview="emit('open-preview')"
+								@open-preview="emit('open-preview', 'icon')"
 							/>
 						</template>
 						<AgentTriggersSection
+							:preview-disabled-reason="props.previewDisabledReason"
 							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
@@ -238,6 +286,7 @@ defineExpose({ onSetupTaskAction });
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
+							@trigger-removed="emit('trigger-removed', $event)"
 							@agent-changed="emit('agent-changed')"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
@@ -283,11 +332,12 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentPanel
-						v-if="knowledgeBaseEnabled"
+						v-if="knowledgeBaseEnabled && !isMemoryViewAll"
 						:header="i18n.baseText('agents.builder.files.title')"
 						:description="i18n.baseText('agents.builder.files.titleTooltip')"
 					>
 						<AgentFilesPanel
+							:agent-id="agentId"
 							:files="agentFiles"
 							:disabled="childrenDisabled"
 							:loading="agentFilesLoading"
@@ -298,7 +348,17 @@ defineExpose({ onSetupTaskAction });
 							@delete-file="emit('delete-file', $event)"
 						/>
 					</AgentPanel>
-					<AgentPanel :header="i18n.baseText('agents.builder.knowledge.advanced.title')">
+					<AgentMemoryEntriesPanel
+						v-if="!agentUnsaved"
+						v-model:show-all="isMemoryViewAll"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:disabled="childrenDisabled"
+					/>
+					<AgentPanel
+						v-if="!isMemoryViewAll"
+						:header="i18n.baseText('agents.builder.knowledge.advanced.title')"
+					>
 						<template #header="{ headerId }">
 							<button
 								:id="headerId"
@@ -519,11 +579,21 @@ defineExpose({ onSetupTaskAction });
 }
 
 .identityHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex-wrap: wrap;
 	box-sizing: border-box;
 	width: 100%;
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.chatFirst .identityContent {
+	flex-direction: column;
+	text-align: center;
+	gap: var(--spacing--xs);
 }
 
 .tabsRow {

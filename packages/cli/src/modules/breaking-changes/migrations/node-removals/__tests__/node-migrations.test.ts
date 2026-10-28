@@ -11,7 +11,12 @@ describe('nodeRemovalMigrations', () => {
 	});
 
 	it('keys every migration to a rule that exists', () => {
-		const known = new Set([...ruleIds, 'ai-transform-deprecated']);
+		const known = new Set([
+			...ruleIds,
+			'ai-transform-deprecated',
+			'edit-image-version-v3',
+			'agent-node-version-v3',
+		]);
 
 		for (const { ruleId } of nodeRemovalMigrations) {
 			expect(known, ruleId).toContain(ruleId);
@@ -27,6 +32,7 @@ describe('nodeRemovalMigrations', () => {
 			'read-binary-file-removed-v3',
 			'read-binary-files-removed-v3',
 			'http-request-tool-removed-v3',
+			'interval-removed-v3',
 			'openai-removed-v3',
 			'openai-assistant-removed-v3',
 			'openai-model-removed-v3',

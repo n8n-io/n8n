@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
@@ -9,9 +9,14 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+import {
+	useAgentTelemetry,
+	type AgentPreviewNewChatSource,
+} from '../composables/useAgentTelemetry';
 
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
@@ -46,6 +51,9 @@ const props = withDefaults(
 		localConfig: AgentJsonConfig | null;
 		connectedTriggers: string[];
 		isOpen: boolean;
+		inline?: boolean;
+		closable?: boolean;
+		placeholder?: string;
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
@@ -75,13 +83,28 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'message-sent': [];
 }>();
 
 const i18n = useI18n();
+const usageUpdates = ref<Record<string, AgentUsageUpdate>>({});
+
+function onUsageUpdated(update: AgentUsageUpdate) {
+	if (update.sessionId !== props.effectiveSessionId) return;
+	const previous = usageUpdates.value[update.executionId];
+	usageUpdates.value[update.executionId] = {
+		...update,
+		usage: update.usage ?? previous?.usage,
+	};
+	emit('usage-updated', usageUpdates.value[update.executionId]);
+}
+
+const agentTelemetry = useAgentTelemetry();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -92,7 +115,9 @@ const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
 const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 const layout = computed<PreviewLayout>(() =>
-	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
+	!props.inline && storedLayout.value === PreviewLayout.Fullpage
+		? PreviewLayout.Fullpage
+		: PreviewLayout.Docked,
 );
 
 function requestActiveSessionDeletion() {
@@ -122,7 +147,8 @@ function exportSession() {
 	});
 }
 
-function createNewSession() {
+function createNewSession(source: Exclude<AgentPreviewNewChatSource, 'standalone'>) {
+	agentTelemetry.trackClickedNewTestChat({ agentId: props.agentId, source });
 	emit('new-session');
 }
 
@@ -167,6 +193,7 @@ function handleEscapeKey(event: KeyboardEvent) {
 
 	if (
 		!props.isOpen ||
+		(props.inline && !props.closable) ||
 		dock.value?.contains(event.target as Node) !== true ||
 		(event.target instanceof Element && event.target.closest('[role="dialog"]') !== null)
 	) {
@@ -182,7 +209,7 @@ useKeybindings({
 	'ctrl+shift+;': {
 		allowInInputs: true,
 		disabled: () => !props.isOpen,
-		run: createNewSession,
+		run: () => createNewSession('shortcut'),
 	},
 });
 
@@ -192,7 +219,7 @@ defineExpose({ clearBudgetStops });
 <template>
 	<aside
 		ref="dock"
-		:class="[$style.dock, { [$style.open]: props.isOpen }]"
+		:class="[$style.dock, { [$style.open]: props.isOpen, [$style.inline]: props.inline }]"
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
@@ -219,6 +246,7 @@ defineExpose({ clearBudgetStops });
 					</AgentSessionHistoryDropdown>
 				</div>
 				<div :class="$style.actions">
+					<slot name="header-actions" />
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
 						:content="i18n.baseText('agents.builder.preview.viewSession')"
@@ -249,7 +277,7 @@ defineExpose({ clearBudgetStops });
 							icon-size="large"
 							:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
 							data-testid="agent-preview-new-chat-btn"
-							@click="createNewSession"
+							@click="createNewSession('test-panel')"
 						/>
 					</KeyboardShortcutTooltip>
 
@@ -261,14 +289,17 @@ defineExpose({ clearBudgetStops });
 						:can-delete-session="props.canDeleteSession"
 						:is-deleting-session="props.isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
+						:hide-layout-toggle="props.inline"
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
+						:usage-updates="usageUpdates"
 						@toggle-full-width="toggleFullWidth"
 						@export-session="exportSession"
 						@delete-session="requestActiveSessionDeletion"
 					/>
 					<KeyboardShortcutTooltip
+						v-if="!props.inline || props.closable"
 						placement="bottom"
 						:label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
@@ -289,6 +320,8 @@ defineExpose({ clearBudgetStops });
 			<AgentPreviewChatPage
 				ref="previewChatPage"
 				:visible="props.isOpen"
+				:placeholder="props.placeholder"
+				:composer-height="props.inline ? 'var(--agent-builder-composer-height)' : undefined"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"
@@ -304,11 +337,20 @@ defineExpose({ clearBudgetStops });
 				:budget-cards="props.budgetCards"
 				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@usage-updated="onUsageUpdated"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
-			/>
+				@message-sent="emit('message-sent')"
+			>
+				<template v-if="$slots['composer-start']" #composer-start>
+					<slot name="composer-start" />
+				</template>
+				<template v-if="$slots['composer-footer']" #composer-footer>
+					<slot name="composer-footer" />
+				</template>
+			</AgentPreviewChatPage>
 		</div>
 	</aside>
 </template>
@@ -354,6 +396,17 @@ defineExpose({ clearBudgetStops });
 		will-change: auto;
 	}
 }
+.inline {
+	.dockInner {
+		transform: none;
+		transition: none;
+		border-left: 0;
+	}
+	&:not(.open) {
+		visibility: hidden;
+	}
+}
+
 .fullpage {
 	width: 100%;
 	border-left: 0;

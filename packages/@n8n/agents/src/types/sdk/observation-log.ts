@@ -1,5 +1,6 @@
 import type { AgentExecutionCounter, TokenUsage } from './agent';
 import type { AgentDbMessage } from './message';
+import type { ObservationCursor } from './observation';
 import type { BuiltTelemetry } from '../telemetry';
 
 export const OBSERVATION_LOG_MARKERS = ['critical', 'important', 'info', 'completion'] as const;
@@ -40,6 +41,22 @@ export interface NewObservationLogEntry extends ObservationLogScope {
 	tokenCount?: number;
 	createdAt?: Date;
 }
+
+export interface ObservationLogBatchEntry {
+	marker: ObservationLogMarker;
+	text: string;
+	parentIndex: number | null;
+	tokenCount: number;
+	createdAt: Date;
+}
+
+export interface ObservationLogBatch extends ObservationLogScope {
+	expectedCursor: ObservationCursor | null;
+	nextCursor: ObservationCursor;
+	entries: ObservationLogBatchEntry[];
+}
+
+export type ObservationLogBatchCommitResult = 'committed' | 'stale';
 
 export interface ObservationLogReadOptions extends ObservationLogScope {
 	status?: ObservationLogStatus;
@@ -85,6 +102,8 @@ export interface ObservationLogObserverInput {
 	renderedObservationLogTail: string | null;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
 }
 
 /** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
@@ -114,6 +133,8 @@ export interface ObservationLogReflectorInput {
 	tokenBudget: number;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
 }
 
 export interface ObservationLogReflectResult {
@@ -145,6 +166,7 @@ export interface MemoryTaskUsageReport {
 }
 
 export interface BuiltObservationLogStore {
+	commitObservationLogBatch(batch: ObservationLogBatch): Promise<ObservationLogBatchCommitResult>;
 	appendObservationLogEntries(rows: NewObservationLogEntry[]): Promise<ObservationLogEntry[]>;
 	getActiveObservationLog(
 		scope: ObservationLogScope & { limit?: number; order?: 'asc' | 'desc' },

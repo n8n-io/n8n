@@ -13,10 +13,11 @@ import { ConflictError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
+	AssistantSkillsFlagGate,
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
-} from '@/modules/agents/skills/skill-name-taken.error';
-import { SkillsApiService } from '@/modules/agents/skills/skills-api.service';
+	SkillService,
+} from '@/modules/skills';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -38,7 +39,7 @@ const searchSkillsInput = {
 } satisfies z.ZodRawShape;
 
 const skillIdInput = {
-	skillId: z.string().min(1).describe('The skill ID from search_skills'),
+	skillId: z.string().min(1).describe('The skill ID from search_n8n_skills'),
 } satisfies z.ZodRawShape;
 
 const createSkillInput = {
@@ -47,16 +48,22 @@ const createSkillInput = {
 		.describe('project: one project can use the skill. instance: every project can use it'),
 	projectId: z.string().min(1).optional().describe('Required when scope is project'),
 	skill: CreateSkillDto.schema.shape.skill,
+	availableToAssistant: CreateSkillDto.schema.shape.availableToAssistant.describe(
+		'Allow the n8n Assistant to use this skill. Defaults to false.',
+	),
 } satisfies z.ZodRawShape;
 
 const updateSkillInput = {
 	...skillIdInput,
 	...SaveSkillDto.schema.shape,
+	availableToAssistant: SaveSkillDto.schema.shape.availableToAssistant.describe(
+		'Allow the n8n Assistant to use this instance or project skill. Changing only this setting keeps the content version.',
+	),
 	baseSkillHash: SaveSkillDto.schema.shape.baseSkillHash.describe(
 		'skillHash from get_skill. The update is refused if the skill changed since',
 	),
 	scope: SaveSkillDto.schema.shape.scope.describe(
-		'Moves the skill. Refused while an Agent uses it',
+		'Moves the skill. Refused if an Agent that uses the skill cannot use it in the new scope',
 	),
 } satisfies z.ZodRawShape;
 
@@ -64,7 +71,7 @@ type SearchSkillsInput = z.infer<z.ZodObject<typeof searchSkillsInput>>;
 type CreateSkillInput = z.infer<z.ZodObject<typeof createSkillInput>>;
 type UpdateSkillInput = z.infer<z.ZodObject<typeof updateSkillInput>>;
 
-function summary(item: SkillListItem) {
+function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 	return {
 		id: item.id,
 		name: item.name,
@@ -74,6 +81,7 @@ function summary(item: SkillListItem) {
 		projectName: item.projectName,
 		agentId: item.agentId,
 		agentName: item.agentName,
+		...(assistantSkillsEnabled ? { availableToAssistant: item.availableToAssistant } : {}),
 		latestVersion: item.latestVersion,
 		usedByAgents: item.usedByAgents,
 		canEdit: item.canEdit,
@@ -82,9 +90,9 @@ function summary(item: SkillListItem) {
 	};
 }
 
-function details(detail: SkillDetail) {
+function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
 	return {
-		...summary(detail),
+		...summary(detail, assistantSkillsEnabled),
 		skill: detail.skill,
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
@@ -95,17 +103,23 @@ function details(detail: SkillDetail) {
 export class McpSkillToolsService {
 	constructor(
 		private readonly telemetry: Telemetry,
-		private readonly skillsApi: SkillsApiService,
+		private readonly skillService: SkillService,
+		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 	) {}
 
-	registerTools(registerTool: RegisterToolFn, user: User): void {
+	async registerTools(registerTool: RegisterToolFn, user: User): Promise<void> {
+		const assistantSkillsEnabled = await this.assistantSkillsFlagGate.isEnabled();
+		const { availableToAssistant: _createAvailability, ...createWithoutAssistant } =
+			createSkillInput;
+		const { availableToAssistant: _updateAvailability, ...updateWithoutAssistant } =
+			updateSkillInput;
 		registerTool({
-			name: 'search_skills',
+			name: 'search_n8n_skills',
 			config: {
-				description: 'Search the skills hub. Skills are reusable instructions.',
+				description: 'Search skills. Skills are reusable instructions.',
 				inputSchema: searchSkillsInput,
 				annotations: {
-					title: 'Search Skills',
+					title: 'Search n8n Skills',
 					readOnlyHint: true,
 					destructiveHint: false,
 					idempotentHint: true,
@@ -113,8 +127,8 @@ export class McpSkillToolsService {
 				},
 			},
 			handler: async (input: SearchSkillsInput) =>
-				await this.run(user, 'search_skills', { scope: input.scope }, async () => {
-					const { count, data } = await this.skillsApi.list(
+				await this.run(user, 'search_n8n_skills', { scope: input.scope }, async () => {
+					const { count, data } = await this.skillService.list(
 						user,
 						ListSkillsQueryDto.parse({
 							search: input.query,
@@ -125,7 +139,7 @@ export class McpSkillToolsService {
 							take: String(input.limit),
 						}),
 					);
-					return { count, skills: data.map(summary) };
+					return { count, skills: data.map((item) => summary(item, assistantSkillsEnabled)) };
 				}),
 		});
 
@@ -145,15 +159,15 @@ export class McpSkillToolsService {
 			},
 			handler: async ({ skillId }) =>
 				await this.run(user, 'get_skill', { skillId }, async () =>
-					details(await this.skillsApi.get(user, skillId)),
+					details(await this.skillService.get(user, skillId), assistantSkillsEnabled),
 				),
 		});
 
 		registerTool({
 			name: 'create_skill',
 			config: {
-				description: 'Create a skill in the skills hub.',
-				inputSchema: createSkillInput,
+				description: 'Create a skill.',
+				inputSchema: assistantSkillsEnabled ? createSkillInput : createWithoutAssistant,
 				annotations: {
 					title: 'Create Skill',
 					readOnlyHint: false,
@@ -165,16 +179,17 @@ export class McpSkillToolsService {
 			handler: async (input: CreateSkillInput) =>
 				await this.run(user, 'create_skill', { scope: input.scope }, async () => {
 					try {
-						const detail = await this.skillsApi.create(
+						const detail = await this.skillService.create(
 							user,
 							CreateSkillDto.parse({
 								scope: input.scope,
 								projectId: input.projectId,
 								skill: input.skill,
+								availableToAssistant: input.availableToAssistant,
 							}),
 							'mcp',
 						);
-						return details(detail);
+						return details(detail, assistantSkillsEnabled);
 					} catch (error) {
 						if (!(error instanceof SkillNameTakenError)) throw error;
 						return {
@@ -190,8 +205,8 @@ export class McpSkillToolsService {
 			name: 'update_skill',
 			config: {
 				description:
-					'Update a skill. The update creates a new version of the skill. Pass only the fields to change.',
-				inputSchema: updateSkillInput,
+					'Update a skill. Content changes create a new version. Pass only the fields to change.',
+				inputSchema: assistantSkillsEnabled ? updateSkillInput : updateWithoutAssistant,
 				annotations: {
 					title: 'Update Skill',
 					readOnlyHint: false,
@@ -203,7 +218,7 @@ export class McpSkillToolsService {
 			handler: async ({ skillId, ...update }: UpdateSkillInput) =>
 				await this.run(user, 'update_skill', { skillId, scope: update.scope }, async () => {
 					try {
-						const { skill: _skill, ...saved } = await this.skillsApi.update(
+						const { skill: _skill, ...saved } = await this.skillService.update(
 							user,
 							skillId,
 							SaveSkillDto.parse(update),
@@ -220,7 +235,7 @@ export class McpSkillToolsService {
 							};
 						}
 						if (!(error instanceof ConflictError)) throw error;
-						const { skillHash } = await this.skillsApi.get(user, skillId);
+						const { skillHash } = await this.skillService.get(user, skillId);
 						if (skillHash === update.baseSkillHash) throw error;
 						return {
 							ok: false,
@@ -236,8 +251,7 @@ export class McpSkillToolsService {
 		registerTool({
 			name: 'delete_skill',
 			config: {
-				description:
-					'Permanently delete a skill from the skills hub. Refused while an Agent uses it.',
+				description: 'Permanently delete a skill. Refused while an Agent uses it.',
 				inputSchema: skillIdInput,
 				annotations: {
 					title: 'Delete Skill',
@@ -249,7 +263,7 @@ export class McpSkillToolsService {
 			},
 			handler: async ({ skillId }) =>
 				await this.run(user, 'delete_skill', { skillId }, async () => {
-					await this.skillsApi.delete(user, skillId, 'mcp');
+					await this.skillService.delete(user, skillId, 'mcp');
 					return { deleted: true, skillId };
 				}),
 		});

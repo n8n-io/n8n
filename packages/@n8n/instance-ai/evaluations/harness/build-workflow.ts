@@ -54,6 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
+import { restoreRecordedRuns } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -807,7 +808,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
-		// default) before the first message, so every build-workflow call inside
+		// default) before the first message, so every workflow_builder_build_workflow call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
 		// Shared with UserProxyLlm's mid-run credential creation (if any) so a
@@ -1020,6 +1021,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				throw new Error(
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
+			}
+			// Recorded runs replay exact history, so a failed restore is a harness fault:
+			// flag it like a seeding failure instead of grading the agent without its premise.
+			if (config.seed?.mode === 'inline' && config.seed.recordedRuns?.length) {
+				try {
+					await restoreRecordedRuns({
+						client,
+						threadId,
+						recordedRuns: config.seed.recordedRuns,
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw new Error(
+						`Seeding failed: recorded run restore: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
 			}
 			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
 			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
@@ -1336,7 +1356,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		// Same for a restored agent, without which a live turn that never calls
-		// `build-agent` would grade against no agent at all — so a seeded agent alone
+		// `agent_builder_build_agent` would grade against no agent at all — so a seeded agent alone
 		// marks the case agent-anchored.
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),

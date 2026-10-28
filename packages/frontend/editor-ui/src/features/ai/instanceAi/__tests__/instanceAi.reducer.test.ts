@@ -9,7 +9,7 @@ import {
 	createRunStateFromTree,
 } from '../instanceAi.reducer';
 import type { InstanceAiReducerState } from '../instanceAi.reducer';
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -455,12 +455,24 @@ describe('instanceAi.reducer', () => {
 	describe('tool execution', () => {
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
-			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
+			handleEvent(
+				state,
+				makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'workflow_builder_task_control'),
+			);
 
 			const tc = state.messages[0].agentTree!.toolCalls[0];
 			expect(tc.toolCallId).toBe('tc-1');
-			expect(tc.toolName).toBe('task-control');
+			expect(tc.toolName).toBe('workflow_builder_task_control');
 			expect(tc.isLoading).toBe(true);
+			expect(tc.renderHint).toBe('tasks');
+		});
+
+		test('tool-call stores the current name for a legacy builder tool name', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'task-control'));
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.toolName).toBe('workflow_builder_task_control');
 			expect(tc.renderHint).toBe('tasks');
 		});
 
@@ -538,6 +550,23 @@ describe('instanceAi.reducer', () => {
 	});
 
 	// Test live event dispatch, not only shared history replay.
+	it('adds a live skill update to the assistant timeline', () => {
+		const state = stateWithRun('run-1', 'agent-root');
+		const payload = {
+			skillId: 'hub:1',
+			name: 'Writing',
+			version: 'v2',
+			change: 'updated' as const,
+		};
+		handleEvent(state, { type: 'skill-update', runId: 'run-1', agentId: 'agent-root', payload });
+		const runState = state.runStateByGroupId.get('run-1');
+		expect(runState?.agentsById['agent-root'].timeline).toContainEqual({
+			type: 'skill-update',
+			runId: 'run-1',
+			...payload,
+		});
+	});
+
 	describe('instance context', () => {
 		const injected = {
 			injection: {
@@ -852,36 +881,67 @@ describe('instanceAi.reducer', () => {
 			expect(runState).toBeUndefined();
 		});
 
-		test('createRunStateFromTree preserves planItems', () => {
-			const runState = createRunStateFromTree({
+		test('createRunStateFromTree rewrites legacy builder tool names in a snapshot', () => {
+			const tree = {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed' as const,
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						renderHint: 'builder' as const,
+					},
+				],
+				children: [
+					{
+						agentId: 'agent-child',
+						role: 'agent-builder',
+						status: 'completed' as const,
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-2',
+								toolName: 'write_config',
+								args: {},
+								isLoading: false,
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				],
+				timeline: [],
+			};
+
+			const runState = createRunStateFromTree(tree);
+
+			expect(runState?.toolCallsById['tc-1']?.toolName).toBe('workflow_builder_build_workflow');
+			expect(tree.toolCalls[0].toolName).toBe('workflow_builder_build_workflow');
+			expect(tree.children[0].toolCalls[0].toolName).toBe('agent_builder_write_config');
+		});
+
+		test('createRunStateFromTree tolerates malformed collections in a snapshot', () => {
+			const tree = {
 				agentId: 'agent-root',
 				role: 'orchestrator',
 				status: 'completed',
 				textContent: '',
 				reasoning: '',
-				toolCalls: [],
-				children: [],
+				toolCalls: { broken: true },
+				children: [null, { agentId: 'agent-child', role: 'agent-builder', status: 'completed' }],
 				timeline: [],
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create the workflow',
-						deps: [],
-					},
-				],
-			});
+			} as unknown as InstanceAiAgentNode;
 
-			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
-				{
-					id: 'task-1',
-					title: 'Build workflow',
-					kind: 'build-workflow',
-					spec: 'Create the workflow',
-					deps: [],
-				},
-			]);
+			const runState = createRunStateFromTree(tree);
+
+			expect(runState?.agentsById['agent-root']?.toolCalls).toEqual([]);
+			expect(runState?.agentsById['agent-child']?.toolCalls).toEqual([]);
 		});
 	});
 
@@ -946,10 +1006,6 @@ describe('instanceAi.reducer', () => {
 
 		test('returns eval-setup for eval setup tool', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
-		});
-
-		test('returns planner render hint for create-tasks', () => {
-			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
 
 		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(

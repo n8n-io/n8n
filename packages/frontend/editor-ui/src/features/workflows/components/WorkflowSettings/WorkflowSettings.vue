@@ -201,6 +201,8 @@ const helpTexts = computed(() => ({
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
 	redactManualData: i18n.baseText('workflowSettings.helpTexts.redactManualData'),
+	redactCallerExecutions: i18n.baseText('workflowSettings.helpTexts.redactCallerExecutions'),
+	engineType: i18n.baseText('workflowSettings.helpTexts.engineType'),
 }));
 
 const defaultValues = ref({
@@ -211,6 +213,7 @@ const defaultValues = ref({
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
+	redactCallerExecutions: true,
 });
 
 const executionLogic = computed(() => {
@@ -253,6 +256,24 @@ const isDataRedactionLicensed = computed(
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
+const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
+
+const engineTypeOptions = computed(() => [
+	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
+	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
+]);
+
+// The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
+// value only when the user selects an option.
+const engineType = computed({
+	get(): 'v1' | 'v2' {
+		return workflowSettings.value.engineType ?? 'v1';
+	},
+	set(value: 'v1' | 'v2') {
+		workflowSettings.value.engineType = value;
+	},
+});
+
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
@@ -287,6 +308,14 @@ const manualRedactionLockReason = computed(() =>
 
 const isProductionRedactionLocked = computed(() => productionRedactionLockReason.value !== null);
 const isManualRedactionLocked = computed(() => manualRedactionLockReason.value !== null);
+
+// Turning the setting off lowers redaction, and turning it on raises it.
+const isCallerRedactionLocked = computed(() => {
+	if (!isDataRedactionLicensed.value) return false;
+	return workflowSettings.value.redactCallerExecutions !== false
+		? !projectPermissions.value.workflow.disableRedaction
+		: !projectPermissions.value.workflow.enableRedaction;
+});
 
 const redactionMembersModalOpen = ref(false);
 
@@ -342,6 +371,11 @@ const redactManualData = computed({
 		}
 	},
 });
+
+// Only a workflow that redacts a channel has redaction to pass to its callers.
+const isCallerRedactionSettingVisible = computed(
+	() => redactProductionData.value === 'redact' || redactManualData.value === 'redact',
+);
 
 // Workflow-level invariant: manual redaction requires production redaction
 // (mirrors the instance-level "production-only or production+manual" rule).
@@ -814,6 +848,11 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
+const toggleRedactCallerExecutions = () => {
+	workflowSettings.value.redactCallerExecutions =
+		workflowSettings.value.redactCallerExecutions === false;
+};
+
 const updateTimeSavedPerExecution = (value: number | null | undefined) => {
 	const numValue = typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : NaN;
 	workflowSettings.value.timeSavedPerExecution = Number.isNaN(numValue)
@@ -934,6 +973,9 @@ onMounted(async () => {
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
+	if (workflowSettingsData.redactCallerExecutions === undefined) {
+		workflowSettingsData.redactCallerExecutions = defaultValues.value.redactCallerExecutions;
+	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
@@ -1017,6 +1059,33 @@ onBeforeUnmount(() => {
 				:class="$style['workflow-settings']"
 				data-test-id="workflow-settings-dialog"
 			>
+				<ElRow v-if="isEngineTypeSettingVisible" data-test-id="workflow-settings-engine-type">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.engineType') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.engineType"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="engineType"
+							size="medium"
+							:disabled="isWorkflowSettingsReadOnly"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-engine-type-select"
+						>
+							<N8nOption
+								v-for="option in engineTypeOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							/>
+						</N8nSelect>
+					</ElCol>
+				</ElRow>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
@@ -1024,7 +1093,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="executionLogic"
-							placeholder="Select Execution Order"
+							:placeholder="i18n.baseText('workflowSettings.executionLogic.placeholder')"
 							size="medium"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1060,7 +1129,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.errorWorkflow"
-							placeholder="Select Workflow"
+							:placeholder="i18n.baseText('workflowSettings.errorWorkflow.placeholder')"
 							filterable
 							remote
 							:remote-method="debouncedLoadWorkflows"
@@ -1220,7 +1289,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.timezone"
-							placeholder="Select Timezone"
+							:placeholder="i18n.baseText('workflowSettings.timezone.placeholder')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
@@ -1558,6 +1627,66 @@ onBeforeUnmount(() => {
 									>
 									</N8nOption>
 								</N8nSelect>
+							</N8nTooltip>
+						</ElCol>
+					</ElRow>
+					<ElRow
+						v-if="isCallerRedactionSettingVisible"
+						data-test-id="workflow-settings-redact-caller-executions-row"
+					>
+						<ElCol
+							:span="10"
+							:class="[
+								$style['setting-name'],
+								{
+									[$style['setting-name--disabled']]:
+										!isDataRedactionLicensed || isCallerRedactionLocked,
+								},
+							]"
+						>
+							{{ i18n.baseText('workflowSettings.redactCallerExecutions') }}
+							<N8nIcon
+								v-if="isCallerRedactionLocked"
+								icon="lock"
+								size="xsmall"
+								style="opacity: 1"
+							/>
+							<N8nTooltip placement="top">
+								<template #content>
+									<div>
+										{{ helpTexts.redactCallerExecutions }}
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-caller-executions-docs-link"
+										>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14">
+							<N8nTooltip :disabled="!isCallerRedactionLocked" :enterable="true" placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
+									<span
+										:class="$style['permission-notice-link']"
+										@click="redactionMembersModalOpen = true"
+										>{{
+											i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
+										}}</span
+									>
+								</template>
+								<ElSwitch
+									:disabled="!isDataRedactionLicensed || readOnlyEnv || isCallerRedactionLocked"
+									:label="i18n.baseText('workflowSettings.redactCallerExecutions')"
+									:model-value="workflowSettings.redactCallerExecutions !== false"
+									data-test-id="workflow-settings-redact-caller-executions"
+									@update:model-value="toggleRedactCallerExecutions"
+								></ElSwitch>
 							</N8nTooltip>
 						</ElCol>
 					</ElRow>

@@ -15,10 +15,9 @@ import {
 	NodeOperationError,
 	removeCircularRefs,
 	NodeConnectionTypes,
+	sleepUnlessExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
-
-import { sleep } from '@n8n/utils/sleep';
 
 import { applyTemplatedAuth } from '@utils/templated-auth';
 
@@ -795,7 +794,7 @@ export class HttpRequestV2 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await sleep(options.batchInterval as number);
+					await sleepUnlessExecutionCancelled(this, options.batchInterval as number);
 				}
 			}
 
@@ -807,6 +806,7 @@ export class HttpRequestV2 implements INodeType {
 				uri: url,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+				sendCredentialsOnCrossOriginRedirect: true,
 				allowedDomains,
 			};
 
@@ -1006,8 +1006,8 @@ export class HttpRequestV2 implements INodeType {
 					}
 				}
 			} else if (options.bodyContentType === 'raw') {
+				// Read the body as text. It is parsed below, and nothing here consumes a stream.
 				requestOptions.json = false;
-				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}

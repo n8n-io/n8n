@@ -17,6 +17,7 @@ _START_PACKAGE
 .env
 .env.local
 .env.eval
+.env.ai-surfaces
 .vscode/*
 !.claude
 !.vscode/extensions.json

@@ -1,8 +1,8 @@
+import { createWorkflowToolRouter } from '../../__tests__/workflow-tools-test-utils';
 import { parseWorkflowCodeToBuilder, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
-import { createWorkflowsTool } from '../../workflows.tool';
 
 /**
  * The regression behind INS-970 / INS-1120 / INS-1179 is a round trip, not agent behaviour:
@@ -74,7 +74,7 @@ function rebuild(code: string): WorkflowJSON {
 }
 
 async function getAsCode(): Promise<string> {
-	const tool = createWorkflowsTool(createContext());
+	const tool = createWorkflowToolRouter(createContext());
 	// A versionId keeps this a historical read, which skips the source-file binding refresh
 	// and its thread-metadata plumbing — irrelevant to the round trip under test.
 	const result = await executeTool<{ code: string; error?: string }>(

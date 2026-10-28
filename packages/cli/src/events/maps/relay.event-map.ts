@@ -2,7 +2,13 @@ import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	EnvironmentsVersion,
 	ProjectRelation,
+	PromotionDirection,
+	PromotionEnvironmentScope,
+	PromotionProviderAuthType,
+	PromotionProviderType,
+	PromotionReviewType,
 	RedactionFloor,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
@@ -20,6 +26,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { PromotionFailureKind } from '@/modules/promotions.ee/promotion-telemetry';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	CredentialExportPolicy,
@@ -137,6 +144,7 @@ export type RelayEventMap = {
 		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
+		agentIds: string[];
 		options: ImportPackageEventOptions;
 		packageSourceId: string;
 		packageVersion: string;
@@ -226,7 +234,8 @@ export type RelayEventMap = {
 
 	'workflow-pre-execute': {
 		executionId: string;
-		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		userId?: string;
+		data: IWorkflowBase;
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
@@ -364,6 +373,12 @@ export type RelayEventMap = {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
+	};
+
+	'user-login-email-conflict': {
+		user: UserLike;
+		authenticationMethod: AuthenticationMethod;
+		assertedEmail: string;
 	};
 
 	'user-changed-role': {
@@ -751,6 +766,11 @@ export type RelayEventMap = {
 		connectionType: 'ssh' | 'https';
 	};
 
+	'source-control-environments-version-switched': {
+		userId: string;
+		version: EnvironmentsVersion;
+	};
+
 	'source-control-user-started-pull-ui': {
 		userId?: string;
 		workflowUpdates: number;
@@ -939,6 +959,17 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	/**
+	 * SAML or OIDC sign-in turned off: the authentication method changed from
+	 * that protocol to email. A switch from one protocol to the other keeps
+	 * single sign-on on and does not emit this event.
+	 */
+	'sso-login-disabled': {
+		protocol: 'saml' | 'oidc';
+		/** SCIM provisioning was on when sign-in turned off. SCIM turns off with it. */
+		scimWasEnabled: boolean;
+	};
+
 	// #endregion
 
 	// #region Role Mapping
@@ -1121,6 +1152,38 @@ export type RelayEventMap = {
 		mode: 'internal' | 'external';
 	};
 
+	'memory-guard-hold-started': {
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+	};
+
+	'memory-guard-hold-ended': {
+		heldMs: number;
+	};
+
+	/** Crashed sessions so far, by the strongest guard action before each crash. */
+	'memory-guard-crashes-counted': {
+		crashes: Record<'none' | 'hold' | 'stop', number>;
+	};
+
+	'memory-guard-workflow-deactivated': {
+		workflowId: string;
+	};
+
+	'memory-guard-execution-stopped': {
+		executionId: string;
+		workflowId: string;
+		mode: WorkflowExecuteMode;
+		reason: 'threshold' | 'critical' | 'hold-limit';
+		runningNodeType: string | undefined;
+		largestDataNodeType: string | undefined;
+		estimatedBytes: number;
+		memoryUsedBytes: number;
+		memoryLimitBytes: number;
+		freedMemory: boolean;
+		workflowDeactivationStarted: boolean;
+	};
+
 	// #endregion
 
 	// #region queue
@@ -1210,7 +1273,8 @@ export type RelayEventMap = {
 					| '2fa_enforcement'
 					| 'workflow_publishing'
 					| 'workflow_sharing'
-					| 'workflow_reviews';
+					| 'workflow_reviews'
+					| 'public_api_rate_limit';
 				value: boolean;
 		  }
 		| {
@@ -1282,6 +1346,130 @@ export type RelayEventMap = {
 	'workflow-review-comment-created': {
 		user: UserLike;
 		workflowReviewRequestId: string;
+	};
+
+	// #endregion
+
+	// #region Promotions
+
+	'promotion-provider-created': {
+		user: UserLike;
+		/** Set when the outcome is 'success'. */
+		providerId?: string;
+		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		outcome: 'success' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-environment-created': {
+		user: UserLike;
+		environmentId: string;
+		providerType: PromotionProviderType;
+		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
+		/** Promote environments only. */
+		createBranchOnPromotion?: boolean;
+	};
+
+	'promotion-provider-updated': {
+		user: UserLike;
+		providerId: string;
+		providerType: PromotionProviderType;
+		/** The fields the request sent, never their values. */
+		changedFields: Array<'name' | 'auth' | 'config'>;
+		outcome: 'success' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-provider-deleted': {
+		user: UserLike;
+		providerId: string;
+		providerType: PromotionProviderType;
+	};
+
+	'promotion-environment-updated': {
+		user: UserLike;
+		environmentId: string;
+		direction: PromotionDirection;
+		/** The fields the request sent, never their values. */
+		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
+	};
+
+	'promotion-environment-deleted': {
+		user: UserLike;
+		environmentId: string;
+		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
+	};
+
+	'promotion-environment-connected': {
+		user: UserLike;
+		environmentId: string;
+		direction: PromotionDirection;
+		outcome: 'success' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-promoted': {
+		user: UserLike;
+		environmentId: string;
+		scope: 'instance' | 'project';
+		projectId?: string;
+		outcome: 'success' | 'success_with_warnings' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+		/** Set when the outcome is not 'failed'. */
+		counts?: {
+			workflows: number;
+			folders: number;
+			credentials: number;
+			dataTables: number;
+			variables: number;
+			tags: number;
+		};
+		/** Project scope only. */
+		selectedWorkflowCount?: number;
+		/** Set when the outcome is not 'failed'. */
+		openedReview?: boolean;
+	};
+
+	'promotion-applied': {
+		user: UserLike;
+		environmentId: string;
+		scope: 'instance' | 'project';
+		projectId?: string;
+		outcome: 'applied' | 'blocked' | 'source_changed' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+		/** Set when the outcome is 'applied'. */
+		workflowsChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		workflowsFailedToPublish?: number;
+	};
+
+	'promotion-merge-request-opened': {
+		user: UserLike;
+		environmentId: string;
+		reviewType: PromotionReviewType;
+		/** As GitLab reports it when the merge request opens. */
+		hasConflicts: boolean;
+	};
+
+	'promotion-review-approved': {
+		user: UserLike;
+		reviewId: string;
+		/** Null when the environment was deleted after the review opened. */
+		environmentId: string | null;
+		reviewType: PromotionReviewType;
+		/** Time from the review opening to this approval. */
+		reviewAgeMs: number;
+		outcome: 'merged' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
 	};
 
 	// #endregion

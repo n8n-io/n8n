@@ -239,6 +239,36 @@ describe('V1WorkflowConverter', () => {
 		});
 	});
 
+	describe('a non-trigger root', () => {
+		//  ┌───────┐    ┌───┐    ┌───┐
+		//  │trigger├───►│ A ├───►│ B │
+		//  └───────┘    └───┘    └───┘
+		//                 ▲ root
+		const wf = workflow({
+			nodes: [manualTrigger, node('a-uuid', 'A'), node('b-uuid', 'B')],
+			connections: {
+				[manualTrigger.name]: { main: [[main('A')]] },
+				A: { main: [[main('B')]] },
+			},
+		});
+
+		it('is refused by default', () => {
+			expect(() => converter.convert(wf, 'A')).toThrow(NotATriggerError);
+		});
+
+		it('becomes the trigger step when allowed, and the real trigger is left out', () => {
+			const graph = converter.convert(wf, 'A', { allowNonTriggerRoot: true });
+
+			expect(graph.nodes.map(({ id, type }) => ({ id, type }))).toEqual([
+				{ id: 'a-uuid', type: 'trigger' },
+				{ id: 'b-uuid', type: 'v1-node' },
+			]);
+			expect(graph.edges).toEqual([
+				{ from: 'a-uuid', to: 'b-uuid', outputIndex: 0, inputIndex: 0 },
+			]);
+		});
+	});
+
 	describe('v1 nodes', () => {
 		it('maps a regular node to a v1-node step carrying its config', () => {
 			const graph = converter.convert(

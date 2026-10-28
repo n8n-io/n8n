@@ -11,6 +11,13 @@ carry it through all four layers below.** A property that stops at the module
 is invisible to public-API and CLI users — and an out-of-date OpenAPI spec or
 CLI flag is a silent bug, not a compile error.
 
+One exception: a policy that only promotions needs can stop at
+`ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy` and
+`tagConflictPolicy`. The public selection import keeps the fixed default.
+When the full directory import (`importPackageFromDirectory`) needs it too,
+declare it on an internal type such as `PromotionLayoutProperties`, never
+on `ImportRequest`.
+
 ```mermaid
 flowchart LR
   M["1. Module<br/>(this package)"] --> D["2. DTO<br/>@n8n/api-types"]
@@ -37,6 +44,19 @@ flowchart LR
   bring each one's own folders + workflows + credential deps into scope. Don't split folder vs workflow:
   they share target resolution, credential resolution, and publishing.
 
+### Plan and write are separate steps
+- `ProjectPackageImporter.import` is `planImport` + throw on issues + `applyPlan`. `planImport`
+  writes no data. It returns every issue that blocks the import, and `applyPlan` writes a plan
+  without issues. `N8nPackagesService.planPackage`, `planPackageSelection` and
+  `applyPackagePlan` expose the two steps to promotions, which previews an Apply with the
+  same plan that the Apply writes.
+- `mode: 'check'` makes the policy gates call `evaluate*`, so a preview writes no audit event.
+  A policy check that cannot run becomes the issue `policy-check-failed`. The refusals that an
+  import reports as an error (project permission, a column id of another data table) become
+  issues too. `mode: 'enforce'` keeps the import's errors as they are.
+- A new gate returns issues. Throw only for API-key scopes and malformed packages. Two older
+  checks still throw in both modes: the folder license and `assertCanPublish`.
+
 ### Adding an IMPORT property
 
 1. **Module** (here)
@@ -44,7 +64,7 @@ flowchart LR
      (or `ImportWorkflowProperties` / `ImportCredentialProperties`). For a new
      enum, add a `XxxPolicy` / `XxxMode` const **and** its derived type
      (follow `WorkflowIdPolicy`). New single-value modes are RFC seams — keep
-     the function-table convention (`workflow-conflict-policy.ts` etc.), don't
+     the function-table convention (`import-conflict-policy.ts` etc.), don't
      add handler classes for pure logic.
    - Implement the behaviour (e.g. `entities/workflow/workflow-importer.ts`)
      and thread it through `n8n-packages.service.ts` `importPackage`.
@@ -76,8 +96,8 @@ flowchart LR
 4. **CLI** — `src/client.ts` `exportPackage(...)`,
    `src/commands/package/export.ts` flag, and the docs/README.
 
-## Reference: the `workflowIdPolicy` change
+## Reference: the `idPolicy` change
 
-The in-tree addition of `workflowIdPolicy` is the canonical example — it landed
+The in-tree addition of `idPolicy` is the canonical example — it landed
 in the module types + importer, the DTO (+ form-fields list), the handler, and
-the CLI. Grep `workflowIdPolicy` to see every site a new import knob must touch.
+the CLI. Grep `idPolicy` to see every site a new import knob must touch.

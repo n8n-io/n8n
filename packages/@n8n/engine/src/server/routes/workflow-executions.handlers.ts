@@ -33,13 +33,18 @@ const ExecutionStatusSchema = z.enum([
 	'cancelled',
 ]);
 
+/** Which executions a search matches. The search body adds the paging. */
+const ExecutionFilterShape = {
+	workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
+	status: z.array(ExecutionStatusSchema).min(1).optional(),
+	hostMode: z.string().min(1).max(32).optional(),
+	createdAfter: datetimeStringWithOffset().optional(),
+	createdBefore: datetimeStringWithOffset().optional(),
+};
+
 const SearchExecutionsBody = z
 	.object({
-		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
-		status: z.array(ExecutionStatusSchema).min(1).optional(),
-		hostMode: z.string().min(1).max(32).optional(),
-		createdAfter: datetimeStringWithOffset().optional(),
-		createdBefore: datetimeStringWithOffset().optional(),
+		...ExecutionFilterShape,
 		before: z
 			.object({ createdAt: datetimeStringWithOffset(), id: z.string().uuid() })
 			.strict()
@@ -75,6 +80,31 @@ export function createSearchExecutionsHandler(
 	};
 }
 
+/**
+ * `strict`, so a paging key is refused rather than stripped: the body names
+ * one execution, and a `limit` or `before` would otherwise read as honored.
+ */
+const FindLatestExecutionBody = z.object(ExecutionFilterShape).strict();
+
+/** The newest match, with its steps, as `GET /:id?includeSteps=true` reports it. */
+export function createFindLatestExecutionHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = FindLatestExecutionBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		const execution = await executionQuery.findLatestExecutionWithSteps(parsed.data);
+		if (!execution) {
+			fail(res, 404, { error: 'not_found' });
+			return;
+		}
+		res.status(200).json(toExecutionSnapshot(execution));
+	};
+}
+
 /** The validated `:id`, or `null` once the 400 has been sent. */
 function parseExecutionId(req: Request, res: Response): string | null {
 	const parsed = ExecutionIdParams.safeParse(req.params);
@@ -83,7 +113,9 @@ function parseExecutionId(req: Request, res: Response): string | null {
 	return null;
 }
 
-function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): ExecutionSnapshot {
+export function toExecutionSnapshot(
+	record: ExecutionView | ExecutionWithStepsView,
+): ExecutionSnapshot {
 	return {
 		id: record.id,
 		workflowId: record.workflowId,

@@ -1,5 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import {
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { McpToolCallResult } from '@n8n/api-types';
 import { N8nAiActivityStepResultSection } from '@n8n/design-system';
 import { isRecord } from '@n8n/utils/is-record';
@@ -20,8 +25,12 @@ const props = defineProps<{
 type ResultType = 'content' | 'code' | 'table' | 'json';
 type McpContentItem = McpToolCallResult['content'][number];
 
+function resolvedToolName(): string {
+	return resolveBuilderToolName(props.toolName, props.toolArgs?.action);
+}
+
 function isAction(family: string, action: string): boolean {
-	return props.toolName === family && props.toolArgs?.action === action;
+	return resolveBuilderToolName(props.toolName) === family && props.toolArgs?.action === action;
 }
 
 function normalizeImageContentItem(item: Record<string, unknown>): McpContentItem | null {
@@ -94,18 +103,24 @@ function normalizeContentItems(items: unknown[]): McpContentItem[] | null {
 }
 
 function isCodeTool(): boolean {
-	return isAction('workflows', 'get-as-code') || isAction('nodes', 'type-definition');
+	return (
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE ||
+		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition') ||
+		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES
+	);
 }
 
 function isTableTool(): boolean {
 	return (
-		isAction('data-tables', 'query') ||
-		isAction('workflows', 'list') ||
-		isAction('executions', 'list') ||
-		isAction('credentials', 'list') ||
-		isAction('nodes', 'search') ||
-		isAction('nodes', 'list') ||
-		isAction('data-tables', 'list')
+		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS ||
+		isAction(WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS, 'list') ||
+		resolveBuilderToolName(props.toolName, props.toolArgs?.action) ===
+			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS ||
+		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'search') ||
+		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'list') ||
+		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'list')
 	);
 }
 
@@ -136,10 +151,17 @@ function extractCode(result: unknown): string | null {
 	if (!result || typeof result !== 'object') return null;
 	const obj = result as Record<string, unknown>;
 
-	if (isAction('workflows', 'get-as-code') && typeof obj.code === 'string') {
+	if (
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE &&
+		typeof obj.code === 'string'
+	) {
 		return obj.code;
 	}
-	if (isAction('nodes', 'type-definition') && Array.isArray(obj.definitions)) {
+	if (
+		(isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition') ||
+			resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) &&
+		Array.isArray(obj.definitions)
+	) {
 		const defs = obj.definitions as Array<Record<string, unknown>>;
 		return defs
 			.filter((d) => typeof d.content === 'string')

@@ -11,6 +11,11 @@ import { EditorEnabledFeaturesKey, VIEWS } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import {
+	describeSubWorkflowRestriction,
+	useSubWorkflowRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 import CanvasNodeStatusMark from './CanvasNodeStatusMark.vue';
 const {
 	size = 'large',
@@ -35,12 +40,24 @@ const {
 	hasRunData,
 	runDataIterations,
 	isDisabled,
+	isReadOnly,
 	render,
 	isNotInstalledCommunityNode,
 	isRestricted,
 	restrictionScope,
+	isDeprecated,
+	deprecatedReplacementName,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
+
+const deprecatedTooltip = computed(() =>
+	deprecatedReplacementName.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: deprecatedReplacementName.value },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const needsCredentialSetup = computed(() => {
@@ -62,6 +79,19 @@ const needsCredentialSetup = computed(() => {
 		return !credential?.id && !credential?.__aiGatewayManaged;
 	});
 });
+const { labelOf } = usePolicyViolationLabels();
+const { restriction: subWorkflowRestriction } = useSubWorkflowRestriction({
+	parentWorkflowId: () => workflowDocumentStore.value.workflowId,
+	node: () => workflowDocumentStore.value.getNodeById(id.value),
+	// The check is gated like the sub-workflow picker, so a viewer would only get a 403.
+	enabled: () =>
+		!isReadOnly.value && workflowDocumentStore.value.scopes.includes('workflow:update'),
+});
+const subWorkflowRestrictionLines = computed(() =>
+	subWorkflowRestriction.value
+		? describeSubWorkflowRestriction(subWorkflowRestriction.value, labelOf)
+		: [],
+);
 const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeId.get(id.value)?.value ?? [],
 );
@@ -151,6 +181,16 @@ const groupedExecutionErrors = computed(() => {
 		</N8nTooltip>
 	</div>
 	<div
+		v-else-if="isDeprecated"
+		:class="[...commonClasses, $style.deprecated]"
+		data-test-id="canvas-node-status-deprecated"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ deprecatedTooltip }} </template>
+			<N8nIcon icon="triangle-alert" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
 		v-else-if="hasValidationErrors && !hideNodeIssues"
 		:class="[...commonClasses, needsCredentialSetup ? $style.warning : $style.issues]"
 		:data-test-id="needsCredentialSetup ? 'node-setup-required' : 'node-issues'"
@@ -163,6 +203,21 @@ const groupedExecutionErrors = computed(() => {
 				/>
 			</template>
 			<N8nIcon :icon="needsCredentialSetup ? 'key-round' : 'node-validation-error'" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="subWorkflowRestriction"
+		:class="[...commonClasses, $style.warning]"
+		data-test-id="node-sub-workflow-restricted"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<TitledList
+					:title="subWorkflowRestrictionLines[0]"
+					:items="subWorkflowRestrictionLines.slice(1)"
+				/>
+			</template>
+			<N8nIcon icon="triangle-alert" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -240,6 +295,10 @@ const groupedExecutionErrors = computed(() => {
 		background-color: rgba(255, 255, 255, 0.82);
 		border-radius: var(--radius--lg);
 	}
+}
+
+.deprecated {
+	color: var(--color--danger);
 }
 
 .issues {

@@ -76,7 +76,7 @@ export const Destructive = {
 		},
 		template: `
 		<div>
-			<N8nButton label="Delete" variant="danger" @click="isOpen = true" />
+			<N8nButton label="Delete" variant="destructive" @click="isOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isOpen"
 				title="Delete item?"
@@ -189,7 +189,7 @@ export const Variants = {
 				action-variant="solid"
 			/>
 
-			<N8nButton label="Destructive" variant="danger" @click="isDestructiveOpen = true" />
+			<N8nButton label="Destructive" variant="destructive" @click="isDestructiveOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isDestructiveOpen"
 				title="Delete item?"

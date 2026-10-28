@@ -17,11 +17,13 @@ import type {
 } from '@n8n/agents';
 import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	getNativeWebSearchProviderTools,
 	getProviderPrefix,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
+	isRoutedAnthropicModel,
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -42,14 +44,15 @@ import {
 	resolveEmbeddingProviderOptionsFromCredential,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
-} from './embedding-credential';
+} from '@/modules/knowledge/vector-stores/embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
 import {
 	resolveWebSearchGatewayProxyConfig,
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
-import { buildVectorStore } from './vector-store-factory';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
+import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
@@ -146,6 +149,44 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
+	/** Called when each vector store search starts. The returned function gets the size of the output that the model gets. */
+	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
+}
+
+function countVectorStoreSearches(
+	searchTool: BuiltTool,
+	onVectorStoreSearch: (runId: string | undefined) => FinishKnowledgeToolCall,
+): BuiltTool {
+	const searchHandler = searchTool.handler;
+	if (!searchHandler) {
+		return searchTool;
+	}
+
+	return {
+		...searchTool,
+		async handler(input, ctx) {
+			const finishSearch = onVectorStoreSearch(ctx.runId);
+			const startedAt = Date.now();
+			let output: unknown;
+			try {
+				output = await searchHandler.call(searchTool, input, ctx);
+			} catch (error) {
+				const errorType = error instanceof Error ? error.name : typeof error;
+				finishSearch({ failed: true, searchDurationMs: Date.now() - startedAt, errorType });
+				throw error;
+			}
+
+			const searchDurationMs = Date.now() - startedAt;
+
+			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
+			const json: string | undefined = JSON.stringify(modelOutput);
+			const contentChars = json?.length ?? 0;
+			const emptySearch =
+				isRecord(output) && Array.isArray(output.results) && output.results.length === 0;
+			finishSearch({ failed: false, contentChars, searchDurationMs, emptySearch });
+			return output;
+		},
+	};
 }
 
 /**
@@ -213,7 +254,12 @@ export async function buildFromJson(
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
 			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
-			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+			const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
+			agent.tool(
+				options.onVectorStoreSearch
+					? countVectorStoreSearches(searchTool, options.onVectorStoreSearch)
+					: searchTool,
+			);
 		}
 	}
 
@@ -253,15 +299,19 @@ export async function buildFromJson(
 		if (config.config.reasoning) {
 			agent.reasoning(config.config.reasoning);
 		}
-		if (config.config.promptCaching) {
-			agent.promptCaching(config.config.promptCaching);
-		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}
 		if (config.config.maxIterations) {
 			agent.configuration({ maxIterations: config.config.maxIterations });
 		}
+	}
+
+	if (config.config?.promptCaching) {
+		agent.promptCaching(config.config.promptCaching);
+	} else if (isRoutedAnthropicModel(config.model)) {
+		// Existing agents receive the cache default without a config update.
+		agent.promptCaching({ enabled: true });
 	}
 
 	return agent;
@@ -363,7 +413,7 @@ function buildFallbackWebSearchTool(
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, searchOptions);
+				return await braveSearch(credential.apiKey, args.query, searchOptions, webSearchFetch);
 			}
 
 			// SearXNG is self-hosted, so it has no gateway-served managed path.
@@ -620,6 +670,7 @@ async function resolveEpisodicMemoryJsonConfig(
 		}),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		...(config.guidance !== undefined && { guidance: config.guidance }),
 		embeddingProviderOptions,
 	};
 }
@@ -634,7 +685,6 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
-		config.modelDeploymentName,
 	);
 }
 

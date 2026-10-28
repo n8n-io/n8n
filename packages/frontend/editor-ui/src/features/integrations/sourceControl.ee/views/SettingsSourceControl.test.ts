@@ -11,6 +11,11 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { nextTick } from 'vue';
 
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual<object>('vue-router')),
+	useRouter: () => ({ push: vi.fn() }),
+}));
+
 let pinia: ReturnType<typeof createPinia>;
 let server: ReturnType<typeof setupServer>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -68,6 +73,23 @@ describe('SettingsSourceControl', () => {
 		expect(getByTestId('source-control-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('source-control-content-unlicensed')).not.toBeInTheDocument();
 		expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument();
+	});
+
+	it('offers the switch to the new Environments only when promotions are available', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
+
+		const withoutPromotions = renderComponent({ pinia });
+		expect(withoutPromotions.queryByTestId('source-control-switch-to-v2')).not.toBeInTheDocument();
+		withoutPromotions.unmount();
+
+		settingsStore.settings.activeModules = ['promotions'];
+		settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: 'true' };
+		await nextTick();
+
+		expect(
+			renderComponent({ pinia }).getByTestId('source-control-switch-to-v2'),
+		).toBeInTheDocument();
 	});
 
 	it('should disable the connection form while preferences are loading', async () => {

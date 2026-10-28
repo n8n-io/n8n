@@ -11,6 +11,11 @@ export {
 export const AGENTS_MODULE_NAME = 'agents';
 export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
+export const AGENT_MIN_PANEL_WIDTH = 320;
+export const AGENT_MAX_PANEL_WIDTH = 720;
+export const AGENT_DEFAULT_PANEL_WIDTH = 480;
+export const AGENT_DEFAULT_PANEL_WIDTH_RATIO = 0.3;
+
 /** The shared "chat with a published agent over n8n Chat" screen. */
 export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
 
@@ -32,6 +37,7 @@ export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
+export const AGENT_VERSION_METADATA_MODAL_KEY = 'agentVersionMetadata';
 export const AGENT_PUBLISHED_MODAL_KEY = 'agentPublished';
 export const AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY = 'agentUnpublishedWorkflows';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
@@ -44,6 +50,13 @@ export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
  */
 export const LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION =
 	'N8N_HIDE_AGENT_PUBLISHED_CONFIRMATION';
+
+/** One-time n8n Chat hint popovers: set to `'true'` once the user dismisses the hint. */
+export const N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS = {
+	channel_chip: 'N8N_AGENTS_N8N_CHAT_HINT_CHANNEL_CHIP_DISMISSED',
+	new_chat_sidebar: 'N8N_AGENTS_N8N_CHAT_HINT_NEW_CHAT_SIDEBAR_DISMISSED',
+} as const;
+
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */

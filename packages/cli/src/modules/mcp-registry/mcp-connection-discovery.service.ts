@@ -14,16 +14,19 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
 import { OauthService } from '@/oauth/oauth.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import type { AuthFetchDomainPolicy } from '@/utils/auth-fetch';
 
 import { createMcpAuthFetch } from './mcp-auth-fetch';
+import { findUsableMcpCredential } from './mcp-credential-access';
 import {
+	findAiGatewayCredentialType,
 	getConfiguredEndpointUrl,
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -115,6 +118,7 @@ export class McpConnectionDiscoveryService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('mcp-registry');
 	}
@@ -190,6 +194,9 @@ export class McpConnectionDiscoveryService {
 		}
 		const connection = resolveMcpRegistryConnection(server);
 		if (!connection) throw new BadRequestError('MCP registry server has no supported connection');
+		if ('aiGateway' in source) {
+			return await this.prepareAiGatewaySource(user, source.slug, connection);
+		}
 
 		const resolvedCredential = await this.resolveCredential(user, source.credentialId);
 		const { credential, data } = resolvedCredential;
@@ -227,43 +234,75 @@ export class McpConnectionDiscoveryService {
 		};
 	}
 
+	/** Gateway credits have no stored credential: mint one for the request user. */
+	private async prepareAiGatewaySource(
+		user: User,
+		slug: string,
+		connection: McpRegistryConnection,
+	): Promise<PreparedDiscovery> {
+		const credentialType = findAiGatewayCredentialType(connection);
+		if (!credentialType) {
+			throw new BadRequestError('MCP registry server does not offer Gateway credits');
+		}
+		const credentialData = await this.aiGatewayService.getSyntheticCredential({
+			credentialType,
+			userId: user.id,
+		});
+		const prepared = prepareMcpRegistryConnection({ connection, credentialType, credentialData });
+		if (!prepared.ok) throw new BadRequestError('Credential cannot connect to this MCP server');
+
+		return {
+			clientConfig: {
+				name: safeServerName(slug),
+				url: prepared.value.endpointUrl,
+				transport: toAgentMcpTransport(prepared.value.transport),
+				fetch: createMcpAuthFetch({
+					authentication: credentialType,
+					baseFetch: createAiMcpFetch(this.outboundHttp),
+					credentialData,
+					initialHeaders: prepared.value.headers,
+					oauthService: this.oauthService,
+					projectId: null,
+					allowedDomains: { mode: 'domains', domains: prepared.value.allowedDomains },
+				}),
+			},
+			responseConnection: {
+				url: getConfiguredEndpointUrl(connection),
+				transport: toAgentMcpTransport(connection.transport),
+				// An agent entry stores Gateway credits as 'none', with no credential id.
+				authentication: 'none',
+				metadata: { nodeTypeName: connection.nodeTypeName },
+			},
+		};
+	}
+
 	private async resolveCredential(user: User, credentialId: string): Promise<ResolvedCredential> {
-		const readableCredential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			credentialId,
 			user,
-			['credential:read'],
 		);
-		if (!readableCredential) {
+		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
-		}
-		if (readableCredential.isResolvable) {
-			const connectableCredential = await this.credentialsFinderService.findCredentialForUser(
-				credentialId,
-				user,
-				['credential:connect'],
-			);
-			if (!connectableCredential) {
-				throw new NotFoundError('Credential not found or not accessible');
-			}
 		}
 
 		const projectId =
-			readableCredential.shared?.find((share) => share.role === 'credential:owner')?.projectId ??
-			readableCredential.shared?.[0]?.projectId;
+			credential.shared?.find((share) => share.role === 'credential:owner')?.projectId ??
+			credential.shared?.[0]?.projectId;
 		if (!projectId) throw new BadRequestError('Credential has no owning project');
 
 		const { getBase } = await import('@/workflow-execute-additional-data.js');
 		const additionalData = await getBase({ projectId, userId: user.id });
 		const data = await this.credentialsHelper.getDecrypted(
 			additionalData,
-			{ id: readableCredential.id, name: readableCredential.name },
-			readableCredential.type,
+			{ id: credential.id, name: credential.name },
+			credential.type,
 			'internal',
 		);
 		if (!isObjectLiteral(data) || Object.keys(data).length === 0) {
 			throw new BadRequestError('Credential could not be resolved');
 		}
-		return { credential: readableCredential, data, projectId };
+		return { credential, data, projectId };
 	}
 
 	private createCredentialFetch(

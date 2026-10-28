@@ -118,6 +118,7 @@ describe('OwnershipService', () => {
 			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
+			expect(cacheService.setHash).not.toHaveBeenCalled();
 		});
 
 		test('should not use the repository if the owner was found in the cache', async () => {

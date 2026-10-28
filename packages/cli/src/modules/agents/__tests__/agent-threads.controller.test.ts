@@ -1,6 +1,8 @@
 import type { AuthenticatedRequest, User } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
@@ -11,6 +13,7 @@ import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 describe('AgentThreadsController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentThreadsController);
@@ -27,6 +30,7 @@ describe('AgentThreadsController route access scopes', () => {
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
 		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
+		['stopSession', 'post', '/:agentId/threads/:threadId/stop'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
 		expect(routes.get(handlerName)).toMatchObject({ method, path });
@@ -36,6 +40,7 @@ describe('AgentThreadsController route access scopes', () => {
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
 		['exportThreadToLangSmith', 'agent:read'],
+		['stopSession', 'agent:execute'],
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
@@ -46,6 +51,8 @@ describe('AgentThreadsController route access scopes', () => {
 		const controller = new AgentThreadsController(
 			agentExecutionService,
 			mock<AgentSessionLangSmithExportService>(),
+			new SystemAgentRegistry(),
+			mock<AgentSessionStopService>(),
 		);
 		agentExecutionService.getThreadDetail.mockResolvedValue({
 			thread: mock<AgentExecutionThread>({
@@ -85,6 +92,8 @@ describe('AgentThreadsController session details', () => {
 			const controller = new AgentThreadsController(
 				service,
 				mock<AgentSessionLangSmithExportService>(),
+				new SystemAgentRegistry(),
+				mock<AgentSessionStopService>(),
 			);
 			service.getThreadDetail.mockResolvedValue({
 				thread: mock<AgentExecutionThread>({
@@ -111,4 +120,77 @@ describe('AgentThreadsController session details', () => {
 			expect(result.thread).not.toHaveProperty('accessScope');
 		},
 	);
+});
+
+describe('AgentThreadsController deleteThread', () => {
+	function setup() {
+		const service = mock<AgentExecutionService>();
+		const registry = new SystemAgentRegistry();
+		registry.register({
+			agentId: 'system-agent',
+			name: 'System Agent',
+			authorize: async () => true,
+			prepareTurn: vi.fn(),
+		});
+		const controller = new AgentThreadsController(
+			service,
+			mock<AgentSessionLangSmithExportService>(),
+			registry,
+			mock<AgentSessionStopService>(),
+		);
+		return { service, controller };
+	}
+
+	function deleteRequest(agentId: string) {
+		return mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
+			params: { projectId: 'project-1', agentId, threadId: 'thread-1' },
+			user: mock<User>({ id: 'user-1' }),
+		});
+	}
+
+	it('deletes a project agent thread', async () => {
+		const { service, controller } = setup();
+		service.deleteThread.mockResolvedValue(true);
+
+		await expect(controller.deleteThread(deleteRequest('agent-1'))).resolves.toEqual({
+			success: true,
+		});
+		expect(service.deleteThread).toHaveBeenCalledWith('project-1', 'agent-1', 'thread-1', 'user-1');
+	});
+
+	it('refuses a system agent thread', async () => {
+		const { service, controller } = setup();
+
+		await expect(controller.deleteThread(deleteRequest('system-agent'))).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(service.deleteThread).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentThreadsController stopSession', () => {
+	it('passes the project, Agent, session, and user to the stop service', async () => {
+		const stopService = mock<AgentSessionStopService>();
+		const controller = new AgentThreadsController(
+			mock<AgentExecutionService>(),
+			mock<AgentSessionLangSmithExportService>(),
+			new SystemAgentRegistry(),
+			stopService,
+		);
+		stopService.stopSession.mockResolvedValue({ cancelRequested: true });
+		const request = mock<
+			AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>
+		>({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: mock<User>({ id: 'user-1' }),
+		});
+
+		await expect(controller.stopSession(request)).resolves.toEqual({ cancelRequested: true });
+		expect(stopService.stopSession).toHaveBeenCalledExactlyOnceWith(
+			'project-1',
+			'agent-1',
+			'thread-1',
+			'user-1',
+		);
+	});
 });

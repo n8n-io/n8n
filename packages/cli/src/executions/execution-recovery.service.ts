@@ -58,6 +58,7 @@ export class ExecutionRecoveryService {
 				where: { workflowId },
 				order: { startedAt: 'DESC' },
 				take: maxLastExecutions,
+				withDeleted: true,
 			});
 			const numberOfCrashedExecutions = lastExecutions.filter((e) => e.status === 'crashed').length;
 
@@ -336,7 +337,7 @@ export class ExecutionRecoveryService {
 		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
 	}
 
-	private async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
+	async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
 		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
 
 		const roleSlug = project.type === 'team' ? PROJECT_ADMIN_ROLE_SLUG : PROJECT_OWNER_ROLE_SLUG;

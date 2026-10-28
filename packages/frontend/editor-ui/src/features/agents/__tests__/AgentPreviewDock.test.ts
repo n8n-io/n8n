@@ -1,11 +1,21 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
 enableAutoUnmount(afterEach);
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
@@ -82,7 +92,13 @@ const chatPageClearBudgetStopsMock = vi.fn();
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
 	props: ['beforeSend', 'initialPrompt', 'visible'],
-	emits: ['continue-loaded', 'open-build', 'send-to-assistant', 'initial-consumed'],
+	emits: [
+		'continue-loaded',
+		'open-build',
+		'send-to-assistant',
+		'initial-consumed',
+		'usage-updated',
+	],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({
 			focusInput: vi.fn(),
@@ -105,6 +121,7 @@ const AgentPreviewMoreMenuStub = {
 		'isDeletingSession',
 		'canDeleteSession',
 		'getConversationMarkdown',
+		'usageUpdates',
 	],
 	emits: ['toggle-full-width', 'delete-session', 'export-session'],
 	template: '<button data-testid="agent-preview-more-btn" @click="$emit(\'toggle-full-width\')" />',
@@ -113,6 +130,7 @@ const AgentPreviewMoreMenuStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		inline: boolean;
 		sessionTitle: string;
 		effectiveSessionId?: string;
 		beforeSend: () => Promise<void> | void;
@@ -160,6 +178,57 @@ describe('AgentPreviewDock', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
+	});
+
+	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ inline: true });
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(false);
+	});
+
+	it('keeps the last usage on completion', async () => {
+		const wrapper = mountDock();
+		const chat = wrapper.getComponent({ name: 'AgentPreviewChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			complete: false,
+		};
+		chat.vm.$emit('usage-updated', update);
+		await wrapper.vm.$nextTick();
+		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': update });
+		expect(wrapper.emitted('usage-updated')).toEqual([[update]]);
+		chat.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
+		await wrapper.vm.$nextTick();
+		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': { ...update, complete: true } });
+		expect(wrapper.emitted('usage-updated')?.at(-1)).toEqual([{ ...update, complete: true }]);
+	});
+
+	it('keeps live usage when switching away from a session and back', async () => {
+		const wrapper = mountDock();
+		const chat = wrapper.getComponent({ name: 'AgentPreviewChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			complete: false,
+		};
+		chat.vm.$emit('usage-updated', update);
+		await wrapper.vm.$nextTick();
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		const otherUpdate = { ...update, sessionId: 'thread-2', executionId: 'execution-2' };
+		chat.vm.$emit('usage-updated', otherUpdate);
+		chat.vm.$emit('usage-updated', { ...update, usage: { ...update.usage, cost: 1 } });
+		await wrapper.vm.$nextTick();
+		await wrapper.setProps({ effectiveSessionId: 'thread-1' });
+		expect(menu.props('usageUpdates')).toEqual({
+			'execution-1': update,
+			'execution-2': otherUpdate,
+		});
 	});
 
 	it('shows the session title only after a session starts', async () => {
@@ -293,6 +362,10 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'test-panel' },
+		);
 	});
 
 	it.each([
@@ -381,6 +454,7 @@ describe('AgentPreviewDock', () => {
 
 	it('creates a new session from the keyboard shortcut', async function () {
 		const wrapper = mountDock();
+		expect(track).not.toHaveBeenCalled();
 		await wrapper.vm.$nextTick();
 		document.dispatchEvent(
 			new KeyboardEvent('keydown', {
@@ -395,6 +469,10 @@ describe('AgentPreviewDock', () => {
 		);
 
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'shortcut' },
+		);
 	});
 
 	describe('Escape key events', function () {
@@ -509,8 +587,10 @@ describe('AgentPreviewChatPage', () => {
 			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 			amount: number;
 		}) => Promise<boolean>,
+		standalone = false,
 	) {
 		return shallowMount(AgentPreviewChatPage, {
+			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: standalone } },
 			props: {
 				initialized: true,
 				projectId: 'project-1',
@@ -524,6 +604,25 @@ describe('AgentPreviewChatPage', () => {
 			},
 		});
 	}
+
+	it.each([true, false])(
+		'uses the plus icon only in the Agents UI (standalone: %s)',
+		(standalone) => {
+			const wrapper = mountChatPage(undefined, undefined, standalone);
+			expect(wrapper.getComponent({ name: 'AgentChatPanel' }).props('attachButtonIcon')).toBe(
+				standalone ? 'plus' : 'paperclip',
+			);
+		},
+	);
+
+	it('reports a first user message only after one exists', () => {
+		const wrapper = mountChatPage();
+		const chat = wrapper.findComponent({ name: 'AgentChatPanel' });
+		chat.vm.$emit('first-user-message', undefined);
+		expect(wrapper.emitted('message-sent')).toBeUndefined();
+		chat.vm.$emit('first-user-message', 'Hello');
+		expect(wrapper.emitted('message-sent')).toEqual([[]]);
+	});
 
 	it('uses a neutral root inside the complementary dock landmark', () => {
 		expect(mountChatPage().element.tagName).toBe('DIV');

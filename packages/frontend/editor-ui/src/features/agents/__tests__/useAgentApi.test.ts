@@ -5,6 +5,7 @@ import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-c
 import {
 	cancelAgentChatExecution,
 	cancelAgentChatRun,
+	createAgent,
 	deleteN8nChatThread,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
@@ -25,7 +26,7 @@ import {
 	duplicateAgent,
 	listAttachableSkills,
 	createAgentSkill,
-	getHubSkill,
+	getSkillDetail,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import type { SkillListItem } from '@n8n/api-types';
@@ -68,7 +69,7 @@ describe('useAgentApi', () => {
 		});
 	});
 
-	describe('hub skill requests', () => {
+	describe('skill requests', () => {
 		const skill = { name: 'Tone', description: 'Use for replies', instructions: 'Be kind' };
 
 		it('creates an agent skill with its target, and without one when none is given', async () => {
@@ -121,8 +122,8 @@ describe('useAgentApi', () => {
 			);
 		});
 
-		it('gets one hub skill', async () => {
-			await getHubSkill(restApiContext, 'skill-1');
+		it('gets one skill', async () => {
+			await getSkillDetail(restApiContext, 'skill-1');
 
 			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills/skill-1');
 		});
@@ -197,6 +198,22 @@ describe('useAgentApi', () => {
 			method,
 			`/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks${suffix}`,
 		);
+	});
+
+	describe('system channel', () => {
+		it('builds system-agent chat URLs without a project', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ items: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'assistant', 'thread-1', 'system');
+			await getAgentChatQueue(restApiContext, 'project-1', 'assistant', 'thread-1', 'system');
+			await cancelAgentChatRun(restApiContext, 'project-1', 'assistant', 'run-1', 'system');
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(1, 3))).toEqual([
+				['GET', '/agents/system/assistant/chat/thread-1/messages'],
+				['GET', '/agents/system/assistant/chat/thread-1/queue'],
+				['DELETE', '/agents/system/assistant/chat/runs/run-1'],
+			]);
+		});
 	});
 
 	describe('background task routes on both channels', () => {
@@ -486,6 +503,28 @@ describe('useAgentApi', () => {
 			vi.mocked(request).mockResolvedValueOnce({ data: [], nextCursor: 123 });
 
 			await expect(listN8nChatThreads(restApiContext, { limit: 20 })).rejects.toThrow();
+		});
+	});
+
+	describe('createAgent', () => {
+		it('posts the initial config and reserved agent id', async () => {
+			const config: AgentJsonConfig = {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+			};
+
+			await createAgent(restApiContext, 'project-1', 'Support Agent', {
+				id: 'agent-2',
+				config,
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2',
+				{ name: 'Support Agent', id: 'agent-2', config },
+			);
 		});
 	});
 

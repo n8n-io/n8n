@@ -7,6 +7,8 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { AgentSessionStopService } from './agent-session-stop.service';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 
@@ -15,6 +17,8 @@ export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly systemAgents: SystemAgentRegistry,
+		private readonly sessionStopService: AgentSessionStopService,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -59,7 +63,12 @@ export class AgentThreadsController {
 		} = result.thread;
 		const source = result.executions.find((execution) => execution.source !== null)?.source;
 		const access: AgentSessionPreviewAccess = {
-			canContinueInPreview: canContinueThreadInPreview(result.thread, req.user.id, source),
+			canContinueInPreview: canContinueThreadInPreview(
+				result.thread,
+				req.user.id,
+				source,
+				this.systemAgents.has(result.thread.agentId),
+			),
 		};
 		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
 	}
@@ -78,12 +87,25 @@ export class AgentThreadsController {
 		});
 	}
 
+	@Post('/:agentId/threads/:threadId/stop')
+	@ProjectScope('agent:execute')
+	async stopSession(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		return await this.sessionStopService.stopSession(projectId, agentId, threadId, req.user.id);
+	}
+
 	@Delete('/:agentId/threads/:threadId')
 	@ProjectScope('agent:update')
 	async deleteThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
+		// A system-agent thread is deleted through its own route, which also deletes its workspace.
+		if (this.systemAgents.has(agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		const deleted = await this.agentExecutionService.deleteThread(
 			projectId,
 			agentId,

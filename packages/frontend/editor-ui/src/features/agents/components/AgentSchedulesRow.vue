@@ -25,6 +25,7 @@ const props = withDefaults(
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 	}>(),
 	{
 		taskRefs: () => [],
@@ -72,6 +73,8 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const taskIssueMessages = computed(() => {
@@ -162,6 +165,7 @@ function openTaskModal(task: TaskRow | null) {
 			isPublished: props.isPublished,
 			isRunnable: props.isRunnable,
 			validationIssues: props.validationIssues,
+			getPreviewDisabledReason: () => props.previewDisabledReason,
 			taskState: task
 				? {
 						enabled: task.enabled,
@@ -260,6 +264,9 @@ watch(
 				data-testid="agent-capabilities-add-task"
 				@click="openTaskModal(null)"
 			>
+				<template #icon>
+					<N8nIcon icon="plus" :size="16" />
+				</template>
 				{{ i18n.baseText('agents.builder.tasks.add') }}
 			</N8nButton>
 

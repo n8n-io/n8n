@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
+import { AI_REQUEST_TIMEOUT_MS } from '@/utils/ai-proxy-fetch';
 
 const capturedTokenGetters: Array<() => Promise<unknown>> = [];
 vi.mock('@/services/proxy-token-manager', () => ({
@@ -52,6 +53,24 @@ describe('InstanceAiModelService', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	describe('getModelFetch', () => {
+		it('builds the AI transport once and reuses it', () => {
+			const baseFetch = vi.fn();
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			expect(service.getModelFetch()).toBe(baseFetch);
+			expect(service.getModelFetch()).toBe(baseFetch);
+			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
+			expect(outboundHttp.transport).toHaveBeenCalledWith({
+				proxy: 'env',
+				timeouts: {
+					headersTimeout: AI_REQUEST_TIMEOUT_MS,
+					bodyTimeout: AI_REQUEST_TIMEOUT_MS,
+				},
+			});
+		});
 	});
 
 	describe('isProxyEnabled', () => {
@@ -271,10 +290,16 @@ describe('InstanceAiModelService', () => {
 			await expect(
 				service.resolveMemoryModelConfig(
 					fakeUser,
-					{ id: 'anthropic/claude-opus-5-5', url: 'https://anthropic.example', apiKey: 'main-key' },
+					{
+						kind: 'endpoint',
+						id: 'anthropic/claude-opus-5-5',
+						url: 'https://anthropic.example',
+						apiKey: 'main-key',
+					},
 					{},
 				),
 			).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'anthropic/claude-haiku-4-5',
 				url: 'https://anthropic.example',
 				apiKey: 'main-key',

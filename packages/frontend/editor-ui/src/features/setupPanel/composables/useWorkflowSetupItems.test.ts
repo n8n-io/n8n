@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
+import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetupPanelState';
@@ -305,10 +306,10 @@ describe('useWorkflowSetupItems', () => {
 			children: [],
 			toolCalls: [
 				{
-					toolCallId: 'update',
-					toolName: 'workflows',
+					toolCallId: 'restore',
+					toolName: WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
 					isLoading: true,
-					args: { action: 'update', workflowId: WORKFLOW_ID },
+					args: { workflowId: WORKFLOW_ID, versionId: 'v1' },
 				},
 			],
 		};
