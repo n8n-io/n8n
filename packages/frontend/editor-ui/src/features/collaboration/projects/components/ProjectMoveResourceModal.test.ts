@@ -394,8 +394,8 @@ describe('ProjectMoveResourceModal', () => {
 
 		// Make moveResourceToProject take time to simulate slow operation
 		let resolveMove: () => void;
-		const movePromise = new Promise<void>((resolve) => {
-			resolveMove = resolve;
+		const movePromise = new Promise<undefined>((resolve) => {
+			resolveMove = () => resolve(undefined);
 		});
 		projectsStore.moveResourceToProject.mockReturnValue(movePromise);
 
@@ -458,7 +458,7 @@ describe('ProjectMoveResourceModal', () => {
 		const currentTarget = () => toValue(transferPreviewMock.target) as TransferPreviewTarget | null;
 
 		const propsFor = (
-			resourceType: ResourceType,
+			resourceType: ResourceType.Workflow | ResourceType.Credential,
 		): ComponentProps<typeof ProjectMoveResourceModal> => ({
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
@@ -476,7 +476,7 @@ describe('ProjectMoveResourceModal', () => {
 		it.each([
 			[ResourceType.Workflow, 'workflow'],
 			[ResourceType.Credential, 'credential'],
-		])('should build a %s target from the resource id', (resourceType, expected) => {
+		] as const)('should build a %s target from the resource id', (resourceType, expected) => {
 			renderComponent({ props: propsFor(resourceType) });
 
 			expect(currentTarget()).toEqual({ resourceType: expected, id: 'resource-1' });
@@ -497,7 +497,9 @@ describe('ProjectMoveResourceModal', () => {
 			await userEvent.click(items[0]);
 
 			await vi.waitFor(() => expect(getByTestId('transfer-policy-warning')).toBeVisible());
-			expect(getByTestId('transfer-policy-warning')).toHaveTextContent(destinationProject.name);
+			expect(getByTestId('transfer-policy-warning')).toHaveTextContent(
+				destinationProject.name as string,
+			);
 		});
 
 		it('should pass the selected project id as the preview destination', async () => {
