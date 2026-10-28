@@ -45,35 +45,27 @@ the credential checks read control-plane state.
    existing post-processing is automatically applied. This decision supersedes the decision in
    ADR-20260902-steps-declare-waits which states that we do not re-invoke execute. That decision
    still holds for waiting, but not for sub-workflow calls.
-3. **An explicit suspend-action-response mechanism is planned future work.** We would prefer
-   a more explicit method by which the node can request some action ("execute a sub-workflow"),
-   have the engine invoke the action (run the sub-workflow), and pass the results back to the
-   node for processing (post-processing with paired items). This would not rely on the fact
-   that the code before `executeWorkflow` is idempotent, for example, and would be a clearer
-   interface. We plan to tackle this future work in the context of the AI agent node, which
-   will require it. At that time, we may refactor the execute re-invocation and also revisit
-   the way wait-resume is implemented, to have a single unified mechanism.
-4. **Only the Execute Sub-workflow node can call a sub-workflow.** When any other node calls
+3. **Only the Execute Sub-workflow node can call a sub-workflow.** When any other node calls
    `executeWorkflow`, the call throws. Decision 2 needs a node whose code before the call has
    no side effects. We know this only for the Execute Sub-workflow node.
-5. **The control plane resolves the sub-workflow, and the engine starts the sub-execution.** When a
+4. **The control plane resolves the sub-workflow, and the engine starts the sub-execution.** When a
    node asks for a sub-workflow, the shim calls the control plane. The control plane looks up the
    sub-workflow, applies the caller policy and the credential checks, and returns the graph. The
    engine then starts the sub-execution itself as it processes the step result. Starting it in the
    engine keeps admittance and the parent link in one place.
-6. **Suspend before start.** The engine suspends the parent step before it starts the sub-execution,
+5. **Suspend before start.** The engine suspends the parent step before it starts the sub-execution,
    so the sub-execution cannot end before the parent step can resume. When the start fails,
    reconciliation recovers the waiting step.
-7. **The sub-execution returns all its terminal branches, concatenated.** The branches are ordered
+6. **The sub-execution returns all its terminal branches, concatenated.** The branches are ordered
    as engine v1 orders execution, by canvas position from top to bottom, and then by run. Engine v1
    returns the output of the last node that ran. This is a breaking change for a sub-workflow with
    several end branches. We may revisit this decision when we look at backwards compatible execution
    order in https://linear.app/n8n/issue/CET-460.
-8. **Cancellation cascades.** Cancelling a parent execution cancels its sub-executions, awaited or
+7. **Cancellation cascades.** Cancelling a parent execution cancels its sub-executions, awaited or
    not. A timeout that ends the parent execution does the same, once engine v2 has timeouts. We may
    later introduce a sub-workflow execution mode that detaches the sub-execution fully from the
    parent execution.
-9. **Dropped or postponed features.** The "run once for each item" mode and the inline, local file
+8. **Dropped or postponed features.** The "run once for each item" mode and the inline, local file
    and URL sources are refused. v1-v2 cross-engine sub-executions are not supported.
 
 ## Alternatives Considered
@@ -88,9 +80,12 @@ the credential checks read control-plane state.
   for every node version, and keep it in step with the node.
 - **Keep the v1 result rule.** Which branch wins depends on execution order. Concatenation
   is deterministic. We may revisit this if we find that the breaking change blocks adoption.
-- **Implement a 2-phase suspend/resume.** This would let us avoid re-invoking the `execute`
-  method. We will do this as a follow-up, but we defer for now to unblock the remainder of
-  the sub-workflow work.
+- **The node requests a sub-execution and receives its result.** Deferred, not rejected. The AI
+  Agent node needs action-response support in engine v2, and this option would build on it. The
+  node's `execute` would return an action, for example "run this sub-workflow". The engine would run
+  the sub-execution and call `execute` again with the result, as engine v1 does for the AI Agent's
+  tool calls. The code before the call would not need to be free of side effects, and the node could
+  map paired items itself. One mechanism could also carry waits.
 
 ## Consequences
 
