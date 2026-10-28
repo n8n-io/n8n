@@ -439,6 +439,8 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 			divided: items.length > 0,
 			// A skill attached to this agent is in use, so the builder cannot delete it.
 			disabled: !props.data.onDelete || !!props.data.deleteDisabledReason || isSaving.value,
+			// The menu has no tooltip, so the reason shows under the label.
+			description: props.data.deleteDisabledReason,
 			testId: 'agent-skill-menu-delete',
 		});
 	}
