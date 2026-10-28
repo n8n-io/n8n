@@ -1241,9 +1241,6 @@
 }
 
 :root {
-	--chat--font-size: var(--font-size--sm);
-	--chat--font-size--wide: var(--font-size--md);
-
 	color-scheme: light dark;
 	@include theme;
 }
