@@ -1,0 +1,48 @@
+diff --git a/src/rules/import-scope.js b/src/rules/import-scope.js
+index 6aac927..620e074 100644
+--- a/src/rules/import-scope.js
++++ b/src/rules/import-scope.js
+@@ -37,7 +37,7 @@ const allImportsAreOfType = (node, types) => every(node.specifiers, specifier =>
+  * @returns
+  */
+ const createFullFix = (context, node) => {
+-    const sourceCode = context.getSourceCode()
++    const sourceCode = context.sourceCode
+     const text = sourceCode.getText(node)
+     if (!/.*(lodash)';$/.test(text)) {
+         return () => []
+diff --git a/src/rules/path-style.js b/src/rules/path-style.js
+index 36878d9..101be21 100644
+--- a/src/rules/path-style.js
++++ b/src/rules/path-style.js
+@@ -103,7 +103,7 @@ module.exports = {
+             return `\`${node.elements
+                 .map(el => {
+                     if (el.type === 'MemberExpression') {
+-                        return `.\$\{${context.getSourceCode().getText(el)}\}`
++                        return `.\$\{${context.sourceCode.getText(el)}\}`
+                     }
+                     if (canBeDotNotation(el)) {
+                         return `.${el.value}`
+@@ -111,7 +111,7 @@ module.exports = {
+                     if (isLiteral(el)) {
+                         return `[${el.value}]`
+                     }
+-                    return `\$\{${context.getSourceCode().getText(el)}\}`
++                    return `\$\{${context.sourceCode.getText(el)}\}`
+                 })
+                 .join('')
+                 .replace(/^\./, '')}\``
+diff --git a/src/rules/prefer-lodash-method.js b/src/rules/prefer-lodash-method.js
+index 71bb525..cd66ae2 100644
+--- a/src/rules/prefer-lodash-method.js
++++ b/src/rules/prefer-lodash-method.js
+@@ -90,7 +90,7 @@ module.exports = {
+                 if (node.type === 'Identifier') {
+                     return node.name
+                 }
+-                return context.getSourceCode().getText(node)
++                return context.sourceCode.getText(node)
+             }
+         }
+ 

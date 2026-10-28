@@ -270,7 +270,7 @@ const showPagination = computed(
 	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
 );
 
-const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
+const sortBy = defineModel<SortingState>('sort-by', { default: () => [], required: false });
 
 function handleSortingChange(updaterOrValue: Updater<SortingState>) {
 	const newValue =
