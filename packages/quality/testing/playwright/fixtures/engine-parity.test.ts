@@ -154,6 +154,16 @@ describe('watchCanvasRuns', () => {
 		expect(() => guard.assertRoutedToEngine()).not.toThrow();
 	});
 
+	test('stays silent for a test that intends a legacy run', async () => {
+		const { context, answerRun } = fakeContext();
+		const guard = await watchCanvasRuns(context, { engineType: 'v2' });
+		guard.allowLegacyRuns();
+
+		await answerRun(200, { data: { executionId: '1783' } });
+
+		expect(() => guard.assertRoutedToEngine()).not.toThrow();
+	});
+
 	test('watches nothing on a stack without engine v2', async () => {
 		const { context } = fakeContext();
 		const guard = await watchCanvasRuns(context, undefined);

@@ -117,6 +117,8 @@ export function legacyEngineRunMessage(executionId: string): string {
 export interface CanvasRunGuard {
 	/** Throws when a run the browser started stayed on the legacy engine. */
 	assertRoutedToEngine(): void;
+	/** Call from a test that runs the legacy engine on purpose; the guard then stays silent for it. */
+	allowLegacyRuns(): void;
 }
 
 /**
@@ -131,6 +133,7 @@ export async function watchCanvasRuns(
 	workflowSettings: Partial<IWorkflowSettings> | undefined,
 ): Promise<CanvasRunGuard> {
 	const legacyRuns: string[] = [];
+	let legacyAllowed = false;
 
 	if (workflowSettings?.engineType === 'v2') {
 		await context.route(
@@ -151,8 +154,11 @@ export async function watchCanvasRuns(
 
 	return {
 		assertRoutedToEngine() {
-			if (legacyRuns.length === 0) return;
+			if (legacyAllowed || legacyRuns.length === 0) return;
 			throw new TestError(legacyRuns.map(legacyEngineRunMessage).join('\n'));
+		},
+		allowLegacyRuns() {
+			legacyAllowed = true;
 		},
 	};
 }
