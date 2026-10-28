@@ -228,6 +228,15 @@ function renderModal({
 	});
 }
 
+// Every suite renders an open modal with fresh stores.
+beforeEach(() => {
+	vi.clearAllMocks();
+	createTestingPinia({ stubActions: false });
+	const uiStore = mockedStore(useUIStore);
+	uiStore.openModal(MODAL_NAME);
+	uiStore.closeModal = vi.fn();
+});
+
 const SAVED_SKILL: AgentSkill = {
 	name: 'brand-voice',
 	description: 'Write clear customer-facing copy.',
@@ -1432,14 +1441,6 @@ describe('AgentSkillModal', () => {
 });
 
 describe('AgentSkillModal from Settings', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		createTestingPinia({ stubActions: false });
-		const uiStore = mockedStore(useUIStore);
-		uiStore.openModal(MODAL_NAME);
-		uiStore.closeModal = vi.fn();
-	});
-
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
@@ -2054,6 +2055,21 @@ describe('Compare mode', () => {
 		await userEvent.click(getByTestId('agent-skill-compare-done'));
 
 		expect(queryByTestId('agent-skill-compare-bar')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
+	it('returns to the latest version with Done when the user compared from an older one', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		await userEvent.click(getByTestId('skill-version-compare-2'));
+		await userEvent.click(await findByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
 });

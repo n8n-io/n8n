@@ -852,6 +852,12 @@ async function onCompare(a: number, b: number) {
 	await compareVersions(a, b);
 }
 
+/** Done leaves compare mode for the latest version, which the user can edit. */
+function leaveCompare() {
+	comparison.value = null;
+	viewedVersion.value = null;
+}
+
 onMounted(() => {
 	if (props.data.initialCompare) void compareLatestTwo();
 });
@@ -1105,7 +1111,7 @@ function onRemove() {
 				v-if="showAssistantToggle"
 				id="skill-assistant-availability"
 				v-model="availableToAssistant"
-				:label="i18n.baseText('settings.context.skills.assistant.label')"
+				:label="i18n.baseText('settings.context.skills.assistant.toggle')"
 				:disabled="editorLocked"
 				data-testid="skill-assistant-availability"
 			/>
@@ -1246,7 +1252,7 @@ function onRemove() {
 					size="small"
 					:class="$style.compareDone"
 					data-testid="agent-skill-compare-done"
-					@click="comparison = null"
+					@click="leaveCompare"
 				>
 					{{ i18n.baseText('agents.builder.skills.versions.done') }}
 				</N8nButton>

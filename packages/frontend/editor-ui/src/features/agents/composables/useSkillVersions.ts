@@ -25,11 +25,18 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 		showError(error, i18n.baseText('agents.builder.skills.versions.loadError'));
 	}
 
+	/** The skill that `versions` belongs to, so another skill loads its own list. */
+	let versionsOf: string | undefined;
+
 	async function loadVersions() {
 		const id = toValue(skillId);
-		if (!id || versions.value) return;
+		if (!id || (versions.value && versionsOf === id)) return;
 		try {
-			versions.value = await listSkillVersions(rootStore.restApiContext, id);
+			const list = await listSkillVersions(rootStore.restApiContext, id);
+			// The skill can change while the list loads. Keep only the list of the current skill.
+			if (toValue(skillId) !== id) return;
+			versions.value = list;
+			versionsOf = id;
 		} catch (error) {
 			reportLoadError(error);
 		}
