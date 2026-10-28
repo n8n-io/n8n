@@ -25,10 +25,9 @@ import {
 } from './build-orchestrator';
 import { createCasePipeline, type CasePipeline } from './case-pipeline';
 import { LaneAllocator } from './lane-allocator';
-import { provisionBuildProject } from './lane-users';
+import { buildProjectProvider } from './lane-users';
 import type { EvalUsageMeter } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
-import { N8nClient } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { executeAgentScenario, type AgentScenarioContext } from '../harness/agent-execution';
 import {
@@ -141,27 +140,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
 		const laneNum = idx + 1;
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
-		const { buildUserPool } = lane;
-		// Named like the owner, so the agent's project line reads as it does for a real user.
-		const ownerName = lane.client.userName ?? { firstName: 'Eval', lastName: 'Builder' };
-		let buildProject: (() => Promise<{ userId?: string; projectId: string }>) | undefined;
-		if (lane.teamBuildProjects) {
-			// The owner creates it, so is its admin and keeps access to the build's credentials.
-			buildProject = async () => {
-				const { id } = await lane.client.createTeamProject(
-					`${ownerName.firstName} ${ownerName.lastName}`,
-				);
-				lane.teamBuildProjectIds?.add(id);
-				return { projectId: id };
-			};
-		} else if (buildUserPool) {
-			buildProject = async () =>
-				await provisionBuildProject({
-					pool: buildUserPool,
-					memberClient: new N8nClient(lane.baseUrl),
-					name: ownerName,
-				});
-		}
+		const buildProject = buildProjectProvider(lane);
 		return {
 			runner: lane,
 			laneNum,

@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Lane } from './build-orchestrator';
-import { cleanupLaneUsers, LaneUserPool } from './lane-users';
+import { cleanupLaneUsers, deleteTeamBuildProjects, LaneUserPool } from './lane-users';
 import type { CliArgs } from '../cli/args';
 import { N8nClient } from '../clients/n8n-client';
 import { cleanupCredentials } from '../credentials/seeder';
@@ -48,7 +48,11 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 			}
 			const buildUserPool = new LaneUserPool(client);
 			const teamBuildProjects = await client.canCreateTeamProjects();
-			if (!teamBuildProjects) {
+			if (teamBuildProjects) {
+				// The dispatcher runs one CLI per instance at a time, so any marked
+				// project here is a crashed run's leftover.
+				await deleteTeamBuildProjects(client, logger);
+			} else {
 				logger.warn(
 					`No team projects on this instance: builds run in a member's personal project, so n8n hides execution output from the agent${tag}`,
 				);
@@ -74,7 +78,6 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				workflowIdsToDelete,
 				buildUserPool,
 				teamBuildProjects,
-				teamBuildProjectIds: new Set<string>(),
 			};
 		}),
 	);
@@ -101,11 +104,8 @@ export async function cleanupLanes(
 			if (cleanup.buildUsers && lane.buildUserPool) {
 				await cleanupLaneUsers(lane.client, lane.buildUserPool, logger);
 			}
-			// Most are already gone (404); only a build whose own cleanup failed left one.
-			if (cleanup.buildUsers) {
-				for (const id of lane.teamBuildProjectIds ?? []) {
-					await lane.client.deleteProject(id).catch(() => {});
-				}
+			if (cleanup.buildUsers && lane.teamBuildProjects) {
+				await deleteTeamBuildProjects(lane.client, logger);
 			}
 		}),
 	);

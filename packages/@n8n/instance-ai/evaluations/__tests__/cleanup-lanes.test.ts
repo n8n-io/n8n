@@ -38,34 +38,31 @@ describe('cleanupLanes', () => {
 		expect(deleteUser.mock.calls.map(([id]) => id as string)).toEqual(['u1', 'u2', 'u3']);
 	});
 
-	it('deletes the team build projects a build cleanup left, ignoring ones already gone', async () => {
-		const deleteProject = vi
-			.fn()
-			.mockRejectedValueOnce(new Error('HTTP 404'))
-			.mockResolvedValue(undefined);
+	it('deletes the team build projects a build cleanup left', async () => {
+		const listTeamProjects = vi.fn().mockResolvedValue([]);
 		const lane = {
 			...laneWithPool().lane,
-			client: { deleteProject } as unknown as N8nClient,
+			client: { listTeamProjects } as unknown as N8nClient,
 			buildUserPool: undefined,
-			teamBuildProjectIds: new Set(['p1', 'p2']),
+			teamBuildProjects: true,
 		};
 
 		await cleanupLanes([lane], { workflows: false, buildUsers: true }, silentLogger);
 
-		expect(deleteProject.mock.calls.map(([id]) => id as string)).toEqual(['p1', 'p2']);
+		expect(listTeamProjects).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps the team build projects under --keep-workflows', async () => {
-		const deleteProject = vi.fn();
+		const listTeamProjects = vi.fn();
 		const lane = {
 			...laneWithPool().lane,
-			client: { deleteProject } as unknown as N8nClient,
-			teamBuildProjectIds: new Set(['p1']),
+			client: { listTeamProjects } as unknown as N8nClient,
+			teamBuildProjects: true,
 		};
 
 		await cleanupLanes([lane], { workflows: false, buildUsers: false }, silentLogger);
 
-		expect(deleteProject).not.toHaveBeenCalled();
+		expect(listTeamProjects).not.toHaveBeenCalled();
 	});
 
 	it('keeps the build users, and the workflows in their projects, under --keep-workflows', async () => {
