@@ -1192,6 +1192,27 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
+	it('keeps the input files when the workflow finished during registration', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const settled = settledInDb();
+		settled.data.resultData.runData.Result[0].data = { main: [[{ json: {}, binary }]] };
+		setPersistence(settled);
+		setJobService();
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map([['fs:x', inputFile]]) });
+		bridge.adoptFromItems.mockResolvedValue({ items: [], files: [], skippedFiles: [] });
+		Container.set(AgentFileBridge, bridge);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({ files: { data: 'aid-1' } }, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+	});
+
 	it('returns the inline result when marking it as delivered fails', async () => {
 		setPersistence(settledInDb());
 		const jobService = setJobService();

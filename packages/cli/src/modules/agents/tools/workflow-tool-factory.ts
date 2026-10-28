@@ -834,6 +834,8 @@ async function backgroundWaitingExecution(
 	ctx: WaitToolContext,
 	reference: WorkflowToolWorkflowReference,
 	allOutputs: boolean,
+	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
+	inputFiles?: Map<string, AgentToolOutputFile>,
 ): Promise<(WorkflowToolResult & { jobId: string }) | undefined> {
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
 	const parentResourceId = ctx.persistence?.resourceId;
@@ -902,7 +904,7 @@ async function backgroundWaitingExecution(
 			// even if another writer settled the job.
 			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
-			return { ...(await finishResult(fresh, context, ctx)), jobId };
+			return { ...(await finishResult(fresh, context, ctx, inputFiles)), jobId };
 		}
 
 		const continuesAt = result.wait?.waitTill
@@ -1273,6 +1275,7 @@ function assembleWorkflowTool(
 							ctx,
 							reference,
 							allOutputs,
+							inputFiles,
 						);
 						ctx.abortSignal?.throwIfAborted();
 						if (backgrounded) return backgrounded;
