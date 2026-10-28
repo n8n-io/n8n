@@ -24,7 +24,6 @@ import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -221,10 +220,7 @@ export class DataTableService {
 	async findDataTablesByIds(dataTableIds: string[]): Promise<DataTable[]> {
 		if (dataTableIds.length === 0) return [];
 
-		return await this.dataTableRepository.find({
-			where: { id: In(dataTableIds) },
-			relations: { columns: true },
-		});
+		return await this.dataTableRepository.findWithColumnsByIds(dataTableIds);
 	}
 
 	/** Instance-wide column id lookup used by package import to detect column ids that another table uses. */
@@ -241,10 +237,7 @@ export class DataTableService {
 	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
 		if (names.length === 0) return [];
 
-		return await this.dataTableRepository.find({
-			select: ['id', 'name'],
-			where: { projectId, name: In(names) },
-		});
+		return await this.dataTableRepository.findNamesInProject(projectId, names);
 	}
 
 	async importCsvToExistingTable(
@@ -283,16 +276,8 @@ export class DataTableService {
 		return true;
 	}
 
-	async transferDataTablesByProjectId(
-		fromProjectId: string,
-		toProjectId: string,
-		trx?: EntityManager,
-	) {
-		return await this.dataTableRepository.transferDataTableByProjectId(
-			fromProjectId,
-			toProjectId,
-			trx,
-		);
+	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
+		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
@@ -996,10 +981,7 @@ export class DataTableService {
 		if (dataTableIds.length === 0) return [];
 
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			return await this.dataTableRepository.find({
-				where: { id: In(dataTableIds) },
-				relations: { columns: true, project: true },
-			});
+			return await this.dataTableRepository.findWithProjectsByIds(dataTableIds);
 		}
 
 		const roles = await this.roleService.rolesWithScope('project', scopes);
@@ -1010,10 +992,7 @@ export class DataTableService {
 
 		if (accessibleProjectIds.length === 0) return [];
 
-		return await this.dataTableRepository.find({
-			where: { id: In(dataTableIds), projectId: In(accessibleProjectIds) },
-			relations: { columns: true, project: true },
-		});
+		return await this.dataTableRepository.findWithProjectsByIds(dataTableIds, accessibleProjectIds);
 	}
 
 	async generateDataTableCsv(

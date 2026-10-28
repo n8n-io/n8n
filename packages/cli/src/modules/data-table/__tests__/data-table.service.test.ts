@@ -9,7 +9,6 @@ import {
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
-import { In } from '@n8n/typeorm';
 import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -573,28 +572,25 @@ describe('DataTableService', () => {
 			]);
 
 			expect(result).toEqual([]);
-			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+			expect(mockDataTableRepository.findWithProjectsByIds).not.toHaveBeenCalled();
 			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
 		});
 
 		it('queries by id only for a user with the matching global scope', async () => {
-			mockDataTableRepository.find.mockResolvedValue([]);
+			mockDataTableRepository.findWithProjectsByIds.mockResolvedValue([]);
 
 			await dataTableService.findDataTablesByIdsForUser(['dt-1', 'dt-2'], adminUser, [
 				'dataTable:read',
 			]);
 
-			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
-				where: { id: In(['dt-1', 'dt-2']) },
-				relations: { columns: true, project: true },
-			});
+			expect(mockDataTableRepository.findWithProjectsByIds).toHaveBeenCalledWith(['dt-1', 'dt-2']);
 			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
 		});
 
 		it('filters by accessible projects for a user without the global scope', async () => {
 			mockRoleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
 			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['proj-1']);
-			mockDataTableRepository.find.mockResolvedValue([]);
+			mockDataTableRepository.findWithProjectsByIds.mockResolvedValue([]);
 
 			await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, ['dataTable:read']);
 
@@ -603,13 +599,10 @@ describe('DataTableService', () => {
 				regularUser.id,
 				['project:admin', 'project:editor'],
 			);
-			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
-				where: {
-					id: In(['dt-1']),
-					projectId: In(['proj-1']),
-				},
-				relations: { columns: true, project: true },
-			});
+			expect(mockDataTableRepository.findWithProjectsByIds).toHaveBeenCalledWith(
+				['dt-1'],
+				['proj-1'],
+			);
 		});
 
 		it('returns an empty array without querying the repository when the user has no accessible projects', async () => {
@@ -621,7 +614,7 @@ describe('DataTableService', () => {
 			]);
 
 			expect(result).toEqual([]);
-			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+			expect(mockDataTableRepository.findWithProjectsByIds).not.toHaveBeenCalled();
 		});
 	});
 

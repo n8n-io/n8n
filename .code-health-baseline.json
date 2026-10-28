@@ -1775,22 +1775,6 @@
 				"hash": "ee4b7ca996c4"
 			}
 		],
-		"packages/cli/src/modules/data-table/data-table-ddl.service.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 3,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "9d6b2c45c02a"
-			}
-		],
-		"packages/cli/src/modules/data-table/data-table.service.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 18,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "b1aa220b40ab"
-			}
-		],
 		"packages/cli/src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",
@@ -1961,14 +1945,6 @@
 				"line": 45,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "3f27e7921159"
-			}
-		],
-		"packages/cli/src/modules/data-table/utils/sql-utils.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 10,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "9780aefcf874"
 			}
 		],
 		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts": [
