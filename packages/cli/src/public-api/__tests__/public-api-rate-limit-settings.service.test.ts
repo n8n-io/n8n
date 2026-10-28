@@ -38,8 +38,17 @@ describe('PublicApiRateLimitSettingsService', () => {
 	const eventService = mock<EventService>();
 	const publisher = mock<Publisher>();
 	let config: PublicApiRateLimitConfig;
-	let instanceSettings: { isMultiMain: boolean };
 	let service: PublicApiRateLimitSettingsService;
+
+	const createService = ({ isMultiMain = false }: { isMultiMain?: boolean } = {}) =>
+		new PublicApiRateLimitSettingsService(
+			{ publicApi: { rateLimit: config } } as GlobalConfig,
+			mock<InstanceSettings>({ isMultiMain }),
+			settingsRepository,
+			eventService,
+			publisher,
+			logger,
+		);
 
 	const storeRow = (value: string) =>
 		settingsRepository.findByKey.mockResolvedValue(
@@ -49,16 +58,8 @@ describe('PublicApiRateLimitSettingsService', () => {
 	beforeEach(() => {
 		settingsRepository.findByKey.mockResolvedValue(null);
 		config = { ...codeDefaults };
-		instanceSettings = { isMultiMain: false };
 		publisher.publishCommand.mockResolvedValue(undefined);
-		service = new PublicApiRateLimitSettingsService(
-			{ publicApi: { rateLimit: config } } as GlobalConfig,
-			instanceSettings as InstanceSettings,
-			settingsRepository,
-			eventService,
-			publisher,
-			logger,
-		);
+		service = createService();
 	});
 
 	afterEach(() => {
@@ -205,7 +206,7 @@ describe('PublicApiRateLimitSettingsService', () => {
 		});
 
 		it('tells the other mains to reload the settings on multi-main', async () => {
-			instanceSettings.isMultiMain = true;
+			service = createService({ isMultiMain: true });
 
 			await service.saveSettings(stored, actor);
 
