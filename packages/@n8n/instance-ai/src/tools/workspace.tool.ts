@@ -7,6 +7,7 @@ import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	buildWorkspaceSessionGrantKey,
+	buildCleanupTestExecutionsSessionGrantKey,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -237,7 +238,7 @@ async function handleCleanupTestExecutions(
 		};
 	}
 
-	const grantKey = buildWorkspaceSessionGrantKey('cleanup-test-executions');
+	const grantKey = buildCleanupTestExecutionsSessionGrantKey(input.workflowId);
 	const needsApproval =
 		context.permissions?.cleanupTestExecutions !== 'always_allow' &&
 		!hasSessionGrant(context, grantKey);
