@@ -20,7 +20,9 @@ import type { ResponseExpectation } from '../../response-channel';
 @Entity('workflow_execution')
 @Index('idx_workflow_execution_workflow_id', ['workflowId'])
 @Index('idx_workflow_execution_status', ['status'])
-@Index('idx_workflow_execution_parent_execution_id', ['parentExecutionId'])
+@Index('idx_workflow_execution_parent_execution_id', ['parentExecutionId'], {
+	where: 'parent_execution_id IS NOT NULL',
+})
 export class WorkflowExecution {
 	@PrimaryColumn('uuid')
 	id!: string;

@@ -73,9 +73,12 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 		await queryRunner.createIndices(TABLE, [
 			new TableIndex({ name: 'idx_workflow_execution_workflow_id', columnNames: ['workflow_id'] }),
 			new TableIndex({ name: 'idx_workflow_execution_status', columnNames: ['status'] }),
+			// Partial: most executions have no parent, and a top-level insert then
+			// never touches this index. A lookup by parent id still uses it.
 			new TableIndex({
 				name: 'idx_workflow_execution_parent_execution_id',
 				columnNames: ['parent_execution_id'],
+				where: 'parent_execution_id IS NOT NULL',
 			}),
 		]);
 	}
