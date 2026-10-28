@@ -1,5 +1,4 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
@@ -78,17 +77,12 @@ describe('SkillRuntimeService agent reads', () => {
 		expect(nameOf({ id: 'skill_gone' })).toBeUndefined();
 	});
 
-	it('snapshots the version each ref runs for a publish', async () => {
+	it('snapshots the version each ref runs for a saved agent version', async () => {
 		const { voice, tone } = await givenSkills();
 
-		// Publish takes the skill locks, so it runs in a transaction.
-		const snapshot = await Container.get(TransactionRunner).run(
+		const snapshot = await runtime.snapshotForSave(
+			[{ id: voice.id, versionId: voice.v1 }, { id: tone.id }, { id: 'skill_gone' }],
 			{},
-			async (ctx) =>
-				await runtime.snapshotForPublish(
-					[{ id: voice.id, versionId: voice.v1 }, { id: tone.id }, { id: 'skill_gone' }],
-					ctx,
-				),
 		);
 
 		expect(Object.fromEntries(snapshot)).toEqual({

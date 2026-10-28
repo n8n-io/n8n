@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
-import type { ToolDefinition } from '../types';
+import type { ResolvedConfig, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import {
 	createConnectedTool,
@@ -11,7 +11,10 @@ import {
 	withSnapshotEnvelope,
 } from './helpers';
 
-export function createInteractionTools(connection: BrowserConnection): ToolDefinition[] {
+export function createInteractionTools(
+	connection: BrowserConnection,
+	mode: ResolvedConfig['mode'] = 'local',
+): ToolDefinition[] {
 	return [
 		browserClick(connection),
 		browserType(connection),
@@ -20,7 +23,8 @@ export function createInteractionTools(connection: BrowserConnection): ToolDefin
 		browserHover(connection),
 		browserPress(connection),
 		browserScroll(connection),
-		browserUpload(connection),
+		// Remote sessions leave file selection to the user in their own browser.
+		...(mode === 'remote' ? [] : [browserUpload(connection)]),
 		browserDialog(connection),
 	];
 }

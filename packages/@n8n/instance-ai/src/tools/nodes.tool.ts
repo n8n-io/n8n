@@ -689,7 +689,12 @@ export function createGetNodeTypesTool(context: InstanceAiContext) {
 
 const getNodeParameterOptionsInputSchema = z.object({
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
-	version: z.number().optional().describe('Node version, e.g. 4.7'),
+	version: z
+		.number()
+		.optional()
+		.describe(
+			'Pass in an optional version number if you want to use a specific version of the node, e.g. 4.7. Otherwise, it defaults to the latest version of the node.',
+		),
 	nodeTypeVersion: z.number().optional().describe('Alias for version'),
 	parameterPath: z
 		.string()
@@ -733,13 +738,17 @@ export function createGetNodeParameterOptionsTool(context: InstanceAiContext) {
 		)
 		.input(getNodeParameterOptionsInputSchema)
 		.handler(async (input) => {
-			const version = input.version ?? input.nodeTypeVersion;
+			let version = input.version ?? input.nodeTypeVersion;
 			if (version === undefined) {
-				return {
-					ok: false as const,
-					results: [],
-					error: 'version: Required — provide the node version number.',
-				};
+				try {
+					version = (await context.nodeService.getDescription(input.nodeType)).version;
+				} catch {
+					return {
+						ok: false as const,
+						results: [],
+						error: `Could not find node type "${input.nodeType}". Check the node type ID.`,
+					};
+				}
 			}
 
 			const currentNodeParameters = input.currentNodeParameters ?? input.nodeParameters;

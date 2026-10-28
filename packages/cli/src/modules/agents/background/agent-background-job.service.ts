@@ -779,26 +779,50 @@ export class AgentBackgroundJobService {
 		parentThreadId: string,
 		parentResourceId: string,
 	): Promise<void> {
+		await this.cancelChildren(parentAgentId, parentThreadId, parentResourceId);
+	}
+
+	async cancelForSession(parentAgentId: string, parentThreadId: string): Promise<void> {
+		await this.cancelChildren(parentAgentId, parentThreadId);
+	}
+
+	requestCancelForSession(parentAgentId: string, parentThreadId: string): void {
+		this.markPendingChildrenCancelled(parentAgentId, parentThreadId);
+	}
+
+	private async cancelChildren(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId?: string,
+	): Promise<void> {
+		this.markPendingChildrenCancelled(parentAgentId, parentThreadId, parentResourceId);
+		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
+		for (const job of jobs) {
+			if (
+				job.kind === 'subagent' &&
+				job.parentAgentId === parentAgentId &&
+				(parentResourceId === undefined || job.parentResourceId === parentResourceId) &&
+				(job.status === 'running' || job.status === 'suspended')
+			) {
+				await this.cancel(parentThreadId, job.id, { status: job.status });
+			}
+		}
+	}
+
+	private markPendingChildrenCancelled(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId?: string,
+	): void {
 		// A pending insert can finish after the query. Keep its cancellation intent until registration ends.
 		for (const registration of this.pendingSubAgentJobs) {
 			const { params } = registration;
 			if (
 				params.parentAgentId === parentAgentId &&
 				params.parentThreadId === parentThreadId &&
-				params.parentResourceId === parentResourceId
+				(parentResourceId === undefined || params.parentResourceId === parentResourceId)
 			)
 				registration.cancelRequested = true;
-		}
-		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
-		for (const job of jobs) {
-			if (
-				job.kind === 'subagent' &&
-				job.parentAgentId === parentAgentId &&
-				job.parentResourceId === parentResourceId &&
-				(job.status === 'running' || job.status === 'suspended')
-			) {
-				await this.cancel(parentThreadId, job.id, { status: job.status });
-			}
 		}
 	}
 

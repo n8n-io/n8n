@@ -42,7 +42,18 @@ describe('SkillsModuleBoundaryRule', () => {
 			expect.objectContaining({
 				line: 1,
 				message: expect.stringContaining('its public API'),
+				suggestion: expect.stringContaining('Export the symbol from its index.ts'),
 			}),
+		]);
+	});
+
+	it('rejects a mock of a private file from tests outside the module', () => {
+		write(
+			`${modules}/agents/__tests__/example.test.ts`,
+			"\nvi.mock('@/modules/skills/services/skill.service', () => ({}));",
+		);
+		expect(analyze()).toEqual([
+			expect.objectContaining({ line: 2, message: expect.stringContaining('test fixtures') }),
 		]);
 	});
 
@@ -86,7 +97,11 @@ import { SkillService } from '../../skills';`,
 	])('rejects cli imports from inside the module: %s', (source) => {
 		write(`${modules}/skills/services/example.ts`, source);
 		expect(analyze()).toEqual([
-			expect.objectContaining({ line: 1, message: expect.stringContaining('allowlist') }),
+			expect.objectContaining({
+				line: 1,
+				message: expect.stringContaining('allowlist'),
+				suggestion: expect.stringContaining('SkillUsageProxy'),
+			}),
 		]);
 	});
 

@@ -46,7 +46,25 @@ export function resolveLocalImport(
 	return undefined;
 }
 
-/** Static imports and exports, `import('…')` types, and dynamic `import()` calls with a literal. */
+/** Test helpers whose first argument is a module specifier: mocking a file reaches into it. */
+const MODULE_SPECIFIER_CALLS = new Set([
+	'vi.mock',
+	'vi.doMock',
+	'vi.unmock',
+	'vi.doUnmock',
+	'vi.importActual',
+	'vi.importMock',
+	'jest.mock',
+	'jest.doMock',
+	'jest.unmock',
+	'jest.requireActual',
+	'jest.requireMock',
+]);
+
+/**
+ * Static imports and exports, `import('…')` types, dynamic `import()` calls with a literal, and
+ * the literal module specifier of `vi.mock` and the other module mocking helpers.
+ */
 export function importReferences(file: SourceFile) {
 	const references = parseImports(file);
 	for (const importType of file.getDescendantsOfKind(SyntaxKind.ImportType)) {
@@ -63,8 +81,21 @@ export function importReferences(file: SourceFile) {
 	}
 	for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
 		const [argument] = call.getArguments();
-		if (call.getExpression().getKind() !== SyntaxKind.ImportKeyword || !argument) continue;
-		if (Node.isNoSubstitutionTemplateLiteral(argument)) {
+		if (!argument) continue;
+		const expression = call.getExpression();
+		if (expression.getKind() === SyntaxKind.ImportKeyword) {
+			// `parseImports` already finds `import('…')` with a string literal.
+			if (Node.isNoSubstitutionTemplateLiteral(argument)) {
+				references.push({
+					specifier: argument.getLiteralText(),
+					typeOnly: false,
+					line: argument.getStartLineNumber(),
+				});
+			}
+		} else if (
+			MODULE_SPECIFIER_CALLS.has(expression.getText()) &&
+			(Node.isStringLiteral(argument) || Node.isNoSubstitutionTemplateLiteral(argument))
+		) {
 			references.push({
 				specifier: argument.getLiteralText(),
 				typeOnly: false,

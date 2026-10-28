@@ -1,9 +1,11 @@
 import { jsonSchemaToZod } from '@n8n/json-schema-to-zod';
-import { json as generateJsonSchema } from 'generate-schema';
-import type { SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import {
+	generateSchemaFromExample as generateJsonSchemaFromExample,
+	NodeOperationError,
+	jsonParse,
+} from 'n8n-workflow';
 import type { z } from 'zod';
 
 function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
@@ -54,9 +56,7 @@ export function generateSchemaFromExample(
 	exampleJson: unknown,
 	allFieldsRequired = false,
 ): JSONSchema7 {
-	const parsedExample = jsonParse<SchemaObject>(asSchemaText(exampleJson));
-
-	const schema = generateJsonSchema(parsedExample) as JSONSchema7;
+	const schema = generateJsonSchemaFromExample(asSchemaText(exampleJson));
 
 	if (allFieldsRequired) {
 		return makeAllPropertiesRequired(schema);

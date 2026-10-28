@@ -122,6 +122,32 @@ describe('Test Snowflake, executeQuery - comma-separated query parameters', () =
 	);
 });
 
+describe('Test Snowflake, executeQuery - a comma in a resolved value keeps its own slot', () => {
+	new NodeTestHarness().setupTest(
+		{
+			description: 'does not let a comma in a resolved value land in another parameter slot',
+			input: {
+				workflowData: executeQueryWorkflow(
+					'SELECT * FROM users WHERE name = ? AND city = ?',
+					"={{ 'Doe, Jane' }},Springfield",
+				),
+			},
+			output: { nodeData: {} },
+		},
+		{
+			credentials: { snowflake: snowflakeCredentials },
+			customAssertions() {
+				expect(mockExecute).toHaveBeenCalledWith(
+					expect.objectContaining({
+						sqlText: 'SELECT * FROM users WHERE name = ? AND city = ?',
+						binds: ['Doe, Jane', 'Springfield'],
+					}),
+				);
+			},
+		},
+	);
+});
+
 describe('Test Snowflake, executeQuery - query parameters provided as an array', () => {
 	new NodeTestHarness().setupTest(
 		{

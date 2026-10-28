@@ -74,9 +74,9 @@ export class SkillUsageProxy extends SkillUsage {
 		await this.impl?.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
 	}
 
-	async markFollowersChanged(skillId: string, ctx: OperationContext = {}) {
+	async markFollowersChanged(skillId: string, ctx: OperationContext = {}, userId?: string | null) {
 		if (!this.impl) return [];
-		return await this.impl.markFollowersChanged(skillId, ctx);
+		return await this.impl.markFollowersChanged(skillId, ctx, userId);
 	}
 
 	async refreshAgents(agentIds: string[], excludePushRef?: string) {

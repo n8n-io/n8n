@@ -148,6 +148,6 @@ export function mcpToolToDynamicTool(
 		schema: objectSchema,
 		func: onCallTool,
 		// The agent reads `attribution` to append it to its final reply.
-		metadata: { isFromToolkit: true, ...(attribution && { attribution }) },
+		metadata: { isFromToolkit: true, isMcpTool: true, ...(attribution && { attribution }) },
 	});
 }

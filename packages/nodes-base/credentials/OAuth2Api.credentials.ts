@@ -119,12 +119,18 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Private Key',
 			name: 'privateKey',
 			type: 'hidden',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 		{
 			displayName: 'Certificate',
 			name: 'certificate',
 			type: 'hidden',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 		// WARNING: if you are extending from this credentials and allow user to set their own scopes

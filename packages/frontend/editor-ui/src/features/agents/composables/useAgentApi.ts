@@ -35,6 +35,8 @@ import type {
 	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
+	UpdateAgentVersionDto,
+	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
 	SkillListItem,
@@ -68,15 +70,18 @@ export async function updateAgentsSettings(
 }
 
 /**
- * Which chat backend a request targets — the value is the URL segment
- * itself. `'chat'` (default) is the agent builder's draft/test chat;
- * `'n8n-chat'` is the published n8n Chat channel (see `useAgentChatStream`'s
- * `capabilities` for the differences between channels).
+ * Which chat backend a request targets. `'chat'` (default) is the agent
+ * builder's draft/test chat; `'n8n-chat'` is the published n8n Chat channel;
+ * `'system'` is the chat of a code-defined system agent, such as the n8n
+ * Assistant (see `useAgentChatStream`'s `capabilities` for the differences
+ * between channels).
  */
-export type AgentChatChannel = 'chat' | 'n8n-chat';
+export type AgentChatChannel = 'chat' | 'n8n-chat' | 'system';
 
 /**
- * Relative path for a chat route on either channel: `/projects/<projectId>/agents/v2/<agentId>/<channel>`.
+ * Relative path for a chat route: `/projects/<projectId>/agents/v2/<agentId>/<channel>`,
+ * or `/agents/system/<agentId>/chat` on the system channel. A system thread keeps
+ * its own project, so the system path has no project.
  * Use this for every `makeRestApiRequest` call — it prepends `context.baseUrl` itself,
  * so passing an already-absolute URL there doubles it (e.g. `/rest/rest/...`).
  */
@@ -85,7 +90,9 @@ export const agentChatPath = (
 	agentId: string,
 	channel: AgentChatChannel = 'chat',
 ): string =>
-	`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/${channel}`;
+	channel === 'system'
+		? `/agents/system/${encodeURIComponent(agentId)}/chat`
+		: `/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/${channel}`;
 
 /**
  * Absolute URL for a chat route on either channel. Only for callers that need a full
@@ -629,12 +636,13 @@ export const publishAgent = async (
 	projectId: string,
 	agentId: string,
 	versionId?: string,
+	metadata?: UpdateAgentVersionDto,
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		versionId ? { versionId } : undefined,
+		{ versionId, ...metadata },
 	);
 };
 
@@ -676,6 +684,33 @@ export const revertAgentToVersion = async (
 	);
 };
 
+export const getAgentVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+): Promise<AgentVersionListItemDto> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
+	);
+
+export const updateAgentVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+	metadata: UpdateAgentVersionDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
+		metadata,
+	);
+};
+
 export const listAgentVersions = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -689,6 +724,19 @@ export const listAgentVersions = async (
 		params,
 	);
 };
+
+export const listAgentPublishHistory = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentPublishHistoryItemDto[]> =>
+	await makeRestApiRequest<AgentPublishHistoryItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/publish-history`,
+		params,
+	);
 
 export const getAgentBudgetSpend = async (
 	context: IRestApiContext,

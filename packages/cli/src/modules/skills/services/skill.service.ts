@@ -340,6 +340,7 @@ export class SkillService {
 	 */
 	async createTrusted(
 		input: {
+			id?: string;
 			target: SkillTarget;
 			skill: AgentSkill;
 			frontmatter?: SkillFrontmatter;
@@ -354,7 +355,7 @@ export class SkillService {
 		if (input.checkNameTaken) {
 			await this.assertNameFree(skill.name, input.target, undefined, ctx);
 		}
-		const id = `skill_${generateNanoId()}`;
+		const id = input.id ?? `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
 			toSkillContent(skill, input.frontmatter),
@@ -439,7 +440,7 @@ export class SkillService {
 				userId,
 				txCtx,
 			);
-			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx);
+			const followingIds = await this.skillUsage.markFollowersChanged(skillId, txCtx, userId);
 			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
 			return { saved: result, following: followingIds };
 		});

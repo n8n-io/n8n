@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
+import type { ProjectIcon } from './schemas/project.schema';
 import { Z } from './zod-class';
 
 export class UpdateSelfHealingConfigurationDto extends Z.class({
 	scope: z.enum(['all', 'selected']),
 	workflowIds: z.array(z.string().min(1).max(36)).default([]),
-	reviewerIds: z.array(z.string().uuid()).min(1),
+	reviewerIds: z.array(z.string().uuid()).default([]),
+	includeAllProjectMembers: z.boolean().default(false),
 }) {}
 
 export class SaveSelfHealingConfigurationDto extends UpdateSelfHealingConfigurationDto.extend({
@@ -24,6 +26,7 @@ export type SelfHealingConfigurationDto = SaveSelfHealingConfigurationDto & {
 };
 
 export type SelfHealingConfigurationOptions = {
+	project: { name: string; icon: ProjectIcon | null };
 	workflows: Array<{ id: string; name: string }>;
 	reviewers: Array<{
 		id: string;
