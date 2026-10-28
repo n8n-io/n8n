@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -10,10 +10,10 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { SkillUsageProxy } from '@/modules/skills';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
+import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
 import { AgentsSettingsService } from '../agents-settings.service';
@@ -37,8 +37,7 @@ import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.r
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
-import { AgentSkillUsageService } from '../agent-skill-usage.service';
+import { AgentSkillUsage } from '../agent-skill-usage';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
@@ -66,10 +65,8 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
-	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
-	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
-	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
+	Container.set(SkillUsageProxy, mock<SkillUsageProxy>());
+	Container.set(AgentSkillUsage, mock<AgentSkillUsage>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
 	Container.set(AgentWorkflowDependencyRepository, mock<AgentWorkflowDependencyRepository>());
@@ -124,7 +121,20 @@ describe('AgentsModule', () => {
 	});
 
 	describe('systemTasks()', () => {
-		it('registers the pruning, sweep and media retention tasks', async () => {
+		it('registers the pruning, sweep, media retention and knowledge snapshot tasks', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: true } }));
+
+			await expect(module.systemTasks()).resolves.toEqual([
+				AgentCheckpointPruningTask,
+				AgentInterruptedExecutionSweepTask,
+				AgentChannelMediaRetentionTask,
+				AgentKnowledgeSnapshotTask,
+			]);
+		});
+
+		it('leaves out the knowledge snapshot task when telemetry is off', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: false } }));
+
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,

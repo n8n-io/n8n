@@ -12,6 +12,7 @@ import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { escapeODataValue } from '@utils/query-escaping';
 
 import type { IErrorResponse } from './interfaces';
+import { autoMapInputData } from '../../helpers/utils';
 import { microsoftSharePointApiRequest } from '../transport';
 
 export const escapeFilterValue = escapeODataValue;
@@ -124,6 +125,15 @@ export async function itemColumnsPreSend(
 ): Promise<IHttpRequestOptions> {
 	const mapperValue = this.getNodeParameter('columns') as ResourceMapperValue;
 	const operation = this.getNodeParameter('operation') as string;
+
+	if (mapperValue.mappingMode === 'autoMapInputData') {
+		mapperValue.value = autoMapInputData(
+			this.getNode(),
+			mapperValue.schema,
+			this.getInputData().json,
+			this.getItemIndex(),
+		) as ResourceMapperValue['value'];
+	}
 
 	if (['upsert', 'update'].includes(operation) && mapperValue.matchingColumns?.length > 0) {
 		if (!mapperValue.matchingColumns.includes('id')) {

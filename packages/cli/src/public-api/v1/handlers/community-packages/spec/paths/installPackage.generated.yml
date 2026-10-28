@@ -27,7 +27,78 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/communityPackagePublicDto.generated.yml
+          type: object
+          properties:
+            packageName:
+              type: string
+              description: npm package name
+            installedVersion:
+              type: string
+              description: Currently installed version
+            authorName:
+              type: string
+              description: Package author name
+            authorEmail:
+              type: string
+              description: Package author email
+            installedNodes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  latestVersion:
+                    type: number
+              description: Nodes included in this package
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            updateAvailable:
+              type: string
+              description: Version available for update, if any
+            failedLoading:
+              type: boolean
+              description: Whether the package failed to load
+            policyRestrictions:
+              type: object
+              properties:
+                nodeTypes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: Full node type name, such as n8n-nodes-example.exampleNode.
+                      blockedOn:
+                        type: string
+                        enum:
+                          - instance
+                          - projects
+                        description: 'instance: blocked on the instance by default. projects: allowed on the instance, but blocked in one or more projects.'
+                      optInAvailable:
+                        type: boolean
+                        description: Whether a project can allow this node type. True when an instance policy blocks the node type unless a project allows it.
+                    required:
+                      - type
+                      - blockedOn
+                      - optInAvailable
+                  description: Blocked node types from this package. Lists only the node types that are blocked.
+              required:
+                - nodeTypes
+              description: Node types from this package that a node type policy blocks. The install does not fail because of a policy. Absent when no policy was evaluated, for example when node type policies are not licensed. An empty nodeTypes list means that no policy blocks a node type from this package.
+          required:
+            - packageName
+            - installedVersion
+            - installedNodes
+            - createdAt
+            - updatedAt
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

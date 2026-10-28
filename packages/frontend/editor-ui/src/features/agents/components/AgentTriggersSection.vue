@@ -11,7 +11,9 @@ import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useStorage } from '@n8n/composables/useStorage';
 import { agentsEventBus } from '../agents.eventBus';
+import { N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS } from '../constants';
 import {
 	agentChannelPlatforms,
 	createAgentChannelRuntime,
@@ -23,9 +25,12 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
+import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
+import { useWhatsAppMetaStatus } from '../channels/whatsapp/useWhatsAppMetaStatus';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import N8nChatHintPopover from './N8nChatHintPopover.vue';
 import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 const props = withDefaults(
@@ -37,6 +42,7 @@ const props = withDefaults(
 		isPublished?: boolean;
 		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 		simpleChannelSetup?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
@@ -63,6 +69,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
+	'trigger-removed': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
@@ -74,6 +81,36 @@ const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+
+// The chip reads Meta's status once, and again when the channel modal closes.
+// The modal polls on its own while it is open.
+const { status: whatsAppMetaStatus, refresh: refreshWhatsAppMetaStatus } = useWhatsAppMetaStatus(
+	toRef(props, 'projectId'),
+	toRef(props, 'agentId'),
+	computed(() =>
+		props.connectedTriggers.includes('whatsapp') ? connectedCredentials.value.whatsapp : undefined,
+	),
+	{ poll: false },
+);
+
+/**
+ * Meta's review state for a channel, as the headline and how serious it is. Only
+ * WhatsApp has one. The chip shows an error for the same states that show a red callout.
+ */
+function channelMetaNotice(channel: string) {
+	if (channel !== 'whatsapp' || !whatsAppMetaStatus.value) return undefined;
+	const presentation = presentWhatsAppMetaState(whatsAppMetaStatus.value.state);
+	if (!presentation) return undefined;
+	return {
+		isError: presentation.theme === 'danger',
+		message: i18n.baseText(metaTitleKey(presentation, whatsAppMetaStatus.value), {
+			interpolate: {
+				number: whatsAppMetaStatus.value.displayPhoneNumber ?? '',
+				name: whatsAppMetaStatus.value.displayName ?? '',
+			},
+		}),
+	};
+}
 
 const runtimeContext = {
 	projectId: computed(() => props.projectId),
@@ -123,6 +160,10 @@ const channelList = computed(() => withN8nChat(catalog.value ?? []));
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
+
+watch(channelModalOpen, (open, wasOpen) => {
+	if (wasOpen && !open) refreshWhatsAppMetaStatus();
+});
 const channelModalView = ref<ChannelView>('list');
 
 function isIconName(icon: unknown): icon is IconName {
@@ -142,6 +183,8 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const channelIssueMessages = computed(() => {
@@ -172,9 +215,11 @@ const channelRows = computed(() =>
 		const credentialId = connectedCredentials.value[channel];
 		// A channel that is configured correctly but failed to start is just as
 		// broken from here as a misconfigured one, so it uses the same affordance.
+		const metaNotice = channelMetaNotice(channel);
 		const invalidReasons = [
 			...(channelIssueMessages.value.get(channel) ?? []),
 			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+			...(metaNotice?.isError ? [metaNotice.message] : []),
 		];
 		return {
 			type: channel,
@@ -182,6 +227,9 @@ const channelRows = computed(() =>
 			icon: channelIcon(integration?.icon),
 			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
 			invalidReasons,
+			// A red callout in the channel settings shows a red cross on the chip too.
+			invalidIcon: metaNotice?.isError ? ('circle-x' as const) : undefined,
+			warningReasons: metaNotice && !metaNotice.isError ? [metaNotice.message] : [],
 			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
 			connected:
 				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
@@ -254,6 +302,10 @@ function openChannelEdit(channelType: string, connected: boolean) {
 	channelModalOpen.value = true;
 }
 
+// The sidebar "New chat" hint shows on a user's first visit; this one follows it, never both at once.
+const newChatHintStorage = useStorage(N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS.new_chat_sidebar);
+const newChatHintDismissed = computed(() => newChatHintStorage.value === 'true');
+
 function handleChannelConnected(channelType: string) {
 	const channels = Array.from(new Set([...props.connectedTriggers, channelType]));
 	emit('update:connected-triggers', channels);
@@ -297,10 +349,9 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 defineExpose({ openChannelModal });
 
 function handleChannelDisconnected(channelType: string) {
-	emit(
-		'update:connected-triggers',
-		props.connectedTriggers.filter((channel) => channel !== channelType),
-	);
+	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
+	emit('update:connected-triggers', channels);
+	emit('trigger-removed', { triggerType: channelType, triggers: channels });
 }
 </script>
 
@@ -323,21 +374,39 @@ function handleChannelDisconnected(channelType: string) {
 				:disabled="props.disabled || removingChannel || !channel.connected"
 				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
-				<AgentChipButton
-					:icon="channel.icon"
-					:deactivated="!channel.connected"
-					:invalid="channel.invalidReasons.length > 0"
-					:invalid-reasons="channel.invalidReasons"
-					:disabled="props.disabled || removingChannel"
-					:class="$style.channelChip"
-					@click="openChannelEdit(channel.type, channel.connected)"
+				<N8nChatHintPopover
+					hint="channel_chip"
+					:active="
+						channel.type === N8N_CHAT_INTEGRATION_TYPE &&
+						channel.connected &&
+						!channelModalOpen &&
+						!props.disabled &&
+						newChatHintDismissed
+					"
+					:title="i18n.baseText('agents.n8nChatHint.channelAdded.title')"
+					:body="i18n.baseText('agents.n8nChatHint.channelAdded.body')"
+					:agent-id="props.agentId"
 				>
-					{{ channel.label }}
-				</AgentChipButton>
+					<AgentChipButton
+						:icon="channel.icon"
+						:deactivated="!channel.connected"
+						:invalid="channel.invalidReasons.length > 0"
+						:invalid-reasons="channel.invalidReasons"
+						:invalid-icon="channel.invalidIcon"
+						:warning="channel.warningReasons.length > 0"
+						:warning-reasons="channel.warningReasons"
+						:disabled="props.disabled || removingChannel"
+						:class="$style.channelChip"
+						@click="openChannelEdit(channel.type, channel.connected)"
+					>
+						{{ channel.label }}
+					</AgentChipButton>
+				</N8nChatHintPopover>
 			</AgentItemContextMenu>
 		</AgentChipRow>
 
 		<AgentSchedulesRow
+			:preview-disabled-reason="props.previewDisabledReason"
 			:task-refs="props.taskRefs"
 			:disabled="props.disabled"
 			:project-id="props.projectId"

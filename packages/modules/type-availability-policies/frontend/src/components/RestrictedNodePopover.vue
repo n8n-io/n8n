@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
 import { computed, getCurrentInstance, ref, watch } from 'vue';
 
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
+import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import {
 	RESTRICTED_TYPE_COPY,
 	SCOPE_LABEL_KEY,
+	type ContactAudience,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
 import ContactAdminModal from './ContactAdminModal.vue';
@@ -16,7 +17,7 @@ import ContactAdminModal from './ContactAdminModal.vue';
 const props = withDefaults(
 	defineProps<{
 		nodeTypeName: string;
-		scope?: NodeTypeAvailabilityScope;
+		restriction?: OptionalVerdict;
 		kind?: RestrictedTypeKind;
 		/** The list row the popover explains. It opens beside this element, not beside the lock. */
 		anchor?: MaybeElement;
@@ -29,7 +30,7 @@ const props = withDefaults(
 	}>(),
 	{
 		kind: 'node',
-		scope: undefined,
+		restriction: undefined,
 		anchor: undefined,
 		active: false,
 		side: 'left',
@@ -40,7 +41,7 @@ const props = withDefaults(
 );
 
 /** A parent that listens owns the contact-admin dialog, so it can live outside a menu that closes. */
-const emit = defineEmits<{ contactAdmin: [] }>();
+const emit = defineEmits<{ contactAdmin: [audience: ContactAudience] }>();
 const parentHandlesContactAdmin = Boolean(getCurrentInstance()?.vnode.props?.onContactAdmin);
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
@@ -74,13 +75,14 @@ const wantsOpen = computed(
 );
 const open = useExclusiveOpen(wantsOpen);
 
-const copy = computed(() => RESTRICTED_TYPE_COPY[props.kind]);
-const scopeKey = computed<BaseTextKey>(
-	() => (props.scope && SCOPE_LABEL_KEY[props.scope]) ?? copy.value.title,
-);
+const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
+const scopeKey = computed<BaseTextKey>(() => {
+	const scope = props.restriction?.scope;
+	return scope ? SCOPE_LABEL_KEY[scope] : RESTRICTED_TYPE_COPY[props.kind].title;
+});
 
 function requestContactAdmin() {
-	if (parentHandlesContactAdmin) emit('contactAdmin');
+	if (parentHandlesContactAdmin) emit('contactAdmin', contactCopy.value.audience);
 	else isContactAdminOpen.value = true;
 }
 </script>
@@ -120,7 +122,7 @@ function requestContactAdmin() {
 					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
 					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-						{{ i18n.baseText(copy.popoverDescription) }}
+						{{ i18n.baseText(contactCopy.popoverDescription[kind]) }}
 					</N8nText>
 					<N8nButton
 						variant="outline"
@@ -129,7 +131,7 @@ function requestContactAdmin() {
 						data-test-id="node-restricted-contact-admin"
 						@click="requestContactAdmin"
 					>
-						{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+						{{ i18n.baseText(contactCopy.action) }}
 						<N8nIcon icon="arrow-up-right" size="xsmall" />
 					</N8nButton>
 				</div>
@@ -141,6 +143,7 @@ function requestContactAdmin() {
 			v-model:open="isContactAdminOpen"
 			:node-type-name="nodeTypeName"
 			:kind="kind"
+			:audience="contactCopy.audience"
 		/>
 	</span>
 </template>

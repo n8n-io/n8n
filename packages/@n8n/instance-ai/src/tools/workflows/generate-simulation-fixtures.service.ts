@@ -38,11 +38,15 @@ import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
+import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
-import { SONNET_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+
+export const SIMULATION_FIXTURES_MODEL = 'anthropic/claude-sonnet-5-5';
+export const SIMULATION_FIXTURES_EFFORT: AnthropicThinkingEffort = 'low';
 
 /**
  * Fixture items per node name, stored UNWRAPPED (plain objects, not n8n's
@@ -63,6 +67,8 @@ export interface GenerateSimulationFixturesInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 	logger?: Logger;
 }
 
@@ -446,11 +452,13 @@ export async function generateSimulationFixtures(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-simulation-fixtures', {
-		model: SONNET_MODEL,
+		model: SIMULATION_FIXTURES_MODEL,
+		effort: SIMULATION_FIXTURES_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: FixturesResponseSchema,
 		fallbackModelConfig: input.fallbackModelConfig,
+		modelFetch: input.modelFetch,
 	});
 	if (!result.ok) {
 		input.logger?.warn(

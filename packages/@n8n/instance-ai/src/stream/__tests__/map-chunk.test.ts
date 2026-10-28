@@ -104,6 +104,46 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps the skill update content delivered for the response', () => {
+		const update = {
+			skillId: 'hub-example',
+			name: 'Writing style',
+			version: 'v2',
+			change: 'updated',
+			content: 'Private skill instructions.',
+		};
+		expect(
+			map(
+				{
+					type: 'message',
+					message: {
+						type: 'custom',
+						data: {
+							type: 'n8n:runtime-skill-update',
+							skillUpdate: update,
+						},
+					},
+				},
+				'response-1',
+			),
+		).toEqual({
+			type: 'skill-update',
+			runId,
+			agentId,
+			responseId: 'response-1',
+			payload: {
+				skillId: update.skillId,
+				name: update.name,
+				version: update.version,
+				change: update.change,
+				content: update.content,
+			},
+		});
+		expect(
+			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
+		).toBeNull();
+	});
+
 	it('preserves responseId when provided', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' }, 'response-1')).toEqual({
 			type: 'text-delta',
@@ -312,7 +352,7 @@ describe('mapAgentChunkToEvent', () => {
 					],
 					requireUserSelection: true,
 					projectId: 'project-1',
-					inputType: 'plan-review',
+					inputType: 'questions',
 					questions: [
 						{
 							id: 'q1',
@@ -321,18 +361,6 @@ describe('mapAgentChunkToEvent', () => {
 						},
 					],
 					introMessage: 'Before continuing',
-					tasks: {
-						tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-					},
-					planItems: [
-						{
-							id: 'task-1',
-							title: 'Build workflow',
-							kind: 'build-workflow',
-							spec: 'Create a workflow',
-							deps: [],
-						},
-					],
 					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 					credentialFlow: { stage: 'generic' },
 					credentialDestination: {
@@ -376,7 +404,7 @@ describe('mapAgentChunkToEvent', () => {
 				],
 				requireUserSelection: true,
 				projectId: 'project-1',
-				inputType: 'plan-review',
+				inputType: 'questions',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 				credentialFlow: { stage: 'generic' },
 				credentialDestination: {
@@ -399,18 +427,6 @@ describe('mapAgentChunkToEvent', () => {
 					},
 				],
 				introMessage: 'Before continuing',
-				tasks: {
-					tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-				},
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create a workflow',
-						deps: [],
-					},
-				],
 				resourceDecision: {
 					toolGroup: 'Local Gateway',
 					resource: '/tmp/file.txt',

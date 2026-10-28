@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 export const isMfaFeatureEnabled = () => Container.get(GlobalConfig).mfa.enabled;
@@ -7,7 +7,7 @@ export const isMfaFeatureEnabled = () => Container.get(GlobalConfig).mfa.enabled
 const isMfaFeatureDisabled = () => !isMfaFeatureEnabled();
 
 const getUsersWithMfaEnabled = async () =>
-	await Container.get(UserRepository).count({ where: { mfaEnabled: true } });
+	await Container.get(PersonRepository).countWithMfaEnabled();
 
 export const handleMfaDisable = async () => {
 	if (isMfaFeatureDisabled()) {

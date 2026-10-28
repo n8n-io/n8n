@@ -85,6 +85,29 @@ interface CountedObject {
 	sharedIn?: Set<SampleFrame>;
 	/** For each call of `sampleSum`, the bytes of objects inside this one that count there. */
 	sharedInside?: Map<SampleFrame, number>;
+	sharedByRuns?: boolean;
+	sharedByRunsInside?: number;
+}
+
+/** Finds the objects that several runs of one node hold. */
+export class RunSharing {
+	readonly countedBy = new WeakMap<object, { object: CountedObject; run: number }>();
+
+	private readonly sharedBytes = new Map<number, number>();
+
+	/** The bytes that a run counted of objects that a later run holds too. */
+	sharedBytesOf(run: number): number {
+		return this.sharedBytes.get(run) ?? 0;
+	}
+
+	addSharedBytes(run: number, bytes: number) {
+		this.sharedBytes.set(run, this.sharedBytesOf(run) + bytes);
+	}
+}
+
+export interface RunSharingContext {
+	runs: RunSharing;
+	run: number;
 }
 
 interface WalkState {
@@ -100,6 +123,7 @@ interface WalkState {
 	current: CountedObject | undefined;
 	/** Objects counted in this node output. */
 	counted: Map<object, CountedObject>;
+	sharing: RunSharingContext | undefined;
 }
 
 /**
@@ -113,12 +137,13 @@ export function estimateTaskDataSize(
 	taskData: ITaskData,
 	runData: IRunData,
 	seen: WeakSet<object>,
+	sharing?: RunSharingContext,
 ): number {
 	const inputItemOf = pairedInputResolver(taskData, runData);
 
 	return (
-		estimateConnectionsSize(taskData.data, inputItemOf, seen) +
-		estimateConnectionsSize(taskData.inputOverride, inputItemOf, seen)
+		estimateConnectionsSize(taskData.data, inputItemOf, seen, sharing) +
+		estimateConnectionsSize(taskData.inputOverride, inputItemOf, seen, sharing)
 	);
 }
 
@@ -131,13 +156,14 @@ function estimateConnectionsSize(
 	connections: ITaskDataConnections | undefined,
 	inputItemOf: InputItemResolver,
 	seen: WeakSet<object>,
+	sharing?: RunSharingContext,
 ): number {
 	if (!connections) return 0;
 
 	let bytes = 0;
 	for (const outputs of Object.values(connections)) {
 		for (const items of outputs) {
-			if (items) bytes += estimateItemsSize(items, seen, inputItemOf);
+			if (items) bytes += estimateItemsSize(items, seen, inputItemOf, sharing);
 		}
 	}
 	return bytes;
@@ -175,6 +201,7 @@ export function estimateItemsSize(
 	items: INodeExecutionData[],
 	seen: WeakSet<object>,
 	inputItemOf: InputItemResolver = () => undefined,
+	sharing?: RunSharingContext,
 ): number {
 	const state: WalkState = {
 		seen,
@@ -183,6 +210,7 @@ export function estimateItemsSize(
 		path: undefined,
 		current: undefined,
 		counted: new Map(),
+		sharing,
 	};
 
 	const dataBytes = sampleSum(items.length, state, (index) => {
@@ -259,6 +287,7 @@ function valueSize(value: unknown, state: WalkState): number {
 	if (state.seen.has(value)) {
 		const counted = state.counted.get(value);
 		if (counted) markShared(counted, state);
+		else if (state.sharing) markSharedByRuns(value, state.sharing);
 		return 0;
 	}
 
@@ -275,6 +304,7 @@ function valueSize(value: unknown, state: WalkState): number {
 		parent: state.current,
 	};
 	state.counted.set(value, counted);
+	state.sharing?.runs.countedBy.set(value, { object: counted, run: state.sharing.run });
 	state.current = counted;
 	counted.bytes = objectSize(value, state);
 	state.current = counted.parent;
@@ -349,6 +379,23 @@ function markShared(counted: CountedObject, state: WalkState) {
 	for (let object = counted.parent; object; object = object.parent) {
 		object.sharedInside ??= new Map();
 		object.sharedInside.set(frame, (object.sharedInside.get(frame) ?? 0) + bytes);
+	}
+}
+
+/** Like `markShared`, but across the runs of one node. */
+function markSharedByRuns(value: object, { runs, run }: RunSharingContext) {
+	const owner = runs.countedBy.get(value);
+	if (!owner || owner.run === run) return;
+
+	for (let object: CountedObject | undefined = owner.object; object; object = object.parent) {
+		if (object.sharedByRuns) return;
+	}
+
+	const bytes = owner.object.bytes - (owner.object.sharedByRunsInside ?? 0);
+	owner.object.sharedByRuns = true;
+	runs.addSharedBytes(owner.run, bytes);
+	for (let object = owner.object.parent; object; object = object.parent) {
+		object.sharedByRunsInside = (object.sharedByRunsInside ?? 0) + bytes;
 	}
 }
 

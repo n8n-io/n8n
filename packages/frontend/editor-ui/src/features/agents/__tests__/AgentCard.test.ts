@@ -195,11 +195,14 @@ describe('AgentCard', () => {
 		expect(badge.text()).toBe('agents.list.readonly');
 	});
 
-	it('starts a new chat from the dedicated button', async () => {
+	it('starts a new test from the dedicated flask button', async () => {
 		const wrapper = await renderComponent();
 
 		expect(wrapper.find('[data-action="newChat"]').exists()).toBe(false);
-		await wrapper.find('[data-test-id="agent-card-new-chat"]').trigger('click');
+		const button = wrapper.find('[data-test-id="agent-card-new-chat"]');
+		expect(button.attributes('aria-label')).toBe('agents.list.actions.newTest');
+		expect(button.find('[data-icon="flask-conical"]').exists()).toBe(true);
+		await button.trigger('click');
 
 		expect(wrapper.emitted('new-chat')).toEqual([['agent-1', 'project-1']]);
 	});

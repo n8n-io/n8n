@@ -35,6 +35,8 @@ export interface ToolCredentialRef {
 	displayName?: string;
 	credentialId?: string;
 	required?: boolean;
+	/** Gateway credits: no stored credential. `credentialId` is `AI_GATEWAY_MANAGED_TAG` when selected. */
+	aiGateway?: boolean;
 }
 
 /**

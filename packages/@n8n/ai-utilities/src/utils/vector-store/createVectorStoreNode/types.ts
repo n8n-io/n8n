@@ -50,7 +50,8 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	/**
 	 * Optional function called once before any documents are inserted.
 	 * Use this for one-time setup operations like clearing an index.
-	 * Only called for node version 1.1+ where batch processing is used.
+	 * Only called for node version 1.1+ where batch processing is used,
+	 * and only when the insert has at least one document.
 	 */
 	beforeInsert?: (
 		context: IExecuteFunctions | ISupplyDataFunctions,
@@ -61,12 +62,15 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	/**
 	 * Function to populate the vector store with documents
 	 * Used during the 'insert' operation mode
+	 * From node version 1.1, `documents` is one batch and `allDocuments` holds every
+	 * document of the insert, for example to derive an index schema from all batches.
 	 */
 	populateVectorStore: (
 		context: IExecuteFunctions | ISupplyDataFunctions,
 		embeddings: Embeddings,
 		documents: Array<Document<Record<string, unknown>>>,
 		itemIndex: number,
+		allDocuments?: Array<Document<Record<string, unknown>>>,
 	) => Promise<void>;
 
 	/**

@@ -28,6 +28,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 import type { IUser, TableHeader } from '@n8n/design-system';
@@ -50,6 +51,7 @@ import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
 	matchesWorkflowFilters,
+	PERSONAL_PROJECTS,
 	type WorkflowFilters,
 } from './workflowFilters';
 
@@ -221,9 +223,15 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			width: 240,
 		},
 		{
+			title: i18n.baseText('settings.migrationReport.detail.table.project'),
+			key: 'homeProjectName',
+			value: projectLabel,
+			width: 160,
+		},
+		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
-			width: 200,
+			width: 160,
 			disableSort: true,
 		},
 		{
@@ -535,6 +543,20 @@ const bulkNotifyTargets = computed(() =>
 	selectedWorkflows.value.filter((workflow) => canNotifyRow(workflow) && !isBusy(workflow)),
 );
 
+// The backend sends one email per owner, listing all of their selected workflows.
+const bulkNotifyOwnerCount = computed(
+	() => new Set(bulkNotifyTargets.value.map((workflow) => workflow.owner?.id)).size,
+);
+
+const bulkNotifyLabel = computed(() =>
+	bulkNotifyOwnerCount.value > 0
+		? i18n.baseText('settings.migrationReport.detail.bulk.notifyOwnerCount', {
+				adjustToNumber: bulkNotifyOwnerCount.value,
+				interpolate: { count: String(bulkNotifyOwnerCount.value) },
+			})
+		: i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners'),
+);
+
 const isBulkNotifying = computed(() =>
 	selectedWorkflows.value.some((workflow) => notifyingWorkflowIds.value.has(workflow.id)),
 );
@@ -712,6 +734,33 @@ const ownerFilterOptions = computed(() => {
 	);
 });
 
+// Personal projects show as one "Personal" label, the Owner column names the person.
+function projectLabel(workflow: AffectedWorkflow): string {
+	if (workflow.homeProjectType === 'personal') {
+		return i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	}
+	return workflow.homeProjectName ?? '—';
+}
+
+// The projects of the listed workflows, for the project filter. Personal projects share one option.
+const projectFilterOptions = computed(() => {
+	const projects = new Map<string, string>();
+	let hasPersonal = false;
+	for (const workflow of state.value.affectedWorkflows) {
+		if (workflow.homeProjectType === 'personal') hasPersonal = true;
+		else if (workflow.homeProjectType === 'team' && workflow.homeProjectId) {
+			projects.set(workflow.homeProjectId, workflow.homeProjectName ?? workflow.homeProjectId);
+		}
+	}
+	const teamOptions = orderBy(
+		[...projects].map(([id, label]) => ({ id, label })),
+		[(project) => project.label.toLowerCase()],
+	);
+	if (!hasPersonal) return teamOptions;
+	const personalLabel = i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	return [{ id: PERSONAL_PROJECTS, label: personalLabel }, ...teamOptions];
+});
+
 const filteredWorkflows = computed(() => {
 	const query = searchQuery.value.toLowerCase();
 	const now = Date.now();
@@ -730,11 +779,12 @@ watch(filteredWorkflows, (workflows) => {
 	if (kept.length !== selectedWorkflowIds.value.length) selectedWorkflowIds.value = kept;
 });
 
-// The owner cell shows a label, so it sorts by that label and not by the owner object.
+// The owner and project cells show a label, so they sort by that label.
 // Dates come from JSON as strings, and a workflow that never ran has no date.
 // A timestamp sorts them right, with a missing date as the oldest.
 const sortValues: Record<string, (workflow: AffectedWorkflow) => string | number> = {
 	owner: ownerLabel,
+	homeProjectName: (workflow) => projectLabel(workflow).toLowerCase(),
 	lastExecutedAt: (workflow) =>
 		workflow.lastExecutedAt ? new Date(workflow.lastExecutedAt).getTime() : 0,
 	lastUpdatedAt: (workflow) => new Date(workflow.lastUpdatedAt).getTime(),
@@ -854,6 +904,7 @@ const sortedWorkflows = computed(() => {
 			<WorkflowFiltersPopover
 				v-model="workflowFilters"
 				:owners="ownerFilterOptions"
+				:projects="projectFilterOptions"
 				:current-user-id="currentUserId"
 				:counts="quickFilterCounts"
 			/>
@@ -910,6 +961,18 @@ const sortedWorkflows = computed(() => {
 						</N8nLink>
 						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
+				</div>
+			</template>
+			<template #[`item.homeProjectName`]="{ item }">
+				<div :class="$style.cellStack">
+					<N8nText
+						color="text-dark"
+						:class="$style.truncate"
+						:title="projectLabel(item)"
+						data-test-id="migration-workflow-project"
+					>
+						{{ projectLabel(item) }}
+					</N8nText>
 				</div>
 			</template>
 			<template #[`item.numberOfExecutions`]="{ item }">
@@ -1027,14 +1090,19 @@ const sortedWorkflows = computed(() => {
 						@click="openMigrateModal(selectedWorkflows)"
 					/>
 					<template v-if="canNotify">
-						<N8nButton
-							variant="outline"
-							:label="i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners')"
-							:disabled="bulkNotifyTargets.length === 0"
-							:loading="isBulkNotifying"
-							data-test-id="migration-bulk-notify-button"
-							@click="onBulkNotify"
-						/>
+						<N8nTooltip
+							:content="i18n.baseText('settings.migrationReport.detail.bulk.notify.tooltip')"
+							:disabled="bulkNotifyOwnerCount === 0"
+						>
+							<N8nButton
+								variant="outline"
+								:label="bulkNotifyLabel"
+								:disabled="bulkNotifyTargets.length === 0"
+								:loading="isBulkNotifying"
+								data-test-id="migration-bulk-notify-button"
+								@click="onBulkNotify"
+							/>
+						</N8nTooltip>
 						<N8nText
 							v-if="selectedWithoutOwnerCount > 0"
 							size="small"

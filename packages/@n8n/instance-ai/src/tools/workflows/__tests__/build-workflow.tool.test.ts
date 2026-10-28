@@ -4,6 +4,7 @@ import {
 	instanceAiSetupCredentialSelectionKey,
 	type InstanceAiSetupCredentialSelection,
 } from '@n8n/api-types';
+import { node, trigger, workflow } from '@n8n/workflow-sdk';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
@@ -20,6 +21,7 @@ import {
 	buildWorkflowInputSchema,
 	createBuildWorkflowTool,
 } from '../build-workflow.tool';
+import { collectHostSdkValidatorWarnings } from '../host-sdk-validation';
 import { prepareWorkflowSetup } from '../prepare-workflow-setup';
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
@@ -3027,7 +3029,6 @@ describe('createBuildWorkflowTool', () => {
 		const reportBuildOutcome = vi.fn<
 			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>
 		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-1' }));
-		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
 		const onBuildOutcome = vi.fn<(outcome: WorkflowBuildOutcome) => void>();
 		const { context, filePath } = makeContext({
 			overrides: {
@@ -3035,10 +3036,7 @@ describe('createBuildWorkflowTool', () => {
 					threadId: 'thread-1',
 					runId: 'run-1',
 					taskId: 'task-1',
-					workItemId: 'wi-planned',
-					plannedTaskService: { markSucceeded } as unknown as NonNullable<
-						InstanceAiContext['workflowBuildContext']
-					>['plannedTaskService'],
+					workItemId: 'wi-triggers',
 					workflowTaskService: { reportBuildOutcome } as unknown as NonNullable<
 						InstanceAiContext['workflowBuildContext']
 					>['workflowTaskService'],
@@ -3054,15 +3052,12 @@ describe('createBuildWorkflowTool', () => {
 		expect(result).toMatchObject({
 			success: true,
 			workflowId: 'wf-1',
-			workItemId: 'wi-planned',
+			workItemId: 'wi-triggers',
 		});
-		expect(result.postBuildFlow).toBeUndefined();
 		const storedOutcome = onBuildOutcome.mock.calls[0]?.[0] as WorkflowBuildOutcome | undefined;
 		expect(storedOutcome).toMatchObject({
-			workItemId: 'wi-planned',
+			workItemId: 'wi-triggers',
 			taskId: 'task-1',
-			owner: { type: 'planned', taskId: 'task-1' },
-			plannedTaskId: 'task-1',
 			sourceFilePath: filePath,
 			verificationProgress: disabled ? undefined : {},
 		});
@@ -3075,11 +3070,10 @@ describe('createBuildWorkflowTool', () => {
 			| WorkflowBuildOutcome
 			| undefined;
 		expect(reportedOutcome).toMatchObject({
-			workItemId: 'wi-planned',
+			workItemId: 'wi-triggers',
 			sourceFilePath: filePath,
 		});
 		expect(reportedOutcome).not.toHaveProperty('sourceArtifact');
-		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 	});
 
 	it('routes source-declared node outputs through the simulation plan', async () => {
@@ -3281,6 +3275,54 @@ describe('createBuildWorkflowTool', () => {
 				'[TS2322] src/workflows/main.workflow.ts:4:1: Type mismatch',
 			],
 		});
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns a wrapped mock output that only the host SDK reports', async () => {
+		const { context, filePath } = makeContext({});
+		const authored = workflow('wf-1', 'Mocks').add(
+			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }).to(
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: {
+						name: 'Fetch Orders',
+						parameters: { url: 'https://example.com' },
+						output: [{ json: { orderId: 'ord_1' } }],
+					},
+				}),
+			),
+		);
+		const compiledJson = authored.toJSON({ tidyUp: true });
+		// The published SDK in the sandbox reported nothing; the host check adds the finding.
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: compiledJson,
+			warnings: collectHostSdkValidatorWarnings(
+				compiledJson,
+				authored.generatePinData().toJSON().pinData,
+				[],
+			),
+			compiler: 'sandbox-tsx',
+		});
+		const actualWarnings = await vi.importActual<typeof import('../workflow-validation-warnings')>(
+			'../workflow-validation-warnings',
+		);
+		vi.mocked(partitionWarnings).mockImplementationOnce(actualWarnings.partitionWarnings);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: { reason: 'workflow_source_validation_failed' },
+		});
+		expect(result.errors).toEqual([
+			expect.stringMatching(
+				/^\[MOCK_OUTPUT_JSON_ENVELOPE\] \(Fetch Orders\): Node 'Fetch Orders' wraps/,
+			),
+		]);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 

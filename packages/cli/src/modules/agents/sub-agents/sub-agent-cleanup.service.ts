@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -12,6 +14,8 @@ export class SubAgentCleanupService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly transactionRunner: TransactionRunner,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	/**
@@ -50,7 +54,13 @@ export class SubAgentCleanupService {
 			};
 
 			markAgentDraftDirty(parent);
-			if (await this.agentRepository.saveDraftFenced(parent)) {
+			const candidate = parent;
+			const saved = await this.transactionRunner.run({}, async (ctx) => {
+				if (!(await this.agentRepository.saveDraftFenced(candidate, ctx))) return false;
+				await this.definitionService.captureVersion(candidate, 'System', ctx);
+				return true;
+			});
+			if (saved) {
 				this.runtimeCacheService.clearRuntimes(parent.id);
 
 				this.logger.debug('Removed sub-agent reference from parent agent', {

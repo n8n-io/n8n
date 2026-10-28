@@ -18,6 +18,22 @@ export function modelConfigToId(modelConfig: ModelConfig): string | undefined {
 	return undefined;
 }
 
+/**
+ * The catalog id for cost and capability lookups. A Microsoft Foundry
+ * deployment is user-named, so its config carries the id of the model it
+ * serves (`catalogModelId`). Every other model uses its own id.
+ */
+export function getCatalogModelId(model: ModelConfig): string {
+	if (
+		typeof model === 'object' &&
+		'catalogModelId' in model &&
+		typeof model.catalogModelId === 'string'
+	) {
+		return model.catalogModelId;
+	}
+	return getModelIdString(model);
+}
+
 /** Resolve a model config to its canonical `provider/model` id string. */
 export function getModelIdString(model: ModelConfig): string {
 	if (typeof model === 'string') return model;

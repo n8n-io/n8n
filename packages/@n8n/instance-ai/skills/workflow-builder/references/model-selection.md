@@ -17,8 +17,9 @@ dependencies:
   tools:
     - workflow_builder_search_models
 recommended_tools:
-  - workflow_builder_nodes
-  - workflow_builder_credentials
+  - get_node_types
+  - get_node_parameter_options
+  - list_credentials
   - workflow_builder_search_models
   - research
 ---
@@ -50,8 +51,8 @@ call `workflow_builder_search_models` before writing the workflow.** Do not subs
    edit. If evidence shows it cannot meet the request, explain that evidence and
    agree on an alternative before changing it.
 2. For a new choice, check relevant credentials, including Gateway credits.
-   Use `workflow_builder_nodes(action="explore-resources")` with that credential and the exact
-   lookup method from the node definition. Its available models take precedence
+   Use `get_node_parameter_options` with that credential and the parameter path (or lookup
+   method from the node definition). Its available models take precedence
    over builder hints and public catalogs. Choose one that fits the operation,
    task, and budget. Explain access constraints if they require an older model.
 3. Without a relevant credential, use an explicit model recommendation from the

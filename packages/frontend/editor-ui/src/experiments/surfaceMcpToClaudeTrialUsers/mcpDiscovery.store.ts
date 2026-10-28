@@ -14,6 +14,13 @@ import { EXPERIMENTS_TO_TRACK, MCP_DISCOVERY_EXPERIMENT } from '@/app/constants/
 import { usePostHog } from '@/app/stores/posthog.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 
+// Experiment cleanup (133_agent_builder_experiment_cohort)
+import {
+	getAgentBuilderExperimentEnrollment,
+	isAgentBuilderExperiment,
+} from '@/experiments/agentBuilder/enrollment';
+// EOF Experiment cleanup
+
 import { pickedClaudeInOnboarding } from './onboarding';
 
 export const MCP_DISCOVERY_CONNECT_HINT_CALLOUT = 'mcpDiscoveryConnectHint';
@@ -56,9 +63,15 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 			posthog.setMcpDiscoveryEligible(variant !== undefined);
 			if (!variant || exposedVariants.has(variant)) return;
 			exposedVariants.add(variant);
+			// Experiment cleanup (133_agent_builder_experiment_cohort)
+			const agentBuilderEnrollment = getAgentBuilderExperimentEnrollment(posthog.getVariant);
+			// EOF Experiment cleanup
 			const concurrentExperiments: Record<string, string> = {};
 			for (const name of EXPERIMENTS_TO_TRACK) {
 				if (name === MCP_DISCOVERY_EXPERIMENT.name) continue;
+				// Experiment cleanup (133_agent_builder_experiment_cohort)
+				if (isAgentBuilderExperiment(name) && agentBuilderEnrollment?.name !== name) continue;
+				// EOF Experiment cleanup
 				const value = posthog.getVariant(name);
 				if (typeof value === 'string') concurrentExperiments[name] = value;
 			}

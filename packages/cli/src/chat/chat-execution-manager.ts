@@ -71,7 +71,10 @@ export class ChatExecutionManager {
 		if (!this.isChatDrivenExecution(execution)) return;
 
 		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
-			await this.executionRepository.update({ id: executionId }, { status: 'canceled' });
+			await this.executionRepository.update(
+				{ id: executionId },
+				{ status: 'canceled', stoppedAt: new Date() },
+			);
 		}
 	}
 

@@ -73,6 +73,8 @@ export interface IntegrationMessageSubject {
 	status?: string;
 	/** The project the subject belongs to, when the platform reports one. */
 	projectId?: string;
+	/** The team the subject belongs to, when the platform reports one. */
+	teamId?: string;
 	labels?: string[];
 	assignee?: IntegrationSubjectPerson;
 	author?: IntegrationSubjectPerson;
@@ -172,6 +174,7 @@ export interface SessionBinding {
 }
 
 export interface IntegrationContextQueryParams {
+	abortSignal?: AbortSignal;
 	descriptor: IntegrationToolConnectionDescriptor;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;

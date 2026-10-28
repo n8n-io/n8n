@@ -9,7 +9,7 @@ import {
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
 import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
-import type { RuntimeSkillStateStore } from '../../skills/types';
+import type { RuntimeSkillState, RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
@@ -18,6 +18,7 @@ import type {
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryReflectionApply,
+	EpisodicMemoryReflectionApplyMerge,
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
@@ -93,21 +94,17 @@ export class InMemoryMemory
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
-	private skillsByThread = new Map<string, Map<string, string[]>>();
+	private skillsByThread = new Map<string, Map<string, RuntimeSkillState>>();
 
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) =>
-			await Promise.resolve(
-				this.skillsByThread
-					.get(threadId)
-					?.get(JSON.stringify([resourceId, agentName]))
-					?.slice(),
+			structuredClone(
+				this.skillsByThread.get(threadId)?.get(JSON.stringify([resourceId, agentName])),
 			),
-		save: async ({ threadId, resourceId, agentName }, ids) => {
-			const states = this.skillsByThread.get(threadId) ?? new Map<string, string[]>();
-			states.set(JSON.stringify([resourceId, agentName]), [...ids]);
+		save: async ({ threadId, resourceId, agentName }, state) => {
+			const states = this.skillsByThread.get(threadId) ?? new Map<string, RuntimeSkillState>();
+			states.set(JSON.stringify([resourceId, agentName]), structuredClone(state));
 			this.skillsByThread.set(threadId, states);
-			await Promise.resolve();
 		},
 	};
 
@@ -130,14 +127,18 @@ export class InMemoryMemory
 			const hashes = new Set(contentHashes);
 			return await Promise.resolve(
 				this.episodicMemory
-					.filter((entry) => entry.resourceId === scope.resourceId && hashes.has(entry.contentHash))
+					.filter(
+						(entry) =>
+							entry.resourceId === episodicWriteScopeId(scope) && hashes.has(entry.contentHash),
+					)
 					.map(cloneEpisodicMemoryEntry),
 			);
 		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
-		searchEntries: async (scope, query, opts) =>
-			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		// Ranking uses the query embedding in `opts`, not the query text.
+		searchEntries: async (scope, _query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
@@ -149,9 +150,13 @@ export class InMemoryMemory
 			await this.completeEpisodicMemoryCaptureCandidates(ids),
 		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
+		findSimilarEntries: async (scope, embeddings, opts) =>
+			await this.findSimilarEpisodicMemoryEntries(scope, embeddings, opts),
+		addEntrySources: async (entryId, sources, lastSeenAt) =>
+			await this.addEpisodicMemoryEntrySources(entryId, sources, lastSeenAt),
 		taskLock: {
 			acquire: async (scope, opts) =>
-				await this.acquireEpisodicMemoryTaskLock(scope.resourceId, opts),
+				await this.acquireEpisodicMemoryTaskLock(episodicWriteScopeId(scope), opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
 		},
 	};
@@ -536,8 +541,10 @@ export class InMemoryMemory
 		if (existing) return cloneEpisodicMemoryCaptureCandidate(existing);
 
 		const now = new Date();
+		const { episodic: _episodic, ...candidateData } = candidate;
 		const row: EpisodicMemoryCaptureCandidate = {
-			...candidate,
+			...candidateData,
+			resourceId: episodicWriteScopeId(candidate),
 			id: crypto.randomUUID(),
 			status: 'pending',
 			attemptCount: 0,
@@ -555,7 +562,8 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryCaptureCandidate[]> {
 		return this.episodicMemoryCaptureCandidates
 			.filter(
-				(candidate) => candidate.resourceId === scope.resourceId && candidate.status === 'pending',
+				(candidate) =>
+					candidate.resourceId === episodicWriteScopeId(scope) && candidate.status === 'pending',
 			)
 			.sort((a, b) => compareKeyset(a, b))
 			.slice(0, opts?.limit)
@@ -594,9 +602,9 @@ export class InMemoryMemory
 		const saved: EpisodicMemoryEntry[] = [];
 		for (const entry of entries) {
 			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+			const resourceId = episodicWriteScopeId(entry);
 			const duplicate = this.episodicMemory.find(
-				(existing) =>
-					existing.resourceId === entry.resourceId && existing.contentHash === contentHash,
+				(existing) => existing.resourceId === resourceId && existing.contentHash === contentHash,
 			);
 			if (duplicate) {
 				refreshEpisodicMemoryEntry(duplicate, entry, now);
@@ -606,7 +614,7 @@ export class InMemoryMemory
 
 			const row: EpisodicMemoryEntry = {
 				id: crypto.randomUUID(),
-				resourceId: entry.resourceId,
+				resourceId,
 				content: entry.content,
 				contentHash,
 				...activeLifecycleState(),
@@ -679,13 +687,53 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
-		const scoped = this.episodicMemory
-			.filter((entry) => entry.resourceId === scope.resourceId)
+		const scopeIds = opts?.writeScopeOnly
+			? [episodicWriteScopeId(scope)]
+			: episodicReadScopeIds(scope);
+		// The same fact told in two scopes is one memory to the reader.
+		const newestByContent = new Map<string, EpisodicMemoryEntry>();
+		for (const entry of this.episodicMemory) {
+			if (!scopeIds.includes(entry.resourceId)) continue;
+			const key = `${entry.status}\n${entry.contentHash}`;
+			const seen = newestByContent.get(key);
+			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
+		}
+		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
+		return rankEpisodicMemoryEntries(scoped, opts);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async findSimilarEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		embeddings: number[][],
+		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
+	): Promise<RetrievedEpisodicMemoryEntry[][]> {
+		const resourceId = episodicWriteScopeId(scope);
+		const active = this.episodicMemory
+			.filter((entry) => entry.resourceId === resourceId && entry.status === 'active')
 			.map(cloneEpisodicMemoryEntry);
-		return rankEpisodicMemoryEntries(scoped, query, opts);
+		return embeddings.map((queryEmbedding) =>
+			rankEpisodicMemoryEntries(active, { ...opts, queryEmbedding }),
+		);
+	}
+
+	private async addEpisodicMemoryEntrySources(
+		entryId: string,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+		lastSeenAt: Date,
+	): Promise<EpisodicMemoryEntry | null> {
+		const entry = this.episodicMemory.find(
+			(candidate) => candidate.id === entryId && candidate.status === 'active',
+		);
+		if (!entry) return null;
+		await this.saveEpisodicMemoryEntrySources(
+			sources.map((source) => ({ ...source, memoryEntryId: entry.id })),
+		);
+		entry.lastSeenAt = lastSeenAt;
+		entry.updatedAt = new Date();
+		return cloneEpisodicMemoryEntry(entry);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -715,7 +763,9 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryReflectionResult> {
 		const activeIds = new Set(
 			this.episodicMemory
-				.filter((entry) => entry.resourceId === scope.resourceId && entry.status === 'active')
+				.filter(
+					(entry) => entry.resourceId === episodicWriteScopeId(scope) && entry.status === 'active',
+				)
 				.map((entry) => entry.id),
 		);
 		const normalized = normalizeFlatReflectionActions({
@@ -737,22 +787,7 @@ export class InMemoryMemory
 			const [replacement] = await this.saveEpisodicMemoryEntries([merge.entry]);
 			if (!replacement) continue;
 			inserted.push(replacement);
-			const copiedSources = this.episodicMemorySources
-				.filter((source) => supersedes.includes(source.memoryEntryId))
-				.flatMap((source): NewEpisodicMemoryEntrySource[] => {
-					const provenance = provenanceOf(source);
-					if (!provenance) return [];
-					return [
-						{
-							memoryEntryId: replacement.id,
-							threadId: source.threadId,
-							evidenceText: source.evidenceText,
-							createdAt: merge.entry.createdAt ?? new Date(),
-							...provenance,
-						},
-					];
-				});
-			await this.saveEpisodicMemoryEntrySources(copiedSources);
+			await this.saveEpisodicMemoryEntrySources(this.replacementSources(merge, replacement.id));
 			await this.supersedeEpisodicMemoryEntries(supersedes, replacement.id);
 			supersededIds.push(...supersedes.filter((id) => id !== replacement.id));
 		}
@@ -762,6 +797,33 @@ export class InMemoryMemory
 			supersededIds,
 			inserted,
 		};
+	}
+
+	/** The sources of the superseded entries, then the sources the merge adds. */
+	private replacementSources(
+		merge: EpisodicMemoryReflectionApplyMerge,
+		replacementId: string,
+	): NewEpisodicMemoryEntrySource[] {
+		const copied = this.episodicMemorySources
+			.filter((source) => merge.supersedes.includes(source.memoryEntryId))
+			.flatMap((source): NewEpisodicMemoryEntrySource[] => {
+				const provenance = provenanceOf(source);
+				if (!provenance) return [];
+				return [
+					{
+						memoryEntryId: replacementId,
+						threadId: source.threadId,
+						evidenceText: source.evidenceText,
+						createdAt: merge.entry.createdAt ?? new Date(),
+						...provenance,
+					},
+				];
+			});
+		const added = (merge.sources ?? []).map((source) => ({
+			...source,
+			memoryEntryId: replacementId,
+		}));
+		return [...copied, ...added];
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -856,4 +918,13 @@ function provenanceOf(source: {
 	if (source.observationId) return { observationId: source.observationId };
 	if (source.candidateId) return { candidateId: source.candidateId };
 	return null;
+}
+
+/** The scope a turn writes to. A host-resolved scope wins over the resource. */
+function episodicWriteScopeId(scope: Pick<EpisodicMemoryScope, 'resourceId' | 'episodic'>): string {
+	return scope.episodic?.writeScopeId ?? scope.resourceId;
+}
+
+function episodicReadScopeIds(scope: EpisodicMemoryScope): string[] {
+	return scope.episodic?.readScopeIds ?? [scope.resourceId];
 }

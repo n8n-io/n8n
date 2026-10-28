@@ -6,7 +6,7 @@ export const appNamespaceSchema = z
 	.string()
 	.trim()
 	.min(1)
-	.max(128)
+	.max(63)
 	.regex(
 		/^[a-z0-9]+(-[a-z0-9]+)*$/,
 		'Use lowercase letters, numbers, and single hyphens between them.',
@@ -26,6 +26,7 @@ export const appSchema = z.object({
 	visibility: appVisibilitySchema,
 	draftVersionId: z.string().uuid().nullable(),
 	publishedVersionId: z.string().uuid().nullable(),
+	publishedUrl: z.string().url().nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });
@@ -42,6 +43,21 @@ export const appVersionSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 export type AppVersionResponse = z.infer<typeof appVersionSchema>;
+
+export const appBuildResponseSchema = z.object({
+	versionId: z.string().uuid(),
+	status: appBuildStatusSchema,
+	attempts: z.number().int().nonnegative(),
+	statusUpdatedAt: z.string().datetime().nullable(),
+	diagnostics: z
+		.object({
+			stage: z.enum(['source', 'sandbox', 'install', 'build', 'validate', 'store']),
+			message: z.string(),
+			log: z.string(),
+		})
+		.optional(),
+});
+export type AppBuildResponse = z.infer<typeof appBuildResponseSchema>;
 
 export const appListSchema = z.object({
 	data: z.array(appSchema),

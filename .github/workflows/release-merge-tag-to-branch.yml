@@ -12,6 +12,11 @@ on:
         description: 'The branch to merge the release tag into (e.g. master or release-candidate/2.10.x)'
         required: true
         type: string
+      fast-forward-only:
+        description: 'Fail instead of creating a merge commit when the target branch has advanced.'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   merge-tag-to-branch:
@@ -47,10 +52,16 @@ jobs:
         run: git fetch origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
 
       - name: Merge release tag to branch
+        env:
+          FAST_FORWARD_ONLY: ${{ inputs.fast-forward-only }}
         run: |
           git config user.name "n8n-release-tag-merge[bot]"
           git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
-          git merge --ff "n8n@${VERSION}"
+          MERGE_MODE="--ff"
+          if [ "$FAST_FORWARD_ONLY" = "true" ]; then
+            MERGE_MODE="--ff-only"
+          fi
+          git merge "$MERGE_MODE" "n8n@${VERSION}"
 
       - name: Push to ${{ inputs.target-branch }}
         run: git push origin "HEAD:${TARGET_BRANCH}"

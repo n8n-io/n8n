@@ -1,4 +1,4 @@
-import { SKILL_NAME_TAKEN_MESSAGE, type SkillUsage } from '@n8n/api-types';
+import { SKILL_NAME_TAKEN_MESSAGE, type SkillUsedBy } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 
 import type { AgentSkill } from '../types';
@@ -30,7 +30,7 @@ export type SkillMoveTarget = { projectId: string | null; agentId: string | null
  * `keepAgentId` is the agent that asks for the move.
  */
 export function agentsLosingSkill(
-	usage: SkillUsage,
+	usage: SkillUsedBy,
 	target: SkillMoveTarget,
 	keepAgentId?: string,
 ): { names: string[]; hidden: number } {

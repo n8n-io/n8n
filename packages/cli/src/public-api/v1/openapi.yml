@@ -24,58 +24,85 @@ servers:
         default: https://example.com
 tags:
   - name: Audit
+    x-displayName: Audit
     description: Operations about security audit
   - name: CommunityPackage
+    x-displayName: Community Package
     description: Operations about community packages
   - name: Credential
+    x-displayName: Credential
     description: Operations about credentials
   - name: CredentialTypePolicy
+    x-displayName: Credential Type Policy
     description: Preview — breaking changes may still occur without major version bump.
   - name: DataTable
+    x-displayName: Data Table
     description: Operations about data tables and their rows
   - name: Discover
+    x-displayName: Discover
     description: API capability discovery
   - name: Evaluation
+    x-displayName: Evaluation
     description: Operations about evaluation test runs
   - name: Executions
+    x-displayName: Executions
     description: Operations about executions
   - name: Folders
+    x-displayName: Folders
     description: Operations about folders
   - name: Insights
+    x-displayName: Insights
     description: Operations about insights
   - name: LogStreaming
+    x-displayName: Log Streaming
     description: Operations about log streaming destinations
   - name: N8nPackage
+    x-displayName: n8n Package
     description: Beta — breaking changes may still occur without major version bump.
   - name: NodeTypePolicy
+    x-displayName: Node Type Policy
     description: Preview — breaking changes may still occur without major version bump.
   - name: Projects
+    x-displayName: Projects
     description: Operations about projects
   - name: Promotions
+    x-displayName: Promotions
     description: Operations about promotion providers, environments, and package operations
   - name: Role
+    x-displayName: Role
     description: Operations about roles
   - name: RoleMappingRule
+    x-displayName: Role Mapping Rule
     description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
+    x-displayName: Security Policy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
+    x-displayName: Settings LDAP
     description: Operations about LDAP settings
   - name: SettingsOtel
+    x-displayName: Settings OTel
     description: Operations about OpenTelemetry settings
   - name: SettingsSsoOidc
+    x-displayName: Settings SSO OIDC
     description: Operations about OIDC SSO settings
   - name: SettingsSsoSaml
+    x-displayName: Settings SSO SAML
     description: Operations about SAML SSO settings
   - name: SourceControl
+    x-displayName: Source Control
     description: Operations about source control
   - name: Tags
+    x-displayName: Tags
     description: Operations about tags
   - name: User
+    x-displayName: User
     description: Operations about users
   - name: Variables
+    x-displayName: Variables
     description: Operations about variables
   - name: Workflow
+    x-displayName: Workflow
     description: Operations about workflows
 
 # Paths and components are generated from @PublicApiController routes. See openapi-gen/generate.ts.

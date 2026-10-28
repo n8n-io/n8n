@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, rm, readFile, copyFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, readFile, copyFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +24,7 @@ const FIXTURE = path.join(scriptDir, '__fixtures__', 'sample.cdx.json');
 const FIXTURE_OVERRIDES = path.join(scriptDir, '__fixtures__', 'license-overrides.json');
 const ENRICH = path.join(scriptDir, 'enrich-sbom.mjs');
 const CHECK = path.join(scriptDir, 'check-sbom-licenses.mjs');
+const WORKFLOW_PACKAGE = path.join(scriptDir, '..', '..', '.github', 'scripts', 'package.json');
 const ALLOW_REFS = [
 	'--allow-ref=LicenseRef-n8n-sustainable-use',
 	'--allow-ref=LicenseRef-n8n-enterprise',
@@ -32,15 +33,46 @@ const ALLOW_REFS = [
 const run = (script, args) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf-8' });
 
 describe('license-generation chain (real CLIs end-to-end)', () => {
-	let dir, raw, enriched;
+	let dir, raw, enriched, nestedRoot;
 	before(async () => {
 		dir = await mkdtemp(path.join(os.tmpdir(), 'lic-chain-'));
 		raw = path.join(dir, 'sbom.cdx.json');
 		enriched = path.join(dir, 'enriched.cdx.json');
+		nestedRoot = path.join(dir, 'node_modules');
 		await copyFile(FIXTURE, raw);
+		const nestedPackage = path.join(nestedRoot, '@napi-rs', 'canvas-linux-x64-musl');
+		await mkdir(nestedPackage, { recursive: true });
+		await writeFile(
+			path.join(nestedPackage, 'sbom.cdx.json'),
+			JSON.stringify({
+				metadata: {
+					component: {
+						name: '@napi-rs/canvas-linux-x64-musl',
+						licenses: [{ license: { id: 'MIT' } }],
+					},
+				},
+				components: [
+					{
+						type: 'library',
+						name: 'cssparser',
+						version: '0.38.0',
+						purl: 'pkg:cargo/cssparser@0.38.0',
+						licenses: [{ license: { id: 'MPL-2.0' } }],
+					},
+				],
+			}),
+		);
 	});
 	after(async () => {
 		await rm(dir, { recursive: true, force: true });
+	});
+
+	it('keeps nested package SBOM ingestion enabled in the release script', async () => {
+		const packageJson = JSON.parse(await readFile(WORKFLOW_PACKAGE, 'utf-8'));
+		assert.match(
+			packageJson.scripts['enrich-sbom'],
+			/--nested-sbom-root=\.\.\/\.\.\/compiled\/node_modules/,
+		);
 	});
 
 	it('rejects the raw (un-enriched) SBOM at the gate (exit 1)', () => {
@@ -52,7 +84,12 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 	it('enriches the SBOM (exit 0) and writes valid JSON resolving every path', async () => {
 		// No --lenient-config: every entry in the fixture config matches a fixture
 		// component, so the strict stale-config gate must stay quiet.
-		const r = run(ENRICH, [raw, enriched, `--overrides=${FIXTURE_OVERRIDES}`]);
+		const r = run(ENRICH, [
+			raw,
+			enriched,
+			`--overrides=${FIXTURE_OVERRIDES}`,
+			`--nested-sbom-root=${nestedRoot}`,
+		]);
 		assert.equal(r.status, 0, r.stderr);
 
 		const sbom = JSON.parse(await readFile(enriched, 'utf-8'));
@@ -71,6 +108,12 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 			(p) => p.name === 'cdx:license:elected',
 		);
 		assert.equal(elected.value, 'MIT');
+		assert.equal(
+			byPurl['pkg:cargo/cssparser@0.38.0'].properties.find(
+				(p) => p.name === 'n8n:nested-sbom:source',
+			).value,
+			'@napi-rs/canvas-linux-x64-musl/sbom.cdx.json',
+		);
 	});
 
 	it('passes the gate on the enriched SBOM (exit 0, dual-license warning only)', () => {

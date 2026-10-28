@@ -391,6 +391,7 @@ export class SelfHealingAgentService {
 			projectId: input.baseline.projectId,
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
+			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});
 		context.runId = options.runId;
@@ -503,6 +504,7 @@ export class SelfHealingAgentService {
 			modelId,
 			context,
 			thinkingEnabled: this.config.instanceAi.thinkingEnabled,
+			modelFetch: this.models.getModelFetch(),
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();

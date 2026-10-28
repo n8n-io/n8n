@@ -50,6 +50,7 @@ export function createMcpAuthFetch({
 	initialHeaders,
 	oauthService,
 	projectId,
+	refreshHeaders,
 }: {
 	allowedDomains?: AuthFetchDomainPolicy;
 	authentication: string;
@@ -59,6 +60,8 @@ export function createMcpAuthFetch({
 	initialHeaders: Record<string, string>;
 	oauthService: OauthService;
 	projectId: string | null;
+	/** Returns fresh auth headers after a 401, for a credential that the OAuth2 refresh does not cover. */
+	refreshHeaders?: () => Promise<Record<string, string> | null>;
 }): CustomFetch {
 	const storedTokenData = credentialData.oauthTokenData;
 	const oauthTokenData = isRecord(storedTokenData) ? { ...storedTokenData } : undefined;
@@ -86,13 +89,13 @@ export function createMcpAuthFetch({
 				}
 				return result?.headers ?? null;
 			}
-		: undefined;
+		: refreshHeaders;
 
 	return createAuthFetch({
 		baseFetch,
 		initialHeaders,
 		onUnauthorized,
-		...(onUnauthorized
+		...(refreshable
 			? {
 					shouldRefresh: () =>
 						shouldRefreshMcpOAuth2Token(oauthTokenData, credentialData.grantType),

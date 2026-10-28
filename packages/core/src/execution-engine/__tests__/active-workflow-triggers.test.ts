@@ -1,11 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
+import type { ErrorEvent } from '@sentry/core';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
+	IAllExecuteFunctions,
+	ICredentialDataDecryptedObject,
 	INode,
 	INodeExecutionData,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
+	JsonObject,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -14,20 +18,24 @@ import type {
 } from 'n8n-workflow';
 import {
 	LoggerProxy,
+	NodeApiError,
+	NodeOperationError,
 	TriggerCloseError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
+import nock from 'nock';
 import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
-import type { ErrorReporter } from '@/errors/error-reporter';
+import { ErrorReporter } from '@/errors/error-reporter';
 import type { InstanceSettings } from '@/instance-settings';
 import { Tracing } from '@/observability';
 
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
+import { refreshOAuth2Token } from '../node-execution-context/utils/request-helpers/oauth';
 import { NoOpPollJobManager } from '../noop-poll-job-manager';
 import { PollJobManager } from '../poll-job-manager';
 import { PollTriggerExecutor } from '../poll-trigger-executor';
@@ -319,6 +327,100 @@ describe('ActiveWorkflowTriggers', () => {
 				await expect(addWorkflow({ pollNodes: [pollNode], pollTimes })).resolves.toBeUndefined();
 
 				expect(scheduledTaskManager.register).toHaveBeenCalled();
+			});
+		});
+
+		describe('activation error level', () => {
+			beforeEach(() => {
+				getPollFunctions.mockReturnValue(pollFunctions);
+			});
+
+			const activationErrorFor = async (options: TestOptions): Promise<WorkflowActivationError> =>
+				await addWorkflow(options).then(
+					() => expect.fail('activation succeeded'),
+					(e: WorkflowActivationError) => e,
+				);
+
+			it('keeps level error for a poll activation error caused by a node error', async () => {
+				const pollError = new NodeOperationError(pollNode, 'Sheet with ID 0 not found');
+
+				const error = await activationErrorFor({ pollNodes: [pollNode], pollError });
+
+				expect(error.level).toBe('error');
+			});
+
+			it('sets level warning for a poll activation error tagged credential-invalid by the node', async () => {
+				const pollError = new NodeApiError(pollNode, { httpCode: '401' });
+				pollError.failure = { cause: 'credential-invalid' };
+
+				const error = await activationErrorFor({ pollNodes: [pollNode], pollError });
+
+				expect(error.level).toBe('warning');
+			});
+
+			const credentialsType = 'googleDriveOAuth2Api';
+			const oauthNode = mock<INode>({
+				id: 'oauth-node',
+				name: 'Google Drive Trigger',
+				credentials: { [credentialsType]: { id: 'credential-id', name: 'Google Drive account' } },
+			});
+
+			const revokedGrantError = async (): Promise<Error> => {
+				const oauthAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+				(oauthAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+				oauthAdditionalData.ssrfBridge = undefined;
+				oauthAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+					oauthTokenData: { access_token: 'old-token' },
+				} as unknown as ICredentialDataDecryptedObject);
+
+				const context = mockDeep<IAllExecuteFunctions>();
+				context.getCredentials.mockResolvedValue({
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					grantType: 'authorizationCode',
+					authUrl: 'https://oauth.example.com/auth',
+					accessTokenUrl: 'https://oauth.example.com/token',
+					authentication: 'body',
+					oauthTokenData: { access_token: 'old-token', refresh_token: 'old-refresh-token' },
+				});
+				nock('https://oauth.example.com').post('/token').reply(400, { error: 'invalid_grant' });
+
+				return await refreshOAuth2Token
+					.call(context, credentialsType, oauthNode, oauthAdditionalData)
+					.then(
+						() => expect.fail('token refresh succeeded'),
+						(e: Error) => e,
+					);
+			};
+
+			it('does not send a poll activation error caused by a revoked OAuth2 grant to Sentry', async () => {
+				const pollError = await revokedGrantError();
+				const reporter = new ErrorReporter(logger, tracing);
+
+				const error = await activationErrorFor({ pollNodes: [pollNode], pollError });
+
+				expect(
+					await reporter.beforeSend({} as ErrorEvent, { originalException: error }),
+				).toBeNull();
+			});
+
+			it('sets level warning when a node rewraps the revoked-grant error in NodeApiError', async () => {
+				const pollError = new NodeApiError(
+					pollNode,
+					(await revokedGrantError()) as unknown as JsonObject,
+				);
+
+				const error = await activationErrorFor({ pollNodes: [pollNode], pollError });
+
+				expect(error.level).toBe('warning');
+			});
+
+			it('sets level warning on a trigger activation error caused by a revoked OAuth2 grant', async () => {
+				const triggerError = await revokedGrantError();
+
+				const error = await activationErrorFor({ triggerNodes: [triggerNode], triggerError });
+
+				expect(error.level).toBe('warning');
 			});
 		});
 

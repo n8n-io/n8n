@@ -7,6 +7,8 @@ const mockMkdir = vi.fn();
 const mockWriteFile = vi.fn();
 const mockReadFile = vi.fn();
 const mockStat = vi.fn();
+const mockCreateSandbox = vi.fn();
+const mockGetSandbox = vi.fn();
 
 vi.mock('@n8n/sandbox-client', () => {
 	class MockSandboxServiceError extends Error {
@@ -26,6 +28,8 @@ vi.mock('@n8n/sandbox-client', () => {
 			writeFile = mockWriteFile;
 			readFile = mockReadFile;
 			stat = mockStat;
+			createSandbox = mockCreateSandbox;
+			getSandbox = mockGetSandbox;
 		},
 	};
 });
@@ -46,6 +50,8 @@ describe('N8nSandboxFilesystem', () => {
 		mockMkdir.mockResolvedValue(undefined);
 		mockWriteFile.mockResolvedValue(undefined);
 		mockReadFile.mockResolvedValue(Buffer.from('file content'));
+		mockGetSandbox.mockResolvedValue({ id: 'sb-test' });
+		mockCreateSandbox.mockResolvedValue({ id: 'sb-test', createdAt: 1700000000 });
 		mockStat.mockResolvedValue({
 			name: 'file.txt',
 			path: '/workspace/file.txt',
@@ -107,5 +113,40 @@ describe('N8nSandboxFilesystem', () => {
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			modifiedAt: new Date('2024-01-02T00:00:00.000Z'),
 		});
+	});
+
+	it('recreates a removed sandbox and retries the write', async () => {
+		const sandbox = new N8nSandboxServiceSandbox({
+			id: 'sb-test',
+			apiKey: 'key',
+			serviceUrl: 'https://sandbox.test',
+		});
+		await sandbox.ensureRunning();
+		mockCreateSandbox.mockClear();
+		mockWriteFile
+			.mockRejectedValueOnce(new SandboxServiceError('sandbox not found', 404))
+			.mockResolvedValueOnce(undefined);
+		mockGetSandbox.mockRejectedValueOnce(new SandboxServiceError('sandbox not found', 404));
+		const filesystem = new N8nSandboxFilesystem(sandbox);
+
+		await filesystem.writeFile('/workspace/file.txt', 'hello');
+
+		expect(mockCreateSandbox).toHaveBeenCalledWith({ id: 'sb-test' });
+		expect(mockWriteFile).toHaveBeenCalledTimes(2);
+	});
+
+	it('returns false from exists without recreating when only the file is missing', async () => {
+		const sandbox = new N8nSandboxServiceSandbox({
+			id: 'sb-test',
+			apiKey: 'key',
+			serviceUrl: 'https://sandbox.test',
+		});
+		await sandbox.ensureRunning();
+		mockCreateSandbox.mockClear();
+		mockStat.mockRejectedValue(new SandboxServiceError('file not found', 404));
+		const filesystem = new N8nSandboxFilesystem(sandbox);
+
+		await expect(filesystem.exists('/workspace/missing.txt')).resolves.toBe(false);
+		expect(mockCreateSandbox).not.toHaveBeenCalled();
 	});
 });

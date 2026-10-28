@@ -7,12 +7,13 @@ import {
 	includedChangeCount,
 	initialSelectionState,
 	resolveInclusion,
+	selectionCheck,
 	toggleContainer,
 	toggleSelection,
 	type SelectionState,
 } from './promotionPreview.selection';
 
-const { reconciliation, reminders, kpiReport, formatCurrency } = billingResources;
+const { reconciliation, reminders, kpiReport, formatCurrency, payments } = billingResources;
 const graph = buildSelectionGraph(billingPreview(), 'promote');
 const selectedState = (...keys: string[]): SelectionState => ({
 	mode: 'custom',
@@ -87,11 +88,12 @@ describe('promotion preview selection', () => {
 		);
 	});
 
-	it('should include every changed folder on Apply, also one without a selected workflow', () => {
+	it('should include every new folder on Apply, but a renamed folder only with a selected workflow inside it', () => {
 		const incoming = buildSelectionGraph(
 			billingPreview({
 				resources: [
 					billingResources.project,
+					payments,
 					{ ...reconciliation, parentKey: 'project:p1' },
 					{ ...billingResources.reports, change: 'added' },
 					kpiReport,
@@ -103,7 +105,8 @@ describe('promotion preview selection', () => {
 
 		const inclusion = resolveInclusion(incoming, new Set([reconciliation.key]));
 
-		// Apply creates every new folder of the project, but imports only the selected workflows.
+		// Apply creates every new folder of the project. It renames "Payments" only together with a
+		// selected workflow inside it.
 		expect(inclusion.included).toEqual(new Set([reconciliation.key, billingResources.reports.key]));
 	});
 
@@ -171,5 +174,24 @@ describe('promotion preview selection', () => {
 		expect(state.selected.has(kpiReport.key)).toBe(true);
 		state = toggleSelection(state, graph, kpiReport.key, blocked);
 		expect(state.selected.has(kpiReport.key)).toBe(false);
+	});
+
+	it('should keep the checkbox of a selected workflow clearable after it becomes blocked, and lock every checkbox while the operation runs', () => {
+		const selected = new Set([reconciliation.key, kpiReport.key]);
+		const state = {
+			selected,
+			inclusion: resolveInclusion(graph, selected),
+			disabled: new Set([kpiReport.key]),
+			locked: false,
+		};
+		expect(selectionCheck(graph, kpiReport, state)).toEqual({
+			checked: true,
+			indeterminate: false,
+			disabled: false,
+		});
+
+		const locked = { ...state, locked: true };
+		expect(selectionCheck(graph, kpiReport, locked).disabled).toBe(true);
+		expect(selectionCheck(graph, payments, locked).disabled).toBe(true);
 	});
 });

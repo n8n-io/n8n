@@ -162,7 +162,12 @@ describe('WorkflowExporter', () => {
 		});
 
 		expect(entries).toEqual([
-			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated-wf_repeated' },
+			{
+				id: workflow.id,
+				name: workflow.name,
+				target: 'workflows/repeated-wf_repeated',
+				isArchived: false,
+			},
 		]);
 		expect(
 			writer.files.filter((f) => f.path === 'workflows/repeated-wf_repeated/workflow.json'),
@@ -223,14 +228,13 @@ describe('WorkflowExporter', () => {
 			(f) => f.path === 'workflows/my-workflow-wf_abc1234567/workflow.json',
 		);
 		expect(workflowFile).toBeDefined();
-		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
-			nodes: [
-				{
-					credentials: {
-						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
-					},
-				},
-			],
+		// Exact match proves the display name is absent; id and managed flag remain.
+		const parsed = jsonParse<{ nodes: Array<{ credentials: Record<string, unknown> }> }>(
+			workflowFile!.content,
+		);
+		expect(parsed.nodes[0].credentials.googlePalmApi).toEqual({
+			id: null,
+			__aiGatewayManaged: true,
 		});
 	});
 

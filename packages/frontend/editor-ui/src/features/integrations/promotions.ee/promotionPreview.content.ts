@@ -5,10 +5,19 @@ import type {
 	PromotionResourceDetail,
 	SerializedDataTableColumn,
 } from '@n8n/api-types';
+import type { InjectionKey } from 'vue';
 
 /** Turns the package files of a resource into what its change card shows. */
 
 export type DetailSide = 'before' | 'after';
+
+/**
+ * What a side without a file says. The preview pages compare a branch with this instance.
+ * A page that compares other sides, such as two commits of a review, provides its own text.
+ */
+export const PromotionAbsentSideLabelsKey: InjectionKey<Record<DetailSide, string>> = Symbol(
+	'PromotionAbsentSideLabels',
+);
 
 /**
  * The content of one side. `absent` means that side has no file, so the resource is added or
@@ -106,21 +115,20 @@ export function describeFieldChanges(
 	detail: PromotionResourceDetail,
 	context: FieldContext,
 ): FieldChange[] {
-	const { direction, resource } = context;
+	const { resource } = context;
 	if (resource.change === 'unchanged') return [];
 
 	const before = { ...fieldsOf(detail, 'before'), ...locationOf(context, 'before') };
 	const after = { ...fieldsOf(detail, 'after'), ...locationOf(context, 'after') };
-	// Apply keeps the name of an existing folder, so only its move remains.
-	const locationOnly =
-		direction === 'apply' && resource.change === 'modified' && detail.type === 'folder';
 
-	return FIELD_IDS.filter((field) => !locationOnly || field === 'location')
-		.filter((field) => before[field] !== after[field])
-		.map((field) => ({ field, before: before[field], after: after[field] }));
+	return FIELD_IDS.filter((field) => before[field] !== after[field]).map((field) => ({
+		field,
+		before: before[field],
+		after: after[field],
+	}));
 }
 
-/** The page loads no workflow files, so a workflow card shows the rename and move of the resource. */
+/** The rename and move of a workflow. The workflow diff shows the rest. */
 export function describeWorkflowFieldChanges(context: FieldContext): FieldChange[] {
 	const { resource } = context;
 	const changes: FieldChange[] = [];

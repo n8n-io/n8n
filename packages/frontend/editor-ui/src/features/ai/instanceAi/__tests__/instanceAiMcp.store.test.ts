@@ -277,6 +277,23 @@ describe('useInstanceAiMcpStore', () => {
 			expect(store.catalog?.map((server) => server.slug)).toEqual(['linear']);
 		});
 
+		it('never offers Gateway credits in the Instance AI catalog', async () => {
+			const aiGatewayOption = {
+				credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+				name: 'Gateway credits',
+				value: 'aiGateway',
+			};
+			const paired = makeServer('firecrawl');
+			mockFetchMcpRegistryServers.mockResolvedValue([
+				{ ...paired, credentials: [...paired.credentials, aiGatewayOption] },
+				{ ...makeServer('n8n-connect-brave-search'), credentials: [aiGatewayOption] },
+			]);
+
+			await store.fetchCatalogLazy();
+
+			expect(store.catalog).toEqual([paired]);
+		});
+
 		it('fetches once for concurrent callers', async () => {
 			mockFetchMcpRegistryServers.mockResolvedValue([makeServer('linear')]);
 

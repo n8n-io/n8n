@@ -27,14 +27,14 @@ export class SentryConfig {
 	tracesSampleRate: number = 0;
 
 	/**
-	 * Sample rate for Sentry profiling (0.0 to 1.0).
-	 * This determines whether profiling is enabled and what percentage of
-	 * transactions are profiled.
+	 * Whether to record Sentry profiles. When on, n8n profiles every request that
+	 * Sentry traces, so `N8N_SENTRY_TRACES_SAMPLE_RATE` sets how many requests get
+	 * profiled. Profiling needs `N8N_SENTRY_TRACES_SAMPLE_RATE` above 0.
 	 *
-	 * @default 0 (disabled)
+	 * @default false
 	 */
-	@Env('N8N_SENTRY_PROFILES_SAMPLE_RATE', sampleRateSchema)
-	profilesSampleRate: number = 0;
+	@Env('N8N_SENTRY_PROFILING_ENABLED')
+	profilingEnabled: boolean = false;
 
 	/**
 	 * Spans (`db`, `http.client`) shorter than this and not errored are dropped

@@ -1,10 +1,11 @@
 import {
 	resolveWhatsAppSettings,
 	type AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
 	type RichCardComponentType,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { AdapterPostableMessage, ChatInstance, Logger as ChatLogger, RawMessage } from 'chat';
@@ -41,6 +42,8 @@ import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../../in
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
 import { startTypingIndicator } from '../typing-indicator';
+import { WhatsAppCredentialCheckService } from './whatsapp-credential-check.service';
+import { WhatsAppSetupTelemetryService } from './whatsapp-setup-telemetry.service';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 import { buildWhatsAppOriginDraft } from './whatsapp-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
@@ -76,6 +79,12 @@ const WHATSAPP_MAX_REPLY_BUTTONS = 3;
 const WHATSAPP_TYPING_REFRESH_MS = 20 * 1000;
 
 const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
+
+/** Where the user changes the callback URL of the Meta app that still points here. */
+const META_APP_DASHBOARD_URL = 'https://developers.facebook.com/apps';
+
+/** Removing a channel must not wait on Meta, so the number lookup gives up quickly. */
+const REMOVAL_NUMBER_LOOKUP_TIMEOUT_MS = 3_000;
 
 /**
  * Meta's Cloud API error codes that mean "you're sending too fast," not "this
@@ -196,6 +205,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
+		private readonly setupTelemetry: WhatsAppSetupTelemetryService,
 	) {
 		super();
 	}
@@ -211,10 +221,46 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	/**
 	 * A new setup of this agent can use a different Meta app. Without this, step
 	 * 4 would confirm the handshake that the removed channel's app completed.
+	 *
+	 * Removing the channel does not change the callback URL in Meta. The number
+	 * keeps sending messages here, and nothing answers them. The warning tells
+	 * the user so.
 	 */
-	async onRemove(ctx: AgentIntegrationRemovalContext): Promise<undefined> {
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
 		await this.webhookVerification.clear(ctx.agentId);
-		return undefined;
+		// A draft entry has no credential, so no number was ever connected to this agent.
+		if (!ctx.credentialId) return undefined;
+		const displayPhoneNumber = await this.lookUpDisplayPhoneNumber(ctx);
+		return {
+			integrationType: this.type,
+			code: 'number_still_connected',
+			action: { type: 'open_url', url: META_APP_DASHBOARD_URL },
+			...(displayPhoneNumber ? { details: { displayPhoneNumber } } : {}),
+		};
+	}
+
+	/** The number as WhatsApp shows it. Best effort: the warning still works without it. */
+	private async lookUpDisplayPhoneNumber(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<string | undefined> {
+		try {
+			const status = await Promise.race([
+				Container.get(WhatsAppCredentialCheckService).getMetaStatus(
+					ctx.user,
+					ctx.projectId,
+					ctx.credentialId,
+				),
+				sleep(REMOVAL_NUMBER_LOOKUP_TIMEOUT_MS).then(() => undefined),
+			]);
+			return status?.displayPhoneNumber;
+		} catch (error) {
+			this.logger.debug('[WhatsAppIntegration] Could not read the number for the removal warning', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
@@ -244,6 +290,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// Recorded so the setup can confirm the step. Not awaited, because Meta
 		// times out the handshake and the record is only for display.
 		void this.webhookVerification.markVerified(context.agentId);
+		this.setupTelemetry.webhookVerified(context.agentId, 'setup');
 		return { status: 200, body: challenge, raw: true };
 	}
 
@@ -276,6 +323,11 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		return buildWhatsAppOriginDraft(decoded);
 	}
 
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const config = {
 			accessToken: this.extractAccessToken(ctx.credential),
@@ -304,6 +356,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// retry cycle against an already-limited number instead of failing fast.
 		const connectionId = buildIntegrationConnectionId(ctx.integration);
 		const webhookVerification = this.webhookVerification;
+		const setupTelemetry = this.setupTelemetry;
 		const agentId = ctx.agentId;
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
@@ -316,7 +369,10 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			// the same agent still confirms the step.
 			protected override handleVerificationChallenge(request: Request): Response {
 				const response = super.handleVerificationChallenge(request);
-				if (response.status === 200) void webhookVerification.markVerified(agentId);
+				if (response.status === 200) {
+					void webhookVerification.markVerified(agentId);
+					setupTelemetry.webhookVerified(agentId, 'connected');
+				}
 				return response;
 			}
 

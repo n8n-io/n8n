@@ -284,6 +284,8 @@ import IconLucideDot from '~icons/lucide/dot';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEqual from '~icons/lucide/equal';
 import IconLucideFileArchive from '~icons/lucide/file-archive';
+import IconLucideFileMinus from '~icons/lucide/file-minus';
+import IconLucideFilePlus from '~icons/lucide/file-plus';
 import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
 import IconLucideFlame from '~icons/lucide/flame';
@@ -732,7 +734,9 @@ export const updatedIconSet = {
 	'file-diff': BrandFileDiff,
 	'file-down': BrandFileDown,
 	'file-input': BrandFileInput,
+	'file-minus': IconLucideFileMinus,
 	'file-output': IconLucideFileOutput,
+	'file-plus': IconLucideFilePlus,
 	'file-text': BrandFileText,
 	files: BrandFiles,
 	fingerprint: IconLucideFingerprint,

@@ -1,4 +1,6 @@
 import {
+	encodeEpisodicScopeMetadata,
+	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
 	type EpisodicMemoryScope,
@@ -6,11 +8,13 @@ import {
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type ObservationCursor,
 	type ObservationLogBatch,
+	type ResolvedEpisodicScope,
 } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
@@ -18,7 +22,21 @@ import { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memor
 import { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { AgentRepository } from '../../repositories/agent.repository';
+import { integrationMemoryResourceId } from '../../utils/agent-memory-scope';
+import type { EpisodicScopeContext } from '../agent-chat-integration';
+import {
+	encodeIntegrationMessageContext,
+	readIntegrationMessageContext,
+} from '../integration-message-context';
+import {
+	createIntegrationActionTool,
+	getIntegrationToolConnectionDescriptors,
+	type IntegrationActionExecutor,
+	type IntegrationMessageContext,
+	type IntegrationMessageContextStore,
+} from '../integration-tools';
 import { N8nMemory, type N8nMemoryImpl } from '../n8n-memory';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 
 describe('N8nMemoryImpl', () => {
 	let repository: AgentThreadRepository;
@@ -26,6 +44,8 @@ describe('N8nMemoryImpl', () => {
 	let otherMemory: N8nMemoryImpl;
 	let observations: AgentObservationRepository;
 	let entryRepository: AgentMemoryEntryRepository;
+	let agentId: string;
+	let otherAgentId: string;
 
 	beforeAll(async () => {
 		// The concurrent tests need real parallel transactions on Postgres.
@@ -45,8 +65,10 @@ describe('N8nMemoryImpl', () => {
 				integrations: [],
 			}),
 		]);
-		memory = Container.get(N8nMemory).getImplementation(agents[0].id);
-		otherMemory = Container.get(N8nMemory).getImplementation(agents[1].id);
+		agentId = agents[0].id;
+		otherAgentId = agents[1].id;
+		memory = Container.get(N8nMemory).getImplementation(agentId);
+		otherMemory = Container.get(N8nMemory).getImplementation(otherAgentId);
 	});
 
 	beforeEach(async () => {
@@ -269,6 +291,7 @@ describe('N8nMemoryImpl', () => {
 		const entry = await store.episodic.saveEntryWithSources(
 			{
 				resourceId: scope.resourceId,
+				episodic: scope.episodic,
 				content,
 				embedding: [1, 0],
 				embeddingModel: 'test-model',
@@ -335,12 +358,16 @@ describe('N8nMemoryImpl', () => {
 				resourceId: 'user-2',
 				threadId: 'thread-2',
 			});
-			const integrationScope = { resourceId: 'integration:slack:U_ALICE', threadId: 'shared-1' };
-			const { entry: shared } = await captureEntry(memory, integrationScope);
-			const { entry: otherThread } = await captureEntry(memory, {
-				...integrationScope,
-				threadId: 'shared-2',
+			const sharedThread = (threadId: string, resourceId = 'integration:slack:U_ALICE') => ({
+				resourceId,
+				threadId,
+				episodic: {
+					writeScopeId: `thread:${threadId}`,
+					readScopeIds: [resourceId, `thread:${threadId}`],
+				},
 			});
+			const { entry: shared } = await captureEntry(memory, sharedThread('shared-1'));
+			const { entry: otherThread } = await captureEntry(memory, sharedThread('shared-2'));
 			await entryRepository.update(owned.id, { status: 'dropped' });
 			await entryRepository.update(shared.id, {
 				status: 'superseded',
@@ -360,19 +387,242 @@ describe('N8nMemoryImpl', () => {
 			).resolves.toEqual([expect.objectContaining({ id: otherResource.id })]);
 			await expect(
 				memory.episodic.getEntriesByContentHashes(
-					{ ...integrationScope, resourceId: 'integration:slack:U_BOB' },
+					sharedThread('shared-1', 'integration:slack:U_BOB'),
 					[owned.contentHash],
 				),
 			).resolves.toEqual([expect.objectContaining({ id: shared.id, status: 'superseded' })]);
 			await expect(
-				memory.episodic.getEntriesByContentHashes({ ...integrationScope, threadId: 'shared-2' }, [
-					owned.contentHash,
-				]),
+				memory.episodic.getEntriesByContentHashes(sharedThread('shared-2'), [owned.contentHash]),
 			).resolves.toEqual([expect.objectContaining({ id: otherThread.id })]);
 			await expect(
 				memory.episodic.getEntriesByContentHashes(scope, ['missing-hash']),
 			).resolves.toEqual([]);
 			await expect(memory.episodic.getEntriesByContentHashes(scope, [])).resolves.toEqual([]);
+		});
+
+		it('isolates entries and pending candidates by the resolved scope instead of the thread', async () => {
+			const inChannel = (channelId: string, threadId: string) => ({
+				resourceId: 'integration:slack:U_ALICE',
+				threadId,
+				episodic: {
+					writeScopeId: `slack:T1:channel:${channelId}`,
+					readScopeIds: [`slack:T1:channel:${channelId}`],
+				},
+			});
+			const first = inChannel('C1', 'thread-a');
+			const second = inChannel('C1', 'thread-b');
+			const other = inChannel('C2', 'thread-c');
+			await captureEntry(memory, first, 'Channel one chose Postgres.', {
+				episodic: first.episodic,
+			});
+			await captureEntry(memory, second, 'Channel one wants weekly reports.', {
+				episodic: second.episodic,
+			});
+			await captureEntry(memory, other, 'Channel two chose MySQL.', { episodic: other.episodic });
+
+			const recalled = async (scope: typeof first) =>
+				(await memory.episodic.searchEntries(scope, 'Channel', { queryEmbedding: [1, 0] }))
+					.map(({ content }) => content)
+					.sort();
+
+			await expect(recalled(first)).resolves.toEqual([
+				'Channel one chose Postgres.',
+				'Channel one wants weekly reports.',
+			]);
+			await expect(recalled(second)).resolves.toEqual(await recalled(first));
+			await expect(recalled(other)).resolves.toEqual(['Channel two chose MySQL.']);
+			await expect(memory.episodic.getPendingCaptureCandidates(first)).resolves.toHaveLength(2);
+			await expect(memory.episodic.getPendingCaptureCandidates(other)).resolves.toHaveLength(1);
+		});
+
+		describe('Slack ownership', () => {
+			function slackScope(
+				overrides: Partial<EpisodicScopeContext> = {},
+			): EpisodicMemoryScope & { episodic: ResolvedEpisodicScope } {
+				const context: EpisodicScopeContext = {
+					agentId,
+					credentialId: 'cred-slack',
+					integrationType: 'slack',
+					threadId: crypto.randomUUID(),
+					author: { id: 'U_ALICE', name: 'Alice' },
+					origin: {
+						type: 'slack',
+						workspaceId: 'T1',
+						conversationKind: 'channel',
+						channelId: 'C1',
+					},
+					...overrides,
+				};
+				const episodic = Container.get(SlackIntegration).resolveEpisodicScope(context);
+				if (!episodic) throw new Error('Expected Slack ownership');
+				return {
+					resourceId: integrationMemoryResourceId('slack', context.author.id),
+					threadId: context.threadId,
+					episodic,
+				};
+			}
+
+			async function recall(scope: EpisodicMemoryScope, store = memory) {
+				return (await store.episodic.searchEntries(scope, 'Slack', { queryEmbedding: [1, 0] }))
+					.map(({ content }) => content)
+					.sort();
+			}
+
+			it.each([
+				{ channelId: 'C_PUBLIC', conversationKind: 'channel' as const },
+				{ channelId: 'G_PRIVATE', conversationKind: 'channel' as const },
+				{ channelId: 'G_GROUP', conversationKind: 'group' as const },
+			])('shares only $channelId memories across authors and threads', async (conversation) => {
+				const origin = { type: 'slack' as const, workspaceId: 'T1', ...conversation };
+				const alice = slackScope({ origin });
+				const bob = slackScope({ origin, author: { id: 'U_BOB', name: 'Bob' } });
+				const newcomer = slackScope({ origin, author: { id: 'U_NEW', name: 'New member' } });
+				const { entry, source } = await captureEntry(memory, alice, 'Slack chose Postgres.');
+				await captureEntry(memory, bob, 'Slack wants weekly reports.');
+				const personal = slackScope({
+					origin: { ...origin, conversationKind: 'dm', channelId: 'D1' },
+				});
+				await captureEntry(memory, personal, 'Slack personal preference.');
+
+				await expect(recall(newcomer)).resolves.toEqual([
+					'Slack chose Postgres.',
+					'Slack wants weekly reports.',
+				]);
+				await expect(recall(personal)).resolves.toEqual(['Slack personal preference.']);
+				for (const conversationKind of ['channel', 'group', 'dm'] as const) {
+					const other = slackScope({
+						origin: { ...origin, conversationKind, channelId: 'OTHER' },
+						author: { id: 'U_BOB', name: 'Bob' },
+					});
+					await expect(recall(other)).resolves.toEqual([]);
+				}
+				const candidates = await memory.episodic.getPendingCaptureCandidates(newcomer);
+				expect(candidates).toHaveLength(2);
+				expect(candidates).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							id: source.candidateId,
+							threadId: alice.threadId,
+							resourceId: alice.episodic.writeScopeId,
+						}),
+						expect.objectContaining({
+							threadId: bob.threadId,
+							resourceId: bob.episodic.writeScopeId,
+						}),
+					]),
+				);
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual([
+					expect.objectContaining(source),
+				]);
+			});
+
+			it('keeps personal DM ownership through credential and destination changes', async () => {
+				const origin = {
+					type: 'slack' as const,
+					workspaceId: 'T1',
+					conversationKind: 'dm' as const,
+					channelId: 'D1',
+				};
+				await captureEntry(memory, slackScope({ origin }), 'Slack personal preference.');
+				const replacement = slackScope({
+					origin: { ...origin, channelId: 'D2' },
+					credentialId: 'replacement-credential',
+					author: { id: 'U_ALICE', name: 'Renamed Alice' },
+				});
+				await expect(recall(replacement)).resolves.toEqual(['Slack personal preference.']);
+				await expect(
+					recall(slackScope({ origin, author: { id: 'U_BOB', name: 'Bob' } })),
+				).resolves.toEqual([]);
+			});
+
+			it('isolates the same channel by agent and receiving workspace', async () => {
+				const origin = {
+					type: 'slack' as const,
+					workspaceId: 'T1',
+					conversationKind: 'channel' as const,
+					channelId: 'C1',
+				};
+				const first = slackScope({ origin });
+				const workspace = slackScope({ origin: { ...origin, workspaceId: 'T2' } });
+				const agent = slackScope({ origin, agentId: otherAgentId });
+				await captureEntry(memory, first, 'Slack first workspace.');
+				await captureEntry(memory, workspace, 'Slack second workspace.');
+				await captureEntry(otherMemory, agent, 'Slack other agent.');
+
+				await expect(recall(first)).resolves.toEqual(['Slack first workspace.']);
+				await expect(recall(workspace)).resolves.toEqual(['Slack second workspace.']);
+				await expect(recall(agent, otherMemory)).resolves.toEqual(['Slack other agent.']);
+				await expect(recall(first, otherMemory)).resolves.toEqual([]);
+				await expect(recall(agent)).resolves.toEqual([]);
+			});
+
+			it.each(['send_channel_message', 'send_dm'] as const)(
+				'keeps capture and recall on the source after %s',
+				async (action) => {
+					const source = slackScope();
+					const destination = slackScope({
+						origin: {
+							type: 'slack',
+							workspaceId: 'T1',
+							conversationKind: action === 'send_dm' ? 'dm' : 'channel',
+							channelId: action === 'send_dm' ? 'D2' : 'C2',
+						},
+						author: { id: 'U_BOB', name: 'Bob' },
+					});
+					await captureEntry(memory, source, 'Slack source decision.');
+					await captureEntry(memory, destination, 'Slack destination decision.');
+					const context: IntegrationMessageContext = {
+						integrationConnectionId: 'slack:cred-slack',
+						platform: 'slack',
+						target: { type: 'channel', channelId: 'slack:C1', threadId: 'slack:C1:1' },
+						updatedAt: new Date().toISOString(),
+					};
+					const persistence = {
+						resourceId: source.resourceId,
+						threadId: source.threadId,
+						hostMetadata: {
+							...encodeEpisodicScopeMetadata(source.episodic),
+							...encodeIntegrationMessageContext(context),
+						},
+					};
+					const sentContext: IntegrationMessageContext = {
+						...context,
+						target:
+							action === 'send_dm'
+								? { type: 'dm', userId: 'U_BOB', threadId: 'slack:D2:' }
+								: { type: 'channel', channelId: 'slack:C2', threadId: 'slack:C2:2' },
+					};
+					const actionExecutor = mock<IntegrationActionExecutor>();
+					actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+					const descriptor = getIntegrationToolConnectionDescriptors([
+						{ type: 'slack', credentialId: 'cred-slack' },
+					])[0];
+					const tool = createIntegrationActionTool({
+						descriptor,
+						actionExecutor,
+						messageContextStore: mock<IntegrationMessageContextStore>(),
+					}).build();
+					if (!tool.handler) throw new Error('Expected an action handler');
+					await tool.handler(
+						{
+							action,
+							input: { channelId: 'C2', userId: 'U_BOB', message: { text: 'Hello' } },
+						},
+						{ persistence },
+					);
+
+					expect(readIntegrationMessageContext(persistence)?.target).toEqual(sentContext.target);
+					const scope = getEpisodicMemoryScope(persistence);
+					if (!scope) throw new Error('Expected source memory scope');
+					expect(scope).toEqual(source);
+					await captureEntry(memory, scope, 'Slack captured after sending.');
+					await expect(recall(scope)).resolves.toEqual([
+						'Slack captured after sending.',
+						'Slack source decision.',
+					]);
+					await expect(recall(destination)).resolves.toEqual(['Slack destination decision.']);
+				},
+			);
 		});
 
 		it.each([
@@ -555,5 +805,286 @@ describe('N8nMemoryImpl', () => {
 				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual(sourcesBefore);
 			},
 		);
+
+		describe('consolidation writes', () => {
+			async function enqueueSource(content: string, toolCallId: string) {
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId,
+					content,
+					evidenceText: content,
+					kind: 'fact',
+				});
+				const source: NewEpisodicMemoryEntrySourceForEntry = {
+					candidateId: candidate.id,
+					threadId: scope.threadId,
+					evidenceText: content,
+				};
+				return { candidate, source };
+			}
+
+			const deleteCandidate = async (candidateId: string) =>
+				await entryRepository.deleteCandidate(agentId, candidateId, {});
+
+			it('finds the closest active entries of the write scope for each embedding', async () => {
+				const { entry: near } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.', {
+					embedding: [1, 0],
+				});
+				const { entry: far } = await captureEntry(memory, scope, 'Acme uses Postgres.', {
+					embedding: [0.6, 0.8],
+				});
+				const { entry: inactive } = await captureEntry(memory, scope, 'Acme renewal is late.', {
+					embedding: [1, 0],
+				});
+				await entryRepository.update(inactive.id, { status: 'superseded' });
+				await captureEntry(otherMemory, scope, 'Acme renewal is on 2 March.');
+				const shared = {
+					...scope,
+					episodic: { writeScopeId: 'thread:thread-1', readScopeIds: [scope.resourceId] },
+				};
+
+				const similar = await memory.episodic.findSimilarEntries(
+					scope,
+					[
+						[1, 0],
+						[0, 1],
+					],
+					{
+						topK: 3,
+						minSimilarity: 0.5,
+					},
+				);
+
+				expect(similar.map((entries) => entries.map(({ id }) => id))).toEqual([
+					[near.id, far.id],
+					[far.id],
+				]);
+				await expect(
+					memory.episodic.findSimilarEntries(shared, [[1, 0]], { topK: 3, minSimilarity: 0.5 }),
+				).resolves.toEqual([[]]);
+			});
+
+			it('adds sources to an active entry and refreshes it', async () => {
+				const { entry } = await captureEntry(memory, scope);
+				const { source } = await enqueueSource('Keep reports concise.', 'call-2');
+				const lastSeenAt = new Date('2026-06-01T10:00:00.000Z');
+
+				const refreshed = await memory.episodic.addEntrySources(entry.id, [source], lastSeenAt);
+
+				expect(refreshed).toMatchObject({ id: entry.id, status: 'active', lastSeenAt });
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual(
+					expect.arrayContaining([expect.objectContaining({ candidateId: source.candidateId })]),
+				);
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toHaveLength(2);
+			});
+
+			it('adds no source to an inactive entry or for a deleted candidate', async () => {
+				const { entry } = await captureEntry(memory, scope);
+				const deleted = await enqueueSource('Keep reports concise.', 'call-2');
+				await deleteCandidate(deleted.candidate.id);
+
+				await expect(
+					memory.episodic.addEntrySources(entry.id, [deleted.source], new Date()),
+				).resolves.toBeNull();
+
+				const live = await enqueueSource('Keep every report concise.', 'call-3');
+				await entryRepository.update(entry.id, { status: 'superseded' });
+				await expect(
+					memory.episodic.addEntrySources(entry.id, [live.source], new Date()),
+				).resolves.toBeNull();
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toHaveLength(1);
+			});
+
+			it('merges entries with the sources of both the old entries and the new fact', async () => {
+				const { entry: old, source: oldSource } = await captureEntry(
+					memory,
+					scope,
+					'Acme renewal is on 1 March.',
+				);
+				const { source } = await enqueueSource('Acme renewal moved to 15 March.', 'call-2');
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: {
+								resourceId: scope.resourceId,
+								content: 'Acme renewal is on 15 March.',
+								embedding: [1, 0],
+								embeddingModel: 'test-model',
+							},
+							sources: [source],
+						},
+					],
+				});
+
+				const [merged] = result.inserted;
+				expect(result.supersededIds).toEqual([old.id]);
+				expect(merged).toMatchObject({ content: 'Acme renewal is on 15 March.', status: 'active' });
+				await expect(entryRepository.findOneByOrFail({ id: old.id })).resolves.toMatchObject({
+					status: 'superseded',
+					supersededBy: merged.id,
+				});
+				const sources = await memory.episodic.getEntrySources([merged.id]);
+				expect(sources.map(({ candidateId }) => candidateId).sort()).toEqual(
+					[oldSource.candidateId, source.candidateId].sort(),
+				);
+			});
+
+			it('reuses a stored entry with the merged content as the replacement', async () => {
+				const { entry: old } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.');
+				const { entry: existing } = await captureEntry(
+					memory,
+					scope,
+					'Acme renewal is on 15 March.',
+				);
+				await entryRepository.update(existing.id, { status: 'dropped' });
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: { resourceId: scope.resourceId, content: existing.content },
+						},
+					],
+				});
+
+				expect(result.inserted).toEqual([
+					expect.objectContaining({ id: existing.id, status: 'active' }),
+				]);
+				await expect(memory.episodic.getEntrySources([existing.id])).resolves.toHaveLength(2);
+			});
+
+			it('skips a merge when a user deleted the candidate of its sources', async () => {
+				const { entry: old } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.');
+				const { candidate, source } = await enqueueSource(
+					'Acme renewal moved to 15 March.',
+					'call-2',
+				);
+				await deleteCandidate(candidate.id);
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: { resourceId: scope.resourceId, content: 'Acme renewal is on 15 March.' },
+							sources: [source],
+						},
+					],
+				});
+
+				expect(result).toEqual({ droppedIds: [], supersededIds: [], inserted: [] });
+				await expect(entryRepository.findBy({ status: 'active' })).resolves.toEqual([
+					expect.objectContaining({ id: old.id }),
+				]);
+			});
+		});
+
+		describe('capture deletion', () => {
+			async function enqueue(content = 'User prefers concise reports.', toolCallId = 'call-1') {
+				await memory.saveThread({ id: scope.threadId, resourceId: scope.resourceId });
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId,
+					content,
+					evidenceText: content,
+					kind: 'preference',
+				});
+				const save = async () =>
+					await memory.episodic.saveEntryWithSources({ resourceId: scope.resourceId, content }, [
+						{ candidateId: candidate.id, threadId: scope.threadId, evidenceText: content },
+					]);
+				return { candidate, save };
+			}
+
+			const deleteCandidate = async (candidateId: string) =>
+				await entryRepository.deleteCandidate(agentId, candidateId, {});
+
+			const activeEntries = async () => await entryRepository.findBy({ status: 'active' });
+
+			it('stores nothing when the capture saves a candidate deleted after it was read', async () => {
+				const { candidate, save } = await enqueue();
+
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
+
+				await expect(save()).resolves.toBeNull();
+				expect(await entryRepository.count()).toBe(0);
+				await expect(memory.episodic.getPendingCaptureCandidates(scope)).resolves.toEqual([]);
+			});
+
+			it('deletes the stored entry when a completed candidate is deleted', async () => {
+				const { candidate } = await enqueue();
+				const entry = await memory.episodic.saveEntryWithSources(
+					{
+						resourceId: scope.resourceId,
+						content: candidate.content,
+						embedding: [1, 0],
+						embeddingModel: 'test-model',
+					},
+					[
+						{
+							candidateId: candidate.id,
+							threadId: scope.threadId,
+							evidenceText: candidate.content,
+						},
+					],
+				);
+				const search = async () =>
+					await memory.episodic.searchEntries(scope, 'concise', { queryEmbedding: [1, 0] });
+				expect((await search()).map(({ id }) => id)).toEqual([entry!.id]);
+
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
+
+				await expect(entryRepository.findOneByOrFail({ id: entry!.id })).resolves.toMatchObject({
+					status: 'deleted',
+				});
+				await expect(search()).resolves.toEqual([]);
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(false);
+			});
+
+			it('stores a user delete as deleted', async () => {
+				const { entry } = await captureEntry(memory, scope);
+
+				await expect(entryRepository.markDeleted(agentId, entry.id)).resolves.toBe(true);
+
+				await expect(entryRepository.findOneByOrFail({ id: entry.id })).resolves.toMatchObject({
+					status: 'deleted',
+				});
+			});
+
+			it('keeps an entry that another candidate still supports', async () => {
+				const first = await enqueue();
+				const second = await enqueue(undefined, 'call-2');
+				const entry = await first.save();
+				await second.save();
+
+				await deleteCandidate(first.candidate.id);
+
+				await expect(activeEntries()).resolves.toEqual([
+					expect.objectContaining({ id: entry!.id }),
+				]);
+				await expect(memory.episodic.getEntrySources([entry!.id])).resolves.toEqual([
+					expect.objectContaining({ candidateId: second.candidate.id }),
+				]);
+			});
+
+			it('leaves no active entry when delete and capture run at the same time', async () => {
+				for (let attempt = 0; attempt < 5; attempt++) {
+					await entryRepository.delete({});
+					const { candidate, save } = await enqueue(`Fact ${attempt}`, `call-${attempt}`);
+
+					await Promise.all([save(), deleteCandidate(candidate.id)]);
+
+					await expect(activeEntries()).resolves.toEqual([]);
+				}
+			});
+		});
 	});
 });

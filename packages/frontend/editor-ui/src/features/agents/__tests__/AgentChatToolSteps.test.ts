@@ -1,5 +1,10 @@
+import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { PolicyViolation } from '@n8n/api-types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
@@ -69,15 +74,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
 }));
 
-vi.mock('@n8n/frontend-module-type-availability-policies', async () => ({
-	getPolicyViolations: (
-		await vi.importActual<typeof import('@n8n/frontend-module-type-availability-policies')>(
-			'@n8n/frontend-module-type-availability-policies',
-		)
-	).getPolicyViolations,
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	ContactAdminModal: {
-		props: ['open', 'nodeTypeName', 'kind'],
-		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
+		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		template:
+			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
 	},
 }));
 
@@ -115,8 +117,11 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
 			'agents.chat.toolPolicyRefusal.reason': '{name} is restricted on this instance.',
+			'agents.chat.toolPolicyRefusal.reason.project': '{name} is restricted in this project.',
 			'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+			'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
 			'typeAvailabilityPolicies.restrictedNode.contactAdmin': 'Contact instance admin',
+			'typeAvailabilityPolicies.restrictedNode.contactProjectAdmin': 'Contact project admin',
 		} as Record<string, string>,
 		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
@@ -160,6 +165,10 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
 	it.each([
 		{
 			tool: 'update_plan',
@@ -824,7 +833,7 @@ describe('AgentChatToolSteps', () => {
 	});
 
 	describe('policy-refused tool calls', () => {
-		function refusedCall(overrides: Partial<ToolCall> = {}): ToolCall {
+		function refusedCall(violation: Partial<PolicyViolation> = {}): ToolCall {
 			return {
 				tool: 'search_nodes',
 				toolCallId: 'tc-refused',
@@ -839,13 +848,30 @@ describe('AgentChatToolSteps', () => {
 							message: 'Not allowed',
 							subject: 'slack',
 							scope: 'instance',
+							...violation,
 						},
 					],
 					instruction: 'Ask the user to pick another tool.',
 				},
-				...overrides,
 			};
 		}
+
+		it('names the project scope and sends the user to the project admins', async () => {
+			useTypeAvailabilityPoliciesStore().policyProject = createTestProject({ id: 'project-1' });
+			const wrapper = mountSteps([refusedCall({ scope: 'project', projectId: 'project-1' })]);
+			const callout = wrapper.get('[data-test-id="tool-step-error"]');
+
+			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(
+				'Restricted in this project',
+			);
+			expect(callout.text()).toContain('Search nodes is restricted in this project.');
+			const link = callout.get('[data-test-id="agent-chat-tool-policy-refusal-contact-admin"]');
+			expect(link.text()).toBe('Contact project admin');
+			await link.trigger('click');
+			expect(callout.get('[data-test-id="contact-admin-modal"]').attributes('data-audience')).toBe(
+				'project',
+			);
+		});
 
 		it('shows a lock with the scope line as tooltip', () => {
 			const icon = mountSteps([refusedCall()]).get('[data-testid="tool-step-warning"]');

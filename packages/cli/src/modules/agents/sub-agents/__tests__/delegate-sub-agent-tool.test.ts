@@ -1,5 +1,6 @@
 import {
 	AgentEvent,
+	encodeEpisodicScopeMetadata,
 	getInlineDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type CredentialProvider,
@@ -186,7 +187,10 @@ describe('createN8nDelegateSubAgentTool', () => {
 				persistence: {
 					threadId: 'parent-thread-1',
 					resourceId: 'resource-1',
-					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+						n8nExecutionId: 'parent-execution-1',
+					},
 				},
 			},
 		);
@@ -194,10 +198,70 @@ describe('createN8nDelegateSubAgentTool', () => {
 		expect(runner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
+				parentExecutionId: 'parent-execution-1',
 				parentResourceId: 'resource-1',
 				parentSandboxPrincipalHash: principalHash,
 			}),
 			expect.any(Object),
+		);
+	});
+
+	it('forwards the parent episodic scope decision to the runner context', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: encodeEpisodicScopeMetadata({ disabled: true }),
+				},
+			},
+		);
+
+		expect(runner.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ parentEpisodicScope: { disabled: true } }),
+		);
+	});
+
+	it('does not hand a resolved parent scope to the child', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			parentAgentId,
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'task:task-1',
+					hostMetadata: encodeEpisodicScopeMetadata({
+						writeScopeId: 'slack:T1:C1',
+						readScopeIds: ['slack:T1:C1'],
+					}),
+				},
+			},
+		);
+
+		expect(runner.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.not.objectContaining({ parentEpisodicScope: expect.anything() }),
 		);
 	});
 

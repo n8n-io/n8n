@@ -32,9 +32,5 @@ export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 		subAgentsSkill(),
 		targetSkillsSkill(),
 		targetTasksSkill(),
-		// FIXME: Research is disabled until the builder has a supported research tool.
-		// Re-enable this skill only when the builder can actually perform research
-		// instead of merely loading instructions that tell it to research.
-		// researchSkill(),
 	].map(asAgentBuilderReference);
 }

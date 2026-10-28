@@ -13,7 +13,13 @@ import type { IRunData, ITaskData, ITaskStartedData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 
-import { estimateInputSize, estimateTaskDataSize } from './estimate-run-data-size';
+import { estimateInputSize, estimateTaskDataSize, RunSharing } from './estimate-run-data-size';
+
+/**
+ * Max runs measured when an execution starts with run data, to limit how long the walk
+ * blocks the event loop. The estimator limits the walk of each output, not of each run.
+ */
+const MEASURED_RUNS_BUDGET = 25;
 
 interface RunningNode {
 	name: string;
@@ -171,11 +177,62 @@ export class RunDataTracker {
 		};
 		this.executions.set(executionId, execution);
 
-		for (const [nodeName, runs] of Object.entries(runData)) {
-			for (const taskData of runs) {
+		const nodes = Object.entries(runData);
+		const sampleCounts = spreadBudget(
+			nodes.map(([, runs]) => runs.length),
+			MEASURED_RUNS_BUDGET,
+		);
+
+		let ownBytes = 0;
+		let ownRuns = 0;
+		const measuredCounts = nodes.map(() => 0);
+		for (const [i, [nodeName, runs]] of nodes.entries()) {
+			const sampled = sampleCounts[i];
+			if (sampled === 0) continue;
+
+			const sampledRuns = Array.from(
+				{ length: sampled },
+				(_, j) => runs[sampleIndex(j, runs.length, sampled)],
+			);
+			// Objects that several runs hold count once, so the extrapolation leaves them out.
+			const sharing = sampled < runs.length ? new RunSharing() : undefined;
+			const measuredBytes = sampledRuns.map((taskData, run) =>
 				this.addEstimate(execution, executionId, nodeName, () =>
-					estimateTaskDataSize(taskData, runData, execution.seen),
-				);
+					estimateTaskDataSize(
+						taskData,
+						runData,
+						execution.seen,
+						sharing ? { runs: sharing, run } : undefined,
+					),
+				),
+			);
+			// A later run can add to the shared bytes of an earlier run, so read them after all runs.
+			// A run whose estimate failed is not measured, so it does not lower the average.
+			let nodeOwnBytes = 0;
+			let measured = 0;
+			for (const [run, bytes] of measuredBytes.entries()) {
+				if (bytes === undefined) continue;
+				nodeOwnBytes += Math.max(0, bytes - (sharing?.sharedBytesOf(run) ?? 0));
+				measured++;
+			}
+			if (measured === 0) continue;
+			measuredCounts[i] = measured;
+			ownBytes += nodeOwnBytes;
+			ownRuns += measured;
+
+			this.addBytes(
+				execution,
+				nodeName,
+				Math.round((nodeOwnBytes / measured) * (runs.length - measured)),
+			);
+		}
+
+		if (ownRuns === 0) return;
+
+		// Nodes without a measured run get the average of all measured runs.
+		for (const [i, [nodeName, runs]] of nodes.entries()) {
+			if (measuredCounts[i] === 0 && runs.length > 0) {
+				this.addBytes(execution, nodeName, Math.round((ownBytes / ownRuns) * runs.length));
 			}
 		}
 	}
@@ -185,16 +242,21 @@ export class RunDataTracker {
 		executionId: string,
 		nodeName: string,
 		estimateBytes: () => number,
-	) {
+	): number | undefined {
 		let bytes: number;
 		try {
 			bytes = estimateBytes();
 		} catch {
 			// Never fail the execution. Reading the thrown value can throw too.
 			this.logger.debug('Failed to estimate node output size', { executionId, nodeName });
-			return;
+			return undefined;
 		}
 
+		this.addBytes(execution, nodeName, bytes);
+		return bytes;
+	}
+
+	private addBytes(execution: TrackedExecution, nodeName: string, bytes: number) {
 		if (bytes === 0) return;
 
 		execution.totalBytes += bytes;
@@ -226,6 +288,35 @@ export class RunDataTracker {
 		);
 	}
 }
+
+/** Give each node one measured run in turn, until the budget is spent. */
+function spreadBudget(runCounts: number[], budget: number): number[] {
+	const sampleCounts = runCounts.map(() => 0);
+	let left = budget;
+	let added = true;
+	while (left > 0 && added) {
+		added = false;
+		for (const [i, runCount] of runCounts.entries()) {
+			if (left === 0) break;
+			if (sampleCounts[i] < runCount) {
+				sampleCounts[i]++;
+				left--;
+				added = true;
+			}
+		}
+	}
+	return sampleCounts;
+}
+
+/** One sample in each equal part of the runs, offset so it does not follow a repeating pattern. */
+function sampleIndex(j: number, count: number, sampled: number) {
+	const start = Math.floor((j * count) / sampled);
+	const end = Math.floor(((j + 1) * count) / sampled);
+	const placeInPart = ((j + 1) * GOLDEN_RATIO) % 1;
+	return start + Math.floor(placeInPart * (end - start));
+}
+
+const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
 
 /** The engine passes an AI sub-node's full task data, with its input, to the start event. */
 function hasInputOverride(taskData: ITaskStartedData): taskData is ITaskData {

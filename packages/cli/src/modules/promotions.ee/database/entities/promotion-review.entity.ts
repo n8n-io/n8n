@@ -62,10 +62,15 @@ export class PromotionReview extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 
-	/** The one n8n user who approved in n8n. NULL until then. Not copied from the host. */
+	/**
+	 * The n8n user who claimed the approval. It names the approver only on a merged review.
+	 * On other states it is a claim in progress, or one that a stopped request left.
+	 * Not copied from the host.
+	 */
 	@Column({ type: 'uuid', nullable: true })
 	approvedById: string | null;
 
+	/** When the approval was claimed. On an open review, an old claim is stale. */
 	@DateTimeColumn({ nullable: true })
 	approvedAt: Date | null;
 

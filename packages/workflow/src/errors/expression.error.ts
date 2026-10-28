@@ -33,6 +33,13 @@ export class ExpressionError extends ExecutionBaseError {
 	constructor(message: string, options?: ExpressionErrorOptions) {
 		super(message, { cause: options?.cause, level: 'warning' });
 
+		// The vm and quickjs engines rethrow a host error only when its name is
+		// `ExpressionError`, and a minified build renames the class. Subclasses keep
+		// their own name.
+		if (new.target === ExpressionError) {
+			this.name = 'ExpressionError';
+		}
+
 		if (options?.description !== undefined) {
 			this.description = options.description;
 		}

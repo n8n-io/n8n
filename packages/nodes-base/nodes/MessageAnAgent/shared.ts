@@ -106,6 +106,7 @@ export const commonProperties: INodeProperties[] = [
 		name: 'jsonSchemaExample',
 		type: 'json',
 		default: defaultJsonSchemaExample,
+		noDataExpression: true,
 		description: 'Example JSON object used to generate the output schema',
 		typeOptions: {
 			rows: 10,

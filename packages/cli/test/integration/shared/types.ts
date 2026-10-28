@@ -88,7 +88,8 @@ type ModuleName =
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
 	| 'type-availability-policies'
-	| 'inbound-auth-core';
+	| 'inbound-auth-core'
+	| 'scim';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

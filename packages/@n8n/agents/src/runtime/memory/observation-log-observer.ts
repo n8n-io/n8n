@@ -16,7 +16,7 @@ import type {
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
-import { guardToolResultForModel } from '../tools/tool-result-guard';
+import { guardSerializedToolResultForModel } from '../tools/tool-result-guard';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -100,6 +100,7 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	/**
 	 * Receives the observer model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
@@ -319,6 +320,7 @@ async function prepareObserverInput(
 		renderedObservationLogTail: renderObservationLog(observationLogTail),
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
+		modelFetch: opts.modelFetch,
 	};
 }
 
@@ -383,7 +385,7 @@ async function guardObserverToolResults(
 			if (block.type !== 'tool-call' || block.state !== 'resolved') return block;
 			// Bound the serialized result so rich media metadata cannot bypass the guard.
 			const serialized = serializeForObserver(block.output, {}, true);
-			const guarded = await guardToolResultForModel(serialized, tokenCounter);
+			const guarded = await guardSerializedToolResultForModel(serialized, tokenCounter);
 			if (!guarded.truncated) return block;
 			return { ...block, output: guarded.historyOutput };
 		}),

@@ -14,6 +14,16 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		expect(result).toEqual({ credential: AI_GATEWAY_MANAGED_TAG, model: 'openai/gpt-5' });
 	});
 
+	it('preserves the Gateway credits marker on an MCP server entry', () => {
+		const config = {
+			mcpServers: [
+				{ name: 'Brave Search', authentication: 'none', credential: AI_GATEWAY_MANAGED_TAG },
+			],
+		};
+
+		expect(sanitizeUnknownAgentCredentials(config, accessibleCredentialIds)).toEqual(config);
+	});
+
 	it('preserves the n8n Connect tag on difficulty model credentials', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{

@@ -691,6 +691,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 						},
 					},
 				},
+				nodeTimeSavedMinutes: undefined,
 			}),
 		});
 
