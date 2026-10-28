@@ -128,6 +128,12 @@ export type SkillVersionSummary = {
 	createdAt: string;
 };
 
+/** One row of the version list. */
+export type SkillVersionListItem = SkillVersionSummary & {
+	/** True for the highest version, which agents that follow the skill run. */
+	isLatest: boolean;
+};
+
 /** One saved version with its content. */
 export type SkillVersionDetail = SkillVersionSummary & { skill: AgentSkill };
 

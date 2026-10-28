@@ -223,6 +223,15 @@ function renderModal({
 	});
 }
 
+// Every suite renders an open modal with fresh stores.
+beforeEach(() => {
+	vi.clearAllMocks();
+	createTestingPinia({ stubActions: false });
+	const uiStore = mockedStore(useUIStore);
+	uiStore.openModal(MODAL_NAME);
+	uiStore.closeModal = vi.fn();
+});
+
 const SAVED_SKILL: AgentSkill = {
 	name: 'brand-voice',
 	description: 'Write clear customer-facing copy.',
@@ -1427,14 +1436,6 @@ describe('AgentSkillModal', () => {
 });
 
 describe('AgentSkillModal from Settings', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		createTestingPinia({ stubActions: false });
-		const uiStore = mockedStore(useUIStore);
-		uiStore.openModal(MODAL_NAME);
-		uiStore.closeModal = vi.fn();
-	});
-
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
