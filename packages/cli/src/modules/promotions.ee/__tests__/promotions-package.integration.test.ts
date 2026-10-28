@@ -1903,7 +1903,9 @@ describe('Apply a project selection', () => {
 });
 
 describe('Apply leaves publish state to the target', () => {
-	it('keeps the target state of each workflow although the source published all of them', async () => {
+	// The source published all three workflows. The target published `live`, left `draft`
+	// unpublished, and has no `added` yet.
+	const seedTarget = async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id);
@@ -1918,7 +1920,6 @@ describe('Apply leaves publish state to the target', () => {
 			commitMessage: 'Export',
 		});
 
-		// The target published `live` and left `draft` unpublished. It has no `added` yet.
 		await repository.update(live.id, { name: 'Live (target)' });
 		await repository.update(draft.id, { name: 'Draft (target)', activeVersionId: null });
 		await Container.get(WorkflowPublicationTriggerStatusRepository).delete({
@@ -1927,17 +1928,21 @@ describe('Apply leaves publish state to the target', () => {
 		await Container.get(WorkflowPublishedVersionRepository).delete({ workflowId: added.id });
 		await repository.update(added.id, { activeVersionId: null });
 		await repository.delete(added.id);
+		return { environments, project, live, draft, added };
+	};
 
-		const result = await service.apply(environments.apply.id, owner);
-
-		assert(result.status === 'applied', JSON.stringify(result));
-		expect(result.counts.workflows).toMatchObject({ created: 1, updated: 2 });
-		expect(result.counts.workflows.publishing).toMatchObject({
+	const expectTargetStateKept = async (
+		{ live, draft, added }: Awaited<ReturnType<typeof seedTarget>>,
+		counts: Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'],
+	) => {
+		expect(counts.workflows).toMatchObject({ created: 1, updated: 2 });
+		expect(counts.workflows.publishing).toMatchObject({
 			published: 0,
 			unpublished: 0,
 			blocked: 0,
 			failed: 0,
 		});
+		const repository = Container.get(WorkflowRepository);
 		const applied = async (id: string) => await repository.findOneByOrFail({ id });
 		expect(await applied(live.id)).toMatchObject({
 			name: 'Live',
@@ -1945,6 +1950,26 @@ describe('Apply leaves publish state to the target', () => {
 		});
 		expect(await applied(draft.id)).toMatchObject({ name: 'Draft', activeVersionId: null });
 		expect(await applied(added.id)).toMatchObject({ name: 'Added', activeVersionId: null });
+	};
+
+	it('keeps the target state of each workflow although the source published all of them', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.apply(seeded.environments.apply.id, owner);
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
+
+	it('keeps the target state of each selected workflow in a project apply', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.applyProjectSelection(seeded.project.id, owner, {
+			workflowIds: [seeded.live.id, seeded.draft.id, seeded.added.id],
+		});
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
 	});
 });
 
