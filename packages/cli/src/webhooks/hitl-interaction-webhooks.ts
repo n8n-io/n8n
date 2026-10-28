@@ -1,6 +1,6 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
-import type { ParsedHitlCallbackReference } from 'n8n-core';
+import type { ExecutionBoundHitlCallbackReference } from 'n8n-core';
 import { parseHitlCallbackReference, verifyHitlCallbackReference } from 'n8n-core';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
@@ -53,7 +53,7 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 	protected beforeResume(_req: WaitingWebhookRequest): void {}
 
 	/** Checks that the reference is authentic and the execution exists and is still resumable. */
-	private async validate(parsed: ParsedHitlCallbackReference): Promise<ValidationResult> {
+	private async validate(parsed: ExecutionBoundHitlCallbackReference): Promise<ValidationResult> {
 		if (!verifyHitlCallbackReference(parsed, this.instanceSettings.hmacSignatureSecret)) {
 			// Don't reveal whether the execution id exists.
 			return { ok: false, status: 404 };
@@ -104,8 +104,9 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const stepId = this.dataPlane.readApprovalCallback(reference);
 		if (stepId) return await this.resumeEngineV2Callback(req, res, stepId, reference);
 
+		// A step-bound reference the data plane did not read is malformed.
 		const parsed = parseHitlCallbackReference(reference);
-		if (!parsed) return this.handleUnrecognizedCallback(res);
+		if (parsed?.kind !== 'execution') return this.handleUnrecognizedCallback(res);
 
 		const validated: ValidationResult = await this.validate(parsed);
 		if (!validated.ok) return this.reject(res, validated.status);
