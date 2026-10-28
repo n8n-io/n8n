@@ -41,7 +41,7 @@ own summary table, and a fold step fills it from the ledger.
 6. A feature that must decide at the moment of an event reads at record time, beside the ledger
    insert. A feature that accepts about 5 s of delay reads its summary table. Execution limits v1
    accept the delay (a soft limit), so they read their summary table. A run can pass a limit by the
-   runs of the last few seconds.
+   runs since the last successful fold. A failing fold widens that gap.
 
 The main reason: one record of the facts lets every feature count the same runs. No feature needs
 its own write path, and no run waits on a shared row.
