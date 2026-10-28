@@ -644,7 +644,6 @@ describe('step execution (integration)', () => {
 				await Promise.resolve();
 				if (request.node.id === 'fire') {
 					return {
-						outputs: [[{ json: { startedSubExecution: subExecutionId } }]],
 						subExecution: {
 							executionId: subExecutionId,
 							workflowId: 'wf-sub',
@@ -652,6 +651,7 @@ describe('step execution (integration)', () => {
 							workflow: { id: 'wf-sub' },
 							triggerOutputs: [[{ json: { in: 1 } }]],
 							awaited: false,
+							outputs: [[{ json: { startedSubExecution: subExecutionId } }]],
 						},
 					};
 				}
