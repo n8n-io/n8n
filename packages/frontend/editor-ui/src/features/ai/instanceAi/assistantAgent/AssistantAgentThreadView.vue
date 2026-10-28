@@ -70,6 +70,9 @@ watch(panel, (current) => {
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
+	// The thread exists once the server accepts its first message. Show it in the lists
+	// now, not only after the first reply ends.
+	void threadsStore.loadThread(props.threadId);
 }
 
 // A finished turn can add the thread to the lists, or give it a title.

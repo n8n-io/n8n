@@ -7,6 +7,7 @@ import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
 const { panelProps, sendMessageFromOutside, telemetryTrack } = vi.hoisted(() => ({
@@ -54,6 +55,32 @@ describe('AssistantAgentThreadView', () => {
 			channel: 'system',
 		});
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
+	});
+
+	it('adds a thread opened by URL to the lists right away', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(useAssistantAgentThreadsStore().loadThread).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('adds a new thread to the lists once the server accepts its first message', async () => {
+		stashPendingAssistantAgentMessage({
+			threadId: 'thread-new',
+			text: 'Build a digest',
+			files: [],
+			references: [],
+		});
+		renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+		await flushPromises();
+		const threadsStore = useAssistantAgentThreadsStore();
+		// The thread does not exist on the server before its first message.
+		expect(threadsStore.loadThread).not.toHaveBeenCalled();
+
+		const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+		onSessionCreated();
+
+		expect(threadsStore.loadThread).toHaveBeenCalledWith('thread-new');
 	});
 
 	it('sends the first message of a new thread, with its references until the message is accepted', async () => {
