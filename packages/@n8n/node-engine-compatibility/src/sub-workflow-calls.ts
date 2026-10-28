@@ -40,10 +40,8 @@ interface CallOptions {
  * keeps the host's unimplemented `executeWorkflow`, so it never replays here.
  */
 export class SubWorkflowCalls {
-	/** The sub-execution the step waits for, once an awaited call was made. */
-	awaited?: SubExecutionDeclaration;
-	/** The sub-executions the node started without waiting. */
-	readonly detached: SubExecutionDeclaration[] = [];
+	/** The sub-execution the node asked for, once a call was made. */
+	declaration?: SubExecutionDeclaration & ({ awaited: true } | { awaited: false });
 	private called = false;
 
 	constructor(
@@ -64,8 +62,7 @@ export class SubWorkflowCalls {
 		// The first one is dropped too, so no sub-execution starts for a run that fails,
 		// whichever way the node reports the failure.
 		if (this.called) {
-			this.awaited = undefined;
-			this.detached.length = 0;
+			this.declaration = undefined;
 			throw new RepeatedSubWorkflowCallError(this.node.name);
 		}
 		this.called = true;
@@ -92,18 +89,16 @@ export class SubWorkflowCalls {
 			},
 			items,
 		});
-		const subExecution: SubExecutionDeclaration = { executionId, ...resolved };
-
 		if (options.doNotWaitToFinish) {
-			this.detached.push(subExecution);
-			return { executionId: subExecution.executionId, data: [null] };
+			this.declaration = { executionId, ...resolved, awaited: false };
+			return { executionId, data: [null] };
 		}
 
 		// The node completes this run on an empty result, which the executor
 		// replaces with the sub-execution declaration. It runs again with the result when
 		// the sub-execution ends.
-		this.awaited = subExecution;
-		return { executionId: subExecution.executionId, data: [[]] };
+		this.declaration = { executionId, ...resolved, awaited: true };
+		return { executionId, data: [[]] };
 	}
 
 	private answerFromSubExecution(

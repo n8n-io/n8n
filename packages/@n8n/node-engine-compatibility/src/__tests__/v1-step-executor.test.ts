@@ -665,12 +665,10 @@ describe('sub-workflows', () => {
 
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
-		expect(result.subExecution).toBeUndefined();
-		expect(result.detached).toHaveLength(1);
-		expect(result.detached?.[0]).toMatchObject(resolved);
+		expect(result.subExecution).toMatchObject({ ...resolved, awaited: false });
 		// The node reports the sub-execution id, as it does on v1, with no data.
 		expect(result.outputs).toEqual([
-			[{ json: { subExecutionId: result.detached?.[0].executionId, data: [null] } }],
+			[{ json: { subExecutionId: result.subExecution?.executionId, data: [null] } }],
 		]);
 	});
 

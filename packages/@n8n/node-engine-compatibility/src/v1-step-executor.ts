@@ -60,13 +60,13 @@ function toStepResult(
 ): StepExecutionResult {
 	// The node ran to the end on an empty result; the sub-execution it asked for is
 	// what the step owes, and the node runs again once the sub-execution ends.
-	const { awaited, detached } = context.subWorkflowCalls;
-	if (awaited) return { subExecution: awaited };
+	const { declaration } = context.subWorkflowCalls;
+	if (declaration?.awaited) return { subExecution: declaration };
 
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) {
 		const outputs = toStepOutputs(nodeResult);
-		return detached.length > 0 ? { outputs, detached } : { outputs };
+		return declaration ? { outputs, subExecution: declaration } : { outputs };
 	}
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);

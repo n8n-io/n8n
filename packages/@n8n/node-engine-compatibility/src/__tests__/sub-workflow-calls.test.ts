@@ -29,14 +29,13 @@ describe('SubWorkflowCalls', () => {
 	it('drops the detached sub-execution too when a second call fails the run', async () => {
 		const calls = new SubWorkflowCalls(node, stepContext, vi.fn().mockResolvedValue(resolved));
 		await calls.call({ id: 'sub-workflow' }, [], { doNotWaitToFinish: true });
-		expect(calls.detached).toHaveLength(1);
+		expect(calls.declaration).toMatchObject({ awaited: false });
 
 		await expect(calls.call({ id: 'sub-workflow' }, [])).rejects.toThrow(
 			RepeatedSubWorkflowCallError,
 		);
 
-		expect(calls.detached).toHaveLength(0);
-		expect(calls.awaited).toBeUndefined();
+		expect(calls.declaration).toBeUndefined();
 	});
 });
 
