@@ -189,18 +189,16 @@ export type ResumeBinding = 'execution' | 'step';
 export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
 
 /**
- * Whether something can end this wait: a deadline, a resume request, or the
- * sub-execution it waits for. A wait with none of them would never end, and
- * would strand the execution. The union above makes that unrepresentable, so
- * this catches only a declaration that an executor built outside the type
- * system, as `assertCreatableRecord` does for step creation.
+ * An executor's wait with no deadline and no resume request would never end,
+ * and would strand the execution. The union above makes that unrepresentable.
+ * This function catches only a declaration that an executor built outside the
+ * type system, as `assertCreatableRecord` does for step creation.
  */
-export function hasResumeCondition(wait: WaitDeclaration): boolean {
+export function hasResumeCondition(wait: ExecutorWaitDeclaration): boolean {
 	return (
 		wait.resumeBinding === 'execution' ||
 		wait.resumeBinding === 'step' ||
-		wait.resumeAt !== undefined ||
-		'subExecutionId' in wait
+		wait.resumeAt !== undefined
 	);
 }
 

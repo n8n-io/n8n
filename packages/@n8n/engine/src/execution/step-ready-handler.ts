@@ -27,7 +27,7 @@ import {
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
-	type WaitDeclaration,
+	type ExecutorWaitDeclaration,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
@@ -111,7 +111,7 @@ export class StepReadyHandler {
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
 			| { kind: 'outputs'; outputs: StepSlots; detached: SubExecutionDeclaration[] }
-			| { kind: 'wait'; wait: WaitDeclaration }
+			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: unknown };
 		try {
@@ -507,7 +507,7 @@ function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
  * Rejects a declaration that would strand the execution. Throwing records the
  * step as failed, which a wait nothing can end would never do on its own.
  */
-function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
+function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration): void {
 	// The engine writes this one itself, once it has a sub-execution to start. From an
 	// executor it would wait for a sub-execution that nothing starts.
 	if ('subExecutionId' in wait) {
