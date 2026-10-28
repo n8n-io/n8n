@@ -5,6 +5,7 @@ import {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildWorkflowActionSessionGrantKey,
+	buildCleanupTestExecutionsSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
@@ -104,6 +105,11 @@ export function buildAlwaysAllowKey(
 	if (grantAction) {
 		if (!workflowId) return null;
 		return buildWorkflowActionSessionGrantKey(grantAction, workflowId);
+	}
+	if (toolName === 'workspace' && action === 'cleanup-test-executions') {
+		// Deleting test executions is per-workflow, matching the backend thread grant.
+		if (!workflowId) return null;
+		return buildCleanupTestExecutionsSessionGrantKey(workflowId);
 	}
 	if (toolName === 'workspace') {
 		return buildWorkspaceSessionGrantKey(action);

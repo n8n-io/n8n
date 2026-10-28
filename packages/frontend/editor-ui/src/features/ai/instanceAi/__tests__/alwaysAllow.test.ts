@@ -135,4 +135,14 @@ describe('buildAlwaysAllowKey', () => {
 			'workspace:tag-workflow',
 		);
 	});
+
+	it('matches the backend per-workflow grant for a test execution cleanup', () => {
+		expect(
+			buildAlwaysAllowKey('workspace', { action: 'cleanup-test-executions', workflowId: 'wf-1' }),
+		).toBe('workspace:cleanup-test-executions:wf-1');
+	});
+
+	it('stores no key for a test execution cleanup without a workflow', () => {
+		expect(buildAlwaysAllowKey('workspace', { action: 'cleanup-test-executions' })).toBeNull();
+	});
 });

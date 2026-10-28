@@ -143,6 +143,15 @@ export function buildWorkspaceSessionGrantKey(action: string): string {
 	return `workspace:${action}`;
 }
 
+/**
+ * Builds the thread-level "always allow" grant key for deleting the test
+ * executions of one workflow. Scoped per workflow, so approving the cleanup of
+ * one workflow never approves it for another.
+ */
+export function buildCleanupTestExecutionsSessionGrantKey(workflowId: string): string {
+	return `workspace:cleanup-test-executions:${workflowId}`;
+}
+
 /** Builds the thread-level grant for using a credential with one exact service origin. */
 export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
 	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;
