@@ -268,12 +268,16 @@ export class WorkflowExecutionService {
 				completionPromise,
 			);
 		} catch (error) {
-			completionPromise?.reject(ensureError(error));
 			if (error instanceof ExecutionAlreadyResumingError) {
 				this.logger.debug('Polled execution was already claimed, leaving it to its owner', {
 					executionId,
 				});
+				// This caller did not start a run. Settle its promises as a skipped poll.
+				completionPromise?.resolve(undefined);
+				responsePromise?.resolve({});
+				return undefined;
 			} else {
+				completionPromise?.reject(ensureError(error));
 				await this.crashFailedPolledExecution(executionId, error, responsePromise);
 			}
 		}

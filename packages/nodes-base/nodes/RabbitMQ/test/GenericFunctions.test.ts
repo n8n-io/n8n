@@ -1,3 +1,10 @@
+import {
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	MemoryPressureExecutionCancelledError,
+	SystemShutdownExecutionCancelledError,
+	UserError,
+} from 'n8n-workflow';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -621,7 +628,7 @@ describe('RabbitMQ GenericFunctions', () => {
 			);
 
 			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
-				'requeues a message when completion rejects in %s mode',
+				'rejects a message without requeue when completion rejects in %s mode',
 				async (mode) => {
 					context.emit.mockImplementation((_items, _hook, done) => {
 						done?.reject(new Error('Completion lookup failed'));
@@ -636,9 +643,70 @@ describe('RabbitMQ GenericFunctions', () => {
 					);
 					expect(context.emit).toHaveBeenCalledTimes(1);
 					expect(mockChannel.nack).toHaveBeenCalledTimes(1);
-					expect(mockChannel.nack).toHaveBeenCalledWith(expect.anything(), false, true);
+					expect(mockChannel.nack).toHaveBeenCalledWith(expect.anything(), false, false);
 					expect(mockChannel.ack).not.toHaveBeenCalled();
 					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			describe.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'%s completion outcomes',
+				(mode) => {
+					it.each([
+						{
+							reason: 'manual stop',
+							error: new ManualExecutionCancelledError('exec-1'),
+							requeue: false,
+						},
+						{
+							reason: 'timeout',
+							error: new TimeoutExecutionCancelledError('exec-1'),
+							requeue: false,
+						},
+						{
+							reason: 'memory stop',
+							error: new MemoryPressureExecutionCancelledError('exec-1'),
+							requeue: false,
+						},
+						{
+							reason: 'unsupported request',
+							error: new UserError('Unsupported completion'),
+							requeue: false,
+						},
+						{
+							reason: 'shutdown',
+							error: new SystemShutdownExecutionCancelledError('exec-1'),
+							requeue: true,
+						},
+					])('replies to $reason with requeue=$requeue', async ({ error, requeue }) => {
+						context.emit.mockImplementation((_items, _hook, done) => {
+							done?.reject(error);
+						});
+						const message = { content: Buffer.from('{}') } as Message;
+						await handleMessage.call(context, message, mockChannel, messageTracker, mode, options);
+						expect(context.emit).toHaveBeenCalledTimes(1);
+						expect(mockChannel.nack).toHaveBeenCalledExactlyOnceWith(message, false, requeue);
+						expect(mockChannel.ack).not.toHaveBeenCalled();
+						expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+					});
+
+					it('handles an absent run result without requeueing', async () => {
+						context.emit.mockImplementation((_items, _hook, done) => {
+							done?.resolve(undefined);
+						});
+						const message = { content: Buffer.from('{}') } as Message;
+						await handleMessage.call(context, message, mockChannel, messageTracker, mode, options);
+						expect(context.emit).toHaveBeenCalledTimes(1);
+						if (mode === 'executionFinishes') {
+							expect(mockChannel.ack).toHaveBeenCalledExactlyOnceWith(message);
+							expect(mockChannel.nack).not.toHaveBeenCalled();
+						} else {
+							expect(mockChannel.nack).toHaveBeenCalledExactlyOnceWith(message, false, false);
+							expect(mockChannel.ack).not.toHaveBeenCalled();
+						}
+						expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+						expect(context.logger.error).not.toHaveBeenCalled();
+					});
 				},
 			);
 
@@ -662,7 +730,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				expect(messageTracker.answered).toHaveBeenCalledTimes(1);
 			});
 
-			it('logs a requeue failure without rejecting the message handler', async () => {
+			it('logs a negative acknowledgement failure without rejecting the message handler', async () => {
 				context.emit.mockImplementation((_items, _hook, done) => {
 					done?.reject(new Error('Completion lookup failed'));
 				});

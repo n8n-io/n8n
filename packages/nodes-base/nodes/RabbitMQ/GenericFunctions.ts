@@ -9,7 +9,7 @@ import type {
 	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, SystemShutdownExecutionCancelledError } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
@@ -217,7 +217,7 @@ export async function handleMessage(
 
 		const item = await parseMessage(message, options, this.helpers);
 
-		let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+		let responsePromise: IDeferredPromise<IRun | undefined> | undefined = undefined;
 		let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined = undefined;
 		if (acknowledgeMode === 'laterMessageNode') {
 			responsePromiseHook = this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
@@ -226,7 +226,7 @@ export async function handleMessage(
 			// unconditionally resolves the hook at teardown via
 			// resolveExecutionResponsePromise with an empty {} — the payload
 			// shape is what tells a real sendResponse apart from that cleanup.
-			responsePromise = this.helpers.createDeferredPromise<IRun>();
+			responsePromise = this.helpers.createDeferredPromise<IRun | undefined>();
 		} else if (acknowledgeMode !== 'immediately') {
 			responsePromise = this.helpers.createDeferredPromise();
 		}
@@ -238,7 +238,9 @@ export async function handleMessage(
 			// sendResponse from Delete-from-Queue — that's the fast-ack path.
 			// For the empty cleanup, fall through to the final IRun and decide
 			// ack vs nack based on error state.
-			type RaceResult = { kind: 'hook'; isRealSendResponse: boolean } | { kind: 'run'; data: IRun };
+			type RaceResult =
+				| { kind: 'hook'; isRealSendResponse: boolean }
+				| { kind: 'run'; data: IRun | undefined };
 			const hookRace: Promise<RaceResult> = responsePromiseHook.promise.then((data) => ({
 				kind: 'hook',
 				isRealSendResponse:
@@ -259,11 +261,12 @@ export async function handleMessage(
 				channel.ack(message);
 			} else {
 				const runData = first.kind === 'run' ? first.data : await responsePromise.promise;
-				if (runData?.data?.resultData?.error) {
-					acknowledgementAttempted = true;
+				acknowledgementAttempted = true;
+				if (!runData) {
+					channel.nack(message, false, false);
+				} else if (runData.data?.resultData?.error) {
 					channel.nack(message);
 				} else {
-					acknowledgementAttempted = true;
 					channel.ack(message);
 				}
 			}
@@ -271,12 +274,13 @@ export async function handleMessage(
 		} else if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 			// Acknowledge message after the execution finished
 			completionWaitStarted = true;
-			await responsePromise.promise.then(async (data: IRun) => {
-				if (data.data.resultData.error) {
+			await responsePromise.promise.then(async (data: IRun | undefined) => {
+				if (!data || data.data.resultData.error) {
 					// The execution did fail
 					if (acknowledgeMode === 'executionFinishesSuccessfully') {
 						acknowledgementAttempted = true;
-						channel.nack(message);
+						if (data) channel.nack(message);
+						else channel.nack(message, false, false);
 						messageTracker.answered(message);
 						return;
 					}
@@ -294,7 +298,7 @@ export async function handleMessage(
 		let acknowledgementError: unknown;
 		if (completionWaitStarted && !acknowledgementAttempted) {
 			try {
-				channel.nack(message, false, true);
+				channel.nack(message, false, error instanceof SystemShutdownExecutionCancelledError);
 			} catch (requeueError) {
 				// A closed channel returns its deliveries to the broker.
 				acknowledgementError = requeueError;

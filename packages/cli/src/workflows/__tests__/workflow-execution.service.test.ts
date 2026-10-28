@@ -499,12 +499,38 @@ describe('WorkflowExecutionService', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});
 
+		test('settles an already-claimed poll as skipped without reporting a failure', async () => {
+			workflowRunner.run.mockRejectedValue(new ExecutionAlreadyResumingError('exec-9'));
+			const completion = createDeferredPromise<IRun | undefined>();
+			const result = completion.promise.then(
+				(value) => ({ state: 'resolved', value }),
+				(error: unknown) => ({ state: 'rejected', error }),
+			);
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				undefined,
+				'completion',
+				completion,
+			);
+			expect(returned).toBeUndefined();
+			expect(await result).toEqual({ state: 'resolved', value: undefined });
+			expect(responsePromise.resolve).toHaveBeenCalledWith({});
+			expect(responsePromise.reject).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
+		});
+
 		test('leaves the committed execution alone when another process already claimed it', async () => {
 			workflowRunner.run.mockRejectedValue(new ExecutionAlreadyResumingError('exec-9'));
 
 			const returned = await runPolledWorkflow();
 
-			expect(returned).toBe('exec-9');
+			expect(returned).toBeUndefined();
 			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});

@@ -941,6 +941,27 @@ describe('run', () => {
 	});
 
 	describe('engine v2 dispatch', () => {
+		it('rejects unsupported completion before engine v2 dispatch', async () => {
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(true);
+			const startSpy = vi.spyOn(dispatcher, 'start').mockResolvedValueOnce('dp-uuid');
+			const completion = createDeferredPromise<IRun | undefined>();
+			const rejected = expect(completion.promise).rejects.toThrow(
+				'Engine v2 does not support a completion promise',
+			);
+			const started = runner.run(
+				mock<IWorkflowExecutionDataProcess>(),
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				completion,
+			);
+			await expect(started).rejects.toThrow('Engine v2 does not support a completion promise');
+			expect(startSpy).not.toHaveBeenCalled();
+			await rejected;
+		});
+
 		it('hands the run to the dispatcher without registering a control-plane execution', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);
