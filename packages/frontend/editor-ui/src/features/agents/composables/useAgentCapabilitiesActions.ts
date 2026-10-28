@@ -706,10 +706,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	/**
-	 * Points the draft ref at a version of the skill: pinned with `versionId`, else following
-	 * the latest. Saves, then reopens the editor on it with the Versions panel shown.
-	 */
-	/**
 	 * Puts one skill back as it was before a version change. Only this skill's entry and ref
 	 * change, so edits made to the agent while the save ran stay.
 	 */
@@ -747,6 +743,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		});
 	}
 
+	/**
+	 * Points the draft ref at a version of the skill: pinned with `versionId`, else following
+	 * the latest. Saves, then reopens the editor on it with the Versions panel shown.
+	 */
 	async function applySkillVersion(
 		skillId: string,
 		target: { skill: AgentSkill; version: number; versionId?: string; skillHash?: string },
