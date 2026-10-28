@@ -644,6 +644,7 @@ before the turn:
 - `seed.messages` are earlier messages in the thread.
 - `seed.workflows` and `seed.dataTables` are on the instance.
 - `seed.priorRuns` are failed runs. `hints` is the error of the run.
+  The stub instance cannot serve `seed.recordedRuns`, so it skips cases that have them.
 - `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
   turn sends it in the same `<thread-context>` block as production.
 - `credentials` are accounts. Each account passes its connection test, unless
@@ -984,6 +985,28 @@ requires the agent to read it.
 - Runs execute sequentially in declared order, before the live turn, on a 120s budget —
   tighter than a scenario execution, which gets the case's build budget (900s by default).
 
+#### `seed.recordedRuns` — the same failure on every run
+
+`priorRuns` asks the mock layer to fail again on each eval, so the failure can differ from
+run to run. `recordedRuns` restores a failed run recorded once, so every eval sees the same
+record: the same node outputs, the same error.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { "format": "n8n-instance-ai-failed-execution", "version": 1 /* … */ } }]
+}
+```
+
+- Get an `envelope` from `POST /rest/instance-ai/eval/export-execution` on an eval
+  instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`), for one failed run (`error` or
+  `crashed`) of a thread's project.
+- `workflow` is the seed workflow's `id`, as for `priorRuns`. The restore binds the run to
+  the restored workflow and moves its timestamps so it ends at restore time.
+- Recorded runs restore in declared order, before any `priorRuns`. A restore that fails is
+  a seeding failure (framework issue), not an agent failure.
+
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
 The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
@@ -1068,7 +1091,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 A seed can create folders in the thread's project before the live turn, and place its
 workflows inside them. Use it to grade how the agent finds the contents of a folder the
-user names (CONTEXT-86: `workflow_builder_workflows(action="list")` takes `folderPath` or `folderId`).
+user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
 
 ```jsonc
 "seed": {

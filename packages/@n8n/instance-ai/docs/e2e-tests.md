@@ -133,7 +133,7 @@ real. The `IdRemapper` translates IDs in both directions.
 | Workspace file tools | Write the source file consumed by the build |
 | `workflow_builder_build_workflow` | Creates real workflow in DB for preview |
 | `workflow_builder_executions(action="run")` | Creates real execution for status display |
-| `workflow_builder_workflows(action="setup")` | Configures workflow nodes |
+| `setup_workflow` | Configures workflow nodes |
 | `get_node_types` | Reads the local node catalog |
 | `workflow_builder_executions(action="get")` | Reads execution results |
 | Credential tools | Read or change credential metadata through the local n8n services |
