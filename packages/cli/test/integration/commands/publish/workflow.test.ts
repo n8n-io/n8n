@@ -26,7 +26,6 @@ import { PublishWorkflowCommand } from '@/commands/publish/workflow';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createScope, removeAllRoleScopes } from '../../shared/db/roles';
@@ -35,7 +34,6 @@ import { createWorkflowHistoryItem } from '../../shared/db/workflow-history';
 
 mockInstance(LoadNodesAndCredentials);
 mockInstance(ExternalHooks);
-const publisher = mockInstance(Publisher);
 const nodeTypes = mockInstance(NodeTypes);
 const command = setupTestCommand(PublishWorkflowCommand);
 
@@ -47,7 +45,7 @@ const APPLIES_SHORTLY_NOTE =
 const RESTART_NOTE = 'Restart n8n to apply this change to a running instance.';
 
 const REPUBLISH_REFUSED =
-	'Republishing a published workflow from the CLI is not supported when the publication service is off and multi-main is not enabled.';
+	'Republishing a published workflow from the CLI is not supported when the publication service is off.';
 
 const webhookNode: INode = {
 	id: 'webhook-node',
@@ -248,66 +246,6 @@ describe('with the workflow publication service off in regular mode', () => {
 		expect(await publishEvents(workflow.id)).toEqual([
 			{ event: 'activated', versionId: workflow.versionId, userId: owner.id },
 		]);
-	});
-
-	describe('in queue mode', () => {
-		let original: { mode: string; multiMain: boolean; cacheBackend: string };
-
-		beforeAll(() => {
-			const { executions, multiMainSetup, cache } = Container.get(GlobalConfig);
-			original = {
-				mode: executions.mode,
-				multiMain: multiMainSetup.enabled,
-				cacheBackend: cache.backend,
-			};
-			executions.mode = 'queue';
-			multiMainSetup.enabled = false;
-			cache.backend = 'memory';
-		});
-
-		afterAll(() => {
-			const { executions, multiMainSetup, cache } = Container.get(GlobalConfig);
-			executions.mode = original.mode as typeof executions.mode;
-			multiMainSetup.enabled = original.multiMain;
-			cache.backend = original.cacheBackend as typeof cache.backend;
-		});
-
-		test('publish:workflow refuses a republish with the flag off in queue mode with one main', async () => {
-			const workflow = await createActiveWorkflow({}, owner);
-			await Container.get(WebhookRepository).insert({
-				workflowId: workflow.id,
-				webhookPath: WEBHOOK_PATH,
-				method: 'POST',
-				node: webhookNode.name,
-			});
-			const { versionId: nextVersionId } = await createWorkflowHistoryItem(workflow.id, {
-				nodes: workflow.nodes,
-			});
-
-			await expect(
-				command.run([`--id=${workflow.id}`, `--versionId=${nextVersionId}`]),
-			).rejects.toThrow(REPUBLISH_REFUSED);
-			expect(await Container.get(WebhookRepository).countBy({ workflowId: workflow.id })).toBe(1);
-		});
-
-		test('publish:workflow hands a republish to the leader with the flag off in multi-main', async () => {
-			Container.get(GlobalConfig).multiMainSetup.enabled = true;
-			const workflow = await createActiveWorkflow({}, owner);
-			const { versionId: nextVersionId } = await createWorkflowHistoryItem(workflow.id, {
-				nodes: workflow.nodes,
-			});
-
-			try {
-				await command.run([`--id=${workflow.id}`, `--versionId=${nextVersionId}`]);
-			} finally {
-				Container.get(GlobalConfig).multiMainSetup.enabled = false;
-			}
-
-			expect((await getWorkflowById(workflow.id))?.activeVersionId).toBe(nextVersionId);
-			expect(publisher.publishCommand).toHaveBeenCalledWith(
-				expect.objectContaining({ command: 'add-webhooks-triggers-and-pollers' }),
-			);
-		});
 	});
 
 	test('publish:workflow publishes a never-published workflow with the flag off in regular mode', async () => {

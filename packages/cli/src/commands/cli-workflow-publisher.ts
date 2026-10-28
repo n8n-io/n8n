@@ -4,14 +4,13 @@ import { AuthRolesService, type User, type WorkflowEntity, WorkflowRepository } 
 import { Service } from '@n8n/di';
 import { ResponseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 const REPUBLISH_NOT_SUPPORTED =
-	'Republishing a published workflow from the CLI is not supported when the publication service is off and multi-main is not enabled. Unpublish it first, or use the public API on the running instance.';
+	'Republishing a published workflow from the CLI is not supported when the publication service is off. Unpublish it first, or use the public API on the running instance.';
 
 /** A refusal or a failed publish check that the operator can act on, so the command prints only its message. */
 export function isExpectedFailure(error: Error): boolean {
@@ -25,7 +24,6 @@ export function isExpectedFailure(error: Error): boolean {
 export class CliWorkflowPublisher {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowService: WorkflowService,
@@ -106,10 +104,8 @@ export class CliWorkflowPublisher {
 		return workflow;
 	}
 
-	/** The CLI is never leader, so it can hand a trigger swap only to the outbox or, in multi-main, to the leader over pub/sub; queue mode with one main has neither. */
+	/** The CLI is never leader and exits without awaiting pub/sub, so only the outbox can hand a trigger swap to a running n8n. */
 	private canReplaceRunningTriggers(): boolean {
-		return (
-			this.globalConfig.workflows.useWorkflowPublicationService || this.instanceSettings.isMultiMain
-		);
+		return this.globalConfig.workflows.useWorkflowPublicationService;
 	}
 }
