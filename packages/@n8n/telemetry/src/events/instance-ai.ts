@@ -116,12 +116,6 @@ const instanceContextTurnSchema = z.object({
 		.describe(
 			'Successful main Hub skill loads. Does not prove that the model followed the instructions.',
 		),
-	hub_skill_pending_count: z
-		.number()
-		.int()
-		.nonnegative()
-		.optional()
-		.describe('Main Hub skill attempts without a result at the segment boundary.'),
 	hub_skill_failure_count: z
 		.number()
 		.int()
@@ -142,14 +136,6 @@ const instanceContextTurnSchema = z.object({
 		.nonnegative()
 		.optional()
 		.describe('Distinct Hub skill versions delivered after a change to an active skill.'),
-	hub_skill_restoration_count: z
-		.number()
-		.int()
-		.nonnegative()
-		.optional()
-		.describe(
-			'Distinct Hub skill versions restored to visible context, including after compaction. Not a new load.',
-		),
 	hub_skill_revocation_count: z
 		.number()
 		.int()

@@ -595,12 +595,9 @@ describe('active skill context observations', () => {
 		next.instructions();
 		next.takeUpdates();
 		next.reportContext();
-		expect(onContext).toHaveBeenLastCalledWith(
-			expect.arrayContaining([
-				expect.objectContaining({ skillId: 'hub-test', kind: 'carried' }),
-				expect.objectContaining({ skillId: 'hub-test', kind: 'restored' }),
-			]),
-		);
+		expect(onContext).toHaveBeenLastCalledWith([
+			{ skillId: 'hub-test', version: current.registry.skills[0].hash, kind: 'carried' },
+		]);
 		const changed = createRuntimeSkillSource([
 			{ id: 'hub-test', name: 'renamed', description: 'test', instructions: 'version two' },
 		]);

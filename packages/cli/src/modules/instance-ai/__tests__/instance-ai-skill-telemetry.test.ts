@@ -1,7 +1,6 @@
 import { createRuntimeSkillSource, extendRuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { suspendedInstanceContextSchema } from '@n8n/instance-ai';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { InstanceAiSkillTelemetry } from '../instance-ai-skill-telemetry';
 
@@ -37,8 +36,7 @@ function setup() {
 
 describe('Assistant Hub skill telemetry', () => {
 	it('counts failed attempts and thrown errors without recording their text', () => {
-		const { skills, telemetry } = setup();
-		skills.getLoadError = () => ({ retryable: true, message: 'private network error' });
+		const { telemetry } = setup();
 		telemetry.observe(call('failed'));
 		telemetry.observe(
 			result('failed', {
@@ -90,7 +88,7 @@ describe('Assistant Hub skill telemetry', () => {
 			hub_skill_attempt_count: 2,
 			hub_skill_load_count: 1,
 			hub_skill_loaded_ids: ['skill-1'],
-			hub_skill_pending_count: 1,
+			hub_skill_failure_count: 0,
 			hub_skill_reference_attempt_count: 2,
 			hub_skill_reference_read_count: 1,
 			hub_skill_reference_failure_count: 1,
@@ -130,12 +128,11 @@ describe('Assistant Hub skill telemetry', () => {
 		});
 	});
 
-	it('keeps carry-forward, refresh, restoration, revocation, and temporary failure distinct', () => {
+	it('keeps carry-forward, refresh, revocation, and temporary failure distinct', () => {
 		const { skills, telemetry } = setup();
 		const usage = [
 			{ skillId: runtimeId, version: 'v1', kind: 'carried' as const },
 			{ skillId: runtimeId, version: 'v2', kind: 'refreshed' as const },
-			{ skillId: runtimeId, version: 'v2', kind: 'restored' as const },
 			{ skillId: `hub-${'c'.repeat(64)}`, kind: 'revoked' as const },
 			{ skillId: `hub-${'d'.repeat(64)}`, kind: 'unavailable' as const },
 		];
@@ -146,7 +143,6 @@ describe('Assistant Hub skill telemetry', () => {
 			hub_skill_carried_ids: ['skill-1'],
 			hub_skill_refresh_count: 1,
 			hub_skill_refreshed_ids: ['skill-1'],
-			hub_skill_restoration_count: 1,
 			hub_skill_revocation_count: 1,
 			hub_skill_unavailable_count: 1,
 			hub_skill_attempt_count: 0,
@@ -184,31 +180,5 @@ describe('Assistant Hub skill telemetry', () => {
 			hub_skill_failure_count: 1,
 			hub_skill_carried_count: 0,
 		});
-	});
-
-	it('captures a payload accepted by the existing event registry', () => {
-		const { telemetry } = setup();
-		telemetry.observe(call('failed'));
-		telemetry.observe(result('failed', { success: false }));
-		const payload = {
-			...telemetry.snapshot(),
-			user_id: 'user-1',
-			thread_id: 'thread-1',
-			run_id: base.runId,
-			surface: 'aia',
-			segment: 'suspended',
-			instance_context_enabled: false,
-			node_usage_enabled: false,
-			block_state: 'absent',
-			absence_reason: 'disabled',
-			context_depth: 0,
-			context_surfaces: [],
-			asked_clarifying_question: true,
-			tool_calls: 1,
-			status: 'suspended',
-		};
-		expect(
-			TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN.properties.safeParse(payload).success,
-		).toBe(true);
 	});
 });

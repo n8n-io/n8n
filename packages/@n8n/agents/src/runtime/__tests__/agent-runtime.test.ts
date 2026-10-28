@@ -1836,6 +1836,8 @@ describe('AgentRuntime — guardrails', () => {
 	);
 
 	it('reports skill context only when model-call guards allow delivery', async () => {
+		const memory = new InMemoryMemory();
+		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
 		const source = createRuntimeSkillSource([
 			{
 				id: 'test-skill',
@@ -1844,6 +1846,12 @@ describe('AgentRuntime — guardrails', () => {
 				instructions: 'Test instructions',
 			},
 		]);
+		source.shouldAppendSkillUpdates = () => true;
+		const version = source.registry.skills[0].hash;
+		await memory.skillState.save(
+			{ ...persistence, agentName: 'test' },
+			{ skillIds: ['test-skill'], versions: { 'test-skill': version } },
+		);
 		const onContext = vi.fn();
 		source.onContext = onContext;
 		const runtime = new AgentRuntime({
@@ -1851,14 +1859,22 @@ describe('AgentRuntime — guardrails', () => {
 			model: 'openai/gpt-4o-mini',
 			instructions: 'Test',
 			skillSource: source,
+			memory,
 		});
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
-		await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
-		expect(onContext).not.toHaveBeenCalled();
-		generateText.mockResolvedValueOnce(makeGenerateSuccess());
-		await runtime.generate('hi');
-		expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
-		await runtime.dispose();
+		try {
+			await runtime.generate('hi', { persistence, guardrails: guardrailsOption(hook) });
+			expect(onContext).not.toHaveBeenCalled();
+			expect(generateText).not.toHaveBeenCalled();
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			await runtime.generate('hi', { persistence });
+			expect(onContext).toHaveBeenCalledExactlyOnceWith([
+				{ skillId: 'test-skill', version, kind: 'carried' },
+			]);
+			expect(JSON.stringify(generateText.mock.calls[0][0])).toContain('Test instructions');
+		} finally {
+			await runtime.dispose();
+		}
 	});
 
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {

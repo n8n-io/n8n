@@ -20,7 +20,7 @@ const hubSkillTelemetryStateSchema = z.object({
 			runtimeSkillId: z.string(),
 			skillId: z.string().optional(),
 			version: z.string().optional(),
-			kind: z.enum(['carried', 'refreshed', 'restored', 'revoked', 'unavailable']),
+			kind: z.enum(['carried', 'refreshed', 'revoked', 'unavailable']),
 		}),
 	),
 });

@@ -211,7 +211,7 @@ export interface RuntimeSkillSource {
 export interface RuntimeSkillContextUsage {
 	skillId: string;
 	version?: string;
-	kind: 'carried' | 'refreshed' | 'restored' | 'revoked' | 'unavailable';
+	kind: 'carried' | 'refreshed' | 'revoked' | 'unavailable';
 }
 
 export interface RuntimeSkillStateScope {

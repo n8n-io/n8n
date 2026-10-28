@@ -48,7 +48,6 @@ export class ActiveSkills {
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
 	private pendingUpdates: CustomAgentMessage[] = [];
-	private contextUpdates: CustomAgentMessage[] = [];
 	private restoredIds = new Set<string>();
 	private unavailableIds = new Set<string>();
 
@@ -61,7 +60,6 @@ export class ActiveSkills {
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
 		this.pendingUpdates = [];
-		this.contextUpdates = [];
 		this.unavailableIds.clear();
 		this.list = list;
 		this.scope = persistence
@@ -157,12 +155,6 @@ export class ActiveSkills {
 						: 'carried'
 					: 'unavailable',
 			});
-		}
-		for (const message of this.contextUpdates) {
-			if (isRuntimeSkillUpdate(message) && message.data.skillUpdate.change === 'restored') {
-				const { skillId, version } = message.data.skillUpdate;
-				usage.push({ skillId, version: version ?? undefined, kind: 'restored' });
-			}
 		}
 		this.source.onContext(usage);
 	}
@@ -381,7 +373,6 @@ export class ActiveSkills {
 			};
 			list.addInput([update]);
 			this.pendingUpdates.push(update);
-			this.contextUpdates.push(update);
 		}
 	}
 

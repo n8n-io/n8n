@@ -29,10 +29,9 @@ metrics wait until the runtime prepares an allowed model call.
 | --- | --- |
 | `attempt_count`, `attempted_ids` | Main skill calls, including failures and pending calls. This measures Assistant selection intent. |
 | `load_count`, `loaded_ids` | Main instructions returned successfully. This does not prove that the model followed them. |
-| `failure_count`, `pending_count` | Main calls that failed or have no result at the reporting boundary. |
+| `failure_count` | Main calls that failed. Derive pending calls as `attempt_count - load_count - failure_count`. |
 | `carried_count`, `carried_ids` | Eligible, unchanged active skills included in a later turn's model context. Historical mentions alone do not count. |
 | `refresh_count`, `refreshed_ids` | Changed active skill versions included in model context. |
-| `restoration_count` | Current skill versions reintroduced into visible context, including after compaction. This can overlap carry-forward. |
 | `revocation_count` | Active selections removed by the runtime as non-retryable unavailability. |
 | `unavailable_count` | Active skill versions unavailable temporarily. Their selections remain recoverable. These do not count as delivery or revocation. |
 | `reference_attempt_count`, `reference_read_count`, `reference_failure_count` | Reference operations, separate from main skill loads. |
