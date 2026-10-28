@@ -110,6 +110,7 @@ describe('Test MergeV3, combineBySql operation', () => {
 			country: 'PL',
 		});
 	});
+
 	it('LEFT JOIN, missing input 2(empty array)', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',

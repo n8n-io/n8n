@@ -1,5 +1,4 @@
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IHookFunctions,
@@ -7,15 +6,20 @@ import type {
 	IWebhookResponseData,
 	IDataObject,
 	ILoadOptionsFunctions,
-	JsonObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
-import { createSubscription, getResourcePath } from './v2/helpers/utils-trigger';
+import {
+	createSubscription,
+	deleteSubscriptions,
+	generateClientState,
+	getResourcePath,
+	verifyWebhook,
+} from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
+import { microsoftApiRequestAllItems } from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -296,11 +300,38 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						subscribedResources.includes(resource),
 					);
 
-					if (allResourcesSubscribed) {
+					// Graph never returns clientState on a list, so a subscription this node
+					// did not create cannot be verified against. Reuse it only while the
+					// matching secret is still held.
+					const storedSecret = webhookData.webhookSecret;
+					const hasStoredSecret = typeof storedSecret === 'string' && storedSecret.length > 0;
+
+					if (allResourcesSubscribed && hasStoredSecret) {
 						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
 						return true;
 					}
 
+					delete webhookData.staleSubscriptionIds;
+
+					// create() mints a fresh clientState, so a leftover subscription on this
+					// URL would keep delivering with a secret we can no longer verify.
+					if (matchingSubscriptions.length > 0) {
+						const staleIds = matchingSubscriptions.map((sub) => sub.id);
+						try {
+							await deleteSubscriptions.call(this, staleIds);
+						} catch (error) {
+							// create() overwrites subscriptionIds, so ids Graph may still hold go
+							// under their own key. Otherwise they survive until they expire, with
+							// nothing left to delete them by.
+							webhookData.staleSubscriptionIds = staleIds;
+							this.logger.warn('Could not remove a stale Microsoft Teams subscription', {
+								error,
+							});
+						}
+					}
+
+					delete webhookData.subscriptionIds;
+					delete webhookData.webhookSecret;
 					return false;
 				} catch (error) {
 					return false;
@@ -319,13 +350,19 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					});
 				}
 
+				const clientState = generateClientState();
 				const resourcePaths = await getResourcePath.call(this, event);
 				const subscriptionIds: string[] = [];
 
 				if (Array.isArray(resourcePaths)) {
 					await Promise.all(
 						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(this, webhookUrl, resource);
+							const subscription = await createSubscription.call(
+								this,
+								webhookUrl,
+								resource,
+								clientState,
+							);
 							subscriptionIds.push(subscription.id);
 							return subscription;
 						}),
@@ -333,39 +370,43 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 					webhookData.subscriptionIds = subscriptionIds;
 				} else {
-					const subscription = await createSubscription.call(this, webhookUrl, resourcePaths);
+					const subscription = await createSubscription.call(
+						this,
+						webhookUrl,
+						resourcePaths,
+						clientState,
+					);
 					webhookData.subscriptionIds = [subscription.id];
 				}
 
+				webhookData.webhookSecret = clientState;
 				return true;
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const storedIds = webhookData.subscriptionIds as string[] | undefined;
+				const staleIds = webhookData.staleSubscriptionIds as string[] | undefined;
 
-				if (!Array.isArray(storedIds)) {
+				if (!Array.isArray(storedIds) && !Array.isArray(staleIds)) {
 					return false;
 				}
 
+				// A stale id checkExists could not remove is retried here. The helper
+				// tolerates a 404, so an id that has since gone is harmless.
+				const idsToDelete = [
+					...new Set([
+						...(Array.isArray(storedIds) ? storedIds : []),
+						...(Array.isArray(staleIds) ? staleIds : []),
+					]),
+				];
+
 				try {
-					await Promise.all(
-						storedIds.map(async (subscriptionId) => {
-							try {
-								await microsoftApiRequest.call(
-									this as unknown as IExecuteFunctions,
-									'DELETE',
-									`/v1.0/subscriptions/${subscriptionId}`,
-								);
-							} catch (error) {
-								if ((error as JsonObject).httpStatusCode !== 404) {
-									throw error;
-								}
-							}
-						}),
-					);
+					await deleteSubscriptions.call(this, idsToDelete);
 
 					delete webhookData.subscriptionIds;
+					delete webhookData.webhookSecret;
+					delete webhookData.staleSubscriptionIds;
 					return true;
 				} catch (error) {
 					return false;
@@ -381,6 +422,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// Handle Microsoft Graph validation request
 		if (req.query.validationToken) {
 			res.status(200).send(req.query.validationToken);
+			return { noWebhookResponse: true };
+		}
+
+		if (!verifyWebhook.call(this)) {
+			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 

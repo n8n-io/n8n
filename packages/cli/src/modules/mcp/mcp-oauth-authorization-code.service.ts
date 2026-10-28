@@ -1,8 +1,10 @@
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
 import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
+import type { OAuthGrantContext } from './database/oauth-grant-context';
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 
 /**
@@ -25,20 +27,24 @@ export class McpOAuthAuthorizationCodeService {
 		redirectUri: string,
 		codeChallenge: string,
 		state: string | null,
+		ctx?: OAuthGrantContext,
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
-		await this.authorizationCodeRepository.insert({
-			code,
-			clientId,
-			userId,
-			redirectUri,
-			codeChallenge,
-			codeChallengeMethod: 'S256',
-			state,
-			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
-			used: false,
-		});
+		await this.authorizationCodeRepository.insertCode(
+			{
+				code,
+				clientId,
+				userId,
+				redirectUri,
+				codeChallenge,
+				codeChallengeMethod: 'S256',
+				state,
+				expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
+				used: false,
+			},
+			ctx,
+		);
 
 		return code;
 	}
@@ -50,21 +56,21 @@ export class McpOAuthAuthorizationCodeService {
 	async findAndValidateAuthorizationCode(
 		authorizationCode: string,
 		clientId: string,
+		ctx?: OAuthGrantContext,
 	): Promise<AuthorizationCode> {
-		const authRecord = await this.authorizationCodeRepository.findOne({
-			where: {
-				code: authorizationCode,
-				clientId,
-			},
-		});
+		const authRecord = await this.authorizationCodeRepository.findCode(
+			authorizationCode,
+			clientId,
+			ctx,
+		);
 
 		if (!authRecord) {
-			throw new Error('Invalid authorization code');
+			throw new InvalidGrantError('Invalid authorization code');
 		}
 
 		if (authRecord.expiresAt < Date.now()) {
-			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code expired');
+			await this.authorizationCodeRepository.deleteCode(authorizationCode, clientId, ctx);
+			throw new InvalidGrantError('Authorization code expired');
 		}
 
 		return authRecord;
@@ -78,21 +84,20 @@ export class McpOAuthAuthorizationCodeService {
 		authorizationCode: string,
 		clientId: string,
 		redirectUri?: string,
+		ctx?: OAuthGrantContext,
 	): Promise<AuthorizationCode> {
-		const authRecord = await this.findAndValidateAuthorizationCode(authorizationCode, clientId);
-
-		if (redirectUri && authRecord.redirectUri !== redirectUri) {
-			throw new Error('Redirect URI mismatch');
-		}
-
-		const result = await this.authorizationCodeRepository.update(
-			{ code: authorizationCode, used: false },
-			{ used: true },
+		const authRecord = await this.findAndValidateAuthorizationCode(
+			authorizationCode,
+			clientId,
+			ctx,
 		);
 
-		const numAffected = result.affected ?? 0;
-		if (numAffected < 1) {
-			throw new Error('Authorization code already used');
+		if (redirectUri && authRecord.redirectUri !== redirectUri) {
+			throw new InvalidGrantError('Redirect URI mismatch');
+		}
+
+		if (!(await this.authorizationCodeRepository.consumeCode(authorizationCode, clientId, ctx))) {
+			throw new InvalidGrantError('Authorization code already used');
 		}
 
 		authRecord.used = true;

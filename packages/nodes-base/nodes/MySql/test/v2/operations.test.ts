@@ -1,5 +1,5 @@
 import mysql2 from 'mysql2/promise';
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
 
 import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
@@ -275,7 +275,10 @@ describe('Test MySql V2, operations', () => {
 
 		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
 
-		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, {
+			...mySqlMockNode,
+			parameters: nodeParameters as INodeParameters,
+		});
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,
@@ -295,6 +298,63 @@ describe('Test MySql V2, operations', () => {
 		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
 	});
 
+	it('executeQuery, should keep a resolved value out of another parameter slot', async () => {
+		// Raw, unevaluated node config, as it's stored in the workflow.
+		const rawParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT * FROM users WHERE name = $1 AND city = $2',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '={{ $json.name }},Springfield',
+				nodeVersion: 2.5,
+			},
+		};
+		// What n8n would hand back for the whole evaluated "options" collection.
+		const evaluatedOptions: IDataObject = {
+			queryBatching: 'independently',
+			queryReplacement: 'Doe, Jane,Springfield',
+			nodeVersion: 2.5,
+		};
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(rawParameters, {
+			...mySqlMockNode,
+			parameters: rawParameters as INodeParameters,
+		});
+		fakeExecuteFunction.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+			if (name === 'query') return rawParameters.query;
+			if (name === 'options') return evaluatedOptions;
+			return undefined;
+		});
+		fakeExecuteFunction.evaluateExpression = jest
+			.fn()
+			.mockImplementation((expr: string) => (expr === '{{ $json.name }}' ? 'Doe, Jane' : expr));
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			evaluatedOptions,
+			pool,
+		);
+
+		await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			evaluatedOptions,
+		);
+
+		expect(connectionQuerySpy).toBeCalledWith(
+			"SELECT * FROM users WHERE name = 'Doe, Jane' AND city = 'Springfield'",
+		);
+	});
 	it('select, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'select',

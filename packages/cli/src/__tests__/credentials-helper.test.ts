@@ -279,6 +279,146 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
+	describe('applyDefaultsAndOverwrites - $self data', () => {
+		const credentialType: ICredentialType = {
+			name: 'selfDataTestApi',
+			displayName: 'Self Data Test API',
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				{ displayName: 'Region', name: 'region', type: 'string', default: '' },
+				{
+					displayName: 'Password',
+					name: 'password',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+				},
+				{ displayName: 'Echo', name: 'echo', type: 'string', default: '' },
+				{
+					displayName: 'Token',
+					name: 'token',
+					type: 'hidden',
+					typeOptions: { expirable: true },
+					default: '',
+				},
+			],
+		};
+
+		const overwrites: ICredentialDataDecryptedObject = {
+			password: 'instance-secret',
+			region: 'eu',
+			token: 'instance-token',
+		};
+
+		const buildHelper = () => {
+			mockNodesAndCredentials.getCredential
+				.calledWith(credentialType.name)
+				.mockReturnValue({ type: credentialType, sourcePath: '' });
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			// Mirrors the real applyOverwrite: fill a field only when the stored value is empty
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => {
+				const result = { ...data };
+				for (const [key, value] of Object.entries(overwrites)) {
+					if (result[key] === undefined || result[key] === '') result[key] = value;
+				}
+				return result;
+			});
+			return new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				mock(),
+				mock(),
+			);
+		};
+
+		const storedData = {
+			url: '=https://example.com/{{ $self.password }}',
+			echo: '={{ $self.region }}',
+		};
+
+		test('should not expose overwrite-provided secret fields to $self', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				storedData,
+				mock<INodeCredentialsDetails>(),
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				echo: 'eu',
+				password: 'instance-secret',
+			});
+		});
+
+		test('should not expose overwrite-provided secret fields to $self when resolving per item', async () => {
+			const node: INode = {
+				id: 'node-id',
+				name: 'Node',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			};
+			const workflow = new Workflow({ nodes: [node], connections: {}, active: false, nodeTypes });
+
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				storedData,
+				mock<INodeCredentialsDetails>(),
+				credentialType.name,
+				'internal',
+				undefined,
+				{
+					workflow,
+					runExecutionData: null,
+					runIndex: 0,
+					itemIndex: 0,
+					node,
+					connectionInputData: [],
+				},
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				echo: 'eu',
+				password: 'instance-secret',
+			});
+		});
+
+		test('should not expose overwrite-provided expirable fields to $self', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ url: '=https://example.com/{{ $self.token }}' },
+				mock<INodeCredentialsDetails>(),
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				token: 'instance-token',
+			});
+		});
+
+		test('should expose a user-stored secret field to $self', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ ...storedData, password: 'user-secret' },
+				mock<INodeCredentialsDetails>(),
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/user-secret',
+				password: 'user-secret',
+			});
+		});
+	});
+
 	describe('authenticate', () => {
 		const tests: Array<{
 			description: string;

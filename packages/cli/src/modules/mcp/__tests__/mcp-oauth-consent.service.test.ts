@@ -1,20 +1,24 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
+import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import type { OAuthGrantContext } from '../database/oauth-grant-context';
+import type { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthConsentService } from '../mcp-oauth-consent.service';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import type { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthSessionService } from '../oauth-session.service';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
 let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthConsentService;
+const ctx = mock<OAuthGrantContext>();
+const consents = mock<UserConsentRepository>();
+const gate = mock<OAuthGrantService>();
 
 describe('McpOAuthConsentService', () => {
 	beforeAll(() => {
@@ -23,22 +27,21 @@ describe('McpOAuthConsentService', () => {
 		oauthClientRepository = mockInstance(
 			OAuthClientRepository,
 		) as jest.Mocked<OAuthClientRepository>;
-		userConsentRepository = mockInstance(
-			UserConsentRepository,
-		) as jest.Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
 
 		service = new McpOAuthConsentService(
 			logger,
 			oauthSessionService,
 			oauthClientRepository,
-			userConsentRepository,
 			authorizationCodeService,
+			gate,
+			consents,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		gate.runForActiveUser.mockImplementation(async (_userId, work) => await work(ctx));
 	});
 
 	describe('getConsentDetails', () => {
@@ -151,7 +154,7 @@ describe('McpOAuthConsentService', () => {
 				clientId: 'client-123',
 				userId: 'user-123',
 			});
-			expect(userConsentRepository.insert).not.toHaveBeenCalled();
+			expect(consents.saveGrant).not.toHaveBeenCalled();
 		});
 
 		it('should handle user approval and generate authorization code', async () => {
@@ -166,24 +169,21 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.insert.mockResolvedValue(mock());
+			consents.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
-			expect(userConsentRepository.insert).toHaveBeenCalledWith({
-				userId: 'user-123',
-				clientId: 'client-123',
-				grantedAt: expect.any(Number),
-			});
+			expect(consents.saveGrant).toHaveBeenCalledWith('user-123', 'client-123', ctx);
 			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
 				'client-123',
 				'user-123',
 				'https://example.com/callback',
 				'challenge-abc',
 				'state-xyz',
+				ctx,
 			);
 			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
 				clientId: 'client-123',
@@ -203,7 +203,7 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.insert.mockResolvedValue(mock());
+			consents.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);

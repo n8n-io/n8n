@@ -1,3 +1,4 @@
+import { InvalidRequestError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
 import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
 import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
@@ -5,6 +6,7 @@ import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/tok
 import { Get, Options, RootLevelController, StaticRouterMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
+import { z } from 'zod/v4';
 
 import { UrlService } from '@/services/url.service';
 
@@ -26,6 +28,36 @@ const mcpEnabledGuard: RequestHandler = async (_req, res, next) => {
 		return;
 	}
 	next();
+};
+
+/**
+ * Mirrors the SDK's `RequestAuthorizationParamsSchema`, which it does not
+ * export: the authorization request parameters it checks after it has
+ * resolved the client.
+ */
+const authorizationRequestParamsSchema = z.object({
+	response_type: z.literal('code'),
+	code_challenge: z.string(),
+	code_challenge_method: z.literal('S256'),
+	scope: z.string().optional(),
+	state: z.string().optional(),
+	resource: z.url().optional(),
+});
+
+/**
+ * Validates the authorization request parameters before the SDK handler runs,
+ * so that every invalid request gets a direct error response.
+ */
+const authorizationRequestValidator: RequestHandler = (req, res, next) => {
+	const result = authorizationRequestParamsSchema.safeParse(
+		req.method === 'POST' ? req.body : req.query,
+	);
+	if (result.success) {
+		next();
+		return;
+	}
+	res.setHeader('Cache-Control', 'no-store');
+	res.status(400).json(new InvalidRequestError(result.error.message).toResponseObject());
 };
 
 @RootLevelController('/')
@@ -51,7 +83,7 @@ export class McpOAuthController {
 			path: '/mcp-oauth/authorize',
 			router: authorizationHandler({ provider: mcpOAuthService }) as Router,
 			skipAuth: true,
-			middlewares: [mcpEnabledGuard],
+			middlewares: [mcpEnabledGuard, authorizationRequestValidator],
 		},
 		{
 			path: '/mcp-oauth/token',

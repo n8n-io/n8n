@@ -1,0 +1,74 @@
+diff --git a/dist/node/cjs/connection/grpc.js b/dist/node/cjs/connection/grpc.js
+index eb8d36adeb7d4efc2eadde80eee720ccad721b31..eb2ef1f29a26875fdb642e085782db7bd6563ff3 100644
+--- a/dist/node/cjs/connection/grpc.js
++++ b/dist/node/cjs/connection/grpc.js
+@@ -144,14 +144,27 @@ const grpcClient = (config) => {
+     'grpc.max_send_message_length': config.grpcMaxMessageLength,
+     'grpc.max_receive_message_length': config.grpcMaxMessageLength,
+   };
++  let address = config.grpcAddress;
+   if (config.grpcProxyUrl) {
+-    // grpc.http_proxy is not used by grpc.js under-the-hood
+-    // only uses the env var and whether http_proxy is enabled
+-    process.env.grpc_proxy = config.grpcProxyUrl;
+-    channelOptions['grpc.enabled_http_proxy'] = true;
++    // Use per-channel options so the proxy only applies to this client.
++    const proxy = new URL(config.grpcProxyUrl);
++    address = `${proxy.hostname}:${proxy.port || 80}`;
++    channelOptions['grpc.enable_http_proxy'] = 0;
++    channelOptions['grpc.http_connect_target'] = `dns:${config.grpcAddress}`;
++    channelOptions['grpc.default_authority'] = config.grpcAddress;
++    if (proxy.username) {
++      const decode = (value) => {
++        try {
++          return decodeURIComponent(value);
++        } catch {
++          return value;
++        }
++      };
++      channelOptions['grpc.http_connect_creds'] = `${decode(proxy.username)}:${decode(proxy.password)}`;
++    }
+   }
+   const channel = (0, nice_grpc_1.createChannel)(
+-    config.grpcAddress,
++    address,
+     config.grpcSecure
+       ? nice_grpc_1.ChannelCredentials.createSsl()
+       : nice_grpc_1.ChannelCredentials.createInsecure(),
+diff --git a/dist/node/esm/connection/grpc.js b/dist/node/esm/connection/grpc.js
+index a1c126f4929ae0951c736d011bc940f5df4f8431..b2984e077d181c66dbec931fbc298ddc173900ee 100644
+--- a/dist/node/esm/connection/grpc.js
++++ b/dist/node/esm/connection/grpc.js
+@@ -134,14 +134,27 @@ export const grpcClient = (config) => {
+     'grpc.max_send_message_length': config.grpcMaxMessageLength,
+     'grpc.max_receive_message_length': config.grpcMaxMessageLength,
+   };
++  let address = config.grpcAddress;
+   if (config.grpcProxyUrl) {
+-    // grpc.http_proxy is not used by grpc.js under-the-hood
+-    // only uses the env var and whether http_proxy is enabled
+-    process.env.grpc_proxy = config.grpcProxyUrl;
+-    channelOptions['grpc.enabled_http_proxy'] = true;
++    // Use per-channel options so the proxy only applies to this client.
++    const proxy = new URL(config.grpcProxyUrl);
++    address = `${proxy.hostname}:${proxy.port || 80}`;
++    channelOptions['grpc.enable_http_proxy'] = 0;
++    channelOptions['grpc.http_connect_target'] = `dns:${config.grpcAddress}`;
++    channelOptions['grpc.default_authority'] = config.grpcAddress;
++    if (proxy.username) {
++      const decode = (value) => {
++        try {
++          return decodeURIComponent(value);
++        } catch {
++          return value;
++        }
++      };
++      channelOptions['grpc.http_connect_creds'] = `${decode(proxy.username)}:${decode(proxy.password)}`;
++    }
+   }
+   const channel = createChannel(
+-    config.grpcAddress,
++    address,
+     config.grpcSecure ? ChannelCredentials.createSsl() : ChannelCredentials.createInsecure(),
+     channelOptions
+   );

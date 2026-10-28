@@ -2314,4 +2314,52 @@ describe('sub-workflow loaded from a URL or file', () => {
 			expect(response.statusCode).toBe(400);
 		});
 	});
+
+	describe('sub-workflow JSON that is not fixed text', () => {
+		const inlineNode = (workflowJson: string | string[]) =>
+			subworkflowNode({ source: 'parameter', workflowJson }, 1.2);
+
+		test('should reject a member adding a node whose workflow JSON is an expression', async () => {
+			const workflow = await createSharedWorkflow([]);
+
+			const response = await authMemberAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ versionId: workflow.versionId, nodes: [inlineNode('={{ $json.wf }}')] });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(SOURCE_MESSAGE);
+		});
+
+		test('should reject a member creating a workflow whose workflow JSON is an array', async () => {
+			const node = inlineNode([JSON.stringify({ nodes: [], connections: {} })]);
+
+			const response = await authMemberAgent.post('/workflows').send(createWorkflowRequest([node]));
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(SOURCE_MESSAGE);
+		});
+
+		test('should allow a member to rename a stored node whose workflow JSON is an expression', async () => {
+			const stored = inlineNode('={{ $json.wf }}');
+			const workflow = await createSharedWorkflow([stored]);
+
+			const response = await authMemberAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ versionId: workflow.versionId, nodes: [{ ...stored, name: 'Renamed' }] });
+
+			expect(response.statusCode).toBe(200);
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.nodes[0].name).toBe('Renamed');
+			expect(saved.nodes[0].parameters.workflowJson).toBe('={{ $json.wf }}');
+		});
+
+		test('should allow the owner to create a node whose workflow JSON is an expression', async () => {
+			const response = await authOwnerAgent
+				.post('/workflows')
+				.send(createWorkflowRequest([inlineNode('={{ $json.wf }}')]));
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.nodes[0].parameters.workflowJson).toBe('={{ $json.wf }}');
+		});
+	});
 });

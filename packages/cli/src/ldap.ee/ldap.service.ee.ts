@@ -2,13 +2,14 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
-import { isValidEmail, SettingsRepository } from '@n8n/db';
+import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
+import chunk from 'lodash/chunk';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
@@ -47,6 +48,10 @@ import {
 } from '@/sso.ee/sso-helpers';
 
 import { BINARY_AD_ATTRIBUTES } from './constants';
+
+/** Submitted LDAP configuration. Clients that predate `linkExistingAccountsByEmail` omit it. */
+type LdapConfigUpdate = Omit<LdapConfig, 'linkExistingAccountsByEmail'> &
+	Partial<Pick<LdapConfig, 'linkExistingAccountsByEmail'>>;
 
 @Service()
 export class LdapService {
@@ -90,12 +95,22 @@ export class LdapService {
 		if (ldapConfig.enforceEmailUniqueness === undefined) {
 			ldapConfig.enforceEmailUniqueness = true;
 		}
+		if (ldapConfig.linkExistingAccountsByEmail === undefined) {
+			ldapConfig.linkExistingAccountsByEmail = true;
+		}
 
 		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
 
-	async updateConfig(ldapConfig: LdapConfig): Promise<void> {
+	async updateConfig(submittedConfig: LdapConfigUpdate): Promise<void> {
+		// Keep the stored value when the client omits this setting.
+		let { linkExistingAccountsByEmail } = submittedConfig;
+		if (linkExistingAccountsByEmail === undefined) {
+			({ linkExistingAccountsByEmail } = await this.loadConfig());
+		}
+		const ldapConfig: LdapConfig = Object.assign(submittedConfig, { linkExistingAccountsByEmail });
+
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 		if (!valid) {
@@ -399,8 +414,12 @@ export class LdapService {
 			return true;
 		});
 
+		const processableUsersToCreate = this.config.linkExistingAccountsByEmail
+			? filteredUsersToCreate
+			: await this.filterExistingAccounts(filteredUsersToCreate);
+
 		this.logger.debug('LDAP - Users to process', {
-			created: filteredUsersToCreate.length,
+			created: processableUsersToCreate.length,
 			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 		});
@@ -411,7 +430,7 @@ export class LdapService {
 
 		try {
 			if (mode === 'live') {
-				await processUsers(filteredUsersToCreate, filteredUsersToUpdate, usersToDisable);
+				await processUsers(processableUsersToCreate, filteredUsersToUpdate, usersToDisable);
 			}
 		} catch (error) {
 			if (error instanceof QueryFailedError) {
@@ -423,7 +442,7 @@ export class LdapService {
 		await saveLdapSynchronization({
 			startedAt,
 			endedAt,
-			created: filteredUsersToCreate.length,
+			created: processableUsersToCreate.length,
 			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 			scanned: adUsers.length,
@@ -436,7 +455,7 @@ export class LdapService {
 			type: !this.syncTimer ? 'scheduled' : `manual_${mode}`,
 			succeeded: true,
 			usersSynced:
-				filteredUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
+				processableUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
 			error: errorMessage,
 		});
 
@@ -463,6 +482,33 @@ export class LdapService {
 			usersToUpdate: this.getUsersToUpdate(adUsers, localAdUsers),
 			usersToDisable: this.getUsersToDisable(adUsers, localAdUsers),
 		};
+	}
+
+	/** Drop LDAP entries whose email already belongs to an n8n account */
+	private async filterExistingAccounts(
+		usersToCreate: Array<[string, User]>,
+	): Promise<Array<[string, User]>> {
+		if (usersToCreate.length === 0) return usersToCreate;
+
+		const userRepository = Container.get(UserRepository);
+		const emails = usersToCreate.map(([, user]) => user.email);
+		const existingEmails = new Set<string>();
+		// Chunk to stay below the driver's bind-parameter limit (SQLite 32,766; PostgreSQL 65,535).
+		for (const batch of chunk(emails, 10_000)) {
+			const existingUsers = await userRepository.findManyByEmail(batch);
+			for (const user of existingUsers) existingEmails.add(user.email);
+		}
+
+		return usersToCreate.filter(([ldapId, user]) => {
+			if (existingEmails.has(user.email)) {
+				this.logger.warn('LDAP sync skipped entry: email matches an existing account', {
+					email: user.email,
+					ldapId,
+				});
+				return false;
+			}
+			return true;
+		});
 	}
 
 	/** Get users in LDAP that are not in the database yet */
@@ -532,6 +578,15 @@ export class LdapService {
 
 			// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
 			if (emailUser && emailUser.email === emailAttributeValue) {
+				if (!this.config.linkExistingAccountsByEmail) {
+					this.logger.warn('LDAP login blocked: email matches an existing account', {
+						email: emailAttributeValue,
+						ldapId,
+					});
+
+					return undefined;
+				}
+
 				const identity = await createLdapAuthIdentity(emailUser, ldapId);
 				await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 			} else {

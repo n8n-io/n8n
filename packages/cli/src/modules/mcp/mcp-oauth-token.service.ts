@@ -1,21 +1,21 @@
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { UserRepository, withTransaction } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { MoreThanOrEqual } from '@n8n/typeorm';
 import { ensureError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { AccessToken } from './database/entities/oauth-access-token.entity';
-import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
+import { JwtService } from '@/services/jwt.service';
+
+import type { OAuthGrantContext } from './database/oauth-grant-context';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
 import { UserWithContext } from './mcp.types';
-
-import { JwtService } from '@/services/jwt.service';
+import { OAuthGrantService } from './oauth-grant.service';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server
@@ -33,6 +33,7 @@ export class McpOAuthTokenService {
 		private readonly userRepository: UserRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	generateTokenPair(
@@ -61,81 +62,102 @@ export class McpOAuthTokenService {
 		refreshToken: string,
 		clientId: string,
 		userId: string,
+		ctx?: OAuthGrantContext,
 	): Promise<void> {
-		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
-			await transactionManager.insert(this.accessTokenRepository.target, {
-				token: accessToken,
-				clientId,
-				userId,
-			});
+		await this.grantService.runForActiveUser(
+			userId,
+			async (ctx) => {
+				await this.accessTokenRepository.insertToken(
+					{
+						token: accessToken,
+						clientId,
+						userId,
+					},
+					ctx,
+				);
 
-			await transactionManager.insert(this.refreshTokenRepository.target, {
-				token: refreshToken,
-				clientId,
-				userId,
-				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
-			});
-		});
+				await this.refreshTokenRepository.insertToken(
+					{
+						token: refreshToken,
+						clientId,
+						userId,
+						expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+					},
+					ctx,
+				);
+			},
+			ctx,
+		);
 	}
 
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
 	): Promise<OAuthTokens> {
-		return await withTransaction(this.refreshTokenRepository.manager, undefined, async (trx) => {
-			const now = Date.now();
-
-			const refreshTokenRecord = await trx.findOne(RefreshToken, {
-				where: {
-					token: refreshToken,
-					clientId,
-				},
-			});
-
-			if (!refreshTokenRecord) {
-				throw new Error('Invalid refresh token');
-			}
-
-			const result = await trx.delete(RefreshToken, {
-				token: refreshToken,
+		return await this.grantService.runInTransaction(async (ctx) => {
+			const refreshTokenRecord = await this.refreshTokenRepository.findByToken(
+				refreshToken,
 				clientId,
-				expiresAt: MoreThanOrEqual(now),
-			});
-
-			const numAffected = result.affected ?? 0;
-			if (numAffected < 1) {
-				throw new Error('Invalid refresh token');
-			}
-
-			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
-				refreshTokenRecord.userId,
-				clientId,
+				ctx,
 			);
 
-			await trx.insert(AccessToken, {
-				token: accessToken,
-				clientId,
-				userId: refreshTokenRecord.userId,
-			});
+			if (!refreshTokenRecord) {
+				throw new InvalidGrantError('Invalid refresh token');
+			}
 
-			await trx.insert(RefreshToken, {
-				token: newRefreshToken,
-				clientId,
-				userId: refreshTokenRecord.userId,
-				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
-			});
+			return await this.grantService.runForActiveUser(
+				refreshTokenRecord.userId,
+				async () => {
+					const now = Date.now();
+					if (
+						!(await this.refreshTokenRepository.deleteValidByToken(
+							refreshToken,
+							clientId,
+							now,
+							ctx,
+						))
+					) {
+						throw new InvalidGrantError('Invalid refresh token');
+					}
 
-			this.logger.info('Refresh token rotated and new access token issued', {
-				clientId,
-				userId: refreshTokenRecord.userId,
-			});
+					const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
+						refreshTokenRecord.userId,
+						clientId,
+					);
 
-			return {
-				access_token: accessToken,
-				token_type: 'Bearer',
-				expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
-				refresh_token: newRefreshToken,
-			};
+					await this.accessTokenRepository.insertToken(
+						{
+							token: accessToken,
+							clientId,
+							userId: refreshTokenRecord.userId,
+						},
+						ctx,
+					);
+
+					await this.refreshTokenRepository.insertToken(
+						{
+							token: newRefreshToken,
+							clientId,
+							userId: refreshTokenRecord.userId,
+							expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
+						},
+						ctx,
+					);
+
+					this.logger.info('Refresh token rotated and new access token issued', {
+						clientId,
+						userId: refreshTokenRecord.userId,
+					});
+
+					return {
+						access_token: accessToken,
+						token_type: 'Bearer',
+						expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
+						refresh_token: newRefreshToken,
+					};
+				},
+				ctx,
+			);
 		});
 	}
 
@@ -182,6 +204,10 @@ export class McpOAuthTokenService {
 
 			if (!user) {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
+			}
+
+			if (user.disabled) {
+				return { user: null, context: { reason: 'user_disabled', auth_type: 'oauth' } };
 			}
 
 			return { user };

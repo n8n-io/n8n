@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { Readable } from 'stream';
 
-import { getAllowedDomains, updadeQueryParameterConfig } from '../GenericFunctions';
+import { getAllowedDomains, isStream, updadeQueryParameterConfig } from '../GenericFunctions';
 
 describe('updadeQueryParameterConfig', () => {
 	describe('version < 4.3 (legacy behavior)', () => {
@@ -117,5 +118,26 @@ describe('getAllowedDomains', () => {
 		});
 
 		expect(result).toBe('example.com, *.api.io');
+	});
+});
+
+describe('isStream', () => {
+	it('should detect a Node stream', () => {
+		expect(isStream(Readable.from(['data']))).toBe(true);
+	});
+
+	it('should detect a stream that is not an instance of the Node stream classes', () => {
+		expect(isStream({ pipe: () => {} })).toBe(true);
+	});
+
+	it.each([
+		['a string', 'text'],
+		['a buffer', Buffer.from('text')],
+		['a plain object', { id: 1 }],
+		['an object with a pipe property that is not a function', { pipe: 'value' }],
+		['null', null],
+		['undefined', undefined],
+	])('should not detect %s', (_name, value) => {
+		expect(isStream(value)).toBe(false);
 	});
 });

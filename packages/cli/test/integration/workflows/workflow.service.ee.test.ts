@@ -433,5 +433,81 @@ describe('EnterpriseWorkflowService', () => {
 			}).not.toThrow();
 			expect(newWorkflowVersion.nodes).toHaveLength(1);
 		});
+
+		describe('workflow JSON of the parameter source', () => {
+			const WORKFLOW_JSON = JSON.stringify({ nodes: [], connections: {} });
+			const inlineNode = (workflowJson: unknown) =>
+				subworkflowNode({ source: 'parameter', workflowJson } as INode['parameters']);
+
+			test.each([
+				['an expression', '={{ $json.wf }}'],
+				['an array holding workflow JSON', [WORKFLOW_JSON]],
+				['an array holding an expression', ['={{ $json.wf }}']],
+				['an object', { nodes: [], connections: {} }],
+			])('Should flag a node whose workflow JSON is %s', (_, workflowJson) => {
+				const workflow = workflowWithNodes([inlineNode(workflowJson)]);
+				expect(service.getNodesWithInaccessibleCreds(workflow, [])).toHaveLength(1);
+			});
+
+			test.each([
+				['absent', undefined],
+				['fixed JSON', WORKFLOW_JSON],
+				['fixed text that is not JSON', 'not json'],
+			])('Should not flag a node whose workflow JSON is %s', (_, workflowJson) => {
+				const workflow = workflowWithNodes([inlineNode(workflowJson)]);
+				expect(service.getNodesWithInaccessibleCreds(workflow, [])).toHaveLength(0);
+			});
+
+			test('Should not flag an expression left in the workflow JSON of a database source', () => {
+				// The node reads the workflow JSON only for the parameter source.
+				const node = subworkflowNode({
+					source: 'database',
+					workflowId: '1',
+					workflowJson: '={{ $json.wf }}',
+				});
+				expect(service.getNodesWithInaccessibleCreds(workflowWithNodes([node]), [])).toHaveLength(
+					0,
+				);
+			});
+
+			test.each([
+				['Workflow Tool', '@n8n/n8n-nodes-langchain.toolWorkflow'],
+				['Workflow Retriever', '@n8n/n8n-nodes-langchain.retrieverWorkflow'],
+			])('Should flag a %s node whose workflow JSON is an expression', (_, type) => {
+				const node = { ...inlineNode('={{ $json.wf }}'), type, typeVersion: 2 };
+				expect(service.getNodesWithInaccessibleCreds(workflowWithNodes([node]), [])).toHaveLength(
+					1,
+				);
+			});
+
+			test('Should flag an expression in the workflow JSON of a nested inline sub-workflow', () => {
+				const inner = { ...inlineNode('={{ $json.wf }}'), id: 'inner', name: 'Inner' };
+				const outer = inlineNode(JSON.stringify({ nodes: [inner], connections: {} }));
+				expect(service.getNodesWithInaccessibleCreds(workflowWithNodes([outer]), [])).toHaveLength(
+					1,
+				);
+			});
+
+			test('Should reject a new node whose workflow JSON is an expression', () => {
+				expect(() => {
+					service.validateWorkflowCredentialUsage(
+						workflowWithNodes([inlineNode('={{ $json.wf }}')]),
+						workflowWithNodes([]),
+						[],
+					);
+				}).toThrow(UninspectableSubworkflowSourceError);
+			});
+
+			test('Should keep a new expression node when the user may use every credential', () => {
+				expect(() => {
+					service.validateWorkflowCredentialUsage(
+						workflowWithNodes([inlineNode('={{ $json.wf }}')]),
+						workflowWithNodes([]),
+						[],
+						true,
+					);
+				}).not.toThrow();
+			});
+		});
 	});
 });

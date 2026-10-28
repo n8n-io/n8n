@@ -7,7 +7,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
+import { type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
@@ -97,7 +97,9 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		type: 'string',
 		default: undefined,
 		validateType: 'string',
-		description: 'Proxy to use for GRPC',
+		description:
+			'Proxy to use for GRPC. Applies only when the credential has no gRPC proxy, and needs "Custom Connection gRPC Secure" when the credential has an API key.',
+		hint: 'Set the gRPC proxy in the Weaviate credential instead',
 	},
 ];
 
@@ -202,14 +204,10 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			insert: options.timeout_insert,
 		};
 
-		const proxies = {
-			grpc: options.proxy_grpc,
-		};
-
 		const client = await createWeaviateClient(
 			credentials as WeaviateCredential,
 			timeout as TimeoutParams,
-			proxies as ProxiesParams,
+			options.proxy_grpc,
 			options.skip_init_checks as boolean,
 		);
 

@@ -1,10 +1,12 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
 
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpSettingsService } from '../mcp.settings.service';
 
@@ -291,6 +293,88 @@ describe('GET /mcp-oauth/authorize', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('/mcp-oauth/authorize request validation', () => {
+	const redirectUri = 'https://example.com/callback';
+	let clientId: string;
+
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+
+		// Inserted directly: registering through the endpoint for every test
+		// would exhaust its rate limit.
+		clientId = randomUUID();
+		await Container.get(OAuthClientRepository).insert({
+			id: clientId,
+			name: 'Validation Client',
+			redirectUris: [redirectUri],
+			grantTypes: ['authorization_code'],
+		});
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	const buildParams = (overrides: Record<string, string | undefined> = {}) =>
+		Object.fromEntries(
+			Object.entries({
+				client_id: clientId,
+				redirect_uri: redirectUri,
+				response_type: 'code',
+				code_challenge: 'test-challenge-string-must-be-long-enough-for-validation',
+				code_challenge_method: 'S256',
+				state: 'random-state',
+				...overrides,
+			}).filter(([, value]) => value !== undefined),
+		);
+
+	test('should redirect a valid request to the consent screen', async () => {
+		const response = await testServer.restlessAgent
+			.get('/mcp-oauth/authorize')
+			.query(buildParams());
+
+		expect(response.statusCode).toBe(302);
+		expect(response.headers.location).toBe('/oauth/consent');
+	});
+
+	test('should redirect a valid POST request to the consent screen', async () => {
+		const response = await testServer.restlessAgent
+			.post('/mcp-oauth/authorize')
+			.type('form')
+			.send(buildParams());
+
+		expect(response.statusCode).toBe(302);
+		expect(response.headers.location).toBe('/oauth/consent');
+	});
+
+	test.each<[string, Record<string, string | undefined>]>([
+		['response_type is missing', { response_type: undefined }],
+		['response_type is not code', { response_type: 'token' }],
+		['code_challenge is missing', { code_challenge: undefined }],
+		['code_challenge_method is missing', { code_challenge_method: undefined }],
+		['code_challenge_method is not S256', { code_challenge_method: 'plain' }],
+		['resource is not a URL', { resource: 'not-a-url' }],
+	])('should answer with 400 when %s', async (_case, overrides) => {
+		const response = await testServer.restlessAgent
+			.get('/mcp-oauth/authorize')
+			.query(buildParams(overrides));
+
+		expect(response.headers.location).toBeUndefined();
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_request');
+	});
+
+	test('should answer an invalid POST request with 400', async () => {
+		const response = await testServer.restlessAgent
+			.post('/mcp-oauth/authorize')
+			.type('form')
+			.send(buildParams({ response_type: undefined }));
+
+		expect(response.headers.location).toBeUndefined();
+		expect(response.statusCode).toBe(400);
 	});
 });
 
