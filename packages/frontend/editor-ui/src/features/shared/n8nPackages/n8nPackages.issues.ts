@@ -46,7 +46,31 @@ export function formatImportBlockingIssue(issue: ImportBlockingIssue): string {
 			});
 		case 'workflow-lineage-conflict':
 			return i18n.baseText('packages.import.issue.workflowConflict', {
-				interpolate: { name: issue.sourceWorkflowId },
+				interpolate: { name: issue.existingWorkflows[0]?.name ?? issue.sourceWorkflowId },
+			});
+		case 'folder-conflict':
+			return i18n.baseText('packages.import.issue.folderConflict', {
+				interpolate: { name: issue.name },
+			});
+		case 'data-table-unresolved':
+			return i18n.baseText('packages.import.issue.dataTableUnresolved', {
+				interpolate: { name: issue.name ?? issue.sourceId ?? '' },
+			});
+		case 'tag-unresolved':
+			return i18n.baseText('packages.import.issue.tagUnresolved', {
+				interpolate: { name: issue.name ?? issue.sourceId ?? '' },
+			});
+		case 'variable-unresolved':
+			return i18n.baseText('packages.import.issue.variableUnresolved', {
+				interpolate: { name: issue.name },
+			});
+		case 'variable-conflict':
+			return i18n.baseText('packages.import.issue.variableConflict', {
+				interpolate: { name: issue.name },
+			});
+		case 'variable-limit-exceeded':
+			return i18n.baseText('packages.import.issue.variableLimitExceeded', {
+				interpolate: { requested: String(issue.requested), remaining: String(issue.remaining) },
 			});
 		default:
 			return i18n.baseText('packages.import.issue.generic', {
