@@ -1,6 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { N8nSwitch2 } from '@n8n/design-system';
+import { N8nSwitch2, N8nTooltip } from '@n8n/design-system';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -72,14 +72,19 @@ function render(configuration?: AgentHitlConfiguration) {
 		global: {
 			stubs: {
 				AgentModal: {
-					props: ['title', 'titleError'],
+					props: ['title'],
 					template:
-						'<div><input data-testid="title" :value="title" @input="$emit(\'update:title\', $event.target.value)" /><span>{{ titleError }}</span><slot /><slot name="footerActions" /></div>',
+						'<div><input data-testid="title" :value="title" @input="$emit(\'update:title\', $event.target.value)" /><slot /><slot name="footerActions" /></div>',
 				},
 				AgentHitlDestinationPicker: true,
 			},
 		},
 	});
+}
+async function saveHint(wrapper: ReturnType<typeof render>) {
+	await wrapper.get('[data-testid="agent-hitl-save-trigger"]').trigger('focus');
+	await flushPromises();
+	return wrapper.get('[role="tooltip"]').text();
 }
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -118,6 +123,41 @@ it('reuses the searchable workflow picker and keeps create in its list', async (
 		expect(wrapper.text()).not.toContain('Confirm deployment');
 	});
 });
+it('explains the disabled Save on focus until a workflow is selected', async () => {
+	const wrapper = render();
+	await flushPromises();
+	const save = wrapper.get('[data-testid="agent-hitl-save"]');
+	expect(save.attributes('disabled')).toBeDefined();
+	await save.trigger('click');
+	expect(wrapper.emitted('save')).toBeUndefined();
+	expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+	const trigger = wrapper.get('[data-testid="agent-hitl-save-trigger"]');
+	expect(trigger.attributes('tabindex')).toBe('0');
+	expect(await saveHint(wrapper)).toBe('Select a workflow');
+	const picker = wrapper.getComponent(ToolsConnectionModal);
+	picker.vm.$emit('connect', picker.props('items')[0]);
+	await wrapper.vm.$nextTick();
+	expect(save.attributes('disabled')).toBeUndefined();
+	expect(trigger.attributes('tabindex')).toBeUndefined();
+	expect(wrapper.getComponent(N8nTooltip).props('disabled')).toBe(true);
+	await save.trigger('click');
+	expect(wrapper.emitted('save')?.[0]).toEqual([
+		expect.objectContaining({ method: 'workflow', workflowId: 'review' }),
+	]);
+});
+
+it('requires a configuration name before Save is enabled', async () => {
+	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
+	await flushPromises();
+	const save = wrapper.get('[data-testid="agent-hitl-save"]');
+	expect(save.attributes('disabled')).toBeUndefined();
+	await wrapper.get('[data-testid="title"]').setValue('  ');
+	expect(save.attributes('disabled')).toBeDefined();
+	expect(await saveHint(wrapper)).toBe('Enter a configuration name');
+	await wrapper.get('[data-testid="title"]').setValue('Review');
+	expect(save.attributes('disabled')).toBeUndefined();
+});
+
 it('names a new workflow from the Agent and the next available number', async () => {
 	const wrapper = render();
 	await flushPromises();
@@ -154,16 +194,22 @@ it('saves a Telegram destination and rejects a username', async () => {
 		.findAll('button')
 		.find((button) => button.text() === 'Connected channel')
 		?.trigger('click');
+	const save = wrapper.get('[data-testid="agent-hitl-save"]');
+	expect(save.attributes('disabled')).toBeDefined();
+	expect(await saveHint(wrapper)).toBe('Select a channel and complete its configuration');
 	await wrapper
 		.findAll('button')
 		.find((button) => button.text() === 'Telegram')
 		?.trigger('click');
 	await wrapper.find('[data-testid="agent-hitl-telegram-user"]').setValue('@reviewer');
-	const save = wrapper.findAll('button').find((button) => button.text() === 'Save');
-	await save?.trigger('click');
+	expect(save.attributes('disabled')).toBeDefined();
+	await save.trigger('click');
 	expect(wrapper.emitted('save')).toBeUndefined();
+	expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 	await wrapper.find('[data-testid="agent-hitl-telegram-user"]').setValue('12345');
-	await save?.trigger('click');
+	expect(save.attributes('disabled')).toBeUndefined();
+	expect(wrapper.getComponent(N8nTooltip).props('disabled')).toBe(true);
+	await save.trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({
 			method: 'channel',
@@ -172,6 +218,69 @@ it('saves a Telegram destination and rejects a username', async () => {
 			recipient: { kind: 'user', id: '12345', name: '12345' },
 		}),
 	]);
+});
+
+it('requires a new recipient when the Slack destination type changes', async () => {
+	const wrapper = render({
+		id: 'review',
+		name: 'Review',
+		method: 'channel',
+		channel: 'slack',
+		credentialId: 'slack',
+		recipient: { kind: 'user', id: 'U1', name: 'Reviewer' },
+	});
+	await flushPromises();
+	const save = wrapper.get('[data-testid="agent-hitl-save"]');
+	expect(save.attributes('disabled')).toBeUndefined();
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Channel')
+		?.trigger('click');
+	expect(save.attributes('disabled')).toBeDefined();
+	expect(await saveHint(wrapper)).toBe('Select a channel and complete its configuration');
+	wrapper
+		.getComponent(AgentHitlDestinationPicker)
+		.vm.$emit('update:modelValue', { id: 'C1', name: 'Approvals' });
+	await wrapper.vm.$nextTick();
+	expect(save.attributes('disabled')).toBeUndefined();
+});
+
+it('requires both a Discord server and a recipient before Save is enabled', async () => {
+	mocks.channels.mockResolvedValue([
+		{
+			channel: 'discord',
+			credentialId: 'bot',
+			label: 'Discord',
+			fields: [
+				{ name: 'guild', type: 'search' },
+				{ name: 'recipient', type: 'search', kinds: ['channel', 'user'] },
+			],
+		},
+	]);
+	const wrapper = render();
+	await flushPromises();
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Connected channel')
+		?.trigger('click');
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Discord')
+		?.trigger('click');
+	const save = wrapper.get('[data-testid="agent-hitl-save"]');
+	expect(save.attributes('disabled')).toBeDefined();
+	const server = wrapper.getComponent(AgentHitlDestinationPicker);
+	server.vm.$emit('update:modelValue', { id: '123', name: 'Review server' });
+	await wrapper.vm.$nextTick();
+	expect(save.attributes('disabled')).toBeDefined();
+	wrapper
+		.findAllComponents(AgentHitlDestinationPicker)[1]
+		.vm.$emit('update:modelValue', { id: '456', name: 'Approvals' });
+	await wrapper.vm.$nextTick();
+	expect(save.attributes('disabled')).toBeUndefined();
+	server.vm.$emit('update:modelValue', { id: '789', name: 'Another server' });
+	await wrapper.vm.$nextTick();
+	expect(save.attributes('disabled')).toBeDefined();
 });
 it('preserves an existing channel configuration and queries its selected connection', async () => {
 	const wrapper = render({

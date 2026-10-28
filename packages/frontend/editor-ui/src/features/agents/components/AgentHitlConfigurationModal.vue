@@ -10,6 +10,7 @@ import {
 	N8nSelect,
 	N8nText,
 	N8nSwitch2,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -96,10 +97,6 @@ const telegramId = ref(
 );
 const loading = ref(false);
 const creating = ref(false);
-const submitted = ref(false);
-const titleError = computed(() =>
-	submitted.value && !name.value.trim() ? i18n.baseText('agents.hitl.nameRequired') : '',
-);
 const destinationValid = computed(() =>
 	method.value === 'workflow'
 		? Boolean(workflowId.value)
@@ -110,6 +107,14 @@ const destinationValid = computed(() =>
 						: recipient.value && (channel.value.channel !== 'discord' || guild.value)),
 			),
 );
+const saveDisabledReason = computed(() => {
+	if (!name.value.trim()) return i18n.baseText('agents.hitl.nameRequired');
+	if (!destinationValid.value)
+		return i18n.baseText(
+			method.value === 'workflow' ? 'agents.hitl.workflowRequired' : 'agents.hitl.channelRequired',
+		);
+	return '';
+});
 const workflowItems = computed<WorkflowConnectionItem[]>(() =>
 	workflows.value.map((workflow) => ({
 		id: workflow.id,
@@ -234,8 +239,7 @@ async function loadOptions(field: 'guild' | 'channel' | 'user', query: string, c
 	);
 }
 function save() {
-	submitted.value = true;
-	if (!name.value.trim() || !destinationValid.value) return;
+	if (saveDisabledReason.value || creating.value) return;
 	const base = {
 		id: props.configuration?.id ?? uuid(),
 		name: name.value.trim(),
@@ -270,7 +274,6 @@ function save() {
 		:open="true"
 		v-model:title="name"
 		editable-title
-		:title-error="titleError"
 		:busy="creating"
 		stable-height
 		stacked
@@ -407,9 +410,6 @@ function save() {
 					>{{ i18n.baseText('agents.hitl.discordUserHelp') }}</N8nText
 				>
 			</template>
-			<N8nText v-if="submitted && !destinationValid" color="danger" role="alert">{{
-				i18n.baseText('agents.hitl.destinationRequired')
-			}}</N8nText>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.expiry')">
 				<N8nSelect v-model="expirySeconds" :teleported="false" data-testid="agent-hitl-expiry">
 					<N8nOption value="none" :label="i18n.baseText('agents.hitl.expiry.none')" />
@@ -441,9 +441,23 @@ function save() {
 				:label="i18n.baseText('generic.remove')"
 				@click="emit('remove')"
 		/></template>
-		<template #footerActions
-			><N8nButton :label="i18n.baseText('agents.hitl.save')" @click="save"
-		/></template>
+		<template #footerActions>
+			<N8nTooltip as-child :disabled="!saveDisabledReason" :teleported="false">
+				<template #content>{{ saveDisabledReason }}</template>
+				<span
+					:class="$style.saveTrigger"
+					:tabindex="saveDisabledReason ? 0 : undefined"
+					data-testid="agent-hitl-save-trigger"
+				>
+					<N8nButton
+						:label="i18n.baseText('agents.hitl.save')"
+						:disabled="Boolean(saveDisabledReason) || creating"
+						data-testid="agent-hitl-save"
+						@click="save"
+					/>
+				</span>
+			</N8nTooltip>
+		</template>
 	</AgentModal>
 </template>
 
@@ -452,6 +466,13 @@ function save() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+}
+.saveTrigger {
+	display: inline-flex;
+
+	> button:disabled {
+		pointer-events: none;
+	}
 }
 .workflowPicker {
 	display: flex;

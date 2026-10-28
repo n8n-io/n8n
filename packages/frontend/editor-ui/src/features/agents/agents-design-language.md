@@ -490,6 +490,8 @@ Disable the connected channel approval method when no supported channels are
 attached. Put the reason below the option label in smaller, muted text.
 Request expiry defaults to no expiry. Offer one hour, one day, and one week.
 Keep expiry local until Save, as the destination and approval policy do.
+Keep Save disabled until the HITL configuration is complete. Explain the missing
+name, workflow selection, or channel configuration in a tooltip on hover and focus.
 
 In the session timeline, show pending background tool approvals below their
 job row. Use the shared approval card and disable automatic focus so rows do
