@@ -526,6 +526,10 @@ Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
 
+Attach the plan card directly above the approval card. Keep both in one stack
+without a gap. Use the standard approval header with the Agent and tool names.
+Keep the approval card in front of the plan card's overlapping lower edge.
+
 In the session timeline, show pending background tool approvals below their
 job row. Use the shared approval card and disable automatic focus so rows do
 not take focus as the user scrolls. Keep each card disabled while its response

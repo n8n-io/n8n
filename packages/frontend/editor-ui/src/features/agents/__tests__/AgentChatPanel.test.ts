@@ -157,7 +157,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			'agents.chat.backgroundTasks.stopAll': 'Stop all tasks',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
 			'agents.chat.backgroundTasks.status.suspended': 'Waiting for approval',
-			'agents.chat.backgroundTasks.approvalFor': `Approval for ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.status.running': 'Running',
 			'agents.chat.backgroundTasks.status.stopping': 'Stopping…',
 			'agents.chat.backgroundTasks.status.paused': 'Stopped',
@@ -2200,7 +2199,15 @@ describe('AgentChatPanel', () => {
 					id: 'job-2',
 					title: 'Other child',
 					status: 'suspended',
-					approval: { ...approval, runId: 'background-job-job-2', toolCallId: 'gate-2' },
+					approval: {
+						...approval,
+						runId: 'background-job-job-2',
+						toolCallId: 'gate-2',
+						suspendPayload: {
+							...approval.suspendPayload,
+							args: { to: 'other@example.com' },
+						},
+					},
 				};
 				backgroundJobsMock.value = [{ ...job, status: 'suspended', approval }, nextJob];
 				isStreamingMock.value = true;
@@ -2211,40 +2218,62 @@ describe('AgentChatPanel', () => {
 					}),
 				);
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
 				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
-				expect(wrapper.text()).not.toContain('Approval for Other child');
+				expect(wrapper.get('[data-testid="agent-approval-card"]').text()).not.toContain(
+					'Approval for',
+				);
+				expect(wrapper.get('[data-test-id="approval-card-args"]').text()).toContain(
+					'team@example.com',
+				);
+
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
-				expect(wrapper.text()).toContain('Approval for Check escalations');
+
 				expect(wrapper.text()).toContain('Other child');
+
 				const button = wrapper.get(`[data-test-id="approval-card-${action}"]`);
 				await button.trigger('click');
+
 				expect(button.attributes('disabled')).toBeDefined();
 				expect(respondToApprovalMock).toHaveBeenCalledExactlyOnceWith({
 					runId: approval.runId,
 					toolCallId: approval.toolCallId,
 					resumeData: decision,
 				});
+
 				finishResponse();
 				await flushPromises();
+
 				expect(isStreamingMock.value).toBe(true);
 				expect(stopGeneratingMock).not.toHaveBeenCalled();
 				expect(sendMessageMock).not.toHaveBeenCalled();
+
 				backgroundJobsMock.value = [job, nextJob];
 				await nextTick();
+
 				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
-				expect(wrapper.text()).toContain('Approval for Other child');
-				expect(wrapper.text()).not.toContain('Approval for Check escalations');
+				expect(wrapper.get('[data-test-id="approval-card-args"]').text()).toContain(
+					'other@example.com',
+				);
+				expect(wrapper.get('[data-test-id="approval-card-args"]').text()).not.toContain(
+					'team@example.com',
+				);
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+
 				await wrapper.get(`[data-test-id="approval-card-${action}"]`).trigger('click');
+
 				expect(respondToApprovalMock).toHaveBeenNthCalledWith(2, {
 					runId: 'background-job-job-2',
 					toolCallId: 'gate-2',
 					resumeData: decision,
 				});
+
 				backgroundJobsMock.value = [job];
 				await nextTick();
+
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+
 				wrapper.unmount();
 			},
 		);

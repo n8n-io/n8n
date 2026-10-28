@@ -760,11 +760,15 @@ const backgroundJobStatuses = computed(() => ({
 
 const backgroundApproval = computed(() => {
 	if (!props.backgroundJobsActive) return undefined;
+
 	for (const job of backgroundJobs.value) {
 		if (job.status !== 'suspended' || !job.approval) continue;
+
 		const input = parseApprovalInput(job.approval.suspendPayload);
-		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
+
+		if (input) return { id: job.id, approval: job.approval, input };
 	}
+
 	return undefined;
 });
 const pendingApproval = computed(() => {
@@ -1866,53 +1870,46 @@ onBeforeUnmount(() => {
 					</div>
 				</N8nAiActivityStepGroup>
 			</div>
-			<AgentChatPlan
-				v-if="hasPendingApprovals && currentPlan && showPlanCard && planStopActive"
-				v-model:expanded="planExpanded"
-				:plan="currentPlan"
-				:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
-				:show-stop="showPlanStop"
-				:can-stop="canStopPlan"
-				:stopping="planStopActive && stopDisabled"
-				:stopped="planStopped"
-				:stopped-at="currentPlanStop?.requestedAt"
-				:stop-failed="canRetryStop && canStopPlan && !isStopping"
-				@stop="stopBackgroundJobs"
-			/>
-			<div v-if="hasPendingApprovals" ref="approvalCards" data-testid="agent-chat-approvals">
-				<ApprovalCard
-					v-if="pendingApproval"
-					:key="pendingApproval.toolCallId"
-					:input="pendingApproval.input"
-					:agent-name="agentConfig?.name"
-					:tools="agentConfig?.tools"
-					@submit="
-						resume({
-							runId: pendingApproval.runId,
-							toolCallId: pendingApproval.toolCallId,
-							resumeData: $event,
-						})
-					"
+			<div v-if="hasPendingApprovals">
+				<AgentChatPlan
+					v-if="currentPlan && showPlanCard && planStopActive"
+					v-model:expanded="planExpanded"
+					:plan="currentPlan"
+					:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
+					:show-stop="showPlanStop"
+					:can-stop="canStopPlan"
+					:stopping="planStopActive && stopDisabled"
+					:stopped="planStopped"
+					:stopped-at="currentPlanStop?.requestedAt"
+					:stop-failed="canRetryStop && canStopPlan && !isStopping"
+					@stop="stopBackgroundJobs"
 				/>
-				<div
-					v-else-if="backgroundApproval"
-					:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
-					:class="$style.backgroundApproval"
-				>
-					<N8nText bold size="small">{{
-						locale.baseText('agents.chat.backgroundTasks.approvalFor', {
-							interpolate: { title: backgroundApproval.title },
-						})
-					}}</N8nText>
+				<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
 					<ApprovalCard
+						v-if="pendingApproval"
+						:key="pendingApproval.toolCallId"
+						:input="pendingApproval.input"
+						:agent-name="agentConfig?.name"
+						:tools="agentConfig?.tools"
+						@submit="
+							resume({
+								runId: pendingApproval.runId,
+								toolCallId: pendingApproval.toolCallId,
+								resumeData: $event,
+							})
+						"
+					/>
+					<ApprovalCard
+						v-else-if="backgroundApproval"
+						:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
 						:input="backgroundApproval.input"
 						:agent-name="agentConfig?.name"
 						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>
+					<slot name="composer-start" />
 				</div>
-				<slot name="composer-start" />
 			</div>
 			<div v-else :class="$style.composer">
 				<ChatInputBase
@@ -2103,10 +2100,8 @@ onBeforeUnmount(() => {
 	border-bottom-style: dashed;
 }
 
-.backgroundApproval {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.approvalCards {
+	position: relative;
 }
 
 .backgroundJobList {
