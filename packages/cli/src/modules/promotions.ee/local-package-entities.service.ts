@@ -28,7 +28,7 @@ export class LocalPackageEntities {
 		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
-	/** The local name of each credential. Apply binds a credential and keeps its name. */
+	/** The local name of each credential. A credential that Apply only binds keeps this name. */
 	async credentialNames(ids: string[]): Promise<Map<string, string>> {
 		if (ids.length === 0) return new Map();
 		const credentials = await this.credentialsRepository.findNamesByIds(ids);
