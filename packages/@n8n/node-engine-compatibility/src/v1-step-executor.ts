@@ -61,7 +61,7 @@ function toStepResult(
 	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
-		return { wait: { resumeBinding: 'execution' } };
+		return { wait: { resumeBinding: context.resumeBinding } };
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
 		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
@@ -75,7 +75,7 @@ function toStepResult(
 		wait: {
 			resumeAt: waitTill.toISOString(),
 			outputsAtDeadline: toStepOutputs([context.getInputData()]),
-			...(context.acceptsResumeRequest ? { resumeBinding: 'execution' as const } : {}),
+			...(context.acceptsResumeRequest ? { resumeBinding: context.resumeBinding } : {}),
 		},
 	};
 }
@@ -97,9 +97,8 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
-		// Send-and-wait needs a step-bound resume request, which engine v2 does not
-		// have yet. Fail before the node sends the message. The Chat node waits in
-		// every version and operation.
+		// Engine v2 cannot route a reply to these steps yet. Fail before the node
+		// sends the message. The Chat node waits in every version and operation.
 		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
@@ -126,6 +125,10 @@ export class V1StepExecutor implements IStepExecutor {
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+			resumeMinters: {
+				stepBoundResumeToken: this.deps.stepBoundResumeToken,
+				approvalCallback: this.deps.approvalCallback,
+			},
 		});
 
 		return await workflow.expression.withIsolate(async () => {
