@@ -27,17 +27,23 @@ packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
 packages/cli/src/modules/n8n-packages/entities/skill/skill-import.types.ts
   s_127a9acd7ce7b7::t_2a1727234c7f94 2-15,42
   s_127a9acd7ce7b7::t_20889ed5cd59d8 16-41
+  s_127a9acd7ce7b7::t_d5d1e81598f57d 1
 packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
   s_127a9acd7ce7b7::t_0aebdf1a1383cc 3-6,7,10,15,17-41,43-137,139-148,150-186,188-190,192-197,199-211,213-231,233-236,239-245,248-272
   s_127a9acd7ce7b7::t_b3dd097b21fbc2 1-2,273-304
+  s_127a9acd7ce7b7::t_72797db535331f 8-9,11-14,16,42,138,149,187,191,198,212,232,237-238,246-247
 packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
   s_127a9acd7ce7b7::t_a51ff6e34f0405 33,135-137,144-148,183-186
+  s_127a9acd7ce7b7::t_e2a8ac2a84b15f 149-153
 packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
   s_127a9acd7ce7b7::t_4ded9bc2e20661 4,30,43-44,52,86,93-95,106,196,203-207,209-224,228,261-274,279-280,287-295,297-298
+  s_127a9acd7ce7b7::t_81248a32b75e96 111,113
+  s_127a9acd7ce7b7::t_89c588d9322e71 25,281-286,296
 packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
   s_127a9acd7ce7b7::t_d11266557a90a3 6
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
   s_127a9acd7ce7b7::t_9e9b8fa5d5c6a7 37,61,114-123,308-309,352-357,643,648,650-657,667,677-714,720-722,724-732,735-737,743-763,765-768,769-773,775-792
+  s_127a9acd7ce7b7::t_b8f6cf775d06d0 38-43,715-719,723,733-734,738-742,764,774
 packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
   s_127a9acd7ce7b7::t_bf5b278df14196 31-37,218-226
 packages/cli/src/modules/promotions.ee/base-branch-files.ts
@@ -62,16 +68,20 @@ packages/cli/src/modules/agents/agent-config.service.ts
   s_127a9acd7ce7b7::t_939403f36941e6 175-178
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
   s_127a9acd7ce7b7::t_b10c45e9f5baa4 56,180-186,283,397,406,409,468,487-497,504-518,527-532,534-541,542,546-547,552-553,555-562,569-570,572-593,595-597,609-611,1342,1349,1359
+  s_127a9acd7ce7b7::t_c2d8059e9be1e3 403
+  s_127a9acd7ce7b7::t_23cc8e4dde5a33 54,398-402,404-405,519-526,533,543-545,548-551,554,563-568,571,594
 packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
   s_127a9acd7ce7b7::t_5439d04187e059 36
 packages/cli/src/modules/n8n-packages/entities/skill/skill.exporter.ts
   s_127a9acd7ce7b7::t_3bd593f462bcfb 1-3,5-23,28-33,35-41,44,46-57,59-66,69,72,75-76
+  s_127a9acd7ce7b7::t_d5d1e81598f57d 4,24-27,34,42-43,45,58,67-68,70-71,73-74
 packages/cli/src/modules/n8n-packages/io/__tests__/manifest-entry.test.ts
   s_127a9acd7ce7b7::t_8aaaa7bc63c452 22-30
 packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
   s_127a9acd7ce7b7::t_694a2d6b83519f 9,12,16-36,38-41,85,105,128
 packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
   s_127a9acd7ce7b7::t_3d6004eee02f75 60,136,144-146
+  s_127a9acd7ce7b7::t_013d0f7bf6fa56 137-143
 packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
   s_127a9acd7ce7b7::t_aadeccdc5dd162 12-13,52-58
 packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
@@ -111,6 +121,12 @@ packages/@n8n/permissions/src/constants.ee.ts
 packages/cli/src/modules/n8n-packages/engine/import-gates.ts
   s_127a9acd7ce7b7::t_1338d0aa40c761 9,74-81,88,93-94
   s_127a9acd7ce7b7::t_aadeccdc5dd162 82-87,89-92
+packages/cli/src/modules/skills/utils/skill-content.ts
+  s_127a9acd7ce7b7::t_72797db535331f 5,151-156
+packages/cli/src/modules/skills/__tests__/index.test.ts
+  s_127a9acd7ce7b7::t_72797db535331f 27
+packages/cli/src/modules/skills/index.ts
+  s_127a9acd7ce7b7::t_72797db535331f 22
 ---
 {
   "schema_version": "authorship/3.0.0",
