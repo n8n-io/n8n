@@ -64,9 +64,8 @@ export interface StepExecutionRequest {
 
 /**
  * A sub-execution the step asks for. The executor minted the id and had the
- * workflow resolved; the engine starts it. An awaited one suspends the step
- * until it ends; a detached one starts while the step completes, and nothing
- * waits for it.
+ * workflow resolved; the engine starts it. One run of a step asks for at most
+ * one.
  */
 export interface SubExecutionDeclaration {
 	executionId: string;
@@ -74,14 +73,20 @@ export interface SubExecutionDeclaration {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs?: TriggerOutputs | null;
+	/**
+	 * Whether the step waits for it. An awaited one suspends the step until it
+	 * ends, and the step has no outputs yet. A detached one starts while the
+	 * step completes with its outputs, and nothing waits for it.
+	 */
+	awaited: boolean;
 }
 
 /**
  * What running a step produced: its output slots, or a declaration that it is
  * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration. A sub-execution declaration is a
- * wait too: the step suspends until the sub-execution ends. Detached sub-executions ride on outputs
- * instead: the step completes, and they run on their own.
+ * a deadline would emit ride inside the declaration. An awaited sub-execution
+ * is a wait too: the step suspends until it ends. A detached one rides with
+ * the outputs instead: the step completes, and it runs on its own.
  *
  * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
@@ -91,21 +96,18 @@ export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
-			/** Sub-executions the step started without waiting for them. They end with the parent. */
-			detached?: SubExecutionDeclaration[];
+			/** A sub-execution the step started without waiting for it. It ends with the parent. */
+			subExecution?: SubExecutionDeclaration & { awaited: false };
 			wait?: never;
-			subExecution?: never;
 	  }
 	| {
 			wait: ExecutorWaitDeclaration;
 			outputs?: never;
-			detached?: never;
 			subExecution?: never;
 	  }
 	| {
-			subExecution: SubExecutionDeclaration;
+			subExecution: SubExecutionDeclaration & { awaited: true };
 			outputs?: never;
-			detached?: never;
 			wait?: never;
 	  };
 

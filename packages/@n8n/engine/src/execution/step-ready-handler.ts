@@ -109,7 +109,7 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots; detached: SubExecutionDeclaration[] }
+			| { kind: 'outputs'; outputs: StepSlots; subExecution?: SubExecutionDeclaration }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: unknown };
@@ -124,10 +124,10 @@ export class StepReadyHandler {
 			}
 			if (result.wait) {
 				run = { kind: 'wait', wait: result.wait };
-			} else if (result.subExecution) {
-				run = { kind: 'subExecution', subExecution: result.subExecution };
+			} else if (result.outputs) {
+				run = { kind: 'outputs', outputs: result.outputs, subExecution: result.subExecution };
 			} else {
-				run = { kind: 'outputs', outputs: result.outputs, detached: result.detached ?? [] };
+				run = { kind: 'subExecution', subExecution: result.subExecution };
 			}
 		} catch (error) {
 			run = { kind: 'error', error };
@@ -138,8 +138,8 @@ export class StepReadyHandler {
 		// The execution can end while this step runs (a sibling fails, or a
 		// cancel), and then it owes no sub-execution: the outputs stand, as they
 		// would for a step with none, and nothing starts under an ended parent.
-		if (run.kind === 'outputs' && run.detached.length > 0) {
-			const started = await this.startDetachedSubExecutions(step, execution, run.detached);
+		if (run.kind === 'outputs' && run.subExecution) {
+			const started = await this.startDetachedSubExecution(step, execution, run.subExecution);
 			if (started.kind === 'error') run = { kind: 'error', error: started.error };
 		}
 
@@ -178,7 +178,7 @@ export class StepReadyHandler {
 
 		if (run.kind === 'subExecution') {
 			await this.executionStore.refreshLiveStatus(execution.id);
-			const started = await this.startSubExecution(step, execution, run.subExecution, true);
+			const started = await this.startSubExecution(step, execution, run.subExecution);
 			// A sub-execution that never started resumes nothing, so the step fails here,
 			// where the reason is known. The failure settles it like any other.
 			if (started.kind === 'error') {
@@ -213,24 +213,21 @@ export class StepReadyHandler {
 	}
 
 	/**
-	 * Starts the detached sub-executions in order, and stops at the first that
-	 * could not start. The rest are not started: the step fails, and the node
-	 * reported ids that will not run. A refused link is the one exception: the
-	 * step is running and its own, so the link can only be refused because the
-	 * execution has ended, and an ended execution is owed no sub-execution.
+	 * Starts a detached sub-execution. One that cannot start fails the step: the
+	 * node reported an id that will not run. A refused link is the one exception:
+	 * the step is running and its own, so the link can only be refused because
+	 * the execution has ended, and an ended execution is owed no sub-execution.
 	 */
-	private async startDetachedSubExecutions(
+	private async startDetachedSubExecution(
 		step: StepRecord,
 		execution: ExecutionRecord,
-		subExecutions: SubExecutionDeclaration[],
+		subExecution: SubExecutionDeclaration,
 	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
-		for (const subExecution of subExecutions) {
-			const started = await this.startSubExecution(step, execution, subExecution, false);
-			if (started.kind === 'error') {
-				return started.error instanceof InvalidParentLinkError ? { kind: 'parent-ended' } : started;
-			}
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (started.kind === 'error' && started.error instanceof InvalidParentLinkError) {
+			return { kind: 'parent-ended' };
 		}
-		return { kind: 'started' };
+		return started;
 	}
 
 	/**
@@ -242,7 +239,6 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		subExecution: SubExecutionDeclaration,
-		awaited: boolean,
 	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
 		try {
 			await this.startExecution.start({
@@ -253,7 +249,7 @@ export class StepReadyHandler {
 				triggerOutputs: subExecution.triggerOutputs,
 				mode: execution.mode,
 				callerContext: execution.callerContext,
-				parent: { executionId: execution.id, stepId: step.id, awaited },
+				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
 			});
 			return { kind: 'started' };
 		} catch (error) {

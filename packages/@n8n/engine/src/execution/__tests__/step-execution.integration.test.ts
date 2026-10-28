@@ -645,15 +645,14 @@ describe('step execution (integration)', () => {
 				if (request.node.id === 'fire') {
 					return {
 						outputs: [[{ json: { startedSubExecution: subExecutionId } }]],
-						detached: [
-							{
-								executionId: subExecutionId,
-								workflowId: 'wf-sub',
-								graph: subWorkflowGraph,
-								workflow: { id: 'wf-sub' },
-								triggerOutputs: [[{ json: { in: 1 } }]],
-							},
-						],
+						subExecution: {
+							executionId: subExecutionId,
+							workflowId: 'wf-sub',
+							graph: subWorkflowGraph,
+							workflow: { id: 'wf-sub' },
+							triggerOutputs: [[{ json: { in: 1 } }]],
+							awaited: false,
+						},
 					};
 				}
 				return { outputs: [[{ json: { ran: request.node.id } }]] };
