@@ -53,10 +53,13 @@ describe('components', () => {
 			await nextTick();
 			expect(target?.textContent).toBe('  third\n');
 		});
-		it('preserves formatted and image links when a plain-label slot is present', async () => {
+		it('passes formatted and image labels to the slot as sanitized HTML', async () => {
 			const wrapper = render(N8nMarkdown, {
 				props: { content: '[**Bold**](/bold) [![Preview](https://example.com/image.png)](/image)' },
-				slots: { link: ({ label }: { label: string }) => h('span', label) },
+				slots: {
+					link: ({ href, labelHtml }: { href: string; labelHtml: string }) =>
+						h('a', { href, innerHTML: labelHtml }),
+				},
 			});
 			await nextTick();
 			expect(wrapper.container.querySelector('a[href="/bold"] strong')).toHaveTextContent('Bold');

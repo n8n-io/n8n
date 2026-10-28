@@ -1,524 +1,186 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
-import type { ResourceEntry } from '../useResourceRegistry';
 import { computed } from 'vue';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '../embed/instanceAiEmbed.types';
-
-/** Expose processed text and anchors to test resource decoration and delegated clicks. */
-vi.mock('@/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue', () => ({
-	default: {
-		template: '<div data-test-id="markdown-output" v-html="content"></div>',
-		props: ['content'],
-	},
-}));
 
 let thread: ThreadRuntime;
 const renderComponent = createThreadComponentRenderer(InstanceAiMarkdown, {}, () => thread);
 
-function makeRegistry(
-	entries: Array<{ type: string; id: string; name: string; projectId?: string }>,
-): Map<string, ResourceEntry> {
-	const map = new Map<string, ResourceEntry>();
-	for (const e of entries) {
-		map.set(e.name.toLowerCase(), e as ResourceEntry);
-	}
-	return map;
-}
-
-describe('InstanceAiMarkdown', () => {
+describe('InstanceAiMarkdown with the shared renderer', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		thread = {
 			id: 'thread-1',
-			resourceNameIndex: new Map<string, ResourceEntry>(),
-			linkableResourceNameIndex: new Map<string, ResourceEntry>(),
+			resourceNameIndex: new Map(),
+			linkableResourceNameIndex: new Map(),
 		} as unknown as ThreadRuntime;
 	});
 
-	function getProcessedContent(content: string, registry?: Map<string, ResourceEntry>): string {
-		if (registry) {
-			thread.resourceNameIndex = registry;
-			thread.linkableResourceNameIndex = registry;
-		}
-		const { getByTestId } = renderComponent({ props: { content } });
-		return getByTestId('markdown-output').textContent ?? '';
-	}
+	it('renders markdown and filters internal blocks', () => {
+		const { container } = renderComponent({
+			props: { content: '**Hello** <planning-blueprint>hidden</planning-blueprint>' },
+		});
+		expect(container.querySelector('strong')?.textContent).toBe('Hello');
+		expect(container.textContent).not.toContain('hidden');
+	});
 
-	it.each([true, false])(
-		'uses the Test link label only in the Agents UI (embedded: %s)',
-		(embedded) => {
-			const { getByTestId } = renderComponent({
-				props: { content: '<a href="/projects/project-1/agents/agent-1/preview">Preview</a>' },
-				global: {
-					provide: embedded
-						? {
-								[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
-									type: 'agent',
-									id: 'agent-1',
-									projectId: 'project-1',
-								})),
-							}
-						: {},
-				},
+	it('decorates linkable resources and uses their project metadata', async () => {
+		const resource = {
+			type: 'data-table' as const,
+			id: 'dt1',
+			name: 'Sales Table',
+			projectId: 'p1',
+		};
+		thread.resourceNameIndex.set('sales table', resource);
+		thread.linkableResourceNameIndex.set('sales table', resource);
+		const { container } = renderComponent({ props: { content: 'Open Sales Table' } });
+		await flushPromises();
+		const link = container.querySelector('a');
+		expect(link?.getAttribute('href')).toBe('/projects/p1/datatables/dt1');
+		expect(link?.getAttribute('data-resource-chip')).toBe('data-table');
+	});
+
+	it('does not decorate metadata-only resources or streaming text', () => {
+		const resource = { type: 'workflow' as const, id: 'wf1', name: 'My Workflow' };
+		thread.resourceNameIndex.set('my workflow', resource);
+		const { container } = renderComponent({ props: { content: 'My Workflow' } });
+		expect(container.querySelector('a')).toBeNull();
+	});
+
+	it('passes preview callbacks to the shared resource link', async () => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const { container } = renderComponent({
+			props: { content: '[**Workflow**](n8n-resource://workflow/wf1)' },
+			global: { provide: { openWorkflowPreview } },
+		});
+		await flushPromises();
+		expect(container.querySelector('a strong')?.textContent).toBe('Workflow');
+		expect(container.querySelector('a')?.getAttribute('href')).toBe('/workflow/wf1');
+		const event = new MouseEvent('click', { cancelable: true, button: 0 });
+		container.querySelector('a')?.dispatchEvent(event);
+		expect(openWorkflowPreview).toHaveBeenCalledWith('wf1');
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it.each([
+		'/projects/project-1/agents/agent-1/preview',
+		'/projects/project-1/agents/agent-1?openPreview=true',
+	])('keeps embedded Test labels and modifier clicks for %s', async (href) => {
+		const openAgentChatPreview = vi.fn(() => true);
+		const { container } = renderComponent({
+			props: { content: `[Preview](${href})` },
+			global: { provide: {
+				openAgentChatPreview,
+				[INSTANCE_AI_EMBED_SUBJECT_KEY]: computed(() => ({
+					type: 'agent' as const, id: 'agent-1', projectId: 'project-1',
+				})),
+			} },
+		});
+		await flushPromises();
+		const link = container.querySelector('a');
+		expect(link?.textContent).toBe('Test');
+		for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+			const event = new MouseEvent('click', { cancelable: true, button: 0, ...modifier });
+			link?.dispatchEvent(event);
+			expect(event.defaultPrevented).toBe(false);
+		}
+		expect(openAgentChatPreview).not.toHaveBeenCalled();
+	});
+
+	it('passes the artifact Preview target to the shared resource link', async () => {
+		const openAgentChatPreview = vi.fn(() => true);
+		const { container } = renderComponent({
+			props: {
+				content:
+					'[Preview](/projects/project-1/agents/agent-1/preview?continueSessionId=session-1&source=assistant)',
+				agentPreviewTarget: { agentId: 'agent-2', projectId: 'project-2' },
+			},
+			global: { provide: { openAgentChatPreview } },
+		});
+		await flushPromises();
+
+		const link = container.querySelector('a');
+		if (!link) throw new Error('Expected an agent Preview link');
+		expect(link.getAttribute('href')).toBe(
+			'/projects/project-2/agents/agent-2?continueSessionId=session-1&source=assistant&openPreview=true',
+		);
+		const event = new MouseEvent('click', { cancelable: true, button: 0 });
+		link.dispatchEvent(event);
+		expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-2', 'project-2');
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it('decorates resource names when streaming stops', async () => {
+		const resource = { type: 'workflow' as const, id: 'wf1', name: 'My Workflow' };
+		thread.linkableResourceNameIndex.set('my workflow', resource);
+		const content = 'Open My Workflow';
+		const { container, rerender } = renderComponent({ props: { content, streaming: true } });
+
+		expect(container.textContent).toContain(content);
+		expect(container.querySelector('a')).toBeNull();
+
+		await rerender({ content, streaming: false });
+		await flushPromises();
+
+		expect(container.querySelector('a')?.textContent).toContain('My Workflow');
+		expect(container.querySelector('a')?.getAttribute('href')).toBe('/workflow/wf1');
+	});
+
+	it('keeps preview click listeners after a same-content render', async () => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const content = '[Workflow](n8n-resource://workflow/wf1)';
+		const { container, rerender } = renderComponent({
+			props: { content },
+			global: { provide: { openWorkflowPreview } },
+		});
+		await flushPromises();
+		const link = container.querySelector('a');
+		if (!link) throw new Error('Expected a workflow link');
+
+		await rerender({ content, streaming: true });
+		await flushPromises();
+
+		expect(container.querySelector('a')).toBe(link);
+		const event = new MouseEvent('click', { cancelable: true, button: 0 });
+		link.dispatchEvent(event);
+		expect(openWorkflowPreview).toHaveBeenCalledExactlyOnceWith('wf1');
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it.each(['n8n-resource://agent/agent-1', '/projects/project-1/agents/agent-1'])(
+		'keeps the embedded subject icon for %s',
+		async (href) => {
+			const subject = computed(() => ({
+				type: 'agent' as const,
+				id: 'agent-1',
+				projectId: 'project-1',
+			}));
+			const { container } = renderComponent({
+				props: { content: `[Simple Triggered Assistant](${href})` },
+				global: { provide: { [INSTANCE_AI_EMBED_SUBJECT_KEY]: subject } },
 			});
-			expect(getByTestId('markdown-output').querySelector('a')?.textContent).toBe(
-				embedded ? 'Test' : 'Preview',
-			);
+			await flushPromises();
+
+			const link = container.querySelector('a');
+			expect(link?.getAttribute('data-resource-chip')).toBe('agent');
+			expect(link?.getAttribute('href')).toBeTruthy();
+			expect(link?.querySelectorAll('svg')).toHaveLength(1);
+			expect(link?.textContent).toBe('Simple Triggered Assistant');
 		},
 	);
 
-	it('should return content unchanged when registry is empty', () => {
-		const result = getProcessedContent('Hello world');
-		expect(result).toBe('Hello world');
-	});
-
-	it('should replace resource name with n8n-resource link', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
-		const result = getProcessedContent('Check out My Workflow please', registry);
-		expect(result).toContain('[My Workflow](n8n-resource://workflow/wf-1)');
-	});
-
-	it('should not replace resource names that are only in the metadata index', () => {
-		thread.resourceNameIndex = makeRegistry([{ type: 'data-table', id: 'dt-1', name: 'table' }]);
-		thread.linkableResourceNameIndex = new Map<string, ResourceEntry>();
-
-		const result = getProcessedContent('Now let me set up the data table for evals');
-
-		expect(result).toBe('Now let me set up the data table for evals');
-	});
-
-	it('should NOT replace names shorter than 3 characters', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'AB' }]);
-		const result = getProcessedContent('Check AB here', registry);
-		expect(result).toBe('Check AB here');
-	});
-
-	it('should NOT replace names inside backtick code spans', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
-		const result = getProcessedContent('Use `My Workflow` for this', registry);
-		// The name is surrounded by backticks — lookbehind/lookahead should prevent replacement
-		expect(result).not.toContain('n8n-resource://');
-		expect(result).toContain('`My Workflow`');
-	});
-
-	it('should replace longest name first to avoid partial matches', () => {
-		const registry = makeRegistry([
-			{ type: 'workflow', id: 'wf-1', name: 'Slack' },
-			{ type: 'workflow', id: 'wf-2', name: 'Slack Integration' },
-		]);
-		const result = getProcessedContent('Use the Slack Integration for notifications', registry);
-		// "Slack Integration" should be matched as a whole, not "Slack" alone
-		expect(result).toContain('[Slack Integration](n8n-resource://workflow/wf-2)');
-		// "Slack" alone should NOT be replaced inside the already-replaced link
-		expect(result).not.toContain('[Slack](n8n-resource://workflow/wf-1)');
-	});
-
-	it('should escape special regex characters in resource names', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'Test (v2.0)' }]);
-		// BUG: \b word boundary fails for names containing non-word characters
-		// like parentheses and dots. The regex \bTest \(v2\.0\)\b will never match
-		// because \b after ) requires a word-char neighbor, but ) is non-word.
-		const result = getProcessedContent('Use Test (v2.0) for this', registry);
-		expect(result).toContain('[Test (v2.0)](n8n-resource://workflow/wf-1)');
-	});
-
-	it('should escape markdown link text and encode resource ids', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf/1', name: 'Name [prod]' }]);
-		const result = getProcessedContent('Open Name [prod] now', registry);
-		expect(result).toContain('[Name \\[prod\\]](n8n-resource://workflow/wf%2F1)');
-	});
-
-	it('should not replace overlapping names inside generated links with escaped link text', () => {
-		const registry = makeRegistry([
-			{ type: 'workflow', id: 'wf-full', name: 'Name [prod]' },
-			{ type: 'workflow', id: 'wf-name', name: 'Name' },
-			{ type: 'workflow', id: 'wf-prod', name: 'prod' },
-		]);
-
-		const result = getProcessedContent('Open Name [prod] now', registry);
-
-		expect(result).toBe('Open [Name \\[prod\\]](n8n-resource://workflow/wf-full) now');
-		expect(result).not.toContain('wf-name');
-		expect(result).not.toContain('wf-prod');
-	});
-
-	it('should replace resource name appearing multiple times', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
-		const result = getProcessedContent('Open My Workflow and then close My Workflow', registry);
-		const matches = result.match(/n8n-resource:\/\/workflow\/wf-1/g);
-		expect(matches).toHaveLength(2);
-	});
-
-	it('should handle different resource types', () => {
-		const registry = makeRegistry([
-			{ type: 'credential', id: 'cred-1', name: 'Slack API Key' },
-			{ type: 'data-table', id: 'dt-1', name: 'User Data' },
-		]);
-		const result = getProcessedContent('Connect Slack API Key to User Data', registry);
-		expect(result).toContain('n8n-resource://credential/cred-1');
-		expect(result).toContain('n8n-resource://data-table/dt-1');
-	});
-
-	it('should NOT replace names that are inside existing markdown links', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
-		const result = getProcessedContent(
-			'See [My Workflow](https://example.com) for details',
-			registry,
-		);
-		expect(result).not.toContain('n8n-resource://');
-	});
-
-	it('should NOT replace names inside longer existing markdown link text', () => {
-		const registry = makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
-		const result = getProcessedContent(
-			'See [the My Workflow docs](https://example.com) for details',
-			registry,
-		);
-		expect(result).toContain('[the My Workflow docs](https://example.com)');
-		expect(result).not.toContain('n8n-resource://');
-	});
-
-	describe('streaming deferral', () => {
-		const registry = () => makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
-		const content = 'Check out My Workflow please';
-
-		it('should render raw content without decoration while streaming', () => {
-			thread.linkableResourceNameIndex = registry();
-			const { getByTestId } = renderComponent({ props: { content, streaming: true } });
-
-			expect(getByTestId('markdown-output').textContent).toBe(content);
+	it('keeps code spans and existing links unchanged', () => {
+		const resource = { type: 'workflow' as const, id: 'wf1', name: 'My Workflow' };
+		thread.linkableResourceNameIndex.set('my workflow', resource);
+		const { container } = renderComponent({
+			props: { content: '`My Workflow` [My Workflow](https://example.org)' },
 		});
-
-		it('should apply decoration when the block settles (streaming flips false)', async () => {
-			thread.linkableResourceNameIndex = registry();
-			const { getByTestId, rerender } = renderComponent({ props: { content, streaming: true } });
-
-			expect(getByTestId('markdown-output').textContent).not.toContain('n8n-resource://');
-
-			await rerender({ content, streaming: false });
-
-			expect(getByTestId('markdown-output').textContent).toContain(
-				'[My Workflow](n8n-resource://workflow/wf-1)',
-			);
-		});
-
-		it('should decorate immediately when streaming is not set (history-loaded messages)', () => {
-			thread.linkableResourceNameIndex = registry();
-			const { getByTestId } = renderComponent({ props: { content } });
-
-			expect(getByTestId('markdown-output').textContent).toContain(
-				'[My Workflow](n8n-resource://workflow/wf-1)',
-			);
-		});
-	});
-
-	describe('resource chip clicks', () => {
-		// Pre-rendered anchor (as markdown-it would emit for a decorated link);
-		// the empty registry keeps decorateResourceNames a no-op so the rendered
-		// HTML is stable across re-renders.
-		const content = '<a href="n8n-resource://workflow/wf-1">Invoice Processing Pipeline</a>';
-		const agentContent = '<a href="n8n-resource://agent/agent-1">Artifact Agent Test</a>';
-		const agentPreviewLinks = [
-			{
-				label: 'legacy',
-				content: '<a href="/projects/project-1/agents/agent-1/preview" target="_blank">Preview</a>',
-			},
-			{
-				label: 'current',
-				content: '<a href="/projects/project-1/agents/agent-1?openPreview=true">Preview</a>',
-			},
-		];
-
-		function renderWithPreview(openWorkflowPreview: (id: string) => boolean) {
-			const utils = renderComponent({
-				props: { content },
-				global: { provide: { openWorkflowPreview } },
-			});
-			const link = utils.getByTestId('markdown-output').querySelector('a');
-			if (!link) throw new Error('expected enhanced anchor');
-			return { ...utils, link };
-		}
-
-		function renderAgentWithPreview(openAgentPreview: (id: string, projectId: string) => boolean) {
-			thread.resourceNameIndex = makeRegistry([
-				{ type: 'agent', id: 'agent-1', name: 'Artifact Agent Test', projectId: 'project-1' },
-			]);
-			const utils = renderComponent({
-				props: { content: agentContent },
-				global: { provide: { openAgentPreview } },
-			});
-			const link = utils.getByTestId('markdown-output').querySelector('a');
-			if (!link) throw new Error('expected enhanced anchor');
-			return { ...utils, link };
-		}
-
-		function clickEvent(init: MouseEventInit = {}): MouseEvent {
-			return new MouseEvent('click', { bubbles: true, cancelable: true, ...init });
-		}
-
-		it('should enhance the anchor into a resource chip', () => {
-			const { link } = renderWithPreview(vi.fn(() => true));
-
-			expect(link.dataset.resourceChip).toBe('workflow');
-			expect(link.dataset.resourceId).toBe('wf-1');
-			expect(link.getAttribute('href')).toBe('/workflow/wf-1');
-			expect(link.target).toBe('_blank');
-		});
-
-		it('keeps one icon when the shared renderer supplies an icon', () => {
-			const { getByTestId } = renderComponent({
-				props: { content: '<a href="/workflow/wf-1"><svg></svg>Workflow</a>' },
-			});
-			const link = getByTestId('markdown-output').querySelector('a');
-
-			expect(link?.dataset.resourceChip).toBe('workflow');
-			expect(link?.querySelectorAll('svg')).toHaveLength(1);
-		});
-
-		it('should open the canvas preview on left-click and suppress navigation', () => {
-			const openWorkflowPreview = vi.fn(() => true);
-			const { link } = renderWithPreview(openWorkflowPreview);
-
-			const event = clickEvent();
-			link.dispatchEvent(event);
-
-			expect(openWorkflowPreview).toHaveBeenCalledExactlyOnceWith('wf-1');
-			expect(event.defaultPrevented).toBe(true);
-		});
-
-		it('should still open the preview after a re-render that leaves the DOM untouched', async () => {
-			// Regression: per-link listeners were stripped on same-content
-			// re-renders (cleanup removed them, the "already enhanced" skip never
-			// re-attached), silently downgrading chips to plain new-tab links.
-			const openWorkflowPreview = vi.fn(() => true);
-			const { link, rerender } = renderWithPreview(openWorkflowPreview);
-
-			// streaming flip re-renders the component with identical content
-			// (empty registry → decoration is a no-op), so the anchor survives.
-			await rerender({ content, streaming: true });
-
-			const event = clickEvent();
-			link.dispatchEvent(event);
-
-			expect(openWorkflowPreview).toHaveBeenCalledExactlyOnceWith('wf-1');
-			expect(event.defaultPrevented).toBe(true);
-		});
-
-		it('should let the browser handle Cmd/Ctrl+click', () => {
-			const openWorkflowPreview = vi.fn(() => true);
-			const { link } = renderWithPreview(openWorkflowPreview);
-
-			// Absorb the unprevented click after it bubbles past the component so
-			// jsdom does not attempt a real navigation.
-			document.addEventListener('click', (e) => e.preventDefault(), { once: true });
-			link.dispatchEvent(clickEvent({ metaKey: true }));
-
-			expect(openWorkflowPreview).not.toHaveBeenCalled();
-		});
-
-		it('should enhance agent links into project-scoped resource chips', () => {
-			const { link } = renderAgentWithPreview(vi.fn(() => true));
-
-			expect(link.dataset.resourceChip).toBe('agent');
-			expect(link.dataset.resourceId).toBe('agent-1');
-			expect(link.getAttribute('href')).toBe('/projects/project-1/agents/agent-1');
-			expect(link.target).toBe('_blank');
-		});
-
-		it('should open the agent preview on left-click and suppress navigation', () => {
-			const openAgentPreview = vi.fn(() => true);
-			const { link } = renderAgentWithPreview(openAgentPreview);
-
-			const event = clickEvent();
-			link.dispatchEvent(event);
-
-			expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
-			expect(event.defaultPrevented).toBe(true);
-		});
-
-		it.each(agentPreviewLinks)(
-			'should open $label agent Preview links in the embedded chat panel',
-			({ content: agentPreviewContent }) => {
-				const openAgentChatPreview = vi.fn(() => true);
-				const { getByTestId } = renderComponent({
-					props: { content: agentPreviewContent },
-					global: { provide: { openAgentChatPreview } },
-				});
-				const link = getByTestId('markdown-output').querySelector('a');
-				if (!link) throw new Error('expected Preview anchor');
-
-				expect(link.target).toBe('');
-				expect(link.getAttribute('href')).toBe(
-					'/projects/project-1/agents/agent-1?openPreview=true',
-				);
-
-				const event = clickEvent();
-				link.dispatchEvent(event);
-
-				expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
-				expect(event.defaultPrevented).toBe(true);
-			},
-		);
-
-		it.each(agentPreviewLinks)(
-			'preserves Cmd/Ctrl-click on $label Preview links with an embedded provider',
-			({ content: agentPreviewContent }) => {
-				const openAgentChatPreview = vi.fn(() => true);
-				const { getByTestId } = renderComponent({
-					props: { content: agentPreviewContent },
-					global: {
-						provide: {
-							openAgentChatPreview,
-							[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
-								type: 'agent',
-								id: 'agent-1',
-								projectId: 'project-1',
-							})),
-						},
-					},
-				});
-				const link = getByTestId('markdown-output').querySelector('a');
-				if (!link) throw new Error('expected Preview anchor');
-				for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
-					const event = clickEvent(modifier);
-					let prevented: boolean | undefined;
-					link.parentElement?.parentElement?.addEventListener(
-						'click',
-						(event) => {
-							prevented = event.defaultPrevented;
-							event.preventDefault();
-						},
-						{ once: true },
-					);
-					link.dispatchEvent(event);
-					expect(prevented).toBe(false);
-				}
-				expect(openAgentChatPreview).not.toHaveBeenCalled();
-				expect(link.getAttribute('href')).toBe(
-					'/projects/project-1/agents/agent-1?openPreview=true',
-				);
-			},
-		);
-
-		it('uses the builder artifact target for its Preview link', () => {
-			const openAgentChatPreview = vi.fn(() => true);
-			const { getByTestId } = renderComponent({
-				props: {
-					content:
-						'<a href="/projects/project-1/agents/agent-1/preview?continueSessionId=session-1&source=assistant">Preview</a>',
-					agentPreviewTarget: { agentId: 'agent-2', projectId: 'project-2' },
-				},
-				global: { provide: { openAgentChatPreview } },
-			});
-			const link = getByTestId('markdown-output').querySelector('a');
-			if (!link) throw new Error('expected Preview anchor');
-
-			expect(link.getAttribute('href')).toBe(
-				'/projects/project-2/agents/agent-2?continueSessionId=session-1&source=assistant&openPreview=true',
-			);
-
-			const event = clickEvent();
-			link.dispatchEvent(event);
-
-			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-2', 'project-2');
-			expect(event.defaultPrevented).toBe(true);
-		});
-
-		it('opens a Preview link after the markdown child replaces its enhanced content', () => {
-			const openAgentChatPreview = vi.fn(() => true);
-			const { getByTestId } = renderComponent({
-				props: { content: agentPreviewLinks[0].content },
-				global: { provide: { openAgentChatPreview } },
-			});
-			const markdownOutput = getByTestId('markdown-output');
-			markdownOutput.innerHTML = agentPreviewLinks[0].content;
-			const link = markdownOutput.querySelector('a');
-			if (!link) throw new Error('expected replaced Preview anchor');
-
-			expect(link.dataset.agentPreviewId).toBeUndefined();
-			const event = clickEvent();
-			link.dispatchEvent(event);
-
-			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
-			expect(event.defaultPrevented).toBe(true);
-		});
-
-		it('does not treat a document-relative link as an agent Preview link', () => {
-			const openAgentChatPreview = vi.fn(() => true);
-			const content = '<a href="projects/project-1/agents/agent-1/preview">Relative Preview</a>';
-			const { getByTestId } = renderComponent({
-				props: { content },
-				global: { provide: { openAgentChatPreview } },
-			});
-			const link = getByTestId('markdown-output').querySelector('a');
-			if (!link) throw new Error('expected document-relative anchor');
-
-			expect(link.dataset.agentPreviewId).toBeUndefined();
-			expect(link.getAttribute('href')).toBe('projects/project-1/agents/agent-1/preview');
-			document.addEventListener('click', (event) => event.preventDefault(), { once: true });
-			link.dispatchEvent(clickEvent());
-
-			expect(openAgentChatPreview).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('embedded subject', () => {
-		const subject = computed(() => ({
-			type: 'agent' as const,
-			id: 'agent-1',
-			projectId: 'project-1',
-		}));
-
-		function renderInEmbed(content: string) {
-			const { getByTestId } = renderComponent({
-				props: { content },
-				global: { provide: { [INSTANCE_AI_EMBED_SUBJECT_KEY]: subject } },
-			});
-			return getByTestId('markdown-output');
-		}
-
-		it('should decorate the subject agent name as a resource', () => {
-			const registry = makeRegistry([
-				{ type: 'agent', id: 'agent-1', name: 'Simple Triggered Assistant' },
-				{ type: 'workflow', id: 'wf-1', name: 'Trigger Workflow' },
-			]);
-			thread.resourceNameIndex = registry;
-			thread.linkableResourceNameIndex = registry;
-
-			const output = renderInEmbed('I saved Simple Triggered Assistant and built Trigger Workflow');
-
-			expect(output.textContent).toContain(
-				'[Simple Triggered Assistant](n8n-resource://agent/agent-1)',
-			);
-			expect(output.textContent).toContain('[Trigger Workflow](n8n-resource://workflow/wf-1)');
-		});
-
-		it.each([
-			'<a href="n8n-resource://agent/agent-1">Simple Triggered Assistant</a>',
-			'<a href="/projects/project-1/agents/agent-1">Simple Triggered Assistant</a>',
-		])('should keep the resource icon for the subject agent: %s', (content) => {
-			const output = renderInEmbed(content);
-
-			const link = output.querySelector('a');
-			expect(link?.dataset.resourceChip).toBe('agent');
-			expect(link?.getAttribute('href')).toBeTruthy();
-			expect(link?.querySelector('svg')).not.toBeNull();
-			expect(output.textContent).toBe('Simple Triggered Assistant');
-		});
-
-		it('should keep links to other agents and the Preview link', () => {
-			const output = renderInEmbed(
-				'<a href="n8n-resource://agent/agent-2">Other Agent</a> ' +
-					'<a href="/projects/project-1/agents/agent-1?openPreview=true">Preview</a>',
-			);
-
-			const links = output.querySelectorAll('a');
-			expect(links).toHaveLength(2);
-			expect(links[0].dataset.resourceId).toBe('agent-2');
-			expect(links[1].dataset.agentPreviewId).toBe('agent-1');
-		});
+		expect(container.querySelector('code')?.textContent).toBe('My Workflow');
+		expect(container.querySelectorAll('a')).toHaveLength(1);
+		expect(container.querySelector('a')?.getAttribute('href')).toBe('https://example.org');
 	});
 });
