@@ -237,7 +237,7 @@ describe('AssistantAgentThreadView', () => {
 		expect(previewProps.current).toBeUndefined();
 	});
 
-	it('sends a question from a preview with its context, until the message is accepted', async () => {
+	it('sends a question from a preview with its context for that message only', async () => {
 		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
 		isLoadingHistory.value = false;
@@ -251,12 +251,8 @@ describe('AssistantAgentThreadView', () => {
 			handoffContext: context,
 		});
 
-		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', []);
+		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
-		expect(clientContext()).toMatchObject({ context });
-
-		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
-		onMessageAccepted();
 		expect(clientContext()).not.toHaveProperty('context');
 	});
 });
