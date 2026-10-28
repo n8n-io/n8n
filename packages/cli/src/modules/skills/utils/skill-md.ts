@@ -69,7 +69,8 @@ export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
 
 /** The frontmatter keys of a SKILL.md and its trimmed body. */
 function parseSkillMd(text: string): { data: Record<string, unknown>; instructions: string } {
-	const match = /^---\n([\s\S]*?)\n---(?:\n([\s\S]*))?$/.exec(normalizeText(text));
+	// A delimiter line can end in spaces, as some editors leave them.
+	const match = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n([\s\S]*))?$/.exec(normalizeText(text));
 	if (!match) {
 		throw new SkillParseError('SKILL.md must start with frontmatter between two --- lines.');
 	}
