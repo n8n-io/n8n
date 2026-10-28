@@ -1262,8 +1262,7 @@ describe('StepReadyHandler sub-executions', () => {
 			queue,
 			{
 				v1StepExecutor: makeExecutor({
-					outputs: [[{ json: { id: 'exec-sub' } }]],
-					subExecution: detached,
+					subExecution: { ...detached, outputs: [[{ json: { id: 'exec-sub' } }]] },
 				}),
 			},
 			undefined,
@@ -1305,8 +1304,7 @@ describe('StepReadyHandler sub-executions', () => {
 			makeQueue(),
 			{
 				v1StepExecutor: makeExecutor({
-					outputs: [[{ json: { ok: true } }]],
-					subExecution: detached,
+					subExecution: { ...detached, outputs: [[{ json: { ok: true } }]] },
 				}),
 			},
 			undefined,
@@ -1333,7 +1331,7 @@ describe('StepReadyHandler sub-executions', () => {
 			makeExecutionStore(),
 			stepStore,
 			queue,
-			{ v1StepExecutor: makeExecutor({ outputs: [[]], subExecution: detached }) },
+			{ v1StepExecutor: makeExecutor({ subExecution: { ...detached, outputs: [[]] } }) },
 			publisher,
 			undefined,
 			undefined,

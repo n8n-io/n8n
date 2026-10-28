@@ -113,7 +113,7 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots; subExecution?: SubExecutionDeclaration }
+			| { kind: 'outputs'; outputs: StepSlots }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: unknown };
@@ -128,23 +128,27 @@ export class StepReadyHandler {
 			}
 			if (result.wait) {
 				run = { kind: 'wait', wait: result.wait };
-			} else if (result.outputs) {
-				run = { kind: 'outputs', outputs: result.outputs, subExecution: result.subExecution };
-			} else {
+			} else if (result.subExecution) {
 				run = { kind: 'subExecution', subExecution: result.subExecution };
+			} else {
+				run = { kind: 'outputs', outputs: result.outputs };
 			}
 		} catch (error) {
 			run = { kind: 'error', error };
 		}
 
-		// Before the outcome is on the row, while the node's outcome is still ours
-		// to record: one that cannot start fails the step, as an awaited one does.
-		// The execution can end while this step runs (a sibling fails, or a
-		// cancel), and then it owes no sub-execution: the outputs stand, as they
-		// would for a step with none, and nothing starts under an ended parent.
-		if (run.kind === 'outputs' && run.subExecution) {
+		// A detached sub-execution starts while the step still runs, and then the
+		// step completes with the outputs the declaration carries, like any other.
+		// One that cannot start fails the step, as an awaited one does. The
+		// execution can end while this step runs (a sibling fails, or a cancel),
+		// and then it owes no sub-execution: the outputs stand, and nothing starts
+		// under an ended parent.
+		if (run.kind === 'subExecution' && !run.subExecution.awaited) {
 			const started = await this.startDetachedSubExecution(step, execution, run.subExecution);
-			if (started.kind === 'error') run = { kind: 'error', error: started.error };
+			run =
+				started.kind === 'error'
+					? { kind: 'error', error: started.error }
+					: { kind: 'outputs', outputs: run.subExecution.outputs };
 		}
 
 		let recorded: boolean;
