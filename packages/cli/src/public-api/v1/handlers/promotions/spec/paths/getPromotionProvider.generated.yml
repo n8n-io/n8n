@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Retrieve a promotion provider
 description: Returns the provider with its public configuration. Secrets are never returned.
-x-required-scope: gitConnection:read
+x-required-scope: promotions:read
 parameters:
   - schema:
       type: string

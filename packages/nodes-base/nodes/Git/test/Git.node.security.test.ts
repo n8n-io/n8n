@@ -23,7 +23,7 @@ import { basename, dirname, join, sep } from 'node:path';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { Git } from '../Git.node';
+import { fileUrlToGitPath, Git } from '../Git.node';
 
 // Unlike Git.node.test.ts, this suite intentionally does NOT mock simple-git or the
 // filesystem: it runs real git against a throwaway repository so it exercises how the
@@ -138,6 +138,27 @@ const initRepository = (dir: string) => {
 	gitConfig(dir, 'user.email', 'test@example.com');
 	gitConfig(dir, 'user.name', 'Test');
 };
+
+describe('fileUrlToGitPath', () => {
+	it('keeps a Windows drive letter in the authority position only on Windows', () => {
+		// On POSIX git reads `C:` as a named authority and opens the path after it, so the
+		// drive-letter shortcut must not accept it there.
+		if (process.platform === 'win32') {
+			expect(fileUrlToGitPath('file://C:/repo')).toBe('C:/repo');
+		} else {
+			expect(() => fileUrlToGitPath('file://C:/repo')).toThrow();
+		}
+	});
+
+	it('rejects a named host authority', () => {
+		expect(() => fileUrlToGitPath('file://server/share')).toThrow();
+	});
+
+	it('strips an empty or localhost authority', () => {
+		expect(fileUrlToGitPath('file:///abs/repo')).toBe('/abs/repo');
+		expect(fileUrlToGitPath('file://localhost/abs/repo')).toBe('/abs/repo');
+	});
+});
 
 describe('Git Node command-config handling', () => {
 	let gitNode: Git;
@@ -947,6 +968,274 @@ describe('Git Node repository reference validation', () => {
 		// The rejection has to land before the staging directory is created.
 		expect(readdirSync(allowedRoot).filter((entry) => entry.startsWith('.n8n-clone-'))).toEqual([]);
 		expect(existsSync(target)).toBe(false);
+	});
+
+	describe('file URL clone sources', () => {
+		let outsideSource: string;
+		let target: string;
+
+		beforeEach(() => {
+			outsideSource = join(outsideDir, 'src');
+			target = join(allowedRoot, 'cloned');
+			initRepository(outsideSource);
+			runGit(['-C', outsideSource, 'commit', '-q', '--allow-empty', '-m', 'outside-src']);
+		});
+
+		const cloneFrom = async (sourceRepository: string) =>
+			await gitNode.execute.call(
+				buildAllowedRootContext('clone', target, { sourceRepository }, allowedRoot),
+			);
+
+		it.each(['#', '?'])('validates the full path of a file URL containing "%s"', async (char) => {
+			mkdirSync(join(allowedRoot, `p${char}`));
+
+			const result = await cloneFrom(`file://${allowedRoot}/p${char}/../../outside/src`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('follows symlinks in a file URL before validating it', async () => {
+			mkdirSync(join(outsideDir, 'deep'));
+			symlinkSync(join(outsideDir, 'deep'), join(allowedRoot, 'link'));
+
+			const result = await cloneFrom(`file://${allowedRoot}/link/../src`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('denies a file source whose .git redirects outside the allowed path', async () => {
+			// git resolves a repository through a `.git` gitfile, so an in-bounds source can
+			// point its git directory at a repository outside the allowed root.
+			const fakeRepo = join(allowedRoot, 'fakerepo');
+			mkdirSync(fakeRepo);
+			writeFileSync(join(fakeRepo, '.git'), `gitdir: ${join(outsideSource, '.git')}\n`);
+
+			const result = await cloneFrom(`file://${fakeRepo.replace(/\\/g, '/')}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('denies a file source git discovers through a sibling .git directory', async () => {
+			// git also looks for the repository at `<source>.git/.git`.
+			const sibling = `${join(allowedRoot, 'foo')}.git`;
+			mkdirSync(sibling);
+			writeFileSync(join(sibling, '.git'), `gitdir: ${join(outsideSource, '.git')}\n`);
+
+			const result = await cloneFrom(`file://${join(allowedRoot, 'foo').replace(/\\/g, '/')}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		// These fixtures use path components that Windows forbids (newline, trailing space).
+		it.skipIf(process.platform === 'win32')(
+			'validates the whole gitdir path when it holds an internal newline',
+			async () => {
+				// git keeps internal newlines as path bytes (read_gitfile trims only trailing ones).
+				const insideName = join(allowedRoot, 'allowed_repo\n');
+				mkdirSync(insideName);
+				const fakeRepo = join(allowedRoot, 'fakerepo');
+				mkdirSync(fakeRepo);
+				const gitdir = `${insideName}/../../${basename(outsideDir)}/${basename(outsideSource)}/.git`;
+				writeFileSync(join(fakeRepo, '.git'), `gitdir: ${gitdir}\n`);
+
+				const result = await cloneFrom(`file://${fakeRepo.replace(/\\/g, '/')}`);
+
+				expect(errorOf(result)).toContain(SOURCE_DENIED);
+				expect(existsSync(target)).toBe(false);
+			},
+		);
+
+		it.skipIf(process.platform === 'win32')(
+			'denies a gitdir whose resolved directory name holds a newline',
+			async () => {
+				// The resolved git-dir path itself can contain a newline, which must stay part of
+				// the path rather than split the value read from git.
+				const evil = join(outsideDir, 'ev\nil');
+				initRepository(evil);
+				const fakeRepo = join(allowedRoot, 'fakerepo');
+				mkdirSync(fakeRepo);
+				writeFileSync(join(fakeRepo, '.git'), `gitdir: ${join(evil, '.git')}\n`);
+
+				const result = await cloneFrom(`file://${fakeRepo.replace(/\\/g, '/')}`);
+
+				expect(errorOf(result)).toContain(SOURCE_DENIED);
+				expect(existsSync(target)).toBe(false);
+			},
+		);
+
+		it.skipIf(process.platform === 'win32')(
+			'denies a gitdir path whose trailing space git keeps',
+			async () => {
+				// git keeps a trailing space in a `gitdir:` path.
+				const spaced = `${allowedRoot}/gd `;
+				symlinkSync(join(outsideSource, '.git'), spaced);
+				const fakeRepo = join(allowedRoot, 'fakerepo');
+				mkdirSync(fakeRepo);
+				writeFileSync(join(fakeRepo, '.git'), `gitdir: ${spaced}\n`);
+
+				const result = await cloneFrom(`file://${fakeRepo.replace(/\\/g, '/')}`);
+
+				expect(errorOf(result)).toContain(SOURCE_DENIED);
+				expect(existsSync(target)).toBe(false);
+			},
+		);
+
+		it('denies a relative gitdir that resolves through a symlink', async () => {
+			// A relative `gitdir:` resolves against the gitfile's directory and through the
+			// symlinks on its path.
+			symlinkSync(outsideDir, join(allowedRoot, 'sym'));
+			const fakeRepo = join(allowedRoot, 'fakerepo');
+			mkdirSync(fakeRepo);
+			writeFileSync(join(fakeRepo, '.git'), `gitdir: ../sym/${basename(outsideSource)}/.git\n`);
+
+			const result = await cloneFrom(`file://${fakeRepo.replace(/\\/g, '/')}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('does not clone the outside repository a too-large gitfile points at', async () => {
+			// git refuses a gitfile above its size limit, so an oversized `.git` cannot point the
+			// clone at a git directory out of the allowed path.
+			const fakeRepo = join(allowedRoot, 'fakerepo');
+			mkdirSync(fakeRepo);
+			const padding = '\n'.repeat(5 * 1024 * 1024);
+			writeFileSync(join(fakeRepo, '.git'), `gitdir: ${join(outsideSource, '.git')}\n${padding}`);
+
+			const result = await cloneFrom(`file://${fakeRepo.replace(/\\/g, '/')}`);
+
+			expect(errorOf(result)).toBeDefined();
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('validates a file URL whose authority holds an encoded separator', async () => {
+			// `%2F` decodes to a separator inside the authority, which git does before it
+			// splits host from path, so the real path reaches outside the allowed root.
+			const result = await cloneFrom(`file://host%2F${outsideSource}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('validates a file URL with a named authority', async () => {
+			const result = await cloneFrom(`file://example.com${outsideSource}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('clones from a file URL with a named authority inside the allowed path', async () => {
+			const source = join(allowedRoot, 'named-src');
+			initRepository(source);
+			runGit(['-C', source, 'commit', '-q', '--allow-empty', '-m', 'named-src']);
+
+			const result = await cloneFrom(`file://localhost${source}`);
+
+			expect(errorOf(result)).toBeUndefined();
+			expect(commitSubject(target, 'HEAD')).toBe('named-src');
+		});
+
+		it('denies a file URL with a named authority even when its path is in bounds', async () => {
+			const source = join(allowedRoot, 'host-src');
+			initRepository(source);
+
+			const result = await cloneFrom(`file://example.com${source}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('does not URL-normalise a file source when credentials are configured', async () => {
+			// A symlink two levels deep makes the kernel resolve `link/../..` back inside the
+			// allowed root, while a lexical `..` collapse would climb out to the outside repo.
+			mkdirSync(join(allowedRoot, 'a', 'b'), { recursive: true });
+			symlinkSync(join(allowedRoot, 'a', 'b'), join(allowedRoot, 'link'));
+			const inside = join(allowedRoot, 'outside', 'src');
+			initRepository(inside);
+			runGit(['-C', inside, 'commit', '-q', '--allow-empty', '-m', 'inside-twin']);
+			runGit(['-C', outsideSource, 'commit', '-q', '--allow-empty', '-m', 'outside-canary']);
+
+			const ctx = buildAllowedRootContext(
+				'clone',
+				target,
+				{
+					sourceRepository: `file://${allowedRoot}/link/../../outside/src`,
+					authentication: 'gitPassword',
+				},
+				allowedRoot,
+			);
+			ctx.getCredentials = vi.fn(async () => ({ username: 'u', password: 'p' })) as never;
+
+			const result = await gitNode.execute.call(ctx);
+
+			expect(errorOf(result)).toBeUndefined();
+			expect(commitSubject(target, 'HEAD')).toBe('inside-twin');
+		});
+
+		it('clones from a percent-encoded file URL inside the allowed path', async () => {
+			const source = join(allowedRoot, 'my src');
+			initRepository(source);
+			runGit(['-C', source, 'commit', '-q', '--allow-empty', '-m', 'inside-src']);
+
+			const result = await cloneFrom(`file://${allowedRoot}/my%20src`);
+
+			expect(errorOf(result)).toBeUndefined();
+			expect(commitSubject(target, 'HEAD')).toBe('inside-src');
+		});
+
+		it('denies a file URL with an uppercase scheme that resolves outside the allowed path', async () => {
+			mkdirSync(join(allowedRoot, 'up'));
+
+			const result = await cloneFrom(`FILE://${allowedRoot}/up/../../outside/src`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('denies a single-slash file reference that resolves outside the allowed path', async () => {
+			const result = await cloneFrom(`file:${outsideSource}`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('denies a file URL whose escapes are not valid UTF-8', async () => {
+			// An in-bounds path: it is denied because the bytes git would open cannot be
+			// compared faithfully, not because `..` walks out.
+			const result = await cloneFrom(`file://${allowedRoot}/%ff%fe`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('denies a file URL with an encoded NUL byte in the path', async () => {
+			const result = await cloneFrom(`file://${allowedRoot}/%00`);
+
+			expect(errorOf(result)).toContain(SOURCE_DENIED);
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('denies a file reference with surrounding whitespace', async () => {
+			const result = await cloneFrom(`  file://${allowedRoot}/src  `);
+
+			expect(errorOf(result)).toContain('whitespace');
+			expect(existsSync(target)).toBe(false);
+		});
+
+		it('clones from a file URL with a literal percent in the path', async () => {
+			const source = join(allowedRoot, '100%real');
+			initRepository(source);
+			runGit(['-C', source, 'commit', '-q', '--allow-empty', '-m', 'literal-percent']);
+
+			const result = await cloneFrom(`file://${allowedRoot}/100%real`);
+
+			expect(errorOf(result)).toBeUndefined();
+			expect(commitSubject(target, 'HEAD')).toBe('literal-percent');
+		});
 	});
 
 	it('accepts a reference whose parent directories do not exist yet', async () => {

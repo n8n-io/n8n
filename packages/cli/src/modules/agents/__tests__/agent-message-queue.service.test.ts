@@ -1,7 +1,7 @@
 import type { TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -13,6 +13,7 @@ import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
+import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '../utils/agent-thread-access';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -78,6 +79,77 @@ describe('AgentMessageQueueService', () => {
 			settingsService,
 			systemAgents,
 		);
+	});
+
+	describe('prepareSessionStop', () => {
+		it('locks the session and clears all pending input before notifying clients', async () => {
+			threadRepository.lockById.mockResolvedValue(makeThread());
+			executionRepository.findRunningByThread.mockResolvedValue([
+				mock<AgentExecution>({ id: 'execution-1' }),
+			]);
+			repository.listPending.mockResolvedValue([
+				mock<AgentMessageQueue>({
+					id: 'queue-1',
+					messageId: 'message-1',
+					message: mock<AgentMessageEntity>({
+						content: {
+							role: 'user',
+							content: [
+								{ type: 'text', text: 'Next' },
+								{ type: 'file', fileRef: { id: 'attachment-1' } },
+							],
+						},
+					}),
+				}),
+				mock<AgentMessageQueue>({
+					id: 'queue-2',
+					messageId: 'message-2',
+					steeringExecutionId: 'execution-1',
+					message: mock<AgentMessageEntity>({
+						content: { role: 'user', content: [{ type: 'text', text: 'Steer' }] },
+					}),
+				}),
+			]);
+
+			expect(await service.prepareSessionStop('thread-1')).toEqual({
+				executionIds: ['execution-1'],
+				queueIds: ['queue-1', 'queue-2'],
+				attachmentIds: ['attachment-1'],
+			});
+
+			expect(threadRepository.lockById).toHaveBeenCalledExactlyOnceWith(
+				'thread-1',
+				expect.anything(),
+			);
+			expect(threadRepository.lockById.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.listPending.mock.invocationCallOrder[0],
+			);
+			expect(repository.discardPendingForSession).toHaveBeenCalledExactlyOnceWith(
+				'thread-1',
+				expect.anything(),
+			);
+			expect(messages.clearPendingInput.mock.calls.map(([id]) => id)).toEqual([
+				'message-1',
+				'message-2',
+			]);
+			expect(updates.notifyQueueUpdated).toHaveBeenCalledExactlyOnceWith('thread-1');
+			expect(messages.clearPendingInput.mock.invocationCallOrder[1]).toBeLessThan(
+				updates.notifyQueueUpdated.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not discard input when the session no longer exists', async () => {
+			threadRepository.lockById.mockResolvedValue(null);
+			await expect(service.prepareSessionStop('thread-1')).rejects.toThrow(NotFoundError);
+			expect(repository.discardPendingForSession).not.toHaveBeenCalled();
+			expect(updates.notifyQueueUpdated).not.toHaveBeenCalled();
+		});
+
+		it('does not notify clients when the transaction fails', async () => {
+			txRunner.run.mockRejectedValueOnce(new Error('Transaction failed'));
+			await expect(service.prepareSessionStop('thread-1')).rejects.toThrow('Transaction failed');
+			expect(updates.notifyQueueUpdated).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('claimNext', () => {

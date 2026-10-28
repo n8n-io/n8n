@@ -31,13 +31,14 @@ export * from './workflow-wait';
 export type {
 	AgentBudgetNotice,
 	AgentBudgetNoticeCode,
+	AgentChatErrorCode,
 	AgentSseEvent,
 	AgentSseMessage,
 	AgentTokenUsage,
 	ForwardedChildChunkWire,
 	ToolSuspendedPayload,
 } from '../agent-sse';
-export { isAgentBudgetNoticeCode } from '../agent-sse';
+export { AGENT_CHAT_ERROR_CODES, isAgentBudgetNoticeCode } from '../agent-sse';
 export {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	isAgentToolNodeType,

@@ -19,6 +19,7 @@ const settingsSidebarItems = ref<
 >([]);
 const activeModules = ref<string[]>([]);
 const promotionsFlag = ref('false');
+const environmentsVersion = ref<'v1' | 'v2'>();
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
 const contextEnabled = vi.hoisted(() => ({ value: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
@@ -70,6 +71,13 @@ vi.mock('@n8n/stores/settings.store', () => ({
 		},
 	})),
 }));
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: vi.fn(() => ({
+		get preferences() {
+			return { environmentsVersion: environmentsVersion.value };
+		},
+	})),
+}));
 vi.mock('../utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => false) }));
 
 describe('useSettingsItems', () => {
@@ -85,6 +93,7 @@ describe('useSettingsItems', () => {
 		settingsSidebarItems.value = [];
 		activeModules.value = [];
 		promotionsFlag.value = 'false';
+		environmentsVersion.value = undefined;
 		canUserAccessRouteByName.mockReturnValue(true);
 		contextEnabled.value = true;
 	});
@@ -106,6 +115,7 @@ describe('useSettingsItems', () => {
 		moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
 		activeModules.value = ['promotions', 'instance-ai'];
 		promotionsFlag.value = 'true';
+		environmentsVersion.value = 'v2';
 		vi.mocked(hasPermission).mockReturnValue(true);
 		settingsSidebarItems.value = realModuleItems();
 	};
@@ -132,7 +142,6 @@ describe('useSettingsItems', () => {
 				'settings-external-secrets',
 				'settings-credential-resolvers',
 				'settings-encryption-keys',
-				'settings-source-control',
 				'settings-promotions',
 				'settings-workersview',
 				'settings-log-streaming',
@@ -196,7 +205,6 @@ describe('useSettingsItems', () => {
 					id: 'operations',
 					title: 'settings.sections.operations',
 					items: [
-						'settings-source-control',
 						'settings-promotions',
 						'settings-workersview',
 						'settings-log-streaming',
@@ -377,19 +385,23 @@ describe('useSettingsItems', () => {
 	});
 
 	describe('Environments v2', () => {
+		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
+
 		beforeEach(() => {
 			activeModules.value = ['promotions'];
 			promotionsFlag.value = 'true';
+			environmentsVersion.value = 'v2';
 		});
 
-		it('appears directly after Environments when enabled', () => {
-			const items = useSettingsItems().settingsItems.value;
-			const environmentsIndex = items.findIndex(({ id }) => id === 'settings-source-control');
+		it('leaves the slot to Environments while the instance uses v1', () => {
+			environmentsVersion.value = 'v1';
 
-			expect(items[environmentsIndex + 1]).toMatchObject({
-				id: 'settings-promotions',
-				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
-			});
+			const operations = useSettingsItems().settingsSections.value.find(
+				({ id }) => id === 'operations',
+			);
+
+			expect(operations?.items[0]?.id).toBe('settings-source-control');
+			expect(idsOf()).not.toContain('settings-promotions');
 		});
 
 		it('is hidden when the feature flag is off', () => {
