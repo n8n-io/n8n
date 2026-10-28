@@ -1186,18 +1186,27 @@ describe('formatWakeMessage', () => {
 	it('lists the output files of a job', () => {
 		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
 		const message = formatWakeMessage([
-			makeJob({ kind: 'workflow', status: 'completed', files: [file] }),
-			makeJob({ id: 'job-2', files: null }),
+			makeJob({
+				kind: 'workflow',
+				status: 'completed',
+				files: [file],
+				skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+			}),
+			makeJob({ id: 'job-2', files: null, skippedFiles: null }),
 		]);
 		const payload = JSON.parse(
 			message.slice(
 				'<background-jobs-settled>'.length,
 				message.indexOf('</background-jobs-settled>'),
 			),
-		) as Array<{ files?: unknown }>;
+		) as Array<{ files?: unknown; skippedFiles?: unknown }>;
 
 		expect(payload[0]?.files).toEqual([file]);
+		expect(payload[0]?.skippedFiles).toEqual([
+			{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' },
+		]);
 		expect(payload[1]).not.toHaveProperty('files');
+		expect(payload[1]).not.toHaveProperty('skippedFiles');
 	});
 
 	it('keeps short results intact without a truncation marker', () => {

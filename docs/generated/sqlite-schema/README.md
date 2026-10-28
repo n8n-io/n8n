@@ -9,7 +9,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 24 |  | table |
+| [agent_background_job](agent_background_job.md) | 25 |  | table |
 | [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
 | [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
@@ -506,6 +506,7 @@ erDiagram
   varchar planTaskId
   TEXT result
   datetime_3_ settledAt
+  TEXT skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId

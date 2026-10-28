@@ -1568,7 +1568,26 @@ describe('settleWorkflowJobByExecutionId', () => {
 			});
 			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 				'wf-job-1',
-				{ status: 'completed', files: [file] },
+				{ status: 'completed', files: [file], skippedFiles: null },
+				undefined,
+			);
+		});
+
+		it('keeps the files that are too large to store', async () => {
+			const { service, jobRepository, fileBridge } = setup();
+			const skipped = { fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' };
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
+			fileBridge.adoptFromItems.mockResolvedValue({
+				items: [],
+				files: [],
+				skippedFiles: [skipped],
+			});
+
+			await service.settleWorkflowJobByExecutionId('exec-1', { status: 'completed' }, runData);
+
+			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+				'wf-job-1',
+				{ status: 'completed', files: null, skippedFiles: [skipped] },
 				undefined,
 			);
 		});
@@ -1596,7 +1615,7 @@ describe('settleWorkflowJobByExecutionId', () => {
 			expect(settled).toBe(true);
 			expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
 				'wf-job-1',
-				{ status: 'completed', files: null },
+				{ status: 'completed', files: null, skippedFiles: null },
 				undefined,
 			);
 		});

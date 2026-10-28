@@ -1,4 +1,4 @@
-import type { AgentBackgroundJobDto, AgentToolOutputFile } from '@n8n/api-types';
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -63,6 +63,7 @@ export type BackgroundJobView = Pick<
 	| 'result'
 	| 'error'
 	| 'files'
+	| 'skippedFiles'
 	| 'createdAt'
 	| 'timeoutAt'
 	| 'settledAt'
@@ -72,6 +73,10 @@ export type BackgroundJobView = Pick<
 	| 'planId'
 	| 'planTaskId'
 >;
+
+type JobOutputFiles = Required<Pick<AgentBackgroundJobSettlement, 'files' | 'skippedFiles'>>;
+
+const NO_OUTPUT_FILES: JobOutputFiles = { files: null, skippedFiles: null };
 
 /** Cap on the result text persisted on a workflow job row. */
 export const WORKFLOW_JOB_RESULT_MAX_CHARS = 8000;
@@ -258,7 +263,7 @@ export class AgentBackgroundJobService {
 			};
 		}
 		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
-			settlement = { ...settlement, files: await this.storeOutputFiles(job, runData) };
+			settlement = { ...settlement, ...(await this.storeOutputFiles(job, runData)) };
 		}
 		return await this.settle(job.id, settlement);
 	}
@@ -267,26 +272,31 @@ export class AgentBackgroundJobService {
 	 * Store the binary output of the last node as files of the parent thread,
 	 * the same output that the job result holds. The job keeps the file list,
 	 * so the wake message and check_background_jobs can show the file IDs.
-	 * A storage error must not block the settle, so it logs and returns null.
+	 * The job also keeps the files that were too large to store, so the model
+	 * knows that they are missing. Each list is null when it is empty.
+	 * A storage error must not block the settle, so it logs and returns no files.
 	 */
 	async storeOutputFiles(
 		job: Pick<AgentBackgroundJob, 'id' | 'parentAgentId' | 'parentThreadId'>,
 		runData: IRunData,
-	): Promise<AgentToolOutputFile[] | null> {
+	): Promise<JobOutputFiles> {
 		const items = Object.values(collectResultItems(runData, false)).flat();
-		if (!items.some((item) => item.binary)) return null;
+		if (!items.some((item) => item.binary)) return NO_OUTPUT_FILES;
 		try {
 			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);
-			if (!projectId) return null;
-			const { files } = await this.fileBridge.adoptFromItems(items, {
+			if (!projectId) return NO_OUTPUT_FILES;
+			const { files, skippedFiles } = await this.fileBridge.adoptFromItems(items, {
 				agentId: job.parentAgentId,
 				projectId,
 				threadId: job.parentThreadId,
 			});
-			return files.length > 0 ? files : null;
+			return {
+				files: files.length > 0 ? files : null,
+				skippedFiles: skippedFiles.length > 0 ? skippedFiles : null,
+			};
 		} catch (error) {
 			this.logger.warn('Failed to store background job output files', { jobId: job.id, error });
-			return null;
+			return NO_OUTPUT_FILES;
 		}
 	}
 
@@ -828,6 +838,7 @@ export class AgentBackgroundJobService {
 			result: job.result,
 			error: job.error,
 			files: job.files,
+			skippedFiles: job.skippedFiles,
 			createdAt: job.createdAt,
 			timeoutAt: job.timeoutAt,
 			settledAt: job.settledAt,
@@ -1217,7 +1228,7 @@ export class AgentBackgroundJobService {
 		executionId: string,
 		status: AgentBackgroundJobSettlement['status'],
 		allOutputs = false,
-	): Promise<{ result: string | null; files: AgentToolOutputFile[] | null }> {
+	): Promise<{ result: string | null } & JobOutputFiles> {
 		// A failed data read must not block the settle: workflow jobs have no
 		// timeout, so a row skipped here could stay running forever.
 		try {
@@ -1227,18 +1238,18 @@ export class AgentBackgroundJobService {
 			});
 
 			const runData = execution?.data?.resultData?.runData;
-			if (!runData) return { result: null, files: null };
+			if (!runData) return { result: null, ...NO_OUTPUT_FILES };
 
 			return {
 				result: serializeWorkflowJobResult(collectResultData(runData, allOutputs)),
-				files: status === 'completed' ? await this.storeOutputFiles(job, runData) : null,
+				...(status === 'completed' ? await this.storeOutputFiles(job, runData) : NO_OUTPUT_FILES),
 			};
 		} catch (error) {
 			this.logger.warn('Failed to read a finished execution’s data for its job result', {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return { result: null, files: null };
+			return { result: null, ...NO_OUTPUT_FILES };
 		}
 	}
 
@@ -1377,7 +1388,7 @@ export class AgentBackgroundJobService {
 			const output =
 				status === 'completed' || job.pauseRequestId
 					? await this.loadExecutionOutput(job, executionId, status, Boolean(job.pauseRequestId))
-					: { result: null, files: null };
+					: { result: null, ...NO_OUTPUT_FILES };
 			return await this.settle(job.id, {
 				status,
 				...output,

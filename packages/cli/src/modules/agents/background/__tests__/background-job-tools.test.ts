@@ -44,6 +44,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		result: null,
 		error: null,
 		files: null,
+		skippedFiles: null,
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
@@ -474,7 +475,12 @@ describe('check_background_jobs', () => {
 		const { jobService, options } = setup();
 		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
 		jobService.listForThread.mockResolvedValue([
-			jobView({ kind: 'workflow', status: 'completed', files: [file] }),
+			jobView({
+				kind: 'workflow',
+				status: 'completed',
+				files: [file],
+				skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+			}),
 			jobView({ id: 'job-2' }),
 		]);
 		const tool = createCheckBackgroundJobsTool(options.jobService);
@@ -482,10 +488,22 @@ describe('check_background_jobs', () => {
 		const output = await tool.handler!({}, { persistence });
 
 		expect(output).toMatchObject({
-			jobs: [expect.objectContaining({ files: [file] }), expect.anything()],
+			jobs: [
+				expect.objectContaining({
+					files: [file],
+					skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+				}),
+				expect.anything(),
+			],
 		});
 		expect(output).toMatchObject({
-			jobs: [{}, expect.not.objectContaining({ files: expect.anything() })],
+			jobs: [
+				{},
+				expect.not.objectContaining({
+					files: expect.anything(),
+					skippedFiles: expect.anything(),
+				}),
+			],
 		});
 	});
 

@@ -79,6 +79,7 @@ erDiagram
   varchar planTaskId
   TEXT result
   datetime_3_ settledAt
+  TEXT skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId

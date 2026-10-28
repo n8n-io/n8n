@@ -130,6 +130,7 @@ erDiagram
   uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  json skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId

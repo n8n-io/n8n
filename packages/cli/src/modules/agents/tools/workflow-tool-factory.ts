@@ -907,6 +907,8 @@ async function backgroundWaitingExecution(
 						: null,
 				error: fresh.error ?? null,
 				files: settlementStatus === 'completed' && finished.files?.length ? finished.files : null,
+				skippedFiles:
+					settlementStatus === 'completed' && finished.skippedFiles ? finished.skippedFiles : null,
 			});
 			// The tool returns the result directly. Mark it as delivered
 			// even if another writer settled the job.

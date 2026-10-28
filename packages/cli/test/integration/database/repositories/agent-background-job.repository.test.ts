@@ -808,6 +808,19 @@ describe('AgentBackgroundJobRepository', () => {
 		expect((await repository.findById(id))?.files).toEqual([file]);
 	});
 
+	it('stores the skipped files of a settled job and reads a job without them', async () => {
+		const id = uuid();
+		const olderId = uuid();
+		const skipped = { fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' };
+		await insertJob({ id, parentThreadId: 'thread-1', status: 'running' });
+		await insertJob({ id: olderId, parentThreadId: 'thread-1' });
+
+		await repository.settleIfActive(id, { status: 'completed', skippedFiles: [skipped] });
+
+		expect((await repository.findById(id))?.skippedFiles).toEqual([skipped]);
+		expect((await repository.findById(olderId))?.skippedFiles).toBeNull();
+	});
+
 	it('deletes old settled jobs only if their results are marked as delivered', async () => {
 		const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
 		const consumedId = uuid();

@@ -81,6 +81,7 @@ export function formatWakeMessage(jobs: AgentBackgroundJob[]): string {
 			...(previousStoppedGroupReplaced ? { previousStoppedGroupReplaced: true } : {}),
 			...(error !== undefined ? { error } : {}),
 			...(job.files?.length ? { files: job.files } : {}),
+			...(job.skippedFiles?.length ? { skippedFiles: job.skippedFiles } : {}),
 			...(truncated ? { truncated: true } : {}),
 		};
 	});

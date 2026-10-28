@@ -21,6 +21,7 @@
 | planTaskId | uuid |  | true |  |  | Task ID in the saved plan document |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
+| skippedFiles | json |  | true |  |  | Output files that were too large to store |
 | sourceExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution that dispatched this job |
 | status | varchar(16) |  | false |  |  | running: child works; suspended: child awaits approval; paused: user stopped the child; completed, failed, cancelled: terminal |
 | subAgentId | varchar(36) |  | true |  |  | Sub-agent jobs only |
@@ -91,6 +92,7 @@ erDiagram
   uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  json skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
