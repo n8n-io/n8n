@@ -5,9 +5,10 @@ import {
 	createManyActiveWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
+import { Logger } from '@n8n/backend-common';
 import { WorkflowPublishHistoryRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INodeType } from 'n8n-workflow';
+import { type INodeType, UserError } from 'n8n-workflow';
 
 import { UpdateWorkflowCommand } from '@/commands/update/workflow';
 import { ExternalHooks } from '@/external-hooks';
@@ -192,4 +193,15 @@ test('update:workflow --all --active=false unpublishes through the service', asy
 			{ event: 'deactivated', versionId: workflow.versionId, userId: owner.id },
 		]);
 	}
+});
+
+test('update:workflow prints a refusal once without a stack trace', async () => {
+	const logged = vi.spyOn(Container.get(Logger), 'error');
+	const refusal = new UserError('Workflow "missing" not found.');
+	const failedCommand = new UpdateWorkflowCommand();
+
+	await failedCommand.catch(refusal);
+	await failedCommand.finally(refusal);
+
+	expect(logged.mock.calls).toEqual([[refusal.message]]);
 });

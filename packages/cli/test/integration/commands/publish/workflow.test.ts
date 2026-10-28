@@ -17,7 +17,8 @@ import {
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INode, INodeType } from 'n8n-workflow';
+import { ConflictError } from '@n8n/errors';
+import { type INode, type INodeType, UserError } from 'n8n-workflow';
 
 import { PublishWorkflowCommand } from '@/commands/publish/workflow';
 import { ExternalHooks } from '@/external-hooks';
@@ -334,4 +335,37 @@ test('publish:workflow tells the operator that a running n8n applies the change'
 	await command.run([`--id=${workflow.id}`]);
 
 	expect(info).toHaveBeenCalledWith(APPLIES_SHORTLY_NOTE);
+});
+
+describe('failure output', () => {
+	const reportFailure = async (error: Error) => {
+		const failedCommand = new PublishWorkflowCommand();
+		await failedCommand.catch(error);
+		await failedCommand.finally(error);
+	};
+
+	test('publish:workflow prints a refusal once without a stack trace', async () => {
+		const logged = vi.spyOn(Container.get(Logger), 'error');
+
+		await reportFailure(new UserError(REPUBLISH_REFUSED));
+
+		expect(logged.mock.calls).toEqual([[REPUBLISH_REFUSED]]);
+	});
+
+	test('publish:workflow prints a failed publish check once without a stack trace', async () => {
+		const logged = vi.spyOn(Container.get(Logger), 'error');
+
+		await reportFailure(new ConflictError('There is a conflict with one of the webhooks.'));
+
+		expect(logged.mock.calls).toEqual([['There is a conflict with one of the webhooks.']]);
+	});
+
+	test('publish:workflow prints the stack trace of an unexpected failure', async () => {
+		const logged = vi.spyOn(Container.get(Logger), 'error');
+		const error = new Error('Connection lost');
+
+		await reportFailure(error);
+
+		expect(logged).toHaveBeenCalledWith(error.stack);
+	});
 });

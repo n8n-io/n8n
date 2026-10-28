@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
-import { CliWorkflowPublisher } from '../cli-workflow-publisher';
+import { CliWorkflowPublisher, isExpectedFailure } from '../cli-workflow-publisher';
 
 const flagsSchema = z.object({
 	id: z.string().describe('The ID of the workflow to publish'),
@@ -57,6 +57,8 @@ export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSche
 	}
 
 	async catch(error: Error) {
-		this.logError(error, 'Error publishing workflow. See log messages for details.');
+		if (!isExpectedFailure(error)) {
+			this.logError(error, 'Error publishing workflow. See log messages for details.');
+		}
 	}
 }

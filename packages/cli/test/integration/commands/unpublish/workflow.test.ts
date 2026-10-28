@@ -4,6 +4,7 @@ import {
 	createManyActiveWorkflows,
 	getWorkflowById,
 } from '@n8n/backend-test-utils';
+import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -14,7 +15,7 @@ import {
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INodeType } from 'n8n-workflow';
+import { type INodeType, UserError } from 'n8n-workflow';
 
 import { UnpublishWorkflowCommand } from '@/commands/unpublish/workflow';
 import { ExternalHooks } from '@/external-hooks';
@@ -263,4 +264,15 @@ describe('with the workflow publication service off', () => {
 			{ event: 'deactivated', versionId: workflow.versionId, userId: owner.id },
 		]);
 	});
+});
+
+test('unpublish:workflow prints a refusal once without a stack trace', async () => {
+	const logged = vi.spyOn(Container.get(Logger), 'error');
+	const refusal = new UserError('Workflow "missing" not found.');
+	const failedCommand = new UnpublishWorkflowCommand();
+
+	await failedCommand.catch(refusal);
+	await failedCommand.finally(refusal);
+
+	expect(logged.mock.calls).toEqual([[refusal.message]]);
 });

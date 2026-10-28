@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
-import { CliWorkflowPublisher } from '../cli-workflow-publisher';
+import { CliWorkflowPublisher, isExpectedFailure } from '../cli-workflow-publisher';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Unpublish all workflows').optional(),
@@ -55,6 +55,8 @@ export class UnpublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	async catch(error: Error) {
-		this.logError(error, 'Error unpublishing workflow(s). See log messages for details.');
+		if (!isExpectedFailure(error)) {
+			this.logError(error, 'Error unpublishing workflow(s). See log messages for details.');
+		}
 	}
 }

@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ResponseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -10,6 +11,13 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 const REPUBLISH_NOT_SUPPORTED =
 	'Republishing a published workflow from the CLI is not supported when the publication service is off and multi-main is not enabled. Unpublish it first, or use the public API on the running instance.';
+
+/** A refusal or a failed publish check that the operator can act on, so the command prints only its message. */
+export function isExpectedFailure(error: Error): boolean {
+	return (
+		error instanceof UserError || (error instanceof ResponseError && error.httpStatusCode < 500)
+	);
+}
 
 /** Publishes and unpublishes workflows from the CLI as the instance owner, through the same flow as the UI. */
 @Service()

@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
-import { CliWorkflowPublisher } from '../cli-workflow-publisher';
+import { CliWorkflowPublisher, isExpectedFailure } from '../cli-workflow-publisher';
 
 const flagsSchema = z.object({
 	active: z.string().describe('Active state the workflow/s should be set to').optional(),
@@ -102,6 +102,8 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 	}
 
 	async catch(error: Error) {
-		this.logError(error, 'Error updating workflow(s). See log messages for details.');
+		if (!isExpectedFailure(error)) {
+			this.logError(error, 'Error updating workflow(s). See log messages for details.');
+		}
 	}
 }
