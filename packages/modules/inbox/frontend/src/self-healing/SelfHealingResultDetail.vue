@@ -151,11 +151,12 @@ async function retryDetail() {
 	if (pendingAction.value) return;
 
 	const reconcile = reconcileOnRetry;
-	const result = await store.refreshDetail();
-	if (!reconcile || !result || reconcileOnRetry !== reconcile) return;
+	await store.refreshDetail(async (result) => {
+		if (!reconcile || reconcileOnRetry !== reconcile) return;
 
-	reconcileOnRetry = null;
-	await reconcile(result);
+		reconcileOnRetry = null;
+		await reconcile(result);
+	});
 }
 
 async function onAction(action: SelfHealingResultAction) {
@@ -228,8 +229,8 @@ async function onAction(action: SelfHealingResultAction) {
 	try {
 		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
-		store.acceptResult(result);
 		await continueAfterClose(result, false);
+		store.acceptResult(result);
 		notifyResultClosed(before, result, onItemChange);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
@@ -242,9 +243,10 @@ async function onAction(action: SelfHealingResultAction) {
 		try {
 			const current = await fetchSelfHealingResult(rootStore.restApiContext, target);
 
+			const continued = await reconcile(current);
 			store.acceptResult(current);
 			if (isSelected(target.id)) void store.refreshWorkflow();
-			if (await reconcile(current)) return;
+			if (continued) return;
 		} catch (readError) {
 			store.setError(target, readError);
 			if (isSelected(target.id)) reconcileOnRetry = reconcile;
