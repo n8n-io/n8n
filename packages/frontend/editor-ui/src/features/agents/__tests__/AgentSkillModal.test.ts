@@ -2130,6 +2130,19 @@ describe('Versions in the agent builder', () => {
 		);
 	});
 
+	it('gives one version both markers when the draft and the published agent run it', async () => {
+		const { findByTestId, getByTestId } = renderBuilder({ draft: 2, published: 2, pinned: true });
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+
+		const dot = (await findByTestId('skill-version-row-2')).querySelector('[aria-hidden="true"]');
+		expect(dot?.className).toMatch(/draftDot/);
+		expect(dot?.className).toMatch(/publishedDot/);
+		expect(
+			getByTestId('skill-version-row-3').querySelector('[aria-hidden="true"]')?.className,
+		).not.toMatch(/draftDot|publishedDot/);
+	});
+
 	it('marks no version as published for an agent that is not published', async () => {
 		const { findByTestId, queryByTestId } = renderBuilder({
 			draft: 3,

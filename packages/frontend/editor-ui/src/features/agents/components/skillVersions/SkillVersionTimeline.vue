@@ -87,8 +87,10 @@ function onAction(version: number, action: VersionAction) {
 /** The dot of a row: the draft and the published agent in the builder, the latest in Settings. */
 function dotClass(version: number, index: number) {
 	if (!props.agent) return index === 0 && $style.latestDot;
-	if (version === props.agent.draft) return $style.draftDot;
-	return version === props.agent.published && $style.publishedDot;
+	return [
+		version === props.agent.draft && $style.draftDot,
+		version === props.agent.published && $style.publishedDot,
+	];
 }
 </script>
 
@@ -241,6 +243,12 @@ function dotClass(version: number, index: number) {
 .latestDot {
 	border-color: var(--color--success);
 	background-color: var(--color--success);
+}
+
+/* The draft and the published agent run the same version: an amber dot with a green ring. */
+.draftDot.publishedDot {
+	border-color: var(--color--success);
+	background-color: var(--color--warning);
 }
 
 .text {
