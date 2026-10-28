@@ -268,7 +268,13 @@ export async function runEpisodicMemoryCandidateProcessor(
 		config.reflect &&
 		candidates.some((candidate) => candidate.kind === 'correction')
 	) {
-		const reflectReports = await runEpisodicMemoryReflection(opts, config, savedEntries, now);
+		const reflectReports = await runEpisodicMemoryReflection(
+			opts,
+			config,
+			candidates,
+			savedEntries,
+			now,
+		);
 		usageReports.push(...reflectReports);
 	}
 	return {
@@ -485,11 +491,12 @@ async function saveCandidateEntries(
 async function runEpisodicMemoryReflection(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
+	candidates: EpisodicMemoryCaptureCandidate[],
 	savedEntries: EpisodicMemoryEntry[],
 	now: Date,
 ): Promise<EpisodicMemoryUsageReport[]> {
 	if (!config.reflect) return [];
-	const cluster = await buildReflectionCluster(opts, config, savedEntries);
+	const cluster = await buildReflectionCluster(opts, config, candidates, savedEntries);
 	if (cluster.length === 0) return [];
 
 	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
@@ -555,27 +562,31 @@ async function runEpisodicMemoryReflection(
 async function buildReflectionCluster(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
+	candidates: EpisodicMemoryCaptureCandidate[],
 	savedEntries: EpisodicMemoryEntry[],
 ): Promise<RetrievedEpisodicMemoryEntry[]> {
 	const limit = Math.max(config.topK, 20);
-	// Each new entry looks up the older entries closest to it, by its own embedding.
-	const searches = savedEntries.flatMap((entry) =>
-		entry.embedding
-			? [
-					opts.memory.episodic.searchEntries(opts.scope, entry.content, {
-						topK: limit,
-						queryEmbedding: entry.embedding,
-						writeScopeOnly: true,
-					}),
-				]
-			: [],
+	// Only corrections look up older entries, because corrections are why reflection runs.
+	const correctionHashes = new Set(
+		candidates
+			.filter((candidate) => candidate.kind === 'correction')
+			.map((candidate) => hashEpisodicMemoryContent(candidate.content)),
 	);
-	const related = (await Promise.all(searches)).flat();
-	related.sort((a, b) => b.vectorScore - a.vectorScore);
-	// Cap the merged searches so the reflection prompt stays bounded however many entries were saved.
+	const seeds = savedEntries.filter(
+		(entry) => entry.embedding && correctionHashes.has(entry.contentHash),
+	);
+	// Each search gets an even share of the cap, so every correction gets its own neighbours.
+	const topK = Math.ceil(limit / Math.max(seeds.length, 1));
+	const searches = seeds.map(
+		async (entry) =>
+			await opts.memory.episodic.searchEntries(opts.scope, entry.content, {
+				topK,
+				queryEmbedding: entry.embedding,
+				writeScopeOnly: true,
+			}),
+	);
 	const relatedById = new Map<string, RetrievedEpisodicMemoryEntry>();
-	for (const entry of related) {
-		if (relatedById.size >= limit) break;
+	for (const entry of (await Promise.all(searches)).flat()) {
 		if (!relatedById.has(entry.id)) relatedById.set(entry.id, entry);
 	}
 	for (const saved of savedEntries) {

@@ -1295,28 +1295,33 @@ describe('agent-directed episodic capture', () => {
 		);
 	});
 
-	it('caps the reflection cluster at the most similar related entries and keeps saved entries', async () => {
+	it('searches neighbours only for corrections, splits the cap per search, and keeps saved entries', async () => {
 		const memory = new InMemoryMemory();
 		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
-		await enqueueCandidate(memory, 'call-2', 'run-1', { content: 'User works in Berlin.' });
+		await enqueueCandidate(memory, 'call-2', 'run-1', {
+			content: 'User moved to Berlin.',
+			replacesEarlier: true,
+		});
+		await enqueueCandidate(memory, 'call-3', 'run-1', { content: 'User works remotely.' });
 		mockedEmbedMany.mockResolvedValue({
 			embeddings: [
 				[1, 0],
 				[0, 1],
+				[1, 1],
 			],
-			usage: { tokens: 6 },
+			usage: { tokens: 9 },
 		} as never);
-		let searchCall = 0;
-		vi.spyOn(memory.episodic, 'searchEntries').mockImplementation(async () => {
-			const offset = searchCall++ * 20;
-			return await Promise.resolve(
-				Array.from({ length: 20 }, (_, i) => ({
-					...entry(),
-					vectorScore: (offset + i) / 100,
-					finalScore: 0,
-				})),
-			);
-		});
+		const search = vi
+			.spyOn(memory.episodic, 'searchEntries')
+			.mockImplementation(async (_scope, query, options) => {
+				return await Promise.resolve(
+					Array.from({ length: options?.topK ?? 0 }, () => ({
+						...entry({ content: `Older entry related to ${query}` }),
+						vectorScore: 0.5,
+						finalScore: 0,
+					})),
+				);
+			});
 		const reflect = vi.fn().mockResolvedValue({ drop: [], merge: [] });
 
 		await runEpisodicMemoryCandidateProcessor({
@@ -1325,12 +1330,25 @@ describe('agent-directed episodic capture', () => {
 			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		});
 
+		expect(search).toHaveBeenCalledTimes(2);
+		expect(search.mock.calls.map(([, query, options]) => [query, options?.topK])).toEqual([
+			['User prefers concise reports.', 10],
+			['User moved to Berlin.', 10],
+		]);
 		const { entries, seedEntryIds } = reflect.mock.calls[0][0];
-		expect(entries).toHaveLength(22);
+		expect(seedEntryIds).toHaveLength(3);
+		expect(entries).toHaveLength(23);
 		const ids = entries.map((e: EpisodicMemoryEntry) => e.id);
 		expect(ids).toEqual(expect.arrayContaining(seedEntryIds));
-		const related = entries.filter((e: EpisodicMemoryEntry) => !seedEntryIds.includes(e.id));
-		expect(Math.min(...related.map((e: { vectorScore: number }) => e.vectorScore))).toBe(0.2);
+		const relatedContents = entries
+			.filter((e: EpisodicMemoryEntry) => !seedEntryIds.includes(e.id))
+			.map((e: EpisodicMemoryEntry) => e.content);
+		expect(relatedContents).toEqual(
+			expect.arrayContaining([
+				'Older entry related to User prefers concise reports.',
+				'Older entry related to User moved to Berlin.',
+			]),
+		);
 	});
 
 	it('does not retry persisted candidates when reflection fails', async () => {
