@@ -66,6 +66,12 @@ export class WorkflowIndexService {
 			// At activation time, the draft nodes are the published nodes.
 			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
+		this.eventService.on('workflow-deactivated', async ({ workflow, workflowId }) => {
+			// A republish also emits this event, with the workflow still published.
+			// The following `workflow-activated` event replaces the published rows.
+			if (workflow.activeVersionId !== null) return;
+			await this.removePublishedDependenciesForWorkflow(workflowId);
+		});
 	}
 
 	async buildIndex() {
@@ -184,6 +190,18 @@ export class WorkflowIndexService {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	async removePublishedDependenciesForWorkflow(workflowId: string) {
+		try {
+			await this.dependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(workflowId);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(
+				`Failed to remove published dependency index for workflow ${workflowId}: ${error.message}`,
+			);
+			this.errorReporter.error(error);
+		}
 	}
 
 	/**

@@ -50,6 +50,7 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -190,6 +191,7 @@ export class SourceControlImportService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -958,6 +960,13 @@ export class SourceControlImportService {
 		if (archivedByPull) {
 			// A pull is a system mutation: no acting user to attribute the archive to.
 			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
+		}
+
+		// The upsert bypasses `WorkflowService`, so no `workflow-saved` event updates the index.
+		// Read the stored row to index with the `versionCounter` the DB trigger assigned.
+		const storedWorkflow = await this.workflowRepository.findOneBy({ id });
+		if (storedWorkflow) {
+			await this.workflowIndexService.updateIndexForDraft(storedWorkflow);
 		}
 
 		try {

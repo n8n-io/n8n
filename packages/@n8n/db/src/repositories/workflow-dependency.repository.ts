@@ -295,6 +295,33 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
+	/**
+	 * Remove the published dependencies of a workflow that is no longer published.
+	 *
+	 * Draft index writes only prune draft rows, so without this the rows of the last
+	 * published version stay after unpublish. The workflow is re-checked inside the
+	 * transaction so a republish that already landed keeps its rows.
+	 *
+	 * @param workflowId The ID of the workflow
+	 * @returns Whether any dependencies were removed
+	 */
+	async removePublishedDependenciesForUnpublishedWorkflow(workflowId: string): Promise<boolean> {
+		return await this.manager.transaction(async (tx) => {
+			const workflow = await tx.findOne(WorkflowEntity, {
+				select: { id: true, activeVersionId: true },
+				where: { id: workflowId },
+			});
+			if (workflow?.activeVersionId) return false;
+
+			const deleteResult = await tx.delete(WorkflowDependency, {
+				workflowId,
+				publishedVersionId: Not(IsNull()),
+			});
+
+			return (deleteResult.affected ?? 0) > 0;
+		});
+	}
+
 	private async acquireLockAndCheckForExistingData(
 		workflowId: string,
 		publishedVersionId: string | null,

@@ -179,6 +179,7 @@ describe('SourceControlImportService', () => {
 				mock<NodesConfig>({ blockDeprecated: true }),
 				nodeTypes,
 			),
+			Container.get(WorkflowIndexService),
 		);
 	};
 
