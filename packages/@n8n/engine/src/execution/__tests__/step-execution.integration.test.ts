@@ -69,6 +69,7 @@ describe('step execution (integration)', () => {
 			lifecycleEventCallback,
 			waitSweepIntervalMs,
 			resolveOn = 'finish',
+			finishCount = 1,
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
@@ -82,6 +83,8 @@ describe('step execution (integration)', () => {
 			 * wait for the finish, or the runtime stops before the sweep runs.
 			 */
 			resolveOn?: 'finish' | 'suspend';
+			/** How many executions must finish first: a child finishes before its parent. */
+			finishCount?: number;
 		} = {},
 	) {
 		let done!: () => void;
@@ -98,9 +101,10 @@ describe('step execution (integration)', () => {
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				let finished = 0;
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
-					if (resolveOn === 'finish') done();
+					if (resolveOn === 'finish' && recorded && ++finished === finishCount) done();
 					return recorded;
 				});
 				const suspendStep = stepStore.suspendStep.bind(stepStore);
@@ -613,6 +617,95 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it('starts an awaited child from a step result and resumes the step with the child result', async () => {
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'call', name: 'Call', type: 'v1-node' },
+				{ id: 'after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'call', outputIndex: 0, inputIndex: 0 },
+				{ from: 'call', to: 'after', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const childGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'child-trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+			],
+			edges: [{ from: 'child-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+		};
+		const childId = generateId();
+		const childResult = [{ nodeId: 'x', iteration: 0, outputs: [[{ json: { ran: 'x' } }]] }];
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				if (request.node.id === 'call' && !request.resume) {
+					return {
+						child: {
+							executionId: childId,
+							workflowId: 'wf-child',
+							graph: childGraph,
+							workflow: { id: 'wf-child' },
+							triggerOutputs: [[{ json: { in: 1 } }]],
+						},
+					};
+				}
+				if (request.node.id === 'call') {
+					const result = request.resume?.status === 'completed' ? request.resume.result : null;
+					return { outputs: [[{ json: { childResult: result } }]] };
+				}
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-parent',
+			graph: parentGraph,
+			finishCount: 2,
+		});
+
+		expect(execution.status).toBe('completed');
+		const call = steps.find(({ nodeId }) => nodeId === 'call');
+		expect(call?.status).toBe('completed');
+		expect(call?.waitDeclaration).toEqual({
+			childExecutionId: childId,
+		});
+		expect(call?.resumeCause).toEqual({
+			kind: 'child',
+			executionId: childId,
+			status: 'completed',
+			result: childResult,
+		});
+		expect(call?.outputs).toEqual([[{ json: { childResult } }]]);
+		expect(steps.find(({ nodeId }) => nodeId === 'after')?.status).toBe('completed');
+
+		// The child ran as its own execution, linked to the step that waited for it.
+		const child = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: childId } });
+		expect(child.status).toBe('completed');
+		expect(child.parentExecutionId).toBe(executionId);
+		expect(child.parentStepId).toBe(call?.id);
+		expect(child.parentAwaited).toBe(true);
+		expect(child.mode).toBe('production');
+		expect(child.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(child.triggerOutputs).toEqual([[{ json: { in: 1 } }]]);
+
+		// `call` ran twice: once to ask for the child, once with its result.
+		const callRuns = requests.filter(({ node }) => node.id === 'call');
+		expect(callRuns).toHaveLength(2);
+		expect(callRuns[0].resume).toBeUndefined();
+		expect(callRuns[1].resume?.kind).toBe('child');
+		expect(callRuns[1].inputs).toEqual([{}]);
+		// What `call` emitted on the resume is what `after` read.
+		const afterRun = requests.find(({ node }) => node.id === 'after');
+		expect(afterRun?.inputs).toEqual([[{ json: { childResult } }]]);
+	});
+
 	it('is idempotent across duplicate step:ready deliveries', async () => {
 		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
@@ -624,6 +717,7 @@ describe('step execution (integration)', () => {
 			{ v1StepExecutor: { execute } },
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
+			{ start: vi.fn() },
 		);
 
 		const executionId = generateId();

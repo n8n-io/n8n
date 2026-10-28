@@ -157,18 +157,52 @@ export type WaitDeclaration =
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding: ResumeBinding;
+	  }
+	| {
+			/**
+			 * The child execution this step waits for. Only the child's end resumes
+			 * the step: the engine does that itself when the child finishes.
+			 */
+			childExecutionId: string;
+			resumeAt?: never;
+			outputsAtDeadline?: never;
+			resumeBinding?: never;
 	  };
 
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
 export type ResumeBinding = 'execution' | 'step';
 
 /**
- * What ended a step's wait, recorded on the row when it resumed. No node code
- * runs on a resume. A deadline carries nothing: the declaration already holds
- * the outputs to emit. A request carries the outputs the node's resume path
- * produced where the request arrived, and the engine emits them unread.
+ * What a child execution hands back to the step that waited for it: the
+ * outputs of every terminal step that completed, in graph order and then by
+ * pass. Kept apart per step, so the consumer decides how to combine them, and
+ * the engine never reads into a slot.
  */
-export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
+export type ChildResult = Array<{ nodeId: string; iteration: number; outputs: StepSlots }>;
+
+/**
+ * A child execution ended, so its awaiting parent step resumes. Unlike the
+ * other causes, this one re-runs the node: the shim answers the node's
+ * `executeWorkflow` call from `result` instead of starting a child again.
+ */
+export type ChildResumeCause = {
+	kind: 'child';
+	executionId: string;
+	status: 'completed';
+	result: ChildResult;
+};
+
+/**
+ * What ended a step's wait, recorded on the row when it resumed. A deadline
+ * carries nothing: the declaration already holds the outputs to emit. A request
+ * carries the outputs the node's resume path produced where the request
+ * arrived, and the engine emits them unread. Neither runs node code; a child
+ * resume does, see `ChildResumeCause`.
+ */
+export type ResumeCause =
+	| { kind: 'deadline' }
+	| { kind: 'request'; outputs: StepSlots }
+	| ChildResumeCause;
 
 /**
  * A wait with no deadline and no resume request would never end, and would
@@ -180,7 +214,8 @@ export function hasResumeCondition(wait: WaitDeclaration): boolean {
 	return (
 		wait.resumeBinding === 'execution' ||
 		wait.resumeBinding === 'step' ||
-		wait.resumeAt !== undefined
+		wait.resumeAt !== undefined ||
+		'childExecutionId' in wait
 	);
 }
 

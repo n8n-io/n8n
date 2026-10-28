@@ -3,6 +3,7 @@ export type {
 	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
+	ChildDeclaration,
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,

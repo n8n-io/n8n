@@ -8,6 +8,8 @@ export type {
 export { stepKeyId } from './execution.types';
 export type {
 	CallerContext,
+	ChildResult,
+	ChildResumeCause,
 	ExecutionMode,
 	ExecutionStatus,
 	ParentLink,
@@ -39,6 +41,7 @@ export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
+export type { ChildStarter } from './step-ready-handler';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,
