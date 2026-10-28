@@ -91,8 +91,8 @@ the credential checks read control-plane state.
 
 - The wait ADR's rule that the engine never runs the node's execute method again holds
   for deadline and request resumes only.
-- A caller with side effects before its `executeWorkflow` call cannot have its node run again. The
-  AI Agent tools need their own design.
+- On engine v2, only the Execute Sub-workflow node can call a sub-workflow. Any other node that
+  calls one fails, including the AI Agent tools.
 - The sub-execution row carries a parent link that the engine alone sets. The read path can show
   parent execution and sub-execution links.
 - A parent execution that awaits a sub-execution reports `waiting`. Engine v1 reports `running`.
