@@ -183,6 +183,9 @@ export class JsTaskRunner extends TaskRunner {
 		const safeAlloc = Buffer.alloc.bind(Buffer);
 		Buffer.allocUnsafe = safeAlloc as typeof Buffer.allocUnsafe;
 		Buffer.allocUnsafeSlow = safeAlloc as typeof Buffer.allocUnsafeSlow;
+		// Disable the shared buffer pool so small buffers get their own backing memory.
+		// Use defineProperty so the value is read-only: sandboxed code must not re-enable the pool.
+		Object.defineProperty(Buffer, 'poolSize', { value: 0, writable: false, configurable: false });
 
 		if (process.env.NODE_ENV !== 'test') {
 			freezeGlobals();

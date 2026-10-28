@@ -6,7 +6,9 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
+
+import { isInsideQuotes } from '@utils/sql-query-parameters';
 
 import type {
 	Mysql2Pool,
@@ -19,6 +21,15 @@ import type {
 } from './interfaces';
 import { BATCH_MODE } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
+
+// A $N:name placeholder needs text for the identifier; a value resolved from
+// a single expression can be null or undefined, which has no identifier form.
+function toIdentifierText(value: unknown, paramNumber: string): string {
+	if (value === null || value === undefined) {
+		throw new UserError(`Parameter $${paramNumber} has no value to use as an identifier`);
+	}
+	return String(value);
+}
 
 export function escapeSqlIdentifier(identifier: string): string {
 	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
@@ -52,13 +63,6 @@ function findParameterMatches(rawQuery: string, regex: RegExp): ParameterMatch[]
 	return matches;
 }
 
-function isInsideQuotes(rawQuery: string, index: number): boolean {
-	const beforeMatch = rawQuery.substring(0, index);
-	const singleQuoteCount = (beforeMatch.match(/'/g) || []).length;
-	const doubleQuoteCount = (beforeMatch.match(/"/g) || []).length;
-	return singleQuoteCount % 2 !== 0 || doubleQuoteCount % 2 !== 0;
-}
-
 function filterValidMatches(matches: ParameterMatch[], rawQuery: string): ParameterMatch[] {
 	return matches.filter(({ index }) => !isInsideQuotes(rawQuery, index));
 }
@@ -77,7 +81,7 @@ function processParameterReplacements(
 			if (isName) {
 				processedQuery = processedQuery.replace(
 					matchStr,
-					escapeSqlIdentifier(replacements[matchIndex].toString()),
+					escapeSqlIdentifier(toIdentifierText(replacements[matchIndex], paramNumber)),
 				);
 			} else {
 				processedQuery = processedQuery.replace(matchStr, '?');
@@ -167,8 +171,12 @@ export const prepareQueryLegacy = (
 
 	for (const match of matches) {
 		if (match.includes(':name')) {
-			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
-			query = query.replace(match, escapeSqlIdentifier(replacements[matchIndex].toString()));
+			const paramNumber = match.replace('$', '').replace(':name', '');
+			const matchIndex = Number(paramNumber) - 1;
+			query = query.replace(
+				match,
+				escapeSqlIdentifier(toIdentifierText(replacements[matchIndex], paramNumber)),
+			);
 		} else {
 			const matchIndex = Number(match.replace('$', '')) - 1;
 			query = query.replace(match, '?');

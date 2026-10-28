@@ -115,4 +115,59 @@ describe('HttpRequestV1', () => {
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('Raw request body', () => {
+		const setupRawBody = (responseFormat: string) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, _itemIndex?: number, fallback?: unknown) => {
+					switch (paramName) {
+						case 'responseFormat':
+							return responseFormat;
+						case 'requestMethod':
+							return 'POST';
+						case 'url':
+							return 'http://example.com';
+						case 'jsonParameters':
+							return false;
+						case 'options':
+							return { bodyContentType: 'raw' };
+						case 'dataPropertyName':
+							return 'data';
+						case 'bodyParametersUi':
+						case 'headerParametersUi':
+						case 'queryParametersUi':
+							return { parameter: [] };
+						default:
+							return fallback;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as jest.Mock).mockRejectedValue(new Error('No credentials'));
+		};
+
+		it.each(['json', 'string'])(
+			'should not request a stream for the %s response format',
+			async (responseFormat) => {
+				setupRawBody(responseFormat);
+				(executeFunctions.helpers.request as jest.Mock).mockResolvedValue('{"a":1}');
+
+				await node.execute.call(executeFunctions);
+
+				const requestOptions = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0] as {
+					useStream?: boolean;
+				};
+				expect(requestOptions.useStream).toBeUndefined();
+			},
+		);
+
+		it('should return the parsed body for the json response format', async () => {
+			setupRawBody('json');
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue('{"a":1}');
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
+		});
+	});
 });

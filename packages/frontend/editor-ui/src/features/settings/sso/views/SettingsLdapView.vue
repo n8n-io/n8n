@@ -52,6 +52,7 @@ type LDAPConfigForm = {
 	pageSize: string;
 	searchTimeout: string;
 	enforceEmailUniqueness: boolean;
+	linkExistingAccountsByEmail: boolean;
 };
 
 type CellClassStyleMethodParams<T> = {
@@ -169,6 +170,7 @@ const onSubmit = async () => {
 		searchPageSize: +formValues.pageSize,
 		searchTimeout: +formValues.searchTimeout,
 		enforceEmailUniqueness: formValues.enforceEmailUniqueness,
+		linkExistingAccountsByEmail: formValues.linkExistingAccountsByEmail,
 	};
 
 	let saveForm = true;
@@ -557,6 +559,17 @@ const getLdapConfig = async () => {
 					type: 'toggle',
 					label: i18n.baseText('settings.ldap.form.enforceEmailUniqueness.label'),
 					tooltipText: i18n.baseText('settings.ldap.form.enforceEmailUniqueness.tooltip'),
+					required: false,
+				},
+				shouldDisplay: whenLoginEnabled,
+			},
+			{
+				name: 'linkExistingAccountsByEmail',
+				initialValue: adConfig.value.linkExistingAccountsByEmail,
+				properties: {
+					type: 'toggle',
+					label: i18n.baseText('settings.ldap.form.linkExistingAccountsByEmail.label'),
+					tooltipText: i18n.baseText('settings.ldap.form.linkExistingAccountsByEmail.tooltip'),
 					required: false,
 				},
 				shouldDisplay: whenLoginEnabled,

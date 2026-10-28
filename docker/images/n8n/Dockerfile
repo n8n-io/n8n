@@ -69,6 +69,8 @@ ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
+# Restrict GraphicsMagick to its commonly used coder set.
+ENV MAGICK_CODER_STABILITY=PRIMARY
 
 WORKDIR /home/node
 
@@ -88,6 +90,27 @@ RUN cd /usr/local/lib/node_modules/n8n && \
     chown -R node:node /home/node
 
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
+
+# Patch all npm bundled tar copies to 7.5.7 for CVE fixes (CVE-2026-23745, CVE-2026-23950, CVE-2026-24842)
+RUN set -e; \
+    for coder in msl mvg pcd svg url; do \
+        rm -f \
+            /usr/lib/GraphicsMagick-*/modules-*/coders/$coder.la \
+            /usr/lib/GraphicsMagick-*/modules-*/coders/$coder.so; \
+    done; \
+    ! find /usr/lib/GraphicsMagick-* -path '*/coders/*' \
+        \( -name 'msl.*' -o -name 'mvg.*' -o -name 'pcd.*' -o -name 'svg.*' -o -name 'url.*' \) \
+        -print -quit | grep -q .; \
+    TAR_TGZ=$(mktemp); \
+    wget -qO "$TAR_TGZ" https://registry.npmjs.org/tar/-/tar-7.5.7.tgz; \
+    for dir in \
+      /usr/local/lib/node_modules/npm/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/cacache/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/node-gyp/node_modules/tar; \
+    do \
+      [ -d "$dir" ] && rm -rf "$dir" && mkdir -p "$dir" && tar -xzf "$TAR_TGZ" --strip-components=1 -C "$dir"; \
+    done; \
+    rm -f "$TAR_TGZ"
 
 EXPOSE 5678/tcp
 USER node

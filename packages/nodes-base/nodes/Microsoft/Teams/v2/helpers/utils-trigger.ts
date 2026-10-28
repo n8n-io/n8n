@@ -1,8 +1,22 @@
-import type { IHookFunctions, IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { randomBytes, timingSafeEqual } from 'crypto';
+import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './types';
 import { microsoftApiRequest } from '../transport';
+
+export function generateClientState(): string {
+	return randomBytes(32).toString('hex');
+}
+
+function secretsMatch(expected: string, actual: string): boolean {
+	const expectedBuffer = Buffer.from(expected);
+	const actualBuffer = Buffer.from(actual);
+
+	return (
+		expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer)
+	);
+}
 
 export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[]> {
 	const { value: teams } = (await microsoftApiRequest.call(
@@ -29,6 +43,7 @@ export async function createSubscription(
 	this: IHookFunctions,
 	webhookUrl: string,
 	resourcePath: string,
+	clientState?: string,
 ): Promise<SubscriptionResponse> {
 	const expirationTime = new Date(Date.now() + 4318 * 60 * 1000).toISOString();
 	const body: IDataObject = {
@@ -40,6 +55,10 @@ export async function createSubscription(
 		lifecycleNotificationUrl: webhookUrl,
 	};
 
+	if (clientState) {
+		body.clientState = clientState;
+	}
+
 	const response = (await microsoftApiRequest.call(
 		this,
 		'POST',
@@ -48,6 +67,51 @@ export async function createSubscription(
 	)) as SubscriptionResponse;
 
 	return response;
+}
+
+export async function deleteSubscriptions(
+	this: IHookFunctions,
+	subscriptionIds: string[],
+): Promise<void> {
+	await Promise.all(
+		subscriptionIds.map(async (subscriptionId) => {
+			try {
+				await microsoftApiRequest.call(this, 'DELETE', `/v1.0/subscriptions/${subscriptionId}`);
+			} catch (error) {
+				// The transport wraps a Graph failure in NodeApiError, which carries the
+				// status on `httpCode` as a string. `httpStatusCode` is never set on it.
+				if (!(error instanceof NodeApiError) || error.httpCode !== '404') {
+					throw error;
+				}
+			}
+		}),
+	);
+}
+
+export function verifyWebhook(this: IWebhookFunctions): boolean {
+	const webhookData = this.getWorkflowStaticData('node');
+	const expectedSecret = webhookData.webhookSecret;
+
+	if (typeof expectedSecret !== 'string' || expectedSecret.length === 0) {
+		return false;
+	}
+
+	const req = this.getRequestObject();
+	const body = req.body as { value?: unknown } | undefined;
+	const notifications = body?.value;
+
+	if (!Array.isArray(notifications) || notifications.length === 0) {
+		return false;
+	}
+
+	return (notifications as unknown[]).every((notification) => {
+		const actualClientState =
+			typeof notification === 'object' && notification !== null
+				? (notification as { clientState?: unknown }).clientState
+				: undefined;
+
+		return typeof actualClientState === 'string' && secretsMatch(expectedSecret, actualClientState);
+	});
 }
 
 export async function getResourcePath(

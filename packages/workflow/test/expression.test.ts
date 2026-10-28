@@ -248,6 +248,28 @@ describe('Expression', () => {
 			expect(testFn).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			[
+				'caller',
+				'={{ (function () { function recover() {} try { return recover["call" + "er"]; } catch (e) { return "threw: " + e.message; } })() }}',
+			],
+			[
+				'callee',
+				'={{ (function () { function recover() {} try { return recover["cal" + "lee"]; } catch (e) { return "threw: " + e.message; } })() }}',
+			],
+			[
+				'arguments',
+				'={{ (function () { function recover() {} try { return recover["argu" + "ments"]; } catch (e) { return "threw: " + e.message; } })() }}',
+			],
+		])(
+			'should reject computed access to "%s" when the key is built at runtime',
+			(name, expression) => {
+				expect(evaluate(expression)).toBe(
+					`threw: Cannot access "${name}" due to security concerns`,
+				);
+			},
+		);
+
 		describe('SafeObject security wrapper', () => {
 			it('should block Object.defineProperty', () => {
 				expect(() => evaluate('={{Object.defineProperty}}')).toThrow();

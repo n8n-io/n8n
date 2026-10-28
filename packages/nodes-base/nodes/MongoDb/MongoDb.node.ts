@@ -1,4 +1,5 @@
 import type {
+	Document,
 	FindOneAndReplaceOptions,
 	FindOneAndUpdateOptions,
 	UpdateOptions,
@@ -19,10 +20,12 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
+
 import {
 	buildParameterizedConnString,
+	buildUpdateFilter,
 	connectMongoClient,
-	parseAndResolveQueryParameters,
 	prepareFields,
 	prepareItems,
 	sanitizeMongoUriInMessage,
@@ -32,6 +35,17 @@ import {
 import type { IMongoParametricCredentials } from './mongoDb.types';
 import { nodeProperties } from './MongoDbProperties';
 import { generatePairedItemData } from '../../utils/utilities';
+
+const aggregationExpressionFields = [
+	'$expr',
+	'$addFields',
+	'$project',
+	'$group',
+	'$set',
+	'$replaceWith',
+	'$redact',
+	'$sortByCount',
+];
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -141,6 +155,8 @@ export class MongoDb implements INodeType {
 							this.getNodeParameter('queryParameters', i, '[]'),
 							node,
 							i,
+							'Query',
+							{ escapeDollarStringsInFields: aggregationExpressionFields },
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -175,6 +191,8 @@ export class MongoDb implements INodeType {
 							this.getNodeParameter('queryParameters', i, '[]'),
 							node,
 							i,
+							'Query',
+							{ rejectNull: true, escapeDollarStringsInFields: ['$expr'] },
 						) as Document;
 						const { deletedCount } = await mdb
 							.collection(this.getNodeParameter('collection', i) as string)
@@ -205,6 +223,8 @@ export class MongoDb implements INodeType {
 							this.getNodeParameter('queryParameters', i, '[]'),
 							node,
 							i,
+							'Query',
+							{ escapeDollarStringsInFields: ['$expr'] },
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -219,8 +239,28 @@ export class MongoDb implements INodeType {
 						const limit = options.limit as number;
 						const skip = options.skip as number;
 						const projection =
-							options.projection && (JSON.parse(options.projection as string) as Document);
-						const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
+							options.projection &&
+							(parseAndResolveQueryParameters(
+								options.projection as string,
+								options.projectionParameters ?? [],
+								node,
+								i,
+								'Projection',
+								{
+									escapeDollarStrings: true,
+									escapeDollarStringsInFields: ['$expr'],
+									preserveDollarStringsInFields: ['$elemMatch'],
+								},
+							) as Document);
+						const sort =
+							options.sort &&
+							(parseAndResolveQueryParameters(
+								options.sort as string,
+								options.sortParameters ?? [],
+								node,
+								i,
+								'Sort',
+							) as Sort);
 
 						if (skip > 0) {
 							query = query.skip(skip);
@@ -272,13 +312,19 @@ export class MongoDb implements INodeType {
 					? { upsert: true }
 					: undefined;
 
-				const updateItems = prepareItems({ items, fields, updateKey, useDotNotation, dateFields });
+				const updateItems = prepareItems({
+					items,
+					fields,
+					updateKey,
+					useDotNotation,
+					dateFields,
+					node: this.getNode(),
+				});
 
 				for (const item of updateItems) {
 					try {
-						const filter = { [updateKey]: item[updateKey] };
+						const filter = buildUpdateFilter(this.getNode(), item, updateKey);
 						if (updateKey === '_id') {
-							filter[updateKey] = new ObjectId(item[updateKey] as string);
 							delete item._id;
 						}
 
@@ -321,13 +367,13 @@ export class MongoDb implements INodeType {
 					useDotNotation,
 					dateFields,
 					isUpdate: nodeVersion >= 1.2,
+					node: this.getNode(),
 				});
 
 				for (const item of updateItems) {
 					try {
-						const filter = { [updateKey]: item[updateKey] };
+						const filter = buildUpdateFilter(this.getNode(), item, updateKey);
 						if (updateKey === '_id') {
-							filter[updateKey] = new ObjectId(item[updateKey] as string);
 							delete item._id;
 						}
 
@@ -370,6 +416,7 @@ export class MongoDb implements INodeType {
 						updateKey: '',
 						useDotNotation,
 						dateFields,
+						node: this.getNode(),
 					});
 
 					const { insertedIds } = await mdb
@@ -418,13 +465,13 @@ export class MongoDb implements INodeType {
 					useDotNotation,
 					dateFields,
 					isUpdate: nodeVersion >= 1.2,
+					node: this.getNode(),
 				});
 
 				for (const item of updateItems) {
 					try {
-						const filter = { [updateKey]: item[updateKey] };
+						const filter = buildUpdateFilter(this.getNode(), item, updateKey);
 						if (updateKey === '_id') {
-							filter[updateKey] = new ObjectId(item[updateKey] as string);
 							delete item._id;
 						}
 

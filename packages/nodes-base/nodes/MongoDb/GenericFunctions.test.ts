@@ -1,8 +1,9 @@
+import { ObjectId } from 'mongodb';
 import type { INode } from 'n8n-workflow';
 
 import {
 	buildParameterizedConnString,
-	parseAndResolveQueryParameters,
+	buildUpdateFilter,
 	prepareItems,
 	sanitizeMongoUriInMessage,
 } from './GenericFunctions';
@@ -114,64 +115,12 @@ describe('MongoDB Node: Generic Functions', () => {
 		});
 	});
 
-	describe('parseAndResolveQueryParameters', () => {
-		it('replaces placeholders with scalars and scalar arrays', () => {
-			const query = JSON.stringify({
-				name: '$1',
-				age: { $gte: '$2' },
-				tags: { $in: '$3' },
-			});
-
-			const result = parseAndResolveQueryParameters(
-				query,
-				'["Alice", 30, ["active", "admin"]]',
-				mockNode,
-				0,
-			);
-
-			expect(result).toEqual({
-				name: 'Alice',
-				age: { $gte: 30 },
-				tags: { $in: ['active', 'admin'] },
-			});
-		});
-
-		it('only replaces complete values, not keys or parts of strings', () => {
-			const query = JSON.stringify({ $1: 'key', exact: '$1', partial: 'user-$1' });
-
-			const result = parseAndResolveQueryParameters(query, ['Alice'], mockNode, 0);
-
-			expect(result).toEqual({ $1: 'key', exact: 'Alice', partial: 'user-$1' });
-		});
-
-		it('does not replace placeholders when parameters are empty', () => {
-			const result = parseAndResolveQueryParameters('{ "name": "$1" }', [], mockNode, 0);
-
-			expect(result).toEqual({ name: '$1' });
-		});
-
-		it.each([{ parameters: [{ name: 'Alice' }] }, { parameters: [[['nested']]] }])(
-			'throws for unsupported parameter value $parameters',
-			({ parameters }) => {
-				expect(() =>
-					parseAndResolveQueryParameters('{ "name": "$1" }', parameters, mockNode, 0),
-				).toThrow(/must be a scalar or an array of scalars/);
-			},
-		);
-
-		it('throws when a parameter is not used', () => {
-			expect(() =>
-				parseAndResolveQueryParameters('{ "name": "$1" }', ['Alice', 30], mockNode, 0),
-			).toThrow('Query parameter 2 is not used');
-		});
-	});
-
 	describe('prepareItems', () => {
 		it('should select fields', () => {
 			const items = [{ json: { name: 'John', age: 30 } }, { json: { name: 'Jane', age: 25 } }];
 			const fields = ['name'];
 
-			const result = prepareItems({ items, fields });
+			const result = prepareItems({ items, fields, node: mockNode });
 
 			expect(result).toEqual([{ name: 'John' }, { name: 'Jane' }]);
 		});
@@ -181,7 +130,7 @@ describe('MongoDB Node: Generic Functions', () => {
 			const fields = ['age'];
 			const updateKey = 'name';
 
-			const result = prepareItems({ items, fields, updateKey });
+			const result = prepareItems({ items, fields, updateKey, node: mockNode });
 
 			expect(result).toEqual([
 				{ name: 'John', age: 30 },
@@ -194,7 +143,13 @@ describe('MongoDB Node: Generic Functions', () => {
 			const fields = ['user.name'];
 			const useDotNotation = true;
 
-			const result = prepareItems({ items, fields, updateKey: '', useDotNotation });
+			const result = prepareItems({
+				items,
+				fields,
+				updateKey: '',
+				useDotNotation,
+				node: mockNode,
+			});
 
 			expect(result).toEqual([{ user: { name: 'John' } }, { user: { name: 'Jane' } }]);
 		});
@@ -215,11 +170,27 @@ describe('MongoDB Node: Generic Functions', () => {
 				useDotNotation,
 				dateFields,
 				isUpdate,
+				node: mockNode,
 			});
 			expect(result).toEqual([
 				{ date: new Date('2023-10-01T00:00:00Z') },
 				{ date: new Date('2023-10-02T00:00:00Z') },
 			]);
+		});
+
+		it.each([
+			['null', null],
+			['an object', { $ne: 'x' }],
+			['an array', ['a']],
+		])('rejects %s as an update key value', (_label, value) => {
+			expect(() =>
+				prepareItems({
+					items: [{ json: { id: value, name: 'Alice' } }],
+					fields: ['name'],
+					updateKey: 'id',
+					node: mockNode,
+				}),
+			).toThrow(/must be a string, number, boolean, or date/);
 		});
 
 		it('should handle updates', () => {
@@ -238,8 +209,41 @@ describe('MongoDB Node: Generic Functions', () => {
 				useDotNotation,
 				dateFields: [],
 				isUpdate,
+				node: mockNode,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('buildUpdateFilter', () => {
+		it('rejects an empty update key', () => {
+			expect(() => buildUpdateFilter(mockNode, { id: 'a-1' }, '')).toThrow(
+				'The Update Key must not be empty',
+			);
+		});
+
+		it('rejects an operator as the update key', () => {
+			expect(() => buildUpdateFilter(mockNode, { $expr: true }, '$expr')).toThrow(
+				'The Update Key must not start with "$"',
+			);
+		});
+
+		it('reads a dotted update key from the prepared item', () => {
+			expect(buildUpdateFilter(mockNode, { user: { id: 'u-1' } }, 'user.id')).toEqual({
+				'user.id': 'u-1',
+			});
+		});
+
+		it('converts a valid _id string to an ObjectId', () => {
+			const id = '662a2b1a2f8b9c0d1e2f3a4b';
+
+			expect(buildUpdateFilter(mockNode, { _id: id }, '_id')).toEqual({ _id: new ObjectId(id) });
+		});
+
+		it('rejects an invalid _id string', () => {
+			expect(() => buildUpdateFilter(mockNode, { _id: 'invalid' }, '_id')).toThrow(
+				'The value of "_id" must be a valid ObjectId string',
+			);
 		});
 	});
 });

@@ -33,8 +33,10 @@ export async function validateAuth(context: IWebhookFunctions) {
 		}
 	} else if (authentication === 'n8nUserAuth') {
 		const webhookName = context.getWebhookName();
+		const mode = context.getNodeParameter('mode', 'hostedChat') as 'hostedChat' | 'webhook';
 
-		if (webhookName !== 'setup') {
+		// Only the hosted chat page GET skips this check. In other modes `setup` is not a page.
+		if (!(webhookName === 'setup' && mode === 'hostedChat')) {
 			function getCookie(name: string) {
 				const value = `; ${headers.cookie}`;
 				const parts = value.split(`; ${name}=`);

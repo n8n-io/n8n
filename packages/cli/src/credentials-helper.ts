@@ -493,6 +493,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 			secretsEnabled: canUseExternalSecrets,
 		});
 
+		// Secret values supplied by an instance overwrite stay out of `$self`.
+		const selfData = { ...decryptedData };
+		for (const { name, typeOptions } of credentialsProperties) {
+			if (
+				(typeOptions?.password || typeOptions?.expirable) &&
+				dataWithOverwrites[name] !== decryptedDataOriginal[name]
+			) {
+				delete selfData[name];
+			}
+		}
+
 		if (expressionResolveValues) {
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
@@ -506,7 +517,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					additionalKeys,
 					executeData,
 					false,
-					decryptedData,
+					selfData,
 				) as ICredentialDataDecryptedObject;
 			} catch (e) {
 				e.message += ' [Error resolving credentials]';
@@ -530,7 +541,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					additionalKeys,
 					undefined,
 					undefined,
-					decryptedData,
+					selfData,
 				) as ICredentialDataDecryptedObject;
 			} finally {
 				await workflow.expression.releaseIsolate();
