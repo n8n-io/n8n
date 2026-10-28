@@ -11,7 +11,12 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	ProjectNotFoundError,
+	ProjectScopeService,
+	RoleService,
+} from '@n8n/backend-services';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -47,8 +52,6 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
-import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-
 @Service()
 export class DataTableService {
 	constructor(
@@ -62,7 +65,7 @@ export class DataTableService {
 		private readonly csvImportService: DataTableCsvImportService,
 		private readonly eventService: EventService,
 		private readonly projectRepository: ProjectRepository,
-		private readonly projectService: ProjectService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -102,14 +105,17 @@ export class DataTableService {
 			return personalProject.id;
 		}
 
-		const existingProject = await this.projectService.findProject(projectId);
-		if (!existingProject) {
+		const existingProjectIds = await this.projectRepository.findExistingIds([projectId]);
+		if (existingProjectIds.length === 0) {
 			throw new ProjectNotFoundError(projectId);
 		}
 
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'dataTable:create',
-		]);
+		const roles = await this.projectScopeService.getProjectRoleSlugs(user, ['dataTable:create']);
+		const project = await this.projectRepository.findOneWithUserRoles(
+			projectId,
+			user.id,
+			roles ?? undefined,
+		);
 		if (!project) throw new DataTableAccessDeniedError('create');
 
 		return project.id;
