@@ -72,6 +72,7 @@ export class AgentWakeService {
 
 	async requestWake(threadId: string): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
 				command: 'wake-agent-background-job',
@@ -85,12 +86,15 @@ export class AgentWakeService {
 	@OnPubSubEvent('wake-agent-background-job', { instanceType: 'main' })
 	handleWakeRelay({ threadId }: { threadId: string }): void {
 		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+
 		this.scheduleLocal(threadId);
 	}
 
 	async drainUnconsumed(): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+
 		const threadIds = new Set([...(await this.jobRepository.findThreadsWithUnconsumedMail())]);
+
 		for (const threadId of threadIds) this.scheduleLocal(threadId);
 	}
 
@@ -169,22 +173,28 @@ export class AgentWakeService {
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
+
 		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
 		const owned = new Set<string>();
+
 		for (const id of new Set(
 			pending.flatMap((job) => (job.pauseRequestId ? [job.pauseRequestId] : [])),
 		)) {
 			if (await this.threadRepository.hasTaskStopWithId(id)) owned.add(id);
 		}
+
 		pending = pending.filter((job) => !job.pauseRequestId || !owned.has(job.pauseRequestId));
 		const stopped = pending.filter((job) => job.pauseRequestId);
+
 		if (stopped.length > 0) {
 			// A worker can stop after settlement and before it replaces older checkpoints.
 			for (const job of stopped) await this.backgroundJobService.retainLatestStopGroup(job);
+
 			pending = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
 				(job) => !job.pauseRequestId || !owned.has(job.pauseRequestId),
 			);
 		}
+
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
 		)) {
@@ -347,6 +357,7 @@ export class AgentWakeService {
 		signal: AbortSignal,
 	): Promise<void> {
 		this.activeWakes.add(threadId);
+
 		try {
 			await this.orchestrator.executeForWake({
 				agentId: agent.id,

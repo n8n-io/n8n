@@ -195,6 +195,7 @@ describe('AgentMessageQueueService', () => {
 			failures: [],
 			pause: { id: 'stop-1', requestsCompleted: true },
 		});
+
 		beforeEach(() => {
 			settingsService.getEnabled.mockResolvedValue(true);
 			threadRepository.lockById.mockResolvedValue(makeThread());
@@ -228,9 +229,12 @@ describe('AgentMessageQueueService', () => {
 			threadRepository.findStopTargetsStillActive.mockResolvedValueOnce([
 				{ jobId: 'job-1', title: 'Research' },
 			]);
+
 			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
 			expect(executionService.reserveExecution).not.toHaveBeenCalled();
+
 			const claimed = await service.claimNext('thread-1', async () => true);
+
 			expect(claimed?.recording).toMatchObject({
 				acceptsSteering: false,
 				hideUserMessageFromTranscript: true,
@@ -246,6 +250,7 @@ describe('AgentMessageQueueService', () => {
 
 		it('waits until cancellation requests finish even when the captured set is empty', async () => {
 			threadRepository.findTaskStop.mockResolvedValue({ ...stop(), pause: { id: 'stop-1' } });
+
 			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
 		});
 
@@ -253,14 +258,18 @@ describe('AgentMessageQueueService', () => {
 			const failure = { jobId: 'job-1', title: 'Research' };
 			threadRepository.findTaskStop.mockResolvedValue({ ...stop(), failures: [failure] });
 			threadRepository.findStopTargetsStillActive.mockResolvedValue([failure]);
+
 			const claimed = await service.claimNext('thread-1', async () => true);
+
 			expect(claimed?.payload.message).toContain('Research');
 			expect(claimed?.payload.message).toContain('failures');
 		});
 
 		it('stores the report as hidden internal input in the caller transaction', async () => {
 			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+
 			await service.enqueueStopReport(makeThread(), 'stop-1', 'Summarize the stop', {});
+
 			expect(messages.createInput).toHaveBeenCalledWith(
 				expect.objectContaining({ origin: { source: 'chat', hidden: true, stopReport: true } }),
 				expect.anything(),

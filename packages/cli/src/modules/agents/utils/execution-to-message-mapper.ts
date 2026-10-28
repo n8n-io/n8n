@@ -248,6 +248,7 @@ function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPer
 		!isFatalSessionOutcomeError(execution.error, execution.timeline)
 			? execution.error
 			: undefined;
+
 	if (
 		execution.stopReport ||
 		backgroundJobSignal ||

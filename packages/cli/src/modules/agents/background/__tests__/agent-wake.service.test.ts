@@ -143,6 +143,7 @@ describe('AgentWakeService', () => {
 		]);
 		cancellations.hasTaskStopWithId.mockResolvedValue(true);
 		await service.attemptWake('thread-1');
+
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 	});
 

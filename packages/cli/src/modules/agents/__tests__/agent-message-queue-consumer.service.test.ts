@@ -183,6 +183,7 @@ describe('AgentMessageQueueConsumer', () => {
 		await vi.waitFor(() =>
 			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
 		);
+
 		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledWith(
 			expect.objectContaining({ pauseReport: true, hideUserMessageFromTranscript: true }),
 		);

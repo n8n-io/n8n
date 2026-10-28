@@ -1243,6 +1243,7 @@ describe('AgentRuntime — execution counters', () => {
 				}
 				const model = mode === 'generate' ? generateText : streamText;
 				const request = model.mock.lastCall?.[0];
+
 				expect(request.toolChoice).toBe(toolsEnabled === false ? 'none' : undefined);
 				expect(request.tools.work).toBeDefined();
 				expect(request.tools['openai.web_search']).toMatchObject({

@@ -1065,6 +1065,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					| (RunOptions & ExecutionOptions)
 					| undefined;
 				const hook = options?.guardrails?.hooks.find((candidate) => candidate.after);
+
 				if (!hook?.before || !hook.after) throw new Error('Expected a budget guardrail hook');
 
 				const ctx = {
@@ -1334,6 +1335,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 				const error = new Error('Agent run was aborted');
+
 				if (failure === 'chunk') {
 					await writer.write({ type: 'error', error });
 					await writer.write({
@@ -1345,7 +1347,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				} else {
 					await writer.abort(error);
 				}
+
 				await settled;
+
 				expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 					'execution-1',
 					expect.objectContaining({
@@ -1371,6 +1375,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				executionService.getAbortSignal.mockReturnValue(controller.signal);
 				sdkStart.mockImplementation(async () => {
 					if (ownershipLost) controller.abort(error);
+
 					return {
 						runId: 'runtime-run-1',
 						stream: makeReadableStream([
@@ -1379,6 +1384,7 @@ describe('AgentExecutionOrchestratorService', () => {
 						]),
 					};
 				});
+
 				await expect(collect(stream)).resolves.toContainEqual({ type: 'error', error });
 			},
 		);
@@ -2539,6 +2545,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
 		const hooks = options.guardrails?.hooks ?? [];
+
 		expect(hooks.filter((hook) => hook.after)).toHaveLength(1);
 	});
 
@@ -3139,10 +3146,13 @@ describe('AgentExecutionOrchestratorService', () => {
 				abortSignal: new AbortController().signal,
 			});
 			const recording = executionService.startExecutionRecording.mock.calls[0][0];
+
 			expect(recording.initialTimeline).toBeUndefined();
 			expect(recording.wake).toEqual({ jobIds: ['paused-job'] });
 			expect(recording.acceptsSteering).toBe(false);
+
 			const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+
 			expect(options.onInputBoundary).toBeUndefined();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
@@ -3183,9 +3193,11 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
 		expect(options.toolsEnabled).toBe(false);
+
 		const decisions = await Promise.all(
 			(options.guardrails?.hooks ?? []).map(async (hook) => await hook.beforeTool?.(mock())),
 		);
+
 		expect(decisions).toContainEqual({ action: 'stop', code: 'background-pause-report' });
 	});
 

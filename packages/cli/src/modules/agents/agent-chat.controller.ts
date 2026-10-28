@@ -763,6 +763,7 @@ export class AgentChatController {
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
 			includePaused: true,
 		});
+
 		return this.mapBackgroundJobsToDto(jobs);
 	}
 
@@ -838,6 +839,7 @@ export class AgentChatController {
 		@Body payload: AgentTaskCancellationDto,
 	): Promise<AgentTaskCancellationState> {
 		await this.requireTaskThread(req);
+
 		return await this.taskCancellation.request(req.params.threadId, payload.planId);
 	}
 
@@ -849,6 +851,7 @@ export class AgentChatController {
 		@Body payload: AgentTaskCancellationDto,
 	): Promise<void> {
 		await this.requireTaskThread(req);
+
 		await this.chatRelay.relayQueuedStop(
 			res,
 			req.params.threadId,
@@ -887,6 +890,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentTaskCancellationState | null> {
 		await this.requireTaskThread(req);
+
 		return await this.taskCancellation.state(req.params.threadId);
 	}
 

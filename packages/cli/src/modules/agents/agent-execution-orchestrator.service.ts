@@ -1121,6 +1121,7 @@ export class AgentExecutionOrchestratorService {
 		if (!config.admittedExecution && !config.isWakeRun) {
 			await this.settingsService.assertEnabled();
 		}
+
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -1616,6 +1617,7 @@ export class AgentExecutionOrchestratorService {
 			sessionMode,
 		} = config;
 		const messageContext = this.createN8nChatMessageContext(memory, user.id);
+
 		return this.streamChatResponse({
 			pauseReport: config.pauseReport,
 			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
@@ -1837,6 +1839,7 @@ export class AgentExecutionOrchestratorService {
 		messageContext: IntegrationMessageContext | null,
 	) {
 		const { agentId, message, memory, identity, abortSignal } = config;
+
 		// A wake carries no `episodicScope`: the background job record does not store the
 		// originating turn's decision, so a wake on an integration thread runs without episodic memory.
 		return this.streamChatResponse({

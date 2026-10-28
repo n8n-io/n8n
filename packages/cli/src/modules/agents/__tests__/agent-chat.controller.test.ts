@@ -1864,11 +1864,13 @@ describe('AgentChatController task cancellation', () => {
 		);
 		expect(plans.findLatestPlan).not.toHaveBeenCalled();
 	});
+
 	it('stops the displayed plan without an automatic wake', async () => {
 		const { controller, agentsService, taskCancellation } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
 		const payload = { planId: 'plan' };
 		await controller.cancelTasks(request as never, makeSseResponse([]), payload);
+
 		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan');
 	});
 
@@ -1876,6 +1878,7 @@ describe('AgentChatController task cancellation', () => {
 		const { controller, agentsService, agentExecutionService, taskCancellation } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
 		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+
 		await expect(
 			controller.cancelTasks(request as never, makeSseResponse([]), {
 				planId: null,

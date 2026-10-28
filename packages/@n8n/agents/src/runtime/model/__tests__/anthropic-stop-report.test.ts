@@ -44,7 +44,9 @@ function response(stream: boolean): Response {
 		stop_sequence: null,
 		usage: { input_tokens: 100, output_tokens: 5 },
 	};
+
 	if (!stream) return Response.json(message);
+
 	const events = [
 		{ type: 'message_start', message: { ...message, content: [], stop_reason: null } },
 		{ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
@@ -61,6 +63,7 @@ function response(stream: boolean): Response {
 		},
 		{ type: 'message_stop' },
 	];
+
 	return new Response(
 		events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
 		{ headers: { 'content-type': 'text/event-stream' } },
@@ -88,20 +91,27 @@ describe.each(['generate', 'stream'] as const)('Anthropic Stop report with %s', 
 			],
 			providerTools: [{ name: 'anthropic.web_search_20250305', args: {} }],
 		});
+
 		for (const toolsEnabled of [true, false]) {
 			if (mode === 'generate') {
 				const result = await runtime.generate(history, { toolsEnabled });
+
 				expect(result.finishReason).toBe('stop');
 			} else {
 				const result = await runtime.stream(history, { toolsEnabled, smoothStream: false });
 				const chunks: StreamChunk[] = [];
+
 				for await (const chunk of result.stream) chunks.push(chunk);
+
 				expect(chunks.filter((chunk) => chunk.type === 'error')).toEqual([]);
 				expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
 			}
 		}
+
 		expect(fetch).toHaveBeenCalledTimes(2);
+
 		const [normal, report] = fetch.mock.calls.map(([, init]) => JSON.parse(init?.body as string));
+
 		expect(report.messages).toEqual(normal.messages);
 		expect(report.messages[1].content).toEqual([
 			{

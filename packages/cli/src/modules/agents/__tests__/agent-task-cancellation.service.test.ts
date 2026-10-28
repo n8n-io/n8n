@@ -33,9 +33,11 @@ function setup() {
 	const messages = mock<AgentMessageQueueService>({ onAvailable: vi.fn() });
 	const attachments = mock<AgentChatAttachmentService>();
 	const lease = new AbortController();
+
 	chat.requestCancel.mockResolvedValue(true);
 	queue.discardPending.mockResolvedValue([]);
 	messages.enqueueStopReport.mockResolvedValue(mock({ id: 'report-queue' }));
+
 	let saved: Awaited<ReturnType<AgentExecutionThreadRepository['findTaskStop']>> = null;
 	const work = [
 		mock<AgentBackgroundJob>({
@@ -45,6 +47,7 @@ function setup() {
 			result: 'Saved result',
 		}),
 	];
+
 	repository.captureStopTargets.mockResolvedValue({ executionIds: [], jobIds: [], threadIds: [] });
 	repository.findTaskStop.mockImplementation(async () => saved);
 	repository.saveStop.mockImplementation(async (value) => (saved = value));
@@ -72,6 +75,7 @@ function setup() {
 	locks.withLease.mockImplementation(
 		async (_namespace, _key, callback) => await callback(lease.signal),
 	);
+
 	const service = new AgentTaskCancellationService(
 		repository,
 		executions,
@@ -86,6 +90,7 @@ function setup() {
 		messages,
 		attachments,
 	);
+
 	return {
 		service,
 		repository,
@@ -103,7 +108,9 @@ function setup() {
 
 it('saves a stop between tasks and requests an acknowledgement without changing the plan', async () => {
 	const { service, repository, queue, jobs, messages, work } = setup();
+
 	const state = await service.request('thread', null);
+
 	expect(repository.saveStop.mock.invocationCallOrder[0]).toBeLessThan(
 		jobs.requestPause.mock.invocationCallOrder[0],
 	);
@@ -125,7 +132,9 @@ it('interrupts the current response through runtime coordination after saving th
 	executions.findLatestByThreadId.mockResolvedValue(
 		mock<AgentExecution>({ id: 'response', status: 'running' }),
 	);
+
 	await service.request('thread', null);
+
 	expect(chat.requestCancel).toHaveBeenCalledExactlyOnceWith({
 		projectId: 'project',
 		agentId: 'agent',
@@ -142,6 +151,7 @@ it('interrupts the current response through runtime coordination after saving th
 
 it('rejects a stale displayed plan before it changes the queue or jobs', async () => {
 	const { service, queue, jobs } = setup();
+
 	await expect(service.request('thread', randomUUID())).rejects.toThrow('The plan has changed');
 	expect(queue.discardPending).not.toHaveBeenCalled();
 	expect(jobs.requestPause).not.toHaveBeenCalled();
@@ -149,10 +159,14 @@ it('rejects a stale displayed plan before it changes the queue or jobs', async (
 
 it('reuses the stop boundary without discarding the queue again', async () => {
 	const { service, repository, queue, messages } = setup();
+
 	const first = await service.request('thread', null);
 	const firstId = (await repository.findTaskStop('thread'))!.pause!.id;
+
 	expect(version(firstId)).toBe(7);
+
 	const second = await service.request('thread', null);
+
 	expect((await repository.findTaskStop('thread'))!.pause!.id).toBe(firstId);
 	expect(second.requestedAt).toBe(first.requestedAt);
 	expect(messages.enqueueStopReport).toHaveBeenCalledOnce();
@@ -162,14 +176,18 @@ it('reuses the stop boundary without discarding the queue again', async () => {
 
 it('creates a new stop identity when work resumes', async () => {
 	const { service, repository } = setup();
+
 	await service.request('thread', null);
 	const first = (await repository.findTaskStop('thread'))!;
+
 	await repository.saveStop(
 		{ ...first, pause: { ...first.pause!, resumedAt: new Date().toISOString() } },
 		{},
 	);
+
 	await service.request('thread', null);
 	const second = (await repository.findTaskStop('thread'))!;
+
 	expect(version(second.pause!.id)).toBe(7);
 	expect(second.pause!.id).not.toBe(first.pause!.id);
 });
@@ -184,8 +202,11 @@ it('shows Stopping until active work has settled and preserves paused checkpoint
 			parentThreadId: 'thread',
 		}),
 	);
+
 	expect((await service.request('thread', null)).status).toBe('stopping');
+
 	work[1].status = 'paused';
+
 	expect((await service.state('thread'))?.status).toBe('stopped');
 });
 
@@ -200,13 +221,16 @@ it('keeps a failed stop retryable and reconciles work that has since finished', 
 		}),
 	);
 	jobs.requestPause.mockRejectedValueOnce(new Error('Unavailable'));
+
 	expect(await service.request('thread', null)).toMatchObject({
 		status: 'failed',
 		failures: [{ jobId: 'workflow', title: 'Workflow' }],
 	});
+
 	jobs.requestPause.mockImplementation(async () => {
 		work[1].status = 'completed';
 	});
+
 	expect(await service.request('thread', null)).toMatchObject({ status: 'stopped', failures: [] });
 });
 
@@ -224,18 +248,23 @@ it('keeps a failed foreground checkpoint stop retryable', async () => {
 		{ jobId: 'response', title: 'Current response' },
 	]);
 	chat.requestCancel.mockRejectedValueOnce(new Error('Stop failed'));
+
 	expect(await service.request('thread', null)).toMatchObject({
 		status: 'failed',
 		failures: [{ jobId: 'response', title: 'Current response' }],
 	});
+
 	repository.findStopTargetsStillActive.mockResolvedValue([]);
+
 	expect(await service.request('thread', null)).toMatchObject({ status: 'stopped', failures: [] });
 });
 
 it('deletes discarded attachments after the stop transaction commits', async () => {
 	const { service, queue, attachments, jobs } = setup();
 	queue.discardPending.mockResolvedValue(['attachment-1']);
+
 	await service.request('thread', null);
+
 	expect(attachments.deleteByIds).toHaveBeenCalledExactlyOnceWith(['attachment-1']);
 	expect(queue.discardPending.mock.invocationCallOrder[0]).toBeLessThan(
 		attachments.deleteByIds.mock.invocationCallOrder[0],
@@ -244,17 +273,21 @@ it('deletes discarded attachments after the stop transaction commits', async () 
 		jobs.requestPause.mock.invocationCallOrder[0],
 	);
 });
+
 it('stops side effects when the cancellation lease is lost', async () => {
 	const { service, repository, jobs, lease, messages } = setup();
 	repository.findJobsCapturedByStop.mockImplementation(async () => {
 		lease.abort(new Error('Lease lost'));
+
 		return [];
 	});
+
 	await expect(service.request('thread', null)).rejects.toThrow('Lease lost');
 	expect(jobs.requestPause).not.toHaveBeenCalled();
 	expect(repository.saveStop).toHaveBeenCalledOnce();
 	expect(messages.onAvailable).not.toHaveBeenCalled();
 });
+
 it('offers Retry when a suspended response cannot be canceled', async () => {
 	const { service, repository, executions, chat } = setup();
 	repository.captureStopTargets.mockResolvedValue({
@@ -269,6 +302,7 @@ it('offers Retry when a suspended response cannot be canceled', async () => {
 		{ jobId: 'response', title: 'Current response' },
 	]);
 	chat.requestCancel.mockResolvedValue(false);
+
 	expect(await service.request('thread', null)).toMatchObject({
 		status: 'failed',
 		failures: [{ jobId: 'response', title: 'Current response' }],
@@ -280,7 +314,9 @@ it('pauses parent-run work in the same transaction as the Stop record', async ()
 	plans.findLatestPlan.mockResolvedValue(mock({ id: 'plan', data: {} }));
 	const stoppedPlan = { title: 'Plan', description: '', items: [] };
 	plans.pauseManualTasks.mockResolvedValue(stoppedPlan);
+
 	await service.request('thread', 'plan');
+
 	expect(plans.pauseManualTasks).toHaveBeenCalledWith('thread', 'plan', {});
 	expect(messages.enqueueStopReport.mock.calls[0][2]).toContain(JSON.stringify(stoppedPlan));
 });

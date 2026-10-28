@@ -68,19 +68,23 @@ describe('AgentChatRelayService', () => {
 				'thread',
 				async (onQueued) => {
 					onQueued('report');
+
 					expect(streams.subscribe).toHaveBeenCalledOnce();
 					expect(subscription.accepted).not.toHaveBeenCalled();
 				},
 			);
 			await vi.waitFor(() => expect(subscription.accepted).toHaveBeenCalledOnce());
+
 			expect(sentEvents(writes)).toContainEqual({
 				type: 'message-queued',
 				queueId: 'report',
 				sessionId: 'thread',
 			});
 			expect(res.end).not.toHaveBeenCalled();
+
 			finish();
 			await pending;
+
 			expect(subscription.close).toHaveBeenCalledOnce();
 			expect(res.end).toHaveBeenCalledOnce();
 		});
@@ -89,6 +93,7 @@ describe('AgentChatRelayService', () => {
 			const writes: string[] = [];
 			const res = makeSseResponse(writes);
 			await relay.relayQueuedStop(res as unknown as FlushableResponse, 'thread', async () => {});
+
 			expect(sentEvents(writes)).toEqual([{ type: 'done', sessionId: 'thread' }]);
 		});
 	});

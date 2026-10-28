@@ -188,6 +188,7 @@ test.describe(
 				return stream;
 			};
 			const jobs = async () => await api.agents.backgroundTasks(project.id, agent.id, threadId);
+
 			try {
 				await mockModel(n8nContainer);
 				const firstTurn = await chat('Start the workflow with value original.', true);
@@ -207,7 +208,9 @@ test.describe(
 				const stopped = [
 					{ id: firstJob.id, kind: 'workflow', status: 'cancelled', pauseRequested: true },
 				];
+
 				expect(stop.tasks).toMatchObject(stopped);
+
 				const reportRequest = {
 					method: 'POST',
 					path: '/v1/messages',
@@ -228,6 +231,7 @@ test.describe(
 						return items.some((item) => item.id === queued?.queueId);
 					})
 					.toBe(true);
+
 				expect((await jobs()).tasks).toMatchObject(stopped);
 				expect((await api.workflows.getExecution(original.id)).status).toBe('canceled');
 				const oldCallback = await api.webhooks.trigger(beforeStop.callbackPath, {

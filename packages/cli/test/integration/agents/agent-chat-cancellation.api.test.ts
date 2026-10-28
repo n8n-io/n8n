@@ -71,6 +71,7 @@ describe.each(['execution', 'run'] as const)('Preview %s cancellation HTTP route
 			vi.spyOn(storage, 'getStatus').mockResolvedValue({ status: 'active', checkpoint });
 			const cancelSuspended = vi.spyOn(storage, 'cancelSuspended').mockResolvedValue(true);
 			vi.spyOn(storage, 'delete').mockResolvedValue(undefined);
+
 			if (kind === 'execution') {
 				chat.register(
 					{
@@ -84,6 +85,7 @@ describe.each(['execution', 'run'] as const)('Preview %s cancellation HTTP route
 					controller,
 				);
 			}
+
 			try {
 				const path =
 					kind === 'execution' ? `${threadId}/executions/${executionId}` : `runs/${runId}`;
@@ -92,8 +94,10 @@ describe.each(['execution', 'run'] as const)('Preview %s cancellation HTTP route
 					.delete(`/projects/${project.id}/agents/v2/${agentId}/chat/${path}`)
 					.query(scope === undefined ? {} : { scope })
 					.expect(scope === 'invalid' ? 400 : 200);
+
 				if (kind === 'execution') expect(controller.signal.aborted).toBe(scope !== 'invalid');
 				else expect(cancelSuspended).toHaveBeenCalledTimes(scope === 'invalid' ? 0 : 1);
+
 				if (scope === 'foreground' || scope === 'invalid') {
 					expect(cancelJobs).not.toHaveBeenCalled();
 				} else {

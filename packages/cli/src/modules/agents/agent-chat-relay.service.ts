@@ -169,11 +169,13 @@ export class AgentChatRelayService {
 		const delivery = initSseStream(res);
 		let queueId: string | undefined;
 		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
+
 		try {
 			await request((id) => {
 				queueId = id;
 				subscription = this.queuedPreviewStreams.subscribe(id, delivery);
 			});
+
 			if (subscription && queueId) {
 				subscription.accepted();
 				delivery.send({ type: 'message-queued', queueId, sessionId: threadId });

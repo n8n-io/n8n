@@ -1693,6 +1693,7 @@ describe('AgentExecutionRepository', () => {
 				...item.recording,
 				record: { ...recorder.getMessageRecord(), finishReason },
 			});
+
 			if (settle) await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
 
@@ -1763,13 +1764,17 @@ describe('AgentExecutionRepository', () => {
 				const services = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
+
 				await enqueue(services, input(threadId, 'Start', 'new'));
 				const first = await claim(services, threadId);
 				await finish(services, first);
+
 				const stopId = uuid();
 				await services.txRunner.run({}, async (ctx) => {
 					const thread = await services.threads.lockById(threadId, ctx);
+
 					if (!thread) throw new Error('Missing thread');
+
 					await services.threads.saveStop(
 						{
 							threadId,
@@ -1783,14 +1788,18 @@ describe('AgentExecutionRepository', () => {
 					);
 					await services.queue.enqueueStopReport(thread, stopId, 'Summarize the stop', ctx);
 				});
+
 				const pending = await enqueue(remote, input(threadId, 'Continue'));
 				const report = await claim(remote, threadId);
+
 				expect(report.payload).toMatchObject({ hidden: true, stopReportId: stopId });
 				expect(report.recording.acceptsSteering).toBe(false);
 				expect(report.recording.hideUserMessageFromTranscript).toBe(true);
 				expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
 				expect((await services.threads.findTaskStop(threadId))?.pause.resumedAt).toBeUndefined();
+
 				const recorder = new ExecutionRecorder();
+
 				if (result === 'stop') {
 					recorder.record({
 						type: 'text-delta',
@@ -1798,8 +1807,10 @@ describe('AgentExecutionRepository', () => {
 						delta: 'I stopped. You can continue or change the task.',
 					});
 				}
+
 				await finish(remote, report, result, recorder, settle);
 				const next = await claim(services, threadId);
+
 				expect((await services.threads.findTaskStop(threadId))?.pause).toMatchObject({
 					reportFailed: result !== 'stop',
 					reportedAt: expect.any(String),
@@ -1808,6 +1819,7 @@ describe('AgentExecutionRepository', () => {
 				expect((await services.threads.findTaskStop(threadId))?.pause.resumedAt).toEqual(
 					expect.any(String),
 				);
+
 				await finish(services, next);
 				const detail = await remote.executionService.getThreadDetail(
 					threadId,
@@ -1815,9 +1827,12 @@ describe('AgentExecutionRepository', () => {
 					agentId,
 					owner.id,
 				);
+
 				expect(detail).not.toBeNull();
+
 				const history = executionsToMessagesDto(detail!.executions);
 				const savedReply = history.find((message) => message.stopReport);
+
 				expect(savedReply).toMatchObject({
 					role: 'assistant',
 					executionId: report.admission.executionId,
@@ -1836,12 +1851,16 @@ describe('AgentExecutionRepository', () => {
 			async (cancel) => {
 				const services = recordingServices();
 				const threadId = uuid();
+
 				await enqueue(services, input(threadId, 'Start', 'new'));
 				await finish(services, await claim(services, threadId));
+
 				const stopId = uuid();
 				await services.txRunner.run({}, async (ctx) => {
 					const thread = await services.threads.lockById(threadId, ctx);
+
 					if (!thread) throw new Error('Missing thread');
+
 					await services.threads.saveStop(
 						{
 							threadId,
@@ -1855,9 +1874,11 @@ describe('AgentExecutionRepository', () => {
 					);
 					await services.queue.enqueueStopReport(thread, stopId, 'Summarize the stop', ctx);
 				});
+
 				const pending = await enqueue(services, input(threadId, 'Continue'));
 				const report = await claim(services, threadId);
 				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+
 				await expect(
 					services.queue.steer({
 						...target,
@@ -1865,9 +1886,11 @@ describe('AgentExecutionRepository', () => {
 						executionId: report.admission.executionId,
 					}),
 				).rejects.toThrow('This message cannot be added to that execution');
+
 				const { makeAgent, model } = createApprovalAgentFactory(threadId, owner.id, 0);
 				const agent = makeAgent(services.checkpointStorage.getStorage(agentId));
 				const controller = new AbortController();
+
 				try {
 					const chunks = await collect(
 						services.turns.execute({
@@ -1893,6 +1916,7 @@ describe('AgentExecutionRepository', () => {
 							}),
 						}),
 					);
+
 					if (cancel) {
 						expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
 						expect(model.doStreamCalls).toHaveLength(0);
@@ -1903,6 +1927,7 @@ describe('AgentExecutionRepository', () => {
 						expect(model.doStreamCalls).toHaveLength(1);
 						expect(JSON.stringify(model.doStreamCalls[0].prompt)).not.toContain('Continue');
 					}
+
 					expect(await repository.findExecution(report.admission.executionId)).toMatchObject({
 						status: cancel ? 'cancelled' : 'success',
 					});
@@ -1913,8 +1938,11 @@ describe('AgentExecutionRepository', () => {
 					expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
 						pending.id,
 					]);
+
 					const next = await claim(services, threadId);
+
 					expect(next.admission.inputMessageIds).toEqual([pending.messageId]);
+
 					await finish(services, next);
 				} finally {
 					await agent.close();

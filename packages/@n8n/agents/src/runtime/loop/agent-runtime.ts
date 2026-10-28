@@ -1099,6 +1099,7 @@ export class AgentRuntime {
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
 			onInputRejected: this.createInputRejectionHandler(ctx),
 		};
+
 		return { toolMap: tools.toolMap, modelCallContext };
 	}
 

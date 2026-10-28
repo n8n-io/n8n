@@ -100,5 +100,6 @@ export function hostMetadataExecutionId(metadata: JSONObject | undefined): strin
 
 export function checkpointExecutionId(state: SerializableAgentState): string | undefined {
 	if (state.persistence?.delegated) return undefined;
+
 	return hostMetadataExecutionId(state.persistence?.hostMetadata);
 }

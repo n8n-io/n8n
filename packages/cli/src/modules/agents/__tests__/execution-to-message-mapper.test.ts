@@ -94,6 +94,7 @@ describe('execution-to-message-mapper', () => {
 				execution({ userMessage: null, inputMessages: [], stopReport: true, status }),
 				execution({ id: 'later', userMessage: 'Continue' }),
 			]);
+
 			expect(messages).toMatchObject([
 				{ role: 'assistant', stopReport: true, content: [], executionId: 'execution-1' },
 				{ role: 'user', content: [{ type: 'text', text: 'Continue' }] },

@@ -46,12 +46,17 @@ export class AgentTaskCancellationService {
 			`agent-task-cancellation:${threadId}`,
 			async (signal) => {
 				signal.throwIfAborted();
+
 				const { thread, stop, attachmentIds } = await this.txRunner.run({}, async (ctx) => {
 					const thread = await this.threads.lockById(threadId, ctx);
+
 					if (!thread) throw new NotFoundError('Session not found');
+
 					const plan = await this.plans.findLatestPlan(threadId, ctx);
+
 					if ((plan?.id ?? null) !== planId)
 						throw new ConflictError('The plan has changed. Refresh it and try again.');
+
 					const previous = await this.threads.findTaskStop(threadId, ctx);
 					const stop =
 						previous &&
@@ -70,13 +75,17 @@ export class AgentTaskCancellationService {
 									},
 									ctx,
 								);
+
 					signal.throwIfAborted();
+
 					const attachmentIds =
 						stop !== previous ? await this.queue.discardPending(threadId, ctx) : [];
+
 					if (stop !== previous) {
 						const stoppedPlan = plan
 							? await this.plans.pauseManualTasks(threadId, plan.id, ctx)
 							: null;
+
 						const report = await this.messages.enqueueStopReport(
 							thread,
 							stop.pause.id,
@@ -90,15 +99,21 @@ export class AgentTaskCancellationService {
 							].join('\n'),
 							ctx,
 						);
+
 						onQueued?.(report.id);
 					}
+
 					return { thread, stop, attachmentIds };
 				});
+
 				await this.attachments.deleteByIds(attachmentIds);
+
 				signal.throwIfAborted();
 				this.updates.notifyQueueUpdated(threadId);
+
 				const failures: AgentTaskStopFailure[] = [];
 				const execution = await this.executions.findLatestByThreadId(threadId);
+
 				if (
 					thread.ownerId &&
 					execution &&
@@ -115,11 +130,13 @@ export class AgentTaskCancellationService {
 							scope: 'foreground',
 							surface: 'preview',
 						});
+
 						if (!cancelled) failures.push({ jobId: execution.id, title: 'Current response' });
 					} catch {
 						failures.push({ jobId: execution.id, title: 'Current response' });
 					}
 				}
+
 				const jobs = await this.threads.findJobsCapturedByStop(stop);
 				const scopes = new Map(
 					jobs.map((job) => [
@@ -130,13 +147,16 @@ export class AgentTaskCancellationService {
 						},
 					]),
 				);
+
 				if (thread.ownerId)
 					scopes.set(threadId, {
 						agentId: thread.agentId,
 						resourceId: draftChatMemoryResourceId(thread.ownerId),
 					});
+
 				for (const [parentThreadId, scope] of scopes) {
 					signal.throwIfAborted();
+
 					try {
 						await this.jobs.requestPause(
 							scope.agentId,
@@ -157,22 +177,31 @@ export class AgentTaskCancellationService {
 						);
 					}
 				}
+
 				signal.throwIfAborted();
+
 				await this.txRunner.run({}, async (ctx) => {
 					await this.threads.lockById(threadId, ctx);
+
 					const jobs = await this.threads.findJobsCapturedByStop(stop, ctx);
 					const latest = await this.threads.findTaskStop(threadId, ctx);
+
 					if (!latest || latest.pause.id !== stop.pause.id) return;
+
 					latest.pause.requestsCompleted = true;
 					latest.failures = failures.filter((failure) => {
 						const job = jobs.find((item) => item.id === failure.jobId);
+
 						return !job || ['running', 'suspended'].includes(job.status);
 					});
+
 					signal.throwIfAborted();
 					await this.threads.saveStop(latest, ctx);
 				});
+
 				this.updates.notifyBackgroundJobsUpdated(thread.agentId, threadId);
 				this.messages.onAvailable?.(threadId);
+
 				return (await this.state(threadId))!;
 			},
 		);
@@ -180,7 +209,9 @@ export class AgentTaskCancellationService {
 
 	async state(threadId: string): Promise<AgentTaskCancellationState | null> {
 		const stop = await this.threads.findTaskStop(threadId);
+
 		if (!stop) return null;
+
 		const plan = stop.planId ? await this.planService.findPlan(threadId, stop.planId, {}) : null;
 		const outstanding = new Map(
 			(await this.threads.findStopTargetsStillActive(stop)).map((failure) => [
@@ -189,9 +220,11 @@ export class AgentTaskCancellationService {
 			]),
 		);
 		const failures = stop.failures.filter((failure) => outstanding.has(failure.jobId));
+
 		const execution = stop.pause.reportExecutionId
 			? await this.executions.findExecution(stop.pause.reportExecutionId)
 			: null;
+
 		return {
 			planId: stop.planId,
 			requestedAt: stop.requestedAt,
