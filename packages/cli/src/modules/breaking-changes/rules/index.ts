@@ -29,6 +29,7 @@ import './v3/chat-trigger-embedded-json.rule';
 import './v3/compression-node-limits.rule';
 import './v3/docker-only-deployment.rule';
 import './v3/edit-image-version.rule';
+import './v3/evaluate-expression-code-node.rule';
 import './v3/execute-workflow-source-modes.rule';
 import './v3/external-secrets-project-roles-default.rule';
 import './v3/get-paired-item.rule';

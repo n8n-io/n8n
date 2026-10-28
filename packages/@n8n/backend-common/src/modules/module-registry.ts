@@ -86,7 +86,7 @@ export class ModuleRegistry {
 		'workflow-reviews',
 		'inbox',
 		// skills precedes instance-ai and agents: agents keeps its skills in the
-		// skills hub, so skills must start first. See `eligibleModules`.
+		// skills module, so skills must start first. See `eligibleModules`.
 		'skills',
 		'instance-ai',
 		// knowledge precedes agents: a module counts as active only after its own
@@ -117,13 +117,13 @@ export class ModuleRegistry {
 
 		const defaultPlusEnabled = [...new Set([...this.defaultModules, ...enabledModules])];
 
-		// Agents keep their skills in the skills hub, so the agents module needs the skills module.
+		// Agents keep their skills in the skills module, so the agents module needs the skills module.
 		const agentsOn = defaultPlusEnabled.includes('agents') && !disabledModules.includes('agents');
 		const keepSkills = agentsOn && disabledModules.includes('skills');
 		if (keepSkills && !this.warnedSkillsKept) {
 			this.warnedSkillsKept = true;
 			this.logger.warn(
-				'The "skills" module cannot be disabled while the "agents" module is enabled, because agents keep their skills in the skills hub. n8n keeps the "skills" module enabled. To disable it, also disable the "agents" module.',
+				'The "skills" module cannot be disabled while the "agents" module is enabled, because agents keep their skills in the skills module. n8n keeps the "skills" module enabled. To disable it, also disable the "agents" module.',
 			);
 		}
 

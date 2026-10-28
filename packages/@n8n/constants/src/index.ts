@@ -114,6 +114,11 @@ export interface LdapConfig {
 	 * Prevents privilege escalation via email-based account linking.
 	 */
 	enforceEmailUniqueness: boolean;
+	/**
+	 * Link an LDAP identity to an existing n8n account that has the same email.
+	 * When disabled, LDAP login and sync skip such accounts instead of linking them.
+	 */
+	linkExistingAccountsByEmail: boolean;
 }
 
 export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
@@ -137,6 +142,7 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 	enforceEmailUniqueness: true,
+	linkExistingAccountsByEmail: true,
 };
 
 export { Time } from './time';

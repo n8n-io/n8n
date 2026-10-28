@@ -3,6 +3,7 @@ import {
 	isDelegateSubAgentTool,
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
+import { resolveToolForCall } from './tool-adapter';
 import { ToolCallRunner } from './tool-call-runner';
 import type { BuiltTool, PendingToolCall } from '../../types';
 import type {
@@ -67,13 +68,13 @@ export class ToolCallExecutor {
 		toolMap: Map<string, BuiltTool>,
 	): boolean {
 		if (call.input.mode === 'background') return false;
-		const tool = toolMap.get(call.toolName);
+		const tool = resolveToolForCall(toolMap, call.toolName, call.input);
 		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
 	private getToolCallBatchSize(call: RuntimeToolCall, toolMap: Map<string, BuiltTool>): number {
 		if (!this.isForegroundDelegateCall(call, toolMap)) return this.concurrency;
-		const tool = toolMap.get(call.toolName);
+		const tool = resolveToolForCall(toolMap, call.toolName, call.input);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
 		if (!delegateOptions) return this.concurrency;
 		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
@@ -435,7 +436,7 @@ export class ToolCallExecutor {
 		for (const id of Object.keys(ctx.pendingResume.pendingToolCalls)) {
 			if (id === ctx.pendingResume.resumeToolCallId) continue;
 			const entry = ctx.pendingResume.pendingToolCalls[id];
-			const tool = ctx.toolMap.get(entry.toolName);
+			const tool = resolveToolForCall(ctx.toolMap, entry.toolName, entry.input);
 			const params = this.pendingToolCallParams(entry, ctx, ctx.pendingResume.resumeData);
 			if (entry.suspended && tool?.onCancellation) {
 				try {
@@ -491,7 +492,7 @@ export class ToolCallExecutor {
 	): Promise<void> {
 		for (const entry of Object.values(pending)) {
 			if (!entry.suspended) continue;
-			const tool = ctx.toolMap.get(entry.toolName);
+			const tool = resolveToolForCall(ctx.toolMap, entry.toolName, entry.input);
 			if (!tool?.onCancellation) continue;
 			try {
 				await this.runner.runCancellationCleanup(

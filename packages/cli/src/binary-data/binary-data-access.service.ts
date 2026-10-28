@@ -20,7 +20,7 @@ type AccessSource = { executionId: string } | { workflowId: string };
 
 /**
  * Authorizes access to binary data. A binary belongs to an execution, so access
- * derives from `workflow:read` on that execution's workflow.
+ * derives from `execution:read` on that execution's workflow.
  */
 @Service()
 export class BinaryDataAccessService {
@@ -37,7 +37,7 @@ export class BinaryDataAccessService {
 		if (!source) return false;
 
 		const accessibleWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-			scopes: ['workflow:read'],
+			scopes: ['execution:read'],
 		});
 
 		if ('workflowId' in source) return accessibleWorkflowIds.includes(source.workflowId);

@@ -46,9 +46,12 @@ function isToolEvent(event: TraceEvent): event is ToolTraceEvent {
 	return event.kind !== 'header';
 }
 
-/** Recordings can carry a former builder tool name. */
-function isSameTool(recordedToolName: string, toolName: string): boolean {
-	return resolveBuilderToolName(recordedToolName) === resolveBuilderToolName(toolName);
+/** Recordings can carry a former builder tool name, and a split tool resolves by its `action`. */
+function isSameTool(recorded: ToolTraceEvent, toolName: string): boolean {
+	return (
+		resolveBuilderToolName(recorded.toolName, recorded.input?.action) ===
+		resolveBuilderToolName(toolName)
+	);
 }
 
 // ── TraceIndex ──────────────────────────────────────────────────────────────
@@ -87,7 +90,7 @@ export class TraceIndex {
 		}
 
 		const event = events[cursor];
-		if (!isSameTool(event.toolName, expectedToolName)) {
+		if (!isSameTool(event, expectedToolName)) {
 			throw new Error(
 				`Tool mismatch at step ${event.stepId}: expected "${expectedToolName}", ` +
 					`trace has "${event.toolName}" — agent took a different path`,
@@ -107,13 +110,13 @@ export class TraceIndex {
 		}
 
 		const event = events[cursor];
-		if (isSameTool(event.toolName, expectedToolName)) {
+		if (isSameTool(event, expectedToolName)) {
 			this.cursors.set(agentRole, cursor + 1);
 			return event;
 		}
 
 		for (let i = cursor + 1; i < events.length; i++) {
-			if (isSameTool(events[i].toolName, expectedToolName)) {
+			if (isSameTool(events[i], expectedToolName)) {
 				this.cursors.set(agentRole, i + 1);
 				return events[i];
 			}

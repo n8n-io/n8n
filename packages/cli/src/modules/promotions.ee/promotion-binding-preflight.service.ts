@@ -25,7 +25,7 @@ import {
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 
-interface CredentialReference {
+export interface CredentialReference {
 	sourceId: string | null;
 	name: string;
 	expectedTypes: string[];
@@ -33,7 +33,7 @@ interface CredentialReference {
 	workflows: InventoryWorkflow[];
 }
 
-interface VariableReference {
+export interface VariableReference {
 	name: string;
 	file: InventoryVariable | undefined;
 	workflows: InventoryWorkflow[];
@@ -45,7 +45,7 @@ interface DataTableReference {
 	workflows: InventoryWorkflow[];
 }
 
-type ProjectLookup = (id: string) => PromotionBindingProject;
+export type ProjectLookup = (id: string) => PromotionBindingProject;
 
 /** Inspects package bindings without changing files, target state, or caller permissions. */
 @Service()
@@ -341,7 +341,9 @@ export class PromotionBindingPreflightService {
 }
 
 /** Inspect references before target lookups. File paths define ownership. */
-function collectCredentialReferences(inventory: PackageDirectoryInventory): CredentialReference[] {
+export function collectCredentialReferences(
+	inventory: PackageDirectoryInventory,
+): CredentialReference[] {
 	const groups = new Map<string, CredentialReference>();
 	const files = new Map(inventory.credentials.map((file) => [file.credential.id, file]));
 	for (const workflow of inventory.workflows) {
@@ -376,7 +378,7 @@ function collectCredentialReferences(inventory: PackageDirectoryInventory): Cred
 }
 
 /** Resolve source project scope first, then source global scope. Other projects do not supply a fallback. */
-function collectVariableReferences(
+export function collectVariableReferences(
 	inventory: PackageDirectoryInventory,
 	extractor: VariableRequirementsExtractor,
 ): VariableReference[] {
@@ -421,7 +423,7 @@ function collectDataTableReferences(
 	return [...groups.values()].sort((a, b) => compare(a.id, b.id));
 }
 
-function consumersOf(
+export function consumersOf(
 	workflows: InventoryWorkflow[],
 	projectOf: ProjectLookup,
 ): PromotionBindingConsumer[] {
@@ -436,17 +438,17 @@ function consumersOf(
 		.map(([projectId, uses]) => ({ project: projectOf(projectId), workflows: workflowRefs(uses) }));
 }
 
-function workflowRefs(workflows: InventoryWorkflow[]): Array<{ id: string; name: string }> {
+export function workflowRefs(workflows: InventoryWorkflow[]): Array<{ id: string; name: string }> {
 	return [...new Map(workflows.map((workflow) => [workflow.id, workflow])).values()]
 		.sort((a, b) => compare(a.id, b.id))
 		.map(({ id, name }) => ({ id, name }));
 }
 
-function referenceFiles(workflows: InventoryWorkflow[]): string[] {
+export function referenceFiles(workflows: InventoryWorkflow[]): string[] {
 	return unique(workflows.map(({ path }) => path)).sort(compare);
 }
 
-function variableKey(name: string, projectId: string | null): string {
+export function variableKey(name: string, projectId: string | null): string {
 	return JSON.stringify([projectId, name]);
 }
 
@@ -454,6 +456,6 @@ function unique<T>(values: T[]): T[] {
 	return [...new Set(values)];
 }
 
-function compare(a: string, b: string): number {
+export function compare(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }

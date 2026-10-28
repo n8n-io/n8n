@@ -1,4 +1,4 @@
-import type { AgentSkill } from '@n8n/api-types';
+import type { AgentSkill, AgentSkillVersionInfo } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -47,9 +47,10 @@ export class AgentRunnableStateService {
 			skills: Record<string, AgentSkill>;
 			skillHashes: Record<string, string>;
 			outdatedSkillIds: string[];
+			skillVersions: Record<string, AgentSkillVersionInfo>;
 		}
 	> {
-		// The skill bodies the draft runs, from the skills hub, keyed by skill id.
+		// The skill bodies the draft runs, from the skills module, keyed by skill id.
 		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		// Base hashes for the optimistic-concurrency checks on config and skill writes.
 		const configHash = getAgentConfigHash(composeJsonConfig(agent, skillRefs));
@@ -57,6 +58,7 @@ export class AgentRunnableStateService {
 			Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);
 		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(skillRefs, skills, {});
+		const skillVersions = await this.agentSkillRefs.findSkillVersions(agent, skillRefs, {});
 		if (draftValidation) {
 			const [hasPublishHistory, hasVersionHistory] = await Promise.all([
 				this.agentPublishService.hasPublishHistory(agent.id),
@@ -70,6 +72,7 @@ export class AgentRunnableStateService {
 				skills,
 				skillHashes,
 				outdatedSkillIds,
+				skillVersions,
 			});
 		}
 
@@ -98,6 +101,7 @@ export class AgentRunnableStateService {
 			skills,
 			skillHashes,
 			outdatedSkillIds,
+			skillVersions,
 		});
 	}
 }
