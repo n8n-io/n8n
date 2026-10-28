@@ -1,7 +1,6 @@
 import { Service } from '@n8n/di';
 import type express from 'express';
-import type { ParsedHitlCallbackReference } from 'n8n-core';
-import { markSlackInteractionRequest, parseHitlCallbackReference } from 'n8n-core';
+import { markSlackInteractionRequest } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { HitlInteractionWebhooks } from './hitl-interaction-webhooks';
@@ -20,15 +19,13 @@ interface SlackInteractionPayload {
 export class SlackInteractionWebhooks extends HitlInteractionWebhooks {
 	protected readonly platformNodeType = 'n8n-nodes-base.slack';
 
-	protected async parseCallback(
-		req: WaitingWebhookRequest,
-	): Promise<ParsedHitlCallbackReference | null> {
+	protected async readReference(req: WaitingWebhookRequest): Promise<string> {
 		await req.readRawBody();
 		// Slack sends interactions as form data with the JSON inside a `payload` field.
 		const payloadRaw = new URLSearchParams(req.rawBody?.toString() ?? '').get('payload');
-		if (!payloadRaw) return null;
+		if (!payloadRaw) return '';
 		const payload = jsonParse<SlackInteractionPayload>(payloadRaw, { fallbackValue: {} });
-		return parseHitlCallbackReference(payload.actions?.[0]?.value ?? '');
+		return payload.actions?.[0]?.value ?? '';
 	}
 
 	/**

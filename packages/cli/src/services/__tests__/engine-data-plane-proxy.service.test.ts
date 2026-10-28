@@ -161,4 +161,16 @@ describe('EngineDataPlaneProxyService resume requests', () => {
 		expect(provider.locateResume).toHaveBeenCalledWith({ id: executionId, token: 't' });
 		expect(provider.resolveStep).toHaveBeenCalledWith('step-1', { token: 't', outputs: [[]] });
 	});
+
+	it('reads an approval callback through the provider, and nothing without one', () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		const proxy = new EngineDataPlaneProxyService();
+		expect(proxy.readApprovalCallback('callback')).toBeUndefined();
+
+		proxy.registerProvider(provider);
+		provider.readApprovalCallback.mockReturnValue('step-1');
+
+		expect(proxy.readApprovalCallback('callback')).toBe('step-1');
+		expect(provider.readApprovalCallback).toHaveBeenCalledWith('callback');
+	});
 });
