@@ -617,6 +617,153 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it('starts an awaited sub-execution from a step result and resumes the step with the sub-execution result', async () => {
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'call', name: 'Call', type: 'v1-node' },
+				{ id: 'after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'call', outputIndex: 0, inputIndex: 0 },
+				{ from: 'call', to: 'after', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const subWorkflowGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'sub-trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+			],
+			edges: [{ from: 'sub-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+		};
+		const subExecutionId = generateId();
+		const subExecutionResult = [{ nodeId: 'x', iteration: 0, outputs: [[{ json: { ran: 'x' } }]] }];
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				if (request.node.id === 'call' && !request.resume) {
+					return {
+						subExecution: {
+							executionId: subExecutionId,
+							workflowId: 'wf-sub',
+							graph: subWorkflowGraph,
+							workflow: { id: 'wf-sub' },
+							triggerOutputs: [[{ json: { in: 1 } }]],
+						},
+					};
+				}
+				if (request.node.id === 'call') {
+					const result = request.resume?.status === 'completed' ? request.resume.result : null;
+					return { outputs: [[{ json: { subExecutionResult: result } }]] };
+				}
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-parent',
+			graph: parentGraph,
+			finishCount: 2,
+		});
+
+		expect(execution.status).toBe('completed');
+		const call = steps.find(({ nodeId }) => nodeId === 'call');
+		expect(call?.status).toBe('completed');
+		expect(call?.waitDeclaration).toEqual({
+			subExecutionId: subExecutionId,
+		});
+		expect(call?.resumeCause).toEqual({
+			kind: 'subExecution',
+			executionId: subExecutionId,
+			status: 'completed',
+			result: subExecutionResult,
+		});
+		expect(call?.outputs).toEqual([[{ json: { subExecutionResult } }]]);
+		expect(steps.find(({ nodeId }) => nodeId === 'after')?.status).toBe('completed');
+
+		// The sub-execution ran as its own execution, linked to the step that waited for it.
+		const subExecution = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: subExecutionId } });
+		expect(subExecution.status).toBe('completed');
+		expect(subExecution.parentExecutionId).toBe(executionId);
+		expect(subExecution.parentStepId).toBe(call?.id);
+		expect(subExecution.parentAwaited).toBe(true);
+		expect(subExecution.mode).toBe('production');
+		expect(subExecution.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(subExecution.triggerOutputs).toEqual([[{ json: { in: 1 } }]]);
+
+		// `call` ran twice: once to ask for the sub-execution, once with its result.
+		const callRuns = requests.filter(({ node }) => node.id === 'call');
+		expect(callRuns).toHaveLength(2);
+		expect(callRuns[0].resume).toBeUndefined();
+		expect(callRuns[1].resume?.kind).toBe('subExecution');
+		expect(callRuns[1].inputs).toEqual([{}]);
+		// What `call` emitted on the resume is what `after` read.
+		const afterRun = requests.find(({ node }) => node.id === 'after');
+		expect(afterRun?.inputs).toEqual([[{ json: { subExecutionResult } }]]);
+	});
+
+	it('fails the parent step with the sub-execution error when an awaited sub-execution fails', async () => {
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'call', name: 'Call', type: 'v1-node' },
+			],
+			edges: [{ from: 'trigger', to: 'call', outputIndex: 0, inputIndex: 0 }],
+		};
+		const subWorkflowGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'sub-trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+			],
+			edges: [{ from: 'sub-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+		};
+		const subExecutionId = generateId();
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				await Promise.resolve();
+				if (request.node.id === 'x') throw new TypeError('sub-execution boom');
+				if (request.resume?.status === 'failed') {
+					throw new Error(`sub-workflow failed: ${request.resume.error.message}`);
+				}
+				return {
+					subExecution: {
+						executionId: subExecutionId,
+						workflowId: 'wf-sub',
+						graph: subWorkflowGraph,
+						workflow: { id: 'wf-sub' },
+						triggerOutputs: [[{ json: { in: 1 } }]],
+					},
+				};
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-parent-fails',
+			graph: parentGraph,
+			finishCount: 2,
+		});
+
+		expect(execution.status).toBe('failed');
+		const call = steps.find(({ nodeId }) => nodeId === 'call');
+		expect(call?.status).toBe('failed');
+		expect(call?.resumeCause).toEqual({
+			kind: 'subExecution',
+			executionId: subExecutionId,
+			status: 'failed',
+			error: expect.objectContaining({ name: 'TypeError', message: 'sub-execution boom' }),
+		});
+		expect(call?.error).toMatchObject({ message: 'sub-workflow failed: sub-execution boom' });
+
+		const subExecution = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: subExecutionId } });
+		expect(subExecution.status).toBe('failed');
+	});
+
 	it('starts a detached sub-execution from a completed step and does not wait for it', async () => {
 		const parentGraph: WorkflowGraph = {
 			nodes: [
