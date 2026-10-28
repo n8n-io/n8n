@@ -650,6 +650,26 @@ describe('background task notifications', () => {
 });
 
 describe('registerSubAgentJob', () => {
+	it('records local cancellation during a pending insert without shared cleanup', async () => {
+		const { service, jobRepository } = setup();
+		const inserted = createDeferredPromise<boolean>();
+		jobRepository.insertSubAgentJobIfCapacity.mockReturnValue(inserted.promise);
+		const registration = service.registerSubAgentJob(registerParams);
+
+		service.requestCancelForSession('agent-1', 'thread-1');
+		expect(jobRepository.findByParentThread).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfActive).not.toHaveBeenCalled();
+
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+		inserted.resolve(true);
+		await registration;
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'job-1',
+			{ status: 'cancelled' },
+			undefined,
+		);
+	});
+
 	it.each([false, true])(
 		'handles a delayed registration after foreground Stop (cancel all: %s)',
 		async (cancelAll) => {
@@ -988,6 +1008,26 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
+	it('cancels active child jobs for a session across its resource IDs', async () => {
+		const { service, jobRepository } = setup();
+		const jobs = [
+			makeJob({ id: 'running', parentResourceId: 'integration:thread-1' }),
+			makeJob({ id: 'suspended', status: 'suspended', parentResourceId: 'draft-chat:user-1' }),
+			makeJob({ id: 'other-agent', parentAgentId: 'other-agent' }),
+			makeJob({ id: 'paused', status: 'paused' }),
+		];
+		jobRepository.findByParentThread.mockImplementation(async (_threadId, ids) =>
+			ids ? jobs.filter(({ id }) => ids.includes(id)) : jobs,
+		);
+		jobRepository.settleIfActive.mockResolvedValue(true);
+
+		await service.cancelForSession('agent-1', 'thread-1');
+
+		expect(jobRepository.settleIfActive.mock.calls.map(([id]) => id)).toEqual([
+			'running',
+			'suspended',
+		]);
+	});
 	it.each([false, true])(
 		'retains paused tasks when the parent reply is cancelled (stale snapshot: %s)',
 		async (staleSnapshot) => {

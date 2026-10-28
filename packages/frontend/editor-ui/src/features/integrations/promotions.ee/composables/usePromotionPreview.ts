@@ -2,7 +2,7 @@ import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { getApplyBlockers, getPromotionPreview } from '../promotions.api';
 import { buildSelectionGraph } from '../promotionPreview.selection';

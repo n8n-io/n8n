@@ -174,15 +174,16 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  * ```typescript
  * import { fetchProviderCatalog } from '@n8n/agents';
  *
- * const catalog = await fetchProviderCatalog();
+ * const catalog = await fetchProviderCatalog({ fetch });
  * console.log(Object.keys(catalog)); // ['anthropic', 'openai', ...]
  * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
  * ```
  */
-export async function fetchProviderCatalog(options?: {
+export async function fetchProviderCatalog(options: {
 	signal?: AbortSignal;
+	fetch: typeof globalThis.fetch;
 }): Promise<ProviderCatalog> {
-	const response = await fetch(MODELS_DEV_URL, { signal: options?.signal });
+	const response = await options.fetch(MODELS_DEV_URL, { signal: options.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
@@ -270,12 +271,16 @@ let catalogFetchPromise: Promise<ProviderCatalog | undefined> | undefined;
  * Get the cached catalog, fetching once if needed.
  * Returns undefined if the fetch fails (offline, timeout, etc.).
  * On failure, clears the in-flight promise so the next call retries.
+ * `fetch` is used only when this call starts the fetch.
  * @internal
  */
-export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
+export async function getCachedCatalog(options?: {
+	fetch?: typeof globalThis.fetch;
+}): Promise<ProviderCatalog | undefined> {
 	if (cachedCatalog) return cachedCatalog;
 
-	catalogFetchPromise ??= fetchProviderCatalog()
+	// The runtime falls back to the global `fetch` until `modelFetch` is required.
+	catalogFetchPromise ??= fetchProviderCatalog({ fetch: options?.fetch ?? fetch })
 		.then((c) => {
 			cachedCatalog = c;
 			return c;
@@ -298,8 +303,11 @@ export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
  * Returns undefined if catalog is unavailable or model not found.
  * @internal
  */
-export async function getModelCost(modelId: string): Promise<ModelCost | undefined> {
-	const catalog = await getCachedCatalog();
+export async function getModelCost(
+	modelId: string,
+	fetch?: typeof globalThis.fetch,
+): Promise<ModelCost | undefined> {
+	const catalog = await getCachedCatalog({ fetch });
 	if (!catalog) return undefined;
 
 	const { provider, model: modelName } = splitModelId(modelId);

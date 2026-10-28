@@ -1,6 +1,7 @@
 import {
 	AuthIdentity,
 	BaseRepository,
+	Person,
 	TransactionRunner,
 	User,
 	UserRepository,
@@ -29,13 +30,16 @@ export class ScimUserRepository extends BaseRepository<User> {
 		super(User, dataSource.manager, transactionRunner);
 	}
 
-	/** One page of users in a stable order, optionally narrowed by a SCIM filter. */
+	/**
+	 * One page of people in a stable order, optionally narrowed by a SCIM filter.
+	 * SCIM manages people only, so service accounts never appear.
+	 */
 	async findPage(
 		{ skip, take, filter }: { skip: number; take: number; filter?: ScimUserFilter },
 		ctx: OperationContext,
-	): Promise<[User[], number]> {
+	): Promise<[Person[], number]> {
 		const qb = this.managerFor(ctx)
-			.createQueryBuilder(User, 'user')
+			.createQueryBuilder(Person, 'user')
 			.leftJoinAndSelect('user.authIdentities', 'authIdentity')
 			.orderBy('user.createdAt', 'ASC')
 			.addOrderBy('user.id', 'ASC');
@@ -52,9 +56,9 @@ export class ScimUserRepository extends BaseRepository<User> {
 		const total = await qb.getCount();
 		// TypeORM reads `take(0)` as "no limit", but SCIM `count=0` asks for
 		// the total only (RFC 7644 section 3.4.2.4).
-		const users = take > 0 ? await qb.skip(skip).take(take).getMany() : [];
+		const people = take > 0 ? await qb.skip(skip).take(take).getMany() : [];
 
-		return [users, total];
+		return [people, total];
 	}
 
 	/**

@@ -24,7 +24,7 @@ import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
@@ -50,7 +50,7 @@ const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
-const { connectErrors, canClone, connect } = usePromotionCheckout();
+const { connectErrors, canConnect, connect } = usePromotionCheckout();
 const {
 	busy: switchBusy,
 	canSwitchBack,
@@ -193,7 +193,7 @@ async function remove(environment: PromotionEnvironment) {
 							:environment="environments[direction]"
 							:busy="busy.get(environments[direction].id)"
 							:connect-error="connectErrors.get(environments[direction].id)"
-							:can-clone="canClone"
+							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
 							@retry="retry(environments[direction])"
 							@edit="

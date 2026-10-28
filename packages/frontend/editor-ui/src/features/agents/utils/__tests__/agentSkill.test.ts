@@ -1,9 +1,9 @@
-import type { SkillUsage } from '@n8n/api-types';
+import type { SkillUsedBy } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
 import { agentsLosingSkill } from '../agentSkill';
 
-const usage: SkillUsage = {
+const usage: SkillUsedBy = {
 	drafts: [
 		{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1' },
 		{ agentId: 'a2', agentName: 'Ops bot', projectId: 'p2' },

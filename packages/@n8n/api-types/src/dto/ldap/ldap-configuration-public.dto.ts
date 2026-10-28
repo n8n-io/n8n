@@ -34,6 +34,9 @@ export const ldapConfigurationPublicSchema = z
 		searchPageSize: z.number().openapi(ldapConfigurationFieldDocs.searchPageSize),
 		searchTimeout: z.number().openapi(ldapConfigurationFieldDocs.searchTimeout),
 		enforceEmailUniqueness: z.boolean().openapi(ldapConfigurationFieldDocs.enforceEmailUniqueness),
+		linkExistingAccountsByEmail: z
+			.boolean()
+			.openapi(ldapConfigurationFieldDocs.linkExistingAccountsByEmail),
 	})
 	.openapi({
 		description:
@@ -72,6 +75,10 @@ const updateLdapConfigurationSchema = z
 		searchPageSize: z.number().int().openapi(ldapConfigurationFieldDocs.searchPageSize),
 		searchTimeout: z.number().int().openapi(ldapConfigurationFieldDocs.searchTimeout),
 		enforceEmailUniqueness: z.boolean().openapi(ldapConfigurationFieldDocs.enforceEmailUniqueness),
+		linkExistingAccountsByEmail: z
+			.boolean()
+			.optional()
+			.openapi(ldapConfigurationFieldDocs.linkExistingAccountsByEmail),
 	})
 	.strict()
 	.openapi({

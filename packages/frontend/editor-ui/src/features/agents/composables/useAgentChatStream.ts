@@ -39,6 +39,7 @@ import {
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	createStoppedMessage,
 	findOpenInteractive,
 	findTailOpenInteractive,
 	findTailSteerableInteractive,
@@ -83,8 +84,9 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	/**
 	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
-	 * talks to the published n8n Chat channel. See `capabilities` for the
-	 * differences between channels.
+	 * talks to the published n8n Chat channel; `'system'` talks to a system
+	 * agent, such as the n8n Assistant. See `capabilities` for the differences
+	 * between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
@@ -136,9 +138,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * that fallback.
 	 */
 	const capabilities = computed(() => ({
-		previewHistory: channel.value !== 'n8n-chat',
-		/** n8n Chat has no session detail view to link a background job's trace to. */
-		traceLinks: channel.value !== 'n8n-chat',
+		previewHistory: channel.value === 'chat',
+		/** Only the builder chat has a session detail view to link a background job's trace to. */
+		traceLinks: channel.value === 'chat',
 	}));
 
 	const messages = ref<ChatMessage[]>([]);
@@ -880,20 +882,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let changed = false;
 			for (const toolCall of message.toolCalls ?? []) {
 				if (toolCall.runId !== runId && !isToolCallInFlight(toolCall)) continue;
-				toolCall.state = TOOL_CALL_STATE.CANCELLED;
-				toolCall.canceled = true;
+				markToolCallCancelled(message, toolCall);
 				changed = true;
-
-				const interactive = getMessageInteractive(message, toolCall.toolCallId);
-				if (interactive) {
-					upsertMessageInteractive(message, {
-						...interactive,
-						resolvedAt: Date.now(),
-						cancelled: true,
-					});
-				}
 			}
 			if (changed) markMessageSuccessIfSettled(message);
+		}
+	}
+
+	function markToolCallCancelled(message: ChatMessage, toolCall: ToolCall): void {
+		toolCall.state = TOOL_CALL_STATE.CANCELLED;
+		toolCall.canceled = true;
+		const interactive = getMessageInteractive(message, toolCall.toolCallId);
+		if (interactive) {
+			upsertMessageInteractive(message, {
+				...interactive,
+				resolvedAt: Date.now(),
+				cancelled: true,
+			});
 		}
 	}
 
@@ -1284,6 +1289,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'finish': {
 				if (event.usage) notifyUsage(session, event.usage);
+				if (event.finishReason === 'cancelled' && session.executionId) {
+					settleOpenReasoning(session);
+					for (const message of session.minted) {
+						for (const toolCall of message.toolCalls ?? []) {
+							if (isToolCallInFlight(toolCall)) markToolCallCancelled(message, toolCall);
+						}
+						markMessageSuccessIfSettled(message);
+					}
+					const notice = createStoppedMessage(session.executionId);
+					if (!messages.value.some(({ id }) => id === notice.id)) messages.value.push(notice);
+				}
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
@@ -1587,7 +1603,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clientContext?: Record<string, unknown>,
 	) {
 		const target = targetKey();
-		const url = agentChatBaseUrl(
+		const baseUrl = agentChatBaseUrl(
 			rootStore.restApiContext,
 			params.projectId.value,
 			params.agentId.value,
@@ -1596,6 +1612,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
+		// The backend rejects a `projectId` that differs from an existing thread's project
+		// (e.g. after a move), so send it only when this request creates the session.
+		const url =
+			channel.value === 'system' && (!sessionId || newSession)
+				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
+				: baseUrl;
 		if (sessionId) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;

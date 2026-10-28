@@ -2,12 +2,13 @@ import { isAzureEntraCredential, type ModelConfig, type ResolvedCredential } fro
 import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
-import { SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { mapCredentialForProvider } from '@/credentials/credential-field-mapping';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
 
 export async function resolveCredentialAwareModelConfig(
@@ -47,7 +48,9 @@ export async function resolveCredentialAwareModelConfig(
 	const mapped = mapCredentialForProvider(provider, raw);
 	if (provider === 'google-vertex') {
 		const { getCachedCatalog } = await import('@n8n/agents/catalog');
-		const catalog = await getCachedCatalog();
+		const catalog = await getCachedCatalog({
+			fetch: createAiProxyFetch(Container.get(OutboundHttp)),
+		});
 		const sdk = catalog?.[provider]?.models[modelName]?.sdk;
 		return { id: model, ...mapped, ...(sdk !== undefined && { sdk }) };
 	}

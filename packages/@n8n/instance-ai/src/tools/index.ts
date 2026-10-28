@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
+import { WORKFLOW_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
+import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -107,7 +109,10 @@ function getOrchestratorDomainToolFactories(
 	context: InstanceAiContext,
 ): Array<[string, DomainToolFactory]> {
 	const tools: Array<[string, DomainToolFactory]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
+		...getSupportedWorkflowActions(context).map((action): [string, DomainToolFactory] => [
+			WORKFLOW_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkflowsTool().createWorkflowTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
 		[
 			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
@@ -140,7 +145,10 @@ function getOrchestratorDomainToolFactories(
 			() => loadNodesTool().createGetNodeParameterOptionsTool(context),
 		],
 		[DOMAIN_TOOL_IDS.EXECUTE_NODE, () => loadNodesTool().createExecuteNodeTool(context)],
-		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_MODELS,
+			() => loadSearchModelsTool().createSearchModelsTool(context.modelFetch ?? fetch),
+		],
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,

@@ -528,6 +528,9 @@ patchedDependencies:
   pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch
   '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
   xml2js@0.6.2: patches/xml2js@0.6.2.patch
+  '@google/generative-ai@0.24.0': patches/@google__generative-ai@0.24.0.patch
+  '@langchain/google-genai@2.1.24': patches/@langchain__google-genai@2.1.24.patch
+  weaviate-client@3.9.0: patches/weaviate-client@3.9.0.patch
 
 allowBuilds:
   '@biomejs/biome': false
