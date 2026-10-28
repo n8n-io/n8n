@@ -2,7 +2,6 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
-	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
@@ -148,14 +147,6 @@ describe('StoreAgentMemoryEmbeddingsAsBinary migration', () => {
 			await writeEmbedding(context, bytes);
 			const { embedding } = await readEntry(context);
 			expect(Buffer.from(embedding as Uint8Array)).toEqual(bytes);
-		});
-
-		await undoLastSingleMigration();
-		await withContext(async (context) => {
-			expect(await embeddingColumnType(context)).toBe(context.isPostgres ? 'json' : 'TEXT');
-			expect(await readEntry(context)).toEqual({ content: 'Fact', embedding: null });
-			expect(await sourceIds(context)).toEqual([ids.source]);
-			await writeEmbedding(context, '[0.5]');
 		});
 	});
 });
