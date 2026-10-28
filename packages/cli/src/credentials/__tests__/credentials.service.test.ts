@@ -2003,16 +2003,22 @@ describe('CredentialsService', () => {
 					data: 'encrypted',
 					description: 'Payload description',
 				} as ICredentialsDb;
-				externalHooks.run.mockImplementation(async (_hookName, [data]) => {
-					(data as ICredentialsDb).description = 'Hook description';
+				externalHooks.run.mockImplementation(async (_hookName, hookParameters) => {
+					const hookData = (hookParameters as [ICredentialsDb] | undefined)?.[0];
+					if (!hookData) throw new Error('Expected credential hook data');
+					hookData.description = 'Hook description';
 				});
 
 				const result = await service.update(stored.id, payload, ownerActor);
 
 				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
 					stored.id,
-					expect.not.objectContaining({ description: expect.anything() }),
 					expect.anything(),
+					expect.anything(),
+				);
+				// A present `description: null | undefined` would clear the stored value.
+				expect(credentialsRepository.updateContent.mock.lastCall?.[1]).not.toHaveProperty(
+					'description',
 				);
 				expect(result).not.toHaveProperty('description');
 				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);

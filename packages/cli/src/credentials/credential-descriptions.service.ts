@@ -15,7 +15,15 @@ export class CredentialDescriptionsService {
 
 	/** Remove the field from a response or write payload. Stored values stay intact. */
 	async stripIfDisabled<T extends { description?: unknown }>(credentials: T | T[]): Promise<void> {
-		if (await this.isEnabled()) return;
+		this.stripUnlessEnabled(await this.isEnabled(), credentials);
+	}
+
+	/** Like `stripIfDisabled`, for a caller that already resolved the flag. */
+	stripUnlessEnabled<T extends { description?: unknown }>(
+		enabled: boolean,
+		credentials: T | T[],
+	): void {
+		if (enabled) return;
 		for (const credential of Array.isArray(credentials) ? credentials : [credentials])
 			delete credential.description;
 	}
