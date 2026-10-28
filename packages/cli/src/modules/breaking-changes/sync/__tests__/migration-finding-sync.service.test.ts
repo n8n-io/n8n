@@ -435,6 +435,17 @@ describe('MigrationFindingSyncService', () => {
 			expect(computeRuleSetFingerprint(['rule-a'])).not.toBe(base);
 		});
 
+		it('changes with the n8n version and stays stable within one version', () => {
+			const ruleIds = ['rule-a', 'rule-b'];
+
+			expect(computeRuleSetFingerprint(ruleIds, '2.0.0')).toBe(
+				computeRuleSetFingerprint(ruleIds, '2.0.0'),
+			);
+			expect(computeRuleSetFingerprint(ruleIds, '2.1.0')).not.toBe(
+				computeRuleSetFingerprint(ruleIds, '2.0.0'),
+			);
+		});
+
 		it('is taken from the rules registered for the target version', async () => {
 			givenWorkflows(0);
 			ruleRegistry.getRules.mockReturnValue(rules('rule-z', 'rule-y'));
