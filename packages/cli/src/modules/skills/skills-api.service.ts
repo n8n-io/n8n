@@ -14,6 +14,7 @@ import type {
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
 	SkillVersionDetail,
+	SkillVersionListItem,
 	SkillVersionSummary,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
@@ -241,11 +242,15 @@ export class SkillsApiService {
 	}
 
 	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */
-	async listVersions(user: User, skillId: string): Promise<SkillVersionSummary[]> {
+	async listVersions(user: User, skillId: string): Promise<SkillVersionListItem[]> {
 		await this.requireAccess(user, skillId, 'read');
 		const versions = await this.skillRepository.findVersionList(skillId);
 		const users = await this.findCreators(versions.flatMap((version) => version.createdById ?? []));
-		return versions.map((version) => toVersionSummary(version, users));
+		// The list is newest first, so the first row is the latest version.
+		return versions.map((version, index) => ({
+			...toVersionSummary(version, users),
+			isLatest: index === 0,
+		}));
 	}
 
 	/** One saved version with its content. Needs read access. */
