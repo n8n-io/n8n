@@ -13,6 +13,7 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.
   s_127a9acd7ce7b7::t_a77caffb960758 87-88,90-91,104-105,108-111,130
   s_127a9acd7ce7b7::t_793a1ed51d7e78 6865,7114-7116,7120-7239
   s_127a9acd7ce7b7::t_953d181779cd65 7117-7119
+  s_127a9acd7ce7b7::t_73a5e16a4b7474 7113
 packages/frontend/editor-ui/src/features/agents/agents-design-language.md
   s_127a9acd7ce7b7::t_6fc35593bb2847 368
   s_127a9acd7ce7b7::t_5b9e61f560cfb4 367
