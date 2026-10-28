@@ -83,7 +83,7 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"c
 | Flag | Description |
 |------|-------------|
 | `--file` | Path to the `.n8np` package file. (required) |
-| `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. The policy also applies to the skills of imported Agents: `new-version` saves a changed skill as a new version, `skip` keeps the existing skill, and `fail` blocks the import when a matched skill has other content. The import always creates a skill that does not exist. See [Skills](#skills). |
+| `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. The policy also applies to the skills of imported Agents: `new-version` saves a changed skill as a new version, `skip` keeps the existing skill, and `fail` blocks the import when a matched skill has other content. The import creates a skill that does not exist. See [Skills](#skills). |
 | `-p, --project-id` | Target project ID. Defaults to your personal project. (alias: `--project`) |
 | `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
 | `--publishing-policy` | Publication policy for Agents and workflows. `preserve-published-state` (instance default) keeps new entities unpublished. It republishes an updated entity only if it was published and the package contains the source-published version. `match-source` publishes that version, or unpublishes when the source has no published version. Both policies leave publication unchanged when the source publishes a version absent from the package. `publish-all` requests publication. `unpublish-all` leaves imported entities unpublished. Skipped entities remain unchanged. Archived workflows remain unpublished. |
@@ -132,23 +132,6 @@ There are no per-kind overrides. Use `--conflict-policy`, `--id-policy`, and
 `--publishing-policy`. The old workflow-specific flag names are rejected.
 The API fields are `conflictPolicy`, `idPolicy`, and `publishingPolicy`.
 The API rejects the old workflow-specific and Agent-specific policy fields.
-
-### Skills
-
-The import plans the skills of each imported Agent together with that Agent.
-It does not change the skills of skipped Agents.
-
-- `--conflict-policy` applies to skills too. `new-version` saves a changed skill
-  as a new skill version. `skip` keeps the existing skill. `fail` blocks the
-  import when a matched skill has other content. A matched skill with the same
-  content stays unchanged. The import always creates a skill that does not exist.
-- A new version of a project or instance skill applies to all Agents on the
-  instance that follow the skill. This includes Agents that are not in the
-  package, and their drafts.
-- The import reports a skill problem as an `agent-invalid` issue on each Agent
-  that uses the skill. The issue path is `skills.<skillId>`. The import plans a
-  skill as part of the Agent definition. Thus a skill problem returns HTTP 422,
-  not 409. This also applies to a skill conflict under `--conflict-policy=fail`.
 
 Human and JSON results include `agents`, `bindings.agents`, and `counts.agents`.
 Each Agent summary reports its source and destination IDs, name, project,
@@ -202,6 +185,26 @@ issues. Examples:
 
 Under the default `--credential-missing-mode=create-stub`, missing credentials
 are stubbed instead of blocking the import.
+
+### Skills
+
+The import plans the skills of each imported Agent together with that Agent.
+It does not change the skills of skipped Agents.
+
+- `--conflict-policy` applies to skills too. `new-version` saves a changed skill
+  as a new skill version. `skip` keeps the existing skill. `fail` blocks the
+  import when a matched skill has other content. A matched skill with the same
+  content stays unchanged. The import creates a skill that does not exist.
+- Under every policy, the import is blocked when a package skill ID belongs to
+  another project, another Agent or the instance, or when its scope already has
+  a skill with that name. `skip` does not prevent this.
+- A new version of a project or instance skill applies to all Agents on the
+  instance that follow the skill. This includes Agents that are not in the
+  package, and their drafts.
+- A skill conflict returns HTTP 422, not 409. This also applies under
+  `--conflict-policy=fail`. The import plans a skill as part of each Agent that
+  uses it. It reports every skill problem as an `agent-invalid` issue on that
+  Agent, with the issue path `skills.<skillId>`.
 
 ## `package import-selection`
 

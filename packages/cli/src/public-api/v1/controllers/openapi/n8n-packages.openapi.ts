@@ -79,9 +79,9 @@ export const IMPORT_422_DESCRIPTION =
 	'variables, invalid Agent definitions or dependencies, node types this instance does not have, ' +
 	'a delete the caller may not perform, or ' +
 	'variable stubs whose creation would exceed the instance variable quota. ' +
-	'A skill problem is an `agent-invalid` issue on each Agent that uses the skill, with the ' +
-	'path `skills.<skillId>`. The import plans a skill as part of the Agent definition. ' +
-	'Thus a skill problem returns 422, also a skill conflict under `conflictPolicy=fail`.';
+	'Exception: a skill conflict returns 422, also under `conflictPolicy=fail`. The import plans ' +
+	'a skill as part of each Agent that uses it, so it reports every skill problem as an ' +
+	'`agent-invalid` issue on that Agent, with the path `skills.<skillId>`.';
 
 export const IMPORT_SELECTION_SUMMARY =
 	'Beta: Import a selected subset of workflows from an n8n package';

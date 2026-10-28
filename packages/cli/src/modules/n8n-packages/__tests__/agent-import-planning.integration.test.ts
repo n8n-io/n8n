@@ -752,6 +752,10 @@ it('reimports a changed instance skill across two projects', async () => {
 		await applyPackage();
 		skill.skill.instructions = 'Updated shared instructions.';
 		await expect(applyPackage()).resolves.toBeUndefined();
+		expect(await findLatestSkillVersion(skill.id)).toMatchObject({
+			version: 2,
+			instructions: 'Updated shared instructions.',
+		});
 	} finally {
 		await agents.delete({});
 		await deleteSkill(skill.id);
