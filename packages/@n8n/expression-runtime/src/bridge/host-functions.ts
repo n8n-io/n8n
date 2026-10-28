@@ -1,5 +1,10 @@
 import type { WorkflowData } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import {
+	isEscapedTransferValue,
+	TRANSFER_ESCAPED_KEY,
+	TRANSFER_VALUE_KEY,
+} from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 
 // ============================================================================
@@ -20,6 +25,16 @@ export function isErrorSentinel(value: unknown): value is ErrorSentinel {
 		value !== null &&
 		(value as Record<string, unknown>).__isError === true
 	);
+}
+
+/**
+ * Wrap host-call data whose root looks like an error sentinel or an escape
+ * wrapper, so the guest reads it as data.
+ */
+export function escapeHostResult(value: unknown): unknown {
+	return isErrorSentinel(value) || isEscapedTransferValue(value)
+		? { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_VALUE_KEY]: value }
+		: value;
 }
 
 /**
