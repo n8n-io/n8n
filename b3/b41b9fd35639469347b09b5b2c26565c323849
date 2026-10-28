@@ -1,0 +1,100 @@
+pnpm-lock.yaml
+  h_52a137d26d774c 7064
+packages/cli/src/modules/oauth-server/__tests__/oauth-grant.service.integration.test.ts
+  h_52a137d26d774c 12
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.module.test.ts
+  h_52a137d26d774c 17
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_6db733ee4282ae::t_5d46f9f03ec8cb 556-558,568-570
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_6db733ee4282ae::t_5d46f9f03ec8cb 115-120
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_5acc123a800c74::t_b9fd38da502ae9 159,299,345,375,430,492,506-510,515,619,724,727,775-782,837,840,920-935,954,1109
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  s_5acc123a800c74::t_2099021a6b399d 146,171,220,237
+packages/cli/src/push/__tests__/sse.push.test.ts
+  s_abce75003a7d3b::t_f3c984fa96587e 102,111,118-126
+packages/cli/src/push/__tests__/websocket.push.test.ts
+  s_abce75003a7d3b::t_5704f90902732e 32,78,84-102,162,167-176
+packages/cli/src/push/abstract.push.ts
+  s_5acc123a800c74::t_a9522400cd0e20 106-113,153-156
+packages/cli/src/push/index.ts
+  s_5acc123a800c74::t_6d553ef7bc48cc 176,180-193,227,230,236,239-242,251-256,279
+packages/cli/src/scaling/job-processor.ts
+  s_5acc123a800c74::t_4ac37cbda0837a 40-43,234-245,251
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_5acc123a800c74::t_2dd8407ac629b3 143-144
+packages/cli/src/scaling/scaling.types.ts
+  s_5acc123a800c74::t_4fb3fc456c2d73 24-25
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_5acc123a800c74::t_8af9aa5fa2b514 14,230
+packages/cli/src/services/engine-v2-push-registry.service.ts
+  s_5acc123a800c74::t_03c617c1161239 24,29
+packages/cli/src/services/engine-v2-push-session.ts
+  s_5acc123a800c74::t_95b70cf3bce37c 38-39
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_5acc123a800c74::t_729126f05a2e23 28,67,71,694-730,896-919
+packages/cli/src/webhooks/test-webhooks.ts
+  s_5acc123a800c74::t_b90f76382c9f1a 205,582,592-596
+packages/cli/src/workflow-execute-additional-data.ts
+  s_5acc123a800c74::t_31527be71a960e 904,908,916
+packages/cli/src/workflow-runner.ts
+  s_5acc123a800c74::t_6a8b4ccc6f2086 53,657,778
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_5acc123a800c74::t_6cc5630eb10f9e 51,63,3070-3085
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_5acc123a800c74::t_d8687998f90bdd 58,1113-1146,1380-1403
+packages/cli/src/chat/__tests__/chat-execution-manager.test.ts
+  s_5acc123a800c74::t_4dc9e4bbb78523 241-268
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_5acc123a800c74::t_59475617732c8d 806-809,899,978,995,1068,1084,1131,1134-1137,1162,1166-1169,1193,1272,1290,1307,1325,1338,1595-1673,1974-2012
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event-push-relay.test.ts
+  s_5acc123a800c74::t_9f0def6e1e670e 13,68,95-96,205
+packages/cli/src/push/__tests__/push-routing.test.ts
+  s_5acc123a800c74::t_5b8f9f02162351 1-147
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_5acc123a800c74::t_206e9547179f31 52,3842-3936
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_5acc123a800c74::t_ece501e04eafa9 777-782
+packages/workflow/src/interfaces.ts
+  s_5acc123a800c74::t_4878b5fc130246 3869-3870
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_5acc123a800c74::t_6bac682fed43b0 92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3b41b9fd35639469347b09b5b2c26565c323849",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5acc123a800c74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd4248b3-215b-4a7c-925f-37caa229bb36",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_6db733ee4282ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e88622bd8ffeO5TuJByFsdmdRq",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_abce75003a7d3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e76c574-a165-485f-834a-14fa939414a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
