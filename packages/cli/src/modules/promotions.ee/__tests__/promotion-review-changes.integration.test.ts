@@ -127,7 +127,7 @@ beforeEach(async () => {
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 	});
 	environmentId = environment.id;
-	await Container.get(PromotionsService).clone(environmentId);
+	await Container.get(PromotionsService).clone(environmentId, owner);
 });
 
 afterEach(async () => {
@@ -351,7 +351,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
 		await dropReviewRefs(review.iid, review.branchName);
 		// A fresh checkout has none of the review commits, as after a reconnect.
-		await Container.get(PromotionsService).clone(environmentId);
+		await Container.get(PromotionsService).clone(environmentId, owner);
 		return { review, headSha, baseSha };
 	}
 

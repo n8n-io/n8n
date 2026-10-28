@@ -904,7 +904,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
+ * the live record: `get_workflow` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -1671,7 +1671,7 @@ export interface InstanceAiContext {
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
-	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
+	 * is built. When true, `list_workflows` advertises folder fields
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
