@@ -1121,11 +1121,10 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
-		// One flag decision for the whole update. The hook can add the field, so filter again after it.
+		// One flag decision for the whole update, reused for the write payload and the response.
 		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
-		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 
 		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;

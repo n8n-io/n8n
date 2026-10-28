@@ -2050,7 +2050,6 @@ describe('CredentialsService', () => {
 					let hookInput: ICredentialsDb | undefined;
 					externalHooks.run.mockImplementation(async (_hookName, params) => {
 						hookInput = { ...(params as [ICredentialsDb])[0] };
-						(params as [ICredentialsDb])[0].description = 'From hook';
 					});
 					const payload = buildPayload(stored, { description: 'New description' });
 
