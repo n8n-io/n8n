@@ -10,6 +10,16 @@ Source: https://linear.app/n8n/issue/CET-292
 
 ## Context
 
+This record uses these terms:
+
+- **Parent workflow:** a workflow whose Execute Sub-workflow node calls another workflow.
+- **Sub-workflow:** the workflow that the Execute Sub-workflow node calls.
+- **Parent execution:** an execution of the parent workflow.
+- **Sub-execution:** an execution of the sub-workflow that a parent execution starts.
+- **Parent step:** the step of the parent execution that runs the Execute Sub-workflow node.
+- **Awaited and fire-and-forget:** the parent step waits for an awaited sub-execution. It does not
+  wait for a fire-and-forget sub-execution.
+
 In engine v1 the Execute Sub-workflow node asks the engine to run the sub-workflow directly in-line.
 The engine loads the sub-workflow, checks the caller policy and the credentials, and runs it. A
 parent execution that waits for the sub-execution parks on a sentinel date, and the sub-execution's
