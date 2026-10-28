@@ -253,7 +253,7 @@ export const promotionBindingWarningSchema = z.object({
 });
 
 /**
- * What stops the Apply of a project, read from the import plan. Source IDs define creation scope.
+ * What stops an Apply. Source IDs define creation scope.
  * This result does not certify a complete mirror or authorize later writes.
  * Callers must enforce the permissions for their endpoint.
  */
