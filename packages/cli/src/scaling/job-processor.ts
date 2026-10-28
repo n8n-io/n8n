@@ -89,6 +89,16 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 	return () => clearTimeout(timer);
 }
 
+function sumNodeTimeSavedMinutes(run: IRun): number {
+	let totalMinutes = 0;
+	for (const taskDataList of Object.values(run.data.resultData.runData ?? {})) {
+		for (const taskData of taskDataList) {
+			totalMinutes += taskData?.metadata?.timeSaved?.minutes ?? 0;
+		}
+	}
+	return totalMinutes;
+}
+
 /** Production runs that may be parked at worker shutdown and resumed elsewhere. */
 const SUSPENDABLE_EXECUTION_MODES = new Set<WorkflowExecuteMode>(['webhook', 'trigger', 'retry']);
 
@@ -573,6 +583,7 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
+			nodeTimeSavedMinutes: sumNodeTimeSavedMinutes(run),
 		};
 	}
 

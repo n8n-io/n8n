@@ -357,7 +357,8 @@ export class InsightsCollectionService {
 			return workflowTimeSaved ?? 0;
 		}
 
-		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
+		const nodeTimeSaved =
+			ctx.runData.nodeTimeSavedMinutes ?? this.extractTimeSavedFromNodes(ctx.runData);
 
 		return nodeTimeSaved;
 	}
