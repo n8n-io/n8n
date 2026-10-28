@@ -25,6 +25,7 @@ import {
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	N8N_CHAT_INTEGRATION_TYPE,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type AgentSkillAvailability,
@@ -76,6 +77,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
+import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
@@ -231,6 +233,7 @@ const rootStore = useRootStore();
 const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 const { trackClickedTraceDetailsFromTestPanel } = useAgentTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
@@ -655,6 +658,7 @@ const showAgentIntro = computed(
 );
 
 const isVersionHistoryOpen = ref(false);
+const versionHistoryTab = ref('versions');
 
 watch(
 	isPreviewDockOpen,
@@ -1316,8 +1320,10 @@ function onUnpublished(updated: AgentResource) {
 	void versionHistoryPanel.value?.refresh();
 }
 
-function onToggleVersionHistory() {
-	isVersionHistoryOpen.value = !isVersionHistoryOpen.value;
+function onOpenVersionHistory(tab: 'versions' | 'timeline' = 'versions') {
+	if (!agent.value || isUnsaved.value) return;
+	versionHistoryTab.value = tab;
+	isVersionHistoryOpen.value = true;
 }
 
 function onCloseVersionHistory() {
@@ -2000,31 +2006,43 @@ watch(isEditingLocked, (locked) => {
 	mcpAvailabilityOverride.value = null;
 });
 
-/**
- * Authoritative pre-publish gate for the frontend: flush any pending edit so
- * the backend validates the config the user is about to publish (not a
- * stale persisted version), then refresh the readiness result and report
- * whether it is safe to call the publish endpoint. The publish endpoint
- * re-validates independently, so this is a UX affordance, not the only guard.
- */
-async function refreshValidationBeforePublish(): Promise<boolean> {
-	// Capture the target before the awaits: when the autosave flush or the
-	// validation refresh resolves, the user may have switched to another
-	// agent, and the continuation must not act on the stale one.
+async function flushBeforePublish(): Promise<boolean> {
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	// Acquire the write lock before publishing — the lock is lazy.
+
 	agentCollaborationStore.requestWriteAccess();
+
 	try {
-		await flushAutosave();
+		let result = await flushAutosave();
+
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+
+		if (result === 'skipped' && !isEditingLocked.value && localConfig.value) {
+			// Retry the current config after the lock clears. Its hash rejects intervening edits.
+			replaceConfigAndScheduleSave(localConfig.value);
+			result = await flushAutosave();
+		}
+
+		return isPersistedSave(result) && !isStaleAgentTarget(targetProjectId, targetAgentId);
 	} catch {
 		return false;
 	}
-	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+}
+
+/** Save current edits, then check whether the current draft can be published. */
+async function refreshValidationBeforePublish(): Promise<boolean> {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+
+	if (!(await flushBeforePublish())) return false;
+
 	await refreshConfigValidation(targetProjectId, targetAgentId);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+
 	if (configValidation.value === null) return false;
+
 	if (hasBlockingIssues(configValidation.value.issues)) return false;
+
 	// Unpublished workflow tools do not disable the Publish button, but the
 	// backend rejects the publish — surface them here instead of failing the
 	// request (AGENT-1001).
@@ -2032,13 +2050,16 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 		configValidation.value.issues,
 		localConfig.value?.tools ?? [],
 	);
+
 	if (unpublishedWorkflows.length > 0) {
 		uiStore.openModalWithData({
 			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 			data: { workflows: unpublishedWorkflows },
 		});
+
 		return false;
 	}
+
 	return true;
 }
 
@@ -2077,6 +2098,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 	// if needed) to pick up the merged config.
 	const ridesAlongWithDraft = meta?.source === 'auto' && isUnsaved.value;
 	if (ridesAlongWithDraft && !configAutosave.hasPendingSave.value) return;
+
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
@@ -2126,6 +2148,7 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
+		trackTriggerRemoved: builderTelemetry.trackTriggerRemoved,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
@@ -2183,10 +2206,9 @@ async function applyTemplateConfig(template: AgentTemplate): Promise<boolean> {
 		return false;
 	}
 	replaceConfigAndScheduleSave(next);
-	// Derive trigger chips from the template's draft integrations so the two
-	// stay in sync — a template can't declare chips without the matching
-	// integration entry.
-	connectedTriggers.value = (template.config.integrations ?? []).map((i) => i.type);
+	// Derive trigger chips from the applied integrations so the two stay in
+	// sync — the template's draft entries plus a default n8n Chat it kept.
+	connectedTriggers.value = (next.integrations ?? []).map((i) => i.type);
 	templateApplied.value = true;
 	// Persist the agent and flush the config autosave before sending the chat
 	// message. The chat's `beforeSend` hook calls `flushAutosave` too — if we
@@ -2542,10 +2564,9 @@ const headerActions = computed(() => {
 
 	actions.push({
 		id: 'version-history',
-		label: locale.baseText('agents.versionHistory.title'),
+		label: locale.baseText('menuActions.versionHistory'),
 		icon: 'history',
-		disabled: !agent.value?.hasPublishHistory,
-		checked: isVersionHistoryOpen.value,
+		disabled: !agent.value || isUnsaved.value,
 		divided: true,
 	});
 
@@ -2646,7 +2667,7 @@ async function onHeaderAction(action: string) {
 		return;
 	}
 	if (action === 'version-history') {
-		onToggleVersionHistory();
+		onOpenVersionHistory();
 		return;
 	}
 	if (action === 'export-json') {
@@ -2669,6 +2690,7 @@ async function onHeaderAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: agentName.value },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
@@ -2740,6 +2762,7 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
+		hasVersionHistory: false,
 		createdAt: now,
 		updatedAt: now,
 		versionId: null,
@@ -2863,12 +2886,17 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				instructions: '',
 				tools: [],
 				skills: [],
+				// New agents start available in n8n Chat, as the backend's own create does.
+				...(isAgentsN8nChatFlag.value
+					? { integrations: [{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' }] }
+					: {}),
 			};
 			// Seed the icon and gradient the backfill would normally add, so the
 			// draft looks like any other new agent and the first save carries them.
 			// Seeded rather than backfilled because the backfill schedules a save,
 			// which would persist the agent on mount.
 			localConfig.value = addMissingAgentPersonalisation(draftConfig) ?? draftConfig;
+			connectedTriggers.value = (localConfig.value.integrations ?? []).map(({ type }) => type);
 			agent.value = draftAgentResource(localConfig.value.personalisation);
 			agentName.value = agent.value.name;
 			if (currentStarter() && isCurrentInitialization()) {
@@ -3252,16 +3280,15 @@ useKeybindings({
 			:header-actions="headerActions"
 			:save-status="saveStatus"
 			:before-revert-to-published="beforeRevertToPublished"
+			:is-unsaved="isUnsaved"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:is-preview-open="isPreviewDockOpen"
 			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
-			@open-preview="onOpenPreview"
-			@close-preview="closePreviewDock"
+			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
 			@published="onPublished"
 			@unpublished="onUnpublished"
@@ -3433,6 +3460,7 @@ useKeybindings({
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:is-preview-open="isPreviewDockOpen"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
@@ -3451,6 +3479,7 @@ useKeybindings({
 					@remove-skill="caps.onRemoveSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
+					@trigger-removed="caps.onTriggerRemoved"
 					@toggle-task="caps.onToggleTask"
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
@@ -3458,19 +3487,23 @@ useKeybindings({
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
+					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
 				/>
 
 				<AgentVersionHistoryPanel
 					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
+					v-model:active-tab="versionHistoryTab"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:current-version-id="agent?.versionId"
 					:has-unpublished-changes="
 						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
 					"
 					:agent-name="agent?.name ?? agentName"
 					:editing-locked="isEditingLocked"
+					:before-publish="flushBeforePublish"
 					@close="onCloseVersionHistory"
 					@reverted="onReverted"
 					@published="onPublished"

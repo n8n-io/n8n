@@ -1,3 +1,4 @@
+import type { ImportResultDto } from '@n8n/api-types';
 import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -12,7 +13,7 @@ export default class PackageImportSelection extends BaseCommand {
 	static override examples = [
 		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>',
 		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --deleted-workflow-ids=<id3>',
-		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --workflow-conflict-policy=skip',
+		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1> --conflict-policy=skip',
 	];
 
 	static override flags = {
@@ -37,23 +38,24 @@ export default class PackageImportSelection extends BaseCommand {
 			delimiter: ',',
 			aliases: ['deleted-workflow-ids'],
 		}),
-		workflowConflictPolicy: Flags.string({
+		conflictPolicy: Flags.option({
 			description: 'What to do when a workflow already exists in the target project',
-			options: ['new-version', 'fail', 'skip'],
+			options: ['new-version', 'fail', 'skip'] as const,
 			default: 'new-version',
-			aliases: ['workflow-conflict-policy'],
-		}),
-		workflowIdPolicy: Flags.string({
-			description: 'Whether imported workflows keep their source ID (source) or receive a new one',
-			options: ['new', 'source'],
-			aliases: ['workflow-id-policy'],
-		}),
-		overwriteDeletionPolicy: Flags.string({
+			aliases: ['conflict-policy'],
+		})(),
+		idPolicy: Flags.option({
+			description:
+				'IDs for newly created workflows. Only source is supported. New workflows use the package IDs. Matched workflows keep their destination IDs.',
+			options: ['source'] as const,
+			aliases: ['id-policy'],
+		})(),
+		overwriteDeletionPolicy: Flags.option({
 			description:
 				'How --deleted-workflow-ids removes each target workflow (default: archive). archive keeps it recoverable; hard-delete also drops the workflow and its execution history',
-			options: ['archive', 'hard-delete'],
+			options: ['archive', 'hard-delete'] as const,
 			aliases: ['overwrite-deletion-policy'],
-		}),
+		})(),
 	};
 
 	async run(): Promise<void> {
@@ -66,7 +68,7 @@ export default class PackageImportSelection extends BaseCommand {
 		await this.execute(async () => {
 			const buffer = fs.readFileSync(flags.file);
 			const client = this.getClient(flags);
-			let result: Record<string, unknown>;
+			let result: ImportResultDto;
 			try {
 				result = await client.importPackageSelection(
 					{ buffer, filename: path.basename(flags.file) },
@@ -74,8 +76,8 @@ export default class PackageImportSelection extends BaseCommand {
 						selectedProjectId: flags.selectedProjectId,
 						selectedWorkflowIds: flags.selectedWorkflowIds ?? [],
 						deletedWorkflowIds: flags.deletedWorkflowIds,
-						workflowConflictPolicy: flags.workflowConflictPolicy,
-						workflowIdPolicy: flags.workflowIdPolicy,
+						conflictPolicy: flags.conflictPolicy,
+						idPolicy: flags.idPolicy,
 						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 					},
 				);

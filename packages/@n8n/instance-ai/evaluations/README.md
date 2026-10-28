@@ -167,7 +167,7 @@ Set the mock settings on the n8n server process and the judge settings on the CL
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-4-6` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI |
+| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-5-5` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI. `eval:discovery` reads it as the orchestrator model under test and falls back to `anthropic/claude-sonnet-4-6` |
 | `N8N_INSTANCE_AI_EVAL_EFFORT` | `medium` | Effort of the same agents |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | `anthropic/claude-sonnet-5-5` | Model of the judges: checklist verifier, expectations judge, binary LLM checks, computer-use grader. The user proxy and the mocks keep their model |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT` | `high` | Effort of the judges |
@@ -644,6 +644,7 @@ before the turn:
 - `seed.messages` are earlier messages in the thread.
 - `seed.workflows` and `seed.dataTables` are on the instance.
 - `seed.priorRuns` are failed runs. `hints` is the error of the run.
+  The stub instance cannot serve `seed.recordedRuns`, so it skips cases that have them.
 - `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
   turn sends it in the same `<thread-context>` block as production.
 - `credentials` are accounts. Each account passes its connection test, unless
@@ -754,7 +755,6 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
@@ -896,7 +896,7 @@ By default a build sees **no credentials**: the harness pins every build thread'
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
-Live resource lookups (`workflow_builder_nodes(action="explore-resources")`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
+Live resource lookups (`get_node_parameter_options`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
 
 A case that tests credential behaviour declares what should exist:
 
@@ -904,7 +904,7 @@ A case that tests credential behaviour declares what should exist:
 "credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
 ```
 
-Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. A type n8n has no connection test for (Header, Basic or Bearer Auth) is not bypassed: its test returns production's "No testing function found for this credential." Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
@@ -984,6 +984,28 @@ requires the agent to read it.
   against history the instance does not have.
 - Runs execute sequentially in declared order, before the live turn, on a 120s budget —
   tighter than a scenario execution, which gets the case's build budget (900s by default).
+
+#### `seed.recordedRuns` — the same failure on every run
+
+`priorRuns` asks the mock layer to fail again on each eval, so the failure can differ from
+run to run. `recordedRuns` restores a failed run recorded once, so every eval sees the same
+record: the same node outputs, the same error.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { "format": "n8n-instance-ai-failed-execution", "version": 1 /* … */ } }]
+}
+```
+
+- Get an `envelope` from `POST /rest/instance-ai/eval/export-execution` on an eval
+  instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`), for one failed run (`error` or
+  `crashed`) of a thread's project.
+- `workflow` is the seed workflow's `id`, as for `priorRuns`. The restore binds the run to
+  the restored workflow and moves its timestamps so it ends at restore time.
+- Recorded runs restore in declared order, before any `priorRuns`. A restore that fails is
+  a seeding failure (framework issue), not an agent failure.
 
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 

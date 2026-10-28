@@ -30,7 +30,7 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 /**
- * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
  * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
  */
 export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
@@ -77,7 +77,7 @@ export type SkillListResponse = {
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
-export type SkillUsage = {
+export type SkillUsedBy = {
 	/** Agents whose draft references the skill. */
 	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
 	/** Agents with a published version that pins the skill, one row each. */
@@ -97,7 +97,7 @@ export type SkillDetail = SkillListItem & {
 	skill: AgentSkill;
 	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
-	usedBy: SkillUsage;
+	usedBy: SkillUsedBy;
 };
 
 export type SkillSaveResponse = {
@@ -111,6 +111,16 @@ export type SkillSaveResponse = {
 	skillHash: string;
 };
 
+/** Without `sortBy` the list shows the most recently changed skill first. */
+export const SKILLS_SORT_OPTIONS = [
+	'name:asc',
+	'name:desc',
+	'updatedAt:asc',
+	'updatedAt:desc',
+] as const;
+
+export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
+
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
 	take: optionalTake,
@@ -118,14 +128,46 @@ export class ListSkillsQueryDto extends Z.class({
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
 	/**
+	 * The id of an agent: the skills it uses (a draft ref or a published pin) and its own
+	 * agent skills. Not combined with `attachableTo`.
+	 */
+	agentId: z.string().max(36).optional(),
+	/** The id of the user who created the skill. User ids are UUIDs. */
+	createdById: z.string().uuid().optional(),
+	/**
 	 * The id of an agent: the skills it may attach, which are its project's skills, its own
-	 * agent skills and instance skills. Not combined with `scope` or `projectId`.
+	 * agent skills and instance skills. Not combined with `scope`, `projectId` or `agentId`.
 	 */
 	attachableTo: z.string().max(36).optional(),
+	sortBy: z
+		.enum(SKILLS_SORT_OPTIONS, {
+			message: `sortBy must be one of: ${SKILLS_SORT_OPTIONS.join(', ')}`,
+		})
+		.optional(),
 }) {}
 
+export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;
+
+/** The agents for the agent filter of the skills list, searched by name. */
+export class ListSkillAgentsQueryDto extends Z.class({
+	search: z.string().trim().max(200).optional(),
+	take: z
+		.string()
+		.optional()
+		.transform((value) => (value === undefined || value === '' ? undefined : Number(value)))
+		.refine((value) => value === undefined || (Number.isInteger(value) && value > 0), {
+			message: 'Param `take` must be a positive integer',
+		})
+		.transform((value) =>
+			Math.min(value ?? SKILL_AGENTS_MAX_PAGE_SIZE, SKILL_AGENTS_MAX_PAGE_SIZE),
+		),
+}) {}
+
+/** An agent as the agent filter of the skills list names it. */
+export type SkillAgentOption = { id: string; name: string };
+
 /**
- * A skills hub name, trimmed first. A name of only spaces is refused, and padding is not
+ * A skill name, trimmed first. A name of only spaces is refused, and padding is not
  * stored, so it cannot make a name look free or show as an untitled row.
  */
 const skillNameSchema = z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH);
@@ -154,7 +196,8 @@ export class CreateSkillDto extends Z.class({
 	projectId: z.string().max(36).optional(),
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
-	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
+	availableToAssistant: z.boolean().optional(),
+	/** Skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
 	/** For telemetry only. Absent counts as `manual`. */
 	method: skillCreateMethodSchema.optional(),

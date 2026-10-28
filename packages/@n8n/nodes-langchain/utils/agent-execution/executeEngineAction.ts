@@ -3,7 +3,7 @@ import omit from 'lodash/omit';
 import type { EngineRequest, ExecuteNodeResult, IDataObject, INode, ITaskData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { RequestResponseMetadata } from './types';
+import { INTERNAL_TOOL_ARG_STASH_KEY, type RequestResponseMetadata } from './types';
 
 type ConnectedTool = DynamicStructuredTool | Tool;
 type Action = EngineRequest<RequestResponseMetadata>['actions'][number];
@@ -30,7 +30,13 @@ export async function executeEngineAction(
 
 	try {
 		// `input.tool` is a toolkit-dispatch marker added by createEngineRequests; strip before invoking.
-		const output = await tool.invoke(omit(action.input, 'tool'));
+		const stashedArguments = action.input[INTERNAL_TOOL_ARG_STASH_KEY] as IDataObject | undefined;
+		const toolArguments = omit(action.input, ['tool', INTERNAL_TOOL_ARG_STASH_KEY]);
+		if (stashedArguments && typeof stashedArguments === 'object') {
+			if ('tool' in stashedArguments) toolArguments.tool = stashedArguments.tool;
+			if ('toolCallId' in stashedArguments) toolArguments.toolCallId = stashedArguments.toolCallId;
+		}
+		const output = await tool.invoke(toolArguments);
 		return {
 			action,
 			data: {

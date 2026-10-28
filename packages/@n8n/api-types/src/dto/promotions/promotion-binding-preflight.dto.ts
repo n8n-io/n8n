@@ -10,6 +10,14 @@ import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+/**
+ * A project on this instance. `name` is left out for a personal project, because its name holds
+ * the owner's email.
+ */
+export const promotionInstanceProjectSchema = z.object({
+	id: sourceId,
+	name: z.string().optional(),
+});
 // Report package values unchanged. The create API validates them when used.
 export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
 	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),

@@ -9,6 +9,7 @@ import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type {
 	AgentExecutionThread,
@@ -167,6 +168,29 @@ describe('AgentExecutionService', () => {
 		);
 		return await service.finalizeExecution(executionId, params);
 	}
+
+	it('broadcasts public usage fields without changing saved totals', () => {
+		const context = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'execution-1',
+		};
+		const usage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0.01,
+			inputTokenDetails: { cacheRead: 4 },
+		};
+		service.reportUsage(context, usage, 2300);
+		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
+			...context,
+			duration: 2300,
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+		});
+		expect(agentExecutionThreadRepository.incrementUsage).not.toHaveBeenCalled();
+	});
 
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
@@ -566,6 +590,19 @@ describe('AgentExecutionService', () => {
 		return params;
 	}
 
+	it('stops only the selected execution through its runtime signal', async () => {
+		await startSnapshotExecution();
+		const signal = service.getAbortSignal('execution-1');
+
+		expect(service.stopExecution('other-execution')).toBe(false);
+		expect(signal.aborted).toBe(false);
+
+		expect(service.stopExecution('execution-1')).toBe(true);
+		expect(signal.aborted).toBe(true);
+		expect(signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+	});
+
 	it('retries failed heartbeats and aborts only after confirmed ownership loss', async () => {
 		vi.useFakeTimers();
 		try {
@@ -801,6 +838,42 @@ describe('AgentExecutionService', () => {
 		);
 	});
 
+	it('publishes completion after the thread totals are saved', async () => {
+		const totalsWriteStarted = createDeferredPromise();
+		const totalsWrite = createDeferredPromise();
+		agentExecutionThreadRepository.incrementUsage.mockImplementationOnce(async () => {
+			totalsWriteStarted.resolve();
+			await totalsWrite.promise;
+		});
+		const finalized = service.finalizeExecution('execution-1', {
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			userMessage: null,
+			record: makeMessageRecord({
+				usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+				totalCost: 0.01,
+				duration: 1500,
+			}),
+		});
+		try {
+			await totalsWriteStarted.promise;
+			expect(executionUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		} finally {
+			totalsWrite.resolve();
+			await finalized;
+		}
+		expect(executionUpdateBroadcaster.notify).toHaveBeenCalledExactlyOnceWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'execution-1',
+			duration: 1500,
+			complete: true,
+		});
+	});
+
 	it('keeps terminal persistence successful when usage totals and model backfill fail', async () => {
 		agentExecutionThreadRepository.incrementUsage.mockRejectedValue(
 			new Error('usage update failed'),
@@ -966,6 +1039,8 @@ describe('AgentExecutionService', () => {
 				agentId: 'agent-1',
 				threadId: 'thread-1',
 				executionId: 'execution-1',
+				duration: record.duration,
+				complete: true,
 			});
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledTimes(2);
 		});
@@ -1279,6 +1354,8 @@ describe('AgentExecutionService', () => {
 				cost: 25,
 				token_count: 15,
 				tool_call_count: 1,
+				skill_load_count: 0,
+				loaded_skill_ids: [],
 			});
 		});
 
@@ -2235,6 +2312,18 @@ describe('AgentExecutionService', () => {
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentChatAttachmentService.deleteStoredData).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteMemoryThreadsForAgent', () => {
+		it('deletes the memory threads of the agent sessions in bulk', async () => {
+			agentExecutionThreadRepository.findIdsByAgentId.mockResolvedValue(['thread-1', 'thread-2']);
+
+			await service.deleteMemoryThreadsForAgent('agent-1');
+
+			expect(agentExecutionThreadRepository.findIdsByAgentId).toHaveBeenCalledWith('agent-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(memoryBackend.deleteThreads).toHaveBeenCalledWith(['thread-1', 'thread-2']);
 		});
 	});
 

@@ -5,13 +5,13 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
-| baseline | json |  | false |  |  | Workflow snapshot and version checks captured at admission |
 | configurationId | integer |  | false |  | [public.self_healing_configuration](public.self_healing_configuration.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | executionId | varchar(36) |  | false |  |  | Original execution reference retained after pruning; supports both execution engines |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the investigation released its workflow claim |
 | id | varchar(36) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Workflow owner project at admission |
+| publishedVersionId | varchar(36) |  | false |  |  | Published workflow version checked at admission |
 | resultId | varchar(36) |  | true |  | [public.self_healing_result](public.self_healing_result.md) | Result saved by atomic investigation completion |
 | runId | uuid |  | false |  |  | Assistant run ID; technical status stays in run events |
 | threadId | uuid |  | false |  |  | Private Assistant thread ID; retained after deletion |
@@ -29,12 +29,12 @@
 | FK_self_healing_investigation_configuration | FOREIGN KEY | FOREIGN KEY ("configurationId") REFERENCES self_healing_configuration(id) ON DELETE CASCADE |
 | PK_735895e1c137cd827884cfa843a | PRIMARY KEY | PRIMARY KEY (id) |
 | self_healing_investigation_backgroundUserId_not_null | n | NOT NULL "backgroundUserId" |
-| self_healing_investigation_baseline_not_null | n | NOT NULL baseline |
 | self_healing_investigation_configurationId_not_null | n | NOT NULL "configurationId" |
 | self_healing_investigation_createdAt_not_null | n | NOT NULL "createdAt" |
 | self_healing_investigation_executionId_not_null | n | NOT NULL "executionId" |
 | self_healing_investigation_id_not_null | n | NOT NULL id |
 | self_healing_investigation_projectId_not_null | n | NOT NULL "projectId" |
+| self_healing_investigation_publishedVersionId_not_null | n | NOT NULL "publishedVersionId" |
 | self_healing_investigation_runId_not_null | n | NOT NULL "runId" |
 | self_healing_investigation_threadId_not_null | n | NOT NULL "threadId" |
 | self_healing_investigation_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -65,13 +65,13 @@ erDiagram
 
 "public.self_healing_investigation" {
   uuid backgroundUserId FK
-  json baseline
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
   varchar_36_ projectId FK
+  varchar_36_ publishedVersionId
   varchar_36_ resultId FK
   uuid runId
   uuid threadId
@@ -101,6 +101,7 @@ erDiagram
   boolean enabled
   uuid enabledById FK
   integer id
+  boolean includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt

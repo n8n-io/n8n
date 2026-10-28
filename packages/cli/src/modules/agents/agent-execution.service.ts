@@ -6,6 +6,7 @@ import type {
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
+	AgentTokenUsage,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
@@ -23,6 +24,7 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import {
 	checkpointExecutionId,
@@ -382,6 +384,33 @@ export class AgentExecutionService {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
 	}
 
+	stopExecution(executionId: string): boolean {
+		const controller = this.executionControllers.get(executionId);
+		if (!controller) return false;
+		controller.abort(SESSION_STOPPED_REASON);
+		return true;
+	}
+
+	reportUsage(
+		context: AgentExecutionLogRef & { projectId: string },
+		usage: AgentTokenUsage,
+		duration: number,
+	): void {
+		this.executionUpdateBroadcaster.notify({
+			projectId: context.projectId,
+			agentId: context.agentId,
+			threadId: context.threadId,
+			executionId: context.executionId,
+			duration,
+			usage: {
+				promptTokens: usage.promptTokens,
+				completionTokens: usage.completionTokens,
+				totalTokens: usage.totalTokens,
+				...(usage.cost !== undefined && { cost: usage.cost }),
+			},
+		});
+	}
+
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
 		if (!this.heartbeatTimers.has(executionId)) return;
 		this.pendingTimelineSnapshots.set(executionId, snapshot);
@@ -424,14 +453,16 @@ export class AgentExecutionService {
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
 			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
+			await this.completeRecordedExecution(settled, executionId, status);
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
 				agentId: params.agentId,
 				threadId: params.threadId,
 				executionId,
+				duration: record.duration,
+				complete: true,
 			});
-			await this.completeRecordedExecution(settled, executionId, status);
 			return executionId;
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -724,6 +755,18 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * Delete the SDK-memory threads of an agent's sessions. Call before the agent
+	 * is removed: the cascade then deletes the execution threads that list them.
+	 */
+	async deleteMemoryThreadsForAgent(agentId: string): Promise<void> {
+		const memory = this.n8nMemory.getImplementation(agentId);
+		const threadIds = await this.agentExecutionThreadRepository.findIdsByAgentId(agentId);
+		for (const batch of chunk(threadIds, AgentExecutionService.logDeletionBatchSize)) {
+			await memory.deleteThreads(batch);
+		}
+	}
+
+	/**
 	 * Get paginated execution threads for an agent.
 	 * Each thread is annotated with the first non-empty user message for preview
 	 * and the earliest non-null execution source for channel origin.
@@ -952,6 +995,20 @@ export class AgentExecutionService {
 	 */
 	async findThreadById(threadId: string): Promise<AgentExecutionThread | null> {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+	}
+
+	async findAccessibleThreadById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.agentExecutionThreadRepository.findAccessibleById(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
 	}
 
 	async canUseDraftThread(

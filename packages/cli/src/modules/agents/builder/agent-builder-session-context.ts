@@ -8,8 +8,9 @@ const NO_MODEL_RECOMMENDATIONS =
 export async function buildBuilderSessionContext(
 	projectId: string,
 	agentId: string,
+	fetch: typeof globalThis.fetch,
 ): Promise<string> {
-	const modelRecommendationsSection = await getModelRecommendationsSection();
+	const modelRecommendationsSection = await getModelRecommendationsSection(fetch);
 
 	return `\
 ## Session context

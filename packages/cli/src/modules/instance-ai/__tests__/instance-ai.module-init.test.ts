@@ -1,18 +1,20 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 import { InboxSourceRegistry } from '../../inbox/inbox-source.registry';
 import { SelfHealingConfigurationService } from '../self-healing/self-healing-configuration.service';
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
+import { AssistantAgentProvider } from '../assistant-agent/assistant-agent.provider';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -62,6 +64,10 @@ vi.mock('../self-healing/self-healing-result.service', () => ({
 	SelfHealingResultService: vi.fn(),
 }));
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
+vi.mock('../assistant-agent/assistant-agent.provider', () => ({ AssistantAgentProvider: vi.fn() }));
+vi.mock('@/modules/agents/system-agents/system-agent-registration.service', () => ({
+	SystemAgentRegistrationService: vi.fn(),
+}));
 vi.mock('../self-healing/self-healing-investigation.service', () => ({
 	SelfHealingInvestigationService: vi.fn(),
 }));
@@ -95,6 +101,7 @@ describe('InstanceAiModule.init', () => {
 		const config = mockInstance(InstanceAiConfig, {
 			workflowSuggestionsEnabled: false,
 			evalInstance: false,
+			assistantAgentEnabled: false,
 		});
 		const instanceSettings = mockInstance(InstanceSettings, { instanceType: 'main' });
 		const sources = mockInstance(InboxSourceRegistry);
@@ -189,6 +196,63 @@ describe('InstanceAiModule.init', () => {
 			expect(loadConfigurationController).not.toHaveBeenCalled();
 		},
 	);
+
+	it('registers the Assistant agent only when it is enabled and the agents module starts', async () => {
+		const { config, investigations } = setup();
+		const systemAgents = mockInstance(SystemAgentRegistrationService);
+		systemAgents.register.mockResolvedValue();
+		const provider = mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		let eligibleModules = ['instance-ai', 'agents'];
+		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(systemAgents.register).not.toHaveBeenCalled();
+
+		config.assistantAgentEnabled = true;
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		expect(systemAgents.register).toHaveBeenCalledWith(provider);
+
+		eligibleModules = ['instance-ai'];
+		systemAgents.register.mockClear();
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));
+		expect(systemAgents.register).not.toHaveBeenCalled();
+	});
+
+	it('tells the editor whether this main registered the Assistant agent', async () => {
+		const { config, investigations, settings, runtime } = setup();
+		mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+		mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		Object.defineProperty(modules, 'eligibleModules', { get: () => ['instance-ai', 'agents'] });
+		mockInstance(GlobalConfig, {
+			deployment: { type: 'default' },
+			instanceAi: { runDebugEnabled: false, workflowSuggestionsEnabled: false },
+		} as GlobalConfig);
+		settings.isAgentEnabled.mockReturnValue(true);
+		settings.getSandboxStatus.mockReturnValue({
+			enabled: false,
+			workflowBuilderAvailable: false,
+			unavailableReason: null,
+		} as never);
+		settings.isSetupCompleted.mockResolvedValue(true);
+		runtime.areMcpConnectionsAvailable.mockReturnValue(false);
+		runtime.isProxyEnabled.mockReturnValue(false);
+
+		const withoutAgent = new InstanceAiModule();
+		await withoutAgent.init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(await withoutAgent.settings()).toMatchObject({ assistantAgentEnabled: false });
+
+		config.assistantAgentEnabled = true;
+		const withAgent = new InstanceAiModule();
+		await withAgent.init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		expect(await withAgent.settings()).toMatchObject({ assistantAgentEnabled: true });
+	});
 
 	it('registers the eval controller only on an eval instance', async () => {
 		const { config, investigations } = setup();

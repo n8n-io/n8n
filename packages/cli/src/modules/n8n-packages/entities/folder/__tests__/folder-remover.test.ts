@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
+import type { FolderPlanItem } from '../folder-import.types';
 import { FolderRemover } from '../folder-remover';
 import type { ImportContext } from '../../../n8n-packages.types';
 
@@ -34,7 +35,11 @@ describe('FolderRemover.plan', () => {
 	it('removes an empty folder the package does not define', async () => {
 		const { remover } = makeRemover([folder('stale')]);
 
-		const plan = await remover.plan(context, { packageFolderIds: [], occupiedFolderIds: [] });
+		const plan = await remover.plan(context, {
+			packageFolderIds: [],
+			occupiedFolderIds: [],
+			folderItems: [],
+		});
 
 		expect(plan.removals.map(({ id }) => id)).toEqual(['stale']);
 	});
@@ -42,7 +47,11 @@ describe('FolderRemover.plan', () => {
 	it('keeps a folder the package defines, even when empty', async () => {
 		const { remover } = makeRemover([folder('FA')]);
 
-		const plan = await remover.plan(context, { packageFolderIds: ['FA'], occupiedFolderIds: [] });
+		const plan = await remover.plan(context, {
+			packageFolderIds: ['FA'],
+			occupiedFolderIds: [],
+			folderItems: [],
+		});
 
 		expect(plan.removals).toEqual([]);
 	});
@@ -53,6 +62,7 @@ describe('FolderRemover.plan', () => {
 		const plan = await remover.plan(context, {
 			packageFolderIds: [],
 			occupiedFolderIds: ['sheltered'],
+			folderItems: [],
 		});
 
 		// Its contents were sheltered by the workflow pass, so removing it would archive them.
@@ -66,7 +76,11 @@ describe('FolderRemover.plan', () => {
 			folder('leaf', 'middle'),
 		]);
 
-		const plan = await remover.plan(context, { packageFolderIds: [], occupiedFolderIds: [] });
+		const plan = await remover.plan(context, {
+			packageFolderIds: [],
+			occupiedFolderIds: [],
+			folderItems: [],
+		});
 
 		// Deepest first, so the parent's cascade never drops a child without its own deletion.
 		expect(plan.removals.map(({ id }) => id)).toEqual(['leaf', 'middle', 'top']);
@@ -78,6 +92,7 @@ describe('FolderRemover.plan', () => {
 		const plan = await remover.plan(context, {
 			packageFolderIds: [],
 			occupiedFolderIds: ['leaf'],
+			folderItems: [],
 		});
 
 		expect(plan.removals).toEqual([]);
@@ -86,7 +101,11 @@ describe('FolderRemover.plan', () => {
 	it('keeps a parent that still holds a package-defined child', async () => {
 		const { remover } = makeRemover([folder('top'), folder('FA', 'top')]);
 
-		const plan = await remover.plan(context, { packageFolderIds: ['FA'], occupiedFolderIds: [] });
+		const plan = await remover.plan(context, {
+			packageFolderIds: ['FA'],
+			occupiedFolderIds: [],
+			folderItems: [],
+		});
 
 		expect(plan.removals).toEqual([]);
 	});
@@ -96,7 +115,11 @@ describe('FolderRemover.plan', () => {
 			canDeleteFolders: false,
 		});
 
-		const plan = await remover.plan(context, { packageFolderIds: [], occupiedFolderIds: [] });
+		const plan = await remover.plan(context, {
+			packageFolderIds: [],
+			occupiedFolderIds: [],
+			folderItems: [],
+		});
 
 		expect(plan.removals).toEqual([]);
 		expect(plan.failures).toEqual([{ folderId: 'stale', name: 'stale', projectId: 'proj-1' }]);
@@ -105,10 +128,98 @@ describe('FolderRemover.plan', () => {
 		]);
 	});
 
+	describe('with planned moves', () => {
+		const moveTo = (id: string, targetParentFolderId: string | null): FolderPlanItem => ({
+			action: 'update',
+			sourceFolderId: id,
+			name: id,
+			targetParentFolderId,
+			moved: true,
+		});
+
+		it('removes a target-only folder that a package folder moves out of', async () => {
+			const { remover } = makeRemover([folder('T'), folder('FA', 'T')]);
+
+			const plan = await remover.plan(context, {
+				packageFolderIds: ['FA'],
+				occupiedFolderIds: [],
+				folderItems: [moveTo('FA', null)],
+			});
+
+			expect(plan.removals.map(({ id }) => id)).toEqual(['T']);
+		});
+
+		it('keeps a target-only folder that a renamed package folder still sits in', async () => {
+			const { remover } = makeRemover([folder('T'), folder('FA', 'T')]);
+
+			const plan = await remover.plan(context, {
+				packageFolderIds: ['FA'],
+				occupiedFolderIds: [],
+				folderItems: [
+					{
+						action: 'update',
+						sourceFolderId: 'FA',
+						name: 'New',
+						targetParentFolderId: 'T',
+						renamed: true,
+					},
+				],
+			});
+
+			expect(plan.removals).toEqual([]);
+		});
+
+		it('keeps a target-only folder that a package folder moves into', async () => {
+			const { remover } = makeRemover([folder('T'), folder('FA')]);
+
+			const plan = await remover.plan(context, {
+				packageFolderIds: ['FA'],
+				occupiedFolderIds: [],
+				folderItems: [moveTo('FA', 'T')],
+			});
+
+			expect(plan.removals).toEqual([]);
+		});
+
+		it('orders removals by depth after the moves', async () => {
+			// FA moves to the root, so C ends one level deep and T0 at the root.
+			const { remover } = makeRemover([folder('T0'), folder('FA', 'T0'), folder('C', 'FA')]);
+
+			const plan = await remover.plan(context, {
+				packageFolderIds: ['FA'],
+				occupiedFolderIds: [],
+				folderItems: [moveTo('FA', null)],
+			});
+
+			expect(plan.removals.map(({ id, depth }) => ({ id, depth }))).toEqual([
+				{ id: 'C', depth: 1 },
+				{ id: 'T0', depth: 0 },
+			]);
+		});
+
+		it('ignores items that do not move a folder', async () => {
+			const { remover } = makeRemover([folder('T'), folder('FA', 'T')]);
+
+			const plan = await remover.plan(context, {
+				packageFolderIds: ['FA'],
+				occupiedFolderIds: [],
+				folderItems: [
+					{ action: 'skip', sourceFolderId: 'FA', name: 'FA', targetParentFolderId: null },
+				],
+			});
+
+			expect(plan.removals).toEqual([]);
+		});
+	});
+
 	it('skips the permission lookup when nothing would be removed', async () => {
 		const { remover, projectService } = makeRemover([folder('FA')]);
 
-		const plan = await remover.plan(context, { packageFolderIds: ['FA'], occupiedFolderIds: [] });
+		const plan = await remover.plan(context, {
+			packageFolderIds: ['FA'],
+			occupiedFolderIds: [],
+			folderItems: [],
+		});
 
 		expect(plan).toEqual({ removals: [], failures: [] });
 		expect(projectService.getProjectWithScope).not.toHaveBeenCalled();

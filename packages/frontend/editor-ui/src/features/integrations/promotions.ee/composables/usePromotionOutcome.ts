@@ -5,7 +5,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { promoteSuccessToast } from '../promotionResult';
+import { promoteSuccessToast, withMoveAndRenameNote } from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
 import type { AppliedResult } from '../promotions.types';
 
@@ -43,11 +43,15 @@ export function usePromotionOutcome() {
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
 			title: i18n.baseText('promotions.operation.incoming.applied.title'),
-			message: i18n.baseText(
-				notPublished
-					? 'promotions.operation.incoming.applied.messageNotPublished'
-					: 'promotions.operation.incoming.applied.message',
-				{ interpolate },
+			message: withMoveAndRenameNote(
+				i18n,
+				i18n.baseText(
+					notPublished
+						? 'promotions.operation.incoming.applied.messageNotPublished'
+						: 'promotions.operation.incoming.applied.message',
+					{ interpolate },
+				),
+				result.counts,
 			),
 			type: notPublished ? 'warning' : 'success',
 		});

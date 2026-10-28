@@ -31,7 +31,6 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -42,7 +41,6 @@ import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
@@ -50,7 +48,7 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
+import { SkillNameTakenError } from '@/modules/skills';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { BuilderCredentialService } from '../builder/builder-session';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
@@ -66,7 +64,7 @@ const standardApprovalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA)!;
 type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
-	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'> &
 	Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>;
 
 function makeService() {
@@ -74,7 +72,7 @@ function makeService() {
 	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
-		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+		mock<Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'>>();
 	const agentSkillsService =
 		mock<
 			Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>
@@ -84,7 +82,7 @@ function makeService() {
 		findByProjectId: agentsService.findByProjectId,
 		updateConfig: agentConfigService.updateConfig,
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
-		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		listBuilderChatIntegrations: agentIntegrationPersistenceService.listBuilderChatIntegrations,
 		createAndAttachSkills: agentSkillsService.createAndAttachSkills,
 		getSkill: agentSkillsService.getSkill,
 		listSkills: agentSkillsService.listSkills,
@@ -97,7 +95,6 @@ function makeService() {
 		versionId: 'v2',
 	}));
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
@@ -107,11 +104,8 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
-	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
@@ -127,7 +121,6 @@ function makeService() {
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		agentsToolsService,
 		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),
@@ -138,7 +131,6 @@ function makeService() {
 		aiService,
 		mock<AiGatewayService>(),
 		outboundHttp,
-		dynamicNodeParametersService,
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
@@ -642,7 +634,7 @@ describe('AgentsBuilderToolsService', () => {
 				tools: [gmailTool('search_order_emails'), gmailTool('escalate', { sendTo: '' })],
 			};
 			let stored = currentConfig;
-			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
 			agentsService.findById.mockImplementation(async () => makeAgent(stored));
 			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
 				stored = config as AgentJsonConfig;
@@ -720,7 +712,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('agent_builder_finish_setup does not overwrite a config field that already has a value', async () => {
 			const { service, agentsService } = makeService();
-			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 
 			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
@@ -891,7 +883,7 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_patch_config can remove one integration while preserving siblings', async () => {
-			const { service, agentsService } = makeService();
+			const { service, agentsService, telemetry } = makeService();
 			const currentIntegrations = [
 				{ type: 'slack', credentialId: 'slack-1' },
 				{ type: 'linear', credentialId: 'linear-1' },
@@ -941,7 +933,86 @@ describe('AgentsBuilderToolsService', () => {
 				}),
 			);
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				{
+					agent_id: agentId,
+					user_id: user.id,
+					trigger_type: 'linear',
+					triggers: ['slack', 'telegram'],
+				},
+			);
 		});
+
+		it('agent_builder_write_config reports n8n Chat as a removed trigger', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentIntegrations = [
+				{ type: 'n8n_chat', credentialId: '' },
+				{ type: 'slack', credentialId: 'slack-1' },
+			] as NonNullable<AgentJsonConfig['integrations']>;
+			const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+			const agent = makeAgent(baseConfig);
+			agent.integrations = currentIntegrations;
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, integrations: [currentIntegrations[1]] },
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					config: { integrations: [currentIntegrations[1]] },
+				},
+				ctx,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				expect.objectContaining({ trigger_type: 'n8n_chat', triggers: ['slack'] }),
+			);
+		});
+
+		it.each([
+			['the removed channel was a draft', { type: 'slack', credentialId: '' }, true],
+			['the save fails', { type: 'slack', credentialId: 'slack-1' }, false],
+		])(
+			'agent_builder_patch_config reports no removed trigger when %s',
+			async (_case, integration, saves) => {
+				const { service, agentsService, telemetry } = makeService();
+				const currentIntegrations = [integration] as NonNullable<AgentJsonConfig['integrations']>;
+				const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+				const agent = makeAgent(baseConfig);
+				agent.integrations = currentIntegrations;
+				agentsService.findById.mockResolvedValue(agent);
+				if (saves) {
+					agentsService.updateConfig.mockResolvedValue({
+						config: { ...currentConfig, integrations: [] },
+						configHash: 'config-hash',
+						updatedAt: '2026-01-02T00:00:00.000Z',
+						versionId: 'v2',
+					});
+				} else {
+					agentsService.updateConfig.mockRejectedValue(new Error('Save failed'));
+				}
+
+				await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						operations: [{ op: 'remove', path: '/integrations/0' }],
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+					expect.anything(),
+				);
+			},
+		);
 
 		it('agent_builder_patch_config strips legacy schedule integrations from the current snapshot', async () => {
 			const { service, agentsService } = makeService();
@@ -1088,7 +1159,7 @@ describe('AgentsBuilderToolsService', () => {
 				errors: [
 					expect.objectContaining({
 						path: '/tools/0/node/nodeParameters/teamId',
-						message: expect.stringContaining('agent_builder_get_resource_locator_options'),
+						message: expect.stringContaining('get_node_parameter_options'),
 					}),
 				],
 			});
@@ -1877,6 +1948,24 @@ describe('AgentsBuilderToolsService', () => {
 				getBuildCustomTool(service).handler!({ code: 'broken' }, abortableCtx),
 			).rejects.toThrow('compile failed');
 		});
+	});
+
+	// Both tools are always loaded together, so one copy of the objective template is enough.
+	it('shows the task objective template on create_tasks only', () => {
+		const { service } = makeService();
+		const { shared } = service.getTools(
+			agentId,
+			projectId,
+			credentialProvider,
+			credentialService,
+			user,
+		);
+		const schemaText = (name: string) =>
+			JSON.stringify(zodToJsonSchema(shared.find((tool) => tool.name === name)!.inputSchema));
+
+		expect(schemaText(BUILDER_TOOLS.CREATE_TASKS)).toContain('## Success criteria');
+		expect(schemaText(BUILDER_TOOLS.UPDATE_TASK)).not.toContain('## Success criteria');
+		expect(schemaText(BUILDER_TOOLS.UPDATE_TASK)).toContain(BUILDER_TOOLS.CREATE_TASKS);
 	});
 
 	describe('agent_builder_create_skills tool', () => {
@@ -3278,11 +3367,11 @@ describe('AgentsBuilderToolsService', () => {
 			vi.spyOn(
 				(
 					service as unknown as {
-						agentIntegrationPersistenceService: { listChatIntegrations: () => unknown };
+						agentIntegrationPersistenceService: { listBuilderChatIntegrations: () => unknown };
 					}
 				).agentIntegrationPersistenceService,
-				'listChatIntegrations',
-			).mockReturnValue([{ type: 'telegram' }]);
+				'listBuilderChatIntegrations',
+			).mockResolvedValue([{ type: 'telegram' }]);
 			const tool = tools.json.find((t) => t.name === 'agent_builder_configure_channel')!;
 
 			const result = await tool.handler!({ integrationType: 'telegram' }, { ...ctx, suspend });

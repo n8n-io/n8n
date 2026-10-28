@@ -49,6 +49,7 @@ describe('useAgentTelemetry', () => {
 		'suspension',
 		'hitl-response',
 		'background-task-signal',
+		'background-task',
 	] as const)('tracks %s trace selection without trace content', (itemType) => {
 		useAgentTelemetry().trackClickedTraceItem({ agentId: 'ag-1', itemType });
 		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
@@ -213,6 +214,24 @@ describe('useAgentTelemetry', () => {
 			triggers: ['slack', 'telegram'],
 			config_version: 'v4',
 			status: 'draft',
+			push_ref: 'session-xyz',
+		});
+	});
+
+	it('trackRemovedTrigger fires with the removed trigger_type and the remaining triggers', () => {
+		useAgentTelemetry().trackRemovedTrigger({
+			agentId: 'ag-1',
+			triggerType: 'n8n_chat',
+			triggers: ['slack'],
+			configVersion: 'v5',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TRIGGER_FROM_AGENT, {
+			agent_id: 'ag-1',
+			trigger_type: 'n8n_chat',
+			triggers: ['slack'],
+			config_version: 'v5',
+			status: 'production',
 			push_ref: 'session-xyz',
 		});
 	});

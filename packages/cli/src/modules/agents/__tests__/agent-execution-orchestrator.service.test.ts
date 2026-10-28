@@ -51,6 +51,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
@@ -83,6 +84,11 @@ import type { ToolRegistry } from '../tool-registry';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+
+// Draft runs check `agent:read`; these tests run as a user who holds it.
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(async () => true),
+}));
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -1190,7 +1196,9 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 			});
-			await expect(collect(stream)).resolves.toEqual([]);
+			await expect(collect(stream)).resolves.toEqual([
+				{ type: 'finish', finishReason: 'cancelled' },
+			]);
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
@@ -1228,7 +1236,25 @@ describe('AgentExecutionOrchestratorService', () => {
 				created.resolve();
 			}
 			await stopping;
-			await expect(result).resolves.toEqual([]);
+			await expect(result).resolves.toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+			expect(sdkStart).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+				}),
+			);
+		});
+
+		it('reports a session stop before the SDK starts on a non-chat surface', async () => {
+			const controller = new AbortController();
+			const { stream, sdkStart, executionService, onExecutionStarted } = makeTurn();
+			executionService.getAbortSignal.mockReturnValue(controller.signal);
+			onExecutionStarted.mockImplementation(() => controller.abort(SESSION_STOPPED_REASON));
+
+			await expect(collect(stream)).resolves.toEqual([
+				{ type: 'finish', finishReason: 'cancelled' },
+			]);
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
@@ -1420,20 +1446,75 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		it.each([
-			{ name: 'requested stop', previewChat: true, abort: true, expectedReason: 'cancelled' },
-			{ name: 'caller abort', previewChat: true, abort: true, expectedReason: 'cancelled' },
-			{ name: 'model failure', previewChat: true, abort: false, expectedReason: 'error' },
+			{
+				name: 'requested stop',
+				previewChat: true,
+				abort: true,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'cancelled',
+			},
+			{
+				name: 'caller abort',
+				previewChat: true,
+				abort: true,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'cancelled',
+			},
+			{
+				name: 'model failure',
+				previewChat: true,
+				abort: false,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'session stop',
+				previewChat: false,
+				abort: true,
+				abortReason: SESSION_STOPPED_REASON,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'cancelled',
+			},
 			{
 				name: 'ownership loss',
 				previewChat: true,
 				abort: true,
 				abortReason: new OperationalError('Execution ownership lost'),
+				error: new Error('Runtime ended'),
 				expectedReason: 'error',
 			},
-			{ name: 'non-chat abort', previewChat: false, abort: true, expectedReason: 'error' },
+			{
+				name: 'non-chat abort',
+				previewChat: false,
+				abort: true,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'non-chat AbortError',
+				previewChat: false,
+				abort: true,
+				error: new DOMException('Runtime ended', 'AbortError'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'model failure after chat abort',
+				previewChat: true,
+				abort: true,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
+			{
+				name: 'model failure after session stop',
+				previewChat: false,
+				abort: true,
+				abortReason: SESSION_STOPPED_REASON,
+				error: new Error('Runtime ended'),
+				expectedReason: 'error',
+			},
 		])('emits the correct finish reason after $name', async (scenario) => {
 			const controller = new AbortController();
-			const error = new Error('Runtime ended');
+			const { error } = scenario;
 			const usage = { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.01 };
 			const { stream, executionService, chatExecutionService, backgroundJobs } = makeTurn({
 				previewChat: scenario.previewChat,
@@ -1445,7 +1526,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					{ type: 'finish', finishReason: 'error', model: 'mock-model', usage },
 				],
 			});
-			if (scenario.name === 'ownership loss')
+			if (scenario.abortReason !== undefined)
 				executionService.getAbortSignal.mockReturnValue(controller.signal);
 			const chunks: AgentExecutionStreamChunk[] = [];
 			for await (const chunk of stream) {

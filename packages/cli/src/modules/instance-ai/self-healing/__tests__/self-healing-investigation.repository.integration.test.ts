@@ -95,17 +95,19 @@ it('removes investigations when their workflow is deleted', async () => {
 	expect(await investigations.findInvestigation(investigation.id)).toBeNull();
 });
 
-it('reverts and reapplies the investigation and configuration schemas', async () => {
+it('reverts and reapplies the investigation schemas', async () => {
 	const db = Container.get(DataSource);
 	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
-	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateSelfHealingInvestigationTable1792578704944',
-	);
-	if (!migration) throw new Error('The investigation migration is not registered.');
-	const configurationMigration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateSelfHealingConfigurations1792742505678',
-	);
-	if (!configurationMigration) throw new Error('The configuration migration is not registered.');
+	const migrations = [
+		'CreateSelfHealingInvestigationTable1792578704944',
+		'CreateSelfHealingConfigurations1792742505678',
+		'ReplaceSelfHealingInvestigationBaseline1792750863544',
+		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
+	].map((name) => {
+		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
+		if (!migration) throw new Error(`${name} is not registered.`);
+		return migration;
+	});
 	async function runMigration(migration: MigrationInterface, direction: 'up' | 'down') {
 		// Table rebuilds can leave stale schema metadata on a reused query runner.
 		const runner = db.createQueryRunner();
@@ -116,26 +118,25 @@ it('reverts and reapplies the investigation and configuration schemas', async ()
 		}
 	}
 
-	await runMigration(configurationMigration, 'down');
+	const reverted: typeof migrations = [];
 	try {
-		await runMigration(migration, 'down');
+		for (const migration of [...migrations].reverse()) {
+			await runMigration(migration, 'down');
+			reverted.unshift(migration);
+		}
+		const runner = db.createQueryRunner();
 		try {
-			const runner = db.createQueryRunner();
-			try {
-				expect(await runner.hasTable(investigations.metadata.tablePath)).toBe(false);
-			} finally {
-				await runner.release();
-			}
+			expect(await runner.hasTable(investigations.metadata.tablePath)).toBe(false);
 		} finally {
-			await runMigration(migration, 'up');
+			await runner.release();
 		}
 	} finally {
-		await runMigration(configurationMigration, 'up');
+		for (const migration of reverted) await runMigration(migration, 'up');
 	}
 	configurationId = (await createConfiguration(baseline.projectId, baseline.backgroundUserId)).id;
 	const investigation = await createInvestigation();
 	expect(await investigations.findInvestigation(investigation.id)).toMatchObject({
-		baseline,
+		publishedVersionId: baseline.expectedBaseline.publishedVersionId,
 		resultId: null,
 		finishedAt: null,
 	});
