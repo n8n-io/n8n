@@ -22,6 +22,7 @@ describe('AgentRunnableStateService', () => {
 		skillRefs.findOutdatedSkillIds.mockResolvedValue(['pinned_older']);
 		const publishService = mock<AgentPublishService>();
 		publishService.hasPublishHistory.mockResolvedValue(false);
+		publishService.hasVersionHistory.mockResolvedValue(true);
 		const service = new AgentRunnableStateService(
 			mock<CredentialsService>(),
 			mock<AgentValidationService>(),
@@ -37,5 +38,6 @@ describe('AgentRunnableStateService', () => {
 
 		expect(skillRefs.findOutdatedSkillIds).toHaveBeenCalledWith(draft.skillRefs, draft.skills, {});
 		expect(result.outdatedSkillIds).toEqual(['pinned_older']);
+		expect(result).toMatchObject({ hasVersionHistory: true, hasPublishHistory: false });
 	});
 });

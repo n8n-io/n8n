@@ -10,7 +10,7 @@ import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-da
 import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillUsageProxy } from '@/modules/skills';
 
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
@@ -37,7 +37,7 @@ import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.r
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { AgentSkillUsageService } from '../agent-skill-usage.service';
+import { AgentSkillUsage } from '../agent-skill-usage';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
@@ -65,8 +65,8 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>());
-	Container.set(AgentSkillUsageService, mock<AgentSkillUsageService>());
+	Container.set(SkillUsageProxy, mock<SkillUsageProxy>());
+	Container.set(AgentSkillUsage, mock<AgentSkillUsage>());
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
 	Container.set(AgentWorkflowDependencyRepository, mock<AgentWorkflowDependencyRepository>());

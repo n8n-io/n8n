@@ -11,15 +11,17 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	UnexpectedError,
+	UserError,
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 import { mkdir, rename, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path';
 import type { ConfigListSummary, LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import { simpleGit } from 'simple-git';
-import { URL, fileURLToPath } from 'url';
+import { URL } from 'url';
 
 import {
 	addConfigFields,
@@ -49,6 +51,84 @@ import {
 } from './GenericFunctions';
 
 const REMOTE_HELPER_TRANSPORT = /^[a-zA-Z][a-zA-Z0-9+.-]*::/;
+
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
+// Decode `%XX` runs to bytes like git does; throw on invalid UTF-8 or NUL so a path that
+// cannot be compared to git's byte-for-byte is denied, not checked against a lossy `U+FFFD`.
+const decodeGitPercentEscapes = (segment: string): string =>
+	segment.replace(/(?:%[0-9a-fA-F]{2})+/g, (run) => {
+		const decoded = utf8Decoder.decode(
+			Uint8Array.from(run.match(/%[0-9a-fA-F]{2}/g)!.map((pair) => parseInt(pair.slice(1), 16))),
+		);
+		if (decoded.includes('\0')) {
+			throw new UserError('Repository reference contains a NUL byte');
+		}
+		return decoded;
+	});
+
+// Reconstruct the path git's file transport opens, without the normalisation `URL` applies:
+// `URL` splits off `?`/`#` and collapses `..` lexically; git keeps them and lets the kernel
+// resolve `..` after symlinks. Validate what git opens, not a URL-normalised derivative.
+export const fileUrlToGitPath = (reference: string): string => {
+	const hasAuthority = /^file:\/\//i.test(reference);
+	// Decode before splitting: git decodes first, so a `%2F` in the authority shifts the boundary.
+	let path = decodeGitPercentEscapes(reference.replace(/^file:(\/\/)?/i, ''));
+	if (hasAuthority) {
+		const pathStart = path.indexOf('/');
+		const authority = pathStart === -1 ? path : path.slice(0, pathStart);
+		// `file://C:/repo` puts a Windows drive, not a host, in the authority slot; keep it as
+		// the path. On POSIX git reads `C:` as a named authority and opens the path after it,
+		// so the drive-letter case only holds on Windows. A real named authority is not a local
+		// path (the OS can read it as a UNC share on Windows), so refuse anything but an empty
+		// host or `localhost` rather than guess which side wins.
+		if (process.platform === 'win32' && /^[a-zA-Z]:$/.test(authority)) {
+			return path;
+		}
+		if (authority !== '' && authority.toLowerCase() !== 'localhost') {
+			throw new UserError('Repository reference has an unsupported file authority');
+		}
+		path = pathStart === -1 ? '' : path.slice(pathStart);
+	}
+	// `file:///C:/repo` -> `C:/repo`: drop the slash git strips before a Windows drive letter.
+	if (process.platform === 'win32' && /^\/[a-zA-Z]:[\\/]/.test(path)) {
+		path = path.slice(1);
+	}
+	return path;
+};
+
+// Ask git which git directory a candidate resolves to, so the gitfile (`gitdir: <path>`) is
+// parsed exactly as git parses it at clone time, not by a reimplementation that drifts from
+// git's byte semantics. Runs with the command-bearing config pinned and a clean env, like the
+// operation itself, so resolution cannot invoke an external program.
+const resolveGitDirWithGit = async (candidate: string): Promise<string | undefined> => {
+	const config = ['core.hooksPath=/dev/null'];
+	const unsafe: NonNullable<SimpleGitOptions['unsafe']> = { allowUnsafeHooksPath: true };
+	for (const [key, value, unsafeFlag] of COMMAND_CONFIG_KEYS) {
+		config.push(`${key}=${value}`);
+		unsafe[unsafeFlag] = true;
+	}
+	const env = Object.create(null) as Record<string, string>;
+	env.GIT_TERMINAL_PROMPT = '0';
+	try {
+		// `--resolve-git-dir` takes an absolute path, so git's cwd does not steer resolution.
+		const resolver = simpleGit({
+			baseDir: tmpdir(),
+			config,
+			unsafe,
+			allowEnvironment: ['GIT_TERMINAL_PROMPT'],
+		}).env(env);
+		const output = await resolver.raw(['rev-parse', '--resolve-git-dir', candidate]);
+		// git prints the path and a single terminator. Strip only that terminator: a trailing
+		// space, or an embedded newline, is a real byte of a POSIX directory name. Windows
+		// forbids `\r`/`\n` in a name, so there the terminator can include `\r`.
+		return process.platform === 'win32' ? output.replace(/\r?\n$/, '') : output.replace(/\n$/, '');
+	} catch {
+		// git could not resolve a git directory from this candidate. The clone runs the same
+		// git, so a candidate git cannot resolve here is one git cannot open there either.
+		return undefined;
+	}
+};
 
 // Deliberately distinct from the `repositoryPath` message so the two guards can be told apart.
 const REPOSITORY_OUT_OF_BOUNDS_MESSAGE =
@@ -286,7 +366,9 @@ export class Git implements INodeType {
 		const prepareRepository = async (repositoryPath: string): Promise<string> => {
 			const authentication = this.getNodeParameter('authentication', 0) as string;
 
-			if (authentication === 'gitPassword') {
+			// Skip `file:` refs: they carry no credentials, and `new URL` would collapse `..`
+			// and diverge from the path the allowed-path check validated.
+			if (authentication === 'gitPassword' && !/^file:/i.test(repositoryPath.trim())) {
 				const gitCredentials = await this.getCredentials('gitPassword');
 
 				const url = new URL(repositoryPath);
@@ -395,6 +477,39 @@ export class Git implements INodeType {
 					`Access to the ${repositoryType} repository path is not allowed`,
 				);
 			}
+
+			await assertGitLinkTargetAllowed(resolvedLocalRepositoryPath, repositoryType);
+		};
+
+		// git discovers a repository through a `.git` gitfile (`gitdir: <path>`), which can point
+		// the real git directory anywhere, including outside the allowed paths. Resolve the
+		// pointer with git and bound-check the directory git would open.
+		const assertGitLinkTargetAllowed = async (
+			resolvedRepositoryPath: ResolvedFilePath,
+			repositoryType: 'source' | 'target',
+		): Promise<void> => {
+			// The same locations git appends to a local source, built like git does: a bare path
+			// and a `.git` suffix with no separator, so `<path>.git` and `<path>.git/.git` are
+			// siblings of the source, not children.
+			const candidates = [
+				resolvedRepositoryPath,
+				join(resolvedRepositoryPath, '.git'),
+				`${resolvedRepositoryPath}.git`,
+				`${resolvedRepositoryPath}.git${sep}.git`,
+			];
+			for (const candidate of candidates) {
+				const gitDir = await resolveGitDirWithGit(candidate);
+				if (gitDir === undefined) {
+					continue;
+				}
+				const resolvedGitDir = await resolvePathAllowingMissingParents(gitDir);
+				if (this.helpers.isFilePathBlocked(ownerOfGitDir(resolvedGitDir))) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Access to the ${repositoryType} repository path is not allowed`,
+					);
+				}
+			}
 		};
 
 		const assertRepositoryReferenceAllowed = async (
@@ -402,6 +517,14 @@ export class Git implements INodeType {
 			repositoryType: 'source' | 'target',
 		) => {
 			const trimmedRepository = repository.trim();
+			// git clones the raw value, so surrounding whitespace would make it open a path this
+			// check never saw. Refuse it instead of validating a trimmed stand-in.
+			if (repository !== trimmedRepository) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${repositoryType === 'source' ? 'Source' : 'Target'} repository cannot have leading or trailing whitespace`,
+				);
+			}
 			if (trimmedRepository.startsWith('-')) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -422,15 +545,18 @@ export class Git implements INodeType {
 			}
 
 			if (hasUrlScheme(trimmedRepository)) {
-				let repositoryUrl: URL | undefined;
-				try {
-					repositoryUrl = new URL(trimmedRepository);
-				} catch {
-					repositoryUrl = undefined;
-				}
-
-				if (repositoryUrl?.protocol === 'file:') {
-					await assertLocalRepositoryPathAllowed(fileURLToPath(repositoryUrl), repositoryType);
+				// git uses its local transport for any `file:` scheme, even one `new URL` rejects.
+				if (/^file:/i.test(trimmedRepository)) {
+					let gitPath: string;
+					try {
+						gitPath = fileUrlToGitPath(trimmedRepository);
+					} catch {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Access to the ${repositoryType} repository path is not allowed`,
+						);
+					}
+					await assertLocalRepositoryPathAllowed(gitPath, repositoryType);
 				}
 
 				return;

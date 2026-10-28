@@ -325,6 +325,14 @@ export interface EpisodicMemoryPrompts {
 	recallToolInstruction?: string;
 }
 
+/** Builder-set topics that steer what the agent flags. Model instructions, not a filter. */
+export interface EpisodicMemoryCaptureGuidance {
+	/** Topics to prioritize. The agent still flags other useful details. */
+	include?: string[];
+	/** Topics the agent is told not to flag. */
+	exclude?: string[];
+}
+
 export interface EpisodicMemoryEmbeddingProviderOptions {
 	apiKey?: string;
 	baseURL?: string;
@@ -340,6 +348,7 @@ export interface EpisodicMemoryConfig {
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
 	reflect?: EpisodicMemoryReflectFn;
 	prompts?: EpisodicMemoryPrompts;
+	guidance?: EpisodicMemoryCaptureGuidance;
 }
 
 export interface TitleGenerationConfig {

@@ -1,15 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, Person } from '@n8n/db';
+import { PersonRepository, ServiceAccount, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { ChangeEmailController } from '@/controllers/change-email.controller';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { AuthlessRequest } from '@/requests';
 import { EmailChangeService } from '@/services/email-change.service';
@@ -22,6 +22,7 @@ describe('ChangeEmailController', () => {
 	const authService = mockInstance(AuthService);
 	mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
+	const personRepository = mockInstance(PersonRepository);
 	mockInstance(UserManagementMailer);
 	const emailChangeService = mockInstance(EmailChangeService);
 	mockInstance(EventService);
@@ -34,11 +35,11 @@ describe('ChangeEmailController', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		authService.resolveEmailChangeToken.mockResolvedValue({
-			user: { id: userId, email: oldEmail } as User,
+			person: { id: userId, email: oldEmail } as Person,
 			newEmail,
 		});
 		emailChangeService.assertMayApplyEmailChange.mockResolvedValue(undefined);
-		// The target email is free by default; each test overrides the id lookup.
+		// The target email is free by default.
 		userRepository.findOneBy.mockResolvedValue(null);
 	});
 
@@ -48,23 +49,21 @@ describe('ChangeEmailController', () => {
 		const payload = { token: 'valid-token' };
 
 		test('should not run the beforeUpdate hook when the change is stale', async () => {
-			// First lookup is the availability check (free), second is the id pre-check
-			// whose email no longer matches the token's old email.
-			userRepository.findOneBy
-				.mockResolvedValueOnce(null)
-				.mockResolvedValueOnce({ id: userId, email: 'changed@example.com' } as User);
+			// The id pre-check finds an email that no longer matches the token's old email.
+			personRepository.findById.mockResolvedValue({
+				id: userId,
+				email: 'changed@example.com',
+			} as Person);
 
 			await expect(controller.confirmEmailChange(req, res, payload)).rejects.toThrow(NotFoundError);
 
 			expect(externalHooks.run).not.toHaveBeenCalled();
-			expect(userRepository.changeEmail).not.toHaveBeenCalled();
+			expect(personRepository.changeEmail).not.toHaveBeenCalled();
 		});
 
 		test('should map an email-taken result to a client error', async () => {
-			userRepository.findOneBy
-				.mockResolvedValueOnce(null)
-				.mockResolvedValueOnce({ id: userId, email: oldEmail } as User);
-			userRepository.changeEmail.mockResolvedValue('email-taken');
+			personRepository.findById.mockResolvedValue({ id: userId, email: oldEmail } as Person);
+			personRepository.changeEmail.mockResolvedValue('email-taken');
 
 			await expect(controller.confirmEmailChange(req, res, payload)).rejects.toThrow(
 				BadRequestError,
@@ -75,6 +74,20 @@ describe('ChangeEmailController', () => {
 				oldEmail,
 				{ email: newEmail },
 			]);
+		});
+	});
+
+	describe('requestEmailChange', () => {
+		test('should reject a service account', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: Object.assign(new ServiceAccount(), { id: userId }),
+			});
+
+			await expect(
+				controller.requestEmailChange(req, mock<Response>(), { email: newEmail } as never),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(emailChangeService.assertMayRequestEmailChange).not.toHaveBeenCalled();
 		});
 	});
 });

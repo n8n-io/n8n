@@ -6,7 +6,7 @@ import type { Agent } from '../entities/agent.entity';
 
 export type AgentRuntimeAssets = ReturnType<typeof getAgentRuntimeAssets>;
 
-/** `skills`: the skill bodies from the skills hub that the draft or version runs. */
+/** `skills`: the skill bodies from the skills module that the draft or version runs. */
 export function getAgentRuntimeAssets(
 	agent: Pick<Agent | AgentHistory, 'tools'>,
 	skills: Record<string, AgentSkill>,

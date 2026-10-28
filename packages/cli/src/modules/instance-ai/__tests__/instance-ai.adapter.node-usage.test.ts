@@ -25,6 +25,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
 	searxngSearch: vi.fn(),
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import type { Logger } from '@n8n/backend-common';
 import { INSTANCE_AI_NODE_USAGE_FLAG } from '@n8n/api-types';
