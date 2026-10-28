@@ -33,6 +33,7 @@ describe('LdapController', () => {
 		searchPageSize: 1,
 		searchTimeout: 6,
 		enforceEmailUniqueness: true,
+		linkExistingAccountsByEmail: true,
 	};
 
 	beforeEach(() => {

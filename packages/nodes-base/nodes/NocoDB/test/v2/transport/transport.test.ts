@@ -85,7 +85,7 @@ describe('NocoDB Transport API', () => {
 			const endpoint = '/api/v2/test';
 			const body: IDataObject = {};
 			const query: IDataObject = {};
-			const customUri = 'http://custom.url/path';
+			const customUri = 'http://localhost:8080/custom/path';
 
 			await apiRequest.call(mockThis, method, endpoint, body, query, customUri);
 
@@ -96,8 +96,34 @@ describe('NocoDB Transport API', () => {
 					qs: {},
 					url: customUri,
 					json: true,
+					disableFollowRedirect: true,
 				},
 			);
+		});
+
+		it.each([
+			['another host', 'http://custom.url/path'],
+			['another port', 'http://localhost:9090/path'],
+			['another scheme', 'https://localhost:8080/path'],
+			['an invalid URL', 'not a url'],
+		])('should not send credentials to a URI on %s', async (_label, customUri) => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+			mockThis.helpers.httpRequest = vi.fn().mockResolvedValue({ success: true });
+
+			const result = await apiRequest.call(mockThis, 'GET', '', {}, {}, customUri);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				qs: {},
+				url: customUri,
+				json: true,
+			});
+			expect(result).toEqual({ success: true });
 		});
 
 		it('should merge additional options', async () => {
@@ -197,6 +223,7 @@ describe('NocoDB Transport API', () => {
 					json: false,
 					qs: {},
 					encoding: 'arraybuffer',
+					disableFollowRedirect: true,
 				},
 			);
 			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
@@ -272,6 +299,7 @@ describe('NocoDB Transport API', () => {
 					json: false,
 					qs: {},
 					encoding: 'arraybuffer',
+					disableFollowRedirect: true,
 				},
 			);
 			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
@@ -303,6 +331,51 @@ describe('NocoDB Transport API', () => {
 					},
 				},
 			]);
+		});
+
+		it('should download attachments on another host without credentials', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+
+			const mockFileBuffer = Buffer.from('external file content');
+			mockThis.helpers.httpRequest = vi.fn().mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.prepareBinaryData.mockResolvedValue({ data: 'data' });
+
+			const records = [
+				{
+					id: 1,
+					fields: {
+						attachments: [
+							{
+								url: 'http://localhost:8080/file1.jpg',
+								signedUrl: 'http://other-host.example/file1.jpg',
+								title: 'image.jpg',
+								mimetype: 'image/jpeg',
+								size: 100,
+							},
+						],
+					},
+				},
+			];
+
+			await downloadRecordAttachments.call(mockThis, records, ['attachments']);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url: 'http://other-host.example/file1.jpg',
+				json: false,
+				qs: {},
+				encoding: 'arraybuffer',
+			});
+			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				mockFileBuffer,
+				'image.jpg',
+				'image/jpeg',
+			);
 		});
 
 		it('should handle records without attachments', async () => {
