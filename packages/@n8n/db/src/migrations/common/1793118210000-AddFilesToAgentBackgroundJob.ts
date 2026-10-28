@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddFilesToAgentBackgroundJob1792755949300 implements ReversibleMigration {
+export class AddFilesToAgentBackgroundJob1793118210000 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			'agent_background_job',
