@@ -5,6 +5,7 @@ import type {
 	AgentIntegrationConfig,
 	AgentJsonConfig,
 	AgentSkill,
+	AgentSkillVersionInfo,
 	StoredAgentConfig,
 } from '@n8n/api-types';
 
@@ -59,4 +60,5 @@ export interface AgentDraftState extends AgentCreationState {
 	hasPublishHistory: boolean;
 	skillHashes: Record<string, string>;
 	outdatedSkillIds: string[];
+	skillVersions: Record<string, AgentSkillVersionInfo>;
 }

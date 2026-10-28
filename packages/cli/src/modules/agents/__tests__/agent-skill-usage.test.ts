@@ -67,7 +67,10 @@ describe('AgentSkillUsage', () => {
 				],
 				hiddenAgents: 1,
 			});
-			skillRuntime.findVersionNumbers.mockResolvedValue(new Map([['skill_a-v2', 2]]));
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['skill_a-v2', { skillId: 'skill_a', version: 2 }]]),
+			);
+			skillRuntime.runtimeVersions.mockResolvedValue(() => undefined);
 
 			expect(await service.findUsage('skill_a', [PROJECT], TX_CTX)).toEqual({
 				drafts: [],
@@ -78,8 +81,42 @@ describe('AgentSkillUsage', () => {
 				],
 				hiddenAgents: 1,
 			});
-			expect(skillRuntime.findVersionNumbers).toHaveBeenCalledWith(
+			expect(skillRuntime.findVersionRefs).toHaveBeenCalledWith(
 				['skill_a-v2', 'skill_a-gone'],
+				TX_CTX,
+			);
+		});
+
+		it('shows the version each draft runs: the pinned one, else the latest', async () => {
+			const agent = { agentName: 'Support bot', projectId: PROJECT };
+			agentSkills.findUsage.mockResolvedValue({
+				drafts: [
+					{ ...agent, agentId: 'agent-1', skillVersionId: null },
+					{ ...agent, agentId: 'agent-2', skillVersionId: 'skill_a-v1' },
+				],
+				pins: [],
+				hiddenAgents: 0,
+			});
+			skillRuntime.findVersionRefs.mockResolvedValue(new Map());
+			skillRuntime.runtimeVersions.mockResolvedValue((ref) =>
+				ref.versionId
+					? { version: 1, pinned: true, latest: 3 }
+					: { version: 3, pinned: false, latest: 3 },
+			);
+
+			expect(await service.findUsage('skill_a', 'all', TX_CTX)).toEqual({
+				drafts: [
+					{ ...agent, agentId: 'agent-1', version: 3, pinned: false },
+					{ ...agent, agentId: 'agent-2', version: 1, pinned: true },
+				],
+				pins: [],
+				hiddenAgents: 0,
+			});
+			expect(skillRuntime.runtimeVersions).toHaveBeenCalledWith(
+				[
+					{ id: 'skill_a', versionId: null },
+					{ id: 'skill_a', versionId: 'skill_a-v1' },
+				],
 				TX_CTX,
 			);
 		});
