@@ -130,6 +130,36 @@ Body`);
 		);
 	});
 
+	it('parses a turn lifetime from the skill policy', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: turn
+---
+
+Pick a route.`);
+
+		expect(result.ok && result.skill.policy).toEqual({ lifetime: 'turn' });
+	});
+
+	it('rejects an unknown skill lifetime', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: forever
+---
+
+Pick a route.`);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('Expected skill validation to fail');
+		expect(result.errors).toEqual([
+			expect.objectContaining({ code: 'invalid_field', field: 'policy.lifetime' }),
+		]);
+	});
+
 	it('rejects SKILL.md files without instruction content', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: empty-skill

@@ -17,6 +17,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/errors';
 import type { NextFunction, Request, Response } from 'express';
 
 import { SkillService } from '../services/skill.service';
@@ -66,6 +67,23 @@ export class SkillsController {
 		return await this.skillService.newName(req.user, query);
 	}
 
+	/** Every saved version of the skill, newest first. */
+	@Get('/:skillId/versions')
+	async listVersions(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
+		return await this.skillService.listVersions(req.user, skillId);
+	}
+
+	/** One saved version with its content. */
+	@Get('/:skillId/versions/:version')
+	async getVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Param('version') version: string,
+	) {
+		return await this.skillService.getVersion(req.user, skillId, parseVersionNumber(version));
+	}
+
 	@Get('/:skillId')
 	async get(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
 		return await this.skillService.get(req.user, skillId);
@@ -92,4 +110,10 @@ export class SkillsController {
 		await this.skillService.delete(req.user, skillId);
 		return { ok: true };
 	}
+}
+
+/** A version number from the URL: a positive integer, as `skill_version.version` is. */
+function parseVersionNumber(raw: string): number {
+	if (!/^[1-9]\d{0,8}$/.test(raw)) throw new BadRequestError('Version must be a positive integer.');
+	return Number(raw);
 }
