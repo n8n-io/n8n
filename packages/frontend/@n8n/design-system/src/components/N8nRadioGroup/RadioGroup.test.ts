@@ -217,6 +217,32 @@ describe('components/N8nRadioGroup', () => {
 			expect(wrapper.queryByText('Default label')).not.toBeInTheDocument();
 		});
 
+		it('should keep content slot fields out of the radio name', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'wipe',
+				},
+				slots: {
+					default: `
+						<RadioGroupItem value="wipe" label="Wipe everything">
+							<template #content>
+								<label for="confirm-field">Type to confirm</label>
+								<input id="confirm-field" />
+							</template>
+						</RadioGroupItem>
+					`,
+				},
+				global: { components: { RadioGroupItem } },
+			});
+
+			const radio = wrapper.getByRole('radio', { name: 'Wipe everything' });
+			const field = wrapper.getByRole('textbox', { name: 'Type to confirm' });
+			const radioLabel = wrapper.container.querySelector(`label[for="${radio.id}"]`);
+
+			expect(radioLabel).not.toContainElement(field);
+			expect(radio).toHaveAccessibleName('Wipe everything');
+		});
+
 		it('should render label slot with scoped props', () => {
 			const wrapper = render(RadioGroup, {
 				props: {

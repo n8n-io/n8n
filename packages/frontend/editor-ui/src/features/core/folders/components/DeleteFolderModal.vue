@@ -178,7 +178,9 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 								<N8nText v-else color="text-dark">{{
 									i18n.baseText('folders.transfer.action.noProject')
 								}}</N8nText>
-								<div v-if="operation === 'transfer'" class="pt-2xs" @mousedown.stop @click.stop>
+							</template>
+							<template #content>
+								<div v-if="operation === 'transfer'" class="pt-2xs">
 									<N8nText color="text-dark">{{
 										i18n.baseText('folders.transfer.selectFolder')
 									}}</N8nText>
@@ -197,13 +199,9 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 						<N8nRadioGroupItem value="delete" data-test-id="delete-content-radio">
 							<template #label>
 								<N8nText color="text-dark">{{ i18n.baseText('folders.delete.action') }}</N8nText>
-								<div
-									v-if="operation === 'delete'"
-									class="pt-2xs"
-									data-test-id="delete-data-input"
-									@mousedown.stop
-									@click.stop
-								>
+							</template>
+							<template #content>
+								<div v-if="operation === 'delete'" class="pt-2xs" data-test-id="delete-data-input">
 									<N8nInputLabel
 										:label="
 											i18n.baseText('folders.delete.confirmation.message', {

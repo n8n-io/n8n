@@ -96,7 +96,9 @@ function onOperation(value: string) {
 							<N8nText color="text-dark">{{
 								locale.baseText('projects.settings.delete.question.transfer.label')
 							}}</N8nText>
-							<div v-if="operation === 'transfer'" class="pt-2xs" @mousedown.stop @click.stop>
+						</template>
+						<template #content>
+							<div v-if="operation === 'transfer'" class="pt-2xs">
 								<N8nText color="text-dark">{{
 									locale.baseText('projects.settings.delete.question.transfer.title')
 								}}</N8nText>
@@ -116,7 +118,9 @@ function onOperation(value: string) {
 							<N8nText color="text-dark">{{
 								locale.baseText('projects.settings.delete.question.wipe.label')
 							}}</N8nText>
-							<div v-if="operation === 'wipe'" class="pt-2xs" @mousedown.stop @click.stop>
+						</template>
+						<template #content>
+							<div v-if="operation === 'wipe'" class="pt-2xs">
 								<N8nInputLabel
 									:label="locale.baseText('projects.settings.delete.question.wipe.title')"
 								>
