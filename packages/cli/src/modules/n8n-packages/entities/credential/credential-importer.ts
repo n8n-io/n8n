@@ -66,6 +66,7 @@ export class CredentialImporter {
 				projectId: context.projectId,
 				user: context.user,
 				credentialBindings: request.credentialBindings,
+				excludePersonalRoute: request.personalRoute === 'exclude',
 			});
 		const stubIds = new Map(
 			credentialsToStub(request.missingMode, resolution).map(({ sourceId }) => [

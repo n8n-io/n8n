@@ -3,6 +3,7 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
@@ -194,17 +195,26 @@ export function getLatestWorkflowSetupResult(
 	return undefined;
 }
 
-const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
+const WORKFLOW_MUTATING_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+]);
+
+/** Stored calls of the former multi-action workflows tool also count, including its removed `update`. */
+function isWorkflowMutatingCall(tc: InstanceAiToolCallState): boolean {
+	if (isFormerWorkflowsTool(tc.toolName) && tc.args?.action === 'update') return true;
+	return WORKFLOW_MUTATING_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action));
+}
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful `workflows` tool call
- * that mutated the workflow definition (action=update / restore-version / setup).
- * These modify an existing workflow but surface under tool name 'workflows' —
- * invisible to getLatestBuildResult — and don't reliably return the workflowId in
- * the result, so it is read from the call args. `setup` is the current path for
- * credential/parameter configuration (the inline setup card); the legacy
- * setup-workflow / workflow_builder_apply_workflow_credentials tools are handled by
+ * (from args) and toolCallId from the latest successful tool call that mutated
+ * the workflow definition (restore_workflow_version / setup_workflow). These
+ * modify an existing workflow but are invisible to getLatestBuildResult, and
+ * don't reliably return the workflowId in the result, so it is read from the
+ * call args. `setup_workflow` is the current path for credential/parameter
+ * configuration (the inline setup card); the legacy setup-workflow /
+ * workflow_builder_apply_workflow_credentials tools are handled by
  * getLatestWorkflowSetupResult.
  */
 export function getLatestWorkflowUpdateResult(
@@ -217,14 +227,7 @@ export function getLatestWorkflowUpdateResult(
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
-		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
-			typeof args?.action === 'string' &&
-			WORKFLOW_MUTATING_ACTIONS.has(args.action) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
+		if (isWorkflowMutatingCall(tc) && !tc.isLoading && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
 			if (result.success === true && typeof args?.workflowId === 'string') {
 				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
@@ -253,8 +256,8 @@ const WORKFLOW_LOCKING_TOOLS = new Set<string>([
  *   2. An active workflow-builder sub-agent targeting the workflow (covers the
  *      whole build window: read file → edit → submit-workflow → verify).
  *   3. An in-flight workflow-affecting tool call targeting the workflow — the
- *      build/setup/verify tools, `executions.run`, or a `workflows` update /
- *      restore-version / setup action. Read-only `workflows` actions (including
+ *      build/setup/verify tools, `executions.run`, `restore_workflow_version` or
+ *      `setup_workflow`. Read-only workflow tools (including
  *      historical get-json events, get, list, …) don't lock.
  */
 export function isAgentEditingWorkflow(
@@ -310,13 +313,7 @@ export function isAgentEditingWorkflow(
 		if (WORKFLOW_LOCKING_TOOLS.has(tc.toolName)) return true;
 		if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && args.action === 'run')
 			return true;
-		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
-			typeof args?.action === 'string' &&
-			WORKFLOW_MUTATING_ACTIONS.has(args.action)
-		) {
-			return true;
-		}
+		if (isWorkflowMutatingCall(tc)) return true;
 	}
 
 	for (const child of node.children) {
