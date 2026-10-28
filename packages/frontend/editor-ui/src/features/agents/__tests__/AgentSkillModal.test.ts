@@ -1,6 +1,6 @@
 import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
+import { defineComponent, ref, type PropType } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -34,14 +34,20 @@ vi.mock('@n8n/i18n', () => {
 });
 
 const apiCreateSpy = vi.fn();
-const { listAttachableSkills, getHubSkill } = vi.hoisted(() => ({
-	listAttachableSkills: vi.fn(),
-	getHubSkill: vi.fn(),
-}));
+const { listAttachableSkills, getSkillDetail, listSkillVersions, getSkillVersion } = vi.hoisted(
+	() => ({
+		listAttachableSkills: vi.fn(),
+		getSkillDetail: vi.fn(),
+		listSkillVersions: vi.fn(),
+		getSkillVersion: vi.fn(),
+	}),
+);
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 	listAttachableSkills,
-	getHubSkill,
+	getSkillDetail,
+	listSkillVersions,
+	getSkillVersion,
 }));
 
 const { showMessage, showError, trackImportedSkill } = vi.hoisted(() => ({
@@ -106,13 +112,46 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 
 const MODAL_NAME = 'AgentSkillModal';
 
+type StubItem = {
+	id: string;
+	label: string;
+	testId?: string;
+	disabled?: boolean;
+	checked?: boolean;
+	children?: StubItem[];
+};
+
+/** Renders every item, submenu items included, as a button that selects it. */
+const ActionDropdownStub = defineComponent({
+	props: { items: { type: Array as PropType<StubItem[]>, default: () => [] } },
+	emits: ['select'],
+	computed: {
+		flatItems(): StubItem[] {
+			return this.items.flatMap((item) => [item, ...(item.children ?? [])]);
+		},
+	},
+	template: `
+		<div v-bind="$attrs">
+			<slot name="activator" />
+			<button
+				v-for="item in flatItems"
+				:key="item.id"
+				:data-testid="item.testId"
+				:data-checked="item.checked ? 'true' : undefined"
+				:disabled="item.disabled"
+				@click="$emit('select', item.id)"
+			>{{ item.label }}</button>
+		</div>
+	`,
+});
+
 function renderModal({
 	onConfirm = vi.fn(),
 	skill,
 	skillId,
 	existingSkillNames,
 	settings,
-	...hubOptions
+	...skillRefOptions
 }: {
 	onConfirm?: AgentSkillModalData['onConfirm'];
 	skill?: AgentSkill;
@@ -128,10 +167,15 @@ function renderModal({
 		| 'getDefaultName'
 		| 'availableToAssistant'
 		| 'usedBy'
+		| 'onDelete'
+		| 'deleteDisabledReason'
+		| 'initialVersionsOpen'
+		| 'initialCompare'
+		| 'latestVersion'
 	>;
 } & Pick<
 	AgentSkillModalData,
-	| 'hubSkillsEnabled'
+	| 'skillRefsEnabled'
 	| 'getAttachedSkills'
 	| 'projectLabel'
 	| 'canCreateInstanceSkills'
@@ -140,6 +184,7 @@ function renderModal({
 	| 'outdated'
 	| 'onUseLatestVersion'
 	| 'getDefaultName'
+	| 'agentName'
 > = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -151,10 +196,13 @@ function renderModal({
 					template: `<textarea :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
 				},
 				N8nButton: {
-					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
+					template:
+						'<button v-bind="$attrs" :disabled="disabled"><slot name="icon" /><slot /></button>',
 					props: ['variant', 'disabled'],
 				},
 				N8nCallout: { template: '<div v-bind="$attrs"><slot /></div>' },
+				N8nActionDropdown: ActionDropdownStub,
+				ActionDropdown: ActionDropdownStub,
 				N8nHeading: { template: '<h2><slot /></h2>' },
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
@@ -170,11 +218,20 @@ function renderModal({
 				skillId,
 				existingSkillNames,
 				onConfirm,
-				...hubOptions,
+				...skillRefOptions,
 			},
 		},
 	});
 }
+
+// Every suite renders an open modal with fresh stores.
+beforeEach(() => {
+	vi.clearAllMocks();
+	createTestingPinia({ stubActions: false });
+	const uiStore = mockedStore(useUIStore);
+	uiStore.openModal(MODAL_NAME);
+	uiStore.closeModal = vi.fn();
+});
 
 const SAVED_SKILL: AgentSkill = {
 	name: 'brand-voice',
@@ -250,18 +307,17 @@ describe('AgentSkillModal', () => {
 		expect(queryByTestId('agent-skill-viewer')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 		expect(container.querySelector('h2')).toHaveTextContent('agents.builder.skills.add');
-		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
 		expect(getTitleInput(container)).toHaveValue('New skill');
-		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 		await fireEvent.update(getTitleInput(container), 'Draft skill');
 		await fireEvent.click(getByTestId('agent-skill-add-reference'));
 		await fireEvent.update(getByTestId('agent-skill-reference-editor'), 'Draft reference');
 		await fireEvent.click(getByTestId('agent-modal-back'));
 
 		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
-		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
 		expect(getTitleInput(container)).toHaveValue('New skill');
 		expect(
@@ -279,7 +335,7 @@ describe('AgentSkillModal', () => {
 		expect(getTitleInput(container)).toHaveValue('New skill 3');
 	});
 
-	it('shows name errors beside the title after Save', async () => {
+	it('shows name errors under the name field after Save', async () => {
 		const onConfirm = vi.fn();
 		const { container, getByTestId, queryByTestId } = renderModal({
 			onConfirm,
@@ -289,17 +345,16 @@ describe('AgentSkillModal', () => {
 		});
 
 		await fireEvent.update(getTitleInput(container), ' other_SKILL ');
-		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-error')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 		expect(onConfirm).not.toHaveBeenCalled();
-		expect(getByTestId('agent-modal-title-error')).toHaveTextContent(
+		expect(getByTestId('agent-skill-name-error')).toHaveTextContent(
 			'agents.builder.skills.validation.nameDuplicate',
 		);
-		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 
 		await fireEvent.update(getTitleInput(container), '   ');
-		expect(getByTestId('agent-modal-title-error')).toHaveTextContent(
+		expect(getByTestId('agent-skill-name-error')).toHaveTextContent(
 			'agents.builder.skills.validation.nameRequired',
 		);
 
@@ -416,7 +471,7 @@ describe('AgentSkillModal', () => {
 			target: { files: [file] },
 		});
 		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
-		expect(getByTestId('agent-modal-title-input')).toHaveValue('Research');
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue('Research');
 
 		expect(trackImportedSkill).toHaveBeenCalledWith({
 			agentId: 'a1',
@@ -448,7 +503,10 @@ describe('AgentSkillModal', () => {
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 		expect(onConfirm).not.toHaveBeenCalled();
 
-		await fireEvent.update(getByTestId('agent-modal-title-input'), ' Research ');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			' Research ',
+		);
 		await fireEvent.update(
 			getByTestId('agent-skill-description-input').querySelector('input')!,
 			'Use for research',
@@ -482,7 +540,10 @@ describe('AgentSkillModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Research');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Research',
+		);
 		await fireEvent.update(
 			getByTestId('agent-skill-description-input').querySelector('input')!,
 			'Use for research',
@@ -516,7 +577,10 @@ describe('AgentSkillModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId, getByText } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Research');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Research',
+		);
 		await fireEvent.update(
 			getByTestId('agent-skill-description-input').querySelector('input')!,
 			'Use for research',
@@ -548,7 +612,10 @@ describe('AgentSkillModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Research');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Research',
+		);
 		await fireEvent.click(getByTestId('agent-skill-add-reference'));
 		await fireEvent.update(getByTestId('agent-skill-reference-editor'), '# Guide');
 
@@ -564,7 +631,24 @@ describe('AgentSkillModal', () => {
 
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
-		await waitFor(() => expect(getByTestId('agent-modal-title-input')).toHaveFocus());
+		await waitFor(() =>
+			expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveFocus(),
+		);
+	});
+
+	it('offers to remove an inline skill of an agent without skill refs', async () => {
+		const onRemove = vi.fn();
+		const { getByTestId } = renderModal({
+			skill: SAVED_SKILL,
+			skillId: 's1',
+			skillRefsEnabled: false,
+			onRemove,
+		});
+
+		expect(getByTestId('agent-skill-remove')).toHaveTextContent('agents.builder.skills.remove');
+		await fireEvent.click(getByTestId('agent-skill-remove'));
+
+		expect(onRemove).toHaveBeenCalledWith('s1');
 	});
 
 	it('stays open with the edits and the name error when the save is refused', async () => {
@@ -574,19 +658,25 @@ describe('AgentSkillModal', () => {
 			skill: SAVED_SKILL,
 			skillId: 's1',
 		});
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Summarize');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Summarize',
+		);
 
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 		await waitFor(() =>
-			expect(getByTestId('agent-modal-title-error')).toHaveTextContent('Name taken'),
+			expect(getByTestId('agent-skill-name-error')).toHaveTextContent('Name taken'),
 		);
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
-		expect(getByTestId('agent-modal-title-input')).toHaveValue('Summarize');
-		expect(getByTestId('agent-modal-title-input')).toHaveFocus();
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue('Summarize');
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveFocus();
 
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Condense');
-		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Condense',
+		);
+		expect(queryByTestId('agent-skill-name-error')).not.toBeInTheDocument();
 	});
 
 	it('locks the editor while the save is pending', async () => {
@@ -599,11 +689,16 @@ describe('AgentSkillModal', () => {
 			skill: SAVED_SKILL,
 			skillId: 's1',
 		});
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Summarize');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Summarize',
+		);
 
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
-		await waitFor(() => expect(getByTestId('agent-modal-title-input')).toBeDisabled());
+		await waitFor(() =>
+			expect(getByTestId('agent-skill-name-input').querySelector('input')!).toBeDisabled(),
+		);
 		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 		finish();
 		await waitFor(() => expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME));
@@ -619,12 +714,12 @@ describe('AgentSkillModal', () => {
 		);
 		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
-		await waitFor(() => expect(getByTestId('agent-modal-title-error')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('agent-skill-name-error')).toBeInTheDocument());
 
 		await fireEvent.click(getByTestId('agent-modal-back'));
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
-		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-error')).not.toBeInTheDocument();
 	});
 
 	it('stays open when the save fails, and closes once it succeeds', async () => {
@@ -633,7 +728,10 @@ describe('AgentSkillModal', () => {
 			.mockRejectedValueOnce(new Error('Network down'))
 			.mockResolvedValueOnce(undefined);
 		const { getByTestId } = renderModal({ onConfirm, skill: SAVED_SKILL, skillId: 's1' });
-		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Summarize');
+		await fireEvent.update(
+			getByTestId('agent-skill-name-input').querySelector('input')!,
+			'Summarize',
+		);
 
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 		await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
@@ -646,7 +744,7 @@ describe('AgentSkillModal', () => {
 	it('creates a skill on the agent without the picker or the skills API for an inline agent', async () => {
 		const onConfirm = vi.fn();
 		const { container, getByTestId, queryByTestId } = renderModal({
-			hubSkillsEnabled: false,
+			skillRefsEnabled: false,
 			onAttach: vi.fn(),
 			onConfirm,
 		});
@@ -654,7 +752,7 @@ describe('AgentSkillModal', () => {
 		expect(queryByTestId('agent-skill-picker')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
 		await fireEvent.click(getByTestId('agent-skill-add-manually'));
-		expect(queryByTestId('agent-skill-availability-select')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-scope-badge')).not.toBeInTheDocument();
 		await fireEvent.update(getTitleInput(container), 'Research');
 		await fireEvent.update(
 			getByTestId('agent-skill-description-input').querySelector('input')!,
@@ -667,10 +765,10 @@ describe('AgentSkillModal', () => {
 			expect.not.objectContaining({ availableTo: expect.anything() }),
 		);
 		expect(listAttachableSkills).not.toHaveBeenCalled();
-		expect(getHubSkill).not.toHaveBeenCalled();
+		expect(getSkillDetail).not.toHaveBeenCalled();
 	});
 
-	describe('with the skills hub', () => {
+	describe('with the skills module', () => {
 		const projectSkill = makeListItem({ id: 'tone', name: 'Support tone', scope: 'project' });
 		const instanceSkill = makeListItem({ id: 'sql', name: 'SQL helper', scope: 'instance' });
 		const similarSkill = makeListItem({ id: 'voice', name: 'brand-voice', scope: 'instance' });
@@ -685,7 +783,7 @@ describe('AgentSkillModal', () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, agentSkill, instanceSkill]);
 			const onAttach = vi.fn().mockResolvedValue(undefined);
 			const { findAllByTestId, getAllByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				projectLabel: 'Marketing',
 				onAttach,
 			});
@@ -709,7 +807,7 @@ describe('AgentSkillModal', () => {
 		it('labels the add action and hides empty tabs', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
 			const { findAllByTestId, getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 				getAttachedSkills: () => [{ id: instanceSkill.id, name: instanceSkill.name }],
 			});
@@ -726,7 +824,7 @@ describe('AgentSkillModal', () => {
 		it('names the project tab after the project of the agent', async () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const { getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				projectLabel: 'Marketing',
 				onAttach: vi.fn(),
 			});
@@ -742,7 +840,7 @@ describe('AgentSkillModal', () => {
 			const onAttach = vi.fn(
 				async () => await new Promise<void>((resolve) => (finishAttach = resolve)),
 			);
-			const { findByTestId } = renderModal({ hubSkillsEnabled: true, onAttach });
+			const { findByTestId } = renderModal({ skillRefsEnabled: true, onAttach });
 
 			await fireEvent.click(await findByTestId('agent-skill-picker-add'));
 
@@ -754,7 +852,7 @@ describe('AgentSkillModal', () => {
 		it('shows an attached skill as added and refuses names that are hard to tell apart', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, similarSkill]);
 			const { findAllByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				getAttachedSkills: () => [
 					{ id: 'tone', name: 'Support tone' },
 					{ id: 'other', name: 'Brand voice' },
@@ -772,7 +870,7 @@ describe('AgentSkillModal', () => {
 
 		it('shows an empty message when no skill can be attached', async () => {
 			listAttachableSkills.mockResolvedValue([]);
-			const { findByTestId } = renderModal({ hubSkillsEnabled: true, onAttach: vi.fn() });
+			const { findByTestId } = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
 
 			await waitFor(async () =>
 				expect(await findByTestId('agent-skill-picker-empty')).toHaveTextContent(
@@ -785,7 +883,7 @@ describe('AgentSkillModal', () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const open = vi.spyOn(window, 'open').mockReturnValue(null);
 			const { getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -806,7 +904,7 @@ describe('AgentSkillModal', () => {
 		it('shows the settings link only on the picker step', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const { getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -818,7 +916,7 @@ describe('AgentSkillModal', () => {
 		it('goes from the picker to the upload step and back', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const { getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -834,7 +932,7 @@ describe('AgentSkillModal', () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const getDefaultName = vi.fn().mockResolvedValue('New skill 3');
 			const { getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 				getDefaultName,
 			});
@@ -849,28 +947,28 @@ describe('AgentSkillModal', () => {
 
 		it('opens a read-only preview from a row click and adds the skill from there', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: true }),
 			);
 			const onAttach = vi.fn();
 			const { findAllByTestId, findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach,
 			});
 
 			await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[1]);
 
 			expect(await findByTestId('agent-skill-preview')).toBeInTheDocument();
-			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
+			expect(getSkillDetail).toHaveBeenCalledWith(expect.anything(), 'sql');
 			expect(getByTestId('agent-skill-instructions-text')).toHaveTextContent('Instructions');
 			expect(queryByTestId('agent-skill-instructions-editor')).not.toBeInTheDocument();
 			expect(getByTestId('agent-skill-footer-hint')).toHaveTextContent(
 				'agents.builder.skills.hint.addToEdit',
 			);
-			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
-			expect(queryByTestId('agent-skill-remove')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-menu-attach')).not.toBeInTheDocument();
 			expect(onAttach).not.toHaveBeenCalled();
 
 			await fireEvent.click(getByTestId('agent-skill-preview-add'));
@@ -883,12 +981,12 @@ describe('AgentSkillModal', () => {
 
 		it('offers to remove an attached skill from its preview', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 			);
 			const onRemove = vi.fn();
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				getAttachedSkills: () => [{ id: 'tone', name: 'Support tone' }],
 				onAttach: vi.fn(),
 				onRemove,
@@ -909,11 +1007,11 @@ describe('AgentSkillModal', () => {
 
 		it('returns from the preview to the picker', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 			);
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -927,9 +1025,9 @@ describe('AgentSkillModal', () => {
 
 		it('stays on the picker when the preview cannot load', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
-			getHubSkill.mockRejectedValue(new Error('Not found'));
+			getSkillDetail.mockRejectedValue(new Error('Not found'));
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -954,8 +1052,8 @@ describe('AgentSkillModal', () => {
 			async (availableTo, label) => {
 				listAttachableSkills.mockResolvedValue([]);
 				const onConfirm = vi.fn();
-				const { container, getByTestId, findByText } = renderModal({
-					hubSkillsEnabled: true,
+				const { container, getByTestId } = renderModal({
+					skillRefsEnabled: true,
 					canCreateInstanceSkills: true,
 					projectLabel: 'Marketing',
 					onAttach: vi.fn(),
@@ -970,10 +1068,8 @@ describe('AgentSkillModal', () => {
 					'Use for research',
 				);
 				await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
-				await fireEvent.click(
-					getByTestId('agent-skill-availability-select').querySelector('.select-trigger')!,
-				);
-				await fireEvent.click(await findByText(label));
+				expect(getByTestId(`agent-skill-scope-option-${availableTo}`)).toHaveTextContent(label);
+				await fireEvent.click(getByTestId(`agent-skill-scope-option-${availableTo}`));
 				await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 				expect(onConfirm).toHaveBeenCalledWith(
@@ -984,18 +1080,17 @@ describe('AgentSkillModal', () => {
 
 		it('falls back to "This project" when the project name is unknown', async () => {
 			listAttachableSkills.mockResolvedValue([]);
-			const { getByTestId, findByText } = renderModal({
-				hubSkillsEnabled: true,
+			const { getByTestId, findByTestId } = renderModal({
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
 			await fireEvent.click(getByTestId('agent-skill-picker-create'));
 			await fireEvent.click(getByTestId('agent-skill-add-manually'));
-			await fireEvent.click(
-				getByTestId('agent-skill-availability-select').querySelector('.select-trigger')!,
-			);
 
-			expect(await findByText('agents.builder.skills.availableTo.project')).toBeInTheDocument();
+			expect(await findByTestId('agent-skill-scope-option-project')).toHaveTextContent(
+				'agents.builder.skills.availableTo.project',
+			);
 		});
 
 		it.each([
@@ -1010,7 +1105,7 @@ describe('AgentSkillModal', () => {
 				listAttachableSkills.mockResolvedValue([]);
 				const onConfirm = vi.fn();
 				const { container, getByTestId } = renderModal({
-					hubSkillsEnabled: true,
+					skillRefsEnabled: true,
 					canCreateInstanceSkills,
 					onAttach: vi.fn(),
 					onConfirm,
@@ -1035,7 +1130,7 @@ describe('AgentSkillModal', () => {
 			const attached = ref<Array<{ id: string; name: string }>>([]);
 			const onConfirm = vi.fn();
 			const { container, getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 				getAttachedSkills: () => attached.value,
 				onConfirm,
@@ -1053,39 +1148,36 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 			expect(onConfirm).not.toHaveBeenCalled();
-			expect(getByTestId('agent-modal-title-error')).toHaveTextContent(
+			expect(getByTestId('agent-skill-name-error')).toHaveTextContent(
 				'agents.builder.skills.validation.nameDuplicate',
 			);
 		});
 
 		it('offers only this project and this agent to a user who may not create global skills', async () => {
 			listAttachableSkills.mockResolvedValue([]);
-			const { getByTestId, findByText, queryByText } = renderModal({
-				hubSkillsEnabled: true,
+			const { getByTestId, findByTestId, queryByTestId } = renderModal({
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
 			await fireEvent.click(getByTestId('agent-skill-picker-create'));
 			await fireEvent.click(getByTestId('agent-skill-add-manually'));
-			await fireEvent.click(
-				getByTestId('agent-skill-availability-select').querySelector('.select-trigger')!,
-			);
 
-			expect(await findByText('agents.builder.skills.availableTo.agent')).toBeInTheDocument();
-			expect(queryByText('agents.builder.skills.availableTo.instance')).not.toBeInTheDocument();
+			expect(await findByTestId('agent-skill-scope-option-agent')).toBeInTheDocument();
+			expect(queryByTestId('agent-skill-scope-option-instance')).not.toBeInTheDocument();
 		});
 
 		it('keeps a skill read-only and reports the error when its access check fails', async () => {
 			const error = new Error('offline');
-			getHubSkill.mockRejectedValue(error);
+			getSkillDetail.mockRejectedValue(error);
 			const { findByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'sql',
 				skill: { name: 'SQL helper', description: 'Use for SQL', instructions: 'Write SQL' },
 				onRemove: vi.fn(),
 			});
 
-			await findByTestId('agent-skill-remove');
+			await findByTestId('agent-skill-menu-attach');
 			await vi.waitFor(() =>
 				expect(showError).toHaveBeenCalledWith(error, 'agents.builder.skills.accessError'),
 			);
@@ -1093,12 +1185,12 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('shows a skill that the user cannot edit as read-only', async () => {
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: false }),
 			);
 			const onRemove = vi.fn();
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'sql',
 				skill: { name: 'SQL helper', description: 'Use for SQL', instructions: 'Write SQL' },
 				onRemove,
@@ -1109,12 +1201,12 @@ describe('AgentSkillModal', () => {
 			);
 			expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Use for SQL');
 			expect(queryByTestId('agent-skill-description-input')).not.toBeInTheDocument();
-			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
-			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+			expect(getSkillDetail).toHaveBeenCalledWith(expect.anything(), 'sql');
+			expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 
-			await fireEvent.click(getByTestId('agent-skill-remove'));
+			await fireEvent.click(getByTestId('agent-skill-menu-attach'));
 			expect(onRemove).toHaveBeenCalledWith('sql');
 		});
 
@@ -1130,16 +1222,16 @@ describe('AgentSkillModal', () => {
 				onConfirm = vi.fn(),
 				extra: Pick<AgentSkillModalData, 'canCreateInstanceSkills'> = {},
 			) {
-				getHubSkill.mockResolvedValue(detail);
+				getSkillDetail.mockResolvedValue(detail);
 				const result = renderModal({
-					hubSkillsEnabled: true,
+					skillRefsEnabled: true,
 					skillId: detail.id,
 					skill: tone,
 					onConfirm,
 					onRemove: vi.fn(),
 					...extra,
 				});
-				await result.findByTestId('agent-skill-availability-select');
+				await result.findByTestId('agent-skill-scope');
 				return result;
 			}
 
@@ -1160,11 +1252,19 @@ describe('AgentSkillModal', () => {
 
 			it('changes the target of a skill that no other agent uses', async () => {
 				const onConfirm = vi.fn();
-				const { getByTestId, findByText } = await renderEdit(
+				const { getByTestId } = await renderEdit(
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
-							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							drafts: [
+								{
+									agentId: 'a1',
+									agentName: 'This agent',
+									projectId: 'p1',
+									version: 1,
+									pinned: false,
+								},
+							],
 							pins: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1', version: 1 }],
 							hiddenAgents: 0,
 						},
@@ -1172,9 +1272,7 @@ describe('AgentSkillModal', () => {
 					onConfirm,
 				);
 
-				const select = getByTestId('agent-skill-availability-select');
-				await fireEvent.click(select.querySelector('.select-trigger')!);
-				await fireEvent.click(await findByText('agents.builder.skills.availableTo.agent'));
+				await fireEvent.click(getByTestId('agent-skill-scope-option-agent'));
 				await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 				expect(onConfirm).toHaveBeenCalledWith(
@@ -1200,16 +1298,20 @@ describe('AgentSkillModal', () => {
 				result: Awaited<ReturnType<typeof renderEdit>>,
 				label: string,
 			): Promise<void> {
-				const select = result.getByTestId('agent-skill-availability-select');
-				await fireEvent.click(select.querySelector('.select-trigger')!);
-				await fireEvent.click(await result.findByText(label));
+				const option = result
+					.getAllByTestId(/^agent-skill-scope-option-/)
+					.find((element) => element.textContent?.trim() === label);
+				if (!option) throw new Error(`Expected the ${label} option`);
+				await fireEvent.click(option);
 			}
 
 			it.each([
 				[
 					'a draft of another agent',
 					{
-						drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+						drafts: [
+							{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+						],
 						pins: [],
 						hiddenAgents: 0,
 					},
@@ -1250,7 +1352,9 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
-							drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+							drafts: [
+								{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+							],
 							pins: [],
 							hiddenAgents: 1,
 						},
@@ -1274,7 +1378,15 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'agent', agentId: 'a1' }),
 						usedBy: {
-							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							drafts: [
+								{
+									agentId: 'a1',
+									agentName: 'This agent',
+									projectId: 'p1',
+									version: 1,
+									pinned: false,
+								},
+							],
 							pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1 }],
 							hiddenAgents: 0,
 						},
@@ -1293,12 +1405,12 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('shows a skill on an older version as read-only with a switch to the latest version', async () => {
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
 			);
 			const onUseLatestVersion = vi.fn();
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'tone',
 				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
 				outdated: true,
@@ -1310,9 +1422,9 @@ describe('AgentSkillModal', () => {
 				'agents.builder.skills.hint.outdated',
 			);
 			expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Use for replies');
-			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
-			expect(getByTestId('agent-skill-remove')).toBeInTheDocument();
+			expect(getByTestId('agent-skill-menu-attach')).toBeInTheDocument();
 
 			await fireEvent.click(getByTestId('agent-skill-use-latest'));
 
@@ -1321,17 +1433,17 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('keeps a skill that the user can edit editable', async () => {
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
 			);
 			const { findByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'tone',
 				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
 			});
 
-			await waitFor(() => expect(getHubSkill).toHaveBeenCalled());
-			expect(await findByTestId('agent-modal-title-input')).toBeInTheDocument();
+			await waitFor(() => expect(getSkillDetail).toHaveBeenCalled());
+			expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
 			expect(queryByTestId('agent-skill-footer-hint')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-description-input')).toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).toBeInTheDocument();
@@ -1340,14 +1452,6 @@ describe('AgentSkillModal', () => {
 });
 
 describe('AgentSkillModal from Settings', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		createTestingPinia({ stubActions: false });
-		const uiStore = mockedStore(useUIStore);
-		uiStore.openModal(MODAL_NAME);
-		uiStore.closeModal = vi.fn();
-	});
-
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
@@ -1358,7 +1462,7 @@ describe('AgentSkillModal from Settings', () => {
 		expect(getByTestId('agent-skill-read-only-callout')).toHaveTextContent(
 			'settings.context.skills.readOnly',
 		);
-		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 	});
@@ -1383,15 +1487,7 @@ describe('AgentSkillModal from Settings', () => {
 		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
 
 		// Pick the option that is not the initial one, so the test fails if the choice is lost.
-		await userEvent.click(getByTestId('agent-skill-scope-select'));
-		const option = await waitFor(() => {
-			const match = [...document.querySelectorAll('.el-select-dropdown__item')].find((item) =>
-				item.textContent?.includes('Personal project'),
-			);
-			if (!match) throw new Error('Expected the Personal project option');
-			return match;
-		});
-		await userEvent.click(option);
+		await chooseScopeOption('Personal project');
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 		expect(onConfirm).toHaveBeenCalledWith({
@@ -1415,8 +1511,10 @@ describe('AgentSkillModal from Settings', () => {
 			},
 		});
 
-		expect(getByTestId('agent-skill-scope')).toBeInTheDocument();
-		expect(getByTestId('agent-skill-scope-select').querySelector('input')).toBeDisabled();
+		const badge = getByTestId('agent-skill-scope-badge');
+		expect(badge).toHaveTextContent('FirstClassDarwin only');
+		// A locked scope is a plain badge, not a button that opens the scope menu.
+		expect(badge.tagName).toBe('SPAN');
 	});
 
 	describe('moving a saved skill from Settings', () => {
@@ -1443,23 +1541,21 @@ describe('AgentSkillModal from Settings', () => {
 			],
 			initialScope: 'project:p1',
 			usedBy: {
-				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1' }],
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'FirstClassDarwin',
+						projectId: 'p1',
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 0,
 			},
 		};
 
-		async function pickScope(label: string) {
-			await userEvent.click(screen.getByTestId('agent-skill-scope-select'));
-			const option = await waitFor(() => {
-				const match = [...document.querySelectorAll('.el-select-dropdown__item')].find((item) =>
-					item.textContent?.includes(label),
-				);
-				if (!match) throw new Error(`Expected the ${label} option`);
-				return match;
-			});
-			await userEvent.click(option);
-		}
+		const pickScope = chooseScopeOption;
 
 		it('warns and blocks save when the new scope drops an agent', async () => {
 			const onConfirm = vi.fn();
@@ -1614,11 +1710,20 @@ function makeDetail(
 	};
 }
 
+/** Picks a scope from the scope badge menu by its label. */
+async function chooseScopeOption(label: string) {
+	const option = screen
+		.getAllByTestId(/^agent-skill-scope-option-/)
+		.find((element) => element.textContent?.trim() === label);
+	if (!option) throw new Error(`Expected the ${label} option`);
+	await userEvent.click(option);
+}
+
 function getTitleInput(container: Element): HTMLInputElement {
 	const input = container.querySelector<HTMLInputElement>(
-		'[data-testid="agent-modal-title-input"]',
+		'[data-testid="agent-skill-name-input"] input',
 	);
-	if (!input) throw new Error('Expected an editable skill title');
+	if (!input) throw new Error('Expected an editable skill name');
 	return input;
 }
 
@@ -1646,17 +1751,7 @@ describe('Assistant availability', () => {
 		availableToAssistant: false,
 	};
 
-	async function selectScope(label: string) {
-		await userEvent.click(screen.getByTestId('agent-skill-scope-select'));
-		const option = await waitFor(() => {
-			const match = [...document.querySelectorAll('.el-select-dropdown__item')].find(
-				(item) => item.textContent?.trim() === label,
-			);
-			if (!match) throw new Error(`Expected the ${label} option`);
-			return match;
-		});
-		await userEvent.click(option);
-	}
+	const selectScope = chooseScopeOption;
 
 	it.each([
 		['Marketing', 'project:p1'],
@@ -1714,5 +1809,278 @@ describe('Assistant availability', () => {
 	it('does not show the toggle when the caller does not enable it', () => {
 		const { queryByTestId } = renderModal({ skill: savedSkill, skillId: 'skill-1', settings });
 		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
+	});
+});
+
+describe('header and footer', () => {
+	const savedSkill = { name: 'Tone', description: 'Writing style', instructions: 'Be brief.' };
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+	};
+
+	beforeEach(() => {
+		getSkillDetail.mockResolvedValue(makeDetail({ id: 'tone', name: 'Tone', scope: 'project' }));
+	});
+
+	it('names the footer button Close on the form', () => {
+		const { getByTestId } = renderModal({ skill: savedSkill, skillId: 'tone', settings });
+
+		expect(getByTestId('agent-modal-cancel')).toHaveTextContent('generic.close');
+	});
+
+	it('detaches a hub skill with the agent toggle in the header menu', async () => {
+		const onRemove = vi.fn();
+		const { findByTestId, queryByTestId } = renderModal({
+			skillRefsEnabled: true,
+			skill: savedSkill,
+			skillId: 'tone',
+			agentName: 'Darwin',
+			onRemove,
+		});
+
+		const toggle = await findByTestId('agent-skill-menu-attach');
+		expect(toggle).toHaveTextContent('agents.builder.skills.menu.addToAgent');
+		expect(toggle).toHaveAttribute('data-checked', 'true');
+		expect(queryByTestId('agent-skill-remove')).not.toBeInTheDocument();
+		// The skill is attached to this agent, so the builder cannot delete it.
+		expect(await findByTestId('agent-skill-menu-delete')).toBeDisabled();
+
+		await userEvent.click(toggle);
+
+		expect(onRemove).toHaveBeenCalledWith('tone');
+	});
+
+	it('deletes a skill from the header menu in Settings', async () => {
+		const onDelete = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'tone',
+			settings: { ...settings, onDelete },
+		});
+
+		expect(queryByTestId('agent-skill-menu-attach')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('agent-skill-menu-delete'));
+
+		expect(onDelete).toHaveBeenCalledWith('tone');
+	});
+
+	it('disables delete when agents use the skill', () => {
+		const { getByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'tone',
+			settings: { ...settings, onDelete: vi.fn(), deleteDisabledReason: 'Used by 1 agent' },
+		});
+
+		expect(getByTestId('agent-skill-menu-delete')).toBeDisabled();
+	});
+
+	it('changes the scope from the header menu', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'tone',
+			onConfirm,
+			settings: {
+				scopeOptions: [
+					{ value: 'instance', label: 'Global', icon: 'globe' as const },
+					{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
+				],
+				initialScope: 'instance',
+			},
+		});
+
+		await userEvent.click(getByTestId('agent-skill-menu-scope-option-project:p1'));
+
+		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Marketing');
+		await userEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ scope: 'project:p1' })),
+		);
+	});
+});
+
+describe('Versions panel', () => {
+	const latest = { name: 'Tone', description: 'Writing style', instructions: 'Be brief.' };
+	const old = { name: 'Tone', description: 'Old style', instructions: 'Be long.' };
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+		latestVersion: 2,
+	};
+	const author = { id: 'u1', email: 'ana@acme.test', firstName: 'Ana', lastName: 'Lima' };
+
+	beforeEach(() => {
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v2', version: 2, createdBy: author, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		getSkillVersion.mockResolvedValue({
+			id: 'v1',
+			version: 1,
+			createdBy: author,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: old,
+		});
+	});
+
+	it('shows the latest version in the header and toggles the panel', async () => {
+		const { findByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			settings,
+		});
+
+		const button = await findByTestId('agent-skill-versions-button');
+		expect(button).toHaveTextContent('agents.builder.skills.versions.number 2');
+		expect(queryByTestId('skill-version-timeline')).not.toBeInTheDocument();
+
+		await userEvent.click(button);
+
+		expect(await findByTestId('skill-version-row-2')).toHaveTextContent(
+			'agents.builder.skills.versions.latest',
+		);
+		expect(await findByTestId('skill-version-row-1')).toHaveTextContent(
+			'agents.builder.skills.versions.unknownUser',
+		);
+	});
+
+	it('opens an older version read-only and goes back with Done', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+
+		expect(await findByTestId('agent-skill-viewing-version')).toHaveTextContent('Ana Lima');
+		expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Old style');
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-cancel')).not.toBeInTheDocument();
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
+
+		await userEvent.click(getByTestId('agent-skill-version-done'));
+
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
+
+	it('saves an older version as a new version', async () => {
+		const onConfirm = vi.fn();
+		const { findByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			onConfirm,
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		await userEvent.click(await findByTestId('agent-skill-version-restore'));
+
+		await waitFor(() => expect(onConfirm).toHaveBeenCalledWith({ id: 'tone', skill: old }));
+	});
+
+	it('lets a read-only user open older versions but not restore them', async () => {
+		const { findByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			settings: { ...settings, readOnly: true, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-version-restore')).not.toBeInTheDocument();
+	});
+
+	it('loads the version list only when the panel opens', async () => {
+		const { findByTestId } = renderModal({ skill: latest, skillId: 'tone', settings });
+
+		const button = await findByTestId('agent-skill-versions-button');
+		expect(listSkillVersions).not.toHaveBeenCalled();
+
+		await userEvent.click(button);
+
+		await waitFor(() => expect(listSkillVersions).toHaveBeenCalledWith(expect.anything(), 'tone'));
+	});
+
+	it('has no versions for a new skill', () => {
+		const { queryByTestId } = renderModal({ settings });
+
+		expect(queryByTestId('agent-skill-versions-button')).not.toBeInTheDocument();
+	});
+});
+
+describe('Compare mode', () => {
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+		latestVersion: 2,
+	};
+	const v1 = { name: 'research-sources', description: 'Cite the source.', instructions: 'Read.' };
+	const v2 = { name: 'research-search', description: 'Cite the evidence.', instructions: 'Read.' };
+
+	beforeEach(() => {
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v2', version: 2, createdBy: null, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `v${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: version === 1 ? v1 : v2,
+		}));
+	});
+
+	it('opens comparing the latest version with the one before it', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialCompare: true },
+		});
+
+		expect(await findByTestId('agent-skill-compare-bar')).toBeInTheDocument();
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
+		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
+		// The footer is hidden while comparing.
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
+	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-compare-1'));
+
+		expect(await findByTestId('skill-version-diff')).toBeInTheDocument();
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 2);
+
+		await userEvent.click(getByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-compare-bar')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
+	it('returns to the latest version with Done when the user compared from an older one', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		await userEvent.click(getByTestId('skill-version-compare-2'));
+		await userEvent.click(await findByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
 });

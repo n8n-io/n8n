@@ -464,6 +464,8 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 }
 
 .panel .readOnlyMarkdown {
+	--n8n-markdown--base-font-size: var(--font-size--sm);
+
 	:global(p),
 	:global(li) {
 		font-size: var(--font-size--sm);
@@ -488,6 +490,11 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 	:global(:is(h1, h2, h3, h4, h5, h6):first-child) {
 		margin-top: 0;
+	}
+
+	:global(li label) {
+		display: inline;
+		line-height: inherit;
 	}
 }
 

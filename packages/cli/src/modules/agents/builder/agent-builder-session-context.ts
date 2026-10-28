@@ -1,4 +1,4 @@
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { buildAgentTestPath } from './agent-builder-test-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 
 const NO_MODEL_RECOMMENDATIONS =
@@ -8,13 +8,14 @@ const NO_MODEL_RECOMMENDATIONS =
 export async function buildBuilderSessionContext(
 	projectId: string,
 	agentId: string,
+	fetch: typeof globalThis.fetch,
 ): Promise<string> {
-	const modelRecommendationsSection = await getModelRecommendationsSection();
+	const modelRecommendationsSection = await getModelRecommendationsSection(fetch);
 
 	return `\
 ## Session context
 
-- Preview link for the target agent: [Preview](${buildAgentPreviewPath(projectId, agentId)})
+- Preview link for the target agent: [Preview](${buildAgentTestPath(projectId, agentId)})
 
 ${modelRecommendationsSection ?? NO_MODEL_RECOMMENDATIONS}`;
 }

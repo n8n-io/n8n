@@ -14,7 +14,6 @@ import {
 	type OtelConfig,
 	OtelCustomAttributesConfig,
 } from '../otel.config';
-import type { OtelService } from '../otel.service';
 import { OtelTestProvider } from './support/otel-test-provider';
 
 describe('ExecutionLevelTracer', () => {
@@ -30,18 +29,15 @@ describe('ExecutionLevelTracer', () => {
 	};
 
 	const makeTracer = ({
-		otelService = otel.asOtelService(),
 		settings,
 		prefixes,
 	}: {
-		otelService?: OtelService;
 		settings?: Partial<OtelConfig>;
 		prefixes?: CustomAttributePrefixes;
 	} = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
 		return new ExecutionLevelTracer(
-			otelService,
 			makeOtelSettingsService(settings),
 			logger,
 			customAttributesConfig,
@@ -963,7 +959,6 @@ describe('ExecutionLevelTracer', () => {
 				},
 			} as unknown as OtelSettingsService;
 			const failingTracer = new ExecutionLevelTracer(
-				otel.asOtelService(),
 				failingSettings,
 				logger,
 				new OtelCustomAttributesConfig(),
@@ -1488,18 +1483,15 @@ describe('ExecutionLevelTracer', () => {
 		});
 
 		it('should keep the real spans and only warn when a marker fails', () => {
-			const failingMarkers = mock<OtelService>({
-				getTracer: (name: string) => {
-					const real = otel.provider.getTracer(name);
-					return {
-						startSpan: (spanName, options, ctx) => {
-							if (spanName.endsWith('.started')) throw new Error('marker failed');
-							return real.startSpan(spanName, options, ctx);
-						},
-					} as Tracer;
-				},
+			vi.spyOn(trace, 'getTracer').mockImplementation((name) => {
+				const real = otel.provider.getTracer(name);
+				return {
+					startSpan: (spanName, options, ctx) => {
+						if (spanName.endsWith('.started')) throw new Error('marker failed');
+						return real.startSpan(spanName, options, ctx);
+					},
+				} as Tracer;
 			});
-			tracer = makeTracer({ otelService: failingMarkers });
 
 			expect(() => runSegment(true)).not.toThrow();
 

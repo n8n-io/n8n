@@ -43,6 +43,7 @@ import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { ConflictError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import { AgentDefinitionService } from './agent-definition.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
@@ -109,10 +110,10 @@ type DraftAgentCreateOptions = {
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
-	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skills hub skill
-	 *  stays a ref; a ref with only a body gets a new hub skill in this project. */
+	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skill of the skills module
+	 *  stays a ref; a ref with only a body gets a new skill in this project. */
 	skills?: Record<string, AgentSkill>;
-	/** Creates the hub skills of refs with only a body when `user` is not set.
+	/** Creates the skills of refs with only a body when `user` is not set.
 	 *  Without either, those refs are dropped. */
 	skillCreator?: User;
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
@@ -148,6 +149,7 @@ export class AgentsService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	/**
@@ -290,15 +292,28 @@ export class AgentsService {
 			await this.agentRepository.insertNew(agent, ctx);
 			if (options.config !== undefined) {
 				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
+				await this.definitionService.captureVersion(
+					agent,
+					options.user ?? options.skillCreator ?? 'Unknown',
+					ctx,
+					options.createdBy,
+				);
 				return await this.agentSkillRefs.refsForDraft(agent, ctx);
 			}
-			return await this.agentSkillRefs.createDraftRefs(
+			const refs = await this.agentSkillRefs.createDraftRefs(
 				agent,
 				skillRefs,
 				options.skills ?? {},
 				options.user ?? options.skillCreator ?? null,
 				ctx,
 			);
+			await this.definitionService.captureVersion(
+				agent,
+				options.user ?? options.skillCreator ?? 'Unknown',
+				ctx,
+				options.createdBy,
+			);
+			return refs;
 		});
 	}
 
@@ -417,6 +432,7 @@ export class AgentsService {
 				ctx,
 			);
 			await this.agentTaskRepository.replaceForAgent(id, definition.tasks, ctx);
+			await this.definitionService.captureVersion(agent, user, ctx);
 			return imported;
 		});
 		await Container.get(AgentSaveCompletionService).definitionSaved(

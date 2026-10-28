@@ -144,6 +144,16 @@ describe('ResumeRequestService.locate', () => {
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(1);
 	});
 
+	// A failed or cancelled execution is written before its waits are cancelled.
+	it.each(['failed', 'cancelled'] as const)(
+		'answers null for a %s execution that still holds two waits',
+		async (status) => {
+			const { service } = setup({ waiting: [[accepting('s1'), accepting('s2')]], status });
+
+			await expect(service.locate(executionId, token)).resolves.toBeNull();
+		},
+	);
+
 	it('skips a step-bound wait, which an execution-bound token cannot resume', async () => {
 		const stepBound: StepRecord = {
 			...accepting('bound'),

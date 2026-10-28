@@ -5,6 +5,7 @@ import {
 	agentSkillSchema,
 } from '../agent-skill.schema';
 import { CreateAgentSkillDto, UpdateAgentSkillDto } from '../dto';
+import { CreateSkillDto } from '../skills.schema';
 
 describe('agent skill DTOs', () => {
 	const validSkill = {
@@ -118,6 +119,16 @@ describe('agent skill DTOs', () => {
 					content: '# Guide',
 				})),
 			}).success,
+		).toBe(false);
+	});
+
+	it.each(['', '   ', '\n\t'])('rejects instructions %j without text', (instructions) => {
+		expect(agentSkillSchema.safeParse({ ...validSkill, instructions }).success).toBe(false);
+		expect(CreateAgentSkillDto.safeParse({ ...validSkill, instructions }).success).toBe(false);
+		expect(UpdateAgentSkillDto.safeParse({ instructions }).success).toBe(false);
+		expect(
+			CreateSkillDto.safeParse({ scope: 'instance', skill: { ...validSkill, instructions } })
+				.success,
 		).toBe(false);
 	});
 

@@ -19,6 +19,17 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('keeps the outcome when a stopped execution produced no assistant content', () => {
+		const messages = executionsToMessagesDto([execution({ status: 'cancelled', timeline: [] })]);
+
+		expect(messages.at(-1)).toMatchObject({
+			role: 'assistant',
+			content: [],
+			executionId: 'execution-1',
+			executionStatus: 'cancelled',
+		});
+	});
+
 	it('maps a host event to a host-event content part in its position', () => {
 		const result = executionToMessagesDto(
 			execution({

@@ -77,7 +77,7 @@ export function convertN8nRequestToAxios(
 		agentOptions,
 		axiosRequest,
 		n8nRequest.proxy,
-		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? false,
 		n8nRequest.allowedDomains,
 		ssrfBridge ?? 'disabled',
 	);
@@ -231,7 +231,7 @@ async function sendHttpRequest(
 				agentOptions: buildAgentOptions(requestOptions),
 				allowedDomains: requestOptions.allowedDomains,
 				sendCredentialsOnCrossOriginRedirect:
-					requestOptions.sendCredentialsOnCrossOriginRedirect ?? true,
+					requestOptions.sendCredentialsOnCrossOriginRedirect ?? false,
 				authSendImmediately: requestOptions.auth?.sendImmediately,
 			})
 		: await invokeAxios(axiosRequest, requestOptions.auth?.sendImmediately);

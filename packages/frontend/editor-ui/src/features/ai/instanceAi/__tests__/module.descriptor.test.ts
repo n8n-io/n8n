@@ -8,8 +8,14 @@ import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
-import { SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	PERSONAL_SELF_HEALING_VIEW,
+	SELF_HEALING_CONFIGURATION_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiModule } from '../module.descriptor';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
@@ -17,6 +23,16 @@ import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } 
 vi.mock('../composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => ref(true),
 	useInstanceAiReady: () => ref(true),
+}));
+
+const { getProject, getMyProjects } = vi.hoisted(() => ({
+	getProject: vi.fn(),
+	getMyProjects: vi.fn(),
+}));
+vi.mock('@/features/collaboration/projects/projects.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/collaboration/projects/projects.api')>()),
+	getProject,
+	getMyProjects,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -75,6 +91,7 @@ const instanceAiModuleSettings: NonNullable<FrontendModuleSettings['instance-ai'
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
 	workflowSuggestionsEnabled: false,
+	assistantAgentEnabled: false,
 };
 
 function setAssistantEnabled(enabled: boolean) {
@@ -126,46 +143,159 @@ describe('InstanceAiModule legacy route redirects', () => {
 	});
 });
 
+const selfHealingRoutes = {
+	projectSettings: [
+		{ path: '/projects/project/settings/self-healing/new', name: SELF_HEALING_CONFIGURATION_VIEW },
+	],
+	personalTab: [
+		{ path: '/projects/project/self-healing', name: PERSONAL_SELF_HEALING_VIEW },
+		{ path: '/projects/project/self-healing/new', name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW },
+	],
+};
+
 describe.each(['initial navigation', 'from another page'])('self-healing access %s', (entry) => {
+	async function open(path: string) {
+		const router = createTestRouter();
+		if (entry === 'from another page') {
+			await router.push('/assistant');
+		}
+		await router.push(path);
+		return router;
+	}
+
+	function mockProject(project: Partial<Project>) {
+		getMyProjects.mockResolvedValue([
+			{
+				id: 'project',
+				type: project.type,
+				scopes: project.scopes,
+			},
+		]);
+		getProject.mockResolvedValue({
+			id: 'project',
+			name: 'Project',
+			icon: null,
+			createdAt: '',
+			updatedAt: '',
+			rolesManaged: false,
+			...project,
+		} as Project);
+	}
+
+	beforeEach(() => {
+		getProject.mockReset();
+		getMyProjects.mockReset();
+		useUsersStore().currentUserId = 'user';
+	});
+
 	it.each([
-		{ enabled: false, canUpdate: true, allowed: false },
-		{ enabled: true, canUpdate: false, allowed: false },
-		{ enabled: true, canUpdate: true, allowed: true },
-	])(
-		'checks feature=$enabled and project update=$canUpdate',
-		async ({ enabled, canUpdate, allowed }) => {
+		{ enabled: false, type: 'team', canUpdate: true, owner: 'other', allowedIn: null },
+		{ enabled: true, type: 'team', canUpdate: false, owner: 'other', allowedIn: null },
+		{ enabled: true, type: 'team', canUpdate: true, owner: 'other', allowedIn: 'projectSettings' },
+		{ enabled: true, type: 'personal', canUpdate: false, owner: 'user', allowedIn: 'personalTab' },
+		{ enabled: false, type: 'personal', canUpdate: false, owner: 'user', allowedIn: null },
+		{ enabled: true, type: 'personal', canUpdate: false, owner: 'other', allowedIn: null },
+		{ enabled: true, type: 'personal', canUpdate: true, owner: 'other', allowedIn: null },
+	] as const)(
+		'checks feature=$enabled, $type project update=$canUpdate and owner=$owner',
+		async ({ enabled, type, canUpdate, owner, allowedIn }) => {
 			useSettingsStore().moduleSettings = {
 				'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: enabled },
 			};
-			useProjectsStore().myProjects = [
-				{
-					id: 'project',
-					name: 'Team project',
-					type: 'team',
-					icon: null,
-					createdAt: '',
-					updatedAt: '',
-					role: 'project:admin',
-					scopes: canUpdate ? ['project:update'] : ['project:read'],
-				},
-			];
-			const router = createTestRouter();
-			if (entry === 'from another page') {
-				await router.push('/assistant');
-			}
-			await router.push('/projects/project/settings/self-healing/new');
+			mockProject({
+				type,
+				relations: [
+					{ id: owner, role: type === 'personal' ? 'project:personalOwner' : 'project:admin' },
+				] as Project['relations'],
+				scopes: canUpdate ? ['project:update'] : ['project:read'],
+			});
 
-			expect(router.currentRoute.value.name).toBe(
-				allowed ? SELF_HEALING_CONFIGURATION_VIEW : VIEWS.HOMEPAGE,
-			);
-			if (allowed) {
-				expect(router.currentRoute.value.params).toEqual({
-					projectId: 'project',
-					configurationId: 'new',
-				});
+			for (const [location, routes] of Object.entries(selfHealingRoutes)) {
+				for (const { path, name } of routes) {
+					const router = await open(path);
+
+					expect(router.currentRoute.value.name).toBe(
+						location === allowedIn ? name : VIEWS.HOMEPAGE,
+					);
+				}
 			}
 		},
 	);
+
+	it('allows a team role with project:update but without project:read', async () => {
+		setGlobalScopes(GLOBAL_MEMBER_SCOPES);
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		mockProject({ type: 'team', scopes: ['project:update'] });
+		getProject.mockRejectedValue(new Error('Forbidden'));
+
+		expect(
+			(await open('/projects/project/settings/self-healing/new')).currentRoute.value.name,
+		).toBe(SELF_HEALING_CONFIGURATION_VIEW);
+		expect(getProject).not.toHaveBeenCalled();
+	});
+
+	it('denies access to a chat user who only views their personal project', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		mockProject({
+			type: 'personal',
+			relations: [{ id: 'user', role: 'project:viewer' }] as Project['relations'],
+			scopes: ['project:read'],
+		});
+
+		expect((await open('/projects/project/self-healing')).currentRoute.value.name).toBe(
+			VIEWS.HOMEPAGE,
+		);
+	});
+
+	it('loads the project when the store holds the personal project without relations', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		const cachedPersonalProject = {
+			id: 'project',
+			type: 'personal',
+			scopes: ['project:read'],
+		} as unknown as Project;
+		useProjectsStore().currentProject = cachedPersonalProject;
+		mockProject({
+			type: 'personal',
+			relations: [{ id: 'user', role: 'project:personalOwner' }] as Project['relations'],
+			scopes: ['project:read'],
+		});
+
+		expect((await open('/projects/project/self-healing')).currentRoute.value.name).toBe(
+			PERSONAL_SELF_HEALING_VIEW,
+		);
+		expect(getProject).toHaveBeenCalledWith(expect.anything(), 'project');
+		expect(useProjectsStore().currentProject).toStrictEqual(cachedPersonalProject);
+	});
+
+	it('denies access when the project cannot be loaded', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		mockProject({ type: 'personal', scopes: ['project:read'] });
+		getProject.mockRejectedValue(new Error('Forbidden'));
+
+		expect((await open('/projects/project/self-healing')).currentRoute.value.name).toBe(
+			VIEWS.HOMEPAGE,
+		);
+	});
+
+	it('denies access when the project list cannot be loaded', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...instanceAiModuleSettings, workflowSuggestionsEnabled: true },
+		};
+		getMyProjects.mockRejectedValue(new Error('Unavailable'));
+
+		expect(
+			(await open('/projects/project/settings/self-healing/new')).currentRoute.value.name,
+		).toBe(VIEWS.HOMEPAGE);
+	});
 });
 
 describe('InstanceAiModule settings page access', () => {

@@ -58,6 +58,7 @@ export class ExecutionRecoveryService {
 				where: { workflowId },
 				order: { startedAt: 'DESC' },
 				take: maxLastExecutions,
+				withDeleted: true,
 			});
 			const numberOfCrashedExecutions = lastExecutions.filter((e) => e.status === 'crashed').length;
 
