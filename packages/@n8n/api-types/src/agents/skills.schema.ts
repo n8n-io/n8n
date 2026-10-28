@@ -30,7 +30,7 @@ export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 /**
- * How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the
+ * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
  * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
  */
 export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
@@ -77,7 +77,7 @@ export type SkillListResponse = {
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
-export type SkillUsage = {
+export type SkillUsedBy = {
 	/** Agents whose draft references the skill. */
 	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
 	/** Agents with a published version that pins the skill, one row each. */
@@ -97,7 +97,7 @@ export type SkillDetail = SkillListItem & {
 	skill: AgentSkill;
 	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
-	usedBy: SkillUsage;
+	usedBy: SkillUsedBy;
 };
 
 export type SkillSaveResponse = {
@@ -167,7 +167,7 @@ export class ListSkillAgentsQueryDto extends Z.class({
 export type SkillAgentOption = { id: string; name: string };
 
 /**
- * A skills hub name, trimmed first. A name of only spaces is refused, and padding is not
+ * A skill name, trimmed first. A name of only spaces is refused, and padding is not
  * stored, so it cannot make a name look free or show as an untitled row.
  */
 const skillNameSchema = z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH);
@@ -197,7 +197,7 @@ export class CreateSkillDto extends Z.class({
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
 	availableToAssistant: z.boolean().optional(),
-	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
+	/** Skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
 	/** For telemetry only. Absent counts as `manual`. */
 	method: skillCreateMethodSchema.optional(),

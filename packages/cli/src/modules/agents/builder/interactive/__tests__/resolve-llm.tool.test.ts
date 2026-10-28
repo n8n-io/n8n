@@ -1283,4 +1283,121 @@ describe('agent_builder_resolve_llm tool', () => {
 			});
 		});
 	});
+
+	// The tool description says only when to call the tool. What to do with a
+	// result travels on that result, so it costs context only when it applies.
+	describe('next step for the model', () => {
+		async function modelView(
+			credentials: CredentialListItem[],
+			input: Record<string, unknown> = {},
+			modelLookup: ModelLookup = makeModelLookup(),
+			freeCredits = makeFreeCredits(),
+		) {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider(credentials),
+				modelLookup,
+				freeCredits,
+			});
+			const result = await tool.handler!(input, {});
+			return tool.toModelOutput!(result) as Record<string, unknown>;
+		}
+
+		it('adds no next step to a plain resolution', async () => {
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{},
+				makeModelLookupServingDefault('openAiApi'),
+			);
+
+			expect(view.ok).toBe(true);
+			expect(view).not.toHaveProperty('nextStep');
+		});
+
+		it('tells the model to defer a missing credential during an initial build', async () => {
+			const view = await modelView([], { provider: 'anthropic' });
+
+			expect(view.reason).toBe('missing_credential');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
+			expect(view.nextStep).toContain('existing Agent');
+		});
+
+		it('tells the model to pass the picked credential id after an ambiguous result', async () => {
+			const view = await modelView(
+				[
+					{ id: 'c1', name: 'Work', type: 'anthropicApi' },
+					{ id: 'c2', name: 'Personal', type: 'anthropicApi' },
+				],
+				{ provider: 'anthropic' },
+			);
+
+			expect(view.reason).toBe('ambiguous_credential');
+			expect(view.nextStep).toContain('credentialId');
+		});
+
+		it('tells the model to retry an unknown model from the returned list', async () => {
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{ model: 'gpt-0' },
+				makeModelLookup(async () => [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }]),
+			);
+
+			expect(view.reason).toBe('unknown_model');
+			expect(view.nextStep).toContain('availableModels');
+			expect(view.nextStep).not.toContain('sample');
+		});
+
+		it('says a truncated model list is only a sample', async () => {
+			const models = Array.from({ length: 40 }, (_, i) => ({ name: `m${i}`, value: `m${i}` }));
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{ model: 'gpt-0' },
+				makeModelLookup(async () => models),
+			);
+
+			expect(view.availableModelsTruncated).toBe(true);
+			expect(view.nextStep).toContain('sample');
+			expect(view.nextStep).toContain('agent_builder_ask_questions');
+		});
+
+		it('tells the model to mention claimed free OpenAI credits', async () => {
+			const view = await modelView(
+				[],
+				{},
+				makeModelLookup(),
+				makeFreeCredits(
+					() => true,
+					async () => ({ credentialId: 'free', credentialName: 'n8n free OpenAI API credits' }),
+				),
+			);
+
+			expect(view.claimedFreeOpenAiCredits).toBe(true);
+			expect(view.nextStep).toContain('free OpenAI credits');
+		});
+
+		it('tells the model to state an auto-picked provider as changeable', async () => {
+			const view = await modelView(
+				[
+					{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
+					{ id: 'c2', name: 'My OpenAI', type: 'openAiApi' },
+				],
+				{},
+				makeModelLookup(async (_id, type) => {
+					const defaultModel = LLM_PROVIDER_DEFAULTS[type].defaultModel as string;
+					return [{ name: defaultModel, value: defaultModel }];
+				}),
+			);
+
+			expect(view.autoPicked).toBe(true);
+			expect(view.nextStep).toContain('provider and model');
+			expect(view.nextStep).toContain('changeable');
+		});
+
+		it('tells the model to pick a supported provider after an unsupported one', async () => {
+			const view = await modelView([], { provider: 'not-a-provider' });
+
+			expect(view.reason).toBe('unsupported_provider');
+			expect(view.nextStep).toContain('supportedProviders');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
+		});
+	});
 });

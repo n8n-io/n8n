@@ -16,22 +16,22 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { findIntroducedNameClashes, findNameClashGroups } from '@/modules/skills/skill-names';
 import {
-	SkillService,
-	withTrimmedName,
+	findIntroducedNameClashes,
+	findNameClashGroups,
+	SkillAccessService,
 	type SkillMoveOptions,
-} from '@/modules/skills/skill.service';
-import {
-	SkillsTelemetry,
+	SkillService,
 	type SkillTelemetryMethod,
 	type SkillTelemetrySource,
-} from '@/modules/skills/skills-telemetry';
+	withTrimmedName,
+} from '@/modules/skills';
 
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
 } from './agent-modification-telemetry.service';
+import { AgentDefinitionService } from './agent-definition.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
@@ -48,9 +48,9 @@ import {
 
 /**
  * Skill writes from one agent: the builder, the agent builder tools and MCP.
- * The skills live in the skills hub. Create makes a hub skill in the agent's
- * project and attaches it. Update saves the next version of the hub skill.
- * Delete detaches the skill from the agent and keeps the hub skill.
+ * The skills live in the skills module. Create makes a skill in the agent's
+ * project and attaches it. Update saves the next version of the skill.
+ * Delete detaches the skill from the agent and keeps the skill.
  */
 @Service()
 export class AgentSkillsService {
@@ -60,9 +60,10 @@ export class AgentSkillsService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly skillService: SkillService,
+		private readonly skillAccess: SkillAccessService,
 		private readonly transactionRunner: TransactionRunner,
-		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	/** The skills of the agent draft, keyed by skill id: the versions that the draft runs. */
@@ -85,7 +86,7 @@ export class AgentSkillsService {
 	}
 
 	/**
-	 * Create skills in the skills hub and attach them to the agent, in one
+	 * Create skills in the skills module and attach them to the agent, in one
 	 * transaction. All-or-nothing: every skill is validated, and its name is
 	 * checked against the agent's skills and the rest of the batch, before any
 	 * write.
@@ -147,7 +148,7 @@ export class AgentSkillsService {
 		);
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		// Skills ignore `allowedTools`, and get the trimmed name the hub stores, so the
+		// Skills ignore `allowedTools`, and get the trimmed name the skills module stores, so the
 		// answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => withTrimmedName(toStoredSkill(this.validateSkill(skill))));
 		await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
@@ -171,6 +172,7 @@ export class AgentSkillsService {
 				...created.map((id) => ({ type: 'skill' as const, id })),
 			];
 			await this.agentSkillRefs.replaceDraftRefs(entity, nextRefs, ctx);
+			await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
 			return {
 				ids: created,
 				skillRefs: await this.agentSkillRefs.refsForDraft(entity, ctx),
@@ -183,7 +185,7 @@ export class AgentSkillsService {
 		);
 
 		this.logger.debug('Created and attached agent skills', { agentId, projectId, skillIds: ids });
-		await this.skillsTelemetry.created(
+		await this.skillService.trackCreated(
 			context.user.id,
 			ids,
 			telemetrySourceOf(context),
@@ -249,8 +251,8 @@ export class AgentSkillsService {
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
 		let moveOptions: SkillMoveOptions = {};
 		if (nextAvailability) {
-			await this.skillService.assertCanEdit(context.user, [skillId]);
-			const checkedSource = await this.skillService.assertCanMove(context.user, skillId);
+			await this.skillAccess.assertCanEdit(context.user, [skillId]);
+			const checkedSource = await this.skillAccess.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
 			// A refused move names only the agents the user may read.
 			const agentProjectIds = await this.projectScopeService.getProjectIds(context.user, [
@@ -288,7 +290,7 @@ export class AgentSkillsService {
 				);
 			}
 		}
-		await this.skillService.assertCanEdit(context.user, [skillId]);
+		await this.skillAccess.assertCanEdit(context.user, [skillId]);
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
@@ -303,7 +305,7 @@ export class AgentSkillsService {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
 			}
-			return await this.skillService.save(
+			return await this.skillService.saveTrusted(
 				skillId,
 				{
 					name: updated.name,
@@ -334,7 +336,7 @@ export class AgentSkillsService {
 		);
 
 		if (saved.created) {
-			await this.skillsTelemetry.updated(
+			await this.skillService.trackUpdated(
 				context.user.id,
 				skillId,
 				telemetrySourceOf(context),
@@ -359,7 +361,7 @@ export class AgentSkillsService {
 		};
 	}
 
-	/** Detach a skill from the agent. The skill stays in the skills hub. */
+	/** Detach a skill from the agent. The skill stays in the skills module. */
 	async deleteSkill(
 		agentId: string,
 		projectId: string,
@@ -385,6 +387,7 @@ export class AgentSkillsService {
 				previousSkillRefs.filter((ref) => ref.id !== skillId),
 				ctx,
 			);
+			await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
 			return await this.agentSkillRefs.refsForDraft(entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
@@ -402,6 +405,11 @@ export class AgentSkillsService {
 		if (availableTo === undefined) return undefined;
 		const current = await this.agentSkillRefs.availabilityOf(skillId, {});
 		return current === availableTo ? undefined : availableTo;
+	}
+
+	validateSkills(skills: AgentSkill[], existing: Record<string, AgentSkill> = {}): void {
+		const validated = skills.map((skill) => this.validateSkill(skill));
+		this.assertNoNameClashes(existing, validated);
 	}
 
 	private validateSkill(skill: AgentSkill): AgentSkill {

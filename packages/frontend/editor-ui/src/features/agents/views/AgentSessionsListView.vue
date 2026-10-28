@@ -6,6 +6,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
 import {
 	useAgentTelemetry,
 	type AgentSessionFilterName,
@@ -69,6 +70,7 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
 const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate } = sessionsStore.filters;
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
@@ -189,6 +191,15 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
 	const actions: Array<ActionDropdownItem<string>> = [];
+	if (thread.status === 'running' && canStop.value) {
+		actions.push({
+			id: 'stop',
+			label: i18n.baseText('agentSessions.stop'),
+			icon: 'square',
+			variant: 'destructive',
+			disabled: stoppingSessionIds.value.has(thread.id),
+		});
+	}
 
 	if (thread.parentThreadId && thread.parentAgentId) {
 		actions.push({
@@ -221,6 +232,16 @@ function onViewTrace(target: TraceTarget) {
 }
 
 async function onAction(actionId: string, thread: AgentExecutionThread) {
+	if (actionId === 'stop') {
+		if (thread.status !== 'running') return;
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		if (await stopSession(thread.id)) {
+			await sessionsStore.refreshThreads(targetProjectId, targetAgentId);
+		}
+		return;
+	}
+
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
 		onViewTrace({

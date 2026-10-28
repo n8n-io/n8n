@@ -245,6 +245,13 @@ export interface AgentInputBoundary {
 export interface ExecutionOptions {
 	/** Expose local and provider tools to the model. Defaults to true. */
 	toolsEnabled?: boolean;
+	/**
+	 * The text that title generation titles a new thread from. Set it when the
+	 * run input carries host context next to the user's own words, so that the
+	 * title describes what the user asked. An empty string generates no title on
+	 * this turn. Defaults to the text of the first user message of the turn.
+	 */
+	titleText?: string;
 	/** Request a cooperative pause before the next model step. */
 	shouldPause?: () => Promise<boolean>;
 	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */

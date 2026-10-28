@@ -1,4 +1,4 @@
-import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, PersonRepository, User, UserRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,12 +11,14 @@ import { UsersController } from '../users.controller';
 
 describe('UsersController', () => {
 	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const userService = mock<UserService>();
 	const jwtService = mock<JwtService>();
 	const urlService = mock<UrlService>();
 
 	const controller = new UsersController(
 		userRepository,
+		personRepository,
 		mock(),
 		userService,
 		jwtService,
@@ -75,15 +77,13 @@ describe('UsersController', () => {
 				id: inviteeId,
 			});
 
-			userRepository.findOne.mockResolvedValue(targetUser);
+			personRepository.findById.mockResolvedValue(targetUser);
 			jwtService.sign.mockReturnValue(mockToken);
 			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
 
 			const result = await controller.generateInviteLink(request, mock<Response>());
 
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: inviteeId },
-			});
+			expect(personRepository.findById).toHaveBeenCalledWith(inviteeId);
 			expect(jwtService.sign).toHaveBeenCalledWith(
 				'invite',
 				{
@@ -109,7 +109,7 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			userRepository.findOne.mockResolvedValue(null);
+			personRepository.findById.mockResolvedValue(null);
 
 			await expect(controller.generateInviteLink(request, mock<Response>())).rejects.toThrow(
 				NotFoundError,
@@ -118,10 +118,8 @@ describe('UsersController', () => {
 				'User to generate invite link for not found',
 			);
 
-			expect(userRepository.findOne).toHaveBeenCalledTimes(2);
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: inviteeId },
-			});
+			expect(personRepository.findById).toHaveBeenCalledTimes(2);
+			expect(personRepository.findById).toHaveBeenCalledWith(inviteeId);
 			expect(jwtService.sign).not.toHaveBeenCalled();
 			expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();
 		});
@@ -137,7 +135,7 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: inviteeId }));
+			personRepository.findById.mockResolvedValue(mock<User>({ id: inviteeId }));
 			jwtService.sign.mockReturnValue(mockToken);
 			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
 

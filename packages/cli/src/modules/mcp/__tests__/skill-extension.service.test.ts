@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
 
-import type { McpSkillContent, SkillService } from '@/modules/skills/skill.service';
+import type { McpSkillContent, SkillService } from '@/modules/skills';
 import type { Telemetry } from '@/telemetry';
 
 import {

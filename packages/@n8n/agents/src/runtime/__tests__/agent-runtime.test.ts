@@ -37,6 +37,7 @@ import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { StreamSink } from '../loop/stream-sink';
+import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -1818,6 +1819,7 @@ describe('AgentRuntime — guardrails', () => {
 
 	it('prices a Foundry deployment by the model it serves', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const modelFetch = vi.fn<typeof fetch>();
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: {
@@ -1827,13 +1829,14 @@ describe('AgentRuntime — guardrails', () => {
 				endpointType: 'foundry',
 				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
 			},
+			modelFetch,
 			instructions: 'You are a test assistant.',
 			eventBus: new AgentEventBus(),
 		});
 
 		await runtime.generate('hi');
 
-		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1', modelFetch);
 	});
 
 	it('does not start the next model call after a turn spends the session cap', async () => {
@@ -7872,6 +7875,51 @@ describe('tool systemInstruction merging', () => {
 		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
 	});
 
+	it('adds episodic capture guidance to the flag_memory instruction and content field only when set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const runWith = async (guidance?: { include?: string[]; exclude?: string[] }) => {
+			generateText.mockClear();
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory: new InMemoryMemory(),
+				episodicMemory: { embedder: fakeEmbedder, guidance },
+			});
+			await runtime.generate('hello', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+			const callArgs = generateText.mock.calls[0][0] as {
+				tools: { flag_memory: { inputSchema: z.ZodObject<{ content: z.ZodString }> } };
+			};
+			const flagTool = callArgs.tools.flag_memory.inputSchema.shape.content.description ?? '';
+			return { text: getSystemMessageText(), flagTool };
+		};
+
+		const { text, flagTool } = await runWith({
+			include: ['timezone'],
+			exclude: ['client "names"'],
+		});
+		expect(text).toContain(
+			`${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n<capture_guidance>`,
+		);
+		expect(text).toContain('Prioritize: "timezone".');
+		expect(text).toContain(
+			'Exclude: "client \\"names\\"". This rule overrides every other flag_memory rule',
+		);
+		expect(flagTool).toContain('Must not contain details about:');
+
+		const empty = await runWith({ include: [], exclude: [] });
+		expect(empty.text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(empty.text).not.toContain('<capture_guidance>');
+		expect(empty.flagTool).not.toContain('Must not contain details about:');
+
+		const includeOnly = await runWith({ include: ['timezone'] });
+		expect(includeOnly.text).toContain('Prioritize: "timezone".');
+		expect(includeOnly.text).not.toContain('Exclude:');
+	});
+
 	it('joins multiple tools systemInstructions into a single block', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
@@ -8916,6 +8964,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('streams and persists a skill update before the model responds', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save(
+			{ ...PERSISTENCE, agentName: 'mid-run-agent' },
+			{ skillIds: ['builder'], versions: { builder: 'previous-version' } },
+		);
+		const skillSource = {
+			...createRuntimeSkillSource([
+				{
+					id: 'builder',
+					name: 'Builder',
+					description: 'Build workflows.',
+					instructions: 'Use the latest guidance.',
+				},
+			]),
+			shouldAppendSkillUpdates: () => true,
+		};
+		const runtime = buildMidRunRuntime(memory, { skillSource });
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
+		const { stream } = await runtime.stream('Continue', { persistence: PERSISTENCE });
+		const chunks = await collectChunks(stream);
+		await runtime.dispose();
+		const notices = chunks
+			.filter((chunk) => chunk.type === 'message')
+			.filter((chunk) => chunk.message.type === 'custom');
+		expect(notices).toEqual([
+			{
+				type: 'message',
+				message: {
+					type: 'custom',
+					data: {
+						type: 'n8n:runtime-skill-update',
+						skillUpdate: expect.objectContaining({
+							skillId: 'builder',
+							name: 'Builder',
+							change: 'updated',
+						}),
+					},
+				},
+			},
+		]);
+		expect(chunks.indexOf(notices[0])).toBeLessThan(
+			chunks.findIndex((chunk) => chunk.type === 'text-delta'),
+		);
+		expect(await memory.getMessages(PERSISTENCE.threadId)).toContainEqual(
+			expect.objectContaining(notices[0].message),
+		);
 	});
 
 	it('persists full skill content when the memory adapter has no skill state store', async () => {
