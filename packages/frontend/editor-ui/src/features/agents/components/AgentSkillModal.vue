@@ -1192,8 +1192,9 @@ function onRemove() {
 	align-items: stretch;
 }
 
-.fileColumn {
-	background-color: var(--color--background--light-2);
+/* Nested, so it wins over the file list's own background. */
+.contentFlush .fileColumn {
+	background-color: var(--background--subtle);
 }
 
 .formColumn {
