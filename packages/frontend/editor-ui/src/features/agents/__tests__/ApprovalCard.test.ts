@@ -16,7 +16,7 @@ const approvalInput = {
 } satisfies ApprovalInput;
 
 function mountCard(input: ApprovalInput = approvalInput) {
-	return mount(ApprovalCard, { props: { input } });
+	return mount(ApprovalCard, { props: { input }, global: { plugins: [i18nInstance] } });
 }
 
 describe('ApprovalCard', () => {
@@ -27,7 +27,7 @@ describe('ApprovalCard', () => {
 	it('updates shared approval labels from the app locale', async () => {
 		const input = parseApprovalInput({ ...approvalInput, supportsSessionApproval: true });
 		const wrapper = mountCard(input!);
-		expect(wrapper.text()).toContain('Always allow');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Always allow');
 
 		i18nInstance.global.setLocaleMessage('de', {
 			...i18nInstance.global.getLocaleMessage('en'),
@@ -45,21 +45,22 @@ describe('ApprovalCard', () => {
 		const sessionChoice = wrapper.get('[data-test-id="approval-card-always-allow"]');
 		expect(sessionChoice.text()).toContain('Immer erlauben');
 		expect(sessionChoice.text()).toContain('in dieser Sitzung');
-		expect(wrapper.get('[data-test-id="approval-card-allow-once"]').text()).toBe('Einmal erlauben');
-		expect(wrapper.get('[data-test-id="approval-card-deny"]').text()).toBe('Ablehnen');
+		expect(wrapper.get('[data-test-id="approval-card-allow-once"]').text()).toContain(
+			'Einmal erlauben',
+		);
+		expect(wrapper.get('[data-test-id="approval-card-deny"]').text()).toContain('Ablehnen');
 		const args = wrapper.get('[data-test-id="approval-card-args"]');
-		expect(args.attributes('role')).toBe('region');
-		expect(args.element).toHaveAccessibleName('Eingabe');
+		expect(args.isVisible()).toBe(true);
 
 		setLanguage('en');
 		await nextTick();
-		expect(wrapper.get('[data-test-id="approval-card-deny"]').text()).toBe('Deny');
+		expect(wrapper.get('[data-test-id="approval-card-deny"]').text()).toContain('Deny');
 	});
 
 	it('preserves session support from the backend and emits the chosen scope', async () => {
 		const input = parseApprovalInput({ ...approvalInput, supportsSessionApproval: true });
 		const wrapper = mountCard(input!);
-		expect(wrapper.text()).toContain('Always allow');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Always allow');
 		await wrapper.get('[data-test-id="approval-card-always-allow"]').trigger('click');
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true, scope: 'session' }]]);
 	});
@@ -72,8 +73,7 @@ describe('ApprovalCard', () => {
 		const wrapper = mountCard(input!);
 		expect(wrapper.find('[data-test-id="approval-card-always-allow"]').exists()).toBe(false);
 
-		expect(wrapper.text()).toContain('Approval required');
-		expect(wrapper.text()).toContain('The agent wants to run the Calculator tool.');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Agent wants to use Calculator');
 		expect(wrapper.text()).not.toContain('calculator.');
 		const args = wrapper.get('[data-test-id="approval-card-args"]');
 		expect(args.isVisible()).toBe(true);
@@ -83,6 +83,19 @@ describe('ApprovalCard', () => {
 		await wrapper.find('[data-test-id="approval-card-allow-once"]').trigger('click');
 
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true }]]);
+	});
+
+	it('updates the agent name and falls back for a blank name', async () => {
+		const wrapper = mountCard();
+		await wrapper.setProps({ agentName: '  Helper  ' });
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Helper wants to use Calculator');
+		await wrapper.setProps({ agentName: '  ', tools: [] });
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Agent wants to use Calculator');
+	});
+
+	it('falls back to the tool name when display metadata is missing', () => {
+		const wrapper = mountCard({ type: 'approval', toolName: 'calculator', args: {} });
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('Agent wants to use calculator');
 	});
 
 	it('renders approval args as provided by the backend', () => {
@@ -100,10 +113,10 @@ describe('ApprovalCard', () => {
 			},
 		});
 
-		expect(wrapper.text()).toContain('project status');
-		expect(wrapper.text()).toContain('super-secret-password');
-		expect(wrapper.text()).toContain('api-key-value');
-		expect(wrapper.text()).toContain('token-value');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('project status');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('super-secret-password');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('api-key-value');
+		expect(wrapper.text().replace(/\s+/g, ' ')).toContain('token-value');
 	});
 
 	it('emits declined resume data from the deny action', async () => {

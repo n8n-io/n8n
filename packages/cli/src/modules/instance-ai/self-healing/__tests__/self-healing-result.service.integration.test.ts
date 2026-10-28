@@ -11,6 +11,8 @@ import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	type Project,
+	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -19,10 +21,11 @@ import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
+	type User,
 	type WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { randomUUID } from 'node:crypto';
@@ -125,10 +128,16 @@ type Outcome = 'fix_ready' | 'needs_you' | 'could_not_fix';
 async function prepareFixture(
 	outcome: Outcome = 'needs_you',
 	workflowData: Partial<WorkflowEntity> = {},
+	inTeamProject = false,
 ) {
 	const user = await createUser();
-	const workflow = await createWorkflowWithHistory(workflowData, user);
-	const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
+	let project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
+	let owner: User | Project = user;
+	if (inTeamProject) {
+		project = await createTeamProject(undefined, user);
+		owner = project;
+	}
+	const workflow = await createWorkflowWithHistory(workflowData, owner);
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId, active: true });
 	await Container.get(WorkflowPublicationTriggerStatusRepository).replaceForWorkflow(workflow.id, [
 		{
@@ -170,9 +179,9 @@ async function prepareFixture(
 async function fixture(
 	outcome: Outcome = 'needs_you',
 	withSuggestion = false,
-	workflowData: Partial<WorkflowEntity> = {},
+	content: { workflowData?: Partial<WorkflowEntity>; inTeamProject?: boolean } = {},
 ) {
-	const prepared = await prepareInvestigation(outcome, withSuggestion, { workflowData });
+	const prepared = await prepareInvestigation(outcome, withSuggestion, content);
 	const result = await completeResult({
 		investigationId: prepared.investigation.id,
 		...prepared.completion,
@@ -191,10 +200,11 @@ async function prepareInvestigation(
 		report?: string;
 		usage?: SelfHealingResultUsage;
 		workflowData?: Partial<WorkflowEntity>;
+		inTeamProject?: boolean;
 	} = {},
 ) {
-	const { workflowData, ...resultContent } = content;
-	const fixture = await prepareFixture(outcome, workflowData);
+	const { workflowData, inTeamProject, ...resultContent } = content;
+	const fixture = await prepareFixture(outcome, workflowData, inTeamProject);
 	const { original, user } = fixture;
 	const graph =
 		withSuggestion === 'unchanged'
@@ -411,7 +421,9 @@ describe('investigation eligibility after a result', () => {
 		'checks cooldowns for a workflow with escaped characters in pin data: %s',
 		async (scenario) => {
 			const { input, result, original } = await fixture('could_not_fix', false, {
-				pinData: { 'Schedule Trigger': [{ json: { value: 'before\u0000after' } }] },
+				workflowData: {
+					pinData: { 'Schedule Trigger': [{ json: { value: 'before\u0000after' } }] },
+				},
 			});
 			const elapsed = scenario === 'at expiry' ? SELF_HEALING_CANNOT_FIX_COOLDOWN_MS : 60_000;
 			vi.spyOn(Date, 'now').mockReturnValue(result.completedAt.getTime() + elapsed);
@@ -562,6 +574,7 @@ describe('investigation eligibility after a result', () => {
 				enabled: true,
 				workflowIds: [original.id],
 				reviewerIds: [user.id],
+				includeAllProjectMembers: false,
 			},
 			input.configurationId,
 		);
@@ -581,6 +594,7 @@ describe('investigation eligibility after a result', () => {
 				enabled: true,
 				workflowIds: [otherWorkflow.id],
 				reviewerIds: [user.id],
+				includeAllProjectMembers: false,
 			},
 			input.configurationId,
 		);
@@ -950,10 +964,12 @@ it.each([
 ] as const)(
 	'handles dismissal of %s without changing its workflow',
 	async (outcome, reviewState) => {
-		const { user, project, original, result, url } = await fixture(outcome);
+		const { user, project, original, result, url } = await fixture(outcome, false, {
+			inTeamProject: true,
+		});
 		const editor = await createUser();
 		await addReviewer(result.configurationId, editor.id);
-		await shareWorkflowWithUsers(original, [editor]);
+		await linkUserToProject(editor, project, 'project:editor');
 		const response = await testServer.authAgentFor(user).post(`${url}/dismiss`);
 		expect(response.status).toBe(200);
 		expect(response.body.data.reviewState).toBe(reviewState);
@@ -1195,9 +1211,9 @@ describe('competing reviewers', () => {
 	type Action = 'apply' | 'approve-and-publish' | 'dismiss';
 
 	async function reviewersFor(outcome: Outcome, withSuggestion: boolean) {
-		const context = await fixture(outcome, withSuggestion);
+		const context = await fixture(outcome, withSuggestion, { inTeamProject: true });
 		const editor = await createUser();
-		await shareWorkflowWithUsers(context.original, [editor]);
+		await linkUserToProject(editor, context.project, 'project:editor');
 		await addReviewer(context.result.configurationId, editor.id);
 		const review = async (reviewer: typeof editor, action: Action) =>
 			action === 'dismiss'
@@ -1318,11 +1334,14 @@ it('rejects approve-and-publish for Needs attention', async () => {
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
-it('allows assigned reviewers with a workflow share to review', async () => {
+it('allows assigned project viewers with a workflow share to review', async () => {
 	testServer.license.enable('feat:sharing');
-	const { original, project, result, url } = await fixture();
+	const { original, project, result, url } = await fixture('needs_you', false, {
+		inTeamProject: true,
+	});
 	const editor = await createUser();
 	await addReviewer(result.configurationId, editor.id);
+	await linkUserToProject(editor, project, 'project:viewer');
 	await shareWorkflowWithUsers(original, [editor]);
 	const agent = testServer.authAgentFor(editor);
 	await agent.get(url).expect(200);
@@ -1342,21 +1361,11 @@ it.each(['apply', 'dismiss'] as const)(
 	'keeps detail and %s available without publish scope',
 	async (action) => {
 		testServer.license.enable('feat:advancedPermissions');
-		const { user, original, result } = await fixture('fix_ready', true);
+		const { project, result, url } = await fixture('fix_ready', true, { inTeamProject: true });
 		const editor = await createUser();
 		await addReviewer(result.configurationId, editor.id);
-		const project = await createTeamProject(undefined, user);
 		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
 		await linkUserToProject(editor, project, role.slug);
-		await Container.get(SharedWorkflowRepository).save({
-			workflowId: original.id,
-			projectId: project.id,
-			role: 'workflow:editor',
-		});
-		const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			user.id,
-		);
-		const url = `/projects/${ownerProject.id}/workflows/${original.id}/self-healing-results/${result.id}`;
 		const agent = testServer.authAgentFor(editor);
 		await agent.get(url).expect(200);
 		await agent.post(`${url}/approve-and-publish`).expect(403);
@@ -1368,16 +1377,18 @@ it.each([
 	{ outcome: 'fix_ready', action: 'apply', reviewState: 'applied' },
 	{ outcome: 'needs_you', action: 'dismiss', reviewState: 'dismissed' },
 ] as const)(
-	'lets a reviewer without project access continue $reviewState in their personal project',
+	'lets a project viewer who edits through a share continue $reviewState',
 	async ({ outcome, action, reviewState }) => {
 		testServer.license.enable('feat:advancedPermissions');
 		vi.spyOn(Container.get(InstanceAiSettingsService), 'isInstanceAiEnabled').mockReturnValue(true);
 		const { user, original, project, result, url } = await fixture(
 			outcome,
 			outcome === 'fix_ready',
+			{ inTeamProject: true },
 		);
 		const editor = await createUser();
 		await addReviewer(result.configurationId, editor.id);
+		await linkUserToProject(editor, project, 'project:viewer');
 		const team = await createTeamProject(undefined, user);
 		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
 		await linkUserToProject(editor, team, role.slug);
@@ -1401,17 +1412,18 @@ it.each([
 		const response = await agent.post(`${url}/${action}`).expect(200);
 
 		expect(response.body.data).toMatchObject({ reviewState, projectId: project.id });
-		expect((await openChat(project.id)).status).toBe(403);
+		expect((await openChat(project.id)).status).toBe(200);
 		expect((await openChat(editorProject.id)).status).toBe(200);
 	},
 );
 
 it('keeps the report readable when a reviewer loses execution read access', async () => {
 	testServer.license.enable('feat:advancedPermissions');
-	const { user, project: ownerProject, original, input, result } = await fixture();
+	const { project, input, result, url } = await fixture('needs_you', false, {
+		inTeamProject: true,
+	});
 	const editor = await createUser();
 	await addReviewer(result.configurationId, editor.id);
-	const project = await createTeamProject(undefined, user);
 	const readerRole = await createCustomRoleWithScopeSlugs([
 		'workflow:read',
 		'workflow:update',
@@ -1419,12 +1431,6 @@ it('keeps the report readable when a reviewer loses execution read access', asyn
 	]);
 	const editorRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
 	await linkUserToProject(editor, project, readerRole.slug);
-	await Container.get(SharedWorkflowRepository).save({
-		workflowId: original.id,
-		projectId: project.id,
-		role: 'workflow:editor',
-	});
-	const url = `/projects/${ownerProject.id}/workflows/${original.id}/self-healing-results/${result.id}`;
 	const agent = testServer.authAgentFor(editor);
 	const initial = await agent.get(url).expect(200);
 	expect(initial.body.data.execution).toEqual({ status: 'available', id: input.executionId });
@@ -1439,23 +1445,19 @@ it('keeps the report readable when a reviewer loses execution read access', asyn
 });
 
 it('checks execution access against the stored role when the supplied user is stale', async () => {
-	const { user, project: ownerProject, original, input, result } = await fixture();
+	const { project, original, input, result } = await fixture('needs_you', false, {
+		inTeamProject: true,
+	});
 	const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
 	await addReviewer(result.configurationId, reviewer.id);
-	const project = await createTeamProject(undefined, user);
 	const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
 	await linkUserToProject(reviewer, project, role.slug);
-	await Container.get(SharedWorkflowRepository).save({
-		workflowId: original.id,
-		projectId: project.id,
-		role: 'workflow:editor',
-	});
-	const initial = await service.getDetail(reviewer, ownerProject.id, original.id, result.id);
+	const initial = await service.getDetail(reviewer, project.id, original.id, result.id);
 	expect(initial.execution).toEqual({ status: 'available', id: input.executionId });
 
 	await Container.get(UserRepository).update(reviewer.id, { role: GLOBAL_MEMBER_ROLE });
 	expect(reviewer.role.slug).toBe(GLOBAL_OWNER_ROLE.slug);
-	const detail = await service.getDetail(reviewer, ownerProject.id, original.id, result.id);
+	const detail = await service.getDetail(reviewer, project.id, original.id, result.id);
 	expect(detail).toMatchObject({ report: input.report, execution: { status: 'unavailable' } });
 	expect(detail.execution).not.toHaveProperty('id');
 });
@@ -1560,9 +1562,13 @@ describe('Inbox source reads', () => {
 	});
 
 	it('uses current roles when a globally readable user does not have update access', async () => {
-		const { result, original, project } = await fixture();
+		const { result, original, project } = await fixture('needs_you', false, {
+			inTeamProject: true,
+		});
 		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
 		await addReviewer(result.configurationId, reviewer.id);
+		await linkUserToProject(reviewer, project, 'project:viewer');
+		expect(await service.countForInbox(reviewer)).toEqual({ open: 1, closed: 0 });
 		const readOnlyRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
 			roleType: 'global',
 		});
@@ -1573,10 +1579,13 @@ describe('Inbox source reads', () => {
 		await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow();
 	});
 
-	it('includes direct workflow shares and removes revoked shares', async () => {
-		const { result, original, project } = await fixture();
+	it('includes direct workflow shares for project members and removes revoked shares', async () => {
+		const { result, original, project } = await fixture('needs_you', false, {
+			inTeamProject: true,
+		});
 		const editor = await createUser();
 		await addReviewer(result.configurationId, editor.id);
+		await linkUserToProject(editor, project, 'project:viewer');
 		await shareWorkflowWithUsers(original, [editor]);
 		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([
 			expect.objectContaining({ id: result.id }),
@@ -1598,23 +1607,17 @@ describe('Inbox source reads', () => {
 	});
 
 	it('uses custom project scopes and requires both read and update', async () => {
-		const { user, result, original } = await fixture();
+		const { result, project } = await fixture('needs_you', false, { inTeamProject: true });
 		const editor = await createUser();
 		await addReviewer(result.configurationId, editor.id);
-		const team = await createTeamProject(undefined, user);
 		const customEditor = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
 		const customViewer = await createCustomRoleWithScopeSlugs(['workflow:read']);
-		await linkUserToProject(editor, team, customEditor.slug);
-		await Container.get(SharedWorkflowRepository).save({
-			workflowId: original.id,
-			projectId: team.id,
-			role: 'workflow:editor',
-		});
+		await linkUserToProject(editor, project, customEditor.slug);
 		expect(await service.countForInbox(editor)).toEqual({ open: 1, closed: 0 });
 		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([
 			expect.objectContaining({ id: result.id }),
 		]);
-		await linkUserToProject(editor, team, customViewer.slug);
+		await linkUserToProject(editor, project, customViewer.slug);
 		expect(await service.listForInbox(editor, { state: 'open', limit: 10 })).toEqual([]);
 		expect(await service.countForInbox(editor)).toEqual({ open: 0, closed: 0 });
 	});
@@ -1658,6 +1661,212 @@ describe('Inbox source reads', () => {
 				expect.objectContaining({ id: result.id, state: 'closed' }),
 			]);
 			expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
+		},
+	);
+
+	describe('project member reviewers', () => {
+		async function useProjectMembersOnly(configurationId: number) {
+			await Container.get(DataSource)
+				.getRepository(SelfHealingConfigurationReviewer)
+				.delete({ configurationId });
+			await Container.get(SelfHealingConfigurationRepository).update(configurationId, {
+				includeAllProjectMembers: true,
+			});
+		}
+
+		async function teamFixture(outcome: Outcome = 'fix_ready', withSuggestion = true) {
+			const data = await fixture(outcome, withSuggestion, { inTeamProject: true });
+			await useProjectMembersOnly(data.result.configurationId);
+			return data;
+		}
+
+		async function expectReviewer(user: User, visible: boolean) {
+			expect(await service.countForInbox(user)).toEqual({ open: visible ? 1 : 0, closed: 0 });
+			expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toHaveLength(
+				visible ? 1 : 0,
+			);
+		}
+
+		it('follows current membership for inbox rows, details, and actions', async () => {
+			testServer.license.enable('feat:sharing');
+			const { user, project, original, result } = await teamFixture();
+			const member = await createUser();
+			await shareWorkflowWithUsers(original, [member]);
+			await expectReviewer(member, false);
+			await expect(service.getDetail(member, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+
+			await linkUserToProject(member, project, 'project:editor');
+			await expectReviewer(member, true);
+			await expectReviewer(user, true);
+			await expect(
+				service.getDetail(member, project.id, original.id, result.id),
+			).resolves.toMatchObject({ resultId: result.id, reviewState: 'open' });
+
+			await Container.get(ProjectRelationRepository).delete({
+				userId: member.id,
+				projectId: project.id,
+			});
+			await expectReviewer(member, false);
+			await expect(
+				service.act(member, project.id, original.id, result.id, 'apply'),
+			).rejects.toThrow(NotFoundError);
+
+			await linkUserToProject(member, project, 'project:editor');
+			await expect(
+				service.act(member, project.id, original.id, result.id, 'apply'),
+			).resolves.toMatchObject({ reviewState: 'applied' });
+		});
+
+		it('keeps workflow edit access and enabled-user checks for members', async () => {
+			const { project, original, result } = await teamFixture('needs_you', false);
+			const viewer = await createUser();
+			await linkUserToProject(viewer, project, 'project:viewer');
+			await expectReviewer(viewer, false);
+			await expect(service.getDetail(viewer, project.id, original.id, result.id)).rejects.toThrow();
+
+			const disabled = await createUser();
+			await linkUserToProject(disabled, project, 'project:editor');
+			await Container.get(UserRepository).update(disabled.id, { disabled: true });
+			await expect(service.countForInbox(disabled)).rejects.toThrow();
+			await expect(service.dismiss(disabled, project.id, original.id, result.id)).rejects.toThrow();
+
+			const adminMember = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await linkUserToProject(adminMember, project, 'project:viewer');
+			await expectReviewer(adminMember, true);
+			await expect(
+				service.dismiss(adminMember, project.id, original.id, result.id),
+			).resolves.toMatchObject({ reviewState: 'dismissed' });
+		});
+
+		it('keeps a member who edits the workflow through a share after a role downgrade', async () => {
+			testServer.license.enable('feat:sharing');
+			const prepared = await prepareInvestigation('needs_you', false, { inTeamProject: true });
+			const { user, project, original, investigation } = prepared;
+			const enabler = await createUser({ role: GLOBAL_OWNER_ROLE });
+			await useProjectMembersOnly(investigation.configurationId);
+			await Container.get(SelfHealingConfigurationRepository).update(
+				investigation.configurationId,
+				{
+					enabledById: enabler.id,
+				},
+			);
+			await linkUserToProject(user, project, 'project:viewer');
+			await shareWorkflowWithUsers(original, [user]);
+
+			const result = await completeResult({
+				investigationId: investigation.id,
+				...prepared.completion,
+			});
+			expect(
+				await Container.get(SelfHealingConfigurationRepository).findOneBy({
+					id: investigation.configurationId,
+				}),
+			).toMatchObject({ enabled: true, enabledById: enabler.id });
+			await expectReviewer(user, true);
+			await expect(
+				service.dismiss(user, project.id, original.id, result.id),
+			).resolves.toMatchObject({ reviewState: 'dismissed' });
+		});
+
+		it('excludes global admins and other-project members who are not project members', async () => {
+			const { project, original, result } = await teamFixture();
+			const admin = await createUser({ role: GLOBAL_OWNER_ROLE });
+			const outsider = await createUser();
+			const otherProject = await createTeamProject(undefined, outsider);
+			await linkUserToProject(outsider, otherProject, 'project:editor');
+			await Container.get(SharedWorkflowRepository).save({
+				workflowId: original.id,
+				projectId: otherProject.id,
+				role: 'workflow:editor',
+			});
+
+			for (const reviewer of [admin, outsider]) {
+				await expectReviewer(reviewer, false);
+				await expect(
+					service.getDetail(reviewer, project.id, original.id, result.id),
+				).rejects.toThrow(NotFoundError);
+			}
+
+			await addReviewer(result.configurationId, admin.id);
+			await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
+				includeAllProjectMembers: false,
+			});
+			await expectReviewer(admin, false);
+			await expect(service.act(admin, project.id, original.id, result.id, 'apply')).rejects.toThrow(
+				NotFoundError,
+			);
+
+			await linkUserToProject(admin, project, 'project:viewer');
+			await expectReviewer(admin, true);
+		});
+
+		it('lists a member who is also selected individually once before pagination', async () => {
+			const prepared = await teamFixture('needs_you', false);
+			const { user, result } = prepared;
+			await addReviewer(result.configurationId, user.id);
+			const second = await addResult(prepared);
+			const updatedAt = new Date('2026-10-05T00:00:00Z');
+			await results.update(result.id, { updatedAt });
+			await results.update(second.id, { updatedAt: new Date('2026-10-04T00:00:00Z') });
+
+			expect(await service.countForInbox(user)).toEqual({ open: 2, closed: 0 });
+			expect(await service.listForInbox(user, { state: 'open', limit: 1 })).toMatchObject([
+				{ id: result.id },
+			]);
+			expect(
+				await service.listForInbox(user, {
+					state: 'open',
+					limit: 1,
+					boundary: { mode: 'afterItem', updatedAt, id: result.id },
+				}),
+			).toMatchObject([{ id: second.id }]);
+			expect(await service.listForInbox(user, { state: 'open', limit: 10 })).toHaveLength(2);
+		});
+
+		it('ignores members when the configuration lists individual reviewers only', async () => {
+			const { project, original, result } = await teamFixture();
+			const member = await createUser();
+			await linkUserToProject(member, project, 'project:editor');
+			await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
+				includeAllProjectMembers: false,
+			});
+			await expectReviewer(member, false);
+			await expect(service.getDetail(member, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	it.each([
+		['an editor', GLOBAL_MEMBER_ROLE, 'project:editor'],
+		['the instance owner', GLOBAL_OWNER_ROLE, 'project:viewer'],
+	] as const)(
+		'revokes review access when %s selected individually leaves the project',
+		async (_label, globalRole, projectRole) => {
+			testServer.license.enable('feat:sharing');
+			const { project, original, result } = await fixture('fix_ready', true, {
+				inTeamProject: true,
+			});
+			const reviewer = await createUser({ role: globalRole });
+			await addReviewer(result.configurationId, reviewer.id);
+			await linkUserToProject(reviewer, project, projectRole);
+			await shareWorkflowWithUsers(original, [reviewer]);
+			expect(await service.countForInbox(reviewer)).toEqual({ open: 1, closed: 0 });
+
+			await Container.get(ProjectRelationRepository).delete({
+				userId: reviewer.id,
+				projectId: project.id,
+			});
+			expect(await service.countForInbox(reviewer)).toEqual({ open: 0, closed: 0 });
+			expect(await service.listForInbox(reviewer, { state: 'open', limit: 10 })).toEqual([]);
+			await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+			await expect(
+				service.act(reviewer, project.id, original.id, result.id, 'apply'),
+			).rejects.toThrow(NotFoundError);
 		},
 	);
 
@@ -1730,9 +1939,12 @@ describe('Inbox source reads', () => {
 
 describe('configuration lifecycle', () => {
 	it('pauses admission without reviewers and preserves the report for a replacement reviewer', async () => {
-		const { user, project, original, input, result } = await fixture('could_not_fix');
+		const { user, project, original, input, result } = await fixture('could_not_fix', false, {
+			inTeamProject: true,
+		});
 		const configurations = Container.get(SelfHealingConfigurationService);
-		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const reviewer = await createUser();
+		await linkUserToProject(reviewer, project, 'project:editor');
 		await configurations.save(
 			user,
 			project.id,
@@ -1740,6 +1952,7 @@ describe('configuration lifecycle', () => {
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: [reviewer.id],
+				includeAllProjectMembers: false,
 			},
 			result.configurationId,
 		);
@@ -1770,6 +1983,7 @@ describe('configuration lifecycle', () => {
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: [user.id],
+				includeAllProjectMembers: false,
 			},
 			result.configurationId,
 		);
@@ -1782,9 +1996,10 @@ describe('configuration lifecycle', () => {
 	});
 
 	it('pauses when the sole reviewer is deleted between admission and claim', async () => {
-		const { user, project, original, input } = await prepareFixture();
+		const { user, project, original, input } = await prepareFixture('needs_you', {}, true);
 		const configurations = Container.get(SelfHealingConfigurationService);
-		const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const reviewer = await createUser();
+		await linkUserToProject(reviewer, project, 'project:editor');
 		await configurations.save(
 			user,
 			project.id,
@@ -1792,6 +2007,7 @@ describe('configuration lifecycle', () => {
 				scope: 'all',
 				workflowIds: [],
 				reviewerIds: [reviewer.id],
+				includeAllProjectMembers: false,
 			},
 			input.configurationId,
 		);
@@ -1817,9 +2033,11 @@ describe('configuration lifecycle', () => {
 			const { user, project, original, investigation, completion } = await prepareInvestigation(
 				withSuggestion ? 'fix_ready' : 'could_not_fix',
 				withSuggestion,
+				{ inTeamProject: true },
 			);
 			const configurations = Container.get(SelfHealingConfigurationService);
-			const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
+			const reviewer = await createUser();
+			await linkUserToProject(reviewer, project, 'project:editor');
 			await configurations.save(
 				user,
 				project.id,
@@ -1827,6 +2045,7 @@ describe('configuration lifecycle', () => {
 					scope: 'all',
 					workflowIds: [],
 					reviewerIds: [reviewer.id],
+					includeAllProjectMembers: false,
 				},
 				investigation.configurationId,
 			);
@@ -2066,9 +2285,9 @@ describe('configuration lifecycle', () => {
 	});
 
 	it('filters unassigned reviewers and applies reviewer changes to existing results', async () => {
-		const { result, original, url } = await fixture('fix_ready', true);
+		const { result, project, url } = await fixture('fix_ready', true, { inTeamProject: true });
 		const editor = await createUser();
-		await shareWorkflowWithUsers(original, [editor]);
+		await linkUserToProject(editor, project, 'project:editor');
 		const agent = testServer.authAgentFor(editor);
 		expect(await service.countForInbox(editor)).toEqual({ open: 0, closed: 0 });
 		await agent.get(url).expect(404);
@@ -2084,10 +2303,18 @@ describe('configuration lifecycle', () => {
 	});
 
 	it('does not let an old actor disable a later explicit enablement', async () => {
-		const { user, project, original, investigation } = await prepareInvestigation();
+		const { user, project, original, investigation } = await prepareInvestigation(
+			'fix_ready',
+			true,
+			{
+				inTeamProject: true,
+			},
+		);
 		const configurations = Container.get(SelfHealingConfigurationService);
 		await configurations.setEnabled(user, project.id, investigation.configurationId, false);
 		const replacement = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await linkUserToProject(replacement, project, 'project:viewer');
+		await addReviewer(investigation.configurationId, replacement.id);
 		await configurations.setEnabled(replacement, project.id, investigation.configurationId, true);
 		await Container.get(UserRepository).update(user.id, { disabled: true });
 		await configurations.recheckAccess(investigation.configurationId, project.id, original.id);

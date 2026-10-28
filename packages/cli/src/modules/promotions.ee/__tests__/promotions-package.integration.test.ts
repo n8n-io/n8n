@@ -855,6 +855,38 @@ describe('Promote and Apply', () => {
 		},
 	);
 
+	it('pushes a direct promotion after the base branch moved on the remote', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id);
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const promote = async (commitMessage: string) =>
+			await service.promote(environments.promote.id, owner, {
+				canExportVariableValues: false,
+				commitMessage,
+			});
+		await promote('First promotion');
+
+		// A merged review moves the base branch outside n8n.
+		await remote.git.fetch('origin', 'main');
+		await remote.git.raw(['reset', '--hard', 'origin/main']);
+		await writeFile(path.join(remote.workingDir, 'REVIEWED.md'), 'merged\n');
+		await remote.git.add(['REVIEWED.md']);
+		await remote.git.commit('Merge a promotion review');
+		await remote.git.push('origin', 'main');
+		const movedCommit = (await remote.git.revparse(['HEAD'])).trim();
+		// An unchanged instance exports the same package, so add a workflow for a new commit.
+		await createWorkflow({ name: 'Ship order', nodes: [], connections: {} }, project);
+
+		const result = await promote('Second promotion');
+
+		const { git } = await inspectBranch(remote.bareDir);
+		expect(result.git.commitSha).not.toBe(movedCommit);
+		expect((await git.revparse(['HEAD'])).trim()).toBe(result.git.commitSha);
+		expect((await git.revparse(['HEAD^'])).trim()).toBe(movedCommit);
+	});
+
 	it('requires a clone after a branched promotion cannot restore its checkout', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(
@@ -2802,7 +2834,7 @@ describe('Promote a project selection — branch effects', () => {
 	});
 
 	it.each(['n8n', 'n8n/manifest.json'])(
-		'refuses a selection when the local copy lost committed %s, until it connects again',
+		'restores committed %s that the local copy lost before it pushes a selection',
 		async (lostPath) => {
 			const remote = await createRemote();
 			const environments = await createInstanceEnvironments(remote.bareDir);
@@ -2815,8 +2847,37 @@ describe('Promote a project selection — branch effects', () => {
 					canExportVariableValues: true,
 				});
 			await promoteWorkflow(workflows[0].id);
+
+			const { repositoryFolder } = workingDirectory.paths(environmentId);
+			await rm(path.join(repositoryFolder, lostPath), { recursive: true, force: true });
+
+			// The direct promote resets the checkout to the remote branch first.
+			await promoteWorkflow(workflows[1].id);
+
+			const { dir } = await inspectBranch(remote.bareDir);
+			expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id).sort()).toEqual(
+				workflows.map((w) => w.id).sort(),
+			);
+		},
+	);
+
+	it.each(['n8n', 'n8n/manifest.json'])(
+		'refuses a selection when the local copy lost committed %s and the remote branch is gone',
+		async (lostPath) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			const { environmentId } = await service.clone(environments.promote.id);
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+			const promoteWorkflow = async (workflowId: string) =>
+				await service.promoteProjectSelection(project.id, owner, {
+					workflowIds: [workflowId],
+					commitMessage: 'Promote selection',
+					canExportVariableValues: true,
+				});
+			await promoteWorkflow(workflows[0].id);
+			// Without a remote branch, the reset cannot restore the lost files.
 			const remoteGit = simpleGit(remote.bareDir);
-			const promotedCommit = (await remoteGit.revparse(['main'])).trim();
+			await remoteGit.raw(['update-ref', '-d', 'refs/heads/main']);
 
 			const { repositoryFolder } = workingDirectory.paths(environmentId);
 			await rm(path.join(repositoryFolder, lostPath), { recursive: true, force: true });
@@ -2824,15 +2885,7 @@ describe('Promote a project selection — branch effects', () => {
 			await expect(promoteWorkflow(workflows[1].id)).rejects.toThrow(
 				'The local copy of the promote branch is incomplete',
 			);
-			expect((await remoteGit.revparse(['main'])).trim()).toBe(promotedCommit);
-
-			await service.clone(environments.promote.id);
-			await promoteWorkflow(workflows[1].id);
-
-			const { dir } = await inspectBranch(remote.bareDir);
-			expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id).sort()).toEqual(
-				workflows.map((w) => w.id).sort(),
-			);
+			expect((await remoteGit.raw(['branch', '--list', 'main'])).trim()).toBe('');
 		},
 	);
 
@@ -2850,8 +2903,14 @@ describe('Promote a project selection — branch effects', () => {
 			canExportVariableValues: true,
 		};
 
-		await rename(bareDir, `${bareDir}.offline`);
+		// The remote refuses the push, so the promote commits and then rolls the commit back.
+		const preReceiveHook = path.join(bareDir, 'hooks', 'pre-receive');
+		const pushAttempted = path.join(testRoot, 'push-attempted');
+		await writeFile(preReceiveHook, `#!/bin/sh\ntouch '${pushAttempted}'\nexit 1\n`, {
+			mode: 0o755,
+		});
 		await expect(service.promoteProjectSelection(project.id, owner, request)).rejects.toThrow();
+		await expect(stat(pushAttempted)).resolves.toBeDefined();
 
 		// The checkout is back to a branch with no commits and no package.
 		await expect(stat(path.join(repositoryFolder, 'n8n'))).rejects.toMatchObject({
@@ -2862,7 +2921,7 @@ describe('Promote a project selection — branch effects', () => {
 		).toBe('');
 		expect((await checkoutGit.status()).isClean()).toBe(true);
 
-		await rename(`${bareDir}.offline`, bareDir);
+		await rm(preReceiveHook);
 		await service.promoteProjectSelection(project.id, owner, request);
 
 		expect((await simpleGit(bareDir).raw(['rev-list', '--count', 'main'])).trim()).toBe('1');

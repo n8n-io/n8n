@@ -103,10 +103,7 @@ async function publish(agent: Agent) {
 		schema: definition.schema && storedAgentConfig(definition.schema),
 		tools: definition.tools,
 	});
-	await repository.setActiveVersionFenced(agent.id, agent.revision, {
-		activeVersionId: history.versionId,
-		versionId: agent.versionId!,
-	});
+	await repository.setActiveVersionFenced(agent.id, agent.publicationRevision, history.versionId);
 }
 
 it.each(['loose', 'project'] as const)(

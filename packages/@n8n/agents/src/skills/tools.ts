@@ -239,7 +239,9 @@ async function loadSkill(
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			content: 'The skill instructions are active. Follow them for this task.',
+			content: source.shouldAppendSkillUpdates?.(skillEntry.id)
+				? formatActiveSkill(skill, skillEntry, source.registry)
+				: 'The skill instructions are active. Follow them for this task.',
 			...(references.length > 0
 				? {
 						references: references.map((entry) => ({

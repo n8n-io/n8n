@@ -112,6 +112,7 @@ erDiagram
   varchar_36_ agentId FK
   text binaryDataId
   timestamp_3__with_time_zone createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -250,6 +251,7 @@ erDiagram
   boolean enabled
   uuid enabledById FK
   integer id
+  boolean includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt

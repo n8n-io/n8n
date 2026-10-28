@@ -410,7 +410,6 @@ Run-workflow dropdown, which only a user with write access can pick.
 |-----------------------------|---------------------------------------------------------|
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
-| `test-image-efficiency.yml` | Measure n8n and runners image size and layer waste with Dive |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 | `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 
@@ -624,6 +623,7 @@ Push to master
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
+| Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |

@@ -20,6 +20,12 @@ export class OpenWeatherMapApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://api.openweathermap.org',
+		},
 	];
 
 	authenticate: IAuthenticate = {
@@ -33,8 +39,8 @@ export class OpenWeatherMapApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.openweathermap.org/data/2.5',
-			url: '/weather',
+			baseURL: '={{$credentials.url}}',
+			url: '/data/2.5/weather',
 			qs: {
 				q: 'London',
 			},

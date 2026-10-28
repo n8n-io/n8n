@@ -63,7 +63,7 @@ export class Agent extends WithTimestampsAndStringId {
 	>;
 
 	/**
-	 * @deprecated Agents keep their skills in the skills hub. Read and write them through
+	 * @deprecated Agents keep their skills in the skills module. Read and write them through
 	 * `AgentSkillRefsService`. Only the data migration reads this column, and a later
 	 * release drops it.
 	 */
@@ -81,7 +81,7 @@ export class Agent extends WithTimestampsAndStringId {
 	@DateTimeColumn({ nullable: true })
 	setupCompletedAt: Date | null;
 
-	/** UUID identifying the current draft; bumped on the first config save after each publish. */
+	/** ID of the current saved definition. Each changed draft receives a new ID. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;
 
@@ -93,14 +93,7 @@ export class Agent extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'activeVersionId' })
 	activeVersion?: Relation<AgentHistory> | null;
 
-	/**
-	 * Optimistic-lock token. Every write that can conflict — draft edits via
-	 * `AgentRepository.saveDraftFenced`, publish/unpublish via
-	 * `setActiveVersionFenced` — bumps it in SQL behind `WHERE revision =
-	 * :expected`, so a concurrent writer that bumped `revision` in between
-	 * loses the fence (user-retryable `ConflictError`) instead of silently
-	 * overwriting newer state. Never bump or write this column any other way.
-	 */
+	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })
 	revision: number;
 

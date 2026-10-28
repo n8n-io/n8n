@@ -7,6 +7,7 @@
  * skips the blocked workflow and lets the rest land.
  */
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -44,6 +45,8 @@ import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
+import { DirectoryPackageReader } from '../io/directory/directory-package-reader';
+import { PackageImportConfig } from '../n8n-packages.config';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import {
@@ -65,6 +68,8 @@ const deniedMessage = (name: string) => `Workflow "${name}" is denied on import`
 
 /** The decorator registers once per process, so each test names the workflow it wants denied. */
 const deniedWorkflowNames = new Set<string>();
+/** Workflows whose check crashes instead of answering. */
+const brokenWorkflowNames = new Set<string>();
 const seenTransports: string[] = [];
 const deniedImportedCredentialIds = new Set<string>();
 const seenImportedCredentials: ContentImportContext[] = [];
@@ -90,6 +95,10 @@ class PackageContentImportDenyCheck implements RegisteredPolicyCheck {
 			return {
 				violations: id !== null && deniedImportedCredentialIds.has(id) ? [importDenial(id)] : [],
 			};
+		}
+
+		if (brokenWorkflowNames.has(context.workflow.name)) {
+			throw new Error('The check could not reach its policy store');
 		}
 
 		if (!deniedWorkflowNames.has(context.workflow.name)) {
@@ -172,6 +181,7 @@ beforeAll(async () => {
 beforeEach(() => {
 	licenseMocker.reset();
 	deniedWorkflowNames.clear();
+	brokenWorkflowNames.clear();
 	seenTransports.length = 0;
 	deniedCredentialTypes.clear();
 	seenCredentialSaves.length = 0;
@@ -332,6 +342,47 @@ describe('contentImport on a git pull', () => {
 				},
 			],
 		} satisfies BlockingIssue);
+	});
+
+	it('plans the pull in check mode without writing or auditing, and the import still refuses it', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Pulled Project', owner);
+		const otherProject = await createTeamProject('Other Project', owner);
+		await createWorkflow({ name: 'Denied Workflow', nodes: [], connections: {} }, project);
+		await createWorkflow({ name: 'Broken Workflow', nodes: [], connections: {} }, project);
+		await createWorkflow(
+			{ name: 'Other Broken Workflow', nodes: [], connections: {} },
+			otherProject,
+		);
+
+		const service = Container.get(N8nPackagesService);
+		await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [project.id, otherProject.id] },
+			{ targetDir: sourceDir },
+		);
+		deniedWorkflowNames.add('Denied Workflow');
+		brokenWorkflowNames.add('Broken Workflow');
+		brokenWorkflowNames.add('Other Broken Workflow');
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		const plan = await service.planPackage(
+			{ user: owner, ...pullPolicy },
+			new DirectoryPackageReader(sourceDir, Container.get(PackageImportConfig)),
+			'check',
+		);
+
+		// The check broke in both projects, and the plan reports it once.
+		expect(plan.issues).toEqual([
+			expect.objectContaining({ type: 'policy-violation', name: 'Denied Workflow' }),
+			{ type: 'policy-check-failed', point: 'contentImport' },
+		]);
+		expect(emit).not.toHaveBeenCalledWith('policy-decision-blocked', expect.anything());
+		await expect(Container.get(WorkflowHistoryRepository).count()).resolves.toBe(0);
+
+		await expect(
+			service.importPackageFromDirectory({ user: owner, ...pullPolicy }, { sourceDir }),
+		).rejects.toThrow();
+		expect(emit).toHaveBeenCalledWith('policy-decision-blocked', expect.anything());
 	});
 });
 

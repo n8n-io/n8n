@@ -1,8 +1,10 @@
+import { i18nInstance } from '@n8n/i18n';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { PushMessage } from '@n8n/api-types';
+import type { AgentBackgroundJobDto, AgentChatResumeDto, PushMessage } from '@n8n/api-types';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
+import { createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
@@ -12,6 +14,20 @@ import type { FilterOption } from '../session-timeline.types';
 const getThreadDetail = vi.fn();
 const showError = vi.fn();
 const track = vi.fn();
+const backgroundJobs = ref<AgentBackgroundJobDto[]>([]);
+const respondToApproval = vi.fn<(payload: AgentChatResumeDto) => Promise<void>>();
+const approvalJob: AgentBackgroundJobDto = {
+	id: 'job-1',
+	title: 'Send update',
+	kind: 'subagent',
+	status: 'suspended',
+	startedAt: '2026-08-03T12:00:00.000Z',
+	approval: {
+		runId: 'run-1',
+		toolCallId: 'gate-1',
+		suspendPayload: { type: 'approval', toolName: 'send_message', args: { message: 'Ready' } },
+	},
+};
 const pushHandlers = new Set<(event: PushMessage) => void>();
 const pushStore = reactive({
 	isConnected: false,
@@ -42,6 +58,10 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => pushStore,
 }));
 
+vi.mock('@/features/agents/composables/useAgentBackgroundJobs', () => ({
+	useAgentBackgroundJobs: () => ({ allJobs: backgroundJobs, respondToApproval }),
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', function () {
 	return {
 		useNodeTypesStore() {
@@ -58,13 +78,14 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 const stubs = {
 	SessionTimelineChart: {
 		name: 'SessionTimelineChart',
-		emits: ['select'],
-		template: '<div data-test-id="chart-stub" />',
+		props: ['selectedIndex'],
+		template: '<div data-test-id="chart-stub" :data-selected-index="selectedIndex" />',
 	},
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
 		props: ['selectedIndex', 'items'],
 		emits: ['select'],
+		methods: { scrollSelectedIntoView: vi.fn() },
 		template:
 			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
 	},
@@ -72,11 +93,6 @@ const stubs = {
 		name: 'SessionEventFilter',
 		props: ['available'],
 		template: '<div data-test-id="filter-stub" />',
-	},
-	SessionDetailPanel: {
-		name: 'SessionDetailPanel',
-		emits: ['close'],
-		template: '<div data-test-id="detail-stub" />',
 	},
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
 	N8nIcon: { template: '<i />' },
@@ -151,7 +167,7 @@ function budgetStopExecution(code: string, id = 'execution-2') {
 
 function dispatchKeyboardEvent(type: 'keydown' | 'keyup', key: string) {
 	const event = new KeyboardEvent(type, { key, bubbles: true, cancelable: true });
-	document.dispatchEvent(event);
+	(document.activeElement ?? document).dispatchEvent(event);
 	return event;
 }
 
@@ -175,6 +191,7 @@ function mountPanel(
 		...(options.attachTo ? { attachTo: options.attachTo } : {}),
 		props: { projectId: 'p1', agentId: 'a1', threadId: 't1', ...props },
 		global: {
+			plugins: [createPinia(), i18nInstance],
 			stubs: {
 				...stubs,
 				...(options.renderTimelineTable ? { SessionTimelineTable: false } : {}),
@@ -190,9 +207,65 @@ function emitPush(message: PushMessage = update) {
 describe('AgentSessionTimelinePanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		backgroundJobs.value = [];
+		respondToApproval.mockReset().mockResolvedValue(undefined);
 		pushHandlers.clear();
 		pushStore.isConnected = false;
 		getThreadDetail.mockResolvedValue(detail);
+	});
+
+	it('submits inline approvals once while a response is pending', async () => {
+		backgroundJobs.value = [approvalJob];
+		let resolveResponse: (() => void) | undefined;
+		respondToApproval.mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolveResponse = resolve;
+				}),
+		);
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+		const choice = wrapper.get('[data-test-id="approval-card-allow-once"]');
+		await choice.trigger('click');
+		await choice.trigger('click');
+		expect(respondToApproval).toHaveBeenCalledExactlyOnceWith({
+			runId: 'run-1',
+			toolCallId: 'gate-1',
+			resumeData: { approved: true },
+		});
+		resolveResponse?.();
+		await flushPromises();
+	});
+
+	it('shows a submission error and permits a retry', async () => {
+		backgroundJobs.value = [approvalJob];
+		const error = new Error('Request failed');
+		respondToApproval.mockRejectedValueOnce(error);
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+		await wrapper.get('[data-test-id="approval-card-deny"]').trigger('click');
+		await flushPromises();
+		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
+		await wrapper.get('[data-test-id="approval-card-deny"]').trigger('click');
+		expect(respondToApproval).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not show an old approval error after the session changes', async () => {
+		backgroundJobs.value = [approvalJob];
+		let rejectResponse: ((error: Error) => void) | undefined;
+		respondToApproval.mockImplementation(
+			async () =>
+				await new Promise<void>((_resolve, reject) => {
+					rejectResponse = reject;
+				}),
+		);
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+		await wrapper.get('[data-test-id="approval-card-allow-once"]').trigger('click');
+		await wrapper.setProps({ threadId: 'other-thread' });
+		rejectResponse?.(new Error('Request failed'));
+		await flushPromises();
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('loads the thread detail on mount for its props', async () => {
@@ -204,7 +277,7 @@ describe('AgentSessionTimelinePanel', () => {
 	});
 
 	it.each(['SessionTimelineChart', 'SessionTimelineTable'])(
-		'tracks user selection from %s but not closing or deselection',
+		'tracks user selection from %s but not deselection',
 		async (component) => {
 			getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
 			const wrapper = mountPanel();
@@ -212,11 +285,9 @@ describe('AgentSessionTimelinePanel', () => {
 
 			wrapper.getComponent({ name: component }).vm.$emit('select', 1);
 			await flushPromises();
-			wrapper.getComponent({ name: 'SessionDetailPanel' }).vm.$emit('close');
 			wrapper.getComponent({ name: component }).vm.$emit('select', null);
 			await flushPromises();
 
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
 				{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
@@ -291,6 +362,21 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(showError).toHaveBeenCalled();
 	});
 
+	it('keeps row and chart selection in sync after row activation', async () => {
+		getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
+		const wrapper = mountPanel({}, { renderTimelineTable: true });
+		await flushPromises();
+
+		const rows = wrapper.findAll('[data-test-id="timeline-row"]');
+		await rows[1].trigger('click');
+		expect(rows[1].attributes('aria-selected')).toBe('true');
+		expect(wrapper.get('[data-test-id="chart-stub"]').attributes('data-selected-index')).toBe('1');
+
+		await rows[0].trigger('keydown', { key: 'Enter' });
+		expect(rows[0].attributes('aria-selected')).toBe('true');
+		expect(rows[1].attributes('aria-selected')).toBe('false');
+	});
+
 	it('handles timeline shortcuts only while focus is within the panel', async () => {
 		getThreadDetail.mockResolvedValueOnce({
 			...detail,
@@ -314,52 +400,38 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(document.activeElement).toBe(timelineRow.element);
 			const insideKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
 			expect(insideKeydown.defaultPrevented).toBe(true);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
+			await flushPromises();
+			expect(timelineRow.attributes('aria-selected')).toBe('true');
 
 			outsideButton.focus();
 			const outsideKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
 			expect(outsideKeyup.defaultPrevented).toBe(false);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
-			expect(track).not.toHaveBeenCalled();
+			expect(timelineRow.attributes('aria-selected')).toBe('true');
 
 			(timelineRow.element as HTMLElement).focus();
-			const insideKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
-			expect(insideKeyup.defaultPrevented).toBe(true);
-			await flushPromises();
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
 
 			const moveKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
 			expect(moveKeydown.defaultPrevented).toBe(true);
 			await flushPromises();
 			expect(document.activeElement).toBe(timelineRows[1].element);
+			expect(timelineRows[1].attributes('aria-selected')).toBe('true');
 			const moveKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
-			expect(moveKeyup.defaultPrevented).toBe(true);
-			expect(track.mock.calls).toEqual([
-				[
-					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'user' },
-				],
-				[
-					TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_ITEM,
-					{ agent_id: 'a1', push_ref: 'session-xyz', item_type: 'agent' },
-				],
-			]);
+			expect(moveKeyup.defaultPrevented).toBe(false);
 
 			(wrapper.get('[data-test-id="search-stub"]').element as HTMLInputElement).focus();
 			const inputEscape = dispatchKeyboardEvent('keydown', 'Escape');
 			expect(inputEscape.defaultPrevented).toBe(false);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+			expect(timelineRows[1].attributes('aria-selected')).toBe('true');
 
 			outsideButton.focus();
 			const outsideEscape = dispatchKeyboardEvent('keydown', 'Escape');
 			expect(outsideEscape.defaultPrevented).toBe(false);
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+			expect(timelineRows[1].attributes('aria-selected')).toBe('true');
 
-			(timelineRow.element as HTMLElement).focus();
-			dispatchKeyboardEvent('keydown', 'Escape');
+			(timelineRows[1].element as HTMLElement).focus();
+			expect(dispatchKeyboardEvent('keydown', 'Escape').defaultPrevented).toBe(true);
 			await flushPromises();
-			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(false);
-			expect(track).toHaveBeenCalledTimes(2);
+			expect(timelineRows.every((row) => row.attributes('aria-selected') === 'false')).toBe(true);
 		} finally {
 			wrapper.unmount();
 			host.remove();
@@ -482,28 +554,31 @@ describe('AgentSessionTimelinePanel', () => {
 
 	it('keeps the selected timeline item through reconciliation', async () => {
 		const execution = {
+			...keyboardExecution,
 			id: 'exec-1',
 			status: 'running',
-			createdAt: '2026-08-04T07:00:00.000Z',
-			startedAt: '2026-08-04T07:00:00.000Z',
-			stoppedAt: null,
-			duration: 0,
 			userMessage: 'Question',
-			timeline: [{ type: 'text', content: 'Answer', timestamp: 1 }],
-		};
-		const runningDetail = { ...detail, executions: [execution] } as unknown as ThreadDetail;
-		const refreshedDetail = {
+			timeline: [
+				{ type: 'text', content: 'Answer', timestamp: Date.parse('2026-08-03T12:00:01.000Z') },
+			],
+		} satisfies ThreadDetail['executions'][number];
+		const runningDetail: ThreadDetail = { ...detail, executions: [execution] };
+		const refreshedDetail: ThreadDetail = {
 			...detail,
 			executions: [
 				{
 					...execution,
 					timeline: [
-						{ type: 'text', content: 'Earlier update', timestamp: 0 },
-						{ type: 'text', content: 'Answer', timestamp: 1 },
+						{
+							type: 'text',
+							content: 'Earlier update',
+							timestamp: Date.parse('2026-08-03T12:00:00.500Z'),
+						},
+						...execution.timeline,
 					],
 				},
 			],
-		} as unknown as ThreadDetail;
+		};
 		getThreadDetail.mockResolvedValueOnce(runningDetail).mockResolvedValueOnce(refreshedDetail);
 		const wrapper = mountPanel();
 		await flushPromises();
