@@ -1236,7 +1236,7 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
-	it('starts the detached sub-executions after the step completes, without awaiting them', async () => {
+	it('starts the detached sub-executions before the step completes, without awaiting them', async () => {
 		const order: string[] = [];
 		const stepStore = makeStepStore(
 			{},
@@ -1280,9 +1280,9 @@ describe('StepReadyHandler sub-executions', () => {
 				parent: { executionId: 'exec-1', stepId: 'step-a', awaited: false },
 			}),
 		);
-		// The step's outcome is on the row before the sub-execution exists, so a sub-execution
-		// that ends at once finds a settled step and nothing to resume.
-		expect(order).toEqual(['complete', 'start']);
+		// The step still runs when the sub-execution starts, so the execution
+		// cannot have ended in between.
+		expect(order).toEqual(['start', 'complete']);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -1290,15 +1290,19 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
-	it('starts no detached sub-execution when another owner took the step over', async () => {
-		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
-		const subExecutionStarter = makeSubExecutionStarter();
+	it('fails the step instead of completing it when a detached sub-execution cannot start', async () => {
+		const stepStore = makeStepStore();
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
+		};
+		const queue = makeQueue();
+		const publisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore(),
 			stepStore,
-			makeQueue(),
+			queue,
 			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
-			undefined,
+			publisher,
 			undefined,
 			undefined,
 			subExecutionStarter,
@@ -1306,30 +1310,15 @@ describe('StepReadyHandler sub-executions', () => {
 
 		await handler.handle(event);
 
-		expect(subExecutionStarter.start).not.toHaveBeenCalled();
-	});
-
-	it('settles the completed step and then reports a detached sub-execution that could not start', async () => {
-		const stepStore = makeStepStore();
-		const subExecutionStarter: SubExecutionStarter = {
-			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
-		};
-		const queue = makeQueue();
-		const handler = makeHandler(
-			makeExecutionStore(),
-			stepStore,
-			queue,
-			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
-			undefined,
-			undefined,
-			undefined,
-			subExecutionStarter,
+		// The node reported an id that will not run, so its outcome does not stand.
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ name: 'Error', message: 'admittance rejected' }),
 		);
-
-		await expect(handler.handle(event)).rejects.toThrow(/exec-sub.*admittance rejected/);
-
-		// The step completed, so its outcome stands; only the sub-execution is missing.
-		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(publisher.publish).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed', stepId: 'step-a' }),
+		);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',

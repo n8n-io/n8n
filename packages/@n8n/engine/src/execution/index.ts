@@ -11,6 +11,7 @@ export type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	ExecutorWaitDeclaration,
 	ParentLink,
 	StepError,
 	StepKey,

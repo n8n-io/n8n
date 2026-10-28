@@ -135,13 +135,15 @@ export type SeededSteps = Record<string, StepSlots[]>;
 
 /**
  * A step's declaration that it is not done: instead of outputs, it says when
- * to resume. The executor produces it, the engine persists it on the step row,
- * and whatever resumes the step reads it back — the engine never interprets
- * what a resume means to the node.
+ * to resume. The engine persists it on the step row, and whatever resumes the
+ * step reads it back — the engine never interprets what a resume means to the
+ * node.
  *
- * A deadline can end the wait. A resume request can end it. A declaration can
+ * The executor produces the first two variants (`ExecutorWaitDeclaration`). A
+ * deadline can end the wait. A resume request can end it. A declaration can
  * name both, and then the first of the two ends it. A deadline comes paired
- * with the slots it emits, because the step is never re-run.
+ * with the slots it emits, because the step is never re-run. The engine writes
+ * the third variant itself, when it suspends a step on a sub-execution.
  */
 export type WaitDeclaration =
 	| {
@@ -169,6 +171,12 @@ export type WaitDeclaration =
 			resumeBinding?: never;
 	  };
 
+/**
+ * The waits an executor may declare. A wait on a sub-execution is the
+ * engine's own: an executor asks for one with a sub-execution declaration.
+ */
+export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId: string }>;
+
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
 export type ResumeBinding = 'execution' | 'step';
 
@@ -181,9 +189,10 @@ export type ResumeBinding = 'execution' | 'step';
 export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
 
 /**
- * A wait with no deadline and no resume request would never end, and would
- * strand the execution. The union above makes that unrepresentable. This
- * function catches only a declaration that an executor built outside the type
+ * Whether something can end this wait: a deadline, a resume request, or the
+ * sub-execution it waits for. A wait with none of them would never end, and
+ * would strand the execution. The union above makes that unrepresentable, so
+ * this catches only a declaration that an executor built outside the type
  * system, as `assertCreatableRecord` does for step creation.
  */
 export function hasResumeCondition(wait: WaitDeclaration): boolean {

@@ -131,6 +131,15 @@ export class StepReadyHandler {
 			run = { kind: 'error', error };
 		}
 
+		// Before the outcome is on the row: the execution cannot end while this
+		// step still runs, so no sub-execution of an ended parent starts here. One
+		// that cannot start fails the step, as an awaited one does, while the
+		// node's outcome is still ours to record.
+		if (run.kind === 'outputs' && run.detached.length > 0) {
+			const notStarted = await this.startDetachedSubExecutions(step, execution, run.detached);
+			if (notStarted) run = { kind: 'error', error: notStarted };
+		}
+
 		let recorded: boolean;
 		if (run.kind === 'outputs') {
 			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
@@ -185,14 +194,6 @@ export class StepReadyHandler {
 			return;
 		}
 
-		// After the outcome is on the row, so a sub-execution that ends at once finds a
-		// settled step and nothing to resume. Before the announcement, so the
-		// sub-executions exist by the time anything reads the step.
-		const notStarted =
-			run.kind === 'outputs'
-				? await this.startDetachedSubExecutions(step, execution, run.detached)
-				: [];
-
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
@@ -206,31 +207,23 @@ export class StepReadyHandler {
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
-
-		// The step's outcome stands: the node reported the sub-executions, and nothing
-		// can fail a completed step. The miss is raised once the step is settled.
-		if (notStarted.length > 0) {
-			throw new UnexpectedError(
-				`step ${step.id} completed but these detached sub-executions did not start: ${notStarted
-					.map(({ executionId, error }) => `${executionId} (${toStepError(error).message})`)
-					.join(', ')}`,
-			);
-		}
 	}
 
-	/** Starts every detached sub-execution, and returns the ones that could not start. */
+	/**
+	 * Starts the detached sub-executions in order, and returns the error of the
+	 * first that could not start, or null when all did. The rest are not
+	 * started: the step fails, and the node reported ids that will not run.
+	 */
 	private async startDetachedSubExecutions(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		subExecutions: SubExecutionDeclaration[],
-	): Promise<Array<{ executionId: string; error: unknown }>> {
-		const notStarted: Array<{ executionId: string; error: unknown }> = [];
+	): Promise<unknown> {
 		for (const subExecution of subExecutions) {
 			const started = await this.startSubExecution(step, execution, subExecution, false);
-			if (started.kind === 'error')
-				notStarted.push({ executionId: subExecution.executionId, ...started });
+			if (started.kind === 'error') return started.error;
 		}
-		return notStarted;
+		return null;
 	}
 
 	/**

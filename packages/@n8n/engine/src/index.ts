@@ -88,6 +88,7 @@ export type {
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
+	SubExecutionDeclaration,
 } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
@@ -133,6 +134,7 @@ export type {
 	StepView,
 	SeededSteps,
 	TriggerOutputs,
+	ExecutorWaitDeclaration,
 	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
