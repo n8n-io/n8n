@@ -25,8 +25,6 @@ import { useI18n } from '@n8n/i18n';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
-import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
-import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
@@ -47,7 +45,6 @@ const props = defineProps<{
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
-	tasks?: Array<SetupTask<SetupTaskId>>;
 }>();
 
 const emit = defineEmits<{
@@ -58,7 +55,6 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'open-publish-timeline': [];
-	'setup-task-action': [task: SetupTask<SetupTaskId>];
 }>();
 
 const i18n = useI18n();
@@ -231,11 +227,6 @@ function onMenuSelect(id: string) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
-			<AgentSetupTasks
-				v-if="tasks && tasks.length > 0"
-				:tasks="tasks"
-				@action="emit('setup-task-action', $event)"
-			/>
 			<N8nHoverCard side="bottom" align="end">
 				<template #trigger>
 					<N8nButton
