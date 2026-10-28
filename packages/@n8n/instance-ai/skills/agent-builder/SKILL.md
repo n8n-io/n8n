@@ -95,7 +95,9 @@ change a skill.
 Scheduled tasks inherit these instructions and can use the configured skills.
 Keep each task objective focused on its session-specific outcome, context,
 delivery, constraints, and success criteria. Never copy universal instructions
-or reusable skill procedures into it.
+or reusable skill procedures into it. Load `agent-builder-target-tasks` before
+you create a task or replace its objective. It holds the required objective
+template.
 
 Language requirements for a target Agent apply to its configuration, not to
 your replies. For an English request to build an Italian-speaking Agent, reply
