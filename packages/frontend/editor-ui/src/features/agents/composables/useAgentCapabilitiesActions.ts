@@ -716,6 +716,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		if (agent.value?.id !== targetAgentId || !localConfig.value) return;
 		const pinned = target.versionId !== undefined;
 		const versions = agent.value.skillVersions?.[skillId];
+		// Kept, so a refused save can put the agent back as the server still has it.
+		const previous = {
+			skills: agent.value.skills,
+			skillHashes: agent.value.skillHashes,
+			outdatedSkillIds: agent.value.outdatedSkillIds,
+			skillVersions: agent.value.skillVersions,
+		};
+		const previousRefs = localConfig.value.skills ?? [];
 		agent.value = {
 			...agent.value,
 			skills: { ...(agent.value.skills ?? {}), [skillId]: target.skill },
@@ -745,6 +753,18 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						: { type: 'skill', id: skillId },
 			),
 		});
+		if (flushConfigSave) {
+			try {
+				await flushConfigSave();
+			} catch {
+				// The server keeps the old ref. Without the undo, every later save sends the refused one.
+				if (agentId.value === targetAgentId && agent.value) {
+					agent.value = { ...agent.value, ...previous };
+					scheduleConfigUpdate({ skills: previousRefs });
+				}
+				return;
+			}
+		}
 		try {
 			await beforeAgentMutation?.();
 		} catch {

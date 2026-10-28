@@ -55,6 +55,8 @@ const { showMessage, showError, trackImportedSkill } = vi.hoisted(() => ({
 	showError: vi.fn(),
 	trackImportedSkill: vi.fn(),
 }));
+const { confirmSpy } = vi.hoisted(() => ({ confirmSpy: vi.fn() }));
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm: confirmSpy }) }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
 }));
@@ -2211,6 +2213,53 @@ describe('Versions in the agent builder', () => {
 		await userEvent.click(await findByTestId('agent-skill-pinned-use-latest'));
 
 		expect(onUseLatestVersion).toHaveBeenCalledWith('tone');
+	});
+
+	it('lets a pinned agent open the latest version and compare against the pinned one', async () => {
+		const { findByTestId, getByTestId } = renderBuilder({ draft: 1, published: 1, pinned: true });
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+		await userEvent.click(await findByTestId('skill-version-row-3'));
+
+		// The latest version is not the one on screen, so the row opens it.
+		expect(await findByTestId('agent-skill-viewing-version')).toHaveTextContent(
+			'agents.builder.skills.versions.viewingLatest 3',
+		);
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 3);
+		// Saving the latest again makes no new version, so there is no Restore.
+		expect(getByTestId('agent-skill-version-done')).toBeInTheDocument();
+		expect(document.querySelector('[data-testid="agent-skill-version-restore"]')).toBeNull();
+
+		await userEvent.click(getByTestId('agent-skill-version-done'));
+		await userEvent.click(await findByTestId('skill-version-compare-2'));
+
+		// The second side of the compare is the pinned version on screen, not the latest.
+		await waitFor(() => expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1));
+		expect(getByTestId('agent-skill-compare-from')).toHaveTextContent('1');
+	});
+
+	it('asks before a pin drops unsaved edits, and pins only when the user agrees', async () => {
+		const { findByTestId, getByTestId, onUseVersion } = renderBuilder({
+			draft: 3,
+			published: 2,
+			pinned: false,
+		});
+		await fireEvent.update(
+			(await findByTestId('agent-skill-description-input')).querySelector('input')!,
+			'Writing style, edited',
+		);
+		await userEvent.click(getByTestId('agent-skill-versions-button'));
+
+		confirmSpy.mockResolvedValueOnce('cancel');
+		await userEvent.click(await findByTestId('skill-version-use-latest'));
+		await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+		expect(onUseVersion).not.toHaveBeenCalled();
+
+		confirmSpy.mockResolvedValueOnce('confirm');
+		await userEvent.click(getByTestId('skill-version-use-latest'));
+		await waitFor(() =>
+			expect(onUseVersion).toHaveBeenCalledWith('tone', expect.objectContaining({ id: 'id-3' })),
+		);
 	});
 
 	it('pins the version the agent uses when the Use latest switch is turned off', async () => {
