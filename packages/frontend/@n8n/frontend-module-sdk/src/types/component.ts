@@ -77,7 +77,8 @@ export type SlotProjectHeaderMainButton =
 	| 'credential'
 	| 'dataTable'
 	| 'variable'
-	| 'agent';
+	| 'agent'
+	| 'selfHealing';
 
 export type SlotProjectHeaderProps = {
 	hasActiveCallouts?: boolean;
