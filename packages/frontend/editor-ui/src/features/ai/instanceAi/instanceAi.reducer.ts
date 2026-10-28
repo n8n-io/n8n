@@ -337,6 +337,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'setup-items':
 		// Apply context events during live runs as well as history replay.
 		case 'instance-context':
+		case 'skill-update':
 		case 'preference-card':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);

@@ -374,6 +374,48 @@ describe('SCIM /scim/v2/Users', () => {
 	});
 });
 
+describe('SCIM users in the users list', () => {
+	const listedUser = async (id: string) => {
+		const response = await testServer.authAgentFor(admin).get('/users').expect(200);
+		const users = response.body.data.items as Array<{ id: string; disabled: boolean }>;
+		return users.find((user) => user.id === id);
+	};
+
+	const setActive = async (id: string, active: boolean) =>
+		await scimRequest('patch', `/Users/${id}`, {
+			body: patchOps({ op: 'replace', path: 'active', value: active }),
+		}).expect(200);
+
+	const moduleSettings = async () => {
+		const response = await testServer.authAgentFor(admin).get('/module-settings').expect(200);
+		return response.body.data.scim;
+	};
+
+	it('shows the deactivation and the reactivation from the identity provider', async () => {
+		const response = await scimRequest('post', '/Users', {
+			body: { schemas: [USER_SCHEMA], userName: 'deactivated@example.com', active: true },
+		}).expect(201);
+		const id = response.body.id as string;
+
+		await setActive(id, false);
+		expect(await listedUser(id)).toMatchObject({ disabled: true });
+
+		await setActive(id, true);
+		expect(await listedUser(id)).toMatchObject({ disabled: false });
+	});
+
+	it('shows SCIM enabled and the token in the module settings until the token is revoked', async () => {
+		await Container.get(ModuleRegistry).refreshModuleSettings('scim');
+		expect(await moduleSettings()).toMatchObject({ scimEnabled: true, hasToken: true });
+
+		await testServer.authAgentFor(admin).delete('/scim/token').expect(200);
+		expect(await moduleSettings()).toMatchObject({ scimEnabled: true, hasToken: false });
+
+		await testServer.authAgentFor(admin).post('/scim/token').expect(201);
+		expect(await moduleSettings()).toMatchObject({ hasToken: true });
+	});
+});
+
 describe('SCIM /scim/v2/Schemas', () => {
 	it('lists the User schema without roles and with the Schema schema id', async () => {
 		const response = await scimRequest('get', '/Schemas').expect(200);

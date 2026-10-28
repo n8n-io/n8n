@@ -1,32 +1,40 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { vElementSize } from '@vueuse/components';
+import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
-import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline.utils';
+import type { TimelineItem } from '../session-timeline.types';
+import { filteredTimelineItemIndexes, timelineItemKey } from '../session-timeline.utils';
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
 const ROW_HEIGHT = 40;
-const SCROLL_PADDING = 24;
 const VIRTUALIZE_AFTER_ROWS = 100;
 
 const props = defineProps<{
 	items: TimelineItem[];
+	respondToApproval?: (payload: AgentChatResumeDto) => Promise<void>;
+	pendingApprovalRunIds?: ReadonlySet<string>;
+	agentName?: string;
+	projectId?: string;
+	agentId?: string;
+	threadId?: string;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
+	tools?: AgentJsonConfig['tools'];
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
 	searchQuery?: string;
-	idleRanges?: IdleRange[];
-	/** Index of the item that gets the `notice` slot rendered directly below it. */
-	noticeIndex?: number | null;
+	noticeIndex?: number;
 }>();
 
-defineSlots<{ notice?: (props: { item: TimelineItem }) => unknown }>();
-
-const emit = defineEmits<{ select: [index: number] }>();
+const emit = defineEmits<{ select: [index: number | null] }>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
+const scrollerRef = ref<{
+	scrollToKey: (key: string, behavior?: ScrollBehavior) => void;
+} | null>(null);
 const canScrollUp = ref(false);
 const canScrollDown = ref(false);
 let scrollContainer: HTMLElement | null = null;
@@ -75,59 +83,75 @@ function labelForKey(key: string): string {
 	}
 }
 
-type Row =
-	| { id: string; kind: 'event'; item: TimelineItem; index: number; sortKey: number }
-	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number }
-	| { id: string; kind: 'notice'; item: TimelineItem; sortKey: number };
+type Row = { id: string; kind: 'event'; item: TimelineItem; index: number; sortKey: number };
 
-const rows = computed<Row[]>(() => {
+const rows = computed<Row[]>(function getRows() {
 	const events: Row[] = filteredTimelineItemIndexes(
 		props.items,
 		props.visibleKinds,
 		props.searchQuery ?? '',
 		labelForKey,
-	).map((index) => ({
-		id: `event-${index}`,
-		kind: 'event',
-		item: props.items[index],
-		index,
-		sortKey: props.items[index].timestamp,
-	}));
-
-	const idles: Row[] = (props.idleRanges ?? []).map((range, index) => ({
-		id: `idle-${range.start}-${range.end}-${index}`,
-		kind: 'idle',
-		range,
-		sortKey: range.start,
-	}));
-
-	const sorted = [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
-
-	// Spliced in after sorting so the notice stays directly below its event.
-	const noticeIndex = props.noticeIndex;
-	if (noticeIndex === null || noticeIndex === undefined) return sorted;
-	const position = sorted.findIndex((row) => row.kind === 'event' && row.index === noticeIndex);
-	if (position === -1) return sorted;
-	const anchor = sorted[position];
-	sorted.splice(position + 1, 0, {
-		id: `notice-${noticeIndex}`,
-		kind: 'notice',
-		item: props.items[noticeIndex],
-		sortKey: anchor.sortKey,
+	).map(function toEventRow(index) {
+		const item = props.items[index];
+		return {
+			id: timelineItemKey(item),
+			kind: 'event',
+			item,
+			index,
+			sortKey: item.timestamp,
+		};
 	});
-	return sorted;
+
+	return events.sort(function sortRows(a, b) {
+		return a.sortKey - b.sortKey;
+	});
 });
 
-const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
-const tabbableEventIndex = computed(() => {
-	const selectedRow = rows.value.find(
-		(row) => row.kind === 'event' && row.index === props.selectedIndex,
-	);
-	if (selectedRow?.kind === 'event') return selectedRow.index;
-
-	const firstEventRow = rows.value.find((row) => row.kind === 'event');
-	return firstEventRow?.kind === 'event' ? firstEventRow.index : null;
+const shouldVirtualizeRows = computed(function shouldVirtualize() {
+	return rows.value.length > VIRTUALIZE_AFTER_ROWS;
 });
+const tabbableEventIndex = computed(function getTabbableEventIndex() {
+	return rows.value.find((row) => row.index === props.selectedIndex)?.index ?? rows.value[0]?.index;
+});
+
+function onRowClick(event: MouseEvent, index: number) {
+	if (
+		event.target instanceof Element &&
+		event.target.closest(
+			'a, button, input, select, textarea, [role="button"], [contenteditable="true"]',
+		)
+	) {
+		return;
+	}
+	emit('select', index);
+}
+
+function onRowKeydown(event: KeyboardEvent) {
+	if (event.target !== event.currentTarget) return;
+	if (event.key === 'Escape') {
+		if (props.selectedIndex === null) return;
+		event.preventDefault();
+		emit('select', null);
+		return;
+	}
+
+	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+	if (event.ctrlKey || event.altKey || event.shiftKey) return;
+	event.preventDefault();
+	const direction = event.key === 'ArrowDown' ? 1 : -1;
+	const currentIndex = rows.value.findIndex((row) => row.index === props.selectedIndex);
+	const nextIndex = event.metaKey
+		? direction === 1
+			? rows.value.length - 1
+			: 0
+		: currentIndex < 0
+			? direction === 1
+				? 0
+				: rows.value.length - 1
+			: Math.max(0, Math.min(rows.value.length - 1, currentIndex + direction));
+	const row = rows.value[nextIndex];
+	if (row) emit('select', row.index);
+}
 
 function updateScrollMask() {
 	if (!scrollContainer) {
@@ -152,61 +176,64 @@ function bindScrollContainer() {
 	updateScrollMask();
 }
 
-function visibleRowElement(rowId: string): HTMLElement | undefined {
-	const visibleRows = tableRef.value?.querySelectorAll<HTMLElement>('[data-timeline-row-id]');
+function scrollSelectedIntoView(): void {
+	const selectedIndex = props.selectedIndex;
+	if (selectedIndex === null) return;
+	const rowId = rows.value.find((row) => row.index === selectedIndex)?.id;
+	if (!rowId) return;
 
-	return Array.from(visibleRows ?? []).find((element) => element.dataset.timelineRowId === rowId);
-}
-
-function focusVisibleRow(rowId: string): boolean {
-	const rowElement = visibleRowElement(rowId);
-	if (!rowElement) return false;
-
-	rowElement.focus();
-	return true;
-}
-
-function scrollVisibleRowIntoView(rowId: string): boolean {
-	if (!scrollContainer) return false;
-
-	const rowElement = visibleRowElement(rowId);
-	if (!rowElement) return false;
-
-	const containerRect = scrollContainer.getBoundingClientRect();
-	const rowRect = rowElement.getBoundingClientRect();
-
-	if (rowRect.top - SCROLL_PADDING < containerRect.top) {
-		scrollContainer.scrollTop -= containerRect.top - rowRect.top + SCROLL_PADDING;
-	} else if (rowRect.bottom + SCROLL_PADDING > containerRect.bottom) {
-		scrollContainer.scrollTop += rowRect.bottom - containerRect.bottom + SCROLL_PADDING;
+	const behavior =
+		shouldVirtualizeRows.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+			? 'auto'
+			: 'smooth';
+	bindScrollContainer();
+	const row = tableRef.value?.querySelector<HTMLElement>(`[data-timeline-row-id="${rowId}"]`);
+	if (shouldVirtualizeRows.value && !row) {
+		/** Row measurements can change the target offset during a smooth scroll. */
+		scrollerRef.value?.scrollToKey(rowId, 'auto');
+		return;
 	}
 
-	return true;
-}
+	if (!row || !scrollContainer) return;
 
-function scrollRowIntoView(rowId: string) {
-	if (!scrollContainer) return;
-	if (scrollVisibleRowIntoView(rowId)) return;
-
-	const rowIndex = rows.value.findIndex((row) => row.id === rowId);
-	if (rowIndex === -1) return;
-
-	const rowTop = rowIndex * ROW_HEIGHT;
-	const rowBottom = rowTop + ROW_HEIGHT;
-	const viewportTop = scrollContainer.scrollTop;
-	const viewportBottom = viewportTop + scrollContainer.clientHeight;
-
-	if (rowTop - SCROLL_PADDING < viewportTop) {
-		scrollContainer.scrollTop = Math.max(0, rowTop - SCROLL_PADDING);
-	} else if (rowBottom + SCROLL_PADDING > viewportBottom) {
-		scrollContainer.scrollTop = rowBottom + SCROLL_PADDING - scrollContainer.clientHeight;
+	const rowBounds = row.getBoundingClientRect();
+	const containerBounds = scrollContainer.getBoundingClientRect();
+	if (rowBounds.top < containerBounds.top) {
+		scrollContainer.scrollTo({
+			top: scrollContainer.scrollTop + rowBounds.top - containerBounds.top,
+			behavior,
+		});
+	} else if (rowBounds.bottom > containerBounds.bottom) {
+		scrollContainer.scrollTo({
+			top: scrollContainer.scrollTop + rowBounds.bottom - containerBounds.bottom,
+			behavior,
+		});
 	}
-
-	void nextTick(() => {
-		scrollVisibleRowIntoView(rowId);
-		updateScrollMask();
-	});
+	updateScrollMask();
 }
+
+defineExpose({ scrollSelectedIntoView });
+
+watch(
+	() => props.selectedIndex,
+	() => {
+		const activeElement = document.activeElement;
+		const shouldMoveFocus =
+			activeElement instanceof HTMLElement &&
+			tableRef.value?.contains(activeElement) === true &&
+			activeElement.matches('[data-timeline-row-id]');
+		void nextTick(async () => {
+			scrollSelectedIntoView();
+			if (!shouldMoveFocus) return;
+			await nextTick();
+			const rowId = rows.value.find((row) => row.index === props.selectedIndex)?.id;
+			if (!rowId) return;
+			tableRef.value
+				?.querySelector<HTMLElement>(`[data-timeline-row-id="${rowId}"]`)
+				?.focus({ preventScroll: true });
+		});
+	},
+);
 
 watch(
 	() => rows.value.length,
@@ -225,26 +252,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	scrollContainer?.removeEventListener('scroll', updateScrollMask);
 });
-
-watch(
-	() => props.selectedIndex,
-	(selectedIndex) => {
-		if (selectedIndex === null) return;
-		const activeElement = document.activeElement;
-		const shouldMoveFocus =
-			activeElement instanceof HTMLElement &&
-			tableRef.value?.contains(activeElement) === true &&
-			activeElement.closest('[data-timeline-row-id]') !== null;
-		const rowId = `event-${selectedIndex}`;
-		void nextTick(() => {
-			scrollRowIntoView(rowId);
-			updateScrollMask();
-			if (shouldMoveFocus && !focusVisibleRow(rowId)) {
-				void nextTick(() => focusVisibleRow(rowId));
-			}
-		});
-	},
-);
 </script>
 
 <template>
@@ -264,90 +271,93 @@ watch(
 			data-timeline-scroll-container
 			role="rowgroup"
 		>
-			<template v-for="row in rows" :key="row.id">
+			<template v-for="(row, rowIndex) in rows" :key="row.id">
 				<div
-					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					role="row"
-					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
-					@click="emit('select', row.index)"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					@click="onRowClick($event, row.index)"
+					@keydown="onRowKeydown"
 					@keydown.enter.self.prevent="emit('select', row.index)"
 					@keydown.space.self.prevent="emit('select', row.index)"
 				>
-					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
-				</div>
-				<div
-					v-else-if="row.kind === 'notice'"
-					data-test-id="timeline-notice-row"
-					:data-timeline-row-id="row.id"
-					:class="$style.noticeRow"
-					role="row"
-				>
-					<div :class="$style.noticeCell" role="gridcell">
-						<slot name="notice" :item="row.item" />
+					<div role="gridcell">
+						<SessionTimelineRow
+							:project-id="props.projectId"
+							:agent-id="props.agentId"
+							:thread-id="props.threadId"
+							:item="row.item"
+							:respond-to-approval="props.respondToApproval"
+							:pending-approval-run-ids="props.pendingApprovalRunIds"
+							:agent-name="props.agentName"
+							:tools="props.tools"
+							:selected="props.selectedIndex === row.index"
+							:search-query="props.searchQuery"
+							:personalisation="props.personalisation"
+						/>
 					</div>
+					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
 				<div
-					v-else
-					data-test-id="timeline-idle-row"
-					:data-timeline-row-id="row.id"
-					:class="$style.idleRow"
+					v-if="$slots.notice && row.index === props.noticeIndex"
+					:class="$style.rowWrapper"
+					data-test-id="timeline-notice-row"
 					role="row"
 				>
-					<span :class="$style.idlePill" role="gridcell">
-						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
-						{{ formatDuration(row.range.end - row.range.start) }}
-					</span>
+					<div role="gridcell"><slot name="notice" /></div>
 				</div>
 			</template>
 		</div>
 		<N8nRecycleScroller
 			v-else-if="rows.length > 0"
+			ref="scrollerRef"
 			:items="rows"
 			:item-size="ROW_HEIGHT"
 			item-key="id"
 			role="rowgroup"
 		>
-			<template #default="{ item: row }">
+			<template #default="{ item: row, updateItemSize }">
 				<div
-					v-if="row.kind === 'event'"
+					v-element-size="() => updateItemSize({ id: row.id })"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					role="row"
-					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
-					@click="emit('select', row.index)"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					@click="onRowClick($event, row.index)"
+					@keydown="onRowKeydown"
 					@keydown.enter.self.prevent="emit('select', row.index)"
 					@keydown.space.self.prevent="emit('select', row.index)"
 				>
-					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
-				</div>
-				<div
-					v-else-if="row.kind === 'notice'"
-					data-test-id="timeline-notice-row"
-					:data-timeline-row-id="row.id"
-					:class="$style.noticeRow"
-					role="row"
-				>
-					<div :class="$style.noticeCell" role="gridcell">
-						<slot name="notice" :item="row.item" />
+					<div role="gridcell">
+						<SessionTimelineRow
+							:project-id="props.projectId"
+							:agent-id="props.agentId"
+							:thread-id="props.threadId"
+							:item="row.item"
+							:respond-to-approval="props.respondToApproval"
+							:pending-approval-run-ids="props.pendingApprovalRunIds"
+							:agent-name="props.agentName"
+							:tools="props.tools"
+							:selected="props.selectedIndex === row.index"
+							:search-query="props.searchQuery"
+							:personalisation="props.personalisation"
+						/>
 					</div>
-				</div>
-				<div
-					v-else
-					data-test-id="timeline-idle-row"
-					:data-timeline-row-id="row.id"
-					:class="$style.idleRow"
-					role="row"
-				>
-					<span :class="$style.idlePill" role="gridcell">
-						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
-						{{ formatDuration(row.range.end - row.range.start) }}
-					</span>
+					<div
+						v-if="$slots.notice && row.index === props.noticeIndex"
+						data-test-id="timeline-notice-row"
+						role="gridcell"
+					>
+						<slot name="notice" />
+					</div>
+					<div v-if="row.id !== rows[rows.length - 1].id" :class="$style.divider">
+						<span></span>
+					</div>
 				</div>
 			</template>
 		</N8nRecycleScroller>
@@ -359,13 +369,19 @@ watch(
 
 <style module lang="scss">
 .table {
-	background-color: var(--background--surface);
-	padding: var(--spacing--4xs);
+	display: flex;
+	flex-direction: column;
+	width: 100%;
 	height: 100%;
+	padding-block-end: var(--spacing--lg);
 }
 
 .rowWrapper {
+	display: flex;
+	flex-direction: column;
 	width: 100%;
+	max-width: var(--n8n-session-panel--container-width, none);
+	margin: 0 auto;
 }
 
 .empty {
@@ -387,6 +403,8 @@ watch(
 }
 
 .directRows {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	overflow-y: auto;
 	scrollbar-width: none;
@@ -421,46 +439,16 @@ watch(
 	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
 }
 
-.noticeRow {
-	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm);
-}
-.noticeCell {
-	display: flex;
-	justify-content: center;
+.divider {
 	width: 100%;
-}
-.idleRow {
-	position: relative;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: var(--height--xl);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	/* Match the chart's idle styling — striped 45° gradient. */
-	background-image: repeating-linear-gradient(
-		45deg,
-		var(--color--foreground--shade-1) 0 4px,
-		transparent 4px 8px
-	);
-}
+	padding-inline: var(--spacing--lg);
+	transform: translateX(2px);
 
-.idlePill {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius--lg);
-	/* Page-bg fill so the pill stands out against the striped row backdrop,
-	   mirroring the .idleFill treatment on the chart. */
-	background-color: var(--color--background);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text--tint-1);
-	text-transform: lowercase;
-	letter-spacing: 0.02em;
-	white-space: nowrap;
+	> span {
+		display: block;
+		height: var(--height--4xs);
+		width: 1px;
+		background-color: var(--border-color);
+	}
 }
 </style>

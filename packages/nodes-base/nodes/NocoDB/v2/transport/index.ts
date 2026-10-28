@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
+import { isSameOrigin } from '../../isSameOrigin';
+
 interface IAttachment {
 	url: string;
 	title: string;
@@ -43,6 +45,8 @@ export async function apiRequest(
 	const baseUrl = credentials.host as string;
 
 	query = query ?? {};
+	const hasUriOverride = uri !== undefined;
+	const sendCredentials = uri === undefined || isSameOrigin(uri, baseUrl);
 	uri =
 		uri ?? (baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`);
 
@@ -60,6 +64,16 @@ export async function apiRequest(
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
+	}
+
+	// A `uri` override can come from record content, so send the credential only to the NocoDB host.
+	if (!sendCredentials) {
+		return await this.helpers.httpRequest(options);
+	}
+
+	// The credential headers are custom (`xc-token`, `xc-auth`), so a redirect would not strip them.
+	if (hasUriOverride) {
+		options.disableFollowRedirect = true;
 	}
 
 	return await this.helpers.httpRequestWithAuthentication.call(this, authenticationMethod, options);

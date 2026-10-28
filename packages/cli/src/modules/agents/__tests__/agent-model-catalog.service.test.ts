@@ -1,4 +1,5 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +12,7 @@ const fetchProviderCatalog = vi.fn();
 vi.mock('@n8n/agents', () => ({
 	fetchProviderCatalog: (...args: unknown[]) => fetchProviderCatalog(...args) as unknown,
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 
 const user = mock<User>({ id: 'user-1' });
 const credentialId = 'cred-1';
@@ -53,7 +55,12 @@ function makeService() {
 	const lookupService = mock<BuilderModelLiveLookupService>();
 	const defaultModelResolver = mock<AgentDefaultModelResolverService>();
 	const logger = mockLogger();
-	const service = new AgentModelCatalogService(logger, lookupService, defaultModelResolver);
+	const service = new AgentModelCatalogService(
+		logger,
+		lookupService,
+		defaultModelResolver,
+		mock<OutboundHttp>(),
+	);
 	return { service, lookupService, defaultModelResolver, logger };
 }
 
