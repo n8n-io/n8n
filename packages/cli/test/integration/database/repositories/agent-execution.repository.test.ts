@@ -55,7 +55,7 @@ import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-att
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
 import { executionsToMessagesDto } from '@/modules/agents/utils/execution-to-message-mapper';
-import { formatPreviewSessionContext } from '@/modules/instance-ai/format-agent-session-context';
+import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';

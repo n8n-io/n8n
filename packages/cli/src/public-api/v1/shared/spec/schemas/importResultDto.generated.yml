@@ -7,13 +7,9 @@ properties:
         type: string
       sourceId:
         type: string
-      exportedAt:
-        type: string
-        format: date-time
     required:
       - sourceN8nVersion
       - sourceId
-      - exportedAt
   agents:
     type: array
     items:
@@ -50,7 +46,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because the Agent or workflow uses an empty or incomplete credential, or a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because the Agent or workflow uses an empty or incomplete credential, or a node type this instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -60,6 +56,7 @@ properties:
                 - stub-credential
                 - incomplete-credential
                 - missing-node-type
+                - channel-setup-required
               description: 'Present when `state` is `blocked`: the imported version could not be published and no version is active.'
             skippedPublishReason:
               type: string
@@ -67,10 +64,54 @@ properties:
                 - stub-credential
                 - incomplete-credential
                 - missing-node-type
+                - channel-setup-required
               description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials).'
           required:
             - state
           description: Publication outcome. A failed publication does not undo the definition import.
+        channels:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  type:
+                    type: string
+                    description: Channel type, for example `slack`.
+                  status:
+                    type: string
+                    enum:
+                      - reused
+                    description: The import kept the channel connection that the destination Agent already had.
+                required:
+                  - type
+                  - status
+              - type: object
+                properties:
+                  type:
+                    type: string
+                    description: Channel type, for example `slack`.
+                  status:
+                    type: string
+                    enum:
+                      - setup-required
+                    description: The import saved the channel settings without a connection. Set up the channel in the destination before the Agent can be published.
+                  reason:
+                    type: string
+                    enum:
+                      - new-channel
+                      - destination-draft
+                    description: '`new-channel`: the destination Agent had no connection for this channel. `destination-draft`: the destination Agent has this channel, but its setup is not complete.'
+                  setupUrl:
+                    type: string
+                    description: Link to the destination Agent, where you can set up the channel.
+                required:
+                  - type
+                  - status
+                  - reason
+                  - setupUrl
+            type: object
+          description: Channel outcome for each external channel in the imported definition. A credential from the package never connects a channel. Empty for skipped Agents.
       required:
         - sourceAgentId
         - localId
@@ -79,6 +120,7 @@ properties:
         - activeVersionId
         - status
         - publishing
+        - channels
   counts:
     type: object
     properties:
@@ -136,7 +178,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because the Agent or workflow uses an empty or incomplete credential, or a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because the Agent or workflow uses an empty or incomplete credential, or a node type this instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -146,6 +188,7 @@ properties:
                 - stub-credential
                 - incomplete-credential
                 - missing-node-type
+                - channel-setup-required
               description: 'Present when `state` is `blocked`: the imported version could not be published and no version is active.'
             skippedPublishReason:
               type: string
@@ -153,6 +196,7 @@ properties:
                 - stub-credential
                 - incomplete-credential
                 - missing-node-type
+                - channel-setup-required
               description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials).'
           required:
             - state

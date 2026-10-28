@@ -1950,6 +1950,24 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
+	// Both tools are always loaded together, so one copy of the objective template is enough.
+	it('shows the task objective template on create_tasks only', () => {
+		const { service } = makeService();
+		const { shared } = service.getTools(
+			agentId,
+			projectId,
+			credentialProvider,
+			credentialService,
+			user,
+		);
+		const schemaText = (name: string) =>
+			JSON.stringify(zodToJsonSchema(shared.find((tool) => tool.name === name)!.inputSchema));
+
+		expect(schemaText(BUILDER_TOOLS.CREATE_TASKS)).toContain('## Success criteria');
+		expect(schemaText(BUILDER_TOOLS.UPDATE_TASK)).not.toContain('## Success criteria');
+		expect(schemaText(BUILDER_TOOLS.UPDATE_TASK)).toContain(BUILDER_TOOLS.CREATE_TASKS);
+	});
+
 	describe('agent_builder_create_skills tool', () => {
 		function getCreateSkillsTool(service: AgentsBuilderToolsService) {
 			return service

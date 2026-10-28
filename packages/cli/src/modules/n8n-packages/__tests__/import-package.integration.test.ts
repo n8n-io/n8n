@@ -47,6 +47,7 @@ import {
 } from '../n8n-packages.types';
 import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
 import { FORMAT_VERSION } from '../spec/constants';
+import type { PackageManifest } from '../spec/manifest.schema';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
@@ -207,6 +208,23 @@ describe('Package import batch validation', () => {
 
 		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
 		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
+	});
+
+	it('imports an older package whose manifest has exportedAt', async () => {
+		const owner = await createOwner();
+
+		const tarBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf-older', name: 'Older' })],
+			{ manifestExtras: { exportedAt: '2026-05-18T12:00:00.000Z' } as Partial<PackageManifest> },
+		);
+
+		const result = await importPackage({ user: owner, packageBuffer: tarBuffer });
+
+		expect(result.workflows).toHaveLength(1);
+		expect(result.package).toEqual({
+			sourceN8nVersion: '1.0.0',
+			sourceId: 'integration-test-source',
+		});
 	});
 });
 
@@ -980,7 +998,6 @@ describe('Package import rejection cases', () => {
 			'manifest.json',
 			JSON.stringify({
 				packageFormatVersion: '99',
-				exportedAt: new Date().toISOString(),
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'bad-manifest',
 			}),
@@ -1073,7 +1090,6 @@ describe('Package import rejection cases', () => {
 			'manifest.json',
 			JSON.stringify({
 				packageFormatVersion: '99',
-				exportedAt: new Date().toISOString(),
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'integration-test-source',
 				workflows: [{ id: 'wf-x', name: 'X', target: 'workflows/wf-x' }],
@@ -1100,7 +1116,6 @@ describe('Package import rejection cases', () => {
 			'manifest.json',
 			JSON.stringify({
 				packageFormatVersion: FORMAT_VERSION,
-				exportedAt: new Date().toISOString(),
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'integration-test-source',
 				workflows: [{ id: 'wf-missing', name: 'Missing', target: 'workflows/nowhere-to-be-found' }],

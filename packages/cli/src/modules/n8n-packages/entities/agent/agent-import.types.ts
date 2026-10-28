@@ -1,7 +1,8 @@
-import type { ImportBlockingIssue } from '@n8n/api-types';
+import type { ImportBlockingIssue, ImportedAgentChannel } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 
 import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
+import type { ImportedChannel } from '@/modules/agents/integrations/resolve-imported-channels';
 import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
 import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-definition';
 
@@ -11,6 +12,7 @@ import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } fro
 
 export type AgentPlanItem = PreparedAgent & {
 	publishingAction: PublishingAction;
+	channels: ImportedChannel[];
 } & ({ action: 'create'; existing: null } | { action: 'update' | 'skip'; existing: ProjectAgent });
 
 export interface AgentImportPlan {
@@ -27,6 +29,7 @@ export type PersistedAgentOutcome =
 			sourceAgentId: string;
 			publishingAction: PublishingAction;
 			blockedFromPublish?: PublishingBlockedReason;
+			channels: ImportedAgentChannel[];
 	  };
 
 export interface AgentImportOutcome {
@@ -34,6 +37,7 @@ export interface AgentImportOutcome {
 	agent: ProjectAgent;
 	sourceAgentId: string;
 	publishing: PublishingOutcome;
+	channels: ImportedAgentChannel[];
 }
 
 export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${string}` }>;
