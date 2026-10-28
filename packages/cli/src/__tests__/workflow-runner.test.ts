@@ -1192,6 +1192,74 @@ describe('enqueueExecution', () => {
 		);
 	});
 
+	it.each([
+		{
+			path: 'without the DB row',
+			forceFullExecutionData: false,
+			jobResult: mock<JobFinishedProps>({
+				status: 'success',
+				waitTill: null,
+				nodeTimeSavedMinutes: 60,
+			}),
+			row: undefined,
+			expected: 60,
+		},
+		{
+			path: 'from the DB row',
+			forceFullExecutionData: true,
+			jobResult: mock<JobFinishedProps>({
+				status: 'success',
+				waitTill: null,
+				nodeTimeSavedMinutes: 60,
+			}),
+			row: mock<IExecutionResponse>({ status: 'success', waitTill: null }),
+			expected: 60,
+		},
+		{
+			path: 'from the DB row without a job result',
+			forceFullExecutionData: false,
+			jobResult: undefined,
+			row: mock<IExecutionResponse>({ status: 'success', waitTill: null }),
+			expected: undefined,
+		},
+	])(
+		'sets the node time saved minutes on the run built $path',
+		async ({ forceFullExecutionData, jobResult, row, expected }) => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			let workflowExecution: PCancelable<IRun> | undefined;
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+				workflowExecution = execution;
+			});
+			const finalize = vi.spyOn(activeExecutions, 'finalizeExecution');
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+				mock<core.ExecutionLifecycleHooks>(),
+			);
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'trigger',
+				workflowData: { nodes: [], staticData: {} },
+				forceFullExecutionData,
+			});
+			addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+			waitForJob.mockResolvedValueOnce(undefined);
+			popJobResult.mockReturnValueOnce(jobResult);
+			const findSingleExecution = vi.spyOn(
+				Container.get(ExecutionPersistence),
+				'findSingleExecution',
+			);
+			if (row) findSingleExecution.mockResolvedValueOnce(row);
+
+			// @ts-expect-error Private method
+			await runner.enqueueExecution('1', 'workflow-xyz', data);
+			await workflowExecution;
+
+			expect(findSingleExecution).toHaveBeenCalledTimes(row ? 1 : 0);
+			expect(finalize).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({ nodeTimeSavedMinutes: expected }),
+			);
+		},
+	);
+
 	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
