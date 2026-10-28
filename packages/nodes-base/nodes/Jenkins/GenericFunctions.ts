@@ -58,7 +58,7 @@ function isMissingCrumbError(error: JsonObject): boolean {
 
 /**
  * Jenkins answers build triggers with a redirect to the queued item. Returns the queue
- * item URL when the redirect points to one on the same Jenkins instance.
+ * item URL when the redirect points to one.
  */
 function getQueueItemUrl(error: JsonObject, baseUrl: string): string | undefined {
 	const response = error.response as JsonObject | undefined;
@@ -73,15 +73,11 @@ function getQueueItemUrl(error: JsonObject, baseUrl: string): string | undefined
 		return undefined;
 	}
 
+	// Only the path is checked: the Location host or scheme can differ from the base URL,
+	// e.g. with Docker networking or a TLS-terminating proxy
 	try {
-		const base = new URL(baseUrl);
-		const target = new URL(location, base);
-		const basePath = removeTrailingSlash(base.pathname);
-		if (
-			target.origin === base.origin &&
-			target.pathname.startsWith(basePath) &&
-			/^\/queue\/item\/\d+\/?$/.test(target.pathname.slice(basePath.length))
-		) {
+		const target = new URL(location, baseUrl);
+		if (/\/queue\/item\/\d+\/?$/.test(target.pathname)) {
 			return target.href;
 		}
 	} catch {

@@ -312,7 +312,6 @@ describe('jenkinsApiRequest', () => {
 				'https://jenkins.example.com/securityRealm/commenceLogin?from=/queue/item/1/',
 			],
 			['an SSO proxy on another origin', 'https://sso.example.com/oauth2/start?rd=/queue/item/1'],
-			['a queue item on another origin', 'https://other.example.com/queue/item/1/'],
 			['a nested queue item path', 'https://jenkins.example.com/queue/item/1/cancelQueue'],
 			['a job page', 'https://jenkins.example.com/job/new-job/'],
 		])('rejects a redirect to %s', async (_, location) => {
@@ -327,21 +326,21 @@ describe('jenkinsApiRequest', () => {
 			expect((error as NodeApiError).httpCode).toBe('302');
 		});
 
-		it('rejects a queue item outside the base URL path', async () => {
-			const executeFunctions = createExecuteFunctions();
-			executeFunctions.getCredentials.mockResolvedValue({
-				username: 'user',
-				apiKey: 'key',
-				baseUrl: 'https://example.com/jenkins',
-			});
-			executeFunctions.helpers.request.mockRejectedValue(
-				redirectError(303, 'https://example.com/other/queue/item/7/'),
-			);
+		it.each([
+			['host', 'https://jenkins.acme.com/queue/item/7/'],
+			['scheme', 'http://jenkins.example.com/queue/item/7/'],
+			['base path', 'https://jenkins.example.com/jenkins/queue/item/7/'],
+		])(
+			'accepts a queue item redirect with a different %s than the base URL',
+			async (_, location) => {
+				const executeFunctions = createExecuteFunctions();
+				executeFunctions.helpers.request.mockRejectedValue(redirectError(303, location));
 
-			await expect(
-				jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build'),
-			).rejects.toThrow(NodeApiError);
-		});
+				const result = await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+
+				expect(result).toEqual({ success: true, queueUrl: location });
+			},
+		);
 
 		it('rethrows NodeApiError when a non-redirect error occurs', async () => {
 			const executeFunctions = createExecuteFunctions();
