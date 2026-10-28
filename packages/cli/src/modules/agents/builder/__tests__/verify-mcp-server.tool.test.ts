@@ -557,3 +557,21 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(applyCredentialToMcpServer).not.toHaveBeenCalled();
 	});
 });
+
+describe('agent_builder_verify_mcp_server model output', () => {
+	function modelView(result: Record<string, unknown>) {
+		return buildVerifyMcpServerTool(makeDeps()).toModelOutput!(result) as Record<string, unknown>;
+	}
+
+	it('tells the model that an applied credential needs no patch', () => {
+		const view = modelView({ ok: true, tools: [], credentialApplied: true, configHash: 'h' });
+
+		expect(view.nextStep).toContain('Do not patch');
+		expect(view.nextStep).toContain('baseConfigHash');
+	});
+
+	it('adds no next step to a plain verification', () => {
+		expect(modelView({ ok: true, tools: [] })).not.toHaveProperty('nextStep');
+		expect(modelView({ ok: false, error: 'down' })).not.toHaveProperty('nextStep');
+	});
+});

@@ -2,6 +2,7 @@ import { isIfNodeType, isSwitchNodeType } from './constants/node-types';
 import type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
+	FromJSONOptions,
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeInstance,
@@ -1461,8 +1462,8 @@ function createWorkflow(
 /**
  * Import workflow from n8n JSON format
  */
-function fromJSON(json: WorkflowJSON): WorkflowBuilder {
-	const parsed = parseWorkflowJSON(json);
+function fromJSON(json: WorkflowJSON, options?: FromJSONOptions): WorkflowBuilder {
+	const parsed = parseWorkflowJSON(json, options);
 	return new WorkflowBuilderImpl(
 		parsed.id,
 		parsed.name,

@@ -15,6 +15,8 @@ export class Gmail extends VersionedNodeType {
 			description: 'Consume the Gmail API',
 			defaultVersion: 2.2,
 			builderHint: {
+				searchHint:
+					"To archive a message or thread, use `removeLabels` with `labelIds: ['INBOX']`. Gmail has no archive operation and no ARCHIVE label.",
 				relatedNodes: [
 					{
 						nodeType: 'n8n-nodes-base.gmailTrigger',

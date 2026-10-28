@@ -582,3 +582,51 @@ describe('agent_builder_finish_setup tool', () => {
 		expect(ctx.suspend).not.toHaveBeenCalled();
 	});
 });
+
+describe('agent_builder_finish_setup model output', () => {
+	function modelView(result: Record<string, unknown>) {
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialService: makeCredentialService([]),
+		});
+		return tool.toModelOutput!(result) as Record<string, unknown>;
+	}
+
+	it('adds no next step to a suspend payload', () => {
+		expect(modelView({ questions: [] })).not.toHaveProperty('nextStep');
+	});
+
+	it('tells the model to resolve only what is left after the flow', () => {
+		const view = modelView({ completed: true, answers: [] });
+
+		expect(view.nextStep).toContain('agent_builder_resolve_llm');
+		expect(view.nextStep).toContain('agent_builder_verify_mcp_server');
+		expect(view.nextStep).not.toContain('appliedToConfig');
+		expect(view.nextStep).not.toContain('configApplyErrors');
+		expect(view.nextStep).not.toContain('agent_builder_configure_channel');
+	});
+
+	it('tells the model not to patch what the flow already wrote', () => {
+		const view = modelView({
+			completed: true,
+			appliedToConfig: { credentialTypes: ['gmailOAuth2'], paths: [] },
+		});
+
+		expect(view.nextStep).toContain('appliedToConfig');
+	});
+
+	it('tells the model to fix config apply errors', () => {
+		const view = modelView({
+			completed: true,
+			configApplyErrors: [{ path: '/tools/0', message: 'bad' }],
+		});
+
+		expect(view.nextStep).toContain('configApplyErrors');
+	});
+
+	it('tells the model not to configure a handled channel again', () => {
+		const view = modelView({ completed: true, channels: { slack: 'skipped' } });
+
+		expect(view.nextStep).toContain('agent_builder_configure_channel');
+	});
+});

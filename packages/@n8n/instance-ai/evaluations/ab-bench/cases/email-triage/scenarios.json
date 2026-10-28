@@ -1,0 +1,23 @@
+{
+	"trigger": [
+		{
+			"id": "m1",
+			"subject": "Production is down",
+			"from": "ops@acme.com",
+			"date": "2026-10-23T08:00:00Z",
+			"text": "The API returns 500 for all customers."
+		}
+	],
+	"scenarios": [
+		{
+			"name": "An urgent email goes to Slack",
+			"ai": { "booleans": true },
+			"expect": { "reach": ["slack"], "skip": ["googleSheets"] }
+		},
+		{
+			"name": "A routine email goes to the sheet",
+			"ai": { "booleans": false },
+			"expect": { "reach": ["googleSheets"], "skip": ["slack"] }
+		}
+	]
+}
