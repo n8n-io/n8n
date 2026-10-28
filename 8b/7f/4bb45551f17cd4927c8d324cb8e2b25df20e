@@ -2,9 +2,9 @@ packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
   s_bccf3616ba1e3f::t_53c29727598102 57-58,60-62
 packages/cli/src/modules/agents/tools/__tests__/read-binary-data.tool.test.ts
   s_bccf3616ba1e3f::t_1e6b1371b242c8 1,29
-  s_bccf3616ba1e3f::t_9fe9fdabd8006b 2-14,16-28,30-51,56-57,59-60,62-100
+  s_bccf3616ba1e3f::t_9fe9fdabd8006b 2-14,16-28,30-51,30-100,56-57,59-60,62-100
 packages/cli/src/modules/agents/tools/read-binary-data.tool.ts
-  s_bccf3616ba1e3f::t_af0144eb03e3ce 1-15,19-53,55-63,70,72-74,81-83
+  s_bccf3616ba1e3f::t_af0144eb03e3ce 1-15,19-53,19-74,55-63,70,72-74,76-83,81-83
 packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
   s_bccf3616ba1e3f::t_ed8eb0ec36611e 1051-1058
 ---
