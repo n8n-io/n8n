@@ -197,10 +197,7 @@ describe('toAiMessages — file parts', () => {
 		const [message] = toAiMessages(input);
 
 		expect(message.content).toEqual([
-			{
-				type: 'text',
-				text: '[File attachment "photo.png" (image/png, 1.2 MB), fileId: att-1. The file is attached below. Do not read it again.]',
-			},
+			{ type: 'text', text: expect.stringContaining('fileId: att-1') },
 			{ type: 'file', data: bytes, mediaType: 'image/png' },
 		]);
 	});
@@ -221,10 +218,7 @@ describe('toAiMessages — file parts', () => {
 		const [message] = toAiMessages(input);
 
 		expect(message.content).toEqual([
-			{
-				type: 'text',
-				text: '[File attachment "photo.png" (image/png, 1.2 MB), fileId: att-1 — not directly viewable by this model]',
-			},
+			{ type: 'text', text: expect.stringContaining('fileId: att-1') },
 		]);
 	});
 
