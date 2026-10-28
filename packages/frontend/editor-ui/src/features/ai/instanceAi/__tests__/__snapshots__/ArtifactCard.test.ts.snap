@@ -1,0 +1,67 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ArtifactCard > shows the agent identity icon instead of the normal artifact icon for an agent 1`] = `
+<div>
+  <div
+    class="card hoverable card card"
+    data-test-id="instance-ai-artifact-card"
+  >
+    <div
+      class="icon"
+      data-test-id="card-prepend"
+    >
+      
+      <div
+        class="tile"
+        data-test-id="agent-personalisation-icon-tile"
+        style="--agent-personalisation-gradient-from: #FF1500; --agent-personalisation-gradient-to: #FF6900; --agent-personalisation-gradient-angle: 135deg; --agent-personalisation-gradient-from-stop: 0%; --agent-personalisation-gradient-to-stop: 100%; width: 24px; height: 24px;"
+      >
+        <svg
+          aria-hidden="true"
+          class="n8n-icon"
+          data-icon="bot"
+          fill="currentColor"
+          focusable="false"
+          height="14px"
+          role="img"
+          viewBox="0 0 16 16"
+          width="14px"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M8.75 4.5H15V15h-1.5V6h-11v9H1V4.5h6.25V.25h1.5zm-1 6.25h-1.5v-3h1.5zm4 0h-1.5v-3h1.5z"
+          />
+        </svg>
+      </div>
+      
+    </div>
+    <div
+      class="content"
+      data-test-id="card-content"
+    >
+      <div
+        class="header"
+      >
+        
+        <span
+          class="n8n-text size-medium regular"
+        >
+          
+          Research agent
+          
+        </span>
+        <!--v-if-->
+        
+      </div>
+      <div
+        class="body"
+      >
+        
+        
+      </div>
+      <!--v-if-->
+    </div>
+    <!--v-if-->
+  </div>
+</div>
+`;
