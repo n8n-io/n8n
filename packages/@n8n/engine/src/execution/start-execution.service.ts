@@ -119,8 +119,8 @@ export class StartExecutionService {
 	 * The link has no foreign key: a parent is pruned while its sub-executions
 	 * stay, so the rows are independent and this is where the link is checked.
 	 * The parent must be live and the step must be its own, in the state that
-	 * asks for a sub-execution: suspended when it waits for this one, settled
-	 * when it does not.
+	 * asks for a sub-execution: suspended when it waits for this one, still
+	 * running when it does not. A step starts nothing once it has settled.
 	 */
 	private async validateParent(parent: ParentLink): Promise<void> {
 		const [execution, step] = await Promise.all([
@@ -137,7 +137,7 @@ export class StartExecutionService {
 				`step ${parent.stepId} belongs to execution ${step.executionId}, not ${parent.executionId}`,
 			);
 		}
-		const expected = parent.awaited ? 'waiting' : 'completed';
+		const expected = parent.awaited ? 'waiting' : 'running';
 		if (step.status !== expected) {
 			throw new InvalidParentLinkError(
 				`step ${parent.stepId} is ${step.status}, and a step that ${parent.awaited ? 'awaits' : 'does not await'} a sub-execution is ${expected} when it starts one`,

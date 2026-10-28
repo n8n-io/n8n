@@ -13,6 +13,7 @@ export type {
 	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionStatus,
+	ExecutorWaitDeclaration,
 	ParentLink,
 	StepError,
 	StepKey,
@@ -42,7 +43,6 @@ export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
-export type { SubExecutionStarter } from './step-ready-handler';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,
