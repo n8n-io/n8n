@@ -75,6 +75,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 	}
 
 	const reload = async (id: string) => await taskRepository.findOneByOrFail({ id });
+	const reloadJob = async () => await jobRepository.findOneByOrFail({ id: job.id });
 
 	beforeAll(async () => {
 		// Use separate connections for concurrent claims.
@@ -708,11 +709,26 @@ describe('ScheduledTaskRepository executor methods', () => {
 				0,
 			);
 			expect((await reload(id)).dispatchedAt).toBeNull();
+			expect((await reloadJob()).lastDispatchedAt).toBeNull();
 
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
 			expect((await reload(id)).dispatchedAt).not.toBeNull();
+		});
+
+		it('markDispatched stamps the same instant on the job', async () => {
+			const { id, epoch } = await claimOne();
+
+			await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch });
+
+			const { dispatchedAt } = await reload(id);
+			const { lastDispatchedAt } = await reloadJob();
+			expect(dispatchedAt).not.toBeNull();
+			expect(lastDispatchedAt).not.toBeNull();
+			expect(Math.abs(lastDispatchedAt!.getTime() - dispatchedAt!.getTime())).toBeLessThanOrEqual(
+				1000,
+			);
 		});
 
 		it('markDispatched is not fenced on an existing marker (at-least-once allows redelivery)', async () => {
