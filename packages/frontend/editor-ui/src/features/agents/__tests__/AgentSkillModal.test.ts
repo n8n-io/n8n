@@ -2114,6 +2114,19 @@ describe('Versions in the agent builder', () => {
 		);
 	});
 
+	it('marks no version as published for an agent that is not published', async () => {
+		const { findByTestId, queryByTestId } = renderBuilder({
+			draft: 3,
+			published: null,
+			pinned: false,
+		});
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+		await findByTestId('skill-version-row-1');
+
+		expect(queryByTestId('skill-version-published')).not.toBeInTheDocument();
+	});
+
 	it('pins the agent to a version from the row menu', async () => {
 		const { findByTestId, onUseVersion } = renderBuilder({ draft: 3, published: 2, pinned: false });
 

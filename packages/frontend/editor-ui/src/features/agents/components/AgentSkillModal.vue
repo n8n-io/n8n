@@ -841,7 +841,8 @@ async function useVersion(version: number) {
 		summary && version === props.data.agentVersions?.draft && props.data.skill
 			? { ...summary, skill: props.data.skill }
 			: await fetchVersion(version);
-	if (!detail) return;
+	// The user may have closed the editor while the version loaded: then nothing is pinned.
+	if (!detail || !modalOpen.value) return;
 	closeModal();
 	props.data.onUseVersion(skillId, detail);
 }
