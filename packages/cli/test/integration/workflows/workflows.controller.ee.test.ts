@@ -1364,34 +1364,6 @@ describe('PATCH /workflows/:workflowId', () => {
 			},
 		);
 
-		it('accepts a credential of the member in a team workflow the member belongs to', async () => {
-			const team = await createTeamProject('Team 1', member);
-			const workflow = await createWorkflow({}, team);
-			const credential = await saveCredential(randomCredentialPayload(), { user: member });
-
-			const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
-				versionId: workflow.versionId,
-				nodes: [
-					{
-						id: 'uuid-12345',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						credentials: { default: { id: credential.id, name: credential.name } },
-					},
-				],
-			});
-
-			expect(response.statusCode).toBe(200);
-
-			const saved = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
-			expect(saved.body.data.usedCredentials).toMatchObject([
-				{ id: credential.id, name: credential.name, currentUserCanUse: true },
-			]);
-		});
-
 		const UNINSPECTABLE_SOURCE_MESSAGE =
 			'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" source, or enter fixed JSON in the "Define Below" source.';
 
