@@ -13,6 +13,7 @@ defineProps<{
 	retryMessageId?: string;
 	retryDisabled?: boolean;
 }>();
+
 const emit = defineEmits<{ retry: [messageId: string] }>();
 const i18n = useI18n();
 </script>

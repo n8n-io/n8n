@@ -313,6 +313,7 @@ export class ExecutionRecorder {
 	) {
 		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
+
 		if (backgroundJobSignal) {
 			this.timeline.push({
 				type: 'background-task-signal',

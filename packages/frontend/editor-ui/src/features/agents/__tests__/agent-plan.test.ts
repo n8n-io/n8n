@@ -34,6 +34,7 @@ describe('task summaries', () => {
 			{ id: 'reply', executionId: 'wake', role: 'assistant', content: 'Started the next task.' },
 		];
 		const groups = buildAgentPlanDisplayGroups(messages);
+
 		expect(getTaskSummaryGroupIds(messages, groups).size).toBe(0);
 		expect(groups.filter((group) => group.kind === 'backgroundJobSignal')).toHaveLength(1);
 	});
@@ -56,6 +57,7 @@ describe('task summaries', () => {
 				},
 			};
 			const groups = buildAgentPlanDisplayGroups([message]);
+
 			expect(getTaskSummaryGroupIds([message], groups).size).toBe(0);
 			expect(groups.filter((group) => group.kind === 'backgroundJobSignal')).toHaveLength(1);
 		},
@@ -78,6 +80,7 @@ describe('task summaries', () => {
 		};
 		const messages = [completed, reply, { id: 'later', role: 'user' as const, content: 'Thanks' }];
 		const groups = buildAgentPlanDisplayGroups(messages);
+
 		expect([...getTaskSummaryGroupIds(messages, groups)]).toEqual([completed.id]);
 		expect(groups[0]).toMatchObject({ kind: 'toolRun', finalMessage: reply });
 	});
@@ -89,8 +92,10 @@ describe('task summaries', () => {
 					tool: 'update_plan',
 				}),
 			];
+
 			expect(getTaskSummaryGroupIds(messages, buildAgentPlanDisplayGroups(messages)).size).toBe(0);
 		}
+
 		expect(isAgentPlanFinished(planView({ document: { title: 'Empty', items: [] } }))).toBe(false);
 	});
 
@@ -101,10 +106,13 @@ describe('task summaries', () => {
 				planView({ document: { title: 'Research', items: [planTask(1, status)] } }),
 				{ tool: 'update_plan' },
 			);
+
 			expect([
 				...getTaskSummaryGroupIds([message], buildAgentPlanDisplayGroups([message])),
 			]).toEqual([message.id]);
+
 			const stopped = { ...message, stopReport: true };
+
 			expect(getTaskSummaryGroupIds([stopped], buildAgentPlanDisplayGroups([stopped])).size).toBe(
 				0,
 			);
@@ -125,6 +133,7 @@ describe('task summaries', () => {
 				executionId,
 			};
 			const messages = [initial, completed];
+
 			expect([...getTaskSummaryGroupIds(messages, buildAgentPlanDisplayGroups(messages))]).toEqual([
 				initial.id,
 			]);
@@ -152,6 +161,7 @@ describe('task summaries', () => {
 			final,
 		];
 		const groups = buildAgentPlanDisplayGroups(messages);
+
 		expect(groups.map((group) => group.id)).toEqual([initial.id, 'user', final.id]);
 		expect([...getTaskSummaryGroupIds(messages, groups)]).toEqual([final.id]);
 	});
@@ -180,6 +190,7 @@ describe('task summaries', () => {
 			},
 		];
 		const groups = buildAgentPlanDisplayGroups(messages);
+
 		expect(groups.filter((group) => group.kind === 'backgroundJobSignal')).toHaveLength(1);
 		expect([...getTaskSummaryGroupIds(messages, groups)]).toEqual(['final']);
 	});

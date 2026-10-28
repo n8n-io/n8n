@@ -261,6 +261,7 @@ const taskSummaryGroupIds = computed(() =>
 );
 const tailSummaryId = computed(() => {
 	const last = displayGroups.value.at(-1);
+
 	return last && taskSummaryGroupIds.value.has(last.id) ? last.id : undefined;
 });
 

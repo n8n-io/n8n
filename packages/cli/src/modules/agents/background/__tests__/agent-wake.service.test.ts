@@ -174,7 +174,9 @@ describe('AgentWakeService', () => {
 					},
 				}),
 			);
+
 			await service.attemptWake('thread-1');
+
 			expect(planService.findActivePlan).toHaveBeenCalledWith('thread-1', {});
 			expect(
 				orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal === true,
@@ -189,7 +191,9 @@ describe('AgentWakeService', () => {
 				data: { title: 'Research', description: 'Plan the work', items: [] },
 			}),
 		);
+
 		await service.attemptWake('thread-1');
+
 		expect(orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal).not.toBe(true);
 	});
 
@@ -202,7 +206,9 @@ describe('AgentWakeService', () => {
 				makeJob({ id: 'other-job', status, notifiedAt: new Date() }),
 				makeJob({ id: 'other-author', status: 'running', parentResourceId: 'draft-chat:user-2' }),
 			]);
+
 			await service.attemptWake('thread-1');
+
 			expect(
 				orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal === true,
 			).toBe(['completed', 'failed', 'cancelled'].includes(status));
@@ -217,16 +223,21 @@ describe('AgentWakeService', () => {
 			const sibling = makeJob({ id: 'sibling', status });
 			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([first]);
 			jobRepository.findByParentThread.mockResolvedValue([first, sibling]);
+
 			await service.attemptWake('thread-1');
+
 			expect(orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal).not.toBe(
 				true,
 			);
+
 			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([sibling]);
 			jobRepository.findByParentThread.mockResolvedValue([
 				{ ...first, notifiedAt: new Date() },
 				sibling,
 			]);
+
 			await service.attemptWake('thread-1');
+
 			expect(orchestrator.executeForWake.mock.calls[1][0].backgroundJobSignal.isFinal).toBe(true);
 		},
 	);
@@ -353,6 +364,7 @@ describe('AgentWakeService', () => {
 			}),
 		]);
 		await service.attemptWake('thread-1');
+
 		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
 			expect.objectContaining({
 				backgroundJobSignal: {

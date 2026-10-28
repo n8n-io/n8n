@@ -3519,10 +3519,12 @@ describe('useAgentChatStream — transcript push', () => {
 			],
 			openSuspensions: [],
 		});
+
 		try {
 			emitPush(update());
 			emitPush(update());
 			await flushPromises();
+
 			expect(hook.messages.value).toHaveLength(1);
 			expect(hook.messages.value[0]).toMatchObject({
 				backgroundJobSignal,

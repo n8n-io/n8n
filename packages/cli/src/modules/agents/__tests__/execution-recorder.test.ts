@@ -94,6 +94,7 @@ describe('ExecutionRecorder', () => {
 			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 		});
 		const initial = structuredClone(recorder.getMessageRecord().timeline);
+
 		expect(initial).toEqual([
 			{
 				type: 'background-task-signal',
@@ -104,6 +105,7 @@ describe('ExecutionRecorder', () => {
 				},
 			},
 		]);
+
 		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Done' });
 		recorder.record({ type: 'finish', finishReason: 'stop' });
 		expect(onSnapshot.mock.lastCall?.[0][0]).toEqual(initial[0]);

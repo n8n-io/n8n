@@ -362,7 +362,9 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 			!stopNotice.value &&
 			(!currentPlan.value || planFinished.value) &&
 			backgroundJobs.value.length > 0 &&
-			backgroundJobs.value.every((job) => ['completed', 'failed', 'cancelled'].includes(job.status)),
+			backgroundJobs.value.every((job) =>
+				['completed', 'failed', 'cancelled'].includes(job.status),
+			),
 	);
 
 	watch(hideStoppedStack, () => {
