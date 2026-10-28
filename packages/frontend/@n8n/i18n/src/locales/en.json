@@ -3732,6 +3732,7 @@
 	"settings.context.skills.empty.title": "No skills yet",
 	"settings.context.skills.empty.description": "Add a skill by hand or upload a SKILL.md file. Agents in the scope of the skill can then use it.",
 	"settings.context.skills.assistant.label": "Available to n8n Assistant",
+	"settings.context.skills.assistant.toggle": "Enable for n8n Assistant",
 	"settings.context.skills.assistant.badge": "n8n Assistant",
 	"settings.context.skills.modal.scope.noDelete": "You need permission to delete this skill to move it, because moving removes it from where it is now.",
 	"settings.context.skills.delete.inUse": "Used by {count} agent. Remove the skill from the agent first. | Used by {count} agents. Remove the skill from each agent first.",
