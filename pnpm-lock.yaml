@@ -1088,8 +1088,10 @@ patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
   '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
+  '@google/generative-ai@0.24.0': 81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad
   '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
+  '@langchain/google-genai@2.1.24': 30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e
   '@langchain/openai@1.4.4': e16bcc93cf9037198faacf494fb81afba6e9abba749dc9a09c3abfb33e68d5c2
   '@lezer/highlight': 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
   '@types/express-serve-static-core@5.0.6': d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
@@ -1099,7 +1101,7 @@ patchedDependencies:
   element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   imapflow@1.7.1: 9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025
-  lodash@4.18.1: 81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b
+  lodash@4.18.1: 0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1
   minifaker: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
   pdf-parse@2.4.5: 3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82
   pkce-challenge@5.0.0: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
@@ -1107,6 +1109,7 @@ patchedDependencies:
   v-code-diff: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
   vue-tsc@2.2.8: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
   vuedraggable@4.1.0: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
+  weaviate-client@3.9.0: fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99
   xml2js@0.6.2: 3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3
   z-vue-scan: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
 
@@ -1400,7 +1403,7 @@ importers:
         version: 1.0.27(@aws-sdk/credential-provider-node@3.972.80)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(@smithy/signature-v4@5.7.2)(cheerio@1.1.0)(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(110e46106043ec664f2d521de83cea21)
+        version: 1.1.27(207e2612b595ac3d4c1d8e7f26b6850b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1433,7 +1436,7 @@ importers:
         version: 1.2.30(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1566,7 +1569,7 @@ importers:
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1952,7 +1955,7 @@ importers:
         version: 8.8.1(@types/ioredis-mock@8.2.2(supports-color@8.1.1))(ioredis@5.3.2(supports-color@8.1.1))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -2055,7 +2058,7 @@ importers:
         version: link:../utils
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -2500,7 +2503,7 @@ importers:
         version: 3.4.2
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -2594,7 +2597,7 @@ importers:
         version: link:../permissions
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -2930,7 +2933,7 @@ importers:
         version: 3.3.1
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -3667,7 +3670,7 @@ importers:
         version: 1.19.0(@modelcontextprotocol/sdk@1.31.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       '@google/generative-ai':
         specifier: 0.24.0
-        version: 0.24.0
+        version: 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
       '@huggingface/inference':
         specifier: 4.0.5
         version: 4.0.5
@@ -3685,7 +3688,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(47547d76cb52fe872f788021e12a7b1c)
+        version: 1.1.27(f19aaead961595ae772319c7754fa93b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -3694,7 +3697,7 @@ importers:
         version: 2.1.24(patch_hash=b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@langchain/google-genai':
         specifier: 2.1.24
-        version: 2.1.24(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
+        version: 2.1.24(patch_hash=30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@langchain/google-vertexai':
         specifier: 2.1.24
         version: 2.1.24(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(supports-color@8.1.1)
@@ -3830,9 +3833,6 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
-      generate-schema:
-        specifier: 2.6.0
-        version: 2.6.0
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
@@ -3853,7 +3853,7 @@ importers:
         version: 1.2.30(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mammoth:
         specifier: 1.12.1
         version: 1.12.1
@@ -3904,7 +3904,7 @@ importers:
         version: 3.12.2
       weaviate-client:
         specifier: 3.9.0
-        version: 3.9.0(encoding@0.1.13)
+        version: 3.9.0(patch_hash=fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99)(encoding@0.1.13)
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -4232,7 +4232,7 @@ importers:
         version: 8.3.4
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -4588,7 +4588,7 @@ importers:
         version: 8.14.0
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -4988,7 +4988,7 @@ importers:
         version: 0.18.13
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       lru-cache:
         specifier: 'catalog:'
         version: 11.5.1
@@ -5385,7 +5385,7 @@ importers:
         version: 9.0.3
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -5615,7 +5615,7 @@ importers:
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -5760,7 +5760,7 @@ importers:
         version: 0.0.5
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       markdown-it:
         specifier: 'catalog:'
         version: 13.0.2
@@ -6048,7 +6048,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6796,7 +6796,7 @@ importers:
         version: 0.18.2
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       lodash-es:
         specifier: 'catalog:'
         version: 4.18.1
@@ -7061,7 +7061,7 @@ importers:
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -7288,7 +7288,7 @@ importers:
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -7482,7 +7482,7 @@ importers:
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -8162,9 +8162,6 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
-      generate-schema:
-        specifier: 2.6.0
-        version: 2.6.0
       get-system-fonts:
         specifier: 2.0.2
         version: 2.0.2
@@ -8209,7 +8206,7 @@ importers:
         version: 8.1.7
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       lossless-json:
         specifier: 1.0.5
         version: 1.0.5
@@ -8314,7 +8311,7 @@ importers:
         version: 3.0.3
       ts-ics:
         specifier: 1.2.2
-        version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b))(zod@3.25.76)
+        version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1))(zod@3.25.76)
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -8824,7 +8821,7 @@ importers:
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0(supports-color@8.1.1)
@@ -8934,6 +8931,9 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
+      generate-schema:
+        specifier: 2.6.0
+        version: 2.6.0
       jmespath:
         specifier: 0.16.0
         version: 0.16.0
@@ -8951,7 +8951,7 @@ importers:
         version: 3.3.1
       lodash:
         specifier: 4.18.1
-        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -27560,7 +27560,7 @@ snapshots:
       jiti: 2.6.1
       json-stringify-safe: 5.0.1
       lil-http-terminator: 1.2.3
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       nanoid: 3.3.18
       object-sizeof: 2.6.5
       p-debounce: 2.1.0
@@ -28085,7 +28085,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@google/generative-ai@0.24.0': {}
+  '@google/generative-ai@0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)': {}
 
   '@graphql-typed-document-node/core@3.2.0(graphql@16.11.0)':
     dependencies:
@@ -28497,7 +28497,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(110e46106043ec664f2d521de83cea21)':
+  '@langchain/community@1.1.27(207e2612b595ac3d4c1d8e7f26b6850b)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -28543,7 +28543,7 @@ snapshots:
       ioredis: 5.3.2(supports-color@8.1.1)
       jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mammoth: 1.12.1
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
       mysql2: 3.23.1(@types/node@20.19.41)
@@ -28552,7 +28552,7 @@ snapshots:
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
-      weaviate-client: 3.9.0(encoding@0.1.13)
+      weaviate-client: 3.9.0(patch_hash=fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99)(encoding@0.1.13)
       ws: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@opentelemetry/api'
@@ -28561,7 +28561,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(47547d76cb52fe872f788021e12a7b1c)':
+  '@langchain/community@1.1.27(f19aaead961595ae772319c7754fa93b)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -28613,7 +28613,7 @@ snapshots:
       ioredis: 5.3.2(supports-color@8.1.1)
       jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mammoth: 1.12.1
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3)
       mysql2: 3.23.1(@types/node@20.19.41)
@@ -28622,7 +28622,7 @@ snapshots:
       playwright: 1.62.1
       puppeteer: 24.41.0(@typescript/typescript6@6.0.2)(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       redis: 4.6.14
-      weaviate-client: 3.9.0(encoding@0.1.13)
+      weaviate-client: 3.9.0(patch_hash=fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99)(encoding@0.1.13)
       ws: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@opentelemetry/api'
@@ -28660,9 +28660,9 @@ snapshots:
       - '@langchain/core'
       - supports-color
 
-  '@langchain/google-genai@2.1.24(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))':
+  '@langchain/google-genai@2.1.24(patch_hash=30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))':
     dependencies:
-      '@google/generative-ai': 0.24.0
+      '@google/generative-ai': 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       uuid: 13.0.1
 
@@ -28794,7 +28794,7 @@ snapshots:
     dependencies:
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       uuid: 13.0.1
-      weaviate-client: 3.9.0(encoding@0.1.13)
+      weaviate-client: 3.9.0(patch_hash=fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99)(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
 
@@ -29096,7 +29096,7 @@ snapshots:
       '@rushstack/rig-package': 0.5.3
       '@rushstack/terminal': 0.15.1(@types/node@20.19.41)
       '@rushstack/ts-command-line': 4.23.6(@types/node@20.19.41)
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       minimatch: 5.1.8
       resolve: 1.22.11
       semver: 7.7.3
@@ -31074,7 +31074,7 @@ snapshots:
   '@sapphire/shapeshift@4.0.0':
     dependencies:
       fast-deep-equal: 3.1.3
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
 
   '@sapphire/snowflake@3.5.5': {}
 
@@ -34004,7 +34004,7 @@ snapshots:
       graceful-fs: 4.2.11
       is-stream: 2.0.1
       lazystream: 1.0.1
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       normalize-path: 3.0.0
       readable-stream: 4.5.2
 
@@ -34050,7 +34050,7 @@ snapshots:
   array-hyper-unique@2.1.4:
     dependencies:
       deep-eql: 4.0.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
 
   array-includes@3.1.9:
     dependencies:
@@ -34477,7 +34477,7 @@ snapshots:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2(supports-color@8.1.1)
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       msgpackr: 1.11.2
       semver: 7.7.3
       uuid: 13.0.1
@@ -34489,7 +34489,7 @@ snapshots:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2(supports-color@8.1.1)
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       msgpackr: 1.11.2
       semver: 7.7.3
       uuid: 13.0.1
@@ -34942,7 +34942,7 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       date-fns: 2.30.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       rxjs: 7.8.1
       shell-quote: 1.11.0
       spawn-command: 0.0.2
@@ -35761,9 +35761,9 @@ snapshots:
       async-validator: 4.2.5
       dayjs: 1.11.10
       escape-html: 1.0.3
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       lodash-es: 4.18.1
-      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.18.1)(lodash@4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b))
+      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.18.1)(lodash@4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1))
       memoize-one: 6.0.0
       normalize-wheel-es: 1.2.0
       vue: 3.5.26(typescript@6.0.2)
@@ -36178,7 +36178,7 @@ snapshots:
   eslint-plugin-lodash@8.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
 
   eslint-plugin-n8n-nodes-base@2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
@@ -37578,7 +37578,7 @@ snapshots:
       cli-width: 3.0.0
       external-editor: 3.1.0
       figures: 3.2.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mute-stream: 0.0.8
       run-async: 2.4.1
       rxjs: 6.6.7
@@ -38486,10 +38486,10 @@ snapshots:
 
   lodash-es@4.18.1: {}
 
-  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.18.1)(lodash@4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)):
+  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.18.1)(lodash@4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)):
     dependencies:
       '@types/lodash-es': 4.17.12
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       lodash-es: 4.18.1
 
   lodash.camelcase@4.3.0: {}
@@ -38530,7 +38530,7 @@ snapshots:
 
   lodash.truncate@4.4.2: {}
 
-  lodash@4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b): {}
+  lodash@4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1): {}
 
   log-symbols@4.1.0:
     dependencies:
@@ -39197,7 +39197,7 @@ snapshots:
     dependencies:
       '@miragejs/pretender-node-polyfill': 0.1.2
       inflected: 2.1.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       pretender: 3.4.7
 
   mitt@2.1.0: {}
@@ -39207,7 +39207,7 @@ snapshots:
   mjml-accordion@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39215,7 +39215,7 @@ snapshots:
   mjml-body@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39223,7 +39223,7 @@ snapshots:
   mjml-button@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39231,7 +39231,7 @@ snapshots:
   mjml-carousel@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39243,7 +39243,7 @@ snapshots:
       glob: 10.5.0
       html-minifier: 4.0.0
       js-beautify: 1.14.9
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       minimatch: 9.0.9
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-migrate: 4.15.3
@@ -39256,7 +39256,7 @@ snapshots:
   mjml-column@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39269,7 +39269,7 @@ snapshots:
       html-minifier: 4.0.0
       js-beautify: 1.14.9
       juice: 10.0.1(encoding@0.1.13)
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-migrate: 4.15.3
       mjml-parser-xml: 4.15.3
       mjml-validator: 4.15.3
@@ -39279,7 +39279,7 @@ snapshots:
   mjml-divider@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39287,7 +39287,7 @@ snapshots:
   mjml-group@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39295,7 +39295,7 @@ snapshots:
   mjml-head-attributes@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39303,7 +39303,7 @@ snapshots:
   mjml-head-breakpoint@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39311,7 +39311,7 @@ snapshots:
   mjml-head-font@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39319,7 +39319,7 @@ snapshots:
   mjml-head-html-attributes@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39327,7 +39327,7 @@ snapshots:
   mjml-head-preview@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39335,7 +39335,7 @@ snapshots:
   mjml-head-style@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39343,7 +39343,7 @@ snapshots:
   mjml-head-title@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39351,7 +39351,7 @@ snapshots:
   mjml-head@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39359,7 +39359,7 @@ snapshots:
   mjml-hero@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39367,7 +39367,7 @@ snapshots:
   mjml-image@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39376,7 +39376,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.7
       js-beautify: 1.14.9
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-parser-xml: 4.15.3
       yargs: 17.7.2
@@ -39384,7 +39384,7 @@ snapshots:
   mjml-navbar@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39394,7 +39394,7 @@ snapshots:
       '@babel/runtime': 7.29.7
       detect-node: 2.1.0
       htmlparser2: 9.1.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
 
   mjml-preset-core@4.15.3(encoding@0.1.13):
     dependencies:
@@ -39430,7 +39430,7 @@ snapshots:
   mjml-raw@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39438,7 +39438,7 @@ snapshots:
   mjml-section@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39446,7 +39446,7 @@ snapshots:
   mjml-social@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39454,7 +39454,7 @@ snapshots:
   mjml-spacer@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39462,7 +39462,7 @@ snapshots:
   mjml-table@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39470,7 +39470,7 @@ snapshots:
   mjml-text@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39482,7 +39482,7 @@ snapshots:
   mjml-wrapper@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.29.7
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-section: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -43135,11 +43135,11 @@ snapshots:
       '@ts-graphviz/common': 2.1.5
       '@ts-graphviz/core': 2.0.7
 
-  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b))(zod@3.25.76):
+  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1))(zod@3.25.76):
     dependencies:
       date-fns: 2.30.0
       date-fns-tz: 2.0.0(date-fns@2.30.0)
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       zod: 3.25.76
 
   ts-interface-checker@0.1.13: {}
@@ -43929,7 +43929,7 @@ snapshots:
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
       esquery: 1.7.0
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
@@ -44047,7 +44047,7 @@ snapshots:
 
   weapon-regex@2.0.4: {}
 
-  weaviate-client@3.9.0(encoding@0.1.13):
+  weaviate-client@3.9.0(patch_hash=fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99)(encoding@0.1.13):
     dependencies:
       abort-controller-x: 0.4.3
       graphql: 16.11.0
@@ -44459,7 +44459,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.7
       '@types/lodash': 4.17.17
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
+      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
       lodash-es: 4.18.1
       nanoclone: 0.2.1
       property-expr: 2.0.5

@@ -648,7 +648,7 @@ export async function getLakebaseBranches(
 
 	const { items, nextPageToken } = await listLakebase(
 		this,
-		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches`,
+		`/api/2.0/postgres/projects/${toPathSegment(project)}/branches`,
 		(page: { branches?: LakebaseBranch[] }) => page.branches,
 		filter,
 		paginationToken,
@@ -681,7 +681,7 @@ export async function getLakebaseDatabases(
 
 	const { items, nextPageToken } = await listLakebase(
 		this,
-		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}/databases`,
+		`/api/2.0/postgres/projects/${toPathSegment(project)}/branches/${toPathSegment(branch)}/databases`,
 		(page: { databases?: LakebaseDatabase[] }) => page.databases,
 		filter,
 		paginationToken,
@@ -724,7 +724,7 @@ export async function getLakebaseTables(
 			this,
 			{
 				method: 'GET',
-				url: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}/openapi.json`,
+				url: `${base}/${toPathSegment(database)}/${toPathSegment(schema)}/openapi.json`,
 				headers: { Accept: 'application/openapi+json, application/json' },
 				json: true,
 			},

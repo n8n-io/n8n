@@ -7,7 +7,7 @@ import { type EventService, type UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { TransactionRunner, type User, type OperationContext } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -23,6 +23,8 @@ import type { AuthorizationCode } from '../database/entities/oauth-authorization
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
+import { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthServerService } from '../oauth-server.service';
@@ -50,6 +52,19 @@ let oauthConsentService: Mocked<OAuthConsentService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
+
+const activeGrantUser = mock<User>({ disabled: false });
+const grantRepository = mock<OAuthGrantRepository>();
+const grantTransactionRunner = mock<TransactionRunner>();
+const grantService = new OAuthGrantService(grantTransactionRunner, grantRepository);
+
+beforeEach(() => {
+	grantRepository.lockUserForGrant.mockReset().mockResolvedValue(activeGrantUser);
+	grantTransactionRunner.run.mockImplementation(
+		async <T>(ctx: OperationContext, work: (ctx: OperationContext) => Promise<T>) =>
+			await work(ctx),
+	);
+});
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -95,6 +110,7 @@ describe('OAuthServerService', () => {
 			eventService,
 			authService,
 			oauthConsentService,
+			grantService,
 		);
 	});
 
@@ -223,6 +239,7 @@ describe('OAuthServerService', () => {
 					mock<EventService>(),
 					mock<AuthService>(),
 					mock<OAuthConsentService>(),
+					grantService,
 				);
 			});
 
@@ -340,6 +357,7 @@ describe('OAuthServerService', () => {
 					mock<EventService>(),
 					mock<AuthService>(),
 					mock<OAuthConsentService>(),
+					grantService,
 				);
 			};
 
@@ -411,6 +429,7 @@ describe('OAuthServerService', () => {
 					mock<EventService>(),
 					mock<AuthService>(),
 					mock<OAuthConsentService>(),
+					grantService,
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -1144,6 +1163,22 @@ describe('OAuthServerService', () => {
 	});
 
 	describe('exchangeAuthorizationCode', () => {
+		it.each([null, mock<User>({ disabled: true })])(
+			'requires an active code owner (%#)',
+			async (user) => {
+				authorizationCodeService.findAuthorizationCode.mockResolvedValueOnce(
+					mock<AuthorizationCode>({ userId: 'user-123', resource: null, scope: [] }),
+				);
+				grantRepository.lockUserForGrant.mockResolvedValueOnce(user);
+				await expect(
+					service.exchangeAuthorizationCode(mock({ client_id: 'client-123' }), 'code'),
+				).rejects.toBeInstanceOf(InvalidGrantError);
+				expect(authorizationCodeService.markAuthorizationCodeAsUsed).not.toHaveBeenCalled();
+				expect(tokenService.generateTokenPair).not.toHaveBeenCalled();
+				expect(tokenService.saveTokenPair).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should validate code and return token pair', async () => {
 			const client = {
 				client_id: 'client-123',
@@ -1187,6 +1222,7 @@ describe('OAuthServerService', () => {
 			);
 			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
 				'auth-code-123',
+				{},
 			);
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
 				'user-456',
@@ -1201,6 +1237,7 @@ describe('OAuthServerService', () => {
 				'user-456',
 				['workflow:read'],
 				TEST_RESOURCE_URL,
+				{},
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
@@ -1253,6 +1290,7 @@ describe('OAuthServerService', () => {
 				eventService,
 				mock<AuthService>(),
 				mock<OAuthConsentService>(),
+				grantService,
 			);
 
 			const client = {
@@ -1328,6 +1366,7 @@ describe('OAuthServerService', () => {
 			);
 			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
 				'auth-code-123',
+				{},
 			);
 			// A code carrying no resource was approved against the default resource,
 			// so that is what the token is minted for.
@@ -1390,6 +1429,7 @@ describe('OAuthServerService', () => {
 					eventService,
 					mock<AuthService>(),
 					mock<OAuthConsentService>(),
+					grantService,
 				);
 
 				tokenService.generateTokenPair.mockReturnValue({
@@ -1933,6 +1973,7 @@ describe('OAuthServerService', () => {
 				mock<EventService>(),
 				mock<AuthService>(),
 				mock<OAuthConsentService>(),
+				grantService,
 			);
 
 			expect(
@@ -1985,6 +2026,7 @@ describe('OAuthServerService', () => {
 				mock<EventService>(),
 				mock<AuthService>(),
 				mock<OAuthConsentService>(),
+				grantService,
 			);
 		};
 

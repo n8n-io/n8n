@@ -8,6 +8,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
 
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
 import { getResolvables } from '@utils/utilities';
 
 import {
@@ -298,7 +299,11 @@ export class Snowflake implements INodeType {
 
 					if (rawReplacement !== undefined && rawReplacement !== '') {
 						if (typeof rawReplacement === 'string') {
-							binds = rawReplacement.split(',').map((entry) => entry.trim());
+							binds = resolveQueryReplacementSegments.call(
+								this,
+								i,
+								rawReplacement,
+							) as snowflake.Bind[];
 						} else if (Array.isArray(rawReplacement)) {
 							binds = rawReplacement as snowflake.Bind[];
 						} else {
