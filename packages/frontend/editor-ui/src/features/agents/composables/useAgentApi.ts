@@ -7,6 +7,7 @@ import type {
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
 	SystemAgentThreadSummary,
+	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
@@ -1025,6 +1026,36 @@ export const getSystemAgentThread = async (
 		'GET',
 		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
 	);
+
+/** One page of the user's own threads with a system agent, newest first. */
+export const listSystemAgentThreads = async (
+	context: IRestApiContext,
+	agentId: string,
+	options: { limit: number; cursor?: string; search?: string },
+): Promise<SystemAgentThreadsResponse> =>
+	await makeRestApiRequest<SystemAgentThreadsResponse>(
+		context,
+		'GET',
+		`/agents/system/${encodeURIComponent(agentId)}/threads`,
+		{
+			limit: options.limit,
+			...(options.cursor ? { cursor: options.cursor } : {}),
+			...(options.search ? { search: options.search } : {}),
+		},
+	);
+
+/** Deletes one of the user's own threads with a system agent. */
+export const deleteSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${agentChatPath('', agentId, 'system')}/${encodeURIComponent(threadId)}`,
+	);
+};
 
 /** Builds the download/thumbnail URL for a chat attachment on either channel. */
 export const getChatAttachmentUrl = (

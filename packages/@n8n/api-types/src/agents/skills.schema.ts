@@ -31,9 +31,10 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 /**
  * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
- * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
+ * migration, `mcp` from an MCP client, `assistant` from n8n Assistant, `import` from an
+ * n8n package import.
  */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -79,7 +80,15 @@ export type SkillListResponse = {
 /** The agents that use a skill, limited to the agents the caller may read. */
 export type SkillUsedBy = {
 	/** Agents whose draft references the skill. */
-	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
+	drafts: Array<{
+		agentId: string;
+		agentName: string;
+		projectId: string;
+		/** The version the draft runs: the pinned one, else the latest. */
+		version: number;
+		/** True when the draft ref is pinned to a version. */
+		pinned: boolean;
+	}>;
 	/** Agents with a published version that pins the skill, one row each. */
 	pins: Array<{
 		agentId: string;
@@ -110,6 +119,24 @@ export type SkillSaveResponse = {
 	skill: AgentSkill;
 	skillHash: string;
 };
+
+/** One saved version of a skill, without its content. */
+export type SkillVersionSummary = {
+	id: string;
+	version: number;
+	/** Null when the user is unknown or no longer exists. */
+	createdBy: SkillUserDto | null;
+	createdAt: string;
+};
+
+/** One row of the version list. */
+export type SkillVersionListItem = SkillVersionSummary & {
+	/** True for the highest version, which agents that follow the skill run. */
+	isLatest: boolean;
+};
+
+/** One saved version with its content. */
+export type SkillVersionDetail = SkillVersionSummary & { skill: AgentSkill };
 
 /** Without `sortBy` the list shows the most recently changed skill first. */
 export const SKILLS_SORT_OPTIONS = [

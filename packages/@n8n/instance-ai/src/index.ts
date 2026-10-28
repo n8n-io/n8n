@@ -286,7 +286,7 @@ export type { AgentBuilderTarget } from './tools/orchestration/agent-target-bind
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
-} from './tools/orchestration/agent-preview-session-binding';
+} from './tools/orchestration/agent-test-session-binding';
 
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,

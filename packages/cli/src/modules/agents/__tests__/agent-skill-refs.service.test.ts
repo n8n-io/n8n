@@ -195,6 +195,42 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('replaceAllDraftRefs', () => {
+		it('returns the saved refs when every ref exists', async () => {
+			checkRefs.mockResolvedValue([{ id: 'zeta' }]);
+			agentSkillRepository.findDependencies.mockResolvedValue(
+				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
+			);
+
+			await expect(
+				service.replaceAllDraftRefs(agent, [{ type: 'skill', id: 'zeta' }], ctx),
+			).resolves.toEqual([{ type: 'skill', id: 'zeta' }]);
+			expect(agentSkillRepository.replaceDependencies).toHaveBeenCalledWith(
+				'agent-1',
+				[{ skillId: 'zeta', versionId: null }],
+				ctx,
+			);
+		});
+
+		it('fails when a ref points to a skill that no longer exists', async () => {
+			checkRefs.mockResolvedValue([{ id: 'zeta' }]);
+			agentSkillRepository.findDependencies.mockResolvedValue(
+				new Map([['agent-1', [{ skillId: 'zeta', versionId: null }]]]),
+			);
+
+			await expect(
+				service.replaceAllDraftRefs(
+					agent,
+					[
+						{ type: 'skill', id: 'zeta' },
+						{ type: 'skill', id: 'gone' },
+					],
+					ctx,
+				),
+			).rejects.toThrow('Skills gone no longer exist. Plan the import again.');
+		});
+	});
+
 	describe('replaceDraftRefs', () => {
 		it('checks the refs and writes the dependency rows', async () => {
 			checkRefs.mockResolvedValue([{ id: 'zeta' }, { id: 'alpha', versionId: pinId }]);
@@ -300,6 +336,59 @@ describe('AgentSkillRefsService', () => {
 			],
 			ctx,
 		);
+	});
+
+	describe('findSkillVersions', () => {
+		beforeEach(() => {
+			const runtime: Record<string, { version: number; pinned: boolean; latest: number }> = {
+				follows: { version: 5, pinned: false, latest: 5 },
+				pinned: { version: 3, pinned: true, latest: 7 },
+			};
+			skillRuntime.runtimeVersions.mockResolvedValue((ref) => runtime[ref.id]);
+			agentSkillRepository.findPins.mockResolvedValue([
+				{ skillId: 'follows', skillVersionId: 'follows-v4' },
+			]);
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['follows-v4', { skillId: 'follows', version: 4 }]]),
+			);
+		});
+
+		it('returns the draft, published and latest version of each ref', async () => {
+			const refs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'follows' },
+				{ type: 'skill', id: 'pinned', versionId: pinId },
+				{ type: 'skill', id: 'gone' },
+			];
+
+			const versions = await service.findSkillVersions({ activeVersionId: 'agent-v2' }, refs, ctx);
+
+			expect(versions).toEqual({
+				follows: { draft: 5, published: 4, latest: 5, pinned: false },
+				pinned: { draft: 3, published: null, latest: 7, pinned: true },
+			});
+			expect(skillRuntime.runtimeVersions).toHaveBeenCalledWith(refs, ctx);
+			expect(agentSkillRepository.findPins).toHaveBeenCalledWith('agent-v2', ctx);
+		});
+
+		it('has no published version for an agent that is not published', async () => {
+			const versions = await service.findSkillVersions(
+				{ activeVersionId: null },
+				[{ type: 'skill', id: 'follows' }],
+				ctx,
+			);
+
+			expect(versions).toEqual({
+				follows: { draft: 5, published: null, latest: 5, pinned: false },
+			});
+			expect(agentSkillRepository.findPins).not.toHaveBeenCalled();
+		});
+
+		it('reads nothing for an agent without skills', async () => {
+			await expect(service.findSkillVersions({ activeVersionId: null }, [], ctx)).resolves.toEqual(
+				{},
+			);
+			expect(skillRuntime.runtimeVersions).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('findOutdatedSkillIds', () => {
@@ -893,19 +982,75 @@ describe('AgentSkillRefsService attach check', () => {
 			expect(refs).toHaveLength(2);
 		});
 
-		it('keeps a pin the agent already had and drops a pin it did not have', async () => {
-			givenAgentRefs([{ skillId: 'skill_a', versionId: 'v1' }, { skillId: 'skill_b' }]);
-			givenSkills([
-				{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' },
-				{ id: 'skill_b', where: { projectId: PROJECT }, name: 'Tone' },
-			]);
+		it('keeps a pin the agent already had without reading the version again', async () => {
+			givenAgentRefs([{ skillId: 'skill_a', versionId: 'skill_a-v1' }]);
+			givenSkills([{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' }]);
 
-			const refs = await service.checkRefs(agent, [
-				{ id: 'skill_a', versionId: 'v1' },
-				{ id: 'skill_b', versionId: 'v9' },
-			]);
+			const refs = await service.checkRefs(agent, [{ id: 'skill_a', versionId: 'skill_a-v1' }]);
 
-			expect(refs).toEqual([{ id: 'skill_a', versionId: 'v1' }, { id: 'skill_b' }]);
+			expect(refs).toEqual([{ id: 'skill_a', versionId: 'skill_a-v1' }]);
+			expect(skillRuntime.findVersionRefs).not.toHaveBeenCalled();
+		});
+
+		it('pins a ref to a saved version of its skill', async () => {
+			givenAgentRefs([{ skillId: 'skill_a' }]);
+			givenSkills([{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' }], {
+				'skill_a-v1': 'Pricing',
+			});
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['skill_a-v1', { skillId: 'skill_a', version: 1 }]]),
+			);
+
+			const refs = await service.checkRefs(agent, [{ id: 'skill_a', versionId: 'skill_a-v1' }]);
+
+			expect(refs).toEqual([{ id: 'skill_a', versionId: 'skill_a-v1' }]);
+		});
+
+		it('refuses a pin to a version that does not exist', async () => {
+			givenAgentRefs([{ skillId: 'skill_a' }]);
+			givenSkills([{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' }]);
+			skillRuntime.findVersionRefs.mockResolvedValue(new Map());
+
+			await expectError(
+				service.checkRefs(agent, [{ id: 'skill_a', versionId: 'missing' }]),
+				UserError,
+				'Skill skill_a has no saved version missing. Pick a version from the version list of this skill.',
+			);
+		});
+
+		it('refuses a pin to a version of another skill', async () => {
+			givenAgentRefs([{ skillId: 'skill_a' }]);
+			givenSkills([{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' }]);
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['skill_b-v1', { skillId: 'skill_b', version: 1 }]]),
+			);
+
+			await expectError(
+				service.checkRefs(agent, [{ id: 'skill_a', versionId: 'skill_b-v1' }]),
+				UserError,
+				'Version skill_b-v1 belongs to another skill, not to skill skill_a. Pick a version of this skill.',
+			);
+		});
+
+		it('refuses a pin to a version whose name clashes with another skill of the agent', async () => {
+			givenAgentRefs([{ skillId: 'skill_a' }, { skillId: 'skill_b' }]);
+			// v1 of skill_a was still called "tone".
+			givenSkills(
+				[
+					{ id: 'skill_a', where: { projectId: PROJECT }, name: 'Pricing' },
+					{ id: 'skill_b', where: { projectId: PROJECT }, name: 'Tone' },
+				],
+				{ 'skill_a-v1': 'tone' },
+			);
+			skillRuntime.findVersionRefs.mockResolvedValue(
+				new Map([['skill_a-v1', { skillId: 'skill_a', version: 1 }]]),
+			);
+
+			await expectError(
+				service.checkRefs(agent, [{ id: 'skill_a', versionId: 'skill_a-v1' }, { id: 'skill_b' }]),
+				UserError,
+				'This agent already has a skill with a name like "tone". Rename one of them, or detach the other skill first.',
+			);
 		});
 
 		it('lets a save clear a pin', async () => {

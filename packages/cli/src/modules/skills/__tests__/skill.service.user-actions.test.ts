@@ -489,7 +489,15 @@ describe('SkillService user actions', () => {
 	describe('get', () => {
 		it('returns the latest version, its hash and the usage', async () => {
 			const usage = {
-				drafts: [{ agentId: 'agent-1', agentName: 'Support', projectId: 'project-1' }],
+				drafts: [
+					{
+						agentId: 'agent-1',
+						agentName: 'Support',
+						projectId: 'project-1',
+						version: 3,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 1,
 			};

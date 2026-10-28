@@ -14,8 +14,6 @@ import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	findIntroducedNameClashes,
 	findNameClashGroups,
@@ -430,12 +428,12 @@ export class AgentSkillsService {
 		// A skill of one agent is part of that agent: the agent permission is enough.
 		if (availableTo === 'agent') return;
 		if (availableTo === 'instance') {
-			if (!hasGlobalScope(user, 'skill:create')) {
+			if (!(await this.skillAccess.canCreate(user, null))) {
 				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
 			}
 			return;
 		}
-		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
+		if (!(await this.skillAccess.canCreate(user, projectId))) {
 			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}
 	}

@@ -8,8 +8,8 @@
  * objective supplies run-specific context beneath the target-agent instructions,
  * and must say where the result is delivered because nobody is watching the run.
  *
- * Shared by the `agent_builder_create_tasks` builder tool, the `agent-builder-target-tasks`
- * skill, and the builder prompt so the guidance is identical everywhere.
+ * The `agent-builder-target-tasks` skill shows it. The builder tools check a saved
+ * objective against it after the save, so the always-loaded tool schemas stay small.
  */
 export const TASK_OBJECTIVE_TEMPLATE = `## Objective
 <One sentence: the run-specific outcome to achieve and why it matters. Do not repeat the agent's overall purpose.>
@@ -39,5 +39,62 @@ export const TASK_OBJECTIVE_FORMAT_RULE =
 	'chat and follow this exact Markdown structure, with every section filled in with concrete, ' +
 	'specific content — no placeholders or angle-bracket text:';
 
-/** The rule followed by the template, for embedding in tool / field descriptions. */
-export const TASK_OBJECTIVE_GUIDANCE = `${TASK_OBJECTIVE_FORMAT_RULE}\n\n${TASK_OBJECTIVE_TEMPLATE}`;
+/** The section headings of the template, in order. */
+export const TASK_OBJECTIVE_SECTIONS = [...TASK_OBJECTIVE_TEMPLATE.matchAll(/^## (.+)$/gm)].map(
+	(match) => match[1],
+);
+
+type ObjectiveSection = { title: string; templateIndex: number; body: string };
+
+const templateIndexOf = (title: string) =>
+	TASK_OBJECTIVE_SECTIONS.findIndex((section) => section.toLowerCase() === title.toLowerCase());
+
+/** Splits an objective into `## ` sections. A heading line may end with a colon. */
+function parseSections(objective: string): ObjectiveSection[] {
+	const parts = objective.split(/^##[ \t]+(.+?)[ \t:]*$/m);
+	const sections: ObjectiveSection[] = [];
+	for (let i = 1; i < parts.length; i += 2) {
+		sections.push({
+			title: parts[i],
+			templateIndex: templateIndexOf(parts[i]),
+			body: parts[i + 1].trim(),
+		});
+	}
+	return sections;
+}
+
+function sectionGap(section: string, found: ObjectiveSection | undefined): string | undefined {
+	if (!found) return `${section} missing`;
+	if (!found.body) return `${section} empty`;
+	if (/<[^<>\n]+>/.test(found.body)) return `${section} has placeholder text`;
+	return undefined;
+}
+
+/** Template sections that are missing, empty, still placeholders, or repeated. */
+function templateSectionGaps(sections: ObjectiveSection[]): string[] {
+	return TASK_OBJECTIVE_SECTIONS.flatMap((section, index) => {
+		const matches = sections.filter((s) => s.templateIndex === index);
+		const gap = sectionGap(section, matches[0]);
+		if (gap) return [gap];
+		return matches.length > 1 ? [`${section} repeated`] : [];
+	});
+}
+
+/** Sections the template does not have, and template sections out of order. */
+function structureGaps(sections: ObjectiveSection[]): string[] {
+	const gaps = sections
+		.filter(({ templateIndex }) => templateIndex < 0)
+		.map(({ title }) => `unexpected section "${title}"`);
+	// First occurrences only: a repeat is reported as repeated, not as out of order.
+	const order = [...new Set(sections.map(({ templateIndex }) => templateIndex))].filter(
+		(index) => index >= 0,
+	);
+	if (order.some((index, i) => i > 0 && index < order[i - 1])) gaps.push('sections out of order');
+	return gaps;
+}
+
+/** How an objective departs from the template. An empty list means it follows the template. */
+export function objectiveTemplateGaps(objective: string): string[] {
+	const sections = parseSections(objective);
+	return [...templateSectionGaps(sections), ...structureGaps(sections)];
+}
