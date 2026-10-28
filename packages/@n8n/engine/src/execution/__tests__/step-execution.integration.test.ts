@@ -21,7 +21,7 @@ import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { SeededSteps, TriggerOutputs } from '../execution.types';
-import type { StartExecutionResult } from '../start-execution.service';
+import type { StartExecutionResult, StartExecutionService } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
 const graph: WorkflowGraph = {
@@ -696,7 +696,7 @@ describe('step execution (integration)', () => {
 			{ v1StepExecutor: { execute } },
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
-			{ start: vi.fn() },
+			{ start: vi.fn() } as unknown as StartExecutionService,
 		);
 
 		const executionId = generateId();
