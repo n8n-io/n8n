@@ -1,4 +1,4 @@
-import type { StoredAgentConfig } from '@n8n/api-types';
+import type { StoredAgentConfig, UpdateAgentVersionDto } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, User, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -19,34 +19,38 @@ export function renderAuthor(user: User): string {
 	return name || 'Unknown';
 }
 
+const versionSummaryFields = [
+	'versionId',
+	'agentId',
+	'createdAt',
+	'updatedAt',
+	'author',
+	'name',
+	'description',
+] as const;
+
 @Service()
 export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(AgentHistory, dataSource.manager, transactionRunner);
 	}
 
-	/**
-	 * Insert an immutable snapshot for the agent at `versionId`.
-	 *
-	 * `publishedBy` accepts either the publishing `User` (renders both the
-	 * `author` display string and the `publishedById` runtime pointer) or a
-	 * literal string for system actors (e.g. future `'system'` snapshots),
-	 * in which case `publishedById` is null. Mirrors
-	 * `WorkflowHistoryService.saveVersion`'s `user: User | string` shape.
-	 */
+	/** Save attribution stays separate from the optional legacy publishing identity. */
 	async saveVersion(
 		data: {
 			versionId: string;
 			agentId: string;
 			schema: StoredAgentConfig | null;
 			tools: Agent['tools'] | null;
-			publishedBy: User | string;
+			publishedBy?: User | string;
+			savedBy?: User | string;
 		},
 		ctx: OperationContext = {},
 	): Promise<AgentHistory> {
 		const { publishedBy } = data;
-		const author = typeof publishedBy === 'string' ? publishedBy : renderAuthor(publishedBy);
-		const publishedById = typeof publishedBy === 'string' ? null : publishedBy.id;
+		const saver = data.savedBy ?? publishedBy ?? 'Unknown';
+		const author = typeof saver === 'string' ? saver : renderAuthor(saver);
+		const publishedById = !publishedBy || typeof publishedBy === 'string' ? null : publishedBy.id;
 		const repo = this.managerFor(ctx).getRepository(AgentHistory);
 		// TypeORM's QueryDeepPartialEntity can't express our @JsonColumn shapes
 		// (Zod-inferred StoredAgentConfig, the tools `Record<string, …>`, etc.),
@@ -65,6 +69,39 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 		return await repo.findOneByOrFail({ versionId: data.versionId });
 	}
 
+	/** Change labels without changing content or the original save time. */
+	async updateMetadata(
+		agentId: string,
+		versionId: string,
+		metadata: UpdateAgentVersionDto,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		if (metadata.name === undefined && metadata.description === undefined) return;
+		await this.managerFor(ctx).update(
+			AgentHistory,
+			{ agentId, versionId },
+			{
+				...(metadata.name !== undefined ? { name: metadata.name?.trim() || null } : {}),
+				...(metadata.description !== undefined
+					? { description: metadata.description || null }
+					: {}),
+				updatedAt: () => '"updatedAt"',
+			},
+		);
+	}
+
+	async recordPublisher(
+		versionId: string,
+		publishedById: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			AgentHistory,
+			{ versionId },
+			{ publishedById, updatedAt: () => '"updatedAt"' },
+		);
+	}
+
 	async findByVersionAndAgentId(
 		versionId: string,
 		agentId: string,
@@ -75,7 +112,7 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 	}
 
 	/**
-	 * List an agent's publish history, newest first. `schema`/`tools`/`skills`
+	 * List saved Agent versions, newest first. `schema`/`tools`/`skills`
 	 * are intentionally omitted — the list view only needs metadata.
 	 */
 	async findByAgentId(agentId: string, take: number, skip: number): Promise<AgentHistory[]> {
@@ -83,22 +120,16 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 			where: { agentId },
 			take,
 			skip,
-			order: { createdAt: 'DESC' },
-			select: {
-				versionId: true,
-				agentId: true,
-				createdAt: true,
-				updatedAt: true,
-				author: true,
-			},
+			order: { createdAt: 'DESC', versionId: 'DESC' },
+			select: [...versionSummaryFields],
 		});
 	}
 
-	/**
-	 * Whether any history row exists for an agent. Backs the "has the agent
-	 * ever been published" signal — unlike `agent.activeVersionId !== null`,
-	 * this stays true after an unpublish (which preserves the rows).
-	 */
+	async findSummary(agentId: string, versionId: string): Promise<AgentHistory | null> {
+		return await this.findOne({ where: { agentId, versionId }, select: [...versionSummaryFields] });
+	}
+
+	/** Whether the Agent has saved versions, including drafts. */
 	async existsForAgent(agentId: string): Promise<boolean> {
 		return await this.existsBy({ agentId });
 	}

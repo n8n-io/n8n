@@ -88,6 +88,7 @@ export type {
 	BuiltEpisodicMemoryStore,
 	EpisodicMemoryConfig,
 	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryCaptureKind,
 	EpisodicMemoryCaptureMethods,
 	EpisodicMemoryCaptureStatus,

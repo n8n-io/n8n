@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
@@ -72,7 +72,7 @@ export class UserManagementMailer {
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 	) {
@@ -337,7 +337,7 @@ export class UserManagementMailer {
 		workflow: IWorkflowBase;
 		reason?: 'crashes' | 'memory-pressure';
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
+		const recipients = await this.personRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const text = {
 			crashes: {
@@ -376,7 +376,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		workflow: IWorkflowBase;
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.personRepository.getEmailsByIds(newShareeIds);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		return await this.sendNotificationEmails({
@@ -401,7 +401,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		credentialsName: string;
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.personRepository.getEmailsByIds(newShareeIds);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		return await this.sendNotificationEmails({
@@ -426,7 +426,7 @@ export class UserManagementMailer {
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
 		project: { id: string; name: string };
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newSharees.map((s) => s.userId));
+		const recipients = await this.personRepository.getEmailsByIds(newSharees.map((s) => s.userId));
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		// Merge recipient data with role

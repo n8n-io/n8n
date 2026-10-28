@@ -1,8 +1,9 @@
 import type { InstanceAiWorkflowAttachment, SelfHealingResultDetail } from '@n8n/api-types';
 import {
+	createTeamProject,
 	createWorkflowWithHistory,
+	linkUserToProject,
 	mockInstance,
-	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -59,10 +60,8 @@ beforeEach(() => {
 
 async function savedResult() {
 	const backgroundUser = await createUser();
-	const workflow = await createWorkflowWithHistory({}, backgroundUser);
-	const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-		backgroundUser.id,
-	);
+	const ownerProject = await createTeamProject(undefined, backgroundUser);
+	const workflow = await createWorkflowWithHistory({}, ownerProject);
 	const execution = await createExecution({ status: 'error' }, workflow);
 	const configuration = await createConfiguration(ownerProject.id, backgroundUser.id);
 	const result = await Container.get(SelfHealingResultRepository).createResult(
@@ -90,11 +89,11 @@ async function savedResult() {
 }
 
 it('continues a saved report in a new private chat owned by the current editor', async () => {
-	testServer.license.enable('feat:sharing');
 	const { backgroundUser, workflow, ownerProject, execution, result, url } = await savedResult();
 	const editor = await createUser();
 	const otherEditor = await createUser();
-	await shareWorkflowWithUsers(workflow, [editor, otherEditor]);
+	await linkUserToProject(editor, ownerProject, 'project:editor');
+	await linkUserToProject(otherEditor, ownerProject, 'project:editor');
 	await addReviewer(result.configurationId, editor.id);
 	await addReviewer(result.configurationId, otherEditor.id);
 	const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(

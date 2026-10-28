@@ -225,6 +225,15 @@ export interface SystemAgentProvider<TLease = unknown> {
 	 */
 	authorize(user: User, projectId: string): Promise<boolean>;
 	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
+	/**
+	 * The user-facing text and code of an error that `prepareTurn` threw. The
+	 * turn has no handle yet, so its `formatError` cannot run. The same rules
+	 * apply: return `undefined`, or an empty message, to keep the raw error.
+	 * When it throws, the runtime logs the failure and keeps the raw error.
+	 * The errors of a stopped turn and errors that already have a client code
+	 * are not formatted.
+	 */
+	formatSetupError?(user: User, error: unknown): Promise<FormattedTurnError | undefined>;
 	/** Turn options for a message sent through the system-agent chat route. */
 	chatTurnOptions?(
 		user: User,

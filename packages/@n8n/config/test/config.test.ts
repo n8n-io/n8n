@@ -358,6 +358,7 @@ describe('GlobalConfig', () => {
 		},
 		instanceAi: {
 			workflowSuggestionsEnabled: false,
+			assistantAgentEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
@@ -468,7 +469,7 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
-			profilesSampleRate: 0,
+			profilingEnabled: false,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
 			webhookTracesSampleRate: 0.05,

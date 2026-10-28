@@ -144,8 +144,7 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
-          # This job uploads artifacts and needs no token post-checkout — drop the
-          # persisted credential so it can't leak (zizmor: artipacked).
+          # This job uploads artifacts and needs no token after checkout.
           persist-credentials: false
 
       - name: Setup Environment

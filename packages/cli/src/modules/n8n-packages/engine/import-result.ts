@@ -1,3 +1,4 @@
+import type { AgentImportOutcome } from '../entities/agent/agent-import.types';
 import type { CredentialApplyResult } from '../entities/credential/credential.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
@@ -18,6 +19,8 @@ import type {
 	ImportedWorkflowSummary,
 	ImportPackageSummary,
 	ImportResult,
+	ImportStatusCounts,
+	ImportedAgentSummary,
 	ImportTagSummary,
 	ImportVariableSummary,
 	PackageImportBindings,
@@ -32,7 +35,6 @@ export function toPackageSummary(manifest: PackageManifest): ImportPackageSummar
 	return {
 		sourceN8nVersion: manifest.sourceN8nVersion,
 		sourceId: manifest.sourceId,
-		exportedAt: manifest.exportedAt,
 	};
 }
 
@@ -75,6 +77,7 @@ export function toImportedWorkflowSummaries(
 
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
+	agentOutcomes: AgentImportOutcome[];
 	workflows: ImportedWorkflowSummary[];
 	removedWorkflows: RemovedWorkflowSummary[];
 	removedFolders: RemovedFolderSummary[];
@@ -88,6 +91,8 @@ export function buildImportResult(input: {
 }): ImportResult {
 	return {
 		package: input.package,
+		agents: input.agentOutcomes.map(toImportedAgentSummary),
+		counts: { agents: countImportStatuses(input.agentOutcomes) },
 		workflows: input.workflows,
 		removedWorkflows: input.removedWorkflows,
 		removedFolders: input.removedFolders,
@@ -141,6 +146,33 @@ export function reconcileCredentialSummary(input: {
 	};
 }
 
+function toImportedAgentSummary({
+	sourceAgentId,
+	agent,
+	status,
+	publishing,
+	channels,
+}: AgentImportOutcome): ImportedAgentSummary {
+	return {
+		sourceAgentId,
+		localId: agent.id,
+		name: agent.name,
+		projectId: agent.projectId,
+		activeVersionId: agent.activeVersionId ?? null,
+		status,
+		publishing,
+		channels,
+	};
+}
+
+export function countImportStatuses(
+	outcomes: Array<{ status: keyof ImportStatusCounts }>,
+): ImportStatusCounts {
+	const counts: ImportStatusCounts = { created: 0, updated: 0, skipped: 0 };
+	for (const { status } of outcomes) counts[status]++;
+	return counts;
+}
+
 export function reconcileVariableSummary(input: {
 	matched: Iterable<string>;
 	missing: Iterable<string>;
@@ -181,7 +213,7 @@ export function toVariableSummary(
 	result: VariableApplyResult,
 ): ImportVariableSummary {
 	return reconcileVariableSummary({
-		matched: plan.matched,
+		matched: plan.matched.map(({ name }) => name),
 		missing: plan.missing.map(({ name }) => name),
 		created: result.created,
 		stubbed: result.stubbed,
@@ -217,16 +249,18 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
  */
 export function identifyRequirements<T extends { usedBy: PackageRequirementConsumer[] }>(
 	requirements: T[] | undefined,
-	workflows: PreparedWorkflow[],
+	workflows: Array<Pick<PreparedWorkflow, 'sourceWorkflowId'>>,
+	agents: Array<{ sourceAgentId: string }> = [],
 ): T[] | undefined {
 	if (!requirements) return undefined;
 
 	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));
+	const agentIds = new Set(agents.map((agent) => agent.sourceAgentId));
 	return requirements
 		.map((requirement) => ({
 			...requirement,
-			usedBy: requirement.usedBy.filter(
-				({ kind, id }) => kind === 'workflow' && importedIds.has(id),
+			usedBy: requirement.usedBy.filter(({ kind, id }) =>
+				kind === 'workflow' ? importedIds.has(id) : agentIds.has(id),
 			),
 		}))
 		.filter((requirement) => requirement.usedBy.length > 0);

@@ -1,7 +1,7 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import type { Person, User } from '@n8n/db';
+import { AuthIdentity, AuthIdentityRepository, PersonRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
@@ -78,33 +78,30 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 }
 
 export async function updateUserFromSamlAttributes(
-	user: User,
+	person: Person,
 	attributes: SamlUserAttributes,
-): Promise<User> {
+): Promise<Person> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
-	if (!user) throw new AuthError('User not found');
-	let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
+	if (!person) throw new AuthError('User not found');
+	let samlAuthIdentity = person?.authIdentities.find((e) => e.providerType === 'saml');
 	if (!samlAuthIdentity) {
 		samlAuthIdentity = new AuthIdentity();
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 		samlAuthIdentity.providerType = 'saml';
-		samlAuthIdentity.user = user;
-		user.authIdentities.push(samlAuthIdentity);
+		samlAuthIdentity.user = person;
+		person.authIdentities.push(samlAuthIdentity);
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
 	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
-	user.firstName = attributes.firstName;
-	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not update User');
-	const userWithRole = await Container.get(UserRepository).findOne({
-		where: { id: resultUser.id },
-		relations: ['role'],
-		transaction: false,
-	});
-	if (!userWithRole) throw new AuthError('Failed to fetch user!');
-	return userWithRole;
+	person.firstName = attributes.firstName;
+	person.lastName = attributes.lastName;
+	const personRepository = Container.get(PersonRepository);
+	const savedPerson = await personRepository.save(person);
+	if (!savedPerson) throw new AuthError('Could not update User');
+	const personWithRole = await personRepository.findByIdWithRole(savedPerson.id);
+	if (!personWithRole) throw new AuthError('Failed to fetch user!');
+	return personWithRole;
 }
 
 type GetMappedSamlReturn = {

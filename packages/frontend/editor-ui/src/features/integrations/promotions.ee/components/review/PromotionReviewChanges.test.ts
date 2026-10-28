@@ -19,7 +19,15 @@ const headCommitSha = 'b'.repeat(40);
 
 const reviewChanges = (overrides: Partial<ReviewChanges> = {}): ReviewChanges => {
 	const { resources, dependencies } = billingPreview();
-	return { baselineCommitSha, headCommitSha, resources, dependencies, warnings: [], ...overrides };
+	return {
+		baselineCommitSha,
+		headCommitSha,
+		resources,
+		dependencies,
+		warnings: [],
+		outcome: null,
+		...overrides,
+	};
 };
 
 async function render() {
@@ -108,4 +116,68 @@ it('explains that the changes cannot be listed when a manifest cannot be read', 
 	);
 	// An empty list here does not mean that the review changes nothing.
 	expect(queryByTestId('promotion-review-empty')).not.toBeInTheDocument();
+});
+
+describe('when the host dropped the commits of a finished review', () => {
+	const webUrl = 'https://gitlab.example.com/platform/workflows/-/merge_requests/3';
+	const unavailable = (outcome: ReviewChanges['outcome']) =>
+		reviewChanges({ resources: [], dependencies: [], warnings: ['commitsUnavailable'], outcome });
+
+	it('states who merged the review and when, and opens it on the host', async () => {
+		vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+			unavailable({ state: 'merged', at: '2026-10-01T10:00:00.000Z', by: 'Ada Lovelace', webUrl }),
+		);
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+		const { getByTestId, queryByTestId, getByRole, emitted } = await render();
+
+		expect(emitted().state.at(-1)).toEqual([{ status: 'unavailable' }]);
+		expect(getByTestId('promotion-review-outcome')).toHaveTextContent('This review was merged');
+		expect(getByTestId('promotion-review-outcome')).toHaveTextContent(
+			'Ada Lovelace merged this review on Oct 1',
+		);
+		expect(queryByTestId('promotion-review-warning')).not.toBeInTheDocument();
+		expect(queryByTestId('promotion-review-empty')).not.toBeInTheDocument();
+
+		await userEvent.click(getByRole('button', { name: 'View merge request' }));
+		expect(open).toHaveBeenCalledWith(webUrl, '_blank', 'noopener,noreferrer');
+	});
+
+	it('shows the host user name as text, not as markup', async () => {
+		vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+			unavailable({ state: 'merged', at: null, by: 'Ada <b>Platform</b>', webUrl }),
+		);
+
+		const { getByTestId } = await render();
+
+		expect(getByTestId('promotion-review-outcome')).toHaveTextContent(
+			'Ada <b>Platform</b> merged this review.',
+		);
+		expect(getByTestId('promotion-review-outcome').querySelector('b')).toBeNull();
+	});
+
+	it('opens only an http or https review URL', async () => {
+		vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+			unavailable({ state: 'closed', at: null, by: null, webUrl: 'javascript:alert(1)' }),
+		);
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+		const { getByRole } = await render();
+		await userEvent.click(getByRole('button', { name: 'View merge request' }));
+
+		expect(open).not.toHaveBeenCalled();
+	});
+
+	it('states when the review was closed without naming a user', async () => {
+		vi.mocked(api.getPromotionReviewChanges).mockResolvedValue(
+			unavailable({ state: 'closed', at: '2026-10-02T10:00:00.000Z', by: null, webUrl }),
+		);
+
+		const { getByTestId } = await render();
+
+		expect(getByTestId('promotion-review-outcome')).toHaveTextContent('This review is now closed');
+		expect(getByTestId('promotion-review-outcome')).toHaveTextContent(
+			'This review was closed on Oct 2',
+		);
+	});
 });

@@ -49,9 +49,19 @@ export interface RuntimeSkillInterfaceContract {
 	brandColor?: string;
 }
 
+export const RUNTIME_SKILL_LIFETIMES = ['thread', 'turn'] as const;
+
+/**
+ * How long a loaded skill stays active. `thread` (the default) keeps it for the
+ * rest of the conversation. `turn` keeps it until the next user turn starts, for
+ * skills that guide one decision and are dead weight in context afterwards.
+ */
+export type RuntimeSkillLifetime = (typeof RUNTIME_SKILL_LIFETIMES)[number];
+
 export interface RuntimeSkillPolicyContract {
 	allowImplicitInvocation?: boolean;
 	product?: string;
+	lifetime?: RuntimeSkillLifetime;
 }
 
 export interface RuntimeSkillMcpServerDependency {
@@ -190,6 +200,8 @@ export interface RuntimeSkillLoadError {
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
+	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
@@ -208,10 +220,16 @@ export interface RuntimeSkillStateScope {
 	agentName: string;
 }
 
-/** Stores active IDs separately from conversation text that memory can compact. */
+export interface RuntimeSkillState {
+	skillIds: string[];
+	/** Last loaded versions. Null keeps a revocation effective after compaction. */
+	versions?: Record<string, string | null>;
+}
+
+/** Stores active selections separately from conversation text that memory can compact. */
 export interface RuntimeSkillStateStore {
-	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
-	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+	load(scope: RuntimeSkillStateScope): Promise<RuntimeSkillState | undefined>;
+	save(scope: RuntimeSkillStateScope, state: RuntimeSkillState): Promise<void>;
 }
 
 export interface RuntimeSkillValidationError {

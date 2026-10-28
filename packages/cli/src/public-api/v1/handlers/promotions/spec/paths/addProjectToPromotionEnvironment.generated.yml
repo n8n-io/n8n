@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Link a project to a promotion environment
 description: Links a team project to a project-scoped environment. A project can have one environment for each direction. A direction without a project environment uses the instance environment.
-x-required-scope: gitConnection:manageProjects
+x-required-scope: promotions:manageProjects
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:

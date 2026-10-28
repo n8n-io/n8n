@@ -9,7 +9,7 @@ import {
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
 import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
-import type { RuntimeSkillStateStore } from '../../skills/types';
+import type { RuntimeSkillState, RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
@@ -93,21 +93,17 @@ export class InMemoryMemory
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
-	private skillsByThread = new Map<string, Map<string, string[]>>();
+	private skillsByThread = new Map<string, Map<string, RuntimeSkillState>>();
 
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) =>
-			await Promise.resolve(
-				this.skillsByThread
-					.get(threadId)
-					?.get(JSON.stringify([resourceId, agentName]))
-					?.slice(),
+			structuredClone(
+				this.skillsByThread.get(threadId)?.get(JSON.stringify([resourceId, agentName])),
 			),
-		save: async ({ threadId, resourceId, agentName }, ids) => {
-			const states = this.skillsByThread.get(threadId) ?? new Map<string, string[]>();
-			states.set(JSON.stringify([resourceId, agentName]), [...ids]);
+		save: async ({ threadId, resourceId, agentName }, state) => {
+			const states = this.skillsByThread.get(threadId) ?? new Map<string, RuntimeSkillState>();
+			states.set(JSON.stringify([resourceId, agentName]), structuredClone(state));
 			this.skillsByThread.set(threadId, states);
-			await Promise.resolve();
 		},
 	};
 

@@ -1687,6 +1687,36 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
+		test('classifies the split workflow tools as fetched or built', async () => {
+			const { messages, producedArtifactOrigins } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'get_workflow',
+								args: { workflowId: 'wf-read' },
+								result: { id: 'wf-read', name: 'Orders', nodes: [], connections: {} },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-restore',
+								toolName: 'restore_workflow_version',
+								args: { workflowId: 'wf-restored', versionId: 'v1' },
+								result: { success: true, workflowName: 'Invoices' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
+				'wf-read': 'fetched',
+				'wf-restored': 'built',
+			});
+		});
+
 		test('keeps the first intake when the agent later edits an attached workflow', async () => {
 			const { messages, producedArtifactOrigins } = setup();
 			messages.value = [attachMessage('wf-1'), buildMessage('wf-1')];

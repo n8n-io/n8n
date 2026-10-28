@@ -77,6 +77,7 @@ export function resolveEpisodicMemoryConfig(
 				reflectionPrompt: config.prompts?.reflection,
 			}),
 		prompts: config.prompts,
+		guidance: config.guidance,
 	};
 }
 
