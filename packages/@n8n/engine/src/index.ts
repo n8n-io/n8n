@@ -118,6 +118,7 @@ export type {
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	ParentLink,
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,

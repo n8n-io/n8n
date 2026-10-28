@@ -19,6 +19,7 @@ import {
 	CancelExecutionService,
 	ExecutionQueryService,
 	StartExecutionService,
+	type ParentLink,
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
@@ -116,6 +117,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 				'status',
 				'mode',
 				'hostMode',
+				'parent',
 				'createdAt',
 				'updatedAt',
 				'finishedAt',
@@ -127,6 +129,26 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 			limit: 20,
 		});
 		expect(Object.keys(rows[0]).sort()).toEqual(Object.keys(result.items[0]).sort());
+	});
+
+	it('filters by parent execution id and reports the link on each item', async () => {
+		const parentId = await start(generateId());
+		const awaited = { executionId: parentId, stepId: generateId(), awaited: true };
+		const detached = { executionId: parentId, stepId: generateId(), awaited: false };
+		const awaitedId = await startChild(awaited);
+		const detachedId = await startChild(detached);
+
+		const response = await search({ workflowIds: 'all', parentExecutionId: parentId }).expect(200);
+
+		const result = response.body as SearchExecutionsResponse;
+		expect(result.items.map((item) => [item.id, item.parent])).toEqual([
+			[detachedId, detached],
+			[awaitedId, awaited],
+		]);
+	});
+
+	it('rejects a parent execution id that is not a uuid', async () => {
+		await search({ workflowIds: 'all', parentExecutionId: 'parent' }).expect(400);
 	});
 
 	it('allows all for the authenticated CP', async () => {
@@ -205,6 +227,27 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		expect((excluded.body as SearchExecutionsResponse).items).toEqual([]);
 	});
 });
+
+/**
+ * A child execution, written through the store: the route refuses to set a
+ * parent, and the engine's own start path is what sets one.
+ */
+async function startChild(parent: ParentLink): Promise<string> {
+	const id = generateId();
+	await createStores(dataSource).executionStore.createExecution({
+		id,
+		workflowId: 'wf-child',
+		status: 'queued',
+		mode: 'production',
+		graph: { ...sampleGraph, seeded: [] },
+		workflow: sampleWorkflow,
+		triggerOutputs: null,
+		callerContext: { hostMode: 'integrated' },
+		responseExpectation: { kind: 'none' },
+		parent,
+	});
+	return id;
+}
 
 /** The caller always mints the id, so every valid body carries one. */
 const startBody = (overrides: Record<string, unknown> = {}) => ({
@@ -366,6 +409,17 @@ describe('POST /api/workflow-executions (integration)', () => {
 			expect((response.body as { error: string }).error).toBe('invalid_request');
 		},
 	);
+
+	it('ignores a parent link in the body, so a caller over HTTP cannot claim a parent', async () => {
+		const body = startBody({
+			parent: { executionId: generateId(), stepId: generateId(), awaited: true },
+		});
+
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+
+		const { executionStore } = createStores(dataSource);
+		expect((await executionStore.loadExecution(body.executionId)).parent).toBeNull();
+	});
 
 	it('rejects a body without a caller context with 400', async () => {
 		const response = await request(url)
@@ -670,12 +724,25 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			hostMode: 'webhook',
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
+			parent: null,
 			finishedAt: null,
 		});
 		expect(response.body).not.toHaveProperty('steps');
 		const body = response.body as { createdAt: string; updatedAt: string };
 		expect(new Date(body.createdAt).toISOString()).toBe(body.createdAt);
 		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
+	});
+
+	it('reports the parent link of a child execution', async () => {
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		const childId = await startChild(parent);
+
+		const response = await request(url)
+			.get(`/api/workflow-executions/${childId}`)
+			.set(authHeader());
+
+		expect(response.status).toBe(200);
+		expect(response.body).toMatchObject({ id: childId, parent });
 	});
 
 	it('returns 404 not_found for an unknown execution id', async () => {
