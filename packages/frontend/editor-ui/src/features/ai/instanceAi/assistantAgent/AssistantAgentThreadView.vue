@@ -12,12 +12,11 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { onClickOutside, useElementSize, useLocalStorage } from '@vueuse/core';
+import { useElementSize } from '@vueuse/core';
 import { TabsRoot } from 'reka-ui';
 import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
@@ -27,6 +26,12 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
+import {
+	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
+	useArtifactsPanelToggle,
+	usePreviewPanelWidth,
+	usePreviewToggle,
+} from '../composables/useArtifactsLayout';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { firstMessageTitle } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -144,24 +149,7 @@ const activeAgentHref = computed(() => {
 	return agentId ? `/projects/${projectId}/agents/${agentId}` : undefined;
 });
 
-const previewToggleLabel = computed(() =>
-	i18n.baseText(
-		preview.isPreviewVisible.value
-			? 'instanceAi.artifactsPanel.hidePreview'
-			: 'instanceAi.artifactsPanel.showPreview',
-	),
-);
-
-function togglePreview(): void {
-	if (preview.isPreviewVisible.value) {
-		preview.closePreview();
-		return;
-	}
-	const tab =
-		preview.openTabs.value.find(({ id }) => id === preview.activeTabId.value) ??
-		preview.openTabs.value[0];
-	if (tab) preview.selectTab(tab.id);
-}
+const { previewToggleLabel, togglePreview } = usePreviewToggle(preview, preview.selectTab);
 
 // --- Header ---
 // The stored title, else the first user message, as in the Assistant runtime view.
@@ -177,106 +165,33 @@ function startNewThread(): void {
 }
 
 // --- Layout ---
-// The same limits as the Assistant runtime view, so both split the space alike.
-const MIN_WIDTH_FOR_ARTIFACTS_PANEL = 900;
-const MIN_SPLIT_PANEL_WIDTH = 400;
-const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
-
 const threadArea = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadArea);
-// Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
-const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
-	writeDefaults: false,
-});
 const isPreviewExpanded = ref(false);
 
-// A wide view keeps the artifacts panel beside the chat until the user hides it.
-// A narrow view shows it over the chat only when the user asks for it.
 const isArtifactsPanelInLayout = computed(
-	() => threadAreaWidth.value >= MIN_WIDTH_FOR_ARTIFACTS_PANEL,
+	() => threadAreaWidth.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
-const isArtifactsPanelDismissed = ref(false);
-const isArtifactsPanelRevealed = ref(false);
 // A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
 	() => thread.messages.length > 0 || preview.openTabs.value.length > 0 || thread.isHydratingThread,
 );
-const showArtifactsPanel = computed(
-	() =>
-		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelInLayout.value
-			? !isArtifactsPanelDismissed.value
-			: isArtifactsPanelRevealed.value),
-);
-// The same resets as the Assistant runtime view.
-watch(isArtifactsPanelInLayout, (isInLayout) => {
-	isArtifactsPanelRevealed.value = false;
-	if (isInLayout) isArtifactsPanelDismissed.value = false;
-});
-watch(canShowArtifactsPanel, (canShow) => {
-	if (canShow) return;
-	isArtifactsPanelRevealed.value = false;
-	isArtifactsPanelDismissed.value = false;
-});
-// The preview replaces the panel, so closing the preview does not bring back a panel over the chat.
-watch(
-	preview.isPreviewVisible,
-	(visible) => {
-		if (visible) isArtifactsPanelRevealed.value = false;
-	},
-	{ flush: 'sync' },
-);
+const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
+	useArtifactsPanelToggle({
+		isInLayout: () => isArtifactsPanelInLayout.value,
+		canShow: () => canShowArtifactsPanel.value,
+		isPreviewVisible: () => preview.isPreviewVisible.value,
+		panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
+		toggleSelector: '[data-test-id="assistant-agent-artifacts-panel-toggle"]',
+	});
 
-// A click outside the panel over the chat closes it.
-const artifactsPanelSlot = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-onClickOutside(
-	artifactsPanelSlot,
-	() => {
-		if (isArtifactsPanelInLayout.value) return;
-		isArtifactsPanelRevealed.value = false;
-	},
-	{ ignore: ['[data-test-id="assistant-agent-artifacts-panel-toggle"]', '.n8n-tooltip'] },
-);
-
-const artifactsPanelToggleLabel = computed(() =>
-	i18n.baseText(
-		showArtifactsPanel.value
-			? 'instanceAi.artifactsPanel.hidePanel'
-			: 'instanceAi.artifactsPanel.showPanel',
-	),
-);
-
-function toggleArtifactsPanel(): void {
-	if (isArtifactsPanelInLayout.value) {
-		isArtifactsPanelDismissed.value = showArtifactsPanel.value;
-	} else {
-		isArtifactsPanelRevealed.value = !showArtifactsPanel.value;
-	}
-}
-
-const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-const previewMinWidth = computed(() => Math.min(MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value));
-const previewMaxWidth = computed(() =>
-	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
-);
-const previewPanelWidth = computed(() => {
-	const ratio = chatPanelWidthRatio.value;
-	const chatPanelWidth =
-		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
-	return Math.round(
-		Math.min(
-			Math.max(threadAreaWidth.value - chatPanelWidth, previewMinWidth.value),
-			previewMaxWidth.value,
-		),
-	);
-});
-
-function handlePreviewResize({ width }: { width: number }): void {
-	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
-	if (Math.round(width) === previewPanelWidth.value) return;
-	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
-}
+const {
+	previewMinWidth,
+	previewMaxWidth,
+	previewPanelWidth,
+	isPreviewResizeEnabled,
+	handlePreviewResize,
+} = usePreviewPanelWidth({ threadAreaWidth, isExpanded: () => isPreviewExpanded.value });
 </script>
 
 <template>
@@ -384,7 +299,7 @@ function handlePreviewResize({ width }: { width: number }): void {
 				:min-width="previewMinWidth"
 				:max-width="previewMaxWidth"
 				:supported-directions="['left']"
-				:is-resizing-enabled="!isPreviewExpanded && previewMinWidth < previewMaxWidth"
+				:is-resizing-enabled="isPreviewResizeEnabled"
 				:grid-size="8"
 				@resize="handlePreviewResize"
 			>
