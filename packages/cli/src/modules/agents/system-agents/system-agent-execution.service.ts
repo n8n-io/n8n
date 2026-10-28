@@ -1082,7 +1082,7 @@ export class SystemAgentExecutionService {
 		const stopTurn = () => controller.abort(providerSignal?.reason);
 		if (providerSignal?.aborted) stopTurn();
 		else providerSignal?.addEventListener('abort', stopTurn, { once: true });
-		try {
+		const consume = async () => {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
 				agentInstance: handle.agent,
@@ -1119,6 +1119,10 @@ export class SystemAgentExecutionService {
 				}
 				handle.onChunk?.(chunk);
 			}
+		};
+		try {
+			if (handle.withTurnContext) await handle.withTurnContext(consume);
+			else await consume();
 		} catch (caught) {
 			failure = caught;
 			const formatted = await formatError(caught);

@@ -1120,6 +1120,18 @@ export const workflowsArchivedPayloadSchema = z.object({
 	workflowIds: z.array(z.string()),
 });
 
+/** Host event of an Assistant agent turn with the LangSmith ids of the turn's trace. */
+export const ASSISTANT_TRACE_EVENT = 'assistant-trace';
+
+export const assistantTracePayloadSchema = z.object({
+	/** OTel trace id of the turn's root span. */
+	traceId: z.string().optional(),
+	langsmithTraceId: z.string(),
+	langsmithRunId: z.string(),
+});
+
+export type AssistantTracePayload = z.infer<typeof assistantTracePayloadSchema>;
+
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
  * credential type, fanned out to all nodes that use it via `nodeBindings`),
