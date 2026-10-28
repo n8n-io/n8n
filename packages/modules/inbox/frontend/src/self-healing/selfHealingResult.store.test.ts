@@ -48,13 +48,13 @@ it('shows a refreshed result only after its callback finishes', async () => {
 	const store = useSelfHealingResultStore();
 	await store.select(resultSelection);
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValueOnce(result({ reviewState: 'applied' }));
-	const callback = createDeferredPromise<void>();
-	const beforeShow = vi.fn(async () => await callback.promise);
+	const handoff = createDeferredPromise();
+	const beforeShow = vi.fn(async () => await handoff.promise);
 	const loading = store.refreshDetail(beforeShow);
 	await vi.waitFor(() => expect(beforeShow).toHaveBeenCalledOnce());
 	expect(store.detail?.reviewState).toBe('open');
 	expect(store.loading).toBe(true);
-	callback.resolve();
+	handoff.resolve();
 	await loading;
 	expect(store.detail?.reviewState).toBe('applied');
 	expect(store.loading).toBe(false);
