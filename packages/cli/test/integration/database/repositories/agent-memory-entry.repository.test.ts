@@ -105,6 +105,17 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		});
 	});
 
+	it('reports whether the agent has an active entry in the resources', async () => {
+		const id = await insertEntry('a', '2026-10-01T10:00:00.000Z');
+
+		await expect(entryRepository.hasActiveEntries(agentId, [resourceId])).resolves.toBe(true);
+		await expect(entryRepository.hasActiveEntries(uuid(), [resourceId])).resolves.toBe(false);
+		await expect(entryRepository.hasActiveEntries(agentId, [])).resolves.toBe(false);
+
+		await entryRepository.markDeleted(agentId, id);
+		await expect(entryRepository.hasActiveEntries(agentId, [resourceId])).resolves.toBe(false);
+	});
+
 	it('does not delete an entry twice or an entry of another agent', async () => {
 		const id = await insertEntry('a', '2026-10-01T10:00:00.000Z');
 
