@@ -1,6 +1,6 @@
 import type { AgentTaskStopFailure } from '@n8n/api-types';
 
-/** The latest Stop and its captured work. Late dispatch can escape this stop. */
+/** The latest Stop on a thread and its captured work. */
 export interface AgentTaskStop {
 	planId: string | null;
 	requestedAt: string;

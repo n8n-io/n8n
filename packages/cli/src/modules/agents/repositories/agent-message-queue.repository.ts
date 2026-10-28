@@ -114,10 +114,13 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 	async discardPending(threadId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		const items = await this.listPending(threadId, ctx);
+
 		if (!items.length) return [];
+
 		const attachmentIds = items.flatMap((item) =>
 			readInboundUserMessage(item.message.content).attachments.map((attachment) => attachment.id),
 		);
+
 		await manager.delete(AgentMessageQueue, { threadId, executionId: IsNull() });
 		await manager.update(
 			AgentMessageEntity,
@@ -129,6 +132,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 				modelContextAt: null,
 			},
 		);
+
 		return attachmentIds;
 	}
 
