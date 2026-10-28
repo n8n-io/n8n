@@ -67,16 +67,41 @@ export async function guardToolResultForModel(
 	}
 
 	const historyOutput = toJsonValue(output);
-	const serialized = JSON.stringify(historyOutput);
+	const unchanged = { historyOutput, wireOutput: output, truncated: false, offloaded: false };
+	return await guardSerialized(
+		JSON.stringify(historyOutput),
+		unchanged,
+		tokenCounter,
+		storage,
+		kind,
+	);
+}
 
-	if (isClearlyWithinTokenLimit(serialized)) {
-		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
-	}
+/** Guards a result that the caller already serialized, without another JSON encoding layer. */
+export async function guardSerializedToolResultForModel(
+	serialized: string,
+	tokenCounter: TokenCounter = estimateObservationTokens,
+): Promise<GuardedToolResult> {
+	const unchanged = {
+		historyOutput: serialized,
+		wireOutput: serialized,
+		truncated: false,
+		offloaded: false,
+	};
+	return await guardSerialized(serialized, unchanged, tokenCounter, undefined, 'result');
+}
+
+async function guardSerialized(
+	serialized: string,
+	unchanged: GuardedToolResult,
+	tokenCounter: TokenCounter,
+	storage: ToolResultGuardStorage | undefined,
+	kind: ToolResultKind,
+): Promise<GuardedToolResult> {
+	if (isClearlyWithinTokenLimit(serialized)) return unchanged;
 
 	const tokenCount = await tokenCounter(serialized);
-	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) {
-		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
-	}
+	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return unchanged;
 
 	const offloaded = await tryOffloadResult(serialized, tokenCount, kind, storage);
 	if (offloaded) {
