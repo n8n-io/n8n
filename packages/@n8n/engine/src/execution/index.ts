@@ -46,4 +46,10 @@ export {
 } from './wait-sweeper';
 export { ExecutionFileCleanup } from './execution-file-cleanup';
 export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
-export type { ResumeHold, ResumeRejection, ResumeTarget } from './resume-request.service';
+export type {
+	ResumeHold,
+	ResumeLocation,
+	ResumeRejection,
+	ResumeRequestShape,
+	ResumeTarget,
+} from './resume-request.service';

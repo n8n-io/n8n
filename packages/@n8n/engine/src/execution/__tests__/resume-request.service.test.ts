@@ -53,7 +53,7 @@ const deadlineOnly: StepRecord = {
 function setup({
 	waiting = [] as StepRecord[][],
 	status = 'running' as ExecutionStatus | 'missing',
-	step = accepting('s1') as StepRecord | 'missing',
+	step = accepting('s1') as StepRecord | StepRecord[] | 'missing',
 	resumed = true,
 	serviceHold = hold as ResumeHold | 'default',
 } = {}) {
@@ -61,12 +61,16 @@ function setup({
 	for (const rows of waiting) loadWaitingSteps.mockResolvedValueOnce(rows);
 	loadWaitingSteps.mockResolvedValue(waiting.at(-1) ?? []);
 
+	const loadStep = vi.fn();
+	if (step === 'missing') loadStep.mockRejectedValue(new StepNotFoundError('s1'));
+	else {
+		for (const row of [step].flat()) loadStep.mockResolvedValueOnce(row);
+		loadStep.mockResolvedValue([step].flat().at(-1));
+	}
+
 	const stepStore = {
 		loadWaitingSteps,
-		loadStep: vi.fn(async () => {
-			if (step === 'missing') throw new StepNotFoundError('s1');
-			return step;
-		}),
+		loadStep,
 		resumeStep: vi.fn().mockResolvedValue(resumed),
 	} as unknown as StepStore;
 	const executionStore = {
@@ -84,7 +88,7 @@ function setup({
 		secret,
 		...(serviceHold === 'default' ? [] : [serviceHold]),
 	);
-	return { service, stepStore, stepQueue, loadWaitingSteps };
+	return { service, stepStore, stepQueue, loadWaitingSteps, loadStep };
 }
 
 const rejection = (code: string) => expect.objectContaining({ code });
@@ -199,6 +203,118 @@ describe('ResumeRequestService.locate', () => {
 		const { service } = setup({ status: 'missing' });
 
 		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('not_found'));
+	});
+
+	it.each(stepTokens)('rejects %s', async (_, stepToken) => {
+		const { service } = setup({ waiting: [[stepBound()]] });
+
+		await expect(service.locate(executionId, stepToken)).rejects.toEqual(
+			rejection('invalid_token'),
+		);
+	});
+});
+
+describe('ResumeRequestService.locateByToken', () => {
+	const request = { pathname: `/webhook-waiting/${stepId}/node`, search: '?approved=true' };
+	const located = { executionId, target: { stepId, nodeId: `node-${stepId}` } };
+
+	it('locates the execution-bound wait of the execution that the id names', async () => {
+		const { service } = setup({ waiting: [[accepting('s1')]] });
+
+		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+			executionId,
+			target: { stepId: 's1', nodeId: 'node-s1' },
+		});
+	});
+
+	it.each(stepTokens)('locates the step-bound wait that %s names', async (_, stepToken) => {
+		const { service } = setup({ step: stepBound() });
+
+		await expect(service.locateByToken(stepId, stepToken, request)).resolves.toEqual(located);
+	});
+
+	it('locates an approval callback without a request shape', async () => {
+		const { service } = setup({ step: stepBound() });
+
+		await expect(
+			service.locateByToken(stepId, mintApprovalCallback(secret, stepId, 'd')),
+		).resolves.toEqual(located);
+	});
+
+	it.each([
+		['a changed parameter', { ...request, search: '?approved=false' }],
+		['an added parameter', { ...request, search: '?approved=true&extra=1' }],
+		['a removed parameter', { ...request, search: '' }],
+		['no request shape', undefined],
+	])('rejects a step-bound token with %s', async (_, shape) => {
+		const { service, loadStep } = setup({ step: stepBound() });
+		const [, stepToken] = stepTokens[0];
+
+		const result = service.locateByToken(stepId, stepToken, shape);
+
+		await expect(result).rejects.toEqual(rejection('invalid_token'));
+		expect(loadStep).not.toHaveBeenCalled();
+	});
+
+	it.each<[string, string, string]>([
+		['an execution-bound token', otherExecutionId, token],
+		...stepTokens.map(([name, stepToken]): [string, string, string] => [
+			name,
+			otherStepId,
+			stepToken,
+		]),
+		['a bad token', executionId, 'not-a-token'],
+	])('rejects %s that does not name the id', async (_, id, anyToken) => {
+		const { service, loadStep, loadWaitingSteps } = setup({ step: stepBound() });
+
+		await expect(service.locateByToken(id, anyToken, request)).rejects.toEqual(
+			rejection('invalid_token'),
+		);
+		expect(loadStep).not.toHaveBeenCalled();
+		expect(loadWaitingSteps).not.toHaveBeenCalled();
+	});
+
+	it.each(['queued', 'running'] as const)(
+		'holds a request for a %s step until it waits',
+		async (status) => {
+			const { service, loadStep } = setup({ step: [stepBound({ status }), stepBound()] });
+			const [, stepToken] = stepTokens[1];
+
+			await expect(service.locateByToken(stepId, stepToken)).resolves.toEqual(located);
+			expect(loadStep).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it('holds a step-bound token at an execution-bound wait, then answers null', async () => {
+		const { service, loadStep } = setup({ step: accepting(stepId) });
+		const [, stepToken] = stepTokens[1];
+
+		await expect(service.locateByToken(stepId, stepToken)).resolves.toEqual({
+			executionId,
+			target: null,
+		});
+		expect(loadStep).toHaveBeenCalledTimes(hold.attempts);
+	});
+
+	it.each([
+		['a step that settled', { step: stepBound({ status: 'completed' }) }],
+		['an execution that ended', { step: stepBound(), status: 'cancelled' as const }],
+	])('answers null at once for %s', async (_, state) => {
+		const { service, loadStep } = setup(state);
+		const [, stepToken] = stepTokens[1];
+
+		await expect(service.locateByToken(stepId, stepToken)).resolves.toEqual({
+			executionId,
+			target: null,
+		});
+		expect(loadStep).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a step that does not exist', async () => {
+		const { service } = setup({ step: 'missing' });
+		const [, stepToken] = stepTokens[1];
+
+		await expect(service.locateByToken(stepId, stepToken)).rejects.toEqual(rejection('not_found'));
 	});
 });
 

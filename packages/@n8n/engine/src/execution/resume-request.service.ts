@@ -5,6 +5,7 @@ import type { StepMessage, WorkQueue } from '../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
+	isSettledStatus,
 	type ExecutionStatus,
 	type ResumeBinding,
 	type StepSlots,
@@ -29,6 +30,21 @@ export class ResumeRejectedError extends Error {
 export interface ResumeTarget {
 	stepId: string;
 	nodeId: string;
+}
+
+/**
+ * The path and query of a resume URL as the caller sent them, without the
+ * token parameter. A step-bound token binds them (token record, decision 5).
+ */
+export interface ResumeRequestShape {
+	pathname: string;
+	search: string;
+}
+
+/** What `locateByToken` found: the execution of the id, and its waiting step if any. */
+export interface ResumeLocation {
+	executionId: string;
+	target: ResumeTarget | null;
 }
 
 /**
@@ -62,7 +78,10 @@ const BINDING_OF_KIND: Record<ResumeTokenClaims['kind'], ResumeBinding> = {
 	'approval-callback': 'step',
 };
 
-/** An execution-bound token names the execution of the step. The other kinds name the step. */
+/** The id a token names: an execution for an execution-bound token, else a step. */
+const idOf = (claims: ResumeTokenClaims) =>
+	claims.kind === 'execution-bound' ? claims.executionId : claims.stepId;
+
 const namesStep = (claims: ResumeTokenClaims, step: StepRecord) =>
 	claims.kind === 'execution-bound'
 		? claims.executionId === step.executionId
@@ -75,7 +94,7 @@ const namesStep = (claims: ResumeTokenClaims, step: StepRecord) =>
  * know which node waits before that code runs, and the request must be
  * authorized before any node code runs.
  *
- * 1. `locate` verifies the token and names the waiting step.
+ * 1. `locate` or `locateByToken` verifies the token and names the waiting step.
  * 2. `resolve` verifies the token against that step and ends its wait with the
  *    outputs that the resume method produced.
  */
@@ -104,7 +123,42 @@ export class ResumeRequestService {
 		if (claims?.kind !== 'execution-bound' || claims.executionId !== executionId) {
 			throw new ResumeRejectedError('invalid_token');
 		}
+		return await this.locateExecutionBoundWait(executionId);
+	}
 
+	/**
+	 * Verifies the token and returns the wait it can end, for every kind of
+	 * token. The control plane cannot tell an execution id from a step id, and
+	 * it does not read the token, so the kind of the token decides what `id`
+	 * names. An execution-bound token gets the answer of `locate`.
+	 *
+	 * @throws {ResumeRejectedError} `invalid_token` when the token does not
+	 * name `id`, or a step-bound token binds another path and query; else as
+	 * `locate`, and `not_found` for a step that does not exist.
+	 */
+	async locateByToken(
+		id: string,
+		token: string,
+		request?: ResumeRequestShape,
+	): Promise<ResumeLocation> {
+		const claims = verifyResumeToken(this.secret, token);
+		if (!claims || idOf(claims) !== id) throw new ResumeRejectedError('invalid_token');
+		// One literal string, never rebuilt from parsed values: two different
+		// queries can parse to the same values.
+		if (
+			claims.kind === 'step-bound' &&
+			(!request || `${request.pathname}${request.search}` !== claims.binding)
+		) {
+			throw new ResumeRejectedError('invalid_token');
+		}
+
+		if (claims.kind === 'execution-bound') {
+			return { executionId: id, target: await this.locateExecutionBoundWait(id) };
+		}
+		return await this.locateStepBoundWait(id);
+	}
+
+	private async locateExecutionBoundWait(executionId: string): Promise<ResumeTarget | null> {
 		let stepBoundOnly = false;
 		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
 			if (attempt > 0) await sleep(this.hold.delayMs);
@@ -128,9 +182,30 @@ export class ResumeRequestService {
 	}
 
 	/**
+	 * The step row exists before its node runs, so a request can arrive while
+	 * the step still runs: hold as `locate` does. A settled step never waits
+	 * again, because a loop runs its next iteration as a new step.
+	 */
+	private async locateStepBoundWait(stepId: string): Promise<ResumeLocation> {
+		for (let attempt = 1; ; attempt++) {
+			const step = await this.loadStep(stepId, 'not_found');
+			const live = isLive(await this.loadStatus(step.executionId));
+			if (live && waitsFor('step')(step)) {
+				return { executionId: step.executionId, target: { stepId: step.id, nodeId: step.nodeId } };
+			}
+			if (!live || isSettledStatus(step.status) || attempt >= this.hold.attempts) {
+				return { executionId: step.executionId, target: null };
+			}
+			await sleep(this.hold.delayMs);
+		}
+	}
+
+	/**
 	 * Ends the wait of `stepId` with `outputs`, and announces the step. The
 	 * worker that claims it emits the outputs. A second wait does not refuse
-	 * the request: `locate` chose the step while it was the only one.
+	 * the request: `locate` chose the step while it was the only one. The
+	 * binding of a step-bound token is not compared here: `locateByToken`
+	 * compared it with the request.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token` when the token names
 	 * neither the step nor its execution, or `not_waiting` when the step does
@@ -138,7 +213,8 @@ export class ResumeRequestService {
 	 * ended.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
-		const step = await this.loadStep(stepId);
+		// As a bad token, so a caller cannot learn whether a step id exists.
+		const step = await this.loadStep(stepId, 'invalid_token');
 		const claims = verifyResumeToken(this.secret, token);
 		if (!claims || !namesStep(claims, step)) throw new ResumeRejectedError('invalid_token');
 		if (!waitsFor(BINDING_OF_KIND[claims.kind])(step)) {
@@ -172,12 +248,11 @@ export class ResumeRequestService {
 		}
 	}
 
-	private async loadStep(stepId: string): Promise<StepRecord> {
+	private async loadStep(stepId: string, ifMissing: ResumeRejection): Promise<StepRecord> {
 		try {
 			return await this.stepStore.loadStep(stepId);
 		} catch (error) {
-			// As a bad token, so a caller cannot learn whether a step id exists.
-			if (error instanceof StepNotFoundError) throw new ResumeRejectedError('invalid_token');
+			if (error instanceof StepNotFoundError) throw new ResumeRejectedError(ifMissing);
 			throw error;
 		}
 	}
