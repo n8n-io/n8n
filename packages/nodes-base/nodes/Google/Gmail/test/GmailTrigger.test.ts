@@ -4,7 +4,12 @@ import nock from 'nock';
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { GmailTrigger, MAX_PENDING_FETCH_ATTEMPTS } from '../GmailTrigger.node';
-import type { Message, ListMessage, MessageListResponse } from '../types';
+import type {
+	GmailWorkflowStaticDataDictionary,
+	Message,
+	ListMessage,
+	MessageListResponse,
+} from '../types';
 
 vi.mock('mailparser');
 
@@ -656,6 +661,96 @@ describe('GmailTrigger', () => {
 		expect(response?.[0]).toHaveLength(2);
 		expect(response?.[0]?.[0]?.json?.id).toBe('1');
 		expect(response?.[0]?.[1]?.json?.id).toBe('3');
+	});
+
+	describe('v1.4 - cursor across polls', () => {
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			nock.cleanAll();
+		});
+
+		// NODE-6278: Keep polling past the future date to check delivery and duplicate handling.
+		it.each([
+			{ date: 'current', firstEmailOffsetSeconds: 0 },
+			{ date: 'future', firstEmailOffsetSeconds: 10 * 60 },
+		])(
+			'should deliver each message once with a $date first internalDate',
+			async ({ firstEmailOffsetSeconds }) => {
+				const firstPollTime = Date.parse('2026-10-26T12:00:00.000Z');
+				const pollTimes = Array.from(
+					{ length: 12 },
+					(_, minute) => firstPollTime + minute * 60_000,
+				);
+				const workflowStaticData: GmailWorkflowStaticDataDictionary = {
+					'Gmail Trigger': { lastTimeChecked: firstPollTime / 1000 - 60 },
+				};
+				const mailbox = [
+					{
+						visibleAt: firstPollTime,
+						message: createMessage({
+							id: 'first',
+							internalDate: String(firstPollTime + firstEmailOffsetSeconds * 1000),
+						}),
+					},
+					{
+						visibleAt: firstPollTime + 30_000,
+						message: createMessage({ id: 'normal', internalDate: String(firstPollTime + 30_000) }),
+					},
+				];
+
+				nock(baseUrl)
+					.persist()
+					.get('/gmail/v1/users/me/labels')
+					.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+				const listScope = nock(baseUrl)
+					.get('/gmail/v1/users/me/messages')
+					.query((query) => typeof query.q === 'string' && /\bafter:\d+\b/.test(query.q))
+					.times(pollTimes.length)
+					.reply(200, (uri) => {
+						const query = new URL(uri, baseUrl).searchParams.get('q');
+						const after = Number(query?.match(/\bafter:(\d+)\b/)?.[1]);
+						// Model Gmail's inclusive boundary with the trigger's actual query.
+						const messages = mailbox
+							.filter(
+								({ visibleAt, message }) =>
+									visibleAt <= Date.now() && Number(message.internalDate) / 1000 >= after,
+							)
+							.map(({ message }) => createListMessage({ id: message.id }));
+						return { messages, resultSizeEstimate: messages.length } satisfies MessageListResponse;
+					});
+				for (const { message } of mailbox) {
+					nock(baseUrl)
+						.persist()
+						.get(`/gmail/v1/users/me/messages/${message.id}`)
+						.query(true)
+						.reply(200, message);
+				}
+
+				const emittedIdsByPoll = [];
+				const cursorLeadSeconds = [];
+				for (const pollTime of pollTimes) {
+					vi.setSystemTime(pollTime);
+					const { response } = await testPollingTriggerNode(GmailTrigger, {
+						node: { typeVersion: 1.4, parameters: { simple: true } },
+						workflowStaticData,
+					});
+					emittedIdsByPoll.push(response?.[0].map(({ json }) => json.id) ?? []);
+					cursorLeadSeconds.push(
+						(workflowStaticData['Gmail Trigger'].lastTimeChecked ?? Infinity) - pollTime / 1000,
+					);
+				}
+
+				expect(listScope.isDone()).toBe(true);
+				expect
+					.soft(emittedIdsByPoll)
+					.toEqual([['first'], ['normal'], ...pollTimes.slice(2).map(() => [])]);
+				expect.soft(Math.max(...cursorLeadSeconds)).toBeLessThanOrEqual(0);
+			},
+		);
 	});
 
 	describe('v1.4 - maxResults limit', () => {
