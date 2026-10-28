@@ -160,6 +160,8 @@ export class N8nMemoryImpl
 		searchEntries: async (scope, _query, opts) =>
 			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
+		hasActiveEntries: async (scope) =>
+			await this.memoryEntryRepository.hasActiveEntries(this.agentId, episodicReadScopeIds(scope)),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
 		enqueueCaptureCandidate: async (candidate) =>

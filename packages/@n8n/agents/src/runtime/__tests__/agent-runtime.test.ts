@@ -8243,6 +8243,10 @@ describe('promptCaching', () => {
 	it('adds a tool cache breakpoint on flag_memory for an episodic Anthropic agent', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const memory = new InMemoryMemory();
+		await memory.episodic.saveEntryWithSources(
+			{ resourceId: 'resource-1', content: 'User chose Postgres.', embedding: [1, 0] },
+			[],
+		);
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
 
 		const runtime = new AgentRuntime({
@@ -8264,6 +8268,50 @@ describe('promptCaching', () => {
 		expect(tools).toHaveProperty('flag_memory');
 		expect(tools.flag_memory.providerOptions).toEqual({
 			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	describe('recall_memory for an empty scope', () => {
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+
+		async function toolNamesForRun(memory: InMemoryMemory) {
+			generateText.mockResolvedValue(makeGenerateSuccess());
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'You are a test assistant.',
+				memory,
+				episodicMemory: { embedder: fakeEmbedder },
+			});
+			await runtime.generate('hello', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+			const callArgs = generateText.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+			return Object.keys(callArgs.tools as Record<string, unknown>);
+		}
+
+		it('offers flag_memory but not recall_memory while the scope has no active entry', async () => {
+			const tools = await toolNamesForRun(new InMemoryMemory());
+
+			expect(tools).toContain('flag_memory');
+			expect(tools).not.toContain('recall_memory');
+		});
+
+		it('offers recall_memory once the scope has an active entry', async () => {
+			const memory = new InMemoryMemory();
+			await memory.episodic.saveEntryWithSources(
+				{ resourceId: 'resource-1', content: 'User chose Postgres.', embedding: [1, 0] },
+				[],
+			);
+
+			expect(await toolNamesForRun(memory)).toContain('recall_memory');
+		});
+
+		it('keeps recall_memory when the store cannot check the scope', async () => {
+			const memory = new InMemoryMemory();
+			memory.episodic.hasActiveEntries = vi.fn().mockRejectedValue(new Error('database down'));
+
+			expect(await toolNamesForRun(memory)).toContain('recall_memory');
 		});
 	});
 
@@ -8600,10 +8648,10 @@ describe('AgentRuntime — observation log jobs', () => {
 	it('counts recall_memory query embedding tokens', async () => {
 		generateText
 			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('tc-recall', 'recall_memory', { query: 'storage' }),
+				makeGenerateWithToolCall('tc-recall', 'recall_memory', { queries: ['storage'] }),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('Recalled response'));
-		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } });
+		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 7 } });
 		const counter = makeExecutionCounter();
 		const memory = new InMemoryMemory();
 		await memory.episodic.saveEntryWithSources(

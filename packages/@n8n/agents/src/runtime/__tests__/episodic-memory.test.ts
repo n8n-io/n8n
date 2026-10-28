@@ -1,4 +1,4 @@
-import { embed, embedMany } from 'ai';
+import { embedMany } from 'ai';
 
 import type {
 	BuiltTelemetry,
@@ -27,7 +27,6 @@ vi.mock('ai', () => ({
 	embedMany: vi.fn(),
 }));
 
-const mockedEmbed = vi.mocked(embed);
 const mockedEmbedMany = vi.mocked(embedMany);
 const fakeEmbedder = { specificationVersion: 'v2' } as never;
 /** Similar to every stored test embedding, so a search lists the active entries of a scope. */
@@ -280,7 +279,7 @@ describe('createRecallMemoryTool', () => {
 	});
 
 	it('recalls only entries relevant to the query', async () => {
-		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } } as never);
 		const memory = new InMemoryMemory();
 		const scope = { resourceId: 'user-1', threadId: 'thread-1' };
 		await saveEpisodicEntry(memory, {
@@ -296,15 +295,62 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({ memory, config: { embedder: fakeEmbedder }, scope });
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		const output = await tool.handler({ query: 'who gets spend alerts?' }, {});
+		const output = await tool.handler({ queries: ['who gets spend alerts?'] }, {});
 
 		expect(output).toEqual({
 			entries: [expect.objectContaining({ content: 'Spend alerts go to Sin on Slack.' })],
 		});
 	});
 
+	it('ranks each query on its own and returns an entry found by several queries once', async () => {
+		mockedEmbedMany.mockResolvedValue({
+			embeddings: [
+				[1, 0],
+				[0, 1],
+			],
+			usage: { tokens: 2 },
+		} as never);
+		const memory = new InMemoryMemory();
+		const scope = { resourceId: 'user-1', threadId: 'thread-1' };
+		const subjects = ['Acme renewal is on 1 March.', 'Acme contact is Kim.', 'Acme uses Postgres.'];
+		for (const content of subjects) {
+			await saveEpisodicEntry(memory, {
+				resourceId: 'user-1',
+				content,
+				embedding: [1, 0],
+			});
+		}
+		await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'Customer emails stay under 150 words.',
+			embedding: [0, 1],
+		});
+		await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'Acme emails go to Kim.',
+			embedding: [0.7, 0.7],
+		});
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder, topK: 4 },
+			scope,
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		const output = (await tool.handler({ queries: ['Acme renewal', 'email style'] }, {})) as {
+			entries: Array<{ content: string }>;
+		};
+
+		const contents = output.entries.map(({ content }) => content);
+		expect(contents).toContain('Customer emails stay under 150 words.');
+		expect(contents.filter((content) => content === 'Acme emails go to Kim.')).toHaveLength(1);
+		expect(mockedEmbedMany).toHaveBeenCalledWith(
+			expect.objectContaining({ values: ['Acme renewal', 'email style'] }),
+		);
+	});
+
 	it('counts recall query embedding tokens when usage is available', async () => {
-		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
+		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 7 } } as never);
 		const counter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
@@ -319,7 +365,7 @@ describe('createRecallMemoryTool', () => {
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		await tool.handler({ query: 'what did we decide?' }, {});
+		await tool.handler({ queries: ['what did we decide?'] }, {});
 
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(7);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
@@ -334,23 +380,25 @@ describe('createRecallMemoryTool', () => {
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		mockedEmbed.mockRejectedValueOnce(Object.assign(new Error('Not Found'), { statusCode: 404 }));
-		await expect(tool.handler({ query: 'what did we decide?' }, {})).rejects.toThrow(
+		mockedEmbedMany.mockRejectedValueOnce(
+			Object.assign(new Error('Not Found'), { statusCode: 404 }),
+		);
+		await expect(tool.handler({ queries: ['what did we decide?'] }, {})).rejects.toThrow(
 			'Episodic memory embedding request failed (HTTP 404): Not Found. Check the episodic memory embedding credential and model.',
 		);
 
 		const abortError = Object.assign(new Error('This operation was aborted'), {
 			name: 'AbortError',
 		});
-		mockedEmbed.mockRejectedValueOnce(abortError);
-		await expect(tool.handler({ query: 'what did we decide?' }, {})).rejects.toBe(abortError);
+		mockedEmbedMany.mockRejectedValueOnce(abortError);
+		await expect(tool.handler({ queries: ['what did we decide?'] }, {})).rejects.toBe(abortError);
 	});
 
 	it('does not call describe() on the memory backend when ctx.parentTelemetry is absent', async () => {
 		// Regression guard: a third-party BuiltMemory implementation is not
 		// required to implement describe() (it's only otherwise used for schema
 		// persistence) — memory access must stay telemetry-free by default.
-		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } } as never);
 		const memory = new InMemoryMemory();
 		const describeSpy = vi.spyOn(memory, 'describe').mockImplementation(() => {
 			throw new Error('Method not implemented.');
@@ -362,14 +410,14 @@ describe('createRecallMemoryTool', () => {
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		await expect(tool.handler({ query: 'what did we decide?' }, {})).resolves.toEqual({
+		await expect(tool.handler({ queries: ['what did we decide?'] }, {})).resolves.toEqual({
 			entries: [],
 		});
 		expect(describeSpy).not.toHaveBeenCalled();
 	});
 
 	it('opens a query_memory span with resolved entry ids when ctx.parentTelemetry is provided', async () => {
-		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } } as never);
 		const memory = new InMemoryMemory();
 		const saved = await saveEpisodicEntry(memory, {
 			resourceId: 'user-1',
@@ -403,7 +451,7 @@ describe('createRecallMemoryTool', () => {
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		await tool.handler({ query: 'what did we decide?' }, { parentTelemetry });
+		await tool.handler({ queries: ['what did we decide?'] }, { parentTelemetry });
 
 		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
 		const [name, options] = tracer.startActiveSpan.mock.calls[0];
