@@ -1,67 +1,107 @@
-import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
-import type { WorkflowEntity } from '@n8n/db';
-import { BreakingChangeRule } from '@n8n/decorators';
-import type { INode } from 'n8n-workflow';
+import { createNodeReplacementRule } from './node-replacement-rule';
 
-import type {
-	BreakingChangeRuleMetadata,
-	IBreakingChangeWorkflowRule,
-	WorkflowDetectionReport,
-} from '../../types';
-import { BreakingChangeCategory } from '../../types';
+const replaceWithAnotherMemoryNode = [
+	{
+		action: 'Replace with another memory node',
+		description: 'Replace this node with another memory node.',
+	},
+];
 
-@BreakingChangeRule({ version: 'v3' })
-export class RemovedNodesV3Rule implements IBreakingChangeWorkflowRule {
-	private readonly removedNodes = [
-		'@n8n/n8n-nodes-langchain.documentGithubLoader',
-		'@n8n/n8n-nodes-langchain.memoryMotorhead',
-		'n8n-nodes-base.orbit',
-		'@n8n/n8n-nodes-langchain.memoryZep',
-		'@n8n/n8n-nodes-langchain.vectorStoreZep',
-		'@n8n/n8n-nodes-langchain.vectorStoreZepInsert',
-		'@n8n/n8n-nodes-langchain.vectorStoreZepLoad',
-		'@n8n/n8n-nodes-langchain.code',
-	];
+const replaceWithAnotherVectorStoreNode = [
+	{
+		action: 'Replace with another vector store node',
+		description: 'Replace this node with another vector store node.',
+	},
+];
 
-	id: string = 'removed-nodes-v3';
+export const GithubDocumentLoaderRemovedRule = createNodeReplacementRule({
+	id: 'github-document-loader-removed',
+	removedNodeName: 'GitHub Document Loader',
+	removedNodeType: '@n8n/n8n-nodes-langchain.documentGithubLoader',
+	recommendations: [
+		{
+			action: 'Replace with GitHub and Default Data Loader',
+			description: 'Fetch the content with the GitHub node, then load it with Default Data Loader.',
+		},
+	],
+});
 
-	getMetadata(): BreakingChangeRuleMetadata {
-		return {
-			version: 'v3',
-			title: 'Removed nodes',
-			description: 'Several nodes have been removed and will no longer work',
-			category: BreakingChangeCategory.workflow,
-			impact: 'executionsFail',
-		};
-	}
+export const MotorheadRemovedRule = createNodeReplacementRule({
+	id: 'motorhead-removed',
+	removedNodeName: 'Motorhead',
+	removedNodeType: '@n8n/n8n-nodes-langchain.memoryMotorhead',
+	recommendations: replaceWithAnotherMemoryNode,
+});
 
-	async getRecommendations(
-		_workflowResults: BreakingChangeAffectedWorkflow[],
-	): Promise<BreakingChangeRecommendation[]> {
-		return [
-			{
-				action: 'Update affected workflows',
-				description: 'Replace removed nodes with their updated versions or alternatives',
-			},
-		];
-	}
+export const ZepRemovedRule = createNodeReplacementRule({
+	id: 'zep-removed',
+	removedNodeName: 'Zep',
+	removedNodeType: '@n8n/n8n-nodes-langchain.memoryZep',
+	recommendations: replaceWithAnotherMemoryNode,
+});
 
-	async detectWorkflow(
-		_workflow: WorkflowEntity,
-		nodesGroupedByType: Map<string, INode[]>,
-	): Promise<WorkflowDetectionReport> {
-		const removedNodes = this.removedNodes.flatMap((type) => nodesGroupedByType.get(type) ?? []);
-		if (removedNodes.length === 0) return { isAffected: false, issues: [] };
+export const ZepVectorStoreRemovedRule = createNodeReplacementRule({
+	id: 'zep-vector-store-removed',
+	removedNodeName: 'Zep Vector Store',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreZep',
+	recommendations: replaceWithAnotherVectorStoreNode,
+});
 
-		return {
-			isAffected: true,
-			issues: removedNodes.map((node) => ({
-				title: `Node '${node.type}' with name '${node.name}' has been removed`,
-				description: `The node type '${node.type}' is no longer available. Please replace it with an alternative.`,
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
-	}
-}
+export const ZepVectorStoreInsertRemovedRule = createNodeReplacementRule({
+	id: 'zep-vector-store-insert-removed',
+	removedNodeName: 'Zep Vector Store: Insert',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreZepInsert',
+	recommendations: replaceWithAnotherVectorStoreNode,
+});
+
+export const ZepVectorStoreLoadRemovedRule = createNodeReplacementRule({
+	id: 'zep-vector-store-load-removed',
+	removedNodeName: 'Zep Vector Store: Load',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreZepLoad',
+	recommendations: replaceWithAnotherVectorStoreNode,
+});
+
+export const OrbitRemovedRule = createNodeReplacementRule({
+	id: 'orbit-removed',
+	removedNodeName: 'Orbit',
+	removedNodeType: 'n8n-nodes-base.orbit',
+	recommendations: [
+		{
+			action: 'Remove the node',
+			description:
+				'Remove this node. The Orbit service shut down, so this node has no replacement.',
+		},
+	],
+});
+
+export const LangChainCodeRemovedRule = createNodeReplacementRule({
+	id: 'langchain-code-removed',
+	removedNodeName: 'LangChain Code',
+	removedNodeType: '@n8n/n8n-nodes-langchain.code',
+	recommendations: [
+		{
+			action: 'Rebuild the node logic',
+			description: 'This node has no direct replacement. Rebuild its logic with other nodes.',
+		},
+	],
+});
+
+export const removedNodeRules = [
+	{
+		rule: GithubDocumentLoaderRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.documentGithubLoader',
+	},
+	{ rule: MotorheadRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.memoryMotorhead' },
+	{ rule: ZepRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.memoryZep' },
+	{ rule: ZepVectorStoreRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreZep' },
+	{
+		rule: ZepVectorStoreInsertRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreZepInsert',
+	},
+	{
+		rule: ZepVectorStoreLoadRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreZepLoad',
+	},
+	{ rule: OrbitRemovedRule, removedNodeType: 'n8n-nodes-base.orbit' },
+	{ rule: LangChainCodeRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.code' },
+];

@@ -23,6 +23,11 @@ const TEST_ENTRY_POINTS = new Set(['', 'testing']);
  */
 const CLI_ALLOWLIST = new Set(['posthog', 'telemetry', 'permissions.ee/check-access']);
 
+const ENTRY_SUGGESTION =
+	'Import the skills module from @/modules/skills. Export the symbol from its index.ts if another module needs it.';
+const ISOLATION_SUGGESTION =
+	'Keep the skills module free of other cli code: ask the agents module through SkillUsageProxy, or move the shared code to a package.';
+
 function isTestFile(rootDir: string, filePath: string): boolean {
 	return (
 		isWithin(path.join(rootDir, CLI_PATH, 'test'), filePath) ||
@@ -69,7 +74,7 @@ export class SkillsModuleBoundaryRule extends BaseRule<CodeHealthContext> {
 						reference.line,
 						1,
 						message,
-						'Import the skills module from @/modules/skills. Keep the skills module free of other cli code: ask the agents module through SkillUsageProxy.',
+						fromSkills ? ISOLATION_SUGGESTION : ENTRY_SUGGESTION,
 					),
 				];
 			});

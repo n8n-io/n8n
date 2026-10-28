@@ -31,6 +31,7 @@ import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
 } from './agent-modification-telemetry.service';
+import { AgentDefinitionService } from './agent-definition.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
@@ -62,6 +63,7 @@ export class AgentSkillsService {
 		private readonly skillAccess: SkillAccessService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	/** The skills of the agent draft, keyed by skill id: the versions that the draft runs. */
@@ -170,6 +172,7 @@ export class AgentSkillsService {
 				...created.map((id) => ({ type: 'skill' as const, id })),
 			];
 			await this.agentSkillRefs.replaceDraftRefs(entity, nextRefs, ctx);
+			await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
 			return {
 				ids: created,
 				skillRefs: await this.agentSkillRefs.refsForDraft(entity, ctx),
@@ -384,6 +387,7 @@ export class AgentSkillsService {
 				previousSkillRefs.filter((ref) => ref.id !== skillId),
 				ctx,
 			);
+			await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
 			return await this.agentSkillRefs.refsForDraft(entity, ctx);
 		});
 		await this.saveCompletion.bodySaved(
@@ -401,6 +405,11 @@ export class AgentSkillsService {
 		if (availableTo === undefined) return undefined;
 		const current = await this.agentSkillRefs.availabilityOf(skillId, {});
 		return current === availableTo ? undefined : availableTo;
+	}
+
+	validateSkills(skills: AgentSkill[], existing: Record<string, AgentSkill> = {}): void {
+		const validated = skills.map((skill) => this.validateSkill(skill));
+		this.assertNoNameClashes(existing, validated);
 	}
 
 	private validateSkill(skill: AgentSkill): AgentSkill {

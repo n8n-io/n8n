@@ -252,8 +252,8 @@ describe('SkillRuntimeService', () => {
 		});
 	});
 
-	describe('snapshotForPublish', () => {
-		it('locks the skills and resolves the version each ref runs', async () => {
+	describe('snapshotForSave', () => {
+		it('resolves each saved version without taking the publication lock', async () => {
 			skills.findLatestVersionIds.mockResolvedValue(
 				new Map([
 					['skill_a', 'skill_a-v3'],
@@ -269,7 +269,7 @@ describe('SkillRuntimeService', () => {
 				]),
 			);
 
-			const versionByRef = await runtime.snapshotForPublish(
+			const versionByRef = await runtime.snapshotForSave(
 				[
 					{ id: 'skill_a' },
 					{ id: 'skill_b', versionId: 'skill_b-v1' },
@@ -278,7 +278,7 @@ describe('SkillRuntimeService', () => {
 				TX_CTX,
 			);
 
-			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_c'], TX_CTX);
+			expect(skills.lockForPublish).not.toHaveBeenCalled();
 			expect([...versionByRef]).toEqual([
 				['skill_a', 'skill_a-v3'],
 				['skill_b', 'skill_b-v1'],
@@ -292,7 +292,7 @@ describe('SkillRuntimeService', () => {
 			skills.findLatestVersionIds.mockResolvedValue(new Map([['skill_a', 'skill_a-v1']]));
 			skills.findSkillIdsOfVersions.mockResolvedValue(new Map());
 
-			const versionByRef = await runtime.snapshotForPublish(
+			const versionByRef = await runtime.snapshotForSave(
 				[{ id: 'skill_a' }, { id: 'skill_gone' }],
 				TX_CTX,
 			);

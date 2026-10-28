@@ -37,10 +37,10 @@ const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
 	// Users who cannot promote or apply see no promotions UI, so a direct link leads home.
 	// The rbac middleware needs project scopes, which these routes do not load.
 	beforeEnter: () => {
-		const scope = direction === 'promote' ? 'gitConnection:push' : 'gitConnection:pull';
+		const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
 		const allowed =
 			usePromotionsEnabled().isEnabled.value &&
-			useRBACStore().hasScope(['gitConnection:read', scope], {}, { mode: 'allOf' });
+			useRBACStore().hasScope(['promotions:read', scope], {}, { mode: 'allOf' });
 		return allowed || { name: VIEWS.HOMEPAGE };
 	},
 });
