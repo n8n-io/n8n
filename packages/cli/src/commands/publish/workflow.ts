@@ -57,6 +57,6 @@ export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSche
 	}
 
 	async catch(error: Error) {
-		this.logError(error, 'Error updating database. See log messages for details.');
+		this.logError(error, 'Error publishing workflow. See log messages for details.');
 	}
 }

@@ -102,6 +102,6 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 	}
 
 	async catch(error: Error) {
-		this.logError(error, 'Error updating database. See log messages for details.');
+		this.logError(error, 'Error updating workflow(s). See log messages for details.');
 	}
 }
