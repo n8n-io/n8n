@@ -1011,7 +1011,7 @@ describe('resources in the preview', () => {
 		]);
 	}, 30_000);
 
-	it('stops Apply when this instance changed after the preview, then applies what the preview shows', async () => {
+	it('stops Apply for a stale preview, then applies with a refreshed preview', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
