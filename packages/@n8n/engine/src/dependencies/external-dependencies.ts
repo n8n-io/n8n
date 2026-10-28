@@ -3,7 +3,7 @@ import type {
 	ExecutionMode,
 	StepSlots,
 	TriggerOutputs,
-	WaitDeclaration,
+	ExecutorWaitDeclaration,
 	WorkflowDocument,
 } from '../execution';
 import type { GraphNode, WorkflowGraph } from '../graph';
@@ -64,7 +64,9 @@ export interface StepExecutionRequest {
 
 /**
  * A sub-execution the step asks for. The executor minted the id and had the
- * workflow resolved; the engine starts the sub-execution and suspends the step on it.
+ * workflow resolved; the engine starts it. An awaited one suspends the step
+ * until it ends; a detached one starts while the step completes, and nothing
+ * waits for it.
  */
 export interface SubExecutionDeclaration {
 	executionId: string;
@@ -95,7 +97,7 @@ export type StepExecutionResult =
 			subExecution?: never;
 	  }
 	| {
-			wait: WaitDeclaration;
+			wait: ExecutorWaitDeclaration;
 			outputs?: never;
 			detached?: never;
 			subExecution?: never;
