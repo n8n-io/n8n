@@ -306,10 +306,10 @@ describe('useWorkflowSetupItems', () => {
 			children: [],
 			toolCalls: [
 				{
-					toolCallId: 'update',
-					toolName: WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
+					toolCallId: 'restore',
+					toolName: WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
 					isLoading: true,
-					args: { action: 'update', workflowId: WORKFLOW_ID },
+					args: { workflowId: WORKFLOW_ID, versionId: 'v1' },
 				},
 			],
 		};

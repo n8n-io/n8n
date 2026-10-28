@@ -92,8 +92,9 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
-		return await this.findOneByOrFail({
+	/** A member of the project, or null when the project has no members. */
+	async findOneByProjectId(projectId: string): Promise<User | null> {
+		return await this.findOneBy({
 			projectRelations: { projectId },
 		});
 	}

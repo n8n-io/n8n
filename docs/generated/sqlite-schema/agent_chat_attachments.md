@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" varchar(36), "projectId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "resourceId" varchar(255), "binaryDataId" text NOT NULL, "fileName" varchar(255) NOT NULL, "mimeType" varchar(255) NOT NULL, "fileSizeBytes" integer NOT NULL, "source" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_41c246c30af3d2108d93e15dd5e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_5c048535b2132b40dfed2e640e5" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "agentId" varchar(36), "projectId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "resourceId" varchar(255), "binaryDataId" text NOT NULL, "fileName" varchar(255) NOT NULL, "mimeType" varchar(255) NOT NULL, "fileSizeBytes" integer NOT NULL, "source" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createdByThreadId" varchar(128) NOT NULL, CONSTRAINT "FK_41c246c30af3d2108d93e15dd5e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5c048535b2132b40dfed2e640e5" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -18,9 +18,10 @@ CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "a
 | agentId | varchar(36) |  | true |  | [agents](agents.md) |  |
 | binaryDataId | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| createdByThreadId | varchar(128) |  | false |  |  |  |
 | fileName | varchar(255) |  | false |  |  |  |
 | fileSizeBytes | INTEGER |  | false |  |  |  |
-| id | varchar(16) |  | false |  |  |  |
+| id | varchar(16) |  | false | [agent_file_grants](agent_file_grants.md) |  |  |
 | mimeType | varchar(255) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | resourceId | varchar(255) |  | true |  |  |  |
@@ -51,12 +52,14 @@ CREATE TABLE "agent_chat_attachments" ("id" varchar(16) PRIMARY KEY NOT NULL, "a
 erDiagram
 
 "agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_file_grants" |o--|| "agent_chat_attachments" : "FOREIGN KEY (attachmentId) REFERENCES agent_chat_attachments (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_attachments" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_chat_attachments" {
   varchar_36_ agentId FK
   TEXT binaryDataId
   datetime_3_ createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
@@ -84,6 +87,12 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
+}
+"agent_file_grants" {
+  varchar_16_ attachmentId PK
+  datetime_3_ createdAt
+  varchar_128_ threadId PK
+  datetime_3_ updatedAt
 }
 "project" {
   datetime_3_ createdAt

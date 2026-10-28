@@ -2,6 +2,7 @@ import type { ScimUserCreateDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Mocked } from 'vitest';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { PersonRepository, Role, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,6 +18,8 @@ import {
 	ScimResourceNotFoundError,
 } from '../scim.errors';
 import type { ScimUserRepository } from '../database/scim-user.repository';
+import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
+import { DEFAULT_SCIM_DEPROVISIONING_POLICY } from '../scim-settings.service';
 import { ScimService } from '../scim.service';
 
 const createTestUser = (overrides: Partial<User> = {}): User =>
@@ -40,6 +43,7 @@ describe('ScimService', () => {
 	let passwordUtility: Mocked<PasswordUtility>;
 	let globalConfig: GlobalConfig;
 	let scimUserRepository: Mocked<ScimUserRepository>;
+	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
 	let service: ScimService;
 
 	beforeEach(() => {
@@ -60,6 +64,10 @@ describe('ScimService', () => {
 
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		passwordUtility.hash.mockResolvedValue('hashed-password');
+		scimDeprovisioningService = mock<ScimDeprovisioningService>();
+		scimDeprovisioningService.getPolicy.mockResolvedValue({
+			...DEFAULT_SCIM_DEPROVISIONING_POLICY,
+		});
 
 		service = new ScimService(
 			mock<Logger>(),
@@ -70,6 +78,7 @@ describe('ScimService', () => {
 			passwordUtility,
 			eventService,
 			personRepository,
+			scimDeprovisioningService,
 		);
 	});
 
@@ -713,6 +722,22 @@ describe('ScimService', () => {
 			userRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteUser('missing')).rejects.toThrow(ScimResourceNotFoundError);
+		});
+
+		// The identity provider sends the DELETE again after a failed delete.
+		it('should apply the delete policy to a user that an earlier DELETE deactivated', async () => {
+			const policy = {
+				onDelete: 'delete',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			} as const;
+			scimDeprovisioningService.getPolicy.mockResolvedValue(policy);
+			const user = createTestUser({ role: GLOBAL_MEMBER_ROLE, disabled: true });
+			userRepository.findOne.mockResolvedValue(user);
+
+			await service.deleteUser('user-1');
+
+			expect(scimDeprovisioningService.deleteUser).toHaveBeenCalledWith(user, policy);
 		});
 	});
 });

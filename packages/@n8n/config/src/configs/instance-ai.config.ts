@@ -239,7 +239,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
-	 * the `nodeTypes` filter on `workflows(action="list")`.
+	 * the `nodeTypes` filter on `list_workflows`.
 	 *
 	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
 	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
