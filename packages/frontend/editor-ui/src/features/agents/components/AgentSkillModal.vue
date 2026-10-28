@@ -35,7 +35,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
-import { VIEWS } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
@@ -156,6 +157,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const $style = useCssModule();
+const message = useMessage();
 const uiStore = useUIStore();
 const router = useRouter();
 const rootStore = useRootStore();
@@ -780,7 +782,15 @@ const {
 	comparedSkill,
 	compareVersions,
 	compareLatestTwo,
-} = useSkillVersions(() => props.data.skillId);
+} = useSkillVersions(
+	() => props.data.skillId,
+	() => baseVersion.value,
+);
+
+/** The version the editor shows: the one a pinned agent runs, else the latest. */
+const baseVersion = computed(() =>
+	isPinned.value ? props.data.agentVersions?.draft : versions.value?.[0]?.version,
+);
 
 /** The warning strip of a pinned skill. Compare mode and an opened version have their own bars. */
 const showPinnedBar = computed(() => isPinned.value && !viewedVersion.value && !comparison.value);
@@ -801,7 +811,12 @@ const viewingText = computed(() => {
 	const viewed = viewedVersion.value;
 	if (!viewed) return '';
 	const { date, time } = convertToDisplayDate(viewed.createdAt);
-	return i18n.baseText('agents.builder.skills.versions.viewing', {
+	// A pinned agent can open the latest version, which is newer than the one on screen.
+	const key =
+		viewed.version === versions.value?.[0]?.version
+			? 'agents.builder.skills.versions.viewingLatest'
+			: 'agents.builder.skills.versions.viewing';
+	return i18n.baseText(key, {
 		interpolate: {
 			version: viewed.version,
 			author:
@@ -846,6 +861,19 @@ const versionsButtonLabel = computed(() => {
 async function useVersion(version: number) {
 	const skillId = props.data.skillId;
 	if (!skillId || !props.data.onUseVersion) return;
+	// A pin reopens the editor on the saved version, so unsaved edits would be lost.
+	if (isEditing.value && hasChanges.value) {
+		const choice = await message.confirm(
+			i18n.baseText('agents.builder.skills.versions.discardEdits.message'),
+			i18n.baseText('agents.builder.skills.versions.discardEdits.title'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('agents.builder.skills.versions.discardEdits.confirm'),
+				cancelButtonText: i18n.baseText('agents.builder.skills.versions.discardEdits.cancel'),
+			},
+		);
+		if (choice !== MODAL_CONFIRM || !modalOpen.value) return;
+	}
 	// The draft's own version needs no request: the list has its id, the editor its content.
 	const summary = versions.value?.find((item) => item.version === version);
 	const detail =
@@ -1405,11 +1433,13 @@ function onRemove() {
 		<template v-if="showVersionsPanel && versions" #sidePanel>
 			<SkillVersionTimeline
 				:versions="versions"
-				:shown-version="viewedVersion?.version ?? versions[0]?.version"
+				:shown-version="viewedVersion?.version ?? baseVersion"
 				:can-restore="canRestore"
 				@open="onOpenVersion"
 				@restore="restoreVersion"
-				@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
+				@compare="
+					onCompare($event, viewedVersion?.version ?? baseVersion ?? versionOptions[0].value)
+				"
 				:agent="timelineAgent"
 				@use="useVersion"
 				@use-latest="onUseLatestVersion"
@@ -1469,8 +1499,9 @@ function onRemove() {
 						})
 					}}
 				</N8nButton>
+				<!-- The latest version needs no restore: saving it again makes no new version. -->
 				<N8nButton
-					v-if="canRestore"
+					v-if="canRestore && viewedVersion.version !== versions?.[0]?.version"
 					variant="solid"
 					:loading="isSaving"
 					data-testid="agent-skill-version-restore"

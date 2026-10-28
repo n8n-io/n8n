@@ -979,6 +979,75 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 		expect(reopened.agentVersions?.pinned).toBe(true);
 	});
 
+	describe('when the agent refuses the config save', () => {
+		function setupPinned() {
+			const agent = ref<AgentResource | null>({
+				id: 'agent-1',
+				skills: { tone: supportTone },
+				skillHashes: { tone: 'hash-tone' },
+				skillVersions: { tone: { draft: 3, published: 2, latest: 3, pinned: false } },
+			} as unknown as AgentResource);
+			const result = setup({
+				agent,
+				agentId: ref('agent-1'),
+				flushConfigSave: async () => await Promise.reject(new Error('refused')),
+			});
+			result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
+			result.actions.onOpenSkillFromList('tone');
+			const data = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+				.data as unknown as SkillModalData;
+			return { ...result, agent, data };
+		}
+
+		it('puts back the version the agent ran and does not reopen the editor on a pin', async () => {
+			const { agent, data, scheduleConfigUpdate, uiStore } = setupPinned();
+
+			data.onUseVersion?.('tone', {
+				id: 'version-1',
+				version: 1,
+				createdBy: null,
+				createdAt: '2026-10-20T00:00:00.000Z',
+				skill: { ...supportTone, instructions: 'Be brief.' },
+			});
+			await flushPromises();
+
+			// The refused ref is gone, so later saves do not send it again.
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+			expect(agent.value?.skills.tone).toEqual(supportTone);
+			expect(agent.value?.skillVersions?.tone).toEqual({
+				draft: 3,
+				published: 2,
+				latest: 3,
+				pinned: false,
+			});
+			// A reopen would replace the modal data.
+			expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data).toBe(data);
+		});
+
+		it('puts back the pin when Use latest is refused', async () => {
+			const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
+			vi.mocked(getSkillDetail).mockResolvedValue({
+				...makeDetail('tone', latest),
+				skillHash: 'hash-latest',
+			});
+			const { agent, data, scheduleConfigUpdate, localConfig } = setupPinned();
+			localConfig.value = makeConfig({
+				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+			});
+
+			data.onUseLatestVersion?.('tone');
+			await flushPromises();
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+			});
+			expect(agent.value?.skills.tone).toEqual(supportTone);
+			expect(agent.value?.skillHashes?.tone).toBe('hash-tone');
+		});
+	});
+
 	function openEdit() {
 		const result = setupHub();
 		result.actions.onOpenSkillFromList('tone');
