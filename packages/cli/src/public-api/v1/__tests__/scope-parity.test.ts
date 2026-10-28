@@ -9,7 +9,7 @@ import {
 	type AgentImportPlan,
 	type AgentPlanItem,
 } from '@/modules/n8n-packages/entities/agent/agent-import.types';
-import type { SkillWrite } from '@/modules/n8n-packages/entities/skill/skill-import.types';
+import type { SharedSkillWrite } from '@/modules/n8n-packages/entities/skill/skill-import.types';
 import { requiredSharedSkillScopes } from '@/modules/n8n-packages/engine/import-gates';
 
 import { resolvePublicApiRoutes, scopesInRequirement } from '../../public-api-route-resolver';
@@ -52,7 +52,7 @@ describe('Public API scope parity', () => {
 		const createAndUpdate = [
 			{ base: undefined },
 			{ base: { skillHash: 'hash', versionId: 'version' } },
-		] as SkillWrite[];
+		] as SharedSkillWrite[];
 		for (const scope of requiredSharedSkillScopes([{ shared: createAndUpdate }])) {
 			consumed.add(scope);
 		}

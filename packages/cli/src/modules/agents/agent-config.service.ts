@@ -172,10 +172,13 @@ export class AgentConfigService {
 					previousIntegrations,
 					agent.integrations,
 					{
-						skills: !isEqual(
-							previousSkills.skills,
-							await this.agentSkillRefs.skillsForRefs(skillRefs, {}),
-						),
+						// A shared skill can change before this save, so `writeSkills` also reports a change.
+						skills:
+							options.writeSkills !== undefined ||
+							!isEqual(
+								previousSkills.skills,
+								await this.agentSkillRefs.skillsForRefs(skillRefs, {}),
+							),
 						tools: toolsChanged,
 						tasks: tasksChanged,
 					},

@@ -1,4 +1,6 @@
-import type { SkillTarget } from '@/modules/skills';
+import { skillNameKey } from '@n8n/api-types';
+
+import { isSameSkillTarget, type SkillTarget } from '@/modules/skills';
 
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import type { AgentImportIssue } from '../agent/agent-import.types';
@@ -11,11 +13,18 @@ export interface SkillWrite {
 	base?: { skillHash: string; versionId: string };
 }
 
+/** A project or instance skill write, with the Agents that use the skill. */
+export interface SharedSkillWrite extends SkillWrite {
+	usedBy: string[];
+}
+
 export interface SkillImportPlan {
 	/** Project and instance skills. They are written before the Agents. */
-	shared: SkillWrite[];
+	shared: SharedSkillWrite[];
 	/** The skills of one Agent, keyed by Agent ID. They are written in that Agent's transaction. */
 	owned: Map<string, SkillWrite[]>;
+	/** The Agents that use a project or instance skill that the import writes. */
+	sharedUsers: Set<string>;
 	/**
 	 * How many times the import raised the revision of each Agent, keyed by Agent ID.
 	 * All plans of one package share this map.
@@ -33,17 +42,43 @@ export function skillIssue(
 
 /**
  * A project package plans each project on its own, so two projects can plan the same
- * instance skill. Keep the first write of each skill.
+ * skill, or two instance skills with names like each other. Keeps the first write of each
+ * skill. Returns, for each plan, the issues of a skill that another project of the package
+ * owns and of the instance name clashes.
  */
-export function dropRepeatedSharedWrites(plans: SkillImportPlan[]): void {
-	const seen = new Set<string>();
-	for (const plan of plans) {
-		plan.shared = plan.shared.filter(({ skill }) => {
-			if (seen.has(skill.id)) return false;
-			seen.add(skill.id);
-			return true;
-		});
-	}
+export function reconcileSharedWrites(plans: SkillImportPlan[]): AgentImportIssue[][] {
+	const firstWrites = new Map<string, SharedSkillWrite>();
+	const instanceNames = new Set<string>();
+	return plans.map((plan) => {
+		const kept: SharedSkillWrite[] = [];
+		const issues: AgentImportIssue[] = [];
+		for (const write of plan.shared) {
+			const first = firstWrites.get(write.skill.id);
+			if (first) {
+				if (!isSameSkillTarget(first.target, write.target)) issues.push(...foreignSkill(write));
+				continue;
+			}
+			firstWrites.set(write.skill.id, write);
+			kept.push(write);
+			if (write.target.projectId !== null) continue;
+			const key = skillNameKey(write.skill.skill.name);
+			if (instanceNames.has(key)) issues.push(...instanceNameClash(write));
+			instanceNames.add(key);
+		}
+		plan.shared = kept;
+		return issues;
+	});
+}
+
+/** An Agent can use only the skills of its own project and instance skills. */
+function foreignSkill({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
+	const message = `Skill "${skill.skill.name}" belongs to another project of this package. An Agent can use only the skills of its own project and instance skills. Use an instance skill, or a copy of the skill in this project.`;
+	return usedBy.map((agentId) => skillIssue(agentId, skill.id, message));
+}
+
+function instanceNameClash({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
+	const message = `Another instance skill of this package has the same name "${skill.skill.name}". Rename one of the skills.`;
+	return usedBy.map((agentId) => skillIssue(agentId, skill.id, message));
 }
 
 /**

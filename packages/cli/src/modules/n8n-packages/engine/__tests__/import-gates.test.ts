@@ -121,6 +121,7 @@ describe('assertSharedSkillWritesAllowed', () => {
 			frontmatter: null,
 		},
 		target: { projectId: null, agentId: null },
+		usedBy: ['agent'],
 	};
 	const update = { ...create, base: { skillHash: 'hash', versionId: 'version' } };
 

@@ -30,7 +30,8 @@ export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools'> {
 
 /**
  * Writes the skills that belong to one Agent. A complete save calls it in the Agent's
- * transaction, after the Agent row exists and before the skill refs are saved.
+ * transaction, after the Agent row exists and before the skill refs are saved. A caller
+ * passes it only when the save changes a skill that the Agent uses.
  */
 export type AgentSkillWriter = (ctx: OperationContext) => Promise<void>;
 
