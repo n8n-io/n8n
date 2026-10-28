@@ -285,7 +285,11 @@ describe('AgentFileBridge', () => {
 			);
 
 			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
-			expect(result).toEqual({ items: [{ json: {}, binary: { data: 'aid-1' } }], files: [] });
+			expect(result).toEqual({
+				items: [{ json: {}, binary: { data: 'aid-1' } }],
+				files: [],
+				skippedFiles: [],
+			});
 		});
 
 		it('replaces the binary ID in the json of an unchanged input file', async () => {

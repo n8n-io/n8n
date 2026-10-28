@@ -451,7 +451,7 @@ describe('resolveNodeTool → file input', () => {
 		const executeInline = vi
 			.fn()
 			.mockResolvedValue({ status: 'success', data: [{ json: {}, binary }] });
-		const adoptFromItems = vi.fn().mockResolvedValue({ items: [], files: [] });
+		const adoptFromItems = vi.fn().mockResolvedValue({ items: [], files: [], skippedFiles: [] });
 		const toBinary = vi.fn().mockResolvedValue({ binary, stored });
 		Container.set(AgentFileBridge, { toBinary, adoptFromItems } as unknown as AgentFileBridge);
 		// A node without supplyData gets the passthrough schema, which takes files.

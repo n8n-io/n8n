@@ -1412,6 +1412,7 @@ describe('workflow tool → file input', () => {
 		bridge.adoptFromItems.mockResolvedValue({
 			items: [{ json: {}, binary: { data: 'aid-1' } }],
 			files: [],
+			skippedFiles: [],
 		});
 		Container.set(AgentFileBridge, bridge);
 		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
@@ -1479,6 +1480,7 @@ describe('workflow tool → file input', () => {
 		bridge.adoptFromItems.mockResolvedValue({
 			items: [{ json: {}, binary: { data: 'aid-1' } }],
 			files: [],
+			skippedFiles: [],
 		});
 		Container.set(AgentFileBridge, bridge);
 		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
