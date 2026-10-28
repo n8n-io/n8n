@@ -58,13 +58,16 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	chatFirst?: boolean;
 	isPreviewOpen?: boolean;
+	hidePreviewButton?: boolean;
 	preventScroll?: boolean;
 	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	previewDisabledReason?: string;
 	/** n8n Chat's saved description, forwarded to the channel modal. */
 	savedDescription?: string;
 	/** Persists n8n Chat's description, forwarded to the channel modal. */
@@ -179,7 +182,13 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
+		:class="[
+			$style.editorColumn,
+			{
+				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
+				[$style.chatFirst]: props.chatFirst,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -187,11 +196,14 @@ defineExpose({ onSetupTaskAction });
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<div :class="$style.identityHeader">
 					<AgentIdentityHeader
+						:class="$style.identityContent"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
 					<AgentPreviewButton
+						v-if="!props.hidePreviewButton"
+						:disabled-reason="props.previewDisabledReason"
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
 						:validation-issues="props.configValidationIssues ?? []"
@@ -246,6 +258,7 @@ defineExpose({ onSetupTaskAction });
 					>
 						<template #header-actions>
 							<AgentPreviewButton
+								:disabled-reason="props.previewDisabledReason"
 								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
@@ -254,6 +267,7 @@ defineExpose({ onSetupTaskAction });
 							/>
 						</template>
 						<AgentTriggersSection
+							:preview-disabled-reason="props.previewDisabledReason"
 							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
@@ -574,6 +588,12 @@ defineExpose({ onSetupTaskAction });
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.chatFirst .identityContent {
+	flex-direction: column;
+	text-align: center;
+	gap: var(--spacing--xs);
 }
 
 .tabsRow {

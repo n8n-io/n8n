@@ -107,6 +107,24 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 		expect(await control.lrange(key('claiming'), 0, -1)).toEqual([]);
 	});
 
+	it('should list a job that a blocked worker has not claimed yet as waiting', async () => {
+		const blocked = createQueue();
+		const producer = createQueue();
+		await Promise.all(queues.map(async (queue) => await queue.isReady()));
+		const claim = vi.spyOn(blocked, 'moveToActive').mockReturnValue(new Promise(() => {}));
+
+		void blocked.getNextJob();
+		const job = await addJob(producer);
+		await vi.waitFor(() => expect(claim).toHaveBeenCalled());
+		expect(await control.lrange(key('wait'), 0, -1)).toEqual([]);
+		expect(await control.lrange(key('active'), 0, -1)).toEqual([]);
+
+		// Queue recovery reads these job lists, and marks executions without a job as crashed
+		const listed = await producer.getJobs(['active', 'waiting']);
+
+		expect(listed.map((listedJob) => listedJob?.id)).toEqual([job.id]);
+	});
+
 	describe('idle slots of one worker', () => {
 		/** Starts idle workers and counts every claim attempt they make. */
 		const startIdleWorkers = async (workerCount: number, concurrency: number, drainDelay = 1) => {

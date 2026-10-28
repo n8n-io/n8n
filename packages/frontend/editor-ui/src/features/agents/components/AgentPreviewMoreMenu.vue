@@ -46,6 +46,7 @@ const props = withDefaults(
 		canDeleteSession?: boolean;
 		isDeletingSession?: boolean;
 		isFullWidth: boolean;
+		hideLayoutToggle?: boolean;
 		isLangSmithExportEnabled: boolean;
 		isExporting: boolean;
 		getConversationMarkdown: () => string;
@@ -72,7 +73,7 @@ const canLinkSession = computed(function canLinkSession() {
 	return props.hasSession && Boolean(props.effectiveSessionId);
 });
 
-const menuItems = computed<Array<DropdownMenuItemProps<AgentPreviewMoreOption>>>(() => [
+const allMenuItems = computed<Array<DropdownMenuItemProps<AgentPreviewMoreOption>>>(() => [
 	{
 		id: COPY_LINK,
 		label: i18n.baseText('agents.builder.preview.more.copyLink' as BaseTextKey),
@@ -124,6 +125,10 @@ const menuItems = computed<Array<DropdownMenuItemProps<AgentPreviewMoreOption>>>
 			] satisfies Array<DropdownMenuItemProps<AgentPreviewMoreOption>>)
 		: []),
 ]);
+
+const menuItems = computed(() =>
+	allMenuItems.value.filter((item) => !props.hideLayoutToggle || item.id !== TOGGLE_FULL_WIDTH),
+);
 
 const triggerLabel = computed(() => {
 	const source = sessionMetadata.value?.source;

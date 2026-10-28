@@ -47,6 +47,7 @@ export type AgentTaskModalData = {
 	isPublished: boolean;
 	isRunnable?: boolean;
 	validationIssues?: AgentConfigValidationIssue[];
+	getPreviewDisabledReason?: () => string | undefined;
 	taskState?: {
 		enabled: boolean;
 	};
@@ -342,7 +343,8 @@ function closeModal() {
 
 function onPreview() {
 	objectiveTouched.value = true;
-	if (objectiveError.value || !props.data.onPreview) return;
+	if (objectiveError.value || !props.data.onPreview || props.data.getPreviewDisabledReason?.())
+		return;
 
 	closeModal();
 	props.data.onPreview(objective.value.trim());
@@ -615,6 +617,7 @@ async function onSave() {
 		</template>
 		<template #footerBeforeCancel>
 			<AgentPreviewButton
+				:disabled-reason="props.data.getPreviewDisabledReason?.()"
 				:is-runnable="props.data.isRunnable === true"
 				:validation-issues="props.data.validationIssues ?? []"
 				variant="ghost"

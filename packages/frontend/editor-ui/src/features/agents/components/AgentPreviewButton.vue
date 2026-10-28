@@ -10,6 +10,7 @@ const props = withDefaults(
 	defineProps<{
 		isRunnable: boolean;
 		isPreviewOpen?: boolean;
+		disabledReason?: string;
 		iconOnly?: boolean;
 		variant?: 'outline' | 'ghost';
 		validationIssues?: AgentConfigValidationIssue[];
@@ -30,14 +31,17 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const isDisabled = computed(() => !props.isPreviewOpen && !props.isRunnable);
+const isDisabled = computed(
+	() => !props.isPreviewOpen && (!props.isRunnable || Boolean(props.disabledReason)),
+);
 const label = computed(() =>
 	props.isPreviewOpen
 		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
 		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
 );
-const disabledTooltip = computed(() =>
-	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
+const disabledTooltip = computed(
+	() =>
+		props.disabledReason ?? i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
 );
 
 function onClick() {
@@ -55,7 +59,7 @@ function onClick() {
 		:disabled="!isDisabled"
 		:fallback="disabledTooltip"
 		action="preview"
-		:issues="props.validationIssues"
+		:issues="props.disabledReason ? [] : props.validationIssues"
 	>
 		<N8nToggle
 			v-if="props.iconOnly"
