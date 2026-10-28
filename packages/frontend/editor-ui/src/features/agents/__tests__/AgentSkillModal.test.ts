@@ -2173,7 +2173,7 @@ describe('Versions in the agent builder', () => {
 	});
 
 	it('shows a pinned skill read-only and goes back to the latest version from the bar', async () => {
-		const { findByTestId, queryByTestId, onUseLatestVersion } = renderBuilder({
+		const { findByTestId, getByTestId, onUseLatestVersion } = renderBuilder({
 			draft: 1,
 			published: 1,
 			pinned: true,
@@ -2185,7 +2185,12 @@ describe('Versions in the agent builder', () => {
 		expect(await findByTestId('agent-skill-pinned-bar')).toHaveTextContent(
 			'agents.builder.skills.versions.pinned Darwin 1',
 		);
-		expect(queryByTestId('agent-skill-description-input')).not.toBeInTheDocument();
+		// The fields stay in the form, disabled, and Save skill is disabled.
+		expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
+		expect(
+			getByTestId('agent-skill-description-input').querySelector('input, textarea'),
+		).toBeDisabled();
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
 
 		await userEvent.click(await findByTestId('agent-skill-pinned-use-latest'));
 

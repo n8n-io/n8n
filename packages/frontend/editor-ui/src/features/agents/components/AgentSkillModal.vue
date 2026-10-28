@@ -307,8 +307,8 @@ const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | 'viewing' | 
 	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
 	if (viewedVersion.value) return 'viewing';
-	// The pinned bar has its own Use latest button.
-	if (isPinned.value) return undefined;
+	// A pinned skill shows Save skill disabled, as the design does.
+	if (isPinned.value) return 'save';
 	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
 	return isReadOnly.value ? undefined : 'save';
 });
@@ -1257,29 +1257,31 @@ function onRemove() {
 					{{ i18n.baseText('agents.builder.skills.versions.done') }}
 				</N8nButton>
 			</div>
-			<N8nCallout
+			<div
 				v-else-if="isPinned && !viewedVersion && data.agentVersions"
-				theme="warning"
-				icon="node-pin"
-				:class="[$style.callout, $style.calloutInset]"
+				:class="$style.pinnedBar"
 				data-testid="agent-skill-pinned-bar"
 			>
-				{{
-					i18n.baseText('agents.builder.skills.versions.pinned', {
-						interpolate: { agent: data.agentName ?? '', version: data.agentVersions.draft },
-					})
-				}}
-				<template v-if="data.onUseLatestVersion" #trailingContent>
-					<N8nButton
-						variant="outline"
-						size="small"
-						data-testid="agent-skill-pinned-use-latest"
-						@click="onUseLatestVersion"
-					>
-						{{ i18n.baseText('agents.builder.skills.versions.useLatest') }}
-					</N8nButton>
-				</template>
-			</N8nCallout>
+				<N8nIcon icon="pin" :size="14" :class="$style.pinnedIcon" />
+				<N8nText size="small" :class="$style.pinnedText">
+					{{
+						i18n.baseText('agents.builder.skills.versions.pinned', {
+							interpolate: { agent: data.agentName ?? '', version: data.agentVersions.draft },
+						})
+					}}
+				</N8nText>
+				<!-- With the panel open, its Use latest switch does the same. -->
+				<N8nButton
+					v-if="data.onUseLatestVersion && !versionsOpen"
+					variant="outline"
+					size="small"
+					:class="$style.barAction"
+					data-testid="agent-skill-pinned-use-latest"
+					@click="onUseLatestVersion"
+				>
+					{{ i18n.baseText('agents.builder.skills.versions.useLatest') }}
+				</N8nButton>
+			</div>
 			<div
 				v-else-if="viewedVersion"
 				:class="$style.viewingBar"
@@ -1329,7 +1331,7 @@ function onRemove() {
 						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
-						:read-only="cannotEdit || !!viewedVersion"
+						:read-only="(cannotEdit && !isPinned) || !!viewedVersion"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
 						@select:path="selectedPath = $event"
@@ -1453,7 +1455,7 @@ function onRemove() {
 			<N8nButton
 				v-else
 				variant="solid"
-				:disabled="!hasChanges || defaultNameLoading || !!accessWarning"
+				:disabled="!hasChanges || defaultNameLoading || !!accessWarning || isPinned"
 				:loading="isSaving"
 				data-testid="agent-skill-create-save"
 				@click="onSave"
@@ -1479,6 +1481,30 @@ function onRemove() {
 
 .callout {
 	margin-bottom: var(--spacing--md);
+}
+
+/* A pinned skill: a warning strip over the file list and the form, as the design does. */
+.pinnedBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--lg);
+	min-height: var(--spacing--xl);
+	border-bottom: var(--border-width) var(--border-style) var(--callout--border-color--warning);
+	background-color: var(--callout--color--background--warning);
+}
+
+.pinnedIcon {
+	flex-shrink: 0;
+	color: var(--callout--icon-color--warning);
+}
+
+.pinnedText {
+	color: var(--callout--color--text--warning);
+}
+
+.barAction {
+	margin-left: auto;
 }
 
 /* A full-width strip under the header, as the body of the form steps is flush. */
