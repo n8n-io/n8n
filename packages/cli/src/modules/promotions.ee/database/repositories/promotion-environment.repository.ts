@@ -1,5 +1,10 @@
 import type { PromotionDirection, PromotionEnvironmentScope } from '@n8n/api-types';
-import { BaseRepository, isUniqueConstraintError, TransactionRunner } from '@n8n/db';
+import {
+	BaseRepository,
+	isUniqueConstraintError,
+	type OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type FindOptionsWhere } from '@n8n/typeorm';
 
@@ -65,14 +70,19 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 		id: string,
 		expectedProviderId: string,
 		changes: Partial<Pick<PromotionEnvironment, 'name' | 'providerId' | 'remote' | 'settings'>>,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update({ id, providerId: expectedProviderId }, changes);
+		const result = await this.managerFor(ctx).update(
+			PromotionEnvironment,
+			{ id, providerId: expectedProviderId },
+			changes,
+		);
 		return result.affected === 1;
 	}
 
 	/** Cascades to this environment's project links only. */
-	async deleteEnvironment(id: string): Promise<void> {
-		await this.delete({ id });
+	async deleteEnvironment(id: string, ctx: OperationContext = {}): Promise<void> {
+		await this.managerFor(ctx).delete(PromotionEnvironment, { id });
 	}
 
 	async countByProviderId(providerId: string): Promise<number> {

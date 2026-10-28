@@ -4,7 +4,7 @@ import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/back
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Cipher } from 'n8n-core';
@@ -1668,16 +1668,17 @@ describe('Promotions in Public API', () => {
 				const agent = testServer.publicApiAgentFor(owner);
 				const plainProviderId = await createProvider(agent);
 				const repository = Container.get(PromotionEnvironmentRepository);
-				const updateEnvironment = repository.updateEnvironment.bind(repository);
+				// Pause before the write transaction opens. SQLite runs one write transaction at a
+				// time, so a pause inside it would also hold back the winning update.
+				const transactions = Container.get(TransactionRunner);
+				const run = transactions.run.bind(transactions);
 				const paused = createDeferredPromise();
 				const resume = createDeferredPromise();
-				const write = vi
-					.spyOn(repository, 'updateEnvironment')
-					.mockImplementationOnce(async (...args) => {
-						paused.resolve();
-						await resume.promise;
-						return await updateEnvironment(...args);
-					});
+				const write = vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+					paused.resolve();
+					await resume.promise;
+					return await run(...args);
+				});
 				const root = `/promotions/environments/${id}`;
 				const changes =
 					field === 'remote'

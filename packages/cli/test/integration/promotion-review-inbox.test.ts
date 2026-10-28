@@ -236,6 +236,89 @@ describe('Promotion reviews in the Inbox', () => {
 
 	afterEach(() => nock.cleanAll());
 
+	describe('when an admin changes the environment', () => {
+		const stateOf = async (reviewId: string) =>
+			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
+
+		const createProvider = async (payload: object) => {
+			const created = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send(payload);
+			expect(created.status, JSON.stringify(created.body)).toBe(201);
+			return created.body.provider.id as string;
+		};
+
+		it('closes the open reviews of a deleted environment and keeps the merged ones', async () => {
+			const open = await insertReview(1);
+			const merged = await insertReview(2);
+			await reviewRepository.update({ id: merged }, { state: 'merged' });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/promotions/environments/${environmentId}`);
+
+			expect(response.status).toBe(204);
+			expect(await stateOf(open)).toBe('closed');
+			expect(await stateOf(merged)).toBe('merged');
+		});
+
+		it.each([
+			{ change: 'a rename', expected: 'open', update: async () => ({ name: 'Renamed' }) },
+			{
+				// Another base URL can name the same host, so only the repository decides.
+				change: 'another GitLab provider for the same repository',
+				expected: 'open',
+				update: async () => {
+					const alias = 'https://gitlab-alias.example.com';
+					nock(alias)
+						.get('/api/v4/user')
+						.reply(200, { id: 1 })
+						.get('/api/v4/projects')
+						.query(true)
+						.reply(200, []);
+					return {
+						providerId: await createProvider({
+							name: 'GitLab alias',
+							type: 'gitlab',
+							auth: { authType: 'token', password: token },
+							config: { schemaVersion: 1, baseUrl: alias },
+						}),
+					};
+				},
+			},
+			{
+				change: 'another repository',
+				expected: 'closed',
+				update: async () => ({
+					remote: { schemaVersion: 1, remoteUrl: `${baseUrl}/platform/other.git` },
+				}),
+			},
+			{
+				change: 'a plain Git provider',
+				expected: 'closed',
+				update: async () => ({
+					providerId: await createProvider({
+						name: 'Plain',
+						type: 'git',
+						auth: { authType: 'token', username: 'u', password: 'p' },
+					}),
+				}),
+			},
+		])('after $change, the open review is $expected', async ({ expected, update }) => {
+			const review = await insertReview(1);
+			const body = await update();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/promotions/environments/${environmentId}`)
+				.send(body);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(await stateOf(review)).toBe(expected);
+		});
+	});
+
 	it('lists the review opened by the promotion write path for its environment', async () => {
 		const branchName = 'n8n-promotion/1';
 		const commitSha = 'c'.repeat(40);
@@ -296,7 +379,7 @@ describe('Promotion reviews in the Inbox', () => {
 		]);
 	});
 
-	it('syncs from any tab, keeps reviews GitLab did not answer for, and ignores a merge request from another branch', async () => {
+	it('syncs from any tab, keeps reviews GitLab did not answer for, closes reviews without a GitLab environment, and ignores a merge request from another branch', async () => {
 		const opened = await insertReview(1);
 		const changesRequested = await insertReview(2);
 		const merged = await insertReview(3);
@@ -323,14 +406,24 @@ describe('Promotion reviews in the Inbox', () => {
 		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 
 		expect(closedList.status, JSON.stringify(closedList.body)).toBe(200);
-		expect(closedList.body.data.data).toHaveLength(2);
+		expect(closedList.body.data.data).toHaveLength(4);
 		expect(closedList.body.data.data).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: merged, state: 'closed', reviewState: 'merged' }),
 				expect.objectContaining({ id: closed, state: 'closed', reviewState: 'closed' }),
+				expect.objectContaining({
+					id: plainGit,
+					reviewState: 'closed',
+					remoteError: 'no_connection',
+				}),
+				expect.objectContaining({
+					id: deleted,
+					reviewState: 'closed',
+					remoteError: 'no_connection',
+				}),
 			]),
 		);
-		expect(open.body.data.data).toHaveLength(8);
+		expect(open.body.data.data).toHaveLength(6);
 		expect(open.body.data.data).toEqual(
 			expect.arrayContaining([
 				{
@@ -368,8 +461,6 @@ describe('Promotion reviews in the Inbox', () => {
 					title: null,
 					remoteError: 'not_found',
 				}),
-				expect.objectContaining({ id: plainGit, remoteError: 'no_connection' }),
-				expect.objectContaining({ id: deleted, remoteError: 'no_connection' }),
 			]),
 		);
 		expect(JSON.stringify([open.body, closedList.body])).not.toContain(token);

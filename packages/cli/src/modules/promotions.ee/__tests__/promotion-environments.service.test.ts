@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ProjectRepository, User } from '@n8n/db';
+import type { OperationContext, ProjectRepository, TransactionRunner, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -14,6 +14,7 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
+import type { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
 import { PromotionEnvironmentsService } from '../promotion-environments.service';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -34,6 +35,11 @@ describe('PromotionEnvironmentsService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const providersService = mock<PromotionProvidersService>();
 	const gitService = mock<PromotionsGitService>();
+	const reviewRepository = mock<PromotionReviewRepository>();
+	const txRunner = mock<TransactionRunner>({
+		run: async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) =>
+			await fn(ctx),
+	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -89,6 +95,8 @@ describe('PromotionEnvironmentsService', () => {
 			providersService,
 			gitService,
 			workingDirectory,
+			reviewRepository,
+			txRunner,
 			logger,
 		);
 	});
