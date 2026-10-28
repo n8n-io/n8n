@@ -226,7 +226,6 @@ describe('ChatTrigger Node', () => {
 			expect(trustedSourceParam).toMatchObject({
 				type: 'options',
 				default: 'n8n-internal',
-				noDataExpression: true,
 				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
 				displayOptions: {
 					show: { authentication: ['n8nUserAuth'], mode: ['hostedChat'], public: [true] },
