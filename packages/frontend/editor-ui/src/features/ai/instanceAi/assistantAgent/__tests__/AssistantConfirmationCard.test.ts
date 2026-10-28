@@ -314,7 +314,7 @@ describe('AssistantConfirmationCard', () => {
 			expect(getByTestId(testId)).toHaveAttribute('data-project-id', 'project-thread');
 			await fireEvent.click(getByTestId(testId));
 
-			expect(emitted().submit).toEqual([[body]]);
+			expect(sent(emitted().submit)).toEqual([[body]]);
 		},
 	);
 
@@ -337,7 +337,7 @@ describe('AssistantConfirmationCard', () => {
 
 		await fireEvent.click(getByTestId('gateway-decision-deny'));
 
-		expect(emitted().submit).toEqual([
+		expect(sent(emitted().submit)).toEqual([
 			[{ kind: 'resourceDecision', resourceDecision: 'denyOnce' }],
 		]);
 	});
