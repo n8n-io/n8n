@@ -416,6 +416,7 @@ describe('AgentChatPanel', () => {
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
 		stopAllMock.mockReset();
+		stopPlanMock.mockReset().mockImplementation(async () => await stopAllMock());
 		planStopState.value = null;
 		livePlan.value = null;
 		isStoppingMock.value = false;
@@ -1764,6 +1765,131 @@ describe('AgentChatPanel', () => {
 
 			pending.resolve();
 			await flushPromises();
+		});
+
+		it('clears a failed Stop when another plan replaces the current plan', async () => {
+			const plan = planView();
+			livePlan.value = plan;
+			backgroundJobsMock.value = [job];
+			stopPlanMock.mockRejectedValueOnce(new Error('Request failed'));
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+			await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
+			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+			await flushPromises();
+
+			expect(stopPlanMock).toHaveBeenCalledOnce();
+			expect(stopAllMock).not.toHaveBeenCalled();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			expect(wrapper.get('[data-testid="agent-task-stop-status"]').text()).toContain(
+				'agents.chat.tasks.inline.failed',
+			);
+
+			livePlan.value = { ...plan, revision: plan.revision + 1 };
+			await nextTick();
+
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
+			livePlan.value = planView({ planId: '22222222-2222-4222-8222-222222222222' });
+			await nextTick();
+
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+
+			wrapper.unmount();
+		});
+
+		it.each([{ channel: 'n8n-chat' as const }, { backgroundJobsActive: false }])(
+			'clears a failed Stop when its mode changes to %j',
+			async (props) => {
+				livePlan.value = planView();
+				backgroundJobsMock.value = [job];
+				stopPlanMock.mockRejectedValueOnce(new Error('Request failed'));
+				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+				await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
+				await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+				await flushPromises();
+
+				expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(true);
+
+				await wrapper.setProps(props);
+				await wrapper.setProps({ channel: 'chat', backgroundJobsActive: true });
+
+				expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(true);
+				expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+
+				wrapper.unmount();
+			},
+		);
+
+		it.each([
+			{ projectId: 'p2' },
+			{ agentId: 'a2' },
+			{ continueSessionId: 't2' },
+			{ channel: 'n8n-chat' as const },
+			{ backgroundJobsActive: false },
+		])('ignores a late Stop failure after its target changes to %j', async (props) => {
+			livePlan.value = planView();
+			backgroundJobsMock.value = [job];
+			const pending = createDeferredPromise<void>();
+			stopPlanMock.mockReturnValueOnce(pending.promise);
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+			await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
+			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+			await wrapper.setProps(props);
+			await wrapper.setProps({ channel: 'chat', backgroundJobsActive: true });
+			pending.reject(new Error('Request failed'));
+			await flushPromises();
+
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+			expect(showErrorMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('shows a Stop failure after the same plan receives an update and a new job', async () => {
+			const plan = planView();
+			livePlan.value = plan;
+			const pending = createDeferredPromise<void>();
+			stopPlanMock.mockReturnValueOnce(pending.promise);
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+			await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
+			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+			livePlan.value = { ...plan, revision: plan.revision + 1 };
+			backgroundJobsMock.value = [job];
+			await nextTick();
+			pending.reject(new Error('Request failed'));
+			await flushPromises();
+
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			expect(wrapper.get('[data-testid="agent-task-stop-status"]').text()).toContain(
+				'agents.chat.tasks.inline.failed',
+			);
+
+			wrapper.unmount();
+		});
+
+		it('ignores a late Stop failure after the current plan changes', async () => {
+			livePlan.value = planView();
+			backgroundJobsMock.value = [job];
+			const pending = createDeferredPromise<void>();
+			stopPlanMock.mockReturnValueOnce(pending.promise);
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+			await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
+			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+			livePlan.value = planView({ planId: '22222222-2222-4222-8222-222222222222' });
+			pending.reject(new Error('Request failed'));
+			await flushPromises();
+
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+
+			wrapper.unmount();
 		});
 
 		it.each(['paused', 'cancelled'] as const)(

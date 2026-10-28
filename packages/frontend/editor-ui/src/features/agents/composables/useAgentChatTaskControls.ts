@@ -119,6 +119,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 	);
 
 	const stopFailed = ref(false);
+	let stopRequestId = 0;
 
 	const tasksStopping = computed(
 		() =>
@@ -204,7 +205,23 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		() => planStopActive.value && (canStopPlan.value || tasksStopping.value),
 	);
 
-	watch([options.projectId, options.agentId, options.threadId, canStopBackgroundJobs], () => {
+	watch(
+		[
+			options.projectId,
+			options.agentId,
+			options.threadId,
+			() => currentPlan.value?.planId,
+			options.channel,
+			planStopActive,
+		],
+		() => {
+			stopFailed.value = false;
+			stopRequestId++;
+		},
+		{ flush: 'sync' },
+	);
+
+	watch(canStopBackgroundJobs, () => {
 		stopFailed.value = false;
 	});
 
@@ -253,7 +270,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 			return;
 
 		stopFailed.value = false;
-		const threadId = options.threadId();
+		const requestId = ++stopRequestId;
 
 		if (event.currentTarget === document.activeElement) {
 			taskStopFocus = {
@@ -268,7 +285,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 			if (stopCurrentPlan) await stopPlan();
 			else await stopAll();
 		} catch (error) {
-			if (disposed || options.threadId() !== threadId) return;
+			if (disposed || requestId !== stopRequestId) return;
 
 			stopFailed.value = true;
 
