@@ -96,11 +96,11 @@ export class PromotionsPublicController {
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
 	@ApiErrorResponse(503)
 	async createPromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreatePromotionProviderDto,
 	): Promise<PromotionProviderCreatedPublicDto> {
-		return await (await this.providersService()).create(input);
+		return await (await this.providersService()).create(input, req.user);
 	}
 
 	@Get('/providers')
@@ -161,13 +161,13 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionProviderId', promotionProviderIdParamSchema)
 		promotionProviderId: string,
 		@Body input: UpdatePromotionProviderDto,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).update(promotionProviderId, input);
+		return await (await this.providersService()).update(promotionProviderId, input, req.user);
 	}
 
 	@Delete('/providers/:promotionProviderId')
@@ -182,12 +182,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async deletePromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionProviderId', promotionProviderIdParamSchema)
 		promotionProviderId: string,
 	): Promise<void> {
-		await (await this.providersService()).delete(promotionProviderId);
+		await (await this.providersService()).delete(promotionProviderId, req.user);
 	}
 
 	@Get('/providers/:promotionProviderId/repositories')
@@ -270,11 +270,11 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async createPromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).create(input);
+		return await (await this.environmentsService()).create(input, req.user);
 	}
 
 	@Get('/environments')
@@ -341,13 +341,13 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 		@Body input: UpdatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).update(promotionEnvironmentId, input);
+		return await (await this.environmentsService()).update(promotionEnvironmentId, input, req.user);
 	}
 
 	@Delete('/environments/:promotionEnvironmentId')
@@ -363,12 +363,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async deletePromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<void> {
-		await (await this.environmentsService()).delete(promotionEnvironmentId);
+		await (await this.environmentsService()).delete(promotionEnvironmentId, req.user);
 	}
 
 	// -- Local checkouts -----------------------------------------------------
@@ -387,12 +387,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async connectPromotionCheckout(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).clone(promotionEnvironmentId);
+		return await (await this.promotionsService()).clone(promotionEnvironmentId, req.user);
 	}
 
 	@Post('/environments/:promotionEnvironmentId/disconnect')

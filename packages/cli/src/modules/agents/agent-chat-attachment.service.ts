@@ -5,12 +5,13 @@ import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
-import { OperationalError, type IBinaryData } from 'n8n-workflow';
+import { OperationalError, UserError, type IBinaryData } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import { AgentFileGrantRepository } from './repositories/agent-file-grant.repository';
 import {
 	draftChatMemoryResourceId,
 	isIntegrationMemoryResourceId,
@@ -28,6 +29,7 @@ export interface StoreInboundAttachmentParams {
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
 	projectId: string;
+	/** Thread that makes the file. The root thread of its delegation tree owns it. */
 	threadId: string;
 	resourceId?: string;
 	/** Surface the file arrived from, e.g. 'chat', 'slack', 'telegram'. */
@@ -51,11 +53,15 @@ function buildAttachmentFileLocation(agentId: string | null, attachmentId: strin
 }
 
 /**
- * Stores and resolves files users attach to agent conversations. Bytes live in
- * `BinaryDataService`; rows in `agent_chat_attachments` carry the metadata and
- * the authorization scope (project + thread). Message content parts reference
- * attachments by row id (`ContentFileRef.id`), resolved back to bytes through
- * the `BuiltFileStore` adapter injected into the agent runtime.
+ * Stores and resolves agent files. Bytes live in `BinaryDataService`; rows in
+ * `agent_chat_attachments` carry the metadata and the authorization scope
+ * (project + thread). Message content parts reference attachments by row id
+ * (`ContentFileRef.id`), resolved back to bytes through the `BuiltFileStore`
+ * adapter injected into the agent runtime.
+ *
+ * The root thread of a delegation tree owns every file of the tree and can
+ * read all of them. A sub-agent thread can read the files that it made and
+ * the files granted to it.
  */
 @Service()
 export class AgentChatAttachmentService {
@@ -64,10 +70,15 @@ export class AgentChatAttachmentService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
+		private readonly grantRepository: AgentFileGrantRepository,
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
 		const attachmentId = generateNanoId();
+		const root = await this.findRootThread(params.threadId);
+		// The download route authorizes by the owning agent, so a file that a
+		// sub-agent makes takes the agent of the root thread.
+		const agentId = root.id === params.threadId ? params.agentId : (root.agentId ?? params.agentId);
 
 		const binaryData: IBinaryData = {
 			data: '',
@@ -75,7 +86,7 @@ export class AgentChatAttachmentService {
 			fileName: params.fileName,
 		};
 		const stored = await this.binaryDataService.store(
-			buildAttachmentFileLocation(params.agentId, attachmentId),
+			buildAttachmentFileLocation(agentId, attachmentId),
 			params.data,
 			binaryData,
 		);
@@ -88,9 +99,10 @@ export class AgentChatAttachmentService {
 		try {
 			const attachment = this.repository.create({
 				id: attachmentId,
-				agentId: params.agentId,
+				agentId,
 				projectId: params.projectId,
-				threadId: params.threadId,
+				threadId: root.id,
+				createdByThreadId: params.threadId,
 				resourceId: params.resourceId ?? null,
 				binaryDataId: stored.id,
 				fileName: params.fileName,
@@ -110,6 +122,76 @@ export class AgentChatAttachmentService {
 				);
 			throw error;
 		}
+	}
+
+	/**
+	 * Return the file when the thread can read it: the root thread reads every
+	 * file of its tree, a sub-agent thread reads the files that it made or got
+	 * granted. Use this for every fileId that a run gives, such as tool input.
+	 */
+	async getReadable(
+		attachmentId: string,
+		scope: { projectId: string; threadId: string },
+	): Promise<AgentChatAttachment | null> {
+		const root = await this.findRootThread(scope.threadId);
+		return await this.findReadable(attachmentId, scope, root.id);
+	}
+
+	/**
+	 * Let a sub-agent thread read files of its parent. The parent must be able
+	 * to read each file, so grants pass down the delegation chain one level at
+	 * a time.
+	 */
+	async grantToSubAgent(
+		attachmentIds: string[],
+		scope: { projectId: string; parentThreadId: string; childThreadId: string },
+	): Promise<void> {
+		const chain = await this.threadRepository.findDelegationChain(scope.childThreadId);
+		if (chain[1]?.id !== scope.parentThreadId) {
+			throw new UserError('Files can only be granted to a sub-agent of this conversation');
+		}
+		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findByIdsInThread(attachmentIds, {
+			projectId: scope.projectId,
+			threadId: rootId,
+		});
+		const creatorById = new Map(files.map((file) => [file.id, file.createdByThreadId]));
+		const granted =
+			scope.parentThreadId === rootId
+				? new Set<string>()
+				: await this.grantRepository.findGrantedIds(attachmentIds, scope.parentThreadId);
+		for (const attachmentId of attachmentIds) {
+			const readable =
+				creatorById.has(attachmentId) &&
+				(scope.parentThreadId === rootId ||
+					creatorById.get(attachmentId) === scope.parentThreadId ||
+					granted.has(attachmentId));
+			if (!readable) throw new UserError(`File "${attachmentId}" not found in this conversation`);
+		}
+		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
+	}
+
+	private async findRootThread(threadId: string) {
+		const chain = await this.threadRepository.findDelegationChain(threadId);
+		return chain[chain.length - 1];
+	}
+
+	private async findReadable(
+		attachmentId: string,
+		scope: { projectId: string; threadId: string },
+		rootThreadId: string,
+	): Promise<AgentChatAttachment | null> {
+		const attachment = await this.repository.findByIdInThread(attachmentId, {
+			projectId: scope.projectId,
+			threadId: rootThreadId,
+		});
+		if (!attachment) return null;
+		if (scope.threadId === rootThreadId || attachment.createdByThreadId === scope.threadId) {
+			return attachment;
+		}
+		return (await this.grantRepository.isGranted(attachment.id, scope.threadId))
+			? attachment
+			: null;
 	}
 
 	/**
@@ -228,23 +310,43 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
-	 * `BuiltFileStore` for an agent runtime. Lookups are scoped to the run's
-	 * thread (+ project) when the runtime provides one, so a fileId from
-	 * another conversation resolves to nothing; runs without a thread fall
-	 * back to the agent + project scope. `provider` drives capability gating
-	 * of hydration.
+	 * `BuiltFileStore` for an agent runtime. Lookups check that the run's
+	 * thread can read the file (see {@link getReadable}) when the runtime
+	 * provides one, so a fileId from another conversation, or one not granted
+	 * to a sub-agent, resolves to nothing; runs without a thread fall back to
+	 * the agent + project scope. `provider` drives capability gating of
+	 * hydration.
 	 */
 	getFileStore(scope: { agentId: string; projectId: string }, provider: string): BuiltFileStore {
+		// Hydration loads many files for each model call. Find the root thread
+		// one time for each thread. A thread never changes its parent, so the
+		// value stays correct. Keep one entry, because a cached runtime can
+		// live for a long time.
+		let root: { threadId: string; id: Promise<string> } | undefined;
+		const rootIdOf = async (threadId: string) => {
+			if (root?.threadId !== threadId) {
+				const id = this.findRootThread(threadId).then((thread) => thread.id);
+				root = { threadId, id };
+				// Do not keep a failed lookup.
+				id.catch(() => {
+					if (root?.id === id) root = undefined;
+				});
+			}
+			return await root.id;
+		};
+
 		return {
 			load: async (
 				ref: ContentFileRef,
 				runScope?: { threadId?: string },
 			): Promise<Uint8Array | null> => {
-				const attachment = runScope?.threadId
-					? await this.repository.findByIdInThread(ref.id, {
-							projectId: scope.projectId,
-							threadId: runScope.threadId,
-						})
+				const threadId = runScope?.threadId;
+				const attachment = threadId
+					? await this.findReadable(
+							ref.id,
+							{ projectId: scope.projectId, threadId },
+							await rootIdOf(threadId),
+						)
 					: await this.repository.findByIdForAgent(ref.id, scope);
 				if (!attachment) return null;
 				try {

@@ -265,6 +265,7 @@ describe('MSSQL tests', () => {
 		}));
 		const thisArg = {
 			helpers: { prepareBinaryData },
+			getNode: () => ({ typeVersion: 1.2, parameters: {} }),
 		} as unknown as IExecuteFunctions;
 
 		it('should handle SELECT query with single record', async () => {

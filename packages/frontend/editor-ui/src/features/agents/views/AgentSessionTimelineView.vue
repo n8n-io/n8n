@@ -2,6 +2,7 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useAgentSessionStop } from '../composables/useAgentSessionStop';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -226,6 +227,18 @@ useAgentExecutionUpdates({ projectId, agentId, threadId }, () => {}, onExecution
 const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
+const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
+const canStopSession = computed(
+	() =>
+		hasLoadedThread.value &&
+		canStop.value &&
+		executions.value.some(({ status }) => status === 'running'),
+);
+
+function onStopSession() {
+	if (canStopSession.value) void stopSession(threadId.value);
+}
+
 const totalCost = computed(() => sessionUsage.value.cost);
 const durationLabel = computed(() => formatDuration(duration.value));
 const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
@@ -327,11 +340,14 @@ async function onIncreaseBudget(payload: {
 			:has-session="hasLoadedThread"
 			:can-delete-session="canDeleteSession"
 			:is-deleting-session="isDeletingSession"
+			:show-stop="canStopSession"
+			:stop-loading="stoppingSessionIds.has(threadId)"
 			@copy-link="copySessionLink"
 			@delete-session="deleteSession"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@stop="onStopSession"
 			@close="closeTimeline"
 		/>
 

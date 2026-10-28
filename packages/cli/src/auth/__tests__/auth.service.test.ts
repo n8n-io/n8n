@@ -107,7 +107,7 @@ describe('AuthService', () => {
 						mfaSecret: 'secret',
 					}),
 				),
-			).toEqual('WUXEVFet9W');
+			).toEqual('WRZ6wXhLW9');
 			expect(
 				authService.createJWTHash(
 					mock<User>({
@@ -117,7 +117,16 @@ describe('AuthService', () => {
 						mfaSecret: 'secret',
 					}),
 				),
-			).toEqual('toYQYKufH6');
+			).toEqual('RyOQ0yF+N1');
+		});
+
+		it('should produce distinct hashes for MFA secrets that share a prefix', () => {
+			const withSecret = (mfaSecret: string) =>
+				authService.createJWTHash(
+					mock<User>({ email: user.email, password: user.password, mfaEnabled: true, mfaSecret }),
+				);
+
+			expect(withSecret('U2FsdGVkX1+first')).not.toEqual(withSecret('U2FsdGVkX1+second'));
 		});
 	});
 

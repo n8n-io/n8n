@@ -581,7 +581,7 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 };
 
 // The applied setup outcome: which nodes were configured / skipped (same
-// rendering as the live `workflow_builder_workflows` result).
+// rendering as the live `setup_workflow` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
 	const { output } = call;
 	// `skippedNodes` is the pre-split key, kept so seeded fixtures recorded then still parse.

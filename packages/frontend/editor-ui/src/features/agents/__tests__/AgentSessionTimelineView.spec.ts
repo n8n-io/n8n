@@ -1,8 +1,10 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import type * as AgentThreadsApiModule from '../composables/useAgentThreadsApi';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowMount, flushPromises, enableAutoUnmount } from '@vue/test-utils';
 import { nextTick, reactive, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { N8nIconButton } from '@n8n/design-system';
 import AgentSessionTimelineView from '../views/AgentSessionTimelineView.vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
@@ -41,12 +43,21 @@ const confirmDeletion = vi.fn().mockResolvedValue('confirm');
 const showError = vi.fn();
 const showMessage = vi.fn();
 const canDeleteSession = ref(true);
+const canExecute = ref(true);
+const stopSession = vi.hoisted(() => vi.fn());
 const sendSession = vi.fn();
 
 vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy: clipboardCopy }) }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
 vi.mock('../composables/useAgentPermissions', () => ({
-	useAgentPermissions: () => ({ canUpdate: canDeleteSession }),
+	useAgentPermissions: () => ({ canUpdate: canDeleteSession, canExecute }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
+vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
+	...(await importOriginal<typeof AgentThreadsApiModule>()),
+	stopSession,
 }));
 vi.mock('../composables/useAgentConfirmationModal', () => ({
 	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirmDeletion }),
@@ -105,11 +116,126 @@ describe('AgentSessionTimelineView', () => {
 		fetchSessionThreads.mockReset().mockResolvedValue(undefined);
 		routeParams.threadId = 'thread-a';
 		canDeleteSession.value = true;
+		canExecute.value = true;
+		stopSession.mockReset().mockResolvedValue({ cancelRequested: true });
 		confirmDeletion.mockResolvedValue('confirm');
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('stops a running integration session and removes the icon after cancellation', async () => {
+		const wrapper = await renderTimeline();
+		const panel = wrapper.getComponent(AgentSessionTimelinePanel);
+		const header = wrapper.getComponent(AgentSessionTimelineHeader);
+		panel.vm.$emit('loaded', {
+			thread: { ...sessionThread('thread-a'), canContinueInPreview: false },
+			executions: [{ id: 'e1', source: 'slack', status: 'running' }],
+		});
+		await nextTick();
+		expect(header.props('showStop')).toBe(true);
+
+		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
+		stopSession.mockReturnValueOnce(pending.promise);
+		header.vm.$emit('stop');
+		header.vm.$emit('stop');
+		await nextTick();
+		expect(header.props('stopLoading')).toBe(true);
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'p1', 'a1', 'thread-a');
+		pending.resolve({ cancelRequested: true });
+		await flushPromises();
+		expect(header.props('stopLoading')).toBe(false);
+		expect(header.props('showStop')).toBe(true);
+
+		panel.vm.$emit('loaded', {
+			thread: sessionThread('thread-a'),
+			executions: [{ id: 'e1', source: 'slack', status: 'cancelled' }],
+		});
+		await nextTick();
+		expect(header.props('showStop')).toBe(false);
+	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'])(
+		'hides Stop for a %s execution',
+		async (status) => {
+			const wrapper = await renderTimeline();
+			wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+				thread: sessionThread('thread-a'),
+				executions: [{ id: 'e1', status }],
+			});
+			await nextTick();
+			const header = wrapper.getComponent(AgentSessionTimelineHeader);
+			expect(header.props('showStop')).toBe(false);
+			header.vm.$emit('stop');
+			expect(stopSession).not.toHaveBeenCalled();
+		},
+	);
+
+	it('requires execute permission to stop a session', async () => {
+		const wrapper = await renderTimeline();
+		canExecute.value = false;
+		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: sessionThread('thread-a'),
+			executions: [{ id: 'e1', status: 'running' }],
+		});
+		await nextTick();
+		const header = wrapper.getComponent(AgentSessionTimelineHeader);
+		expect(header.props('showStop')).toBe(false);
+		header.vm.$emit('stop');
+		expect(stopSession).not.toHaveBeenCalled();
+	});
+
+	it('keeps the stop action available after a failed request', async () => {
+		const wrapper = await renderTimeline();
+		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: sessionThread('thread-a'),
+			executions: [{ id: 'e1', status: 'running' }],
+		});
+		await nextTick();
+		const error = new Error('Request failed');
+		stopSession.mockRejectedValueOnce(error);
+		const header = wrapper.getComponent(AgentSessionTimelineHeader);
+		header.vm.$emit('stop');
+		await flushPromises();
+		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
+		expect(header.props('stopLoading')).toBe(false);
+		expect(header.props('showStop')).toBe(true);
+		header.vm.$emit('stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledTimes(2);
+	});
+
+	it('shows an accessible stop icon without a replacement label after stopping', async () => {
+		const wrapper = shallowMount(AgentSessionTimelineHeader, {
+			global: { stubs: { N8nTooltip: { template: '<slot />' } } },
+			props: {
+				breadcrumbItems: [],
+				projectIcon: { type: 'icon', value: 'user' },
+				sessionTitle: '',
+				sessionOptions: [],
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
+				showStop: true,
+			},
+		});
+		const stopButton = wrapper.get('[data-testid="agent-session-stop"]');
+		expect(stopButton.attributes('aria-label')).toBe('Stop session');
+		await stopButton.trigger('click');
+		expect(wrapper.emitted('stop')).toEqual([[]]);
+		await wrapper.setProps({ stopLoading: true });
+		const stopIcon = wrapper
+			.findAllComponents(N8nIconButton)
+			.find((component) => component.attributes('data-testid') === 'agent-session-stop');
+		expect(stopIcon?.props()).toMatchObject({
+			variant: 'ghost',
+			size: 'medium',
+			icon: 'square',
+			loading: true,
+		});
+		await wrapper.setProps({ showStop: false, stopLoading: false });
+		expect(wrapper.find('[data-testid="agent-session-stop"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('Session stopped');
 	});
 
 	it('loads configuration and sessions for the timeline', async () => {
