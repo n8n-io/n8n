@@ -94,7 +94,7 @@ function remove(id = editing.value?.id) {
 						:disabled="disabled"
 						:class="$style.configuration"
 						:title="configuration.name"
-						icon="shield"
+						:icon="configuration.method === 'workflow' ? 'workflow' : configuration.channel"
 						data-testid="agent-hitl-configuration"
 						@click="
 							editing = configuration;
