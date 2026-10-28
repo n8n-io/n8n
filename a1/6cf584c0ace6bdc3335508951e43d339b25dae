@@ -1,0 +1,24 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_7a118b07ee147d::t_8dd7f3c60b92bc 59,666,670,678,685-687,689-692,711-719
+  s_7a118b07ee147d::t_52ea66e2568d0a 688
+  s_7a118b07ee147d::t_5b7247af04537e 721
+packages/@n8n/agents/src/runtime/memory/auto-recall-bench.ts
+  s_7a118b07ee147d::t_f11f76fbfc12c0 1-17,19-142
+  s_7a118b07ee147d::t_aef47d447ccbfc 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a16cf584c0ace6bdc3335508951e43d339b25dae",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
