@@ -18,6 +18,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
+import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
 import type { BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
@@ -35,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const labels = usePromotionPreviewLabels();
 
 const asBlockedResult = (check: ApplyCheckResult): BlockedApplyResult => ({
 	status: 'blocked',
@@ -95,42 +97,57 @@ type HardConflict = Exclude<
 >;
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
-	const detail = i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`);
+	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
+	const row = {
+		key: `conflict:${index}`,
+		status: status('conflict'),
+		detail: i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
+	};
 	if (conflict.kind === 'project') {
 		return {
-			key: `conflict:${index}`,
+			...row,
 			icon: resourceIcon('project'),
 			name: conflict.project.name,
 			type: 'project',
-			usedBy: conflict.workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name })),
-			status: status('conflict'),
-			detail,
+			usedBy:
+				'workflows' in conflict
+					? conflict.workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }))
+					: [],
+		};
+	}
+	if (conflict.kind === 'workflow') {
+		const workflows = usedBy(conflict.consumers);
+		return {
+			...row,
+			icon: resourceIcon('workflow'),
+			name: workflows.map(({ name }) => name).join(', '),
+			type: 'workflow',
+			usedBy: workflows,
+		};
+	}
+	if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+		return {
+			...row,
+			icon: resourceIcon(type),
+			// An import-wide issue, such as a disabled module, names no table or tag.
+			name:
+				conflict.name ?? conflict.id ?? i18n.baseText(`promotions.preview.blockers.type.${type}`),
+			type,
+			usedBy: usedBy(conflict.consumers),
 		};
 	}
 	return {
-		key: `conflict:${index}`,
+		...row,
 		icon: resourceIcon(conflict.kind),
 		name: conflict.name,
 		type: conflict.kind,
 		usedBy: usedBy(conflict.consumers),
-		status: status('conflict'),
-		detail,
 	};
 };
 
-const MOVED_DETAIL = {
-	workflow: {
-		existing: 'promotions.preview.blockers.movedWorkflow',
-		newProject: 'promotions.preview.blockers.movedWorkflow.newProject',
-	},
-	folder: {
-		existing: 'promotions.preview.blockers.movedFolder',
-		newProject: 'promotions.preview.blockers.movedFolder.newProject',
-	},
-} as const;
-
 function movedRow(
-	type: keyof typeof MOVED_DETAIL,
+	type: 'workflow' | 'folder',
 	move: ApplyCheckResult['movedWorkflows'][number],
 ): BlockerRow {
 	return {
@@ -140,13 +157,7 @@ function movedRow(
 		type,
 		usedBy: [],
 		status: status('moved'),
-		detail: i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
-			interpolate: {
-				project: move.project.name,
-				instanceProject:
-					move.instanceProject.name ?? i18n.baseText('promotions.preview.personalProject'),
-			},
-		}),
+		detail: labels.moveDetail(type, move),
 	};
 }
 

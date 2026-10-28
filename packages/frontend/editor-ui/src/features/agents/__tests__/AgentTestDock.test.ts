@@ -1,0 +1,775 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
+/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
+
+enableAutoUnmount(afterEach);
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
+
+vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
+	useAgentSessionLangSmithExport: () => ({
+		isEnabled: false,
+		isExporting: false,
+		sendSession: vi.fn(),
+	}),
+}));
+
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({ baseText: (key: string) => key }),
+}));
+
+vi.mock('../agentSessions.store', () => ({
+	useAgentSessionsStore: () => ({ loading: false }),
+}));
+
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
+		.useDropdownSearch,
+	N8nActionDropdown: {
+		name: 'N8nActionDropdown',
+		template:
+			'<div data-testid="action-dropdown" @click="!disabled && $emit(\'select\', items[0].id)"><slot name="activator" /></div>',
+		props: { items: { type: Array, default: () => [] }, disabled: Boolean },
+		emits: ['select'],
+	},
+	N8nButton: {
+		name: 'N8nButton',
+		template: '<button v-bind="$attrs" :data-variant="variant" :data-size="size"><slot /></button>',
+		props: ['size', 'variant'],
+	},
+	N8nDropdownMenu: {
+		name: 'N8nDropdownMenu',
+		template:
+			'<div><slot name="trigger" /><div v-for="item in items" :key="item.id" :data-testid="`session-row-${item.id}`" @click="!item.disabled && $emit(\'select\', item.id)"><slot name="item-label" :item="item" :ui="{ class: \'item-label\' }" /><slot name="item-trailing" :item="item" :ui="{ class: \'item-trailing\' }" /></div></div>',
+		props: {
+			items: { type: Array, default: () => [] },
+			width: String,
+			searchable: Boolean,
+			searchPlaceholder: String,
+			emptyText: String,
+		},
+		emits: ['select', 'search'],
+	},
+	N8nIcon: {
+		name: 'N8nIcon',
+		template: '<i :data-icon="icon" />',
+		props: ['icon'],
+	},
+	N8nIconButton: {
+		name: 'N8nIconButton',
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-size="iconSize" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
+		props: ['icon', 'iconSize', 'size', 'variant'],
+		emits: ['click'],
+	},
+	N8nKeyboardShortcut: { name: 'N8nKeyboardShortcut', template: '<span />' },
+	N8nText: {
+		name: 'N8nText',
+		template: '<span v-bind="$attrs"><slot /></span>',
+	},
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		template:
+			'<div v-bind="$attrs" :data-content="content" :data-placement="placement" :data-show-after="showAfter"><slot /><slot name="content" /></div>',
+		props: ['content', 'placement', 'showAfter'],
+	},
+	TOOLTIP_DELAY_MS: 500,
+}));
+
+const chatPageClearBudgetStopsMock = vi.fn();
+
+const AgentTestChatPageStub = {
+	name: 'AgentTestChatPage',
+	props: ['beforeSend', 'initialPrompt', 'visible'],
+	emits: [
+		'continue-loaded',
+		'open-build',
+		'send-to-assistant',
+		'initial-consumed',
+		'usage-updated',
+	],
+	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
+		expose({
+			focusInput: vi.fn(),
+			getConversationMarkdown: () => '**User:**\n\nHello',
+			clearBudgetStops: chatPageClearBudgetStopsMock,
+		});
+	},
+	template:
+		'<div data-testid="agent-preview-chat-page-stub"><textarea class="ignore-key-press-canvas" /></div>',
+};
+
+const AgentTestMoreMenuStub = {
+	name: 'AgentTestMoreMenu',
+	props: [
+		'projectId',
+		'agentId',
+		'effectiveSessionId',
+		'hasSession',
+		'isFullWidth',
+		'hideLayoutToggle',
+		'isDeletingSession',
+		'canDeleteSession',
+		'getConversationMarkdown',
+		'usageUpdates',
+	],
+	emits: ['toggle-full-width', 'delete-session', 'export-session'],
+	template: '<button data-testid="agent-preview-more-btn" @click="$emit(\'toggle-full-width\')" />',
+};
+
+function mountDock(
+	overrides: Partial<{
+		hasSession: boolean;
+		overlay: boolean;
+		inline: boolean;
+		sessionTitle: string;
+		effectiveSessionId?: string;
+		beforeSend: () => Promise<void> | void;
+		isOpen: boolean;
+		isDeletingSession: boolean;
+		canDeleteSession: boolean;
+		initialPrompt?: string;
+		sessionOptions: Array<{
+			id: string;
+			title: string;
+			disabled?: boolean;
+			updatedAt?: string;
+		}>;
+	}> = {},
+	attachTo?: HTMLElement,
+) {
+	return mount(AgentTestDock, {
+		...(attachTo ? { attachTo } : {}),
+		props: {
+			isOpen: true,
+			sessionTitle: 'Order help',
+			sessionOptions: [],
+			hasSession: true,
+			initialized: true,
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			agent: null,
+			localConfig: null,
+			connectedTriggers: [],
+			effectiveSessionId: 'thread-1',
+			isDeletingSession: false,
+			canDeleteSession: true,
+			...overrides,
+		},
+		global: {
+			stubs: {
+				AgentTestChatPage: AgentTestChatPageStub,
+				AgentTestMoreMenu: AgentTestMoreMenuStub,
+			},
+		},
+	});
+}
+
+describe('AgentTestDock', () => {
+	beforeEach(function resetMocks() {
+		vi.clearAllMocks();
+		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
+	});
+
+	it('ignores the saved full-width layout in an overlay', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ overlay: true });
+
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.classes()).toContain('overlay');
+		expect(wrapper.findComponent(AgentTestMoreMenuStub).props('hideLayoutToggle')).toBe(true);
+		await wrapper.get('[data-testid="agent-preview-more-btn"]').trigger('click');
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('fullpage');
+		await wrapper.get('[data-testid="agent-preview-close-btn"]').trigger('click');
+		expect(wrapper.emitted('close')).toEqual([[]]);
+	});
+
+	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ inline: true });
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(false);
+	});
+
+	it('keeps the last usage on completion', async () => {
+		const wrapper = mountDock();
+		const chat = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentTestMoreMenu' });
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			complete: false,
+		};
+		chat.vm.$emit('usage-updated', update);
+		await wrapper.vm.$nextTick();
+		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': update });
+		expect(wrapper.emitted('usage-updated')).toEqual([[update]]);
+		chat.vm.$emit('usage-updated', { ...update, usage: undefined, complete: true });
+		await wrapper.vm.$nextTick();
+		expect(menu.props('usageUpdates')).toEqual({ 'execution-1': { ...update, complete: true } });
+		expect(wrapper.emitted('usage-updated')?.at(-1)).toEqual([{ ...update, complete: true }]);
+	});
+
+	it('keeps live usage when switching away from a session and back', async () => {
+		const wrapper = mountDock();
+		const chat = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentTestMoreMenu' });
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'execution-1',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+			complete: false,
+		};
+		chat.vm.$emit('usage-updated', update);
+		await wrapper.vm.$nextTick();
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		const otherUpdate = { ...update, sessionId: 'thread-2', executionId: 'execution-2' };
+		chat.vm.$emit('usage-updated', otherUpdate);
+		chat.vm.$emit('usage-updated', { ...update, usage: { ...update.usage, cost: 1 } });
+		await wrapper.vm.$nextTick();
+		await wrapper.setProps({ effectiveSessionId: 'thread-1' });
+		expect(menu.props('usageUpdates')).toEqual({
+			'execution-1': update,
+			'execution-2': otherUpdate,
+		});
+	});
+
+	it('shows the session title only after a session starts', async () => {
+		const wrapper = mountDock({ hasSession: false, sessionTitle: 'New session' });
+		const history = wrapper.get('[data-testid="agent-preview-history-trigger"]');
+
+		expect(history.text()).toBe('instanceAi.sidebar.chatHistory');
+		await wrapper.setProps({ hasSession: true, sessionTitle: 'Order help' });
+		expect(history.text()).toBe('Order help');
+		expect(history.element.tagName).toBe('BUTTON');
+		expect(history.attributes()).toMatchObject({
+			'aria-label': 'Order help',
+			'data-size': 'small',
+		});
+		expect(
+			wrapper
+				.get('[data-testid="agent-preview-dock-header"]')
+				.findAll('button')
+				.map((element) => element.attributes('data-testid')),
+		).toEqual([
+			'agent-preview-history-trigger',
+			'agent-preview-view-session-btn',
+			'agent-preview-new-chat-btn',
+			'agent-preview-more-btn',
+			'agent-preview-close-btn',
+		]);
+		await wrapper.setProps({ sessionTitle: '' });
+		expect(history.text()).toBe('instanceAi.sidebar.chatHistory');
+	});
+
+	it('filters session options and updates the empty message during search', async () => {
+		const wrapper = mountDock({
+			sessionOptions: [
+				{ id: 'first', title: 'First session', updatedAt: new Date().toISOString() },
+				{ id: 'second', title: 'Second session', updatedAt: new Date().toISOString() },
+			],
+		});
+		const dropdown = wrapper.getComponent({ name: 'N8nDropdownMenu' });
+
+		expect(dropdown.props('emptyText')).toBe('agents.builder.chat.sessionPicker.empty');
+		dropdown.vm.$emit('search', 'second');
+		await wrapper.vm.$nextTick();
+		expect(
+			dropdown.props('items').filter((item: { header?: boolean }) => !item.header),
+		).toHaveLength(1);
+		expect(dropdown.props('emptyText')).toBe('agents.builder.chat.sessionPicker.noMatch');
+	});
+
+	it('forwards row deletion unless deletion is pending and omits disabled row actions', async () => {
+		const wrapper = mountDock({
+			sessionOptions: [
+				{ id: 'thread-2', title: 'Second session' },
+				{ id: '__empty__', title: 'No sessions', disabled: true },
+			],
+		});
+
+		expect(wrapper.findAllComponents({ name: 'N8nActionDropdown' })).toHaveLength(1);
+		expect(
+			wrapper
+				.get('[data-testid="session-row-__empty__"]')
+				.find('[data-testid="action-dropdown"]')
+				.exists(),
+		).toBe(false);
+
+		await wrapper
+			.get('[data-testid="session-row-thread-2"] [aria-label="agentSessions.actions"]')
+			.trigger('click');
+
+		expect(wrapper.emitted('delete-session')).toEqual([['thread-2']]);
+		expect(wrapper.emitted('session-select')).toBeUndefined();
+
+		await wrapper.setProps({ isDeletingSession: true });
+		await wrapper
+			.get('[data-testid="session-row-thread-2"] [aria-label="agentSessions.actions"]')
+			.trigger('click');
+		expect(wrapper.emitted('delete-session')).toEqual([['thread-2']]);
+	});
+
+	it('hides and guards deletion for viewers', () => {
+		const wrapper = mountDock({
+			canDeleteSession: false,
+			sessionOptions: [
+				{ id: 'thread-2', title: 'Second session', updatedAt: new Date().toISOString() },
+			],
+		});
+
+		expect(wrapper.findComponent({ name: 'N8nActionDropdown' }).exists()).toBe(false);
+		wrapper.getComponent({ name: 'AgentTestMoreMenu' }).vm.$emit('delete-session');
+		expect(wrapper.emitted('delete-session')).toBeUndefined();
+	});
+
+	it('renders accessible header actions and emits their events', async () => {
+		const wrapper = mountDock();
+		const expectedActions = [
+			{
+				testId: 'agent-preview-view-session-btn',
+				icon: 'list-tree',
+				label: 'agents.builder.preview.viewSession',
+			},
+			{
+				testId: 'agent-preview-new-chat-btn',
+				icon: 'message-circle-plus',
+				label: 'agents.builder.chat.newChat.label',
+			},
+			{
+				testId: 'agent-preview-close-btn',
+				icon: 'x',
+				label: 'agents.builder.preview.close.ariaLabel',
+			},
+		];
+		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
+
+		expect(traceTooltip.attributes()).toMatchObject({
+			'data-content': 'agents.builder.preview.viewSession',
+			'data-placement': 'bottom',
+		});
+
+		for (const action of expectedActions) {
+			const button = wrapper.get(`[data-testid="${action.testId}"]`);
+			expect(button.attributes()).toMatchObject({
+				'aria-label': action.label,
+				'data-icon-size': 'large',
+				'data-size': 'small',
+				'data-variant': 'ghost',
+			});
+			expect(button.find(`[data-icon="${action.icon}"]`).exists()).toBe(true);
+
+			await button.trigger('click');
+		}
+
+		expect(wrapper.emitted('view-trace')).toEqual([[]]);
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'test-panel' },
+		);
+	});
+
+	it.each([
+		['until the session has persisted', { hasSession: false }],
+		['without an effective session id', { effectiveSessionId: undefined }],
+	] as const)('omits the trace control and tooltip %s', (_condition, overrides) => {
+		const wrapper = mountDock(overrides);
+
+		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
+	});
+
+	it('keeps the preview page mounted when the dock closes and reopens', async () => {
+		const wrapper = mountDock();
+		const chatPage = wrapper.findComponent({ name: 'AgentTestChatPage' });
+		expect(chatPage.props('visible')).toBe(true);
+		await wrapper.setProps({ isOpen: false });
+		expect(chatPage.props('visible')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTestChatPage' }).vm).toBe(chatPage.vm);
+		await wrapper.setProps({ isOpen: true });
+		expect(chatPage.props('visible')).toBe(true);
+	});
+
+	it('forwards chat events to the preview page', () => {
+		const beforeSend = vi.fn();
+		const fixEvent = {
+			executionId: 'execution-1',
+			failures: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'http_request',
+					toolDisplayName: 'HTTP request',
+					error: 'Request failed',
+				},
+			],
+		};
+		const wrapper = mountDock({ beforeSend, initialPrompt: 'Test these instructions' });
+		const chatPage = wrapper.findComponent({ name: 'AgentTestChatPage' });
+
+		expect(chatPage.props('beforeSend')).toBe(beforeSend);
+		expect(chatPage.props('initialPrompt')).toBe('Test these instructions');
+		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
+		chatPage.vm.$emit('open-build');
+		chatPage.vm.$emit('send-to-assistant', fixEvent);
+		chatPage.vm.$emit('initial-consumed');
+
+		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
+		expect(wrapper.emitted('open-build')).toEqual([[]]);
+		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+	});
+
+	it('shows the new-session shortcut tooltip', () => {
+		const wrapper = mountDock();
+		const tooltips = wrapper.findAllComponents({
+			name: 'KeyboardShortcutTooltip',
+		});
+
+		expect(tooltips).toHaveLength(2);
+		expect(tooltips[0]?.props()).toMatchObject({
+			label: 'agents.builder.chat.newChat.label',
+			placement: 'bottom',
+			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
+		});
+		expect(tooltips[1]?.props()).toMatchObject({
+			label: 'agents.builder.preview.close.ariaLabel',
+			shortcut: { metaKey: false, shiftKey: false, keys: ['esc'] },
+		});
+	});
+
+	it('passes the active session to the more menu and forwards its deletion request', () => {
+		const wrapper = mountDock();
+		const moreMenu = wrapper.getComponent({ name: 'AgentTestMoreMenu' });
+
+		expect(moreMenu.props()).toMatchObject({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			effectiveSessionId: 'thread-1',
+			hasSession: true,
+			isFullWidth: false,
+		});
+
+		moreMenu.vm.$emit('delete-session');
+		expect(wrapper.emitted('delete-session')).toEqual([['thread-1']]);
+	});
+
+	it('creates a new session from the keyboard shortcut', async function () {
+		const wrapper = mountDock();
+		expect(track).not.toHaveBeenCalled();
+		await wrapper.vm.$nextTick();
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: ';',
+				code: 'Semicolon',
+				ctrlKey: true,
+				metaKey: true,
+				shiftKey: true,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'shortcut' },
+		);
+	});
+
+	describe('Escape key events', function () {
+		let host: HTMLDivElement;
+
+		beforeEach(function attachHost() {
+			host = document.createElement('div');
+			document.body.append(host);
+		});
+
+		afterEach(function removeHost() {
+			host.remove();
+		});
+
+		it.each(['[data-testid="agent-preview-new-chat-btn"]', 'textarea'])(
+			'closes from focused %s',
+			async function (selector) {
+				const wrapper = mountDock({}, host);
+				const element = wrapper.get<HTMLElement>(selector).element;
+				element.focus();
+				await wrapper.vm.$nextTick();
+				expect(document.activeElement).toBe(element);
+
+				const event = new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+					cancelable: true,
+				});
+				element.dispatchEvent(event);
+
+				expect(wrapper.emitted('close')).toEqual([[]]);
+				expect(event.defaultPrevented).toBe(true);
+			},
+		);
+
+		it('does not close from outside focus or after the dock closes', async function () {
+			const wrapper = mountDock({}, host);
+			const outside = document.createElement('button');
+			host.append(outside);
+			outside.focus();
+			await wrapper.vm.$nextTick();
+			outside.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+				}),
+			);
+			expect(wrapper.emitted('close')).toBeUndefined();
+
+			const input = wrapper.get<HTMLTextAreaElement>('textarea').element;
+			input.focus();
+			await wrapper.setProps({ isOpen: false });
+			input.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+				}),
+			);
+			expect(wrapper.emitted('close')).toBeUndefined();
+		});
+
+		it('leaves Escape to a nested dialog', async function () {
+			const wrapper = mountDock({}, host);
+			wrapper
+				.get('[data-testid="agent-preview-chat-page-stub"]')
+				.element.setAttribute('role', 'dialog');
+			const input = wrapper.get<HTMLTextAreaElement>('textarea').element;
+			input.focus();
+			await wrapper.vm.$nextTick();
+			input.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'Escape',
+					code: 'Escape',
+					bubbles: true,
+				}),
+			);
+			expect(wrapper.emitted('close')).toBeUndefined();
+		});
+	});
+
+	it('docks the preview before opening the session view', async () => {
+		/** TODO: Remove this test when https://linear.app/n8n/issue/AGENT-808 removes preview chat from the session trace view. */
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock();
+
+		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
+
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('docked');
+		expect(wrapper.emitted('view-trace')).toEqual([[]]);
+	});
+
+	it('exposes clearBudgetStops through to the chat page', () => {
+		const wrapper = mountDock();
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['sessionCostCapUsd']);
+
+		expect(chatPageClearBudgetStopsMock).toHaveBeenCalledExactlyOnceWith(['sessionCostCapUsd']);
+	});
+});
+
+describe('AgentTestChatPage', () => {
+	function mountChatPage(
+		beforeSend?: () => Promise<void> | void,
+		increaseBudget?: (payload: {
+			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+			amount: number;
+		}) => Promise<boolean>,
+		standalone = false,
+	) {
+		return shallowMount(AgentTestChatPage, {
+			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: standalone } },
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+				beforeSend,
+				increaseBudget,
+			},
+		});
+	}
+
+	it.each([true, false])(
+		'uses the plus icon only in the Agents UI (standalone: %s)',
+		(standalone) => {
+			const wrapper = mountChatPage(undefined, undefined, standalone);
+			expect(wrapper.getComponent({ name: 'AgentChatPanel' }).props('attachButtonIcon')).toBe(
+				standalone ? 'plus' : 'paperclip',
+			);
+		},
+	);
+
+	it('reports a first user message only after one exists', () => {
+		const wrapper = mountChatPage();
+		const chat = wrapper.findComponent({ name: 'AgentChatPanel' });
+		chat.vm.$emit('first-user-message', undefined);
+		expect(wrapper.emitted('message-sent')).toBeUndefined();
+		chat.vm.$emit('first-user-message', 'Hello');
+		expect(wrapper.emitted('message-sent')).toEqual([[]]);
+	});
+
+	it('uses a neutral root inside the complementary dock landmark', () => {
+		expect(mountChatPage().element.tagName).toBe('DIV');
+	});
+
+	it('keeps the standalone chat visible when no dock state is provided', () => {
+		const wrapper = mountChatPage();
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('visible')).toBe(true);
+	});
+
+	it('keeps the chat panel mounted when visibility changes', async () => {
+		const wrapper = mountChatPage();
+		const chatPanel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		await wrapper.setProps({ visible: false });
+		expect(chatPanel.props('visible')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).vm).toBe(chatPanel.vm);
+		await wrapper.setProps({ visible: true });
+		expect(chatPanel.props('visible')).toBe(true);
+	});
+
+	it('forwards the pre-send guard to the chat panel', () => {
+		const beforeSend = vi.fn();
+		const wrapper = mountChatPage(beforeSend);
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
+	});
+
+	it('forwards the budget increase handler to the chat panel', () => {
+		const increaseBudget = vi.fn().mockResolvedValue(true);
+		const wrapper = mountChatPage(undefined, increaseBudget);
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('increaseBudget')).toBe(
+			increaseBudget,
+		);
+	});
+
+	it('exposes clearBudgetStops through to the chat panel', () => {
+		const clearBudgetStops = vi.fn();
+		const wrapper = shallowMount(AgentTestChatPage, {
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+			},
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div />',
+						methods: { clearBudgetStops },
+					},
+				},
+			},
+		});
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['monthlyBudgetUsd']);
+
+		expect(clearBudgetStops).toHaveBeenCalledExactlyOnceWith(['monthlyBudgetUsd']);
+	});
+
+	it('sends the initial prompt once when the chat panel is ready', async () => {
+		const sendMessageFromOutside = vi.fn();
+		const wrapper = shallowMount(AgentTestChatPage, {
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+				initialPrompt: 'Test these instructions',
+			},
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div />',
+						emits: ['initial-consumed'],
+						methods: { sendMessageFromOutside },
+					},
+				},
+			},
+		});
+
+		await wrapper.vm.$nextTick();
+
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith('Test these instructions');
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
+		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
+
+		await wrapper.setProps({ visible: false });
+		expect(sendMessageFromOutside).toHaveBeenCalledTimes(1);
+	});
+
+	it('forwards the session-aware history event from the chat panel', () => {
+		const wrapper = mountChatPage();
+
+		wrapper
+			.findComponent({ name: 'AgentChatPanel' })
+			.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
+
+		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
+	});
+
+	it('forwards Fix with Assistant metadata from the chat panel', () => {
+		const fixEvent = {
+			executionId: 'execution-1',
+			failures: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'http_request',
+					toolDisplayName: 'HTTP request',
+					error: 'Request failed',
+				},
+			],
+		};
+		const wrapper = mountChatPage();
+
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('send-to-assistant', fixEvent);
+
+		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
+	});
+});

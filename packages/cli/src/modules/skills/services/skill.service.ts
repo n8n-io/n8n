@@ -16,6 +16,9 @@ import {
 	type SkillScope,
 	type SkillSortOption,
 	type SkillUserDto,
+	type SkillVersionDetail,
+	type SkillVersionListItem,
+	type SkillVersionSummary,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
@@ -24,6 +27,7 @@ import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
+import type { SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import {
 	SkillRepository,
@@ -74,6 +78,18 @@ function assertHasInstructions(skill: AgentSkill): void {
 /** How a refusal counts the agents in projects the user may not read. */
 function agentsInOtherProjects(count: number): string {
 	return `${count} ${count === 1 ? 'agent' : 'agents'} in other projects`;
+}
+
+function toVersionSummary(
+	version: Pick<SkillVersion, 'id' | 'version' | 'createdById' | 'createdAt'>,
+	users: Map<string, SkillUserDto>,
+): SkillVersionSummary {
+	return {
+		id: version.id,
+		version: version.version,
+		createdBy: version.createdById ? (users.get(version.createdById) ?? null) : null,
+		createdAt: version.createdAt.toISOString(),
+	};
 }
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
@@ -306,6 +322,26 @@ export class SkillService {
 			);
 		}
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
+	}
+
+	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */
+	async listVersions(user: User, skillId: string): Promise<SkillVersionListItem[]> {
+		await this.skillAccess.requireAccess(user, skillId, 'read');
+		const versions = await this.skillRepository.findVersionList(skillId);
+		const users = await this.findCreators(versions.flatMap((version) => version.createdById ?? []));
+		return versions.map((version, index) => ({
+			...toVersionSummary(version, users),
+			isLatest: index === 0,
+		}));
+	}
+
+	/** One saved version with its content. Needs read access. */
+	async getVersion(user: User, skillId: string, version: number): Promise<SkillVersionDetail> {
+		await this.skillAccess.requireAccess(user, skillId, 'read');
+		const row = await this.skillRepository.findVersionByNumber(skillId, version);
+		if (!row) throw new NotFoundError('Skill version not found');
+		const users = await this.findCreators(row.version.createdById ? [row.version.createdById] : []);
+		return { ...toVersionSummary(row.version, users), skill: toAgentSkill(row) };
 	}
 
 	async delete(user: User, skillId: string, source: SkillTelemetrySource = 'ui'): Promise<void> {

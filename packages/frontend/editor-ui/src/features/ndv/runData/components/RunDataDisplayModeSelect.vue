@@ -30,7 +30,7 @@ const options = computed(() => {
 	}
 
 	if (paneType === 'output' && nodeGeneratesHtml) {
-		defaults.unshift({ label: 'HTML', value: 'html' });
+		defaults.unshift({ label: i18n.baseText('runData.html'), value: 'html' });
 	}
 
 	if (hasRenderableData) {

@@ -469,7 +469,7 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
-			profilesSampleRate: 0,
+			profilingEnabled: false,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
 			webhookTracesSampleRate: 0.05,

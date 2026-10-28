@@ -31,7 +31,7 @@ from pathlib import Path
 
 from live import enabled as live_enabled
 from live import open_url, recording
-from n8n_api import N8nClient
+from n8n_api import N8nClient, setting
 
 DEFAULT_TEXT_ANSWER = 'Use sensible defaults and continue.'
 HERE = Path(__file__).resolve().parent
@@ -80,6 +80,33 @@ class Recorder:
 			self.proc.wait(timeout=120)
 		except subprocess.TimeoutExpired:
 			self.proc.kill()
+
+
+ANTHROPIC_EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
+CUSTOM_EFFORTS = ('none', 'minimal', *ANTHROPIC_EFFORTS)
+# Keep in sync with instance-ai.config.ts and CUSTOM_MODEL_DEFAULTS in utils/custom-model-defaults.ts.
+DEFAULT_INSTANCE_AI_MODEL = 'anthropic/claude-opus-4-8'
+CUSTOM_MODEL_EFFORTS = (('kimi-k3', 'low'), ('glm-5.2', 'medium'))
+
+
+def configured_effort():
+	"""The orchestrator effort that n8n uses for N8N_INSTANCE_AI_MODEL, with the rules of
+	packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts. n8n does not report the effort, so this
+	reads the settings that the server reads. None when the provider has no fixed effort."""
+	model = (setting('N8N_INSTANCE_AI_MODEL') or DEFAULT_INSTANCE_AI_MODEL).lower()
+	provider = model.split('/', 1)[0] if '/' in model else ''
+	effort = (setting('N8N_INSTANCE_AI_REASONING_EFFORT') or '').strip().lower()
+	if provider in ('anthropic', 'google-vertex-anthropic'):
+		return effort if effort in ANTHROPIC_EFFORTS else 'medium'
+	if provider in ('custom', 'moonshotai'):
+		if effort in CUSTOM_EFFORTS:
+			return effort
+		return next((e for match, e in CUSTOM_MODEL_EFFORTS if match in model), None)
+	if provider == 'openai':
+		return 'medium' if 'gpt-5.6' in model else 'high'
+	if provider == 'xai' and 'grok-4.5' in model:
+		return 'medium'
+	return None
 
 
 def now_iso():
@@ -205,7 +232,8 @@ def main():
 	open_url(thread_url)
 
 	workflow_ids, decisions, langsmith_run_ids = [], [], []
-	saw_finish, idle_since = False, None
+	# The idle wait after run-finish is the runner's, so the run ends at the last run-finish.
+	saw_finish, idle_since, finish_ts = False, None, None
 	deadline = time.time() + args.timeout_min * 60
 	while time.time() < deadline:
 		try:
@@ -221,9 +249,10 @@ def main():
 			if etype == 'run-start':
 				if payload.get('langsmithRunId'):
 					langsmith_run_ids.append(payload['langsmithRunId'])
-				idle_since = None
+				idle_since, finish_ts = None, None
 			elif etype == 'run-finish':
 				saw_finish = True
+				finish_ts = event.get('ts') or time.time() * 1000
 				print(f'run-finish {payload.get("status", "")}', flush=True)
 			elif etype == 'tool-call':
 				print(f'tool {payload.get("toolName")}', flush=True)
@@ -255,7 +284,10 @@ def main():
 	else:
 		print('timeout: the thread did not go idle', flush=True)
 
-	finished_at = now_iso()
+	finished_at = (datetime.fromtimestamp(finish_ts / 1000, timezone.utc).isoformat() if finish_ts
+	               else now_iso())
+	# Background tasks can still call the LLM after run-finish, so the usage window ends at idle.
+	usage_finished_at = now_iso()
 	stop.set()
 	events_file.close()
 	recorder.stop()
@@ -279,10 +311,13 @@ def main():
 		'threadId': thread_id,
 		'startedAt': started_at,
 		'finishedAt': finished_at,
+		'usageFinishedAt': usage_finished_at,
 		'workflowIds': workflow_ids,
 		'workflowId': workflow_ids[-1] if workflow_ids else None,
 		'langsmithRunIds': langsmith_run_ids,
 		'decisions': decisions,
+		'effort': configured_effort(),
+		'effortSource': 'n8n settings (N8N_INSTANCE_AI_MODEL, N8N_INSTANCE_AI_REASONING_EFFORT)',
 		'threadUrl': thread_url,
 		'screen': 'screen.webm' if (out / 'screen.webm').exists() else None,
 	}

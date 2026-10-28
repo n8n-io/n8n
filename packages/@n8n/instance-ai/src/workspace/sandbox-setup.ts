@@ -303,9 +303,11 @@ export async function linkWorkspaceSdkIfEnabled(
 
 /**
  * Runner script that executes a workflow TS file via tsx, calls validate() + toJSON(),
- * and outputs structured JSON to stdout. Executed via: node --import tsx build.mjs ./src/workflow.ts
+ * runs the SDK source lint, and outputs structured JSON to stdout.
+ * Executed via: node --import tsx build.mjs ./src/workflow.ts
  */
-export const BUILD_MJS = `const filePath = process.argv[2] || './src/workflow.ts';
+export const BUILD_MJS = `import { readFileSync } from 'node:fs';
+const filePath = process.argv[2] || './src/workflow.ts';
 try {
   const mod = await import(filePath);
   const wf = mod.default;
@@ -319,7 +321,24 @@ try {
     ? wf.generatePinData().toJSON({ tidyUp: true })
     : undefined;
   const declaredOutputFixtures = declaredOutputJson?.pinData;
-  const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
+  // The host runs the Python rules again with the real runner import policy.
+  let lintWarnings = [];
+  try {
+    const { validateWorkflowBuilder } = await import('@n8n/workflow-sdk');
+    const source = readFileSync(filePath, 'utf8');
+    lintWarnings = validateWorkflowBuilder(wf, { lint: true, source }).lint
+      .filter((issue) => issue.lintTarget !== 'pythonCode')
+      .map((issue) => ({
+        code: issue.code,
+        message: issue.line ? \`line \${issue.line}: \${issue.message}\` : issue.message,
+        nodeName: issue.nodeName,
+        parameterPath: issue.parameterPath,
+        severity: issue.severity,
+      }));
+  } catch {
+    // Lint findings never block a save, so a lint failure must not fail the build.
+  }
+  const warnings = [...(validation.errors || []), ...(validation.warnings || []), ...lintWarnings];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
   // JSON.stringify drops the credential keys entirely and the server can't resolve them.

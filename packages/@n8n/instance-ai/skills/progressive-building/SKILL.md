@@ -4,7 +4,7 @@ dependencies:
   tools:
     - workflow_builder_build_workflow
     - workflow_builder_verify_built_workflow
-    - workflow_builder_workflows
+    - setup_workflow
     - workflow_builder_executions
 description: >-
   Load before workflow_builder_build_workflow and before scoping or planning new workflows and
