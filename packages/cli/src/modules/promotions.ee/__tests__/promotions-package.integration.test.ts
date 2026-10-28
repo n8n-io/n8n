@@ -876,10 +876,13 @@ describe('Promote and Apply', () => {
 		await remote.git.commit('Merge a promotion review');
 		await remote.git.push('origin', 'main');
 		const movedCommit = (await remote.git.revparse(['HEAD'])).trim();
+		// An unchanged instance exports the same package, so add a workflow for a new commit.
+		await createWorkflow({ name: 'Ship order', nodes: [], connections: {} }, project);
 
 		const result = await promote('Second promotion');
 
 		const { git } = await inspectBranch(remote.bareDir);
+		expect(result.git.commitSha).not.toBe(movedCommit);
 		expect((await git.revparse(['HEAD'])).trim()).toBe(result.git.commitSha);
 		expect((await git.revparse(['HEAD^'])).trim()).toBe(movedCommit);
 	});
