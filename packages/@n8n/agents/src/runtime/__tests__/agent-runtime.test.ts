@@ -12145,6 +12145,10 @@ describe('Tool builder — ending the turn', () => {
 });
 
 describe('AgentRuntime — tool output files', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+	});
+
 	const bytes = new Uint8Array([1, 2, 3]);
 
 	const readTool: BuiltTool = {
