@@ -97,6 +97,7 @@ beforeAll(async () => {
 		cancelExecution,
 		locateResume: vi.fn(),
 		resolveStep: vi.fn(),
+		readApprovalCallback: vi.fn(),
 	});
 });
 

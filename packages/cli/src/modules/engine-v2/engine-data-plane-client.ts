@@ -19,7 +19,7 @@ import type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { mintIdentityToken } from '@n8n/engine';
+import { mintIdentityToken, parseApprovalCallback } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -186,6 +186,10 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
 		return await this.postResume<ResumeTargetResponse>('/api/resume-requests/locate', request);
+	}
+
+	readApprovalCallback(reference: string): string | undefined {
+		return parseApprovalCallback(reference)?.stepId;
 	}
 
 	async resolveStep(

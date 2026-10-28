@@ -267,6 +267,7 @@ describe('GET /executions/:id', () => {
 				cancelExecution: vi.fn(),
 				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 

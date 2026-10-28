@@ -112,7 +112,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly endpointsConfig: EndpointsConfig,
-		private readonly dataPlane: EngineDataPlaneProxyService,
+		protected readonly dataPlane: EngineDataPlaneProxyService,
 		private readonly executionReader: EngineV2ExecutionReader,
 	) {}
 

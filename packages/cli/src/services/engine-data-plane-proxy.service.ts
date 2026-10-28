@@ -94,6 +94,12 @@ export interface EngineDataPlaneProvider {
 		stepId: string,
 		request: ResolveStepRequest,
 	): Promise<ResumeOutcome<ResolveStepResponse>>;
+
+	/**
+	 * The step id that an engine v2 approval callback names, or `undefined` for
+	 * any other reference. Does not verify the callback: `locateResume` does.
+	 */
+	readApprovalCallback(reference: string): string | undefined;
 }
 
 /**
@@ -170,5 +176,10 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
 
 		return await this.provider.resolveStep(stepId, request);
+	}
+
+	/** No provider, no engine v2 callback. */
+	readApprovalCallback(reference: string): string | undefined {
+		return this.provider?.readApprovalCallback(reference);
 	}
 }

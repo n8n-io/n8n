@@ -4,7 +4,7 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
-import { SharedSecretIdentityVerifier } from '@n8n/engine';
+import { mintApprovalCallback, SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
 import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
@@ -353,6 +353,13 @@ describe('EngineDataPlaneClient', () => {
 	});
 
 	describe('resume requests', () => {
+		it('reads the step id of an approval callback, and nothing from another reference', () => {
+			const stepId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+
+			expect(client.readApprovalCallback(mintApprovalCallback('secret', stepId, 'a'))).toBe(stepId);
+			expect(client.readApprovalCallback('nhitl1|e1|a|mac')).toBeUndefined();
+		});
+
 		it("posts `locateResume` to the engine's locate route", async () => {
 			const value = {
 				execution: { id: EXECUTION_ID },

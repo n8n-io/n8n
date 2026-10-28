@@ -83,6 +83,7 @@ beforeAll(async () => {
 		cancelExecution: vi.fn(),
 		locateResume: vi.fn(),
 		resolveStep: vi.fn(),
+		readApprovalCallback: vi.fn(),
 	});
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
