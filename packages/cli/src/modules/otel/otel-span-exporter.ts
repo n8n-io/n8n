@@ -1,6 +1,8 @@
 import type { Attributes } from '@opentelemetry/api';
 import { resourceFromAttributes, type Resource } from '@opentelemetry/resources';
-import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
+import type { SpanExporter } from '@opentelemetry/sdk-trace-base';
+
+import { withResource } from '@/observability/span-resource';
 
 export function mergeResourceAttributes(
 	exporter: SpanExporter,
@@ -32,11 +34,4 @@ function withExport(exporter: SpanExporter, exportSpans: SpanExporter['export'])
 		shutdown: async () => await exporter.shutdown(),
 		forceFlush: async () => await exporter.forceFlush?.(),
 	};
-}
-
-function withResource(span: ReadableSpan, resource: Resource): ReadableSpan {
-	return new Proxy(span, {
-		get: (target, property, receiver) =>
-			property === 'resource' ? resource : Reflect.get(target, property, receiver),
-	});
 }

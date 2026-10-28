@@ -31,6 +31,8 @@ import {
 } from '@/features/agents/constants';
 import N8nChatHintPopover from '@/features/agents/components/N8nChatHintPopover.vue';
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { useAssistantAgentThreadsStore } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store';
+import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useRecentChats } from '@/features/agents/n8nChatPage/useRecentChats';
@@ -64,6 +66,8 @@ const favoritesStore = useFavoritesStore();
 const instanceAiStore = useInstanceAiStore();
 const agentThreadsStore = useAgentN8nChatThreadsStore();
 const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const assistantAgentThreadsStore = useAssistantAgentThreadsStore();
+const instanceAiSettingsStore = useInstanceAiSettingsStore();
 const agentTelemetry = useAgentTelemetry();
 
 const {
@@ -111,6 +115,13 @@ watch(
 	},
 	{ immediate: true },
 );
+watch(
+	[isInstanceAiNavVisible, () => instanceAiSettingsStore.isAssistantAgentEnabled],
+	([visible, enabled]) => {
+		if (visible && enabled) void assistantAgentThreadsStore.fetchRecent();
+	},
+	{ immediate: true },
+);
 
 // Another tab can start a chat; refresh the list when the user comes back to this one.
 const { onDocumentVisible } = useDocumentVisibility();
@@ -119,6 +130,8 @@ onDocumentVisible(() => {
 	void instanceAiStore.loadThreads();
 	if (isAgentsN8nChatFlag.value)
 		void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+	if (instanceAiSettingsStore.isAssistantAgentEnabled)
+		void assistantAgentThreadsStore.fetchRecent();
 });
 
 watch(favoritesCollapsed, (val) =>
@@ -197,18 +210,24 @@ const sidebarActiveTabId = computed(() =>
 	isInstanceAiThreadView.value ? undefined : activeTabId.value,
 );
 
+const CHAT_MENU_ITEM_ID_PREFIX: Record<RecentChatItem['kind'], string> = {
+	assistant: 'instance-ai-thread-',
+	'assistant-agent': 'assistant-agent-thread-',
+	agent: 'agent-n8n-chat-thread-',
+};
+
 const getChatMenuItem = (item: RecentChatItem): IMenuItem => ({
-	id:
-		item.kind === 'assistant'
-			? `instance-ai-thread-${item.thread.id}`
-			: `agent-n8n-chat-thread-${item.thread.id}`,
+	id: `${CHAT_MENU_ITEM_ID_PREFIX[item.kind]}${item.thread.id}`,
 	icon: 'message-circle',
 	label: chatItemTitle(item, locale),
 	route: { to: chatItemRoute(item) },
 });
 
 function onChatItemClick(item: RecentChatItem): void {
-	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
+	agentTelemetry.trackClickedSidebarItem({
+		item: 'chat',
+		chatType: item.kind === 'agent' ? 'agent' : 'assistant',
+	});
 }
 
 const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
