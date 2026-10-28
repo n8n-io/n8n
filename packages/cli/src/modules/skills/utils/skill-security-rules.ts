@@ -1,11 +1,11 @@
 import { agentSkillSchema } from '@n8n/api-types';
+import { kebabCase } from 'change-case';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
 import type { SkillContent } from './skill-content-hash';
+import { SKILL_MD } from './skill-md';
 import type { SkillSourceFidelityWarning } from '../sources/skill-source-client';
-
-export const SKILL_MD = 'SKILL.md';
 
 /**
  * The skills schema has no limit for the frontmatter, but `skill_version.frontmatter` stores
@@ -114,14 +114,15 @@ const HIDDEN_RANGES: Array<[number, number]> = [
 	[0xe0100, 0xe01ef], // variation selectors supplement
 ];
 
-function isHidden(character: string): boolean {
-	const codePoint = character.codePointAt(0) ?? 0;
-	return HIDDEN_RANGES.some(([first, last]) => codePoint >= first && codePoint <= last);
-}
+const toClassRange = ([first, last]: [number, number]) =>
+	`\\u{${first.toString(16)}}-\\u{${last.toString(16)}}`;
+
+/** The ranges as one character class, so a scan collects only the hidden characters. */
+const HIDDEN_PATTERN = new RegExp(`[${HIDDEN_RANGES.map(toClassRange).join('')}]`, 'gu');
 
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(input.content).flatMap(({ file, texts }) => {
-		const found = texts.flatMap((text) => [...text].filter(isHidden));
+		const found = texts.flatMap((text) => text.match(HIDDEN_PATTERN) ?? []);
 		if (found.length === 0) return [];
 		return [
 			{
@@ -223,21 +224,16 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 	});
 }
 
-/** The permission-like keys of a skill, by their kebab-case spelling. */
+/**
+ * The permission-like keys of a skill, by their kebab-case spelling: `allowedTools`,
+ * `allowed_tools` and `Allowed-Tools` all give `allowed-tools`.
+ */
 function permissionKeys(content: SkillContent): Map<string, { key: string; value: unknown }> {
 	return new Map(
 		Object.entries(content.frontmatter ?? {})
-			.map(([key, value]) => [toKebabCase(key), { key, value }] as const)
+			.map(([key, value]) => [kebabCase(key), { key, value }] as const)
 			.filter(([normalized]) => PERMISSION_KEYS.has(normalized)),
 	);
-}
-
-/** `allowedTools`, `allowed_tools` and `Allowed-Tools` all give `allowed-tools`. */
-function toKebabCase(key: string): string {
-	return key
-		.replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-		.replaceAll('_', '-')
-		.toLowerCase();
 }
 
 /**

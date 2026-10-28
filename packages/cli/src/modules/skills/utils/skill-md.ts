@@ -7,7 +7,7 @@ import { SkillParseError } from '../errors/skill-parse.error';
 /** One file of a skill folder. The path is relative to the folder. */
 export type SkillFolderFile = { path: string; content: string };
 
-const SKILL_FILE = 'SKILL.md';
+export const SKILL_MD = 'SKILL.md';
 
 /**
  * One skill folder to the content of one skill. The reader is lenient. It keeps every
@@ -28,7 +28,7 @@ export function readSkillFolder(
 	if (duplicate) {
 		throw new SkillParseError(`The folder has more than one file at ${duplicate.path}.`);
 	}
-	const skillFile = normalized.find((file) => file.path === SKILL_FILE);
+	const skillFile = normalized.find((file) => file.path === SKILL_MD);
 	if (!skillFile) throw new SkillParseError('The folder has no SKILL.md.');
 	const others = normalized.filter((file) => file !== skillFile);
 	const { data, instructions } = parseSkillMd(skillFile.content);
@@ -62,7 +62,7 @@ export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
 		{ lineWidth: 0 },
 	);
 	return [
-		{ path: SKILL_FILE, content: `---\n${frontmatter}---\n\n${content.instructions}\n` },
+		{ path: SKILL_MD, content: `---\n${frontmatter}---\n\n${content.instructions}\n` },
 		...content.files.map(({ path, content: text }) => ({ path, content: text })),
 	];
 }

@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 
 import type { SkillParseError } from '../errors/skill-parse.error';
 import type { SkillContent } from '../utils/skill-content-hash';
+import { SKILL_MD } from '../utils/skill-md';
 import {
 	checkShape,
 	findHiddenUnicode,
@@ -10,7 +11,6 @@ import {
 	findSuspiciousPhrases,
 	listFidelityWarnings,
 	listSkippedFiles,
-	SKILL_MD,
 	type SkillScanFinding,
 	type SkillScanInput,
 } from '../utils/skill-security-rules';
