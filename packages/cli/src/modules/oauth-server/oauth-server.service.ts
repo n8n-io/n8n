@@ -35,6 +35,7 @@ import { UserConsentRepository } from './database/repositories/oauth-user-consen
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
+import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
 import { isSameProtectedResource } from './resource-identity';
@@ -151,6 +152,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly eventService: EventService,
 		private readonly authService: AuthService,
 		private readonly oauthConsentService: OAuthConsentService,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -541,33 +543,46 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new InvalidResourceIndicatorError(tokenResource, approvedResource ?? 'none');
 		}
 
-		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
+		const grantedResource = approvedResource
+			? await this.resourceRegistry.getByResourceUrl(approvedResource)
+			: this.resourceRegistry.getDefaultResource();
 
-		const grantedScopes = authRecord.scope;
+		const tokens = await this.grantService.runForActiveUser(authRecord.userId, async (ctx) => {
+			await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode, ctx);
 
-		const { accessToken, refreshToken, audience } = this.tokenService.generateTokenPair(
-			authRecord.userId,
-			client.client_id,
-			approvedResource,
-			grantedScopes,
-		);
+			const grantedScopes = authRecord.scope;
 
-		await this.tokenService.saveTokenPair(
-			accessToken,
-			refreshToken,
-			client.client_id,
-			authRecord.userId,
-			grantedScopes,
-			audience,
-		);
+			const { accessToken, refreshToken, audience } = this.tokenService.generateTokenPair(
+				authRecord.userId,
+				client.client_id,
+				approvedResource,
+				grantedScopes,
+			);
 
+			await this.tokenService.saveTokenPair(
+				accessToken,
+				refreshToken,
+				client.client_id,
+				authRecord.userId,
+				grantedScopes,
+				audience,
+				ctx,
+			);
+
+			return {
+				access_token: accessToken,
+				token_type: 'Bearer',
+				expires_in: this.tokenService.getAccessTokenExpirySeconds(),
+				refresh_token: refreshToken,
+				// RFC 6749 §5.1: REQUIRED when the granted scopes differ from the
+				// requested ones — the user picks them on the consent screen.
+				scope: grantedScopes.join(' '),
+			};
+		});
 		// Completion of the authorization-code grant is the point at which the user
 		// has finished the OAuth flow for this client. The authorization server is
 		// shared by every protected resource on the instance (MCP, forms, ...), so
 		// only grants targeting the instance MCP server count as MCP usage.
-		const grantedResource = approvedResource
-			? await this.resourceRegistry.getByResourceUrl(approvedResource)
-			: this.resourceRegistry.getDefaultResource();
 		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
 			this.eventService.emit('mcp-oauth-completed', {
 				userId: authRecord.userId,
@@ -581,15 +596,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			userId: authRecord.userId,
 		});
 
-		return {
-			access_token: accessToken,
-			token_type: 'Bearer',
-			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
-			refresh_token: refreshToken,
-			// RFC 6749 §5.1: REQUIRED when the granted scopes differ from the
-			// requested ones — the user picks them on the consent screen.
-			scope: grantedScopes.join(' '),
-		};
+		return tokens;
 	}
 
 	// `resource` (when present) is normalized and validated against the registry here, then

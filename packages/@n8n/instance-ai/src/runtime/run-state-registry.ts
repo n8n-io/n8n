@@ -1,19 +1,18 @@
 import type {
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
-	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
+import type { ConfirmationData } from './confirmation-payload';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
 import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
-import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
@@ -45,57 +44,10 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
-	/** Set when the suspended run was a planned-task checkpoint follow-up.
-	 *  Preserved across suspend/resume so the resumed run's finalizer can
-	 *  run the deadlock fallback and reschedule. */
-	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
-	/** Set when the suspended run was a planned build-workflow follow-up. */
-	plannedBuild?: {
-		isPlannedBuildFollowUp: true;
-		buildTaskId: string;
-		workItemId: string;
-		isSupportingWorkflowTask?: boolean;
-		savedOutcome?: WorkflowBuildOutcome;
-	};
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
 	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
 	instanceContext?: SuspendedInstanceContext;
-}
-
-/**
- * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
- * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
- * union sent by the frontend — only one subset of fields is populated per call, matching
- * the confirmation kind that was originally requested.
- */
-export interface ConfirmationData {
-	approved: boolean;
-	credentials?: Record<string, string>;
-	nodeCredentials?: Record<string, Record<string, string>>;
-	userInput?: string;
-	domainAccessAction?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	/** Workflow-setup cards the user actively skipped, by node name. */
-	skippedNodes?: string[];
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
-	/** User's resource-access decision (e.g. 'allowForSession'). */
-	resourceDecision?: string;
-	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
-	denied?: boolean;
-	/** `'session'` means the user chose "always allow": the resuming tool should
-	 *  persist a thread-level grant so the same action isn't re-asked. */
-	scope?: 'once' | 'session';
-	autoSetup?: { credentialType: string; attemptId?: string };
-	credentialDestination?: InstanceAiCredentialDestinationDecision;
-	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {
@@ -756,7 +708,7 @@ export class RunStateRegistry<TUser = unknown> {
 	 * inline HITL (`waitForConfirmation(...)`) with `{ approved: false }`
 	 * causes the awaiting agent tool to run to completion as "denied" before
 	 * the process exits, which then mutates the snapshot tree mid-shutdown
-	 * and clobbers the plan/ask card the user would otherwise see on reload.
+	 * and clobbers the ask card the user would otherwise see on reload.
 	 * Letting the Promises dangle is safe: the process is exiting, the
 	 * abortController for each active run is aborted next, and the
 	 * `instance_ai_pending_confirmations` row survives so the user can still

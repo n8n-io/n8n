@@ -1,4 +1,8 @@
-import type { WhatsAppBusinessProfile, WhatsAppCredentialCheck } from '@n8n/api-types';
+import type {
+	WhatsAppBusinessProfile,
+	WhatsAppCredentialCheck,
+	WhatsAppMetaStatus,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
@@ -7,11 +11,13 @@ import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
+import { LruCache } from '@n8n/utils/lru-cache';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { createHmac } from 'node:crypto';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { numberProperty, stringProperty } from '../../integration-helpers';
+import { resolveWhatsAppMetaState } from './whatsapp-meta-status';
 
 const WHATSAPP_CREDENTIAL_TYPE = 'whatsAppBotApi';
 
@@ -30,6 +36,14 @@ const CHECK_TIMEOUT_MS = 30_000;
 
 const MAX_LOGGED_ERROR_LENGTH = 500;
 
+/**
+ * The settings and the channel chip ask for the Meta status on a timer. A
+ * short cache keeps one Meta call per number for all of them. Meta takes days
+ * to change a review, so 30 seconds only hides how often it is asked.
+ */
+const META_STATUS_CACHE_TTL_MS = 30_000;
+const META_STATUS_CACHE_SIZE = 200;
+
 interface GraphResponse {
 	statusCode: number;
 	body: unknown;
@@ -37,6 +51,14 @@ interface GraphResponse {
 
 @Service()
 export class WhatsAppCredentialCheckService {
+	private readonly metaStatusCache = new LruCache<
+		string,
+		{ expiresAt: number; status: WhatsAppMetaStatus }
+	>(META_STATUS_CACHE_SIZE);
+
+	/** Callers that ask while a read is under way share it. */
+	private readonly metaStatusInFlight = new Map<string, Promise<WhatsAppMetaStatus>>();
+
 	constructor(
 		private readonly credentialLookup: AgentCredentialLookupService,
 		private readonly outboundHttp: OutboundHttp,
@@ -124,6 +146,105 @@ export class WhatsAppCredentialCheckService {
 				error: sanitizeErrorDetail(ensureError(error).message, MAX_LOGGED_ERROR_LENGTH),
 			});
 			return { status: 'failed', reason: 'unreachable' };
+		}
+	}
+
+	/**
+	 * Reads where Meta's review of the number, display name and business stands.
+	 * A failed read gives `unknown` and not an error: this runs on a poll, and a
+	 * Meta outage must not show as a problem with the channel.
+	 */
+	async getMetaStatus(
+		user: User,
+		projectId: string,
+		credentialId: string,
+	): Promise<WhatsAppMetaStatus> {
+		const data = await this.credentialLookup.decryptForUser(
+			user,
+			projectId,
+			credentialId,
+			WHATSAPP_CREDENTIAL_TYPE,
+		);
+		if (!data) throw new NotFoundError(`WhatsApp credential "${credentialId}" not found`);
+
+		const accessToken = stringProperty(data, 'accessToken')?.trim();
+		const phoneNumberId = stringProperty(data, 'phoneNumberId')?.trim();
+		const businessAccountId = stringProperty(data, 'businessAccountId')?.trim();
+		const appSecret = stringProperty(data, 'appSecret')?.trim();
+		if (!accessToken || !phoneNumberId || !businessAccountId || !appSecret) {
+			return { state: 'unknown' };
+		}
+
+		// The caller was checked above. The key names the credential as well as the
+		// number, so a credential that holds the same ids and a bad token does not
+		// read the answer of a working one.
+		const key = `${credentialId}:${phoneNumberId}:${businessAccountId}`;
+		const cached = this.metaStatusCache.get(key);
+		if (cached && cached.expiresAt > Date.now()) return cached.status;
+
+		const inFlight = this.metaStatusInFlight.get(key);
+		if (inFlight) return await inFlight;
+
+		const read = this.readMetaStatus({ accessToken, phoneNumberId, businessAccountId, appSecret })
+			.then((status) => {
+				// A failed read is not kept, so the next ask tries Meta again.
+				if (status.state !== 'unknown') {
+					this.metaStatusCache.set(key, {
+						expiresAt: Date.now() + META_STATUS_CACHE_TTL_MS,
+						status,
+					});
+				}
+				return status;
+			})
+			.finally(() => this.metaStatusInFlight.delete(key));
+		this.metaStatusInFlight.set(key, read);
+		return await read;
+	}
+
+	private async readMetaStatus(credential: {
+		accessToken: string;
+		phoneNumberId: string;
+		businessAccountId: string;
+		appSecret: string;
+	}): Promise<WhatsAppMetaStatus> {
+		const { accessToken, phoneNumberId, businessAccountId, appSecret } = credential;
+		const proof = createHmac('sha256', appSecret).update(accessToken).digest('hex');
+		const get = async (path: string, qs: Record<string, string>) =>
+			await this.get(path, accessToken, { ...qs, appsecret_proof: proof });
+
+		try {
+			const [phone, account] = await Promise.all([
+				get(`/${encodeURIComponent(phoneNumberId)}`, {
+					fields:
+						'status,name_status,new_name_status,messaging_limit_tier,verified_name,display_phone_number',
+				}),
+				// The business read is optional. A failed request must not discard the phone read.
+				get(`/${encodeURIComponent(businessAccountId)}`, {
+					fields: 'business_verification_status',
+				}).catch(() => undefined),
+			]);
+			if (phone.statusCode !== 200) return { state: 'unknown' };
+
+			return {
+				state: resolveWhatsAppMetaState({
+					numberStatus: stringProperty(phone.body, 'status'),
+					nameStatus: stringProperty(phone.body, 'name_status'),
+					newNameStatus: stringProperty(phone.body, 'new_name_status'),
+					messagingLimitTier: stringProperty(phone.body, 'messaging_limit_tier'),
+					// Without the business read, the number states still show.
+					businessVerificationStatus:
+						account?.statusCode === 200
+							? stringProperty(account.body, 'business_verification_status')
+							: undefined,
+				}),
+				displayName: stringProperty(phone.body, 'verified_name'),
+				displayPhoneNumber: stringProperty(phone.body, 'display_phone_number'),
+			};
+		} catch (error) {
+			this.logger.debug('[WhatsAppCredentialCheck] Could not read the Meta status', {
+				error: sanitizeErrorDetail(ensureError(error).message, MAX_LOGGED_ERROR_LENGTH),
+			});
+			return { state: 'unknown' };
 		}
 	}
 

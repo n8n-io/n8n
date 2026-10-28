@@ -239,6 +239,8 @@ export class Tool<
 
 	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
+	private toTraceOutputFn?: (output: OutputType<TOutput>) => unknown;
+
 	private outputTrustValue?: BuiltTool['outputTrust'];
 
 	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
@@ -255,6 +257,8 @@ export class Tool<
 
 	private legacyNamesValue?: string[];
 
+	private legacyActionsValue?: Record<string, string[]>;
+
 	constructor(name: string) {
 		this.name = name;
 	}
@@ -265,6 +269,20 @@ export class Tool<
 	 */
 	legacyNames(...names: string[]): this {
 		this.legacyNamesValue = [...(this.legacyNamesValue ?? []), ...names];
+		return this;
+	}
+
+	/**
+	 * Declare that calls of a former tool resolve to this tool when their
+	 * `action` input is one of `actions`. Use it when a multi-action tool became
+	 * one tool for each action.
+	 */
+	legacyActions(legacyName: string, ...actions: string[]): this {
+		const current = this.legacyActionsValue?.[legacyName] ?? [];
+		this.legacyActionsValue = {
+			...this.legacyActionsValue,
+			[legacyName]: [...current, ...actions],
+		};
 		return this;
 	}
 
@@ -344,6 +362,15 @@ export class Tool<
 	 */
 	toModelOutput(fn: (output: OutputType<TOutput>) => unknown): this {
 		this.toModelOutputFn = fn;
+		return this;
+	}
+
+	/**
+	 * Derive data for the host's execution trace from the handler output.
+	 * The `tool-result` stream chunk carries it as `traceOutput`. The model never sees it.
+	 */
+	toTraceOutput(fn: (output: OutputType<TOutput>) => unknown): this {
+		this.toTraceOutputFn = fn;
 		return this;
 	}
 
@@ -435,6 +462,7 @@ export class Tool<
 		const built: BuiltTool = {
 			name: this.name,
 			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
+			...(this.legacyActionsValue ? { legacyActions: this.legacyActionsValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
@@ -442,6 +470,7 @@ export class Tool<
 			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
+			toTraceOutput: this.toTraceOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
 			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (

@@ -209,7 +209,10 @@ export function fileMetadataText(block: ContentFile): string {
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
-function toAiContent(block: MessageContent): AiContentPart | undefined {
+function toAiContent(
+	block: MessageContent,
+	replayReasoningText = false,
+): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
 	if (isText(block)) {
 		base = { type: 'text', text: block.text };
@@ -253,7 +256,11 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		const providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
-		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+		if (
+			isReasoning(block) &&
+			!replayReasoningText &&
+			!hasReplayableReasoningProviderOptions(providerOptions)
+		) {
 			return undefined;
 		}
 
@@ -398,7 +405,11 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
  * Pending tool-call blocks are silently skipped (defense-in-depth; the strip
  * step should already have removed them before forLlm() calls toAiMessages).
  */
-function toAiMessageList(msg: Message, messageIndex: number): ModelMessage[] {
+function toAiMessageList(
+	msg: Message,
+	messageIndex: number,
+	replayReasoningText = false,
+): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
 			const text = msg.content
@@ -411,7 +422,7 @@ function toAiMessageList(msg: Message, messageIndex: number): ModelMessage[] {
 
 		case 'user': {
 			const parts = msg.content
-				.map(toAiContent)
+				.map((block) => toAiContent(block))
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
 			const base: ModelMessage = { role: 'user', content: parts };
 			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
@@ -454,7 +465,7 @@ function toAiMessageList(msg: Message, messageIndex: number): ModelMessage[] {
 					if (block.providerExecuted) assistantParts.push(resultPart);
 					else resultMessages.push({ role: 'tool', content: [resultPart] });
 				} else {
-					const part = toAiContent(block);
+					const part = toAiContent(block, replayReasoningText);
 					if (part) assistantParts.push(part);
 				}
 			}
@@ -488,9 +499,20 @@ function toAiMessageList(msg: Message, messageIndex: number): ModelMessage[] {
 	}
 }
 
-/** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
-export function toAiMessages(messages: Message[]): ModelMessage[] {
-	const modelMessages = messages.flatMap((message, index) => toAiMessageList(message, index));
+/**
+ * Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText.
+ * `providerId` is the provider the request targets; it enables replay quirks
+ * that cannot be derived from the blocks themselves (see
+ * `PROVIDER_QUIRKS[provider].replayReasoningText`).
+ */
+export function toAiMessages(messages: Message[], providerId?: string): ModelMessage[] {
+	const replayReasoningText =
+		providerId !== undefined && (getProviderQuirks(providerId).replayReasoningText ?? false);
+	// Text replay covers only the current tool chain: the messages after the last user message.
+	const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user');
+	const modelMessages = messages.flatMap((message, index) =>
+		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex),
+	);
 	const result: ModelMessage[] = [];
 
 	for (const [index, message] of modelMessages.entries()) {

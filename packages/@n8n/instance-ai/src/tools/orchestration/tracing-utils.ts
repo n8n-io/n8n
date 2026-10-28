@@ -9,7 +9,6 @@ interface StartSubAgentTraceOptions {
 	role: string;
 	kind: string;
 	taskId?: string;
-	plannedTaskId?: string;
 	workItemId?: string;
 	inputs?: unknown;
 	metadata?: Record<string, unknown>;
@@ -30,7 +29,6 @@ export async function startSubAgentTrace(
 			agent_id: options.agentId,
 			task_kind: options.kind,
 			...(options.taskId ? { task_id: options.taskId } : {}),
-			...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
 			...(options.workItemId ? { work_item_id: options.workItemId } : {}),
 			...options.metadata,
 		},

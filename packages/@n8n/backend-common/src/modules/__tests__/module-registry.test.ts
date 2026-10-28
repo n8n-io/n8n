@@ -6,6 +6,7 @@ import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
+import { Logger } from '../../logging/logger';
 import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleLoadError } from '../errors/module-load.error';
@@ -70,7 +71,6 @@ describe('eligibleModules', () => {
 	});
 
 	it.each([
-		'skills',
 		'instance-ai',
 		'knowledge',
 		'agents',
@@ -80,6 +80,44 @@ describe('eligibleModules', () => {
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+	});
+
+	describe('skills and agents', () => {
+		it('should keep skills eligible and warn once when skills is disabled but agents is not', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills';
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+			const registry = Container.get(ModuleRegistry);
+
+			const eligible = registry.eligibleModules;
+			// Read twice: the warning is logged only once.
+			expect(registry.eligibleModules).toEqual(eligible);
+
+			expect(eligible).toContain('skills');
+			expect(eligible.indexOf('skills')).toBeLessThan(eligible.indexOf('agents'));
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('"agents" module'));
+		});
+
+		it('should still apply the other disabled modules when it keeps skills', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills,insights';
+			vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+			const eligible = Container.get(ModuleRegistry).eligibleModules;
+
+			expect(eligible).toContain('skills');
+			expect(eligible).not.toContain('insights');
+		});
+
+		it('should allow opting out of skills when agents is disabled too', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills,agents';
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+			const eligible = Container.get(ModuleRegistry).eligibleModules;
+
+			expect(eligible).not.toContain('skills');
+			expect(eligible).not.toContain('agents');
+			expect(warn).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should initialize knowledge before agents', () => {

@@ -8,6 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	Logger,
 	McpRegistryCredentialType,
 	McpRegistryConnection,
 	INode,
@@ -164,6 +165,8 @@ export async function connectMcpClient({
 	signal,
 	allowedDomains,
 	secureEgressFilter,
+	getTraceHeaders,
+	logger,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -183,6 +186,13 @@ export async function connectMcpClient({
 	 * pinned to the validated address.
 	 */
 	secureEgressFilter: NodeEgressFilter;
+	/**
+	 * Returns the W3C trace context of the node that runs now. It is called for each
+	 * request: one client serves many tool calls, each under a different span. Omit it
+	 * when the caller has no node context to read it from.
+	 */
+	getTraceHeaders?: () => Record<string, string>;
+	logger?: Logger;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -190,7 +200,14 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, secureEgressFilter, onUnauthorized, allowedDomains);
+	const authFetch = createAuthFetch({
+		initialHeaders: headers,
+		secureEgressFilter,
+		onUnauthorized,
+		allowedDomains,
+		getTraceHeaders,
+		logger,
+	});
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -321,6 +338,35 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
 }
 
 /**
+ * Wraps a fetch so that each request carries the W3C trace context of the node that
+ * runs now. One MCP client serves many tool calls under different spans, so the
+ * headers are read for each request and not once at connect.
+ */
+function withTraceHeaders(
+	baseFetch: typeof fetch,
+	getTraceHeaders: () => Record<string, string>,
+	logger?: Logger,
+): typeof fetch {
+	return async (input, init) => {
+		let tracedInit: RequestInit | undefined;
+		try {
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
+				const headers = new Headers(init?.headers);
+				for (const [name, value] of Object.entries(traceHeaders)) headers.set(name, value);
+				tracedInit = { ...init, headers };
+			}
+		} catch (error) {
+			logger?.warn('Failed to add the trace context to an MCP request', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return await baseFetch(input, tracedInit ?? init);
+	};
+}
+
+/**
  * Creates a fetch wrapper that:
  *   - injects auth headers into every request,
  *   - retries once on 401 after refreshing the token via onUnauthorized,
@@ -329,17 +375,29 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - validates the initial URL and every redirect hop against the instance
  *     `secureEgressFilter`, and pins the connection to the validated address,
  *   - withholds the auth headers once a redirect crosses origins, so
- *     credentials never reach a host other than the one the request started on.
+ *     credentials never reach a host other than the one the request started on,
+ *   - adds the W3C trace context of the running node to every request.
  */
-function createAuthFetch(
-	initialHeaders: Record<string, string> | undefined,
-	secureEgressFilter: NodeEgressFilter,
-	onUnauthorized?: OnUnauthorizedHandler,
-	allowedDomains?: string,
-): typeof fetch {
+function createAuthFetch({
+	initialHeaders,
+	secureEgressFilter,
+	onUnauthorized,
+	allowedDomains,
+	getTraceHeaders,
+	logger,
+}: {
+	initialHeaders?: Record<string, string>;
+	secureEgressFilter: NodeEgressFilter;
+	onUnauthorized?: OnUnauthorizedHandler;
+	allowedDomains?: string;
+	getTraceHeaders?: () => Record<string, string>;
+	logger?: Logger;
+}): typeof fetch {
+	const proxied: typeof fetch = async (input, init) =>
+		await proxyFetch({ input, init, egressFilter: secureEgressFilter });
+
 	return createRefreshingAuthFetch({
-		baseFetch: async (input, init) =>
-			await proxyFetch({ input, init, egressFilter: secureEgressFilter }),
+		baseFetch: getTraceHeaders ? withTraceHeaders(proxied, getTraceHeaders, logger) : proxied,
 		initialHeaders,
 		...(onUnauthorized
 			? {
@@ -528,6 +586,8 @@ export async function connectMcpClientForCredential(
 		headers: authHeaders,
 		allowedDomains,
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter(),
+		getTraceHeaders: () => ctx.helpers.getTraceHeaders(),
+		logger: ctx.logger,
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: isOAuth2

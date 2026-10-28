@@ -22,7 +22,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agents_memory_entries_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'superseded'::character varying, 'dropped'::character varying])::text[]))) |
+| CHK_agents_memory_entries_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'superseded'::character varying, 'dropped'::character varying, 'deleted'::character varying])::text[]))) |
 | FK_0edf1226b77ddc525eae4938079 | FOREIGN KEY | FOREIGN KEY ("supersededBy") REFERENCES agents_memory_entries(id) |
 | FK_1443a75e59adbfb796071d66393 | FOREIGN KEY | FOREIGN KEY ("resourceId") REFERENCES agents_resources(id) ON DELETE CASCADE |
 | FK_28e981fb675e9b44ce02f0ec1dd | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
@@ -80,6 +80,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope

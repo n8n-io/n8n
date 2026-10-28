@@ -372,11 +372,14 @@ export class WorkflowRunner {
 		// the worker will establish context once it populates the stack.
 		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
 		if (data.executionData?.executionData) {
-			// Deliberately lightweight: no pinData, no staticData loading,
-			// no additionalData. establishExecutionContext only needs the
+			// Deliberately lightweight: no pinData, no staticData, no
+			// additionalData. establishExecutionContext only needs the
 			// workflow's settings (for redactionPolicy) and node lookups.
 			// runMainProcess() builds its own fully-configured Workflow for
 			// actual execution.
+			// Do not pass data.workflowData.staticData here: on a webhook run it
+			// is the object the webhook has just written to, and wrapping it in
+			// another Workflow resets its change flag, so the write is never saved.
 			const contextWorkflow = new Workflow({
 				id: data.workflowData.id,
 				name: data.workflowData.name,
@@ -384,7 +387,6 @@ export class WorkflowRunner {
 				connections: data.workflowData.connections,
 				active: data.workflowData.activeVersionId !== null,
 				nodeTypes: this.nodeTypes,
-				staticData: data.workflowData.staticData,
 				settings: data.workflowData.settings ?? {},
 			});
 			try {
@@ -420,6 +422,11 @@ export class WorkflowRunner {
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
 			return await this.engineV2Dispatcher.start(data);
+		}
+
+		// A v2 resume has no control-plane row either.
+		if (existingExecution?.engineResume) {
+			return await this.engineV2Dispatcher.resume(existingExecution, data);
 		}
 
 		const establishContextError = await this.establishContextForPersistence(data);
@@ -919,6 +926,7 @@ export class WorkflowRunner {
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,
+						nodeTimeSavedMinutes: jobResult?.nodeTimeSavedMinutes,
 					};
 				} else {
 					runData = {
@@ -938,6 +946,7 @@ export class WorkflowRunner {
 						}),
 						jobId: job.id.toString(),
 						storedAt: this.storageConfig.modeTag,
+						nodeTimeSavedMinutes: jobResult.nodeTimeSavedMinutes,
 					};
 				}
 

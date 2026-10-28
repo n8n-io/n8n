@@ -2,6 +2,7 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonSkillConfig,
 	type AgentJsonToolConfig,
@@ -46,6 +47,7 @@ import { IntegrationMessageContextService } from '../integrations/integration-me
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
+import type * as IntegrationTools from '../integrations/integration-tools';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -59,6 +61,18 @@ import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-load
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
+
+const integrationDescriptorsMock = vi.fn().mockReturnValue([]);
+vi.mock('../integrations/integration-tools', async () => {
+	const actual = await vi.importActual<typeof IntegrationTools>(
+		'../integrations/integration-tools',
+	);
+	return {
+		...actual,
+		getIntegrationToolConnectionDescriptors: (...args: unknown[]) =>
+			integrationDescriptorsMock(...args),
+	};
+});
 
 const resolveWorkflowToolMock = vi.fn();
 vi.mock('../tools/workflow-tool-factory', async () => {
@@ -382,7 +396,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
 	});
 
-	describe('with personal credentials not supported by agents', () => {
+	describe('with credentials not supported by agents', () => {
 		function makeReadableCredentialFinder() {
 			const credentialsFinderService = mock<CredentialsFinderService>();
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
@@ -411,7 +425,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				testUser,
-				{ projectId, excludePersonalRoute: true },
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 			);
 			expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
 			expect(result.userToolAccessSnapshot?.credentialIds).toEqual([]);
@@ -633,6 +647,111 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		await expect(resolved[0]?.handler?.({}, mock())).rejects.toThrow(
 			'Workflow "Lookup customer" is no longer accessible',
 		);
+	});
+
+	describe('credential integrations', () => {
+		const slackIntegration = (credentialId: string) =>
+			({ type: 'slack', credentialId, settings: {} }) as unknown as AgentIntegrationConfig;
+
+		function makeEntityWithIntegrations(): AgentRunSource {
+			const runSource = makeAgentEntity([]);
+			runSource.agent.integrations = [slackIntegration('cred-hidden'), slackIntegration('cred-1')];
+			return runSource;
+		}
+
+		function integrationsPassedToDescriptors(): AgentIntegrationConfig[] {
+			const [integrations] = integrationDescriptorsMock.mock.calls.at(-1) as [
+				AgentIntegrationConfig[],
+			];
+			return integrations;
+		}
+
+		it('drops a draft integration whose credential the user cannot use', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'test',
+				undefined,
+				testUser,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				testUser,
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
+			);
+			expect(integrationsPassedToDescriptors()).toEqual([slackIntegration('cred-1')]);
+		});
+
+		it('records the kept integration credential so cached runtimes re-check it', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			const result = await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'test',
+				undefined,
+				testUser,
+			);
+
+			expect(result.userToolAccessSnapshot).toEqual({
+				credentialIds: [],
+				workflowIds: [],
+				integrationCredentialIds: ['cred-1'],
+				requiresWorkflowExecute: false,
+			});
+		});
+
+		it('refuses a cached runtime whose integration credential is no longer usable', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({ credentialsService });
+
+			await expect(
+				service.userStillHasToolAccess(
+					{
+						credentialIds: [],
+						workflowIds: [],
+						integrationCredentialIds: ['cred-1'],
+						requiresWorkflowExecute: false,
+					},
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(false);
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('keeps every integration of a published run', async () => {
+			const credentialsService = mock<CredentialsService>();
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(integrationsPassedToDescriptors()).toEqual([
+				slackIntegration('cred-hidden'),
+				slackIntegration('cred-1'),
+			]);
+		});
 	});
 
 	it('still fails the build for any other workflow tool error', async () => {

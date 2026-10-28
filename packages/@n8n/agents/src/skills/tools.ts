@@ -31,8 +31,8 @@ export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
 	path: z.string(),
-	bytes: z.number(),
-	sha256: z.string(),
+	bytes: z.number().optional(),
+	sha256: z.string().optional(),
 });
 
 const linkedFilesSchema: z.ZodType<RuntimeSkillLinkedFiles> = z.object({
@@ -197,7 +197,9 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
+				error:
+					source.getLoadError?.(skillEntry.id)?.message ??
+					`File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -223,7 +225,9 @@ async function loadSkill(
 			success: false,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			error: `Skill "${skillEntry.name}" is not attached to this agent.`,
+			error:
+				source.getLoadError?.(skillEntry.id)?.message ??
+				`Skill "${skillEntry.name}" is not attached to this agent.`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
 	}
@@ -235,7 +239,9 @@ async function loadSkill(
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			content: 'The skill instructions are active. Follow them for this task.',
+			content: source.shouldAppendSkillUpdates?.(skillEntry.id)
+				? formatActiveSkill(skill, skillEntry, source.registry)
+				: 'The skill instructions are active. Follow them for this task.',
 			...(references.length > 0
 				? {
 						references: references.map((entry) => ({

@@ -7,8 +7,10 @@ import type {
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import {
+	CHAT_NODE_TYPE,
 	Expression,
 	isNodeClassInstance,
+	SEND_AND_WAIT_OPERATION,
 	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
@@ -19,6 +21,7 @@ import {
 	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
+	UnendingWaitError,
 	UnsupportedStepTypeError,
 	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
@@ -49,10 +52,6 @@ import {
  * and a disabled node does not run: it passes its first input through. So the
  * step emits that input at the deadline, not what the node returned before it
  * paused.
- *
- * A sentinel wait fails the step. Engine v2 has no resume route and no
- * sub-workflow steps yet. A declaration replaces each failure when its path
- * exists.
  */
 function toStepResult(
 	context: DurableWaitExecuteContext,
@@ -61,7 +60,8 @@ function toStepResult(
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
-		throw new UnsupportedWaitError(context.getNode().name, 'a resume request');
+		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
+		return { wait: { resumeBinding: 'execution' } };
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
 		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
@@ -97,6 +97,13 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
+		// Send-and-wait needs a step-bound resume request, which engine v2 does not
+		// have yet. Fail before the node sends the message. The Chat node waits in
+		// every version and operation.
+		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
+			throw new UnsupportedWaitError(node.name, 'an approval');
+		}
+
 		const execution = toV1Execution(
 			stepData.graph,
 			stepData.outputsByNode,
@@ -118,6 +125,7 @@ export class V1StepExecutor implements IStepExecutor {
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
+			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 		});
 
 		return await workflow.expression.withIsolate(async () => {

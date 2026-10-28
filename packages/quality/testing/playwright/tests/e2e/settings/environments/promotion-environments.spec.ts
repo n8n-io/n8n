@@ -18,15 +18,15 @@ test.describe(
 	'Promotion environments @licensed',
 	{ annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }] },
 	() => {
-		// The CI license does not grant feat:gitConnections at startup, so the module does not load.
+		// The CI license does not grant feat:promotions at startup, so the module does not load.
 		test.fixme(
 			'adds a Generic Git environment, connects it, and removes it',
 			async ({ n8n, api, services }) => {
 				expect(
 					await api.getActiveModules(),
-					'the promotions module is not active: it needs N8N_ENABLED_MODULES=promotions and a license granting feat:gitConnections at startup',
+					'the promotions module is not active: it needs N8N_ENABLED_MODULES=promotions and a license granting feat:promotions at startup',
 				).toContain('promotions');
-				await api.enableFeature('gitConnections');
+				await api.enableFeature('promotions');
 				const gitea = services.gitea;
 				const repoName = generateUniqueRepoName();
 				await gitea.createRepo(repoName);

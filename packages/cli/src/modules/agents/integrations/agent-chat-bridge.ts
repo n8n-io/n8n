@@ -57,6 +57,7 @@ import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
+	ReplyDeliveryError,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
@@ -192,6 +193,9 @@ function errorText(error: unknown): string {
 	if (error instanceof UserError) {
 		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
 	}
+	if (error instanceof ReplyDeliveryError) {
+		return "⚠️ The agent's reply couldn't be posted here in full. Please try again.";
+	}
 	return '⚠️ Something went wrong while processing your request. Please try again.';
 }
 
@@ -269,6 +273,7 @@ export class AgentChatBridge {
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
 			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
+			maxMessageLength: this.integrationImpl?.maxMessageLength,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),

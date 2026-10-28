@@ -1,4 +1,5 @@
 import {
+	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
@@ -246,7 +247,7 @@ export class AgentChatController {
 				send({
 					type: 'error',
 					message: 'This agent is not ready to run yet.',
-					errorCode: 'agent_misconfigured',
+					errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured,
 					missing: prepared.missing,
 				});
 				return undefined;

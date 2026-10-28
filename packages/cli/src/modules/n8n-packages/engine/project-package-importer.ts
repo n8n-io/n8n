@@ -3,6 +3,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	credentialUpdateScope,
@@ -12,14 +13,13 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
-import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import { ProjectImporter } from '../entities/project/project-importer';
+import { ProjectImporter, projectRefusalError } from '../entities/project/project-importer';
+import type { ProjectImportPlan } from '../entities/project/project-import.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
 	RemovedFolderSummary,
@@ -28,6 +28,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportPlanMode,
 	ImportSelection,
 	ResolvedImportRequest,
 	ImportTagSummary,
@@ -35,18 +36,12 @@ import type {
 	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import {
-	assertArchiveTransitionsAllowed,
-	assertPackageImportApiKeyScopes,
-	assertTagWritesAllowed,
-} from './import-gates';
+import { assertPackageImportApiKeyScopes } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import {
-	needsBundledCredentialData,
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
 	placeByLayout,
-	placeCredentialData,
 } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -68,7 +63,19 @@ import {
 } from './import-result';
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+
+/** Everything an import will do, read before its first write. */
+export interface PackageImportPlan {
+	request: ResolvedImportRequest;
+	manifest: PackageManifest;
+	projectPlan: ProjectImportPlan;
+	/** Empty when a project conflict stops the import before its contents are planned. */
+	scopes: Array<{ project: ManifestEntry; plan: ImportPlan }>;
+	/** Everything that blocks the import, from every stage that could run. */
+	issues: BlockingIssue[];
+}
 
 @Service()
 export class ProjectPackageImporter {
@@ -76,7 +83,7 @@ export class ProjectPackageImporter {
 		private readonly packageParser: N8nPackageParser,
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
-		private readonly workflowPublisher: WorkflowPublisher,
+		private readonly importPreflight: PackageImportPreflight,
 		private readonly licenseState: LicenseState,
 	) {}
 
@@ -86,6 +93,25 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
+		const plan = await this.planImport(request, reader, manifest, importSource, 'enforce');
+		const refusal = plan.projectPlan.conflicts.map(projectRefusalError).find((error) => error);
+		if (refusal) throw refusal;
+		if (plan.issues.length > 0) throw toImportBlockedError(plan.issues);
+		return await this.applyPlan(plan);
+	}
+
+	/**
+	 * Plans every project of the import and collects the issues that block it. Writes no data.
+	 * In `enforce` mode, policy checks write audit events. A refused project is an issue in both
+	 * modes, so Apply can report it with the other blockers.
+	 */
+	async planImport(
+		request: ResolvedImportRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		importSource: PackageImportSource,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
 		this.assertAdequatePermissions(request, manifest);
 
 		const { selection } = request;
@@ -105,11 +131,15 @@ export class ProjectPackageImporter {
 		// A refused project decides the whole import, so report it before reading any project's
 		// contents — planning work that is certain to be discarded only delays the same failure.
 		if (projectPlan.conflicts.length > 0) {
-			throw toImportBlockedError(
-				projectPlan.conflicts.map(
+			return {
+				request,
+				manifest,
+				projectPlan,
+				scopes: [],
+				issues: projectPlan.conflicts.map(
 					(conflict): BlockingIssue => ({ type: 'project-conflict', ...conflict }),
 				),
-			);
+			};
 		}
 
 		const bundledVariables = needsBundledVariableValues(
@@ -137,7 +167,7 @@ export class ProjectPackageImporter {
 
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
 		// any project leaves nothing behind — not folders, workflows, nor the project shells.
-		const planned: Array<{ project: ManifestEntry; plan: ImportPlan }> = [];
+		const inputs: ImportOrchestrationInput[] = [];
 		for (const project of selectedProjects) {
 			const input = await this.buildImportContextForProject(
 				request,
@@ -148,40 +178,28 @@ export class ProjectPackageImporter {
 				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
 				importSource,
 			);
-			const plan = await this.importOrchestrator.plan(input);
-			planned.push({ project, plan });
+			inputs.push(input);
+		}
+		const draftPlans = await this.importOrchestrator.planPackage(inputs, mode);
+		const { plans, issues } = await this.importPreflight.check(
+			draftPlans,
+			reader,
+			request.apiKeyScopes,
+			mode,
+		);
+		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
+
+		return { request, manifest, projectPlan, scopes, issues };
+	}
+
+	/** Writes a plan that has no issues. */
+	async applyPlan(plan: PackageImportPlan): Promise<ImportOutcome> {
+		const { request, manifest, projectPlan, scopes: planned } = plan;
+		if (plan.issues.length > 0) {
+			throw new UnexpectedError('An import plan with blocking issues cannot be applied');
 		}
 
-		const missingCredentialIds = new Set(
-			planned.flatMap(({ plan }) =>
-				plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
-			),
-		);
-		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
-			const bundledCredentials =
-				packageCredentials ??
-				(await this.packageParser.getCredentials(reader, missingCredentialIds));
-			for (const { plan } of planned) {
-				const { credentialRequest } = plan.input;
-				credentialRequest.requirements = placeCredentialData({
-					requirements: credentialRequest.requirements,
-					bundledCredentials,
-				});
-			}
-		}
-
-		assertTagWritesAllowed(
-			request.apiKeyScopes,
-			planned.map(({ plan }) => plan.tagPlan),
-		);
-		assertArchiveTransitionsAllowed(
-			request.apiKeyScopes,
-			planned.map(({ plan }) => plan.workflowPlan),
-		);
-		await this.importOrchestrator.assertNotBlocked(
-			planned.map(({ plan }) => plan),
-			{ apiKeyScopes: request.apiKeyScopes },
-		);
+		await this.importOrchestrator.assertCanUpdateCredentials(planned.map(({ plan }) => plan));
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
@@ -206,13 +224,10 @@ export class ProjectPackageImporter {
 			});
 		}
 
-		// Publishing spans projects: activation rejects a parent whose sub-workflow is not yet
-		// published, and that dependency can point into any project — so it is one package-wide,
-		// dependency-ordered sweep over everything just written.
-		const published = await this.workflowPublisher.applyToPackage({
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
-			persisted: applied.flatMap(({ content }) => content.workflowOutcomes),
-			policy: request.workflowPublishingPolicy,
+			content: applied.map(({ content }) => content),
+			policy: request.publishingPolicy,
 			subWorkflowRequirements: manifest.requirements?.workflows,
 		});
 
@@ -252,7 +267,7 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
-			variablesMatched.push(...content.variablePlan.matched);
+			variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
 			variablesStubbed.push(...content.variableResult.stubbed);
@@ -271,6 +286,7 @@ export class ProjectPackageImporter {
 
 		const result = buildImportResult({
 			package: toPackageSummary(manifest),
+			agentOutcomes,
 			workflows,
 			removedWorkflows,
 			removedFolders,
@@ -302,7 +318,7 @@ export class ProjectPackageImporter {
 			tags: unionTagSummaries(tagSummaries),
 		});
 
-		return { result, scopes };
+		return { result, scopes, agentOutcomes };
 	}
 
 	private async buildImportContextForProject(
@@ -322,6 +338,10 @@ export class ProjectPackageImporter {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const agents =
+			!request.selection && manifest.agents?.length
+				? await this.packageParser.getAgents(reader, basePrefix)
+				: [];
 
 		// Do not expand the selection to include referenced sub-workflows.
 		const workflows = request.selection
@@ -332,7 +352,11 @@ export class ProjectPackageImporter {
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
-		const requirements = identifyRequirements(manifest.requirements?.credentials, workflows);
+		const requirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+			agents,
+		);
 		const credentialRequest: CredentialBindingRequest = {
 			requirements,
 			matchingMode: request.credentialMatchingMode,
@@ -342,12 +366,13 @@ export class ProjectPackageImporter {
 				requirements,
 			),
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: importWide.packageCredentials,
 			updateScope: importWide.credentialUpdateScope,
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows),
+			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows, agents),
 			packageDataTables: await this.packageParser.getDataTables(reader),
 			matchingMode: request.dataTableMatchingMode,
 			missingMode: request.dataTableMissingMode,
@@ -356,7 +381,7 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: placeByLayout({
-				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+				requirements: identifyRequirements(manifest.requirements?.variables, workflows, agents),
 				manifestVariables: manifest.variables,
 				scopePrefix: basePrefix,
 				bundledVariables: importWide.bundledVariables,
@@ -381,6 +406,8 @@ export class ProjectPackageImporter {
 			},
 			folders,
 			workflows,
+			agents,
+			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
@@ -390,9 +417,14 @@ export class ProjectPackageImporter {
 			importSource,
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
-			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			subWorkflowRequirements: identifyRequirements(
+				manifest.requirements?.workflows,
+				workflows,
+				agents,
+			),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 			checkRootPlacement: true,
+			...(request.selection ? { movableFolderIds: foldersHolding(folders, workflows) } : {}),
 		};
 	}
 
@@ -437,4 +469,26 @@ function deletesForProject(
 ): string[] | undefined {
 	if (!selection || selection.selectedProjectId !== projectId) return undefined;
 	return selection.deletedWorkflowIds;
+}
+
+/** The folders that hold a selected workflow, with every folder above them. */
+function foldersHolding(
+	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
+	workflows: Array<{ parentFolderId: string | null }>,
+): Set<string> {
+	const parentOf = new Map(
+		folders.map(({ sourceFolderId, parentFolderId }) => [sourceFolderId, parentFolderId]),
+	);
+	const holding = new Set<string>();
+	for (const workflow of workflows) {
+		// A visited folder ends the walk, which also stops a cycle.
+		for (
+			let current = workflow.parentFolderId;
+			current !== null && !holding.has(current);
+			current = parentOf.get(current) ?? null
+		) {
+			holding.add(current);
+		}
+	}
+	return holding;
 }

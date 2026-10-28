@@ -1,5 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { generateNanoId, AuthIdentity, User, UserRepository } from '@n8n/db';
+import {
+	generateNanoId,
+	AuthIdentity,
+	Person,
+	PersonRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -7,6 +14,7 @@ import { mock } from 'vitest-mock-extended';
 import * as helpers from '../helpers.ee';
 
 const userRepository = mockInstance(UserRepository);
+const personRepository = mockInstance(PersonRepository);
 
 describe('Ldap/helpers', () => {
 	describe('createFilter', () => {
@@ -75,13 +83,13 @@ describe('Ldap/helpers', () => {
 			//
 			// ARRANGE
 			//
-			const user = Object.assign(new User(), { id: generateNanoId() } as User);
+			const person = Object.assign(new Person(), { id: generateNanoId() });
 			const authIdentity = Object.assign(new AuthIdentity(), {
-				user: { id: user.id },
+				user: { id: person.id },
 			} as AuthIdentity);
 			const data: Partial<User> = { firstName: 'Nathan', lastName: 'Nathaniel' };
 
-			userRepository.findOneBy.mockResolvedValueOnce(user);
+			personRepository.findById.mockResolvedValueOnce(person);
 
 			//
 			// ACT
@@ -91,17 +99,15 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.save).toHaveBeenCalledWith(
-				{ id: user.id, ...data },
-				{ transaction: true },
+			expect(personRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ id: person.id, ...data }),
 			);
-			expect(userRepository.update).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('processUsers', () => {
 		let transactionManager: EntityManager;
-		let mockManagerTransaction: Mock;
+		let mockRunInTransaction: Mock;
 
 		beforeEach(() => {
 			transactionManager = mock<EntityManager>({
@@ -111,11 +117,47 @@ describe('Ldap/helpers', () => {
 				update: vi.fn(),
 			});
 
-			mockManagerTransaction = vi.fn();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(userRepository as any).manager = { transaction: mockManagerTransaction };
+			mockRunInTransaction = userRepository.runInTransaction;
+			mockRunInTransaction.mockReset();
 
 			userRepository.createUserWithProject.mockReset();
+		});
+
+		test('does not link an existing account by email when linking by email is disabled', async () => {
+			//
+			// ARRANGE
+			//
+			const ldapId = 'ldap123';
+			const existingUser = Object.assign(new User(), {
+				id: generateNanoId(),
+				email: 'existing@example.com',
+				firstName: 'Existing',
+				lastName: 'Account',
+			} as User);
+
+			const ldapUser = Object.assign(new User(), {
+				email: 'existing@example.com',
+				firstName: 'From',
+				lastName: 'Ldap',
+			} as User);
+
+			mockRunInTransaction.mockImplementation(
+				async (_ctx, fn: (manager: EntityManager) => Promise<unknown>) =>
+					await fn(transactionManager),
+			);
+
+			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingUser);
+
+			//
+			// ACT
+			//
+			await helpers.processUsers([[ldapId, ldapUser]], [], [], false);
+
+			//
+			// ASSERT
+			//
+			expect(transactionManager.save).not.toHaveBeenCalled();
+			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
 		});
 
 		test('does not update user when data has not changed', async () => {
@@ -144,9 +186,9 @@ describe('Ldap/helpers', () => {
 			} as AuthIdentity);
 
 			// Mock the transaction to capture and execute the function
-			mockManagerTransaction.mockImplementation(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			mockRunInTransaction.mockImplementation(
+				async (_ctx, fn: (manager: EntityManager) => Promise<unknown>) =>
+					await fn(transactionManager),
 			);
 
 			(transactionManager.findOneBy as Mock)
@@ -156,7 +198,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ACT
 			//
-			await helpers.processUsers([], [[ldapId, ldapUser]], []);
+			await helpers.processUsers([], [[ldapId, ldapUser]], [], true);
 
 			//
 			// ASSERT
@@ -191,9 +233,9 @@ describe('Ldap/helpers', () => {
 			} as AuthIdentity);
 
 			// Mock the transaction to capture and execute the function
-			mockManagerTransaction.mockImplementation(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			mockRunInTransaction.mockImplementation(
+				async (_ctx, fn: (manager: EntityManager) => Promise<unknown>) =>
+					await fn(transactionManager),
 			);
 
 			(transactionManager.findOneBy as Mock)
@@ -203,12 +245,12 @@ describe('Ldap/helpers', () => {
 			//
 			// ACT
 			//
-			await helpers.processUsers([], [[ldapId, updatedUser]], []);
+			await helpers.processUsers([], [[ldapId, updatedUser]], [], true);
 
 			//
 			// ASSERT
 			//
-			expect(transactionManager.save).toHaveBeenCalledWith(User, existingUser);
+			expect(transactionManager.save).toHaveBeenCalledWith(Person, existingUser);
 			expect(existingUser.email).toBe('new@example.com');
 		});
 
@@ -230,9 +272,9 @@ describe('Ldap/helpers', () => {
 				lastName: 'Doe',
 			} as User);
 
-			mockManagerTransaction.mockImplementation(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			mockRunInTransaction.mockImplementation(
+				async (_ctx, fn: (manager: EntityManager) => Promise<unknown>) =>
+					await fn(transactionManager),
 			);
 
 			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingLocalUser);
@@ -240,7 +282,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ACT
 			//
-			await helpers.processUsers([[ldapId, ldapUser]], [], []);
+			await helpers.processUsers([[ldapId, ldapUser]], [], [], true);
 
 			//
 			// ASSERT
@@ -272,9 +314,9 @@ describe('Ldap/helpers', () => {
 				lastName: 'Name',
 			} as User);
 
-			mockManagerTransaction.mockImplementation(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			mockRunInTransaction.mockImplementation(
+				async (_ctx, fn: (manager: EntityManager) => Promise<unknown>) =>
+					await fn(transactionManager),
 			);
 
 			(transactionManager.findOne as Mock).mockResolvedValueOnce(existingLocalUser);
@@ -282,12 +324,12 @@ describe('Ldap/helpers', () => {
 			//
 			// ACT
 			//
-			await helpers.processUsers([[ldapId, ldapUser]], [], []);
+			await helpers.processUsers([[ldapId, ldapUser]], [], [], true);
 
 			//
 			// ASSERT
 			//
-			expect(transactionManager.save).toHaveBeenCalledWith(User, existingLocalUser);
+			expect(transactionManager.save).toHaveBeenCalledWith(Person, existingLocalUser);
 			expect(existingLocalUser.firstName).toBe('Jane');
 			expect(existingLocalUser.lastName).toBe('Doe');
 		});
@@ -310,9 +352,9 @@ describe('Ldap/helpers', () => {
 				lastName: 'Person',
 			} as User);
 
-			mockManagerTransaction.mockImplementation(
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				async (fn: (manager: EntityManager) => Promise<any>) => await fn(transactionManager),
+			mockRunInTransaction.mockImplementation(
+				async (_ctx, fn: (manager: EntityManager) => Promise<unknown>) =>
+					await fn(transactionManager),
 			);
 
 			(transactionManager.findOne as Mock).mockResolvedValueOnce(null);
@@ -323,7 +365,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ACT
 			//
-			await helpers.processUsers([[ldapId, ldapUser]], [], []);
+			await helpers.processUsers([[ldapId, ldapUser]], [], [], true);
 
 			//
 			// ASSERT

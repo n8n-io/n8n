@@ -234,5 +234,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		removeListener();
 	});
 
-	return { jobs, respondToApproval, stopAll, isStopping };
+	const allJobs = computed(() => group.value.tasks);
+
+	return { jobs, allJobs, respondToApproval, stopAll, isStopping };
 }

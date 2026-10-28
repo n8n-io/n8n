@@ -724,7 +724,7 @@ describe('buildConversationMetrics', () => {
 				type: 'confirmation-request',
 				data: {
 					type: 'confirmation-request',
-					payload: { requestId: 'r2', inputType: 'plan-review' },
+					payload: { requestId: 'r2', inputType: 'text' },
 				},
 			},
 			{
@@ -744,11 +744,11 @@ describe('buildConversationMetrics', () => {
 
 		const result = buildConversationMetrics(events);
 		expect(result.confirmationAskedTotal).toBe(3);
-		expect(result.confirmationAskedByKind).toEqual({ questions: 2, 'plan-review': 1 });
+		expect(result.confirmationAskedByKind).toEqual({ questions: 2, text: 1 });
 		expect(result.perTurn[0].confirmationAskedTotal).toBe(3);
 		expect(result.perTurn[0].confirmationAskedByKind).toEqual({
 			questions: 2,
-			'plan-review': 1,
+			text: 1,
 		});
 	});
 
@@ -801,22 +801,6 @@ describe('buildConversationMetrics', () => {
 			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
 			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
 			{ timestamp: 3, type: 'tasks-update', data: { type: 'tasks-update' } },
-			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
-		];
-
-		const result = buildConversationMetrics(events);
-		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
-	});
-
-	it('counts replan_after_error when a tool-error is followed by workflow_builder_create_tasks', () => {
-		const events: CapturedEvent[] = [
-			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
-			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
-			{
-				timestamp: 3,
-				type: 'tool-call',
-				data: { type: 'tool-call', payload: { toolName: 'workflow_builder_create_tasks' } },
-			},
 			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
 		];
 
@@ -877,11 +861,6 @@ describe('seededTurnCounters', () => {
 		expect(counter).toMatchObject({ toolCallCount: 2, toolErrorCount: 1 });
 	});
 
-	it('counts a plan step as a tool call', () => {
-		const [counter] = seededTurnCounters([seededTurn([{ kind: 'plan', tasks: [] }])]);
-		expect(counter.toolCallCount).toBe(1);
-	});
-
 	it('dual-counts workflow_builder_ask_user as a tool call and a questions confirmation (mirrors live)', () => {
 		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
 		expect(counter.toolCallCount).toBe(1);
@@ -903,13 +882,13 @@ describe('seededTurnCounters', () => {
 				{
 					kind: 'confirmation',
 					toolName: 'workflow_builder_workflows',
-					resumeReason: 'plan-review',
+					resumeReason: 'text',
 				},
 			]),
 		]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);
-		expect(counter.confirmationAskedByKind).toEqual({ 'plan-review': 1 });
+		expect(counter.confirmationAskedByKind).toEqual({ text: 1 });
 	});
 
 	it('counts setup-wizard as a tool call, ignores agent-text, leaves non-derivable counters at default', () => {

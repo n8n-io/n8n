@@ -3,14 +3,44 @@ import { NodeOperationError, type ILoadOptionsFunctions } from 'n8n-workflow';
 
 // Mock external modules that are not needed for these unit tests
 vi.mock('@langchain/redis', () => {
-	const state: any = { ctorArgs: undefined };
+	const state: any = { ctorArgs: undefined, filterExpression: undefined };
+	// Legacy RedisVectorStore for v1.3 and below
 	class RedisVectorStore {
+		static fromDocuments = vi.fn();
+		defaultFilter?: string[];
+		constructor(...args: any[]) {
+			state.legacyCtorArgs = args;
+		}
+		async similaritySearchVectorWithScore(_query: number[], _k: number, _filter?: string[]) {
+			return [];
+		}
+	}
+	// New FluentRedisVectorStore for v1.4+
+	class FluentRedisVectorStore {
 		static fromDocuments = vi.fn();
 		constructor(...args: any[]) {
 			state.ctorArgs = args;
 		}
 	}
-	return { RedisVectorStore, __state: state };
+	// Mock filter builders - Tag.eq receives an array of values when called with array
+	const Tag = (field: string) => ({
+		eq: (values: string | string[]) => ({
+			type: 'tag',
+			field,
+			values: Array.isArray(values) ? values : [values],
+		}),
+	});
+	const Custom = (query: string) => ({ type: 'custom', query });
+	// The return value is set in beforeEach, because vi.resetAllMocks() clears it
+	const inferMetadataSchema = vi.fn();
+	return {
+		RedisVectorStore,
+		FluentRedisVectorStore,
+		Tag,
+		Custom,
+		inferMetadataSchema,
+		__state: state,
+	};
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -22,6 +52,9 @@ vi.mock('@n8n/ai-utilities', () => ({
 	logWrapper: (fn: any) => fn,
 	createVectorStoreNode: (config: any) =>
 		class BaseNode {
+			async beforeInsert(...args: any[]) {
+				return config.beforeInsert.apply(config, args);
+			}
 			async getVectorStoreClient(...args: any[]) {
 				return config.getVectorStoreClient.apply(config, args);
 			}
@@ -33,6 +66,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 vi.mock('redis', () => ({ createClient: vi.fn() }));
 
+import { inferMetadataSchema } from '@langchain/redis';
 import { createClient } from 'redis';
 
 import * as RedisNode from './VectorStoreRedis.node';
@@ -62,6 +96,7 @@ describe('VectorStoreRedis.node', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		vi.mocked(inferMetadataSchema).mockReturnValue([]);
 		// Reset cached client
 		RedisNode.redisConfig.client = null as any;
 		RedisNode.redisConfig.connectionString = '';
@@ -195,7 +230,7 @@ describe('VectorStoreRedis.node', () => {
 	});
 
 	describe('getVectorStoreClient', () => {
-		it('constructs ExtendedRedisVectorSearch with correct options and passes filter tokens', async () => {
+		it('constructs ExtendedRedisVectorSearch with correct options for v1.4', async () => {
 			const mockClient = {
 				on: vi.fn(),
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -214,10 +249,9 @@ describe('VectorStoreRedis.node', () => {
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
 			// Provide a base class method that ExtendedRedisVectorSearch will call via super
-			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
-				.fn()
-				.mockResolvedValue('ok');
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.prototype.similaritySearchVectorWithScore =
+				vi.fn().mockResolvedValue('ok');
 
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
@@ -228,11 +262,12 @@ describe('VectorStoreRedis.node', () => {
 						'options.metadataKey': 'm',
 						'options.contentKey': 'c',
 						'options.vectorKey': 'v',
-						'options.metadataFilter': 'a,b',
+						'options.advancedFilter': '',
+						'options.metadataSchema': '',
 					};
-					return map[name];
+					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -249,7 +284,7 @@ describe('VectorStoreRedis.node', () => {
 			expect(mockClient.ft.info).toHaveBeenCalledWith('myIndex');
 
 			// The base class constructor should have been called with embeddings and options
-			const state = RedisVectorStoreMod.__state;
+			const state = FluentRedisVectorStoreMod.__state;
 			expect(state.ctorArgs[0]).toBe(embeddings);
 			expect(state.ctorArgs[1]).toMatchObject({
 				redisClient: mockClient,
@@ -263,11 +298,11 @@ describe('VectorStoreRedis.node', () => {
 			// Call the overridden method and ensure behavior is as expected
 			const res = await client.similaritySearchVectorWithScore([1, 2], 3);
 			expect(res).toBe('ok');
-			// Validate filter tokens got captured on the instance
-			expect(client.defaultFilter).toEqual(['a', 'b']);
+			// v1.4 with no advancedFilter should have undefined filter
+			expect(client.defaultFilter).toBeUndefined();
 		});
 
-		it('trims and removes empty metadata filter tokens', async () => {
+		it('uses Custom filter when advancedFilter is provided', async () => {
 			const mockClient = {
 				on: vi.fn(),
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -278,8 +313,52 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.prototype.similaritySearchVectorWithScore =
+				vi.fn().mockResolvedValue('ok');
+
+			const context: any = {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'myIndex',
+						'options.keyPrefix': '',
+						'options.metadataKey': '',
+						'options.contentKey': '',
+						'options.vectorKey': '',
+						'options.metadataFilter': 'ignored',
+						'options.advancedFilter': '@category:{electronics} @price:[0 100]',
+						'options.metadataSchema': '',
+					};
+					return map[name] ?? '';
+				},
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
+				logger: loadOptionsFunctions.logger,
+			} as any;
+
+			const node = new RedisNode.VectorStoreRedis();
+			const client = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			// Advanced filter takes priority over simple filter
+			expect(client.defaultFilter).toEqual({
+				type: 'custom',
+				query: '@category:{electronics} @price:[0 100]',
+			});
+		});
+
+		it('trims and removes empty metadata filter tokens for legacy v1.3', async () => {
+			const mockClient = {
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { info: vi.fn().mockResolvedValue(undefined) },
+			} as any;
+
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const LegacyRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			LegacyRedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
 
@@ -294,20 +373,20 @@ describe('VectorStoreRedis.node', () => {
 						'options.vectorKey': '',
 						'options.metadataFilter': 'tag1, tag2 , ,tag3',
 					};
-					return map[name];
+					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.3 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
 			const node = new RedisNode.VectorStoreRedis();
 			const client = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
 
-			// Ensure trimming/removal works
+			// Legacy v1.3 uses string[] filter - verify trimming/removal works
 			expect(client.defaultFilter).toEqual(['tag1', 'tag2', 'tag3']);
 		});
 
-		it('omits optional keys when empty/whitespace and handles empty filter as null', async () => {
+		it('omits optional keys when empty/whitespace and handles empty filter as undefined', async () => {
 			const mockClient = {
 				on: vi.fn(),
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -318,10 +397,9 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
-				.fn()
-				.mockResolvedValue('ok');
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.prototype.similaritySearchVectorWithScore =
+				vi.fn().mockResolvedValue('ok');
 
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
@@ -333,10 +411,12 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': '',
 						'options.vectorKey': ' \t',
 						'options.metadataFilter': '',
+						'options.advancedFilter': '',
+						'options.metadataSchema': '',
 					};
-					return map[name];
+					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -347,7 +427,7 @@ describe('VectorStoreRedis.node', () => {
 			// Ensure FT.INFO is called to validate index
 			expect(mockClient.ft.info).toHaveBeenCalledWith('myIndex');
 
-			const opts = RedisVectorStoreMod.__state.ctorArgs[1];
+			const opts = FluentRedisVectorStoreMod.__state.ctorArgs[1];
 			expect(opts).toMatchObject({ redisClient: mockClient, indexName: 'myIndex' });
 			expect(opts).not.toHaveProperty('keyPrefix');
 			expect(opts).not.toHaveProperty('metadataKey');
@@ -370,10 +450,9 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
-				.fn()
-				.mockResolvedValue('ok');
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.prototype.similaritySearchVectorWithScore =
+				vi.fn().mockResolvedValue('ok');
 
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
@@ -385,10 +464,12 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': '',
 						'options.vectorKey': '',
 						'options.metadataFilter': '  , , ,  ',
+						'options.advancedFilter': '',
+						'options.metadataSchema': '',
 					};
-					return map[name];
+					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -412,7 +493,7 @@ describe('VectorStoreRedis.node', () => {
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 			};
 
 			const node = new RedisNode.VectorStoreRedis();
@@ -422,10 +503,47 @@ describe('VectorStoreRedis.node', () => {
 			await expect(execution).rejects.toThrow(NodeOperationError);
 			await expect(execution).rejects.toThrow('Index idx not found');
 		});
+
+		it('throws NodeOperationError when metadata schema contains non-object entries', async () => {
+			const mockClient = {
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { info: vi.fn().mockResolvedValue(undefined) },
+			} as any;
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const context: any = {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'idx',
+						'options.keyPrefix': '',
+						'options.metadataKey': '',
+						'options.contentKey': '',
+						'options.vectorKey': '',
+						'options.advancedFilter': '',
+						'options.metadataSchema': '[null, "string", 123]',
+					};
+					return map[name] ?? '';
+				},
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
+			};
+
+			const node = new RedisNode.VectorStoreRedis();
+			const execution = (node as any).getVectorStoreClient(context, undefined, {}, 0);
+			await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(execution).rejects.toMatchObject({
+				message: 'Invalid metadata schema: each entry must be an object',
+				description: 'Expected format: [{"name": "fieldName", "type": "tag|text|numeric|geo"}]',
+				context: { itemIndex: 0 },
+			});
+		});
 	});
 
 	describe('populateVectorStore', () => {
-		it('drops index and deletes the documents when overwrite is true; passes TTL and batch size', async () => {
+		it('does not drop the index when overwrite is true from version 1.4; passes TTL and inferred schema', async () => {
 			const mockClient = {
 				on: vi.fn(),
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -435,8 +553,10 @@ describe('VectorStoreRedis.node', () => {
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			RedisVectorStoreMod.RedisVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments = vi
+				.fn()
+				.mockResolvedValue(undefined);
 
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
@@ -449,11 +569,64 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': 'c',
 						'options.vectorKey': 'v',
 						'options.ttl': 60,
+						'options.metadataSchema': '',
 						embeddingBatchSize: 123,
 					};
-					return map[name];
+					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
+				logger: loadOptionsFunctions.logger,
+			} as any;
+
+			const node = new RedisNode.VectorStoreRedis();
+			await (node as any).populateVectorStore(
+				context,
+				{},
+				[{ pageContent: 'hello', metadata: {} }],
+				0,
+			);
+
+			expect(mockClient.ft.dropIndex).not.toHaveBeenCalled();
+
+			expect(FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments).toHaveBeenCalledWith(
+				[{ pageContent: 'hello', metadata: {} }],
+				{},
+				{
+					redisClient: mockClient,
+					indexName: 'myIndex',
+					keyPrefix: 'doc',
+					metadataKey: 'm',
+					contentKey: 'c',
+					vectorKey: 'v',
+					ttl: 60,
+					customSchema: [],
+				},
+			);
+		});
+
+		it('drops the index when overwrite is true before version 1.4', async () => {
+			const mockClient = {
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { dropIndex: vi.fn().mockResolvedValue(undefined) },
+			} as any;
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const RedisMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisMod.RedisVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
+
+			const context: any = {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'myIndex',
+						'options.overwriteDocuments': true,
+					};
+					return map[name] ?? '';
+				},
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.3 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -466,19 +639,102 @@ describe('VectorStoreRedis.node', () => {
 			);
 
 			expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('myIndex', { DD: true });
+			expect(RedisMod.RedisVectorStore.fromDocuments).toHaveBeenCalled();
+		});
 
-			expect(RedisVectorStoreMod.RedisVectorStore.fromDocuments).toHaveBeenCalledWith(
-				[{ pageContent: 'hello', metadata: {} }],
+		it('infers the metadata schema from all documents, not only the current batch', async () => {
+			const mockClient = {
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+			} as any;
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments = vi
+				.fn()
+				.mockResolvedValue(undefined);
+			const inferredSchema = [
+				{ name: 'category', type: 'tag' },
+				{ name: 'price', type: 'numeric' },
+			];
+			vi.mocked(inferMetadataSchema).mockReturnValue(inferredSchema as any);
+
+			const context: any = {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'myIndex' : ''),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
+				logger: loadOptionsFunctions.logger,
+			} as any;
+
+			const batch = [{ pageContent: 'first', metadata: { category: 'a' } }];
+			const allDocuments = [...batch, { pageContent: 'second', metadata: { price: 10 } }];
+
+			const node = new RedisNode.VectorStoreRedis();
+			await (node as any).populateVectorStore(context, {}, batch, 0, allDocuments);
+
+			expect(inferMetadataSchema).toHaveBeenCalledWith(allDocuments);
+			expect(FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments).toHaveBeenCalledWith(
+				batch,
 				{},
-				{
-					redisClient: mockClient,
-					indexName: 'myIndex',
-					keyPrefix: 'doc',
-					metadataKey: 'm',
-					contentKey: 'c',
-					vectorKey: 'v',
-					ttl: 60,
+				expect.objectContaining({ customSchema: inferredSchema }),
+			);
+		});
+
+		it('passes custom metadata schema when provided', async () => {
+			const mockClient = {
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { dropIndex: vi.fn().mockResolvedValue(undefined) },
+			} as any;
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments = vi
+				.fn()
+				.mockResolvedValue(undefined);
+
+			const customSchema = [
+				{ name: 'category', type: 'tag' },
+				{ name: 'price', type: 'numeric', options: { sortable: true } },
+			];
+
+			const context: any = {
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'myIndex',
+						'options.overwriteDocuments': false,
+						'options.keyPrefix': '',
+						'options.metadataKey': '',
+						'options.contentKey': '',
+						'options.vectorKey': '',
+						'options.ttl': 0,
+						'options.metadataSchema': JSON.stringify(customSchema),
+					};
+					return map[name] ?? '';
 				},
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
+				logger: loadOptionsFunctions.logger,
+			} as any;
+
+			const node = new RedisNode.VectorStoreRedis();
+			await (node as any).populateVectorStore(
+				context,
+				{},
+				[{ pageContent: 'test', metadata: {} }],
+				0,
+			);
+
+			expect(FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments).toHaveBeenCalledWith(
+				[{ pageContent: 'test', metadata: {} }],
+				{},
+				expect.objectContaining({
+					customSchema,
+				}),
 			);
 		});
 
@@ -492,15 +748,15 @@ describe('VectorStoreRedis.node', () => {
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			RedisVectorStoreMod.RedisVectorStore.fromDocuments = vi
+			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			FluentRedisVectorStoreMod.FluentRedisVectorStore.fromDocuments = vi
 				.fn()
 				.mockRejectedValue(new Error('fail'));
 
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -517,6 +773,84 @@ describe('VectorStoreRedis.node', () => {
 			expect(loadOptionsFunctions.logger.info).toHaveBeenCalledWith(
 				'Error while populating the store: fail',
 			);
+		});
+	});
+
+	describe('beforeInsert', () => {
+		const createContext = (params: Record<string, unknown>, typeVersion = 1.4): any => ({
+			getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+			getNodeParameter: (name: string) => params[name] ?? '',
+			getNode: () => ({ name: 'VectorStoreRedis', typeVersion }),
+			logger: loadOptionsFunctions.logger,
+		});
+
+		const createMockClient = () => {
+			const mockClient = {
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { dropIndex: vi.fn().mockResolvedValue(undefined) },
+			} as any;
+			(MockCreateClient as any).mockReturnValue(mockClient);
+			return mockClient;
+		};
+
+		it('drops the index when overwrite is true', async () => {
+			const mockClient = createMockClient();
+			const context = createContext({
+				redisIndex: 'myIndex',
+				'options.overwriteDocuments': true,
+			});
+
+			const node = new RedisNode.VectorStoreRedis();
+			await (node as any).beforeInsert(context, {}, 0);
+
+			expect(mockClient.ft.dropIndex).toHaveBeenCalledTimes(1);
+			expect(mockClient.ft.dropIndex).toHaveBeenCalledWith('myIndex', { DD: true });
+		});
+
+		it('does not drop the index when overwrite is false', async () => {
+			const mockClient = createMockClient();
+			const context = createContext({ redisIndex: 'myIndex' });
+
+			const node = new RedisNode.VectorStoreRedis();
+			await (node as any).beforeInsert(context, {}, 0);
+
+			expect(mockClient.ft.dropIndex).not.toHaveBeenCalled();
+		});
+
+		it('validates the metadata schema before it drops the index', async () => {
+			const mockClient = createMockClient();
+			const context = createContext({
+				redisIndex: 'myIndex',
+				'options.overwriteDocuments': true,
+				'options.metadataSchema': '[{"name": "category", "type": "unknown"}]',
+			});
+
+			const node = new RedisNode.VectorStoreRedis();
+			await expect((node as any).beforeInsert(context, {}, 0)).rejects.toThrow(
+				'Invalid metadata schema: field type "unknown" is not valid',
+			);
+
+			expect(mockClient.ft.dropIndex).not.toHaveBeenCalled();
+		});
+
+		it('does nothing before version 1.4', async () => {
+			const mockClient = createMockClient();
+			const context = createContext(
+				{
+					redisIndex: 'myIndex',
+					'options.overwriteDocuments': true,
+					'options.metadataSchema': 'not json',
+				},
+				1.3,
+			);
+
+			const node = new RedisNode.VectorStoreRedis();
+			await (node as any).beforeInsert(context, {}, 0);
+
+			expect(mockClient.ft.dropIndex).not.toHaveBeenCalled();
 		});
 	});
 });

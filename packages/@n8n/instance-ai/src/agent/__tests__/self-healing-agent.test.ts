@@ -1,4 +1,5 @@
 import {
+	Agent,
 	Workspace,
 	type BuiltTool,
 	type WorkspaceFilesystem,
@@ -181,6 +182,21 @@ describe('createSelfHealingAgent', () => {
 		expect(JSON.stringify(model.doStreamCalls.at(-1)?.prompt)).not.toContain(output.summary);
 	});
 
+	it('sends model calls through the given transport', async () => {
+		const setModelFetch = vi.spyOn(Agent.prototype, 'modelFetch');
+		const modelFetch = vi.fn();
+
+		await createSelfHealingAgent({
+			modelId: new MockLanguageModelV3(),
+			context: createContext(),
+			verifyCandidate: vi.fn(),
+			modelFetch,
+		});
+
+		expect(setModelFetch).toHaveBeenCalledWith(modelFetch);
+		setModelFetch.mockRestore();
+	});
+
 	it('restricts the final SDK tools and includes the investigation prompt', async () => {
 		const context = createContext();
 		context.workspace = new Workspace({
@@ -222,10 +238,12 @@ describe('createSelfHealingAgent', () => {
 
 		expect(request.tools?.map((tool) => tool.name).sort()).toEqual(
 			[
-				DOMAIN_TOOL_IDS.WORKFLOWS,
+				DOMAIN_TOOL_IDS.GET_WORKFLOW,
+				DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
 				DOMAIN_TOOL_IDS.EXECUTIONS,
 				DOMAIN_TOOL_IDS.DATA_TABLES,
-				DOMAIN_TOOL_IDS.NODES,
+				DOMAIN_TOOL_IDS.SEARCH_NODES,
+				DOMAIN_TOOL_IDS.GET_NODE_TYPES,
 				DOMAIN_TOOL_IDS.N8N_DOCS,
 				DOMAIN_TOOL_IDS.RESEARCH,
 				'verify_candidate',
@@ -246,19 +264,21 @@ describe('createSelfHealingAgent', () => {
 	});
 
 	it.each([
-		[DOMAIN_TOOL_IDS.WORKFLOWS, { action: 'publish', workflowId: 'workflow' }],
-		[DOMAIN_TOOL_IDS.WORKFLOWS, { action: 'setup', workflowId: 'workflow' }],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run', workflowId: 'workflow' }],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run-step', workflowId: 'workflow', nodeName: 'Read' }],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'stop', executionId: 'execution' }],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'create', name: 'Table', columns: [] }],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
-		[DOMAIN_TOOL_IDS.NODES, { action: 'execute', nodeType: 'n8n-nodes-base.httpRequest' }],
-		[DOMAIN_TOOL_IDS.NODES, { action: 'explore-resources', nodeType: 'n8n-nodes-base.slack' }],
 	])('rejects unavailable %s actions in the schema', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);
 		expect(parseToolInput(tool, input).success).toBe(false);
+	});
+
+	it('does not declare workflow tools that change a workflow', async () => {
+		const names = (await createAgent()).declaredTools.map((tool) => tool.name);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.SETUP_WORKFLOW);
 	});
 
 	it('keeps execution reads and adapter access checks', async () => {
@@ -306,8 +326,11 @@ describe('createSelfHealingAgent', () => {
 			connections: {},
 			settings: { executionOrder: 'v1' },
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.WORKFLOWS);
-		const result = await executeTool(tool, { action: 'get-as-code', workflowId: 'workflow' });
+		const tool = findTool(
+			(await createAgent(context)).declaredTools,
+			DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
+		);
+		const result = await executeTool(tool, { workflowId: 'workflow' });
 
 		expect(result).toMatchObject({
 			filePath: 'src/workflows/live-workflow.workflow.ts',
@@ -315,7 +338,8 @@ describe('createSelfHealingAgent', () => {
 		});
 		expect(result.note).toContain('verify_candidate');
 		expect(result.note).not.toContain(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
-		expect(JSON.stringify(tool.inputSchema)).not.toContain(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
+		expect(tool.description).toContain('verify_candidate');
+		expect(tool.description).not.toContain(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
 		expect(files.get(candidatePath)).toBe('edited candidate');
 	});
 

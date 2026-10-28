@@ -472,6 +472,11 @@ describe('Expression — compatibility corpus', () => {
 		['typeof', '={{ typeof $json.id }}', 'number'],
 		['instanceof', '={{ $json.metadata instanceof Object }}', true],
 		['nested template literal', '={{ `outer ${`inner ${$json.id}`}` }}', 'outer inner 42'],
+		[
+			'template literal with new lines keeps text next to interpolations',
+			'={{ `\nid_${$json.id}\n${$json.name}_${$json.id}\n` }}',
+			'\nid_42\nAda_42\n',
+		],
 		['optional call on missing member', '={{ $json.nope?.call?.() ?? "none" }}', 'none'],
 		['block comment inside interpolation', '={{ /* comment */ $json.id }}', 42],
 		['line comment inside interpolation', '={{ $json.id // trailing comment\n }}', 42],

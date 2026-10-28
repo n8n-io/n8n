@@ -38,6 +38,36 @@ const readsA = (name: string): INode =>
 		options: {},
 	});
 
+const FILE_TEXT = 'the partial run reads this file from the earlier run';
+
+/** A Set node that provides the text to store in a file. */
+const text = (name: string): INode =>
+	node(name, 'n8n-nodes-base.set', {
+		assignments: {
+			assignments: [{ id: 'text-id', name: 'text', value: FILE_TEXT, type: 'string' }],
+		},
+		includeOtherFields: true,
+		options: {},
+	});
+
+/** A Convert to File node that stores `text` as a file under `data`. */
+const writesFile = (name: string): INode =>
+	node(name, 'n8n-nodes-base.convertToFile', {
+		operation: 'toText',
+		sourceProperty: 'text',
+		binaryPropertyName: 'data',
+		options: { fileName: 'out.txt' },
+	});
+
+/** An Extract from File node that reads the file under `data` back into `text`. */
+const readsFile = (name: string): INode =>
+	node(name, 'n8n-nodes-base.extractFromFile', {
+		operation: 'text',
+		binaryPropertyName: 'data',
+		destinationKey: 'text',
+		options: {},
+	});
+
 const chain = (...names: string[]): IConnections =>
 	Object.fromEntries(
 		names
@@ -64,6 +94,9 @@ const runDataOf = (execution: { data: string }): IRunData =>
 
 const firstItem = (runData: IRunData, nodeName: string) =>
 	runData[nodeName][0].data?.main[0]?.[0]?.json;
+
+const firstFile = (runData: IRunData, nodeName: string) =>
+	runData[nodeName][0].data?.main[0]?.[0]?.binary?.data;
 
 test.describe(
 	'Manual run to a node',
@@ -136,6 +169,36 @@ test.describe(
 					firstItem(fullRun, name)?.[name.toLowerCase()],
 				);
 			}
+		});
+
+		test('should reuse a result that holds a file and read the file after it @engine:v2', async ({
+			api,
+		}) => {
+			const { id: workflowId } = await api.workflows.createWorkflow({
+				...workflow('file'),
+				nodes: [
+					node(TRIGGER_NAME, 'n8n-nodes-base.manualTrigger'),
+					text('A'),
+					writesFile('B'),
+					readsFile('C'),
+				],
+			});
+
+			const first = await api.workflows.runManually(workflowId, TRIGGER_NAME);
+			const fullRun = runDataOf(await api.workflows.waitForExecutionById(first.executionId));
+			// The result names a file in the store: an inline copy would not prove
+			// that the second run can still open what the first one wrote.
+			expect(firstFile(fullRun, 'B')?.id).toEqual(expect.any(String));
+
+			const second = await api.workflows.runToNode(workflowId, 'C', { runData: fullRun });
+			const execution = await api.workflows.waitForExecutionById(second.executionId);
+			expect(execution.status).toBe('success');
+
+			const partialRun = runDataOf(execution);
+			// B was reused: its result still points at the file of the first run.
+			expect(firstFile(partialRun, 'B')).toEqual(firstFile(fullRun, 'B'));
+			// C ran on that result and read the file back.
+			expect(firstItem(partialRun, 'C')?.text).toBe(FILE_TEXT);
 		});
 
 		test('should use pinned data instead of running the pinned node @engine:v2', async ({

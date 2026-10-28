@@ -21,33 +21,12 @@ export const WorkflowPublishingPolicy = {
 export type WorkflowPublishingPolicy =
 	(typeof WorkflowPublishingPolicy)[keyof typeof WorkflowPublishingPolicy];
 
-export type PublishingAction = 'publish' | 'unpublish' | 'noop';
-
-export type WorkflowPublishingOutcomeState =
-	| 'published'
-	| 'unpublished'
-	| 'unchanged'
-	| 'blocked'
-	| 'failed';
-
-export type WorkflowPublishingBlockedReason =
-	| 'stub-credential'
-	| 'incomplete-credential'
-	| 'missing-node-type';
-
-/** Result of applying a publishing policy to one imported workflow. */
-export interface WorkflowPublishingOutcome {
-	state: WorkflowPublishingOutcomeState;
-	error?: string;
-	/** Present when `state` is `blocked`: why the imported version could not be published. */
-	blockedReason?: WorkflowPublishingBlockedReason;
-	/**
-	 * Present when `state` is `unchanged`: why the imported version was not
-	 * activated. The live publish state is unchanged — typically because a prior
-	 * published version is still active after an update.
-	 */
-	skippedPublishReason?: WorkflowPublishingBlockedReason;
-}
+export type {
+	PublishingAction,
+	PublishingOutcomeState as WorkflowPublishingOutcomeState,
+	PublishingBlockedReason as WorkflowPublishingBlockedReason,
+	PublishingOutcome as WorkflowPublishingOutcome,
+} from '../publishing';
 
 /** Inputs available after content is saved. */
 export interface WorkflowPublishingContext {

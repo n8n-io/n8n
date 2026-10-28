@@ -25,6 +25,8 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
+import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
+import { useWhatsAppMetaStatus } from '../channels/whatsapp/useWhatsAppMetaStatus';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
@@ -40,6 +42,7 @@ const props = withDefaults(
 		isPublished?: boolean;
 		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 		simpleChannelSetup?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
@@ -78,6 +81,36 @@ const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+
+// The chip reads Meta's status once, and again when the channel modal closes.
+// The modal polls on its own while it is open.
+const { status: whatsAppMetaStatus, refresh: refreshWhatsAppMetaStatus } = useWhatsAppMetaStatus(
+	toRef(props, 'projectId'),
+	toRef(props, 'agentId'),
+	computed(() =>
+		props.connectedTriggers.includes('whatsapp') ? connectedCredentials.value.whatsapp : undefined,
+	),
+	{ poll: false },
+);
+
+/**
+ * Meta's review state for a channel, as the headline and how serious it is. Only
+ * WhatsApp has one. The chip shows an error for the same states that show a red callout.
+ */
+function channelMetaNotice(channel: string) {
+	if (channel !== 'whatsapp' || !whatsAppMetaStatus.value) return undefined;
+	const presentation = presentWhatsAppMetaState(whatsAppMetaStatus.value.state);
+	if (!presentation) return undefined;
+	return {
+		isError: presentation.theme === 'danger',
+		message: i18n.baseText(metaTitleKey(presentation, whatsAppMetaStatus.value), {
+			interpolate: {
+				number: whatsAppMetaStatus.value.displayPhoneNumber ?? '',
+				name: whatsAppMetaStatus.value.displayName ?? '',
+			},
+		}),
+	};
+}
 
 const runtimeContext = {
 	projectId: computed(() => props.projectId),
@@ -127,6 +160,10 @@ const channelList = computed(() => withN8nChat(catalog.value ?? []));
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
+
+watch(channelModalOpen, (open, wasOpen) => {
+	if (wasOpen && !open) refreshWhatsAppMetaStatus();
+});
 const channelModalView = ref<ChannelView>('list');
 
 function isIconName(icon: unknown): icon is IconName {
@@ -178,9 +215,11 @@ const channelRows = computed(() =>
 		const credentialId = connectedCredentials.value[channel];
 		// A channel that is configured correctly but failed to start is just as
 		// broken from here as a misconfigured one, so it uses the same affordance.
+		const metaNotice = channelMetaNotice(channel);
 		const invalidReasons = [
 			...(channelIssueMessages.value.get(channel) ?? []),
 			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+			...(metaNotice?.isError ? [metaNotice.message] : []),
 		];
 		return {
 			type: channel,
@@ -188,6 +227,9 @@ const channelRows = computed(() =>
 			icon: channelIcon(integration?.icon),
 			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
 			invalidReasons,
+			// A red callout in the channel settings shows a red cross on the chip too.
+			invalidIcon: metaNotice?.isError ? ('circle-x' as const) : undefined,
+			warningReasons: metaNotice && !metaNotice.isError ? [metaNotice.message] : [],
 			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
 			connected:
 				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
@@ -350,6 +392,9 @@ function handleChannelDisconnected(channelType: string) {
 						:deactivated="!channel.connected"
 						:invalid="channel.invalidReasons.length > 0"
 						:invalid-reasons="channel.invalidReasons"
+						:invalid-icon="channel.invalidIcon"
+						:warning="channel.warningReasons.length > 0"
+						:warning-reasons="channel.warningReasons"
 						:disabled="props.disabled || removingChannel"
 						:class="$style.channelChip"
 						@click="openChannelEdit(channel.type, channel.connected)"
@@ -361,6 +406,7 @@ function handleChannelDisconnected(channelType: string) {
 		</AgentChipRow>
 
 		<AgentSchedulesRow
+			:preview-disabled-reason="props.previewDisabledReason"
 			:task-refs="props.taskRefs"
 			:disabled="props.disabled"
 			:project-id="props.projectId"

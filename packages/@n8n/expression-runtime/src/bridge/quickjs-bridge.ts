@@ -13,10 +13,12 @@ import {
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
+import type { DataHolder } from './host-functions';
 import {
 	dispatchHostCall,
 	getArrayElement,
 	getValueAtPath,
+	heldData,
 	isErrorSentinel,
 	reconstructError,
 	serializeError,
@@ -117,6 +119,17 @@ function isNaNSentinel(value: unknown): value is { __isNaN: true } {
 	);
 }
 
+// The guest escapes a user object with this key, unless the object also has
+// __isError. Only the sentinel has this key alone.
+function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isUndefined === true &&
+		Object.keys(value).length === 1
+	);
+}
+
 function isErrorValueSentinel(value: unknown): value is {
 	__isErrorValue: true;
 	__name: string;
@@ -207,6 +220,7 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
+	if (isUndefinedSentinel(value)) return undefined;
 	if (isErrorValueSentinel(value)) {
 		const ErrorCtor =
 			(
@@ -253,6 +267,7 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 const TRANSFER_MARKER_KEYS = new Set([
 	'__isDate',
 	'__isNaN',
+	'__isUndefined',
 	'__isErrorValue',
 	'__isMap',
 	'__isSet',
@@ -946,18 +961,18 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v instanceof Map) {
 			var entries = [];
 			v.forEach(function(val, key) {
-				entries.push([wrapSpecialValues(key, true), wrapSpecialValues(val, true)]);
+				entries.push([wrapChild(key, true), wrapChild(val, true)]);
 			});
 			return { __isMap: true, __entries: entries };
 		}
 		if (v instanceof Set) {
 			var values = [];
 			v.forEach(function(val) {
-				values.push(wrapSpecialValues(val, true));
+				values.push(wrapChild(val, true));
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
+		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
 		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
 		// Outside a collection, these markers come from __prepareForTransfer above,
@@ -987,6 +1002,11 @@ export class QuickJsBridge implements RuntimeBridge {
 		return wrapOwnKeys(v, inCollection);
 	}
 
+	// vm.dump() drops an undefined object value and turns an undefined array item into null.
+	function wrapChild(v, inCollection) {
+		return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection);
+	}
+
 	function wrapOwnKeys(v, inCollection) {
 		var result = {};
 		var keys = Object.keys(v);
@@ -994,8 +1014,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
 			if (
-				key === '__isDate' || key === '__isNaN' || key === '__isErrorValue' ||
-				key === '__isMap' || key === '__isSet' || key === '__isEscaped'
+				key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
+				key === '__isErrorValue' || key === '__isMap' || key === '__isSet' ||
+				key === '__isEscaped'
 			) {
 				collides = true;
 			}
@@ -1010,7 +1031,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapSpecialValues(v[key], inCollection);
+			result[key] = wrapChild(v[key], inCollection);
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of
@@ -1126,7 +1147,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create per-execute callback function handles, closure-scoped to `data`.
+	 * Create per-execute callback function handles.
 	 *
 	 * The handles are passed as arguments into the per-call wrapper function
 	 * (see execute()) instead of being set as VM globals: `execute()` can
@@ -1138,44 +1159,63 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Callers must dispose the returned handles when the call completes.
 	 */
 	private createCallbackHandles(
-		data: WorkflowData,
+		holder: DataHolder,
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
+		const handles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
-		const getValueFn = vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			try {
-				const result = getValueAtPath(data, pathArr);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
+		try {
+			handles.push(
+				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					try {
+						const result = getValueAtPath(heldData(holder), pathArr);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					const index = vm.dump(indexHandle) as number;
+					try {
+						const result = getArrayElement(heldData(holder), pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__callHostImpl', (msgHandle) => {
+					const rawMsg = vm.dump(msgHandle);
+					try {
+						const result = dispatchHostCall(rawMsg, heldData(holder));
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+		} catch (error) {
+			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
+			for (const handle of handles) {
+				try {
+					handle.dispose();
+				} catch {
+					// Throw the build error, not a dispose error.
+				}
 			}
-		});
+			throw error;
+		}
 
-		const getArrayFn = vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			const index = vm.dump(indexHandle) as number;
-			try {
-				const result = getArrayElement(data, pathArr, index);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
-			const rawMsg = vm.dump(msgHandle);
-			try {
-				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		return [getValueFn, getArrayFn, callHostFn];
+		return handles;
 	}
 
 	/**
@@ -1248,7 +1288,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (timeout <= 0) throw this.timeoutError(true);
 		}
 
-		const callbackHandles = this.createCallbackHandles(data);
+		// QuickJS frees a host function only when the guest function is collected,
+		// and its cycle collector runs late. So the callbacks read the data from a
+		// holder that `finally` clears, else a finished call's data stays in memory.
+		const holder: DataHolder = { data };
+		const callbackHandles = this.createCallbackHandles(holder);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1357,6 +1401,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
+			holder.data = undefined;
 			this.deadlines.pop();
 			if (!this.broken) {
 				for (const handle of callbackHandles) {

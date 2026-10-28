@@ -102,6 +102,8 @@ export interface ObservationLogObserverInput {
 	renderedObservationLogTail: string | null;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
 }
 
 /** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
@@ -131,6 +133,8 @@ export interface ObservationLogReflectorInput {
 	tokenBudget: number;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
 }
 
 export interface ObservationLogReflectResult {

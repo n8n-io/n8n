@@ -54,10 +54,7 @@ describe('buildPreferencesAppliedTelemetry', () => {
 
 	it('should send nothing when an earlier turn already carries the block', () => {
 		expect(
-			buildPreferencesAppliedTelemetry(
-				{ ...injected, injectedThisTurn: false, carriedFromRunId: 'run-0' },
-				turn,
-			),
+			buildPreferencesAppliedTelemetry({ ...injected, injectedThisTurn: false }, turn),
 		).toBeUndefined();
 	});
 });

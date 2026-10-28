@@ -15,7 +15,7 @@ import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-c
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import { UserService } from '@/services/user.service';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -45,7 +45,7 @@ describe('System agent sessions on user deletion', () => {
 		agentRepo = Container.get(AgentRepository);
 		memory = Container.get(N8nMemory);
 		admin = await createOwner();
-		await Container.get(SystemAgentExecutionService).register({
+		await Container.get(SystemAgentRegistrationService).register({
 			agentId: INSTANCE_AGENT_ID,
 			name: 'Assistant',
 			authorize: async () => true,
