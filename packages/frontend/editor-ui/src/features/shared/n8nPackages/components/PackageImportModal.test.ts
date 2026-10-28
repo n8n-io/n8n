@@ -38,7 +38,7 @@ const publishing = { state: 'published' } as const;
 
 function makeResult(overrides: Partial<ImportResultDto> = {}): ImportResultDto {
 	return {
-		package: { sourceN8nVersion: '2.0.0', sourceId: 'source', exportedAt: '2026-01-01T00:00:00Z' },
+		package: { sourceN8nVersion: '2.0.0', sourceId: 'source' },
 		agents: [
 			{
 				sourceAgentId: 'agent-1',
@@ -48,6 +48,7 @@ function makeResult(overrides: Partial<ImportResultDto> = {}): ImportResultDto {
 				activeVersionId: 'v1',
 				status: 'created',
 				publishing,
+				channels: [],
 			},
 		],
 		counts: { agents: { created: 1, updated: 0, skipped: 0 } },
@@ -189,6 +190,7 @@ describe('PackageImportModal', () => {
 						activeVersionId: null,
 						status: 'updated',
 						publishing: { state: 'blocked', blockedReason: 'stub-credential' },
+						channels: [],
 					},
 				],
 				credentials: {
