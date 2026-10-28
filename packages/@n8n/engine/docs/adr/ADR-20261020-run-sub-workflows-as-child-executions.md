@@ -27,8 +27,8 @@ the credential checks read control-plane state.
 ## Decision
 
 1. **A sub-workflow call uses a similar mechanism to wait-resume.** We receive the sub-execution
-   request in the shim and return a `child` declaration, similar to `wait`. The engine is
-   responsible for persisting the child declaration: suspending the parent, running the
+   request in the shim and return a `subExecution` declaration, similar to `wait`. The engine is
+   responsible for persisting the `subExecution` declaration: suspending the parent, running the
    sub-execution, and resuming the parent when the sub-execution is complete.
 2. **We re-invoke the execute method when the parent is resumed.** On the second
    invocation, the shim answers the `executeWorkflow` call with the output of the
