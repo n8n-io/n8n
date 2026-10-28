@@ -1571,6 +1571,27 @@ describe('MigrationRuleDetail', () => {
 				expect(projectIn('My draft')).toBe('Personal');
 			});
 
+			it('should show a dash when the project of a workflow is unknown', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							{
+								...mockWorkflowWithIssue,
+								id: 'wf-4',
+								name: 'No project',
+								homeProjectId: undefined,
+								homeProjectName: undefined,
+								homeProjectType: undefined,
+							},
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				const row = (await screen.findByText('No project')).closest('tr') as HTMLElement;
+
+				expect(within(row).getByTestId('migration-workflow-project').textContent?.trim()).toBe('—');
+			});
+
 			it('should list Personal first and the team projects by name', async () => {
 				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 					createMockRuleResult({ affectedWorkflows: projectWorkflows }),

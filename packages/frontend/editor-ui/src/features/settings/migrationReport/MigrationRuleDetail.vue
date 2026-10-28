@@ -724,7 +724,7 @@ function projectLabel(workflow: AffectedWorkflow): string {
 	if (workflow.homeProjectType === 'personal') {
 		return i18n.baseText('settings.migrationReport.detail.filters.project.personal');
 	}
-	return workflow.homeProjectName ?? '';
+	return workflow.homeProjectName ?? '—';
 }
 
 // The projects of the listed workflows, for the project filter. Personal projects share one option.
