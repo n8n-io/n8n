@@ -277,18 +277,6 @@ function save() {
 		@update:open="emit('close')"
 	>
 		<div :class="$style.fields">
-			<AgentFormSettingRow
-				control-id="agent-hitl-disallow-requester"
-				:title="i18n.baseText('agents.hitl.disallowRequester')"
-				:description="i18n.baseText('agents.hitl.disallowRequesterHelp')"
-			>
-				<N8nSwitch2
-					id="agent-hitl-disallow-requester"
-					v-model="disallowRequesterApproval"
-					:aria-label="i18n.baseText('agents.hitl.disallowRequester')"
-					data-testid="agent-hitl-disallow-requester"
-				/>
-			</AgentFormSettingRow>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.method')">
 				<N8nSelect
 					v-model="method"
@@ -433,6 +421,18 @@ function save() {
 			<N8nText size="small" color="text-light">{{
 				i18n.baseText('agents.hitl.expiryHelp')
 			}}</N8nText>
+			<AgentFormSettingRow
+				control-id="agent-hitl-disallow-requester"
+				:title="i18n.baseText('agents.hitl.disallowRequester')"
+				:description="i18n.baseText('agents.hitl.disallowRequesterHelp')"
+			>
+				<N8nSwitch2
+					id="agent-hitl-disallow-requester"
+					v-model="disallowRequesterApproval"
+					:aria-label="i18n.baseText('agents.hitl.disallowRequester')"
+					data-testid="agent-hitl-disallow-requester"
+				/>
+			</AgentFormSettingRow>
 		</div>
 		<template v-if="configuration" #footerLeft
 			><N8nButton
