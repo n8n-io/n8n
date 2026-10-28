@@ -395,6 +395,49 @@ describe('InstanceAiMarkdown', () => {
 
 			expect(openAgentChatPreview).not.toHaveBeenCalled();
 		});
+
+		describe('skill links', () => {
+			const skillContent = '<a href="n8n-resource://skill/skill-1">Invoice Skill</a>';
+
+			function renderSkillWithPreview(openSkillPreview: (id: string) => boolean) {
+				const utils = renderComponent({
+					props: { content: skillContent },
+					global: { provide: { openSkillPreview } },
+				});
+				const link = utils.getByTestId('markdown-output').querySelector('a');
+				if (!link) throw new Error('expected enhanced anchor');
+				return { ...utils, link };
+			}
+
+			it.each([
+				{ label: 'switches to', switched: true },
+				{ label: 'is already showing', switched: false },
+			])(
+				'should keep the click in the thread when the preview $label the skill',
+				({ switched }) => {
+					const openSkillPreview = vi.fn(() => switched);
+					const { link } = renderSkillWithPreview(openSkillPreview);
+
+					expect(link.dataset.resourceChip).toBe('skill');
+
+					const event = clickEvent();
+					link.dispatchEvent(event);
+
+					expect(openSkillPreview).toHaveBeenCalledExactlyOnceWith('skill-1');
+					expect(event.defaultPrevented).toBe(true);
+				},
+			);
+
+			it('should let the browser handle Cmd/Ctrl+click on a skill link', () => {
+				const openSkillPreview = vi.fn(() => true);
+				const { link } = renderSkillWithPreview(openSkillPreview);
+
+				document.addEventListener('click', (e) => e.preventDefault(), { once: true });
+				link.dispatchEvent(clickEvent({ ctrlKey: true }));
+
+				expect(openSkillPreview).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('embedded subject', () => {

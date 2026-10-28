@@ -402,6 +402,8 @@ function enhanceResourceLinks(): void {
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
  *   through to default `target="_blank"` and opens a new tab instead.
+ * - Left-click on skill → opens (or keeps) the inline skill preview and
+ *   never opens a new tab.
  * - Left-click on credential (or any chip without an available preview)
  *   → opens in a new tab.
  */
@@ -441,8 +443,12 @@ function handleLinkClick(event: MouseEvent): void {
 		if (registryEntry?.projectId) {
 			switched = openAgentPreview?.(id, registryEntry.projectId);
 		}
-	} else if (type === 'skill') {
-		switched = openSkillPreview?.(id);
+	} else if (type === 'skill' && openSkillPreview) {
+		// Keep skill clicks in the thread, even when the preview is already
+		// active. Cmd/Ctrl+click still opens the Skills Hub in a new tab.
+		openSkillPreview(id);
+		event.preventDefault();
+		return;
 	}
 
 	// Suppress default navigation only when the preview actually switched.
