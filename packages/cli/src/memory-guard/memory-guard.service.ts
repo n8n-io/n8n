@@ -38,7 +38,12 @@ import {
 	nodeType,
 	settleWithin,
 } from './memory-guard.utils';
-import { getContainerLimit, type MemoryUsage, readMemoryUsage } from './memory-usage';
+import {
+	getContainerLimit,
+	getOldGenerationLimit,
+	type MemoryUsage,
+	readMemoryUsage,
+} from './memory-usage';
 import { ProductionHold } from './production-hold';
 import { type RunDataEstimate, RunDataTracker } from './run-data-tracker';
 import { MemoryGuardJournal } from './memory-guard-journal';
@@ -59,6 +64,8 @@ export class MemoryGuardService {
 	private isShutDown = false;
 
 	private containerLimit: number | undefined;
+
+	private oldGenerationLimit = 0;
 
 	private forceGc: (() => void) | undefined;
 
@@ -128,6 +135,7 @@ export class MemoryGuardService {
 
 	init() {
 		this.containerLimit = getContainerLimit();
+		this.oldGenerationLimit = getOldGenerationLimit(this.containerLimit);
 		this.forceGc = exposeGc();
 		this.memoryStoppedExecutions.enabled = true;
 		this.eventService.emit('memory-guard-crashes-counted', {
@@ -154,7 +162,7 @@ export class MemoryGuardService {
 	private check() {
 		try {
 			this.memoryStoppedExecutions.pruneFinishing((id) => this.activeExecutions.has(id));
-			this.evaluate(readMemoryUsage(this.containerLimit));
+			this.evaluate(readMemoryUsage(this.containerLimit, this.oldGenerationLimit));
 		} catch (error) {
 			this.logger.error('Memory guard check failed', { error: ensureError(error) });
 		}
@@ -267,7 +275,7 @@ export class MemoryGuardService {
 
 	private readUsageAfterGc() {
 		this.forceGc?.();
-		return readMemoryUsage(this.containerLimit);
+		return readMemoryUsage(this.containerLimit, this.oldGenerationLimit);
 	}
 
 	private hasHoldLimitPassed() {
@@ -425,7 +433,7 @@ export class MemoryGuardService {
 		const deadline = Date.now() + REMEASURE_TIMEOUT_MS;
 		for (;;) {
 			this.forceGc?.();
-			const after = readMemoryUsage(this.containerLimit);
+			const after = readMemoryUsage(this.containerLimit, this.oldGenerationLimit);
 			const freedMemory = before.usedBytes - after.usedBytes >= estimatedBytes * FREED_SHARE;
 			if (freedMemory || Date.now() >= deadline) return { after, freedMemory };
 			await sleep(REMEASURE_INTERVAL_MS);
