@@ -65,11 +65,7 @@ describe('WebhookServer', () => {
 
 		webhookServer['setupPushServer']();
 
-		expect(chatServer.setup).toHaveBeenCalledWith(
-			httpServer,
-			mockApp,
-			webhookServer['allowsUpgrade'],
-		);
+		expect(chatServer.setup).toHaveBeenCalledWith(httpServer, mockApp);
 	});
 
 	it('should mount diagnostics only during E2E tests', async () => {

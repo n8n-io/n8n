@@ -1,7 +1,7 @@
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
-import type { IncomingMessage, Server as HttpServer } from 'http';
+import type { Server as HttpServer } from 'http';
 import { ServerResponse } from 'http';
 import { parse as parseUrl } from 'url';
 import type { WebSocket } from 'ws';
@@ -20,12 +20,8 @@ export class ChatServer {
 
 	constructor(private readonly chatService: ChatService) {}
 
-	setup(server: HttpServer, app: Application, allowsUpgrade: (req: IncomingMessage) => boolean) {
+	setup(server: HttpServer, app: Application) {
 		server.on('upgrade', (req: ChatRequest, socket, head) => {
-			if (!allowsUpgrade(req)) {
-				socket.destroy();
-				return;
-			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			const parsedUrl = parseUrl(req.url ?? '');
 

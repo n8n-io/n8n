@@ -4,7 +4,8 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import type * as http from 'node:http';
+import { IncomingMessage, type Server } from 'node:http';
+import { Socket } from 'node:net';
 import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
@@ -24,7 +25,7 @@ vi.mock('@/webhooks/webhook-request-handler', () => ({
 	createWebhookHandlerFor: vi.fn(),
 }));
 
-const mockServer = mock<http.Server>();
+const mockServer = mock<Server>();
 
 vi.mock('http', async () => ({
 	...(await vi.importActual<typeof import('http')>('http')),
@@ -51,7 +52,6 @@ describe('AbstractServer', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
-		vi.stubEnv('N8N_APPS_BASE_URL', '');
 		moduleRegistry.eligibleModules.length = 0;
 		moduleRegistry.isActive.mockReturnValue(false);
 		Container.set(ModuleRegistry, moduleRegistry);
@@ -112,17 +112,58 @@ describe('AbstractServer', () => {
 		testServer = new TestServer();
 	});
 
-	afterEach(() => vi.unstubAllEnvs());
-
 	describe('apps startup', () => {
 		const router = mock<express.Router>();
 		const hosting = mock<AppsHostingService>({ router });
 		const controllers = mock<ControllerRegistry>();
+		const emit = vi.fn<(event: string, ...args: unknown[]) => boolean>(() => true);
 
 		beforeEach(() => {
 			Container.set(AppsHostingService, hosting);
 			Container.set(ControllerRegistry, controllers);
 			Container.set(WaitingForms, mock<WaitingForms>());
+			Object.assign(mockServer, { emit });
+		});
+
+		const emitUpgrade = () => {
+			const socket = new Socket();
+			const destroy = vi.spyOn(socket, 'destroy');
+			const req = new IncomingMessage(socket);
+			const handled = mockServer.emit('upgrade', req, socket, Buffer.alloc(0));
+			return { req, socket, destroy, handled };
+		};
+
+		it('does not mount app hosting when the apps module is not eligible', async () => {
+			await testServer.init();
+
+			expect(mockApp.use).not.toHaveBeenCalledWith(hosting.dispatch);
+			expect(mockServer.emit).toBe(emit);
+		});
+
+		it('destroys upgrades that app hosting rejects before any listener receives them', async () => {
+			moduleRegistry.eligibleModules.push('apps');
+			hosting.allowsUpgrade.mockReturnValue(false);
+			await testServer.init();
+
+			const { req, destroy, handled } = emitUpgrade();
+
+			expect(hosting.allowsUpgrade).toHaveBeenCalledExactlyOnceWith(req);
+			expect(destroy).toHaveBeenCalledOnce();
+			expect(handled).toBe(true);
+			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('passes allowed upgrades and other events to the listeners', async () => {
+			moduleRegistry.eligibleModules.push('apps');
+			hosting.allowsUpgrade.mockReturnValue(true);
+			await testServer.init();
+
+			const { req, socket, destroy } = emitUpgrade();
+			mockServer.emit('request', req);
+
+			expect(destroy).not.toHaveBeenCalled();
+			expect(emit).toHaveBeenNthCalledWith(1, 'upgrade', req, socket, Buffer.alloc(0));
+			expect(emit).toHaveBeenNthCalledWith(2, 'request', req);
 		});
 
 		it('activates apps controllers on the apps router', async () => {
@@ -145,7 +186,7 @@ describe('AbstractServer', () => {
 		it.each([false, true])(
 			'returns 503 until the server is ready when the apps module is active: %s',
 			async (active) => {
-				vi.stubEnv('N8N_APPS_BASE_URL', 'https://apps.example.com');
+				moduleRegistry.eligibleModules.push('apps');
 				moduleRegistry.isActive.mockReturnValue(active);
 				await testServer.init();
 
@@ -176,8 +217,8 @@ describe('AbstractServer', () => {
 			},
 		);
 
-		it('reserves configured app hosts without activating an inactive module', async () => {
-			vi.stubEnv('N8N_APPS_BASE_URL', 'https://apps.example.com');
+		it('mounts app hosting without activating apps controllers for an inactive module', async () => {
+			moduleRegistry.eligibleModules.push('apps');
 
 			await testServer.init();
 			await testServer.start();

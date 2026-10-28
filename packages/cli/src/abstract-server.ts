@@ -7,8 +7,9 @@ import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
 import { readFile } from 'fs/promises';
-import type { IncomingMessage, Server } from 'http';
+import { IncomingMessage, type Server } from 'http';
 import isbot from 'isbot';
+import { Duplex } from 'stream';
 import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 
 import config from '@/config';
@@ -44,9 +45,6 @@ export abstract class AbstractServer {
 	readonly app: express.Application;
 
 	protected appsHosting: AppsHostingService | undefined;
-
-	protected readonly allowsUpgrade = (req: IncomingMessage) =>
-		this.appsHosting?.allowsUpgrade(req) ?? true;
 
 	protected externalHooks: ExternalHooks;
 
@@ -195,20 +193,6 @@ export abstract class AbstractServer {
 	async init(): Promise<void> {
 		const { app, sslKey, sslCert } = this;
 		const { protocol } = this.globalConfig;
-		// Reserve configured app hosts even when apps are disabled so they cannot serve main routes
-		if (
-			Container.get(ModuleRegistry).eligibleModules.includes('apps') ||
-			process.env.N8N_APPS_BASE_URL
-		) {
-			const { AppsHostingService: Hosting } = await import('@n8n/backend-module-apps/hosting');
-			this.appsHosting = Container.get(Hosting);
-			this.appsHosting.router.use((_req, res, next) => {
-				if (this.fullyReady) next();
-				else res.sendStatus(503);
-			});
-			// Dispatch before health checks, webhooks, controllers, and editor middleware.
-			app.use(this.appsHosting.dispatch);
-		}
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -222,6 +206,18 @@ export abstract class AbstractServer {
 		} else {
 			const http = await import('http');
 			this.server = http.createServer(app);
+		}
+
+		if (Container.get(ModuleRegistry).eligibleModules.includes('apps')) {
+			const { AppsHostingService: Hosting } = await import('@n8n/backend-module-apps/hosting');
+			this.appsHosting = Container.get(Hosting);
+			this.appsHosting.router.use((_req, res, next) => {
+				if (this.fullyReady) next();
+				else res.sendStatus(503);
+			});
+			// Dispatch before health checks, webhooks, controllers, and editor middleware.
+			app.use(this.appsHosting.dispatch);
+			this.rejectUpgrades(this.server, this.appsHosting);
 		}
 
 		const { port, listen_address: address } = Container.get(GlobalConfig);
@@ -263,6 +259,18 @@ export abstract class AbstractServer {
 		this.setupHealthCheck();
 
 		this.logger.info(`n8n ready on ${address}, port ${port}`);
+	}
+
+	private rejectUpgrades(server: Server, hosting: AppsHostingService) {
+		const emit = server.emit.bind(server);
+		server.emit = (event: string, ...args: unknown[]) => {
+			const [req, socket] = args;
+			if (event === 'upgrade' && req instanceof IncomingMessage && !hosting.allowsUpgrade(req)) {
+				if (socket instanceof Duplex) socket.destroy();
+				return true;
+			}
+			return emit(event, ...args);
+		};
 	}
 
 	async start(): Promise<void> {

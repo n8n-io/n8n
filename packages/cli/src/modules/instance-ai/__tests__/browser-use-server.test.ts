@@ -13,7 +13,6 @@ import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-bro
 
 describe('BrowserUseServer', () => {
 	const sessionService = mock<InstanceAiBrowserSessionService>();
-	const allowsUpgrade = vi.fn(() => true);
 	let server: HttpServer;
 	let port: number;
 	const clients: WebSocket[] = [];
@@ -33,7 +32,7 @@ describe('BrowserUseServer', () => {
 			sockets.add(socket);
 			socket.on('close', () => sockets.delete(socket));
 		});
-		new BrowserUseServer(sessionService).setup(server, app, allowsUpgrade);
+		new BrowserUseServer(sessionService).setup(server, app);
 		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 		port = (server.address() as AddressInfo).port;
 	});
@@ -49,7 +48,6 @@ describe('BrowserUseServer', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		allowsUpgrade.mockReturnValue(true);
 	});
 
 	it('routes a /browser-use/extension upgrade to handleExtensionUpgrade', async () => {
@@ -78,25 +76,6 @@ describe('BrowserUseServer', () => {
 		expect(req.headers[CDP_TOKEN_HEADER]).toBe('cdp-token');
 		expect(sessionService.handleExtensionUpgrade).not.toHaveBeenCalled();
 	});
-
-	it.each(['extension', 'cdp'])(
-		'rejects a /browser-use/%s upgrade when not allowed',
-		async (endpoint) => {
-			allowsUpgrade.mockReturnValue(false);
-			const path = `/browser-use/${endpoint}/sess-1`;
-			const ws = connect(path);
-			const onOpen = vi.fn();
-			ws.on('open', onOpen);
-
-			const closeCode = await new Promise<number>((resolve) => ws.once('close', resolve));
-
-			expect(closeCode).toBe(1006);
-			expect(onOpen).not.toHaveBeenCalled();
-			expect(allowsUpgrade).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ url: path }));
-			expect(sessionService.handleExtensionUpgrade).not.toHaveBeenCalled();
-			expect(sessionService.handleCdpUpgrade).not.toHaveBeenCalled();
-		},
-	);
 
 	it('ignores upgrades outside the /browser-use namespace', async () => {
 		const ws = connect('/rest/push');

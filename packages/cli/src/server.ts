@@ -571,10 +571,10 @@ export class Server extends AbstractServer {
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
-		Container.get(Push).setupPushServer(restEndpoint, server, app, this.allowsUpgrade);
-		Container.get(ChatServer).setup(server, app, this.allowsUpgrade);
+		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		Container.get(ChatServer).setup(server, app);
 		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
-			Container.get(BrowserUseServer).setup(server, app, this.allowsUpgrade);
+			Container.get(BrowserUseServer).setup(server, app);
 		}
 	}
 }
