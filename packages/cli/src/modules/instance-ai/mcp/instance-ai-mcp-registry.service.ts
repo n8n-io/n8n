@@ -21,6 +21,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { createMcpAuthFetch } from '@/modules/mcp-registry/mcp-auth-fetch';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -140,10 +141,10 @@ export class InstanceAiMcpRegistryService {
 			);
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			input.credentialId,
 			user,
-			['credential:read'],
 		);
 		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
@@ -487,10 +488,10 @@ export class InstanceAiMcpRegistryService {
 		credentialId: string,
 		user: User,
 	): Promise<{ credential: CredentialsEntity; data: ICredentialDataDecryptedObject } | null> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			credentialId,
 			user,
-			['credential:read'],
 		);
 		if (!credential) {
 			return null;
@@ -510,10 +511,10 @@ export class InstanceAiMcpRegistryService {
 		newCredentialId: string,
 		server: McpRegistryServer,
 	) {
-		const newCredential = await this.credentialsFinderService.findCredentialForUser(
+		const newCredential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			newCredentialId,
 			user,
-			['credential:read'],
 		);
 		if (!newCredential) {
 			throw new NotFoundError('Credential not found or not accessible');
