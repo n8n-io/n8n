@@ -254,7 +254,7 @@ export function acceptedMimeTypesFromCapabilities(
 	capabilities: ProviderAttachmentCapabilities,
 ): string {
 	return [
-		capabilities.image ? 'image/*' : null,
+		capabilities.image ? [...MODEL_IMAGE_MEDIA_TYPES].join(',') : null,
 		capabilities.pdf ? 'application/pdf' : null,
 		capabilities.audio ? 'audio/*' : null,
 	]
