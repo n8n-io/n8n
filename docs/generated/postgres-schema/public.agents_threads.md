@@ -55,7 +55,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   text evidenceText
   varchar_36_ id
-  boolean replacesEarlier
+  varchar_32_ kind
   varchar_255_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK

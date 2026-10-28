@@ -1034,7 +1034,7 @@ export class N8nMemoryImpl
 			toolCallId: entity.toolCallId,
 			content: entity.content,
 			evidenceText: entity.evidenceText,
-			replacesEarlier: entity.replacesEarlier,
+			kind: entity.kind,
 			status: entity.status,
 			attemptCount: entity.attemptCount,
 			createdAt: entity.createdAt,

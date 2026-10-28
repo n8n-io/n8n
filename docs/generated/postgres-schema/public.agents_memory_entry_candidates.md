@@ -10,7 +10,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | evidenceText | text |  | false |  |  | Redacted exact evidence from the source message |
 | id | varchar(36) |  | false | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
-| replacesEarlier | boolean | false | false |  |  | The agent marked the fact as a correction of something stated earlier |
+| kind | varchar(32) |  | false |  |  | Reason the agent flagged this candidate; see EpisodicMemoryCaptureKind in @n8n/agents |
 | resourceId | varchar(255) |  | false |  | [public.agents_resources](public.agents_resources.md) | Resource scope for the eventual episodic memory entry |
 | runId | varchar(255) |  | false |  |  | Agent run that issued the memory capture tool call |
 | sourceMessageId | varchar(36) |  | true |  | [public.agents_messages](public.agents_messages.md) | Persisted message that contains the exact source evidence |
@@ -35,7 +35,7 @@
 | agents_memory_entry_candidates_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_memory_entry_candidates_evidenceText_not_null | n | NOT NULL "evidenceText" |
 | agents_memory_entry_candidates_id_not_null | n | NOT NULL id |
-| agents_memory_entry_candidates_replacesEarlier_not_null | n | NOT NULL "replacesEarlier" |
+| agents_memory_entry_candidates_kind_not_null | n | NOT NULL kind |
 | agents_memory_entry_candidates_resourceId_not_null | n | NOT NULL "resourceId" |
 | agents_memory_entry_candidates_runId_not_null | n | NOT NULL "runId" |
 | agents_memory_entry_candidates_status_not_null | n | NOT NULL status |
@@ -72,7 +72,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   text evidenceText
   varchar_36_ id
-  boolean replacesEarlier
+  varchar_32_ kind
   varchar_255_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK

@@ -281,7 +281,7 @@ describe('N8nMemoryImpl', () => {
 			toolCallId: 'call-1',
 			content,
 			evidenceText: content,
-			replacesEarlier: false,
+			kind: 'preference',
 		});
 		const source: NewEpisodicMemoryEntrySourceForEntry = {
 			candidateId: candidate.id,
@@ -695,7 +695,7 @@ describe('N8nMemoryImpl', () => {
 					toolCallId: 'call-1',
 					content: first.entry.content,
 					evidenceText: `Report preference ${index}`,
-					replacesEarlier: false,
+					kind: 'preference',
 				});
 				candidates.push({
 					candidateId: candidate.id,
@@ -816,7 +816,7 @@ describe('N8nMemoryImpl', () => {
 					toolCallId,
 					content,
 					evidenceText: content,
-					replacesEarlier: false,
+					kind: 'preference',
 				});
 				const save = async () =>
 					await memory.episodic.saveEntryWithSources({ resourceId: scope.resourceId, content }, [

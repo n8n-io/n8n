@@ -108,6 +108,15 @@ export interface EpisodicMemoryScope {
 	episodic?: ResolvedEpisodicScope;
 }
 
+export type EpisodicMemoryCaptureKind =
+	| 'explicit_remember'
+	| 'preference'
+	| 'decision'
+	| 'fact'
+	| 'correction'
+	| 'resolution'
+	| 'request';
+
 /** `deleted` marks candidates a user deleted, before or after they were stored. */
 export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed' | 'deleted';
 
@@ -120,8 +129,8 @@ export interface EpisodicMemoryCaptureCandidate {
 	toolCallId: string;
 	content: string;
 	evidenceText: string;
-	/** The agent marked the fact as a correction of something stated earlier. */
-	replacesEarlier: boolean;
+	/** Flags store only `correction` or `fact`; older rows keep their original kind. */
+	kind: EpisodicMemoryCaptureKind;
 	status: EpisodicMemoryCaptureStatus;
 	attemptCount: number;
 	createdAt: Date;

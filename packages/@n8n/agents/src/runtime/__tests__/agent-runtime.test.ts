@@ -8494,7 +8494,7 @@ describe('AgentRuntime — observation log jobs', () => {
 				toolCallId,
 				content: `Remember ${toolCallId}.`,
 				evidenceText: toolCallId,
-				replacesEarlier: false,
+				kind: 'fact',
 			});
 		}
 		let resolveFirstEmbedding!: (value: unknown) => void;

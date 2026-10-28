@@ -89,6 +89,7 @@ export type {
 	EpisodicMemoryConfig,
 	EpisodicMemoryCaptureCandidate,
 	EpisodicMemoryCaptureGuidance,
+	EpisodicMemoryCaptureKind,
 	EpisodicMemoryCaptureMethods,
 	EpisodicMemoryCaptureStatus,
 	EpisodicMemoryEmbeddingProviderOptions,

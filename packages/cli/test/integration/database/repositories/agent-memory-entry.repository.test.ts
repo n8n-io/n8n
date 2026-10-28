@@ -256,7 +256,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 				toolCallId: uuid(),
 				content: opts.content,
 				evidenceText: opts.content,
-				replacesEarlier: false,
+				kind: 'preference',
 				status: 'completed',
 			});
 			const entryId = uuid();

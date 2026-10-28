@@ -96,7 +96,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT evidenceText
   varchar_36_ id PK
-  boolean replacesEarlier
+  varchar_32_ kind
   varchar_255_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK

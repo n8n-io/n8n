@@ -566,7 +566,7 @@ describe('InMemoryMemory resolved episodic scope', () => {
 			toolCallId: 'call-1',
 			content,
 			evidenceText: content,
-			replacesEarlier: false,
+			kind: 'fact',
 		});
 
 		expect(candidate.resourceId).toBe('channel:1');
@@ -624,7 +624,7 @@ describe('InMemoryMemory episodic source cleanup', () => {
 			toolCallId: 'candidate-orphaned',
 			content: 'User prefers concise reports.',
 			evidenceText: 'I prefer concise reports',
-			replacesEarlier: false,
+			kind: 'preference',
 		});
 		const candidateBacked = await saveEpisodicEntry(
 			memory,
@@ -692,6 +692,24 @@ describe('agent-directed episodic capture', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('stores a correction flag as the correction kind and any other flag as a fact', async () => {
+		const memory = new InMemoryMemory();
+		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
+		await enqueueCandidate(memory, 'call-2', 'run-1');
+
+		const candidates = await memory.episodic.getPendingCaptureCandidates({
+			resourceId: 'user-1',
+			threadId: 'thread-1',
+		});
+
+		expect(candidates.map(({ toolCallId, kind }) => ({ toolCallId, kind }))).toEqual(
+			expect.arrayContaining([
+				{ toolCallId: 'call-1', kind: 'correction' },
+				{ toolCallId: 'call-2', kind: 'fact' },
+			]),
+		);
 	});
 
 	it('persists source evidence and deduplicates replayed tool calls within each run', async () => {
@@ -874,7 +892,7 @@ describe('agent-directed episodic capture', () => {
 				toolCallId: 'earlier-call',
 				content,
 				evidenceText: 'Please keep reports concise.',
-				replacesEarlier: false,
+				kind: 'preference',
 			});
 			const createdAt = new Date('2026-05-01T10:00:00.000Z');
 			const stored = await saveEpisodicEntry(
@@ -962,7 +980,7 @@ describe('agent-directed episodic capture', () => {
 				toolCallId: `call-${index}`,
 				content,
 				evidenceText: `Report preference ${index}`,
-				replacesEarlier: false,
+				kind: 'preference',
 			});
 		}
 		mockedEmbedMany.mockResolvedValue({
@@ -1241,7 +1259,7 @@ describe('agent-directed episodic capture', () => {
 			toolCallId: 'call-correction',
 			content: 'User switched memory storage from SQLite to Postgres.',
 			evidenceText: 'I switched from SQLite to Postgres',
-			replacesEarlier: true,
+			kind: 'correction',
 		});
 
 		await runEpisodicMemoryCandidateProcessor({

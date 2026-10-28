@@ -187,7 +187,8 @@ export function createFlagMemoryTool(opts: {
 				toolCallId: ctx.toolCallId,
 				content: normalizedContent,
 				evidenceText: redactText(source.evidenceText).text,
-				replacesEarlier: replacesEarlier === true,
+				// Only a correction changes what the runtime does: it starts reflection.
+				kind: replacesEarlier === true ? 'correction' : 'fact',
 			});
 			return { status: 'noted' };
 		})
@@ -265,7 +266,7 @@ export async function runEpisodicMemoryCandidateProcessor(
 	if (
 		savedEntries.length > 0 &&
 		config.reflect &&
-		candidates.some((candidate) => candidate.replacesEarlier)
+		candidates.some((candidate) => candidate.kind === 'correction')
 	) {
 		const reflectReports = await runEpisodicMemoryReflection(opts, config, savedEntries, now);
 		usageReports.push(...reflectReports);
