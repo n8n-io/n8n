@@ -568,17 +568,14 @@ describe('V1StepExecutor', () => {
 			await expect(execution).rejects.toBeInstanceOf(UserError);
 		});
 
-		it('fails a send-and-wait step before the node sends its message', async () => {
+		it('runs a send-and-wait step', async () => {
 			const graph = graphWith('test.echoParam', { operation: 'sendAndWait' });
 			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
 			const execute = vi.spyOn(echo, 'execute');
 
-			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 
-			await expect(execution).rejects.toThrow(
-				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
-			);
-			expect(execute).not.toHaveBeenCalled();
+			expect(execute).toHaveBeenCalledOnce();
 		});
 
 		it('fails a Chat node step before the node sends its message', async () => {
