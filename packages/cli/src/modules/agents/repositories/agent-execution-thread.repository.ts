@@ -669,6 +669,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			);
 		}
 		await manager.delete(AgentExecutionThread, { id: threadId });
+
 		return {
 			status: 'deleted',
 			refs: {
@@ -717,6 +718,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				})),
 			);
 		}
+
 		return rows;
 	}
 
@@ -732,10 +734,12 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			select: ['id', 'storedAt'],
 			where: { threadId, storedAt: Not('db') },
 		});
+
 		const attachments = await manager.find(AgentChatAttachment, {
 			select: ['id', 'binaryDataId'],
 			where: { projectId, threadId },
 		});
+
 		return { executionLogs, attachments };
 	}
 
@@ -750,24 +754,29 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return stop;
 	}
 
-	/** Capture known work once. Later dispatch can escape this stop. */
+	/** Collect existing work for the Stop request. */
 	async captureStopTargets(threadId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
+
 		const threads = new Set([threadId]);
 		let parents = [threadId];
+
 		while (parents.length) {
 			const children = await manager.find(AgentExecutionThread, {
 				where: { parentThreadId: In(parents) },
 				select: ['id'],
 			});
+
 			parents = children.filter((child) => !threads.has(child.id)).map((child) => child.id);
 			for (const id of parents) threads.add(id);
 		}
+
 		const ids = [...threads];
 		const [executions, jobs] = await Promise.all([
 			manager.find(AgentExecution, { where: { threadId: In(ids) }, select: ['id'] }),
 			manager.find(AgentBackgroundJob, { where: { parentThreadId: In(ids) }, select: ['id'] }),
 		]);
+
 		return {
 			executionIds: executions.map(({ id }) => id),
 			jobIds: jobs.map(({ id }) => id),
@@ -789,7 +798,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			],
 			select: ['id'],
 		});
+
 		const jobs = await this.targetedJobs(request, ctx);
+
 		return [
 			...jobs
 				.filter((job) => ['running', 'suspended'].includes(job.status))
@@ -806,6 +817,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			this.manager.connection.options.type === 'postgres'
 				? "thread.\"taskStop\"->'pause'->>'id'"
 				: "json_extract(thread.taskStop, '$.pause.id')";
+
 		return await this.createQueryBuilder('thread')
 			.where(`${expression} = :stopId`, { stopId })
 			.getExists();
@@ -813,9 +825,12 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 	async recordAdmission(threadId: string, userInitiated: boolean, ctx: OperationContext) {
 		if (!userInitiated) return;
+
 		const stop = await this.findTaskStop(threadId, ctx);
 		if (!stop?.pause.reportedAt || stop.pause.resumedAt) return;
+
 		stop.pause.resumedAt = new Date().toISOString();
+
 		await this.saveStop(stop, ctx);
 	}
 
@@ -827,10 +842,12 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	) {
 		const stop = await this.findTaskStop(threadId, ctx);
 		if (!stop || stop.pause.id !== stopId || stop.pause.reportedAt) return;
+
 		const execution = await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
 		stop.pause.reportedAt = new Date().toISOString();
 		stop.pause.reportFailed = !execution || execution.status !== 'success';
 		await this.saveStop(stop, ctx);
+
 		await this.managerFor(ctx).update(
 			AgentBackgroundJob,
 			{
@@ -862,6 +879,7 @@ function parseChildCheckpoints(
 	parentAgentId: string,
 ): DelegatedChildCheckpoint[] {
 	if (!state) return [];
+
 	try {
 		return getDelegatedChildCheckpoints(jsonParse<SerializableAgentState>(state), parentAgentId);
 	} catch {
@@ -878,10 +896,12 @@ function collectUnvisitedChildCheckpoints(
 		for (const child of parseChildCheckpoints(row.state, agentId)) {
 			const key = checkpointKey(child.agentId, child.runId);
 			if (visited.has(key)) continue;
+
 			visited.add(key);
 			children.push(child);
 		}
 	}
+
 	return children;
 }
 
