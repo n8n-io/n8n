@@ -163,28 +163,56 @@ it.each([
 	},
 );
 
-it.each(['editor', 'chat'] as const)(
-	'waits for %s navigation before updating the inbox tab',
-	async (destination) => {
+it.each(['editor', 'approve-and-publish', 'chat'] as const)(
+	'keeps the result open until %s navigation finishes',
+	async (action) => {
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult());
 		const navigation = createDeferredPromise<'started' | undefined>();
-		const navigate = destination === 'chat' ? startChat : push;
+		const navigate = action === 'chat' ? startChat : push;
 		navigate.mockReturnValueOnce(navigation.promise);
 		const view = renderComponent();
 		await waitAllPromises();
 
-		view.getByTestId(destination).click();
+		view.getByTestId(action).click();
 		await waitAllPromises();
 
 		expect(navigate).toHaveBeenCalledOnce();
 		expect(onItemChange).not.toHaveBeenCalled();
-		expect(view.getByTestId('result-content')).toHaveAttribute('data-pending', destination);
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-pending', action);
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'open');
 
-		navigation.resolve(destination === 'chat' ? 'started' : undefined);
+		navigation.resolve(action === 'chat' ? 'started' : undefined);
 		await waitAllPromises();
 
 		expect(onItemChange).toHaveBeenCalledOnce();
 		expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'applied');
+	},
+);
+
+it.each(['editor', 'approve-and-publish'] as const)(
+	'keeps the result open until %s navigation finishes after a lost response',
+	async (action) => {
+		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+		const navigation = createDeferredPromise<undefined>();
+		push.mockReturnValueOnce(navigation.promise);
+		const view = renderComponent();
+		await waitAllPromises();
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(appliedResult());
+
+		view.getByTestId(action).click();
+		await waitAllPromises();
+
+		expect(push).toHaveBeenCalledOnce();
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-pending', action);
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'open');
+
+		navigation.resolve(undefined);
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'applied');
+		expect(showError).not.toHaveBeenCalled();
 	},
 );
 
@@ -236,6 +264,27 @@ it('does not close the result when the selection changes while the chat project 
 	expect(startChat).not.toHaveBeenCalled();
 	expect(showMessage).not.toHaveBeenCalled();
 	expect(onItemChange).not.toHaveBeenCalled();
+});
+
+it('shows the closed result with a chat retry when the chat does not start', async () => {
+	vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult());
+	const chatStart = createDeferredPromise<'failed'>();
+	startChat.mockReturnValueOnce(chatStart.promise);
+	const view = renderComponent();
+	await waitAllPromises();
+
+	view.getByTestId('chat').click();
+	await waitAllPromises();
+
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'open');
+	expect(view.queryByTestId('self-healing-chat-retry')).not.toBeInTheDocument();
+
+	chatStart.resolve('failed');
+	await waitAllPromises();
+
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'applied');
+	expect(view.getByTestId('self-healing-chat-retry')).toBeInTheDocument();
+	expect(onItemChange).toHaveBeenCalledOnce();
 });
 
 it.each([
@@ -418,6 +467,30 @@ it('continues to the editor after a later refresh confirms a lost Apply response
 	expect(onItemChange).toHaveBeenCalledOnce();
 	expect(push).toHaveBeenCalledOnce();
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
+});
+
+it('keeps the confirmed result hidden until the editor opens after a retried refresh', async () => {
+	vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+	const view = renderComponent();
+	await waitAllPromises();
+	vi.mocked(api.fetchSelfHealingResult).mockRejectedValueOnce(new Error('Offline'));
+	view.getByTestId('editor').click();
+	await waitAllPromises();
+	const navigation = createDeferredPromise<undefined>();
+	push.mockReturnValueOnce(navigation.promise);
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(appliedResult());
+	view.getByRole('button', { name: 'Retry' }).click();
+	await waitAllPromises();
+
+	expect(push).toHaveBeenCalledOnce();
+	expect(view.queryByTestId('result-content')).not.toBeInTheDocument();
+	expect(view.queryByTestId('self-healing-detail-error')).not.toBeInTheDocument();
+
+	navigation.resolve(undefined);
+	await waitAllPromises();
+
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'applied');
+	expect(onItemChange).toHaveBeenCalledOnce();
 });
 
 it('does not continue after a later refresh when the server rejected the action', async () => {
