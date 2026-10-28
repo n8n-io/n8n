@@ -29,7 +29,7 @@ describe('OAuthAuthorizationCodeService', () => {
 			const state = 'state-xyz';
 			const resource = 'https://n8n.example.com/mcp-server/http';
 
-			authorizationCodeRepository.insert.mockResolvedValue(mock());
+			authorizationCodeRepository.insertCode.mockResolvedValue(undefined);
 
 			const result = await service.createAuthorizationCode(
 				clientId,
@@ -42,23 +42,26 @@ describe('OAuthAuthorizationCodeService', () => {
 			);
 
 			expect(result).toHaveLength(64); // 32 bytes hex = 64 characters
-			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith({
-				code: result,
-				clientId,
-				userId,
-				redirectUri,
-				codeChallenge,
-				codeChallengeMethod: 'S256',
-				state,
-				resource,
-				scope: ['workflow:read'],
-				expiresAt: expect.any(Number),
-				used: false,
-			});
+			expect(authorizationCodeRepository.insertCode).toHaveBeenCalledWith(
+				{
+					code: result,
+					clientId,
+					userId,
+					redirectUri,
+					codeChallenge,
+					codeChallengeMethod: 'S256',
+					state,
+					resource,
+					scope: ['workflow:read'],
+					expiresAt: expect.any(Number),
+					used: false,
+				},
+				{},
+			);
 		});
 
 		it('should handle null state', async () => {
-			authorizationCodeRepository.insert.mockResolvedValue(mock());
+			authorizationCodeRepository.insertCode.mockResolvedValue(undefined);
 
 			await service.createAuthorizationCode(
 				'client-123',
@@ -68,11 +71,12 @@ describe('OAuthAuthorizationCodeService', () => {
 				null,
 			);
 
-			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith(
+			expect(authorizationCodeRepository.insertCode).toHaveBeenCalledWith(
 				expect.objectContaining({
 					state: null,
 					resource: null,
 				}),
+				{},
 			);
 		});
 	});

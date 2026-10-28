@@ -34,10 +34,10 @@ vi.mock('@n8n/i18n', () => {
 });
 
 const apiCreateSpy = vi.fn();
-const { listAttachableSkills, getHubSkill, listSkillVersions, getSkillVersion } = vi.hoisted(
+const { listAttachableSkills, getSkillDetail, listSkillVersions, getSkillVersion } = vi.hoisted(
 	() => ({
 		listAttachableSkills: vi.fn(),
-		getHubSkill: vi.fn(),
+		getSkillDetail: vi.fn(),
 		listSkillVersions: vi.fn(),
 		getSkillVersion: vi.fn(),
 	}),
@@ -45,7 +45,7 @@ const { listAttachableSkills, getHubSkill, listSkillVersions, getSkillVersion } 
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 	listAttachableSkills,
-	getHubSkill,
+	getSkillDetail,
 	listSkillVersions,
 	getSkillVersion,
 }));
@@ -151,7 +151,7 @@ function renderModal({
 	skillId,
 	existingSkillNames,
 	settings,
-	...hubOptions
+	...skillRefOptions
 }: {
 	onConfirm?: AgentSkillModalData['onConfirm'];
 	skill?: AgentSkill;
@@ -175,7 +175,7 @@ function renderModal({
 	>;
 } & Pick<
 	AgentSkillModalData,
-	| 'hubSkillsEnabled'
+	| 'skillRefsEnabled'
 	| 'getAttachedSkills'
 	| 'projectLabel'
 	| 'canCreateInstanceSkills'
@@ -196,7 +196,8 @@ function renderModal({
 					template: `<textarea :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
 				},
 				N8nButton: {
-					template: '<button v-bind="$attrs" :disabled="disabled"><slot /></button>',
+					template:
+						'<button v-bind="$attrs" :disabled="disabled"><slot name="icon" /><slot /></button>',
 					props: ['variant', 'disabled'],
 				},
 				N8nCallout: { template: '<div v-bind="$attrs"><slot /></div>' },
@@ -217,7 +218,7 @@ function renderModal({
 				skillId,
 				existingSkillNames,
 				onConfirm,
-				...hubOptions,
+				...skillRefOptions,
 			},
 		},
 	});
@@ -635,6 +636,21 @@ describe('AgentSkillModal', () => {
 		);
 	});
 
+	it('offers to remove an inline skill of an agent without skill refs', async () => {
+		const onRemove = vi.fn();
+		const { getByTestId } = renderModal({
+			skill: SAVED_SKILL,
+			skillId: 's1',
+			skillRefsEnabled: false,
+			onRemove,
+		});
+
+		expect(getByTestId('agent-skill-remove')).toHaveTextContent('agents.builder.skills.remove');
+		await fireEvent.click(getByTestId('agent-skill-remove'));
+
+		expect(onRemove).toHaveBeenCalledWith('s1');
+	});
+
 	it('stays open with the edits and the name error when the save is refused', async () => {
 		const onConfirm = vi.fn().mockResolvedValue({ saved: false, nameError: 'Name taken' });
 		const { getByTestId, queryByTestId } = renderModal({
@@ -728,7 +744,7 @@ describe('AgentSkillModal', () => {
 	it('creates a skill on the agent without the picker or the skills API for an inline agent', async () => {
 		const onConfirm = vi.fn();
 		const { container, getByTestId, queryByTestId } = renderModal({
-			hubSkillsEnabled: false,
+			skillRefsEnabled: false,
 			onAttach: vi.fn(),
 			onConfirm,
 		});
@@ -749,10 +765,10 @@ describe('AgentSkillModal', () => {
 			expect.not.objectContaining({ availableTo: expect.anything() }),
 		);
 		expect(listAttachableSkills).not.toHaveBeenCalled();
-		expect(getHubSkill).not.toHaveBeenCalled();
+		expect(getSkillDetail).not.toHaveBeenCalled();
 	});
 
-	describe('with the skills hub', () => {
+	describe('with the skills module', () => {
 		const projectSkill = makeListItem({ id: 'tone', name: 'Support tone', scope: 'project' });
 		const instanceSkill = makeListItem({ id: 'sql', name: 'SQL helper', scope: 'instance' });
 		const similarSkill = makeListItem({ id: 'voice', name: 'brand-voice', scope: 'instance' });
@@ -767,7 +783,7 @@ describe('AgentSkillModal', () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, agentSkill, instanceSkill]);
 			const onAttach = vi.fn().mockResolvedValue(undefined);
 			const { findAllByTestId, getAllByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				projectLabel: 'Marketing',
 				onAttach,
 			});
@@ -791,7 +807,7 @@ describe('AgentSkillModal', () => {
 		it('labels the add action and hides empty tabs', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
 			const { findAllByTestId, getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 				getAttachedSkills: () => [{ id: instanceSkill.id, name: instanceSkill.name }],
 			});
@@ -808,7 +824,7 @@ describe('AgentSkillModal', () => {
 		it('names the project tab after the project of the agent', async () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const { getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				projectLabel: 'Marketing',
 				onAttach: vi.fn(),
 			});
@@ -824,7 +840,7 @@ describe('AgentSkillModal', () => {
 			const onAttach = vi.fn(
 				async () => await new Promise<void>((resolve) => (finishAttach = resolve)),
 			);
-			const { findByTestId } = renderModal({ hubSkillsEnabled: true, onAttach });
+			const { findByTestId } = renderModal({ skillRefsEnabled: true, onAttach });
 
 			await fireEvent.click(await findByTestId('agent-skill-picker-add'));
 
@@ -836,7 +852,7 @@ describe('AgentSkillModal', () => {
 		it('shows an attached skill as added and refuses names that are hard to tell apart', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, similarSkill]);
 			const { findAllByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				getAttachedSkills: () => [
 					{ id: 'tone', name: 'Support tone' },
 					{ id: 'other', name: 'Brand voice' },
@@ -854,7 +870,7 @@ describe('AgentSkillModal', () => {
 
 		it('shows an empty message when no skill can be attached', async () => {
 			listAttachableSkills.mockResolvedValue([]);
-			const { findByTestId } = renderModal({ hubSkillsEnabled: true, onAttach: vi.fn() });
+			const { findByTestId } = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
 
 			await waitFor(async () =>
 				expect(await findByTestId('agent-skill-picker-empty')).toHaveTextContent(
@@ -867,7 +883,7 @@ describe('AgentSkillModal', () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const open = vi.spyOn(window, 'open').mockReturnValue(null);
 			const { getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -888,7 +904,7 @@ describe('AgentSkillModal', () => {
 		it('shows the settings link only on the picker step', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const { getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -900,7 +916,7 @@ describe('AgentSkillModal', () => {
 		it('goes from the picker to the upload step and back', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
 			const { getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -916,7 +932,7 @@ describe('AgentSkillModal', () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const getDefaultName = vi.fn().mockResolvedValue('New skill 3');
 			const { getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 				getDefaultName,
 			});
@@ -931,19 +947,19 @@ describe('AgentSkillModal', () => {
 
 		it('opens a read-only preview from a row click and adds the skill from there', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: true }),
 			);
 			const onAttach = vi.fn();
 			const { findAllByTestId, findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach,
 			});
 
 			await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[1]);
 
 			expect(await findByTestId('agent-skill-preview')).toBeInTheDocument();
-			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
+			expect(getSkillDetail).toHaveBeenCalledWith(expect.anything(), 'sql');
 			expect(getByTestId('agent-skill-instructions-text')).toHaveTextContent('Instructions');
 			expect(queryByTestId('agent-skill-instructions-editor')).not.toBeInTheDocument();
 			expect(getByTestId('agent-skill-footer-hint')).toHaveTextContent(
@@ -965,12 +981,12 @@ describe('AgentSkillModal', () => {
 
 		it('offers to remove an attached skill from its preview', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 			);
 			const onRemove = vi.fn();
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				getAttachedSkills: () => [{ id: 'tone', name: 'Support tone' }],
 				onAttach: vi.fn(),
 				onRemove,
@@ -991,11 +1007,11 @@ describe('AgentSkillModal', () => {
 
 		it('returns from the preview to the picker', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 			);
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -1009,9 +1025,9 @@ describe('AgentSkillModal', () => {
 
 		it('stays on the picker when the preview cannot load', async () => {
 			listAttachableSkills.mockResolvedValue([projectSkill]);
-			getHubSkill.mockRejectedValue(new Error('Not found'));
+			getSkillDetail.mockRejectedValue(new Error('Not found'));
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -1037,7 +1053,7 @@ describe('AgentSkillModal', () => {
 				listAttachableSkills.mockResolvedValue([]);
 				const onConfirm = vi.fn();
 				const { container, getByTestId } = renderModal({
-					hubSkillsEnabled: true,
+					skillRefsEnabled: true,
 					canCreateInstanceSkills: true,
 					projectLabel: 'Marketing',
 					onAttach: vi.fn(),
@@ -1065,7 +1081,7 @@ describe('AgentSkillModal', () => {
 		it('falls back to "This project" when the project name is unknown', async () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const { getByTestId, findByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -1089,7 +1105,7 @@ describe('AgentSkillModal', () => {
 				listAttachableSkills.mockResolvedValue([]);
 				const onConfirm = vi.fn();
 				const { container, getByTestId } = renderModal({
-					hubSkillsEnabled: true,
+					skillRefsEnabled: true,
 					canCreateInstanceSkills,
 					onAttach: vi.fn(),
 					onConfirm,
@@ -1114,7 +1130,7 @@ describe('AgentSkillModal', () => {
 			const attached = ref<Array<{ id: string; name: string }>>([]);
 			const onConfirm = vi.fn();
 			const { container, getByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 				getAttachedSkills: () => attached.value,
 				onConfirm,
@@ -1140,7 +1156,7 @@ describe('AgentSkillModal', () => {
 		it('offers only this project and this agent to a user who may not create global skills', async () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const { getByTestId, findByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				onAttach: vi.fn(),
 			});
 
@@ -1153,9 +1169,9 @@ describe('AgentSkillModal', () => {
 
 		it('keeps a skill read-only and reports the error when its access check fails', async () => {
 			const error = new Error('offline');
-			getHubSkill.mockRejectedValue(error);
+			getSkillDetail.mockRejectedValue(error);
 			const { findByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'sql',
 				skill: { name: 'SQL helper', description: 'Use for SQL', instructions: 'Write SQL' },
 				onRemove: vi.fn(),
@@ -1169,12 +1185,12 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('shows a skill that the user cannot edit as read-only', async () => {
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: false }),
 			);
 			const onRemove = vi.fn();
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'sql',
 				skill: { name: 'SQL helper', description: 'Use for SQL', instructions: 'Write SQL' },
 				onRemove,
@@ -1185,7 +1201,7 @@ describe('AgentSkillModal', () => {
 			);
 			expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Use for SQL');
 			expect(queryByTestId('agent-skill-description-input')).not.toBeInTheDocument();
-			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
+			expect(getSkillDetail).toHaveBeenCalledWith(expect.anything(), 'sql');
 			expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
@@ -1206,9 +1222,9 @@ describe('AgentSkillModal', () => {
 				onConfirm = vi.fn(),
 				extra: Pick<AgentSkillModalData, 'canCreateInstanceSkills'> = {},
 			) {
-				getHubSkill.mockResolvedValue(detail);
+				getSkillDetail.mockResolvedValue(detail);
 				const result = renderModal({
-					hubSkillsEnabled: true,
+					skillRefsEnabled: true,
 					skillId: detail.id,
 					skill: tone,
 					onConfirm,
@@ -1389,12 +1405,12 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('shows a skill on an older version as read-only with a switch to the latest version', async () => {
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
 			);
 			const onUseLatestVersion = vi.fn();
 			const { findByTestId, getByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'tone',
 				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
 				outdated: true,
@@ -1417,16 +1433,16 @@ describe('AgentSkillModal', () => {
 		});
 
 		it('keeps a skill that the user can edit editable', async () => {
-			getHubSkill.mockResolvedValue(
+			getSkillDetail.mockResolvedValue(
 				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
 			);
 			const { findByTestId, queryByTestId } = renderModal({
-				hubSkillsEnabled: true,
+				skillRefsEnabled: true,
 				skillId: 'tone',
 				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
 			});
 
-			await waitFor(() => expect(getHubSkill).toHaveBeenCalled());
+			await waitFor(() => expect(getSkillDetail).toHaveBeenCalled());
 			expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
 			expect(queryByTestId('agent-skill-footer-hint')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-description-input')).toBeInTheDocument();
@@ -1804,7 +1820,7 @@ describe('header and footer', () => {
 	};
 
 	beforeEach(() => {
-		getHubSkill.mockResolvedValue(makeDetail({ id: 'tone', name: 'Tone', scope: 'project' }));
+		getSkillDetail.mockResolvedValue(makeDetail({ id: 'tone', name: 'Tone', scope: 'project' }));
 	});
 
 	it('names the footer button Close on the form', () => {
@@ -1816,7 +1832,7 @@ describe('header and footer', () => {
 	it('detaches a hub skill with the agent toggle in the header menu', async () => {
 		const onRemove = vi.fn();
 		const { findByTestId, queryByTestId } = renderModal({
-			hubSkillsEnabled: true,
+			skillRefsEnabled: true,
 			skill: savedSkill,
 			skillId: 'tone',
 			agentName: 'Darwin',

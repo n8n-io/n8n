@@ -8,7 +8,7 @@ import { toAgentDocument, type AgentSkillRefs } from '../json-config/agent-docum
 export interface AgentDefinition extends Pick<Agent, 'tools'> {
 	/** The JSON document, with the skill refs. */
 	schema: AgentJsonConfig | null;
-	/** Skill bodies from the skills hub, keyed by skill id. */
+	/** Skill bodies from the skills module, keyed by skill id. */
 	skills: Record<string, AgentSkill>;
 	tasks: ReadonlyMap<string, AgentTaskConfig>;
 }

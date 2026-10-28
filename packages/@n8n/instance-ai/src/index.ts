@@ -412,14 +412,6 @@ export const createAgentContextTool: typeof AgentContextToolMod.createAgentConte
 	lazyFunction(() => loadAgentContextTool().createAgentContextTool);
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
-export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
-export const formatPreviousAttempts: typeof StorageMod.formatPreviousAttempts = lazyFunction(
-	() => loadStorage().formatPreviousAttempts,
-);
-export type ThreadIterationLogStorage = StorageMod.ThreadIterationLogStorage;
-export const ThreadIterationLogStorage: typeof StorageMod.ThreadIterationLogStorage = lazyClass(
-	() => loadStorage().ThreadIterationLogStorage,
-);
 export type ThreadTaskStorage = StorageMod.ThreadTaskStorage;
 export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
@@ -438,8 +430,6 @@ export const WorkflowLoopStorage: typeof StorageMod.WorkflowLoopStorage = lazyCl
 );
 export type {
 	AgentTreeSnapshot,
-	IterationEntry,
-	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
 	TerminalOutcome,
@@ -485,7 +475,6 @@ defineLazyExport(
 	'SUB_AGENT_RESOURCE_PREFIX',
 	() => loadAgentPersistence().SUB_AGENT_RESOURCE_PREFIX,
 );
-defineLazyExport('iterationEntrySchema', () => loadStorage().iterationEntrySchema);
 defineLazyExport(
 	'suspendedInstanceContextSchema',
 	() => loadInstanceContextState().suspendedInstanceContextSchema,

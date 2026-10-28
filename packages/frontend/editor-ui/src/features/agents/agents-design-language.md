@@ -322,7 +322,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
-When the skills hub is on, `Add skill` starts with the `Skills` picker. The
+When the skills module is on, `Add skill` starts with the `Skills` picker. The
 picker shows only skills that the Agent can use: skills of its project, skills
 of this Agent only, and global skills. Group them in the tabs All, the project
 name, This agent, and Global. Do not
