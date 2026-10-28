@@ -1,11 +1,15 @@
-import { compareArms, formatComparison, summarize } from '../compare';
+import { compareArms, compareByPrompt, formatComparison, summarize } from '../compare';
 import type { LatencyMetrics, LatencyRunRecord } from '../metrics';
 
-function run(label: string, metrics: Partial<LatencyMetrics>): LatencyRunRecord {
+function run(
+	label: string,
+	metrics: Partial<LatencyMetrics>,
+	overrides: Partial<Pick<LatencyRunRecord, 'gitSha' | 'promptId'>> = {},
+): LatencyRunRecord {
 	return {
 		label,
-		gitSha: 'abc1234',
-		promptId: 'schedule-http',
+		gitSha: overrides.gitSha ?? 'abc1234',
+		promptId: overrides.promptId ?? 'schedule-http',
 		threadId: `thread-${label}`,
 		metrics: {
 			firstWorkspaceToolMs: null,
@@ -61,6 +65,29 @@ describe('compareArms', () => {
 	});
 });
 
+describe('compareByPrompt', () => {
+	it('compares each prompt on its own', () => {
+		const baseline = [
+			run('baseline', { firstWorkspaceToolMs: 9_000 }, { promptId: 'schedule-http' }),
+			run('baseline', { firstWorkspaceToolMs: 20_000 }, { promptId: 'form-code' }),
+		];
+		const after = [
+			run('after', { firstWorkspaceToolMs: 7_000 }, { promptId: 'schedule-http' }),
+			run('after', { firstWorkspaceToolMs: 25_000 }, { promptId: 'form-code' }),
+		];
+
+		const deltas = compareByPrompt(baseline, after).map(({ promptId, rows }) => [
+			promptId,
+			rows.find((row) => row.metric === 'firstWorkspaceToolMs')?.medianDeltaMs,
+		]);
+
+		expect(deltas).toEqual([
+			['form-code', 5_000],
+			['schedule-http', -2_000],
+		]);
+	});
+});
+
 describe('formatComparison', () => {
 	it('names both arms, every metric, and the missing-value count', () => {
 		const baseline = [run('baseline', { firstWorkspaceToolMs: 9_000 })];
@@ -74,5 +101,17 @@ describe('formatComparison', () => {
 		expect(text).toContain('timeToFirstWorkflowMs');
 		expect(text).toContain('turnMs');
 		expect(text).toContain('no workspace tool call: 1');
+	});
+
+	it('warns when an arm mixes runs from different builds', () => {
+		const baseline = [
+			run('baseline', { firstWorkspaceToolMs: 9_000 }, { gitSha: 'aaa1111' }),
+			run('baseline', { firstWorkspaceToolMs: 9_500 }, { gitSha: 'bbb2222' }),
+		];
+
+		const text = formatComparison(baseline, [run('after', { firstWorkspaceToolMs: 7_000 })]);
+
+		expect(text).toMatch(/baseline.*aaa1111.*bbb2222/);
+		expect(text).not.toMatch(/after.*mixes/);
 	});
 });

@@ -13,14 +13,13 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { LatencyRunArgs } from './args';
-import { computeLatencyMetrics, type LatencyRunRecord } from './metrics';
+import { STOP_EVENT_TYPES, computeLatencyMetrics, type LatencyRunRecord } from './metrics';
 import { LATENCY_PROMPTS, type LatencyPrompt } from './prompts';
 import { N8nClient } from '../clients/n8n-client';
 import { SSE_SETTLE_DELAY_MS, startSseConnection } from '../harness/chat-loop';
 import { savedWorkflowsFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 
-const STOP_EVENT_TYPES = new Set(['run-finish', 'confirmation-request']);
 const STOP_POLL_MS = 250;
 
 export async function runLatencyArm(args: LatencyRunArgs): Promise<string> {
@@ -52,15 +51,21 @@ async function runOnce(
 	await client.ensureThread(threadId, undefined, { benchmark: 'latency', prompt_id: prompt.id });
 	const events: CapturedEvent[] = [];
 	const abort = new AbortController();
-	const sse = startSseConnection(client, threadId, events, abort.signal).catch(() => {});
+	// A dropped stream otherwise looks like a run that never finished.
+	const sse = startSseConnection(client, threadId, events, abort.signal).catch((error: unknown) => {
+		if (!abort.signal.aborted) console.warn(`  SSE stream failed: ${String(error)}`);
+	});
 	await delay(SSE_SETTLE_DELAY_MS);
 
 	const sentAt = Date.now();
-	await client.sendMessage(threadId, prompt.text);
-	await waitForStop(events, args.timeoutMs);
-	abort.abort();
-	await sse;
-	await cleanUp(client, threadId, events);
+	try {
+		await client.sendMessage(threadId, prompt.text);
+		await waitForStop(events, args.timeoutMs);
+	} finally {
+		abort.abort();
+		await sse;
+		await cleanUp(client, threadId, events);
+	}
 
 	const metrics = computeLatencyMetrics(events, sentAt);
 	return { label: args.label, gitSha, promptId: prompt.id, threadId, metrics };

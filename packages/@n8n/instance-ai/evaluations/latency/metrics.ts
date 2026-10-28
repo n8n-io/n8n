@@ -46,14 +46,13 @@ const MISSING_REASONS: Record<LatencyMetricName, string> = {
 	turnMs: 'no run-finish or confirmation-request',
 };
 
-const STOP_EVENT_TYPES = new Set(['run-finish', 'confirmation-request']);
+export const STOP_EVENT_TYPES = new Set(['run-finish', 'confirmation-request']);
 
 export function computeLatencyMetrics(events: CapturedEvent[], sentAt: number): LatencyMetrics {
 	const { toolCalls } = extractOutcomeFromEvents(events);
 	const stopAt = events.find((event) => STOP_EVENT_TYPES.has(event.type))?.timestamp;
 	const values: Record<LatencyMetricName, number | null> = {
-		firstWorkspaceToolMs:
-			toolCalls.find((call) => call.toolName.startsWith('workspace_'))?.durationMs ?? null,
+		firstWorkspaceToolMs: firstStartedWorkspaceCall(events, toolCalls)?.durationMs ?? null,
 		timeToFirstWorkflowMs: elapsedSince(sentAt, firstSaveAt(events, toolCalls)),
 		turnMs: elapsedSince(sentAt, stopAt),
 	};
@@ -65,6 +64,28 @@ function elapsedSince(sentAt: number, timestamp: number | undefined): number | n
 	return timestamp === undefined ? null : timestamp - sentAt;
 }
 
+/** Tool calls finish in any order. Setup runs inside the call that started first. */
+function firstStartedWorkspaceCall(
+	events: CapturedEvent[],
+	toolCalls: CapturedToolCall[],
+): CapturedToolCall | undefined {
+	for (const event of events) {
+		if (event.type !== 'tool-call') continue;
+		const toolCallId = eventToolCallId(event);
+		const call = toolCalls.find((candidate) => candidate.toolCallId === toolCallId);
+		if (call?.toolName.startsWith('workspace_')) return call;
+	}
+	return undefined;
+}
+
+/** Mirrors `extractOutcomeFromEvents`: the id sits in the payload or on the event. */
+function eventToolCallId(event: CapturedEvent): string | undefined {
+	return (
+		getString(getNestedRecord(event.data, 'payload') ?? {}, 'toolCallId') ??
+		getString(event.data, 'toolCallId')
+	);
+}
+
 function firstSaveAt(events: CapturedEvent[], toolCalls: CapturedToolCall[]): number | undefined {
 	const save = toolCalls.find(
 		(call) =>
@@ -72,8 +93,6 @@ function firstSaveAt(events: CapturedEvent[], toolCalls: CapturedToolCall[]): nu
 	);
 	if (!save) return undefined;
 	return events.find(
-		(event) =>
-			event.type === 'tool-result' &&
-			getString(getNestedRecord(event.data, 'payload') ?? {}, 'toolCallId') === save.toolCallId,
+		(event) => event.type === 'tool-result' && eventToolCallId(event) === save.toolCallId,
 	)?.timestamp;
 }

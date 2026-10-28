@@ -83,6 +83,36 @@ describe('computeLatencyMetrics', () => {
 		expect(metrics.firstWorkspaceToolMs).toBe(7_000);
 	});
 
+	it('measures the first workspace tool to start, not the first to finish', () => {
+		const metrics = computeLatencyMetrics(
+			[
+				toolCall(5_000, 'tc-1', 'workspace_write_file'),
+				toolCall(6_000, 'tc-2', 'workspace_read_file'),
+				toolResult(7_000, 'tc-2'),
+				toolResult(13_000, 'tc-1'),
+			],
+			SENT_AT,
+		);
+
+		expect(metrics.firstWorkspaceToolMs).toBe(8_000);
+	});
+
+	it('times a save whose result carries the tool call id outside the payload', () => {
+		const metrics = computeLatencyMetrics(
+			[
+				toolCall(5_000, 'tc-1', DOMAIN_TOOL_IDS.BUILD_WORKFLOW),
+				{
+					timestamp: 9_000,
+					type: 'tool-result',
+					data: { type: 'tool-result', toolCallId: 'tc-1', result: buildSuccess },
+				},
+			],
+			SENT_AT,
+		);
+
+		expect(metrics.timeToFirstWorkflowMs).toBe(8_000);
+	});
+
 	it('ends the turn at the first confirmation request', () => {
 		const metrics = computeLatencyMetrics(
 			[

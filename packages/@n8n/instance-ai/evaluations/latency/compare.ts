@@ -42,18 +42,56 @@ export function compareArms(a: LatencyRunRecord[], b: LatencyRunRecord[]): Metri
 	});
 }
 
+export interface PromptComparison {
+	promptId: string;
+	rows: MetricComparison[];
+}
+
+/** Prompts differ in complexity, so a pooled median can hide opposite moves per prompt. */
+export function compareByPrompt(a: LatencyRunRecord[], b: LatencyRunRecord[]): PromptComparison[] {
+	const promptIds = [...new Set([...a, ...b].map((run) => run.promptId))].sort();
+	return promptIds.map((promptId) => ({
+		promptId,
+		rows: compareArms(
+			a.filter((run) => run.promptId === promptId),
+			b.filter((run) => run.promptId === promptId),
+		),
+	}));
+}
+
 export function formatComparison(a: LatencyRunRecord[], b: LatencyRunRecord[]): string {
 	const labelA = a[0]?.label ?? 'a';
 	const labelB = b[0]?.label ?? 'b';
 	const lines = [
-		`${labelA} (${a.length} runs) vs ${labelB} (${b.length} runs)`,
+		`${labelA} @ ${formatBuilds(a)} (${a.length} runs) vs ${labelB} @ ${formatBuilds(b)} (${b.length} runs)`,
+		...buildWarnings([labelA, a], [labelB, b]),
 		'',
 		...compareArms(a, b).map(formatRow),
+		...compareByPrompt(a, b).flatMap(formatPromptSection),
 		'',
 		`Missing in ${labelA}: ${formatMissing(a)}`,
 		`Missing in ${labelB}: ${formatMissing(b)}`,
 	];
 	return lines.join('\n');
+}
+
+function buildsOf(runs: LatencyRunRecord[]): string[] {
+	return [...new Set(runs.map((run) => run.gitSha))];
+}
+
+function formatBuilds(runs: LatencyRunRecord[]): string {
+	return buildsOf(runs).join(', ') || '-';
+}
+
+/** Run files append, so a reused label can carry runs from an older build. */
+function buildWarnings(...arms: Array<[string, LatencyRunRecord[]]>): string[] {
+	return arms
+		.filter(([, runs]) => buildsOf(runs).length > 1)
+		.map(([label, runs]) => `Warning: ${label} mixes builds ${formatBuilds(runs)}`);
+}
+
+function formatPromptSection({ promptId, rows }: PromptComparison): string[] {
+	return ['', `${promptId}:`, ...rows.map((row) => `  ${formatRow(row)}`)];
 }
 
 function metricValues(runs: LatencyRunRecord[], metric: LatencyMetricName): number[] {
