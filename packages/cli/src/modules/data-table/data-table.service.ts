@@ -99,16 +99,20 @@ export class DataTableService {
 		return dataTable;
 	}
 
+	async assertProjectExists(projectId: string): Promise<void> {
+		const existingProjectIds = await this.projectRepository.findExistingIds([projectId]);
+		if (existingProjectIds.length === 0) {
+			throw new ProjectNotFoundError(projectId);
+		}
+	}
+
 	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
 		if (!projectId) {
 			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 			return personalProject.id;
 		}
 
-		const existingProjectIds = await this.projectRepository.findExistingIds([projectId]);
-		if (existingProjectIds.length === 0) {
-			throw new ProjectNotFoundError(projectId);
-		}
+		await this.assertProjectExists(projectId);
 
 		const roles = await this.projectScopeService.getProjectRoleSlugs(user, ['dataTable:create']);
 		const project = await this.projectRepository.findOneWithUserRoles(
