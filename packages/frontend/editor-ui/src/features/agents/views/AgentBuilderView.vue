@@ -452,8 +452,8 @@ const isPreviewActive = computed(function isPreviewActive() {
 });
 
 // Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
-// Default open for a pending agent so a new agent lands with the assistant
-// already showing; closed otherwise. Persisted per agent, like the preview dock.
+// Open unpublished agents with the assistant on each visit. Published agents
+// use their saved panel preference, like the preview dock.
 // null = no preference yet, so the default is derived instead of stored.
 const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
 	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
@@ -463,6 +463,7 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 	writeDefaults: false,
 	flush: 'sync',
 });
+const aiPanelOpenForVisit = ref<boolean | null>(null);
 // The pending-agent default is decided once, when the agent opens. Persisting
 // the agent later (a real edit, or the assistant finishing a build) flips
 // `isRouteAgentPending` to false, which must not close the panel out from
@@ -474,6 +475,7 @@ const templateApplied = ref(false);
 watch([projectId, agentId], () => {
 	taskPreviewPrompt.value = undefined;
 	showConfiguration.value = false;
+	aiPanelOpenForVisit.value = null;
 });
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
@@ -487,8 +489,12 @@ watch(agentId, () => {
 	armStarterGate();
 });
 const isAiPanelOpen = computed({
-	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
+	get: () =>
+		aiPanelOpenForVisit.value ??
+		storedAiPanelOpen.value ??
+		(openedForPendingAgent.value && instanceAiReady.value),
 	set: (value: boolean) => {
+		aiPanelOpenForVisit.value = null;
 		storedAiPanelOpen.value = value;
 	},
 });
@@ -3117,6 +3123,9 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
+		if (!preserveState && agent.value?.activeVersionId === null) {
+			aiPanelOpenForVisit.value = true;
+		}
 		// The tools picker and tool icons read the node types store, which stays
 		// empty when this page is the first one loaded. Not awaited: the page does
 		// not need it to render.
