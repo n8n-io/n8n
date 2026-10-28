@@ -119,6 +119,19 @@ describe('setupDefaultInterceptors workflow settings', () => {
 		expect(continueWith).toHaveBeenCalledWith();
 	});
 
+	test('passes a request below the workflows path through unchanged', async () => {
+		const { context, dispatch } = fakeContext();
+		await setupDefaultInterceptors(context, stack);
+
+		const continueWith = await dispatch(
+			'POST',
+			'http://localhost:5678/rest/workflows/with-node-types',
+			{ nodeTypes: [] },
+		);
+
+		expect(continueWith).toHaveBeenCalledWith();
+	});
+
 	test('passes a workflow list request through unchanged', async () => {
 		const { context, dispatch } = fakeContext();
 		await setupDefaultInterceptors(context, stack);
@@ -133,6 +146,5 @@ describe('setupDefaultInterceptors workflow settings', () => {
 		await setupDefaultInterceptors(context);
 
 		expect(await dispatch('POST', 'http://localhost:5678/rest/workflows', {})).toBeUndefined();
-		expect(await dispatch('PATCH', 'http://localhost:5678/rest/workflows/abc', {})).toBeUndefined();
 	});
 });

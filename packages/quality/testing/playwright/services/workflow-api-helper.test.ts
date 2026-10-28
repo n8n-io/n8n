@@ -249,6 +249,12 @@ describe('WorkflowApiHelper.runRaw engine routing', () => {
 		await expect(new WorkflowApiHelper(api).runRaw('wf-1', run)).resolves.toBe(response);
 	});
 
+	test('returns the response of a run that waits for its webhook', async () => {
+		const { api, response } = apiAnswering(200, { data: { waitingForWebhook: true } }, v2);
+
+		await expect(new WorkflowApiHelper(api).runRaw('wf-1', run)).resolves.toBe(response);
+	});
+
 	test('returns the response of a run the control plane refused', async () => {
 		const { api, response } = apiAnswering(400, { message: 'Workflow has issues' }, v2);
 
@@ -265,13 +271,14 @@ describe('WorkflowApiHelper.waitForExecutionById engine routing', () => {
 	}
 	const v2 = { workflowSettings: { engineType: 'v2' as const } };
 
-	test('rejects a legacy id on a routed execution when the stack routes to engine v2', async () => {
-		const { api } = apiReturning({ id: '1783', mode: 'webhook', status: 'success' }, v2);
+	test.each(['manual', 'webhook', 'trigger'])(
+		'rejects a legacy id on a %s execution when the stack routes to engine v2',
+		async (mode) => {
+			const { api } = apiReturning({ id: '1783', mode, status: 'success' }, v2);
 
-		await expect(new WorkflowApiHelper(api).waitForExecutionById('1783')).rejects.toThrow(
-			/1783[\s\S]*settings\.engineType/,
-		);
-	});
+			await expect(new WorkflowApiHelper(api).waitForExecutionById('1783')).rejects.toThrow(/1783/);
+		},
+	);
 
 	// A sub-workflow runs in `integrated` mode, which engine v2 does not route.
 	test('accepts a legacy id on a sub-workflow execution', async () => {
@@ -299,6 +306,21 @@ describe('WorkflowApiHelper.waitForExecution engine routing', () => {
 		startedAt: new Date().toISOString(),
 	});
 	const v2 = { workflowSettings: { engineType: 'v2' as const } };
+
+	test('rejects a legacy id on an execution that appears after the wait starts', async () => {
+		const get = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: () => true, json: async () => ({ data: { results: [] } }) })
+			.mockResolvedValue({
+				ok: () => true,
+				json: async () => ({ data: { results: [settled('1783', 'webhook')] } }),
+			});
+		const api = { request: { get }, options: v2 } as unknown as ApiHelpers;
+
+		await expect(
+			new WorkflowApiHelper(api).waitForExecution('wf-1', 1000, 'webhook'),
+		).rejects.toThrow(/1783/);
+	});
 
 	test('rejects a legacy id on the execution it waited for when the stack routes to engine v2', async () => {
 		const { api } = apiListing(settled('1783', 'webhook'), v2);

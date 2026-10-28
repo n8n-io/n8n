@@ -1,3 +1,4 @@
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import type { BrowserContext } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 import type { IWorkflowSettings, WorkflowExecuteMode } from 'n8n-workflow';
@@ -89,16 +90,14 @@ export const ROUTED_MODES: ReadonlySet<WorkflowExecuteMode> = new Set<WorkflowEx
 	'trigger',
 ]);
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * Whether an execution id names a run on engine v2. A v1 id is numeric and a
- * v2 id is a uuid, which the engine validates on the wire
+ * v2 id is a uuidv7, which the engine validates on the wire
  * (`packages/cli/src/executions/execution-id.ts`), so the shape says which
  * plane ran it.
  */
 export function isEngineV2ExecutionId(executionId: string): boolean {
-	return UUID.test(executionId);
+	return UUID_V7_PATTERN.test(executionId);
 }
 
 /**

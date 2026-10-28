@@ -178,6 +178,15 @@ describe('watchCanvasRuns', () => {
 		expect(fulfill).toHaveBeenCalledTimes(1);
 	});
 
+	test('passes a run that waits for its webhook', async () => {
+		const { context, answerRun } = fakeContext();
+		const guard = await watchCanvasRuns(context, { engineType: 'v2' });
+
+		await answerRun(200, { data: { waitingForWebhook: true } });
+
+		expect(() => guard.assertRoutedToEngine()).not.toThrow();
+	});
+
 	test('ignores a run the control plane refused', async () => {
 		const { context, answerRun } = fakeContext();
 		const guard = await watchCanvasRuns(context, { engineType: 'v2' });
