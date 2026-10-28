@@ -185,6 +185,8 @@ interface FinishSetupToolResult extends Collected {
 	appliedToConfig?: { credentialTypes: string[]; paths: string[] };
 	configHash?: string;
 	configApplyErrors?: Array<{ path: string; message: string }>;
+	/** Resolved credential slots that the config write did not apply, such as MCP credentials. */
+	unappliedCredentials?: string[];
 }
 
 /** The card question shape: `configPath` is builder-only and never reaches the FE. */
@@ -234,6 +236,37 @@ function collectConfigWrites(
 
 /** Write the collected setup into the config so the builder does not patch it afterwards. */
 async function complete(
+	input: FinishSetupInput,
+	collected: Collected,
+	deps: FinishSetupToolDeps,
+): Promise<FinishSetupToolResult> {
+	const result = await applyCollectedSetup(input, collected, deps);
+	// Only a successful config write tells which credentials are left; an error has its own step.
+	if (!deps.applySetupToConfig || result.configApplyErrors) return result;
+	const unapplied = unappliedCredentialSlots(input, collected, result.appliedToConfig);
+	if (unapplied.length > 0) result.unappliedCredentials = unapplied;
+	return result;
+}
+
+/** Resolved slots whose credential type the config write did not apply. Slots and types can differ. */
+function unappliedCredentialSlots(
+	input: FinishSetupInput,
+	collected: Collected,
+	applied: FinishSetupToolResult['appliedToConfig'],
+): string[] {
+	const appliedTypes = new Set(applied?.credentialTypes ?? []);
+	return Object.entries(collected.credentials ?? {})
+		.filter(([, outcome]) => outcome !== 'skipped')
+		.map(([slot]) => slot)
+		.filter((slot) => {
+			const request = input.credentialRequests?.find(
+				(r) => (r.credentialSlot ?? r.credentialType) === slot,
+			);
+			return !appliedTypes.has(request?.credentialType ?? slot);
+		});
+}
+
+async function applyCollectedSetup(
 	input: FinishSetupInput,
 	collected: Collected,
 	deps: FinishSetupToolDeps,
@@ -558,23 +591,13 @@ function nextStepFor(result: Record<string, unknown>): string | undefined {
 	if (Array.isArray(result.answers) && result.answers.length > 0) {
 		steps.push('If an answer picks the model, resolve it with agent_builder_resolve_llm.');
 	}
-	if (hasUnappliedCredential(result)) {
+	if (Array.isArray(result.unappliedCredentials) && result.unappliedCredentials.length > 0) {
 		steps.push(
-			'For a credential that appliedToConfig does not list, such as an MCP server ' +
-				'credential, call agent_builder_verify_mcp_server.',
+			'For each credential in unappliedCredentials, such as an MCP server credential, call ' +
+				'agent_builder_verify_mcp_server.',
 		);
 	}
 	return steps.length > 0 ? steps.join(' ') : undefined;
-}
-
-/** A resolved credential whose slot the flow did not write into the config. */
-function hasUnappliedCredential(result: Record<string, unknown>): boolean {
-	if (!isRecord(result.credentials)) return false;
-	const applied = isRecord(result.appliedToConfig) ? result.appliedToConfig.credentialTypes : [];
-	const appliedTypes = new Set(Array.isArray(applied) ? applied : []);
-	return Object.entries(result.credentials).some(
-		([slot, outcome]) => outcome !== 'skipped' && !appliedTypes.has(slot),
-	);
 }
 
 function withNextStep(result: unknown): unknown {

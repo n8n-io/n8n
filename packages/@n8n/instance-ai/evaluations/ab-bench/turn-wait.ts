@@ -11,11 +11,15 @@ import type { CapturedEvent } from '../types';
 export async function waitForNextRunStart(
 	events: CapturedEvent[],
 	startsBefore: number,
-	{ timeoutMs, pollMs }: { timeoutMs: number; pollMs: number },
+	options: { timeoutMs: number; pollMs: number; onTimeout?: () => Promise<void> },
 ): Promise<void> {
-	const deadline = Date.now() + timeoutMs;
+	const deadline = Date.now() + options.timeoutMs;
 	while (countEvents(events, 'run-start') <= startsBefore) {
-		if (Date.now() >= deadline) throw new Error(`No run started within ${String(timeoutMs)}ms`);
-		await delay(pollMs);
+		if (Date.now() >= deadline) {
+			// The message was sent, so a run can still start later. Let the caller cancel it.
+			await options.onTimeout?.();
+			throw new Error(`No run started within ${String(options.timeoutMs)}ms`);
+		}
+		await delay(options.pollMs);
 	}
 }

@@ -473,6 +473,60 @@ describe('agent_builder_finish_setup tool', () => {
 			});
 		});
 
+		it('maps a named credential slot to its type before it lists unapplied credentials', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: ['gmailOAuth2'],
+				paths: [],
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+				]),
+				applySetupToConfig,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{
+							credentialType: 'gmailOAuth2',
+							credentialSlot: 'support-inbox',
+							purpose: 'Read support emails',
+						},
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(result).toMatchObject({ completed: true });
+			expect(result).not.toHaveProperty('unappliedCredentials');
+			const view = tool.toModelOutput!(result) as { nextStep?: string };
+			expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
+		});
+
+		it('lists a resolved credential that the config write did not apply', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({ credentialTypes: [], paths: [] });
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'l1', name: 'Linear MCP', type: 'linearApi' },
+				]),
+				applySetupToConfig,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{ credentialType: 'linearApi', credentialSlot: 'linear-mcp', purpose: 'Linear MCP' },
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(result).toMatchObject({ unappliedCredentials: ['linear-mcp'] });
+		});
+
 		it('writes both selected options and custom text for a multi-select answer', async () => {
 			const applySetupToConfig = vi.fn().mockResolvedValue({
 				credentialTypes: [],
@@ -610,17 +664,14 @@ describe('agent_builder_finish_setup model output', () => {
 		expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
 	});
 
-	it('points to agent_builder_verify_mcp_server for a credential the flow did not apply', () => {
-		const view = modelView({
-			completed: true,
-			credentials: { linearMcp: { id: 'c1', name: 'Linear' } },
-		});
+	it('points to agent_builder_verify_mcp_server for an unapplied credential', () => {
+		const view = modelView({ completed: true, unappliedCredentials: ['linear-mcp'] });
 
 		expect(view.nextStep).toContain('agent_builder_verify_mcp_server');
 		expect(view.nextStep).not.toContain('agent_builder_resolve_llm');
 	});
 
-	it('adds no MCP step when the flow applied every credential', () => {
+	it('adds no MCP step when no credential is left unapplied', () => {
 		const view = modelView({
 			completed: true,
 			credentials: { gmailOAuth2: { id: 'c1', name: 'Gmail' } },

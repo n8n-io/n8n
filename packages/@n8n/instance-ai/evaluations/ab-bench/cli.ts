@@ -178,6 +178,7 @@ async function sendTurns(client: N8nClient, threadId: string, turns: string[], g
 			await waitForNextRunStart(events, startsBefore, {
 				timeoutMs: RUN_START_TIMEOUT_MS,
 				pollMs: POLL_INTERVAL_MS,
+				onTimeout: async () => await client.cancelRun(threadId).catch(() => {}),
 			});
 			await waitForAllActivity({ ...wait, timeoutMs: MULTI_TURN_TIMEOUT_MS });
 			logger.info(`  turn ${index + 1}/${turns.length} finished`);

@@ -72,16 +72,23 @@ function stepTools(step: InstanceAiRunDebugStep): unknown[] {
 	return Object.entries(toolMap).map(([name, tool]) => ({ name, ...(isRecord(tool) ? tool : {}) }));
 }
 
-/** Token split of one call. OpenAI reports cache hits only in `providerMetadata`. */
+/**
+ * Token split of one call, with the runtime's rule (`toTokenUsage` in `@n8n/agents`):
+ * a positive SDK detail is trusted as is, because `noCacheTokens` already excludes
+ * cache hits. Only when the SDK reports no split does the OpenAI `providerMetadata`
+ * figure count, and the uncached part is then the rest of the input.
+ */
 function tokenSplit(step: InstanceAiRunDebugStep) {
-	const usage = usageSchema.parse(step.output?.usage);
-	const details = usage.inputTokenDetails ?? {};
+	const details = usageSchema.parse(step.output?.usage).inputTokenDetails ?? {};
 	const tokens = usageTokens(step.output?.usage, step.output?.providerMetadata);
-	const providerCacheRead = tokens.cacheRead - (details.cacheReadTokens ?? 0);
+	const sdkSplit = [details.noCacheTokens, details.cacheReadTokens, details.cacheWriteTokens].some(
+		(value) => (value ?? 0) > 0,
+	);
+	const cacheRead = sdkSplit ? (details.cacheReadTokens ?? 0) : tokens.cacheRead;
 	return {
 		input: tokens.input,
-		uncached: Math.max(0, (details.noCacheTokens ?? 0) - providerCacheRead),
-		cacheRead: tokens.cacheRead,
+		uncached: sdkSplit ? (details.noCacheTokens ?? 0) : Math.max(0, tokens.input - cacheRead),
+		cacheRead,
 		cacheWrite: tokens.cacheWrite,
 		output: tokens.output,
 	};

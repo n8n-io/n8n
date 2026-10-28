@@ -33,4 +33,34 @@ describe('waitForNextRunStart', () => {
 			'No run started',
 		);
 	});
+
+	it('runs onTimeout before it fails, so the caller can cancel the sent run', async () => {
+		const events = [event('run-start'), event('run-finish')];
+		const calls: string[] = [];
+
+		await expect(
+			waitForNextRunStart(events, 1, {
+				timeoutMs: 30,
+				pollMs: 5,
+				onTimeout: async () => {
+					calls.push('cancel');
+				},
+			}),
+		).rejects.toThrow('No run started');
+		expect(calls).toEqual(['cancel']);
+	});
+
+	it('does not run onTimeout when the run starts', async () => {
+		const events = [event('run-start'), event('run-finish'), event('run-start')];
+		const calls: string[] = [];
+
+		await waitForNextRunStart(events, 1, {
+			timeoutMs: 1_000,
+			pollMs: 5,
+			onTimeout: async () => {
+				calls.push('cancel');
+			},
+		});
+		expect(calls).toEqual([]);
+	});
 });

@@ -85,12 +85,12 @@ describe('buildContextReport', () => {
 		expect(report.largestTools).toEqual([]);
 	});
 
-	// OpenAI reports cache hits only in providerMetadata and leaves the SDK cache fields at zero.
+	// Some OpenAI paths report cache hits only in providerMetadata and leave the SDK details empty.
 	it('reads the OpenAI cache split from the provider metadata', () => {
 		const openAiStep: InstanceAiRunDebugStep = {
 			stepNumber: 0,
 			output: {
-				usage: { inputTokens: 1000, outputTokens: 10, inputTokenDetails: { noCacheTokens: 1000 } },
+				usage: { inputTokens: 1000, outputTokens: 10 },
 				providerMetadata: { openai: { cachedPromptTokens: 800 } },
 			},
 		};
@@ -98,6 +98,39 @@ describe('buildContextReport', () => {
 		const report = buildContextReport('thread-1', [run('run-1', [openAiStep])]);
 
 		expect(report).toMatchObject({ inputTokens: 1000, cacheReadTokens: 800, uncachedTokens: 200 });
+	});
+
+	// The SDK already excludes cache hits from noCacheTokens, so the provider figure is not subtracted again.
+	it('keeps the SDK uncached figure when the SDK reports the cache split', () => {
+		const openAiStep: InstanceAiRunDebugStep = {
+			stepNumber: 0,
+			output: {
+				usage: {
+					inputTokens: 1000,
+					outputTokens: 10,
+					inputTokenDetails: { noCacheTokens: 200, cacheReadTokens: 800, cacheWriteTokens: 0 },
+				},
+				providerMetadata: { openai: { cachedPromptTokens: 800 } },
+			},
+		};
+
+		const report = buildContextReport('thread-1', [run('run-1', [openAiStep])]);
+
+		expect(report).toMatchObject({ inputTokens: 1000, cacheReadTokens: 800, uncachedTokens: 200 });
+	});
+
+	it('trusts a positive noCacheTokens over the provider metadata', () => {
+		const step: InstanceAiRunDebugStep = {
+			stepNumber: 0,
+			output: {
+				usage: { inputTokens: 1000, outputTokens: 10, inputTokenDetails: { noCacheTokens: 1000 } },
+				providerMetadata: { openai: { cachedPromptTokens: 800 } },
+			},
+		};
+
+		const report = buildContextReport('thread-1', [run('run-1', [step])]);
+
+		expect(report).toMatchObject({ cacheReadTokens: 0, uncachedTokens: 1000 });
 	});
 
 	// The debug buffer keeps the tool set as a map when the SDK does not report stepTools.
