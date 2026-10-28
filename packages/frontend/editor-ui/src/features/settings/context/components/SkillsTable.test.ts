@@ -12,7 +12,12 @@ import { useSkillsStore } from '../skills.store';
 const push = vi.fn();
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push, resolve: () => ({ href: '/projects/p1/agents/a1' }) }),
+	useRouter: () => ({
+		push,
+		resolve: ({ params }: { params: { projectId: string; agentId: string } }) => ({
+			href: `/projects/${params.projectId}/agents/${params.agentId}`,
+		}),
+	}),
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: vi.fn(),
 }));
@@ -182,7 +187,7 @@ describe('SkillsTable', () => {
 		const { getByTestId, findByTestId, findByText } = render([skill({ usedByAgents: 1 })]);
 
 		await userEvent.click(getByTestId('skill-agents-trigger'));
-		expect(await findByTestId('skill-agents-version')).toHaveTextContent('v3');
+		expect((await findByTestId('skill-agents-version')).textContent?.trim()).toBe('v3');
 		await userEvent.click(await findByText('Pinned bot'));
 
 		expect(open).toHaveBeenCalledWith('/projects/p1/agents/a1', '_blank', 'noopener');
