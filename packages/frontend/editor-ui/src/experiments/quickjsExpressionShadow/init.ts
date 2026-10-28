@@ -56,8 +56,8 @@ function pickStartVariant(): StartVariant {
 
 let markEditorReady: () => void = () => {};
 
-const createEditorReady = () =>
-	new Promise<void>((resolve) => {
+const createEditorReady = async () =>
+	await new Promise<void>((resolve) => {
 		markEditorReady = resolve;
 	});
 
