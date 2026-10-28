@@ -85,13 +85,18 @@ function createNativeStringToolInputSchema(description: string): z.ZodType {
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
-): Promise<NodeToolInputSchema> {
+): Promise<{ schema: NodeToolInputSchema; acceptsFiles: boolean }> {
 	const collectedArguments = extractFromAIParameters(
 		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
 	);
 	// Supply-data tools take JSON only, so only these schemas accept files.
+	// A `$fromAI('files')` argument keeps its meaning, so the tool then takes no files.
 	if (collectedArguments.length > 0) {
-		return createZodSchemaFromArgs(collectedArguments).extend({ files: FILES_INPUT_SCHEMA });
+		const schema = createZodSchemaFromArgs(collectedArguments);
+		if (collectedArguments.some(({ key }) => key === 'files')) {
+			return { schema, acceptsFiles: false };
+		}
+		return { schema: schema.extend({ files: FILES_INPUT_SCHEMA }), acceptsFiles: true };
 	}
 
 	let nodeType;
@@ -107,7 +112,7 @@ async function resolveInputSchema(
 	} catch {
 		// If the node type can't be resolved here, fall through — the executor
 		// will surface a clearer error at invocation time.
-		return { type: 'object', properties: {} };
+		return { schema: { type: 'object', properties: {} }, acceptsFiles: false };
 	}
 
 	if (typeof nodeType.supplyData === 'function') {
@@ -119,16 +124,21 @@ async function resolveInputSchema(
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
 		});
 
-		if (introspected) return introspected as NodeToolInputSchema;
+		if (introspected) {
+			return { schema: introspected as NodeToolInputSchema, acceptsFiles: false };
+		}
 
-		return createNativeStringToolInputSchema(
-			toolSchema.description ??
-				nodeType.description.description ??
-				`The query or input text to pass to ${toolSchema.node.nodeType}.`,
-		);
+		return {
+			schema: createNativeStringToolInputSchema(
+				toolSchema.description ??
+					nodeType.description.description ??
+					`The query or input text to pass to ${toolSchema.node.nodeType}.`,
+			),
+			acceptsFiles: false,
+		};
 	}
 
-	return z.object({ files: FILES_INPUT_SCHEMA }).passthrough();
+	return { schema: z.object({ files: FILES_INPUT_SCHEMA }).passthrough(), acceptsFiles: true };
 }
 
 /**
@@ -158,16 +168,20 @@ export async function resolveNodeTool(
 			}
 		: {};
 
+	const { schema, acceptsFiles } = await resolveInputSchema(toolSchema, ctx);
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
-		.input(await resolveInputSchema(toolSchema, ctx))
-		.handler(async ({ files, ...input }: Record<string, unknown>, toolCtx) => {
-			const inputFiles = files
-				? await Container.get(AgentFileBridge).toBinary(files, {
-						projectId: ctx.projectId,
-						threadId: toolCtx.persistence?.threadId,
-					})
-				: undefined;
+		.input(schema)
+		.handler(async (toolInput: Record<string, unknown>, toolCtx) => {
+			const { files, ...rest } = toolInput;
+			const input = acceptsFiles ? rest : toolInput;
+			const inputFiles =
+				acceptsFiles && files
+					? await Container.get(AgentFileBridge).toBinary(files, {
+							projectId: ctx.projectId,
+							threadId: toolCtx.persistence?.threadId,
+						})
+					: undefined;
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,

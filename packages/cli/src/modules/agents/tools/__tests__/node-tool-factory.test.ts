@@ -454,6 +454,10 @@ describe('resolveNodeTool → file input', () => {
 		const adoptFromItems = vi.fn().mockResolvedValue({ items: [], files: [] });
 		const toBinary = vi.fn().mockResolvedValue({ binary, stored });
 		Container.set(AgentFileBridge, { toBinary, adoptFromItems } as unknown as AgentFileBridge);
+		// A node without supplyData gets the passthrough schema, which takes files.
+		Container.set(NodeTypes, {
+			getByNameAndVersion: () => ({ description: {} }),
+		} as unknown as NodeTypes);
 		const tool = await resolveNodeTool(baseToolSchema, {
 			executor: { executeInline } as unknown as EphemeralNodeExecutor,
 			projectId: 'p1',
@@ -467,6 +471,34 @@ describe('resolveNodeTool → file input', () => {
 			[{ json: {}, binary }],
 			{ agentId: null, projectId: 'p1', threadId: 't1' },
 			stored,
+		);
+	});
+});
+
+describe('resolveNodeTool → $fromAI argument named files', () => {
+	it('keeps the model value in the JSON and does not resolve it as files', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const toBinary = vi.fn();
+		Container.set(AgentFileBridge, { toBinary } as unknown as AgentFileBridge);
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: {
+						files:
+							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('files', 'File names', 'string') }}",
+					},
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+
+		await tool.handler!({ files: 'a.txt,b.txt' }, { persistence: { threadId: 't1' } } as never);
+
+		expect(toBinary).not.toHaveBeenCalled();
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({ inputData: [{ json: { files: 'a.txt,b.txt' } }] }),
 		);
 	});
 });

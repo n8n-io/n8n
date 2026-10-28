@@ -1429,4 +1429,40 @@ describe('workflow tool → file input', () => {
 		expect(stored?.get('fs:x')).toEqual(inputFile);
 		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] }, files: [] });
 	});
+
+	it('keeps a workflow input named files in the JSON and does not resolve it as files', async () => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		Container.set(AgentFileBridge, bridge);
+		const fieldsTrigger = {
+			...triggerNode,
+			parameters: {
+				inputSource: 'workflowInputs',
+				workflowInputs: { values: [{ name: 'files', type: 'string' }] },
+			},
+		};
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue({
+			...workflow,
+			nodes: [fieldsTrigger],
+		} as unknown as WorkflowEntity);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		await tool.handler?.({ files: 'a.txt' }, { persistence: { threadId: 't-1' } } as never);
+
+		expect(bridge.toBinary).not.toHaveBeenCalled();
+		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const [triggerItems] = Object.values(pinData ?? {});
+		expect(triggerItems[0].json).toEqual({ files: 'a.txt' });
+		expect(triggerItems[0].binary).toBeUndefined();
+	});
 });

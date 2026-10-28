@@ -1161,9 +1161,11 @@ function assembleWorkflowTool(
 	// where a suspension can be resumed; elsewhere it reports the waiting status
 	// instead of parking forever.
 	const supportsHitl = context.supportsHitl ?? true;
+	// A workflow input named `files` keeps its meaning, so the tool then takes no files.
+	const acceptsFiles = !Object.hasOwn(inputSchema.shape, 'files');
 	const builder = new Tool(toolName)
 		.description(toolDescription)
-		.input(inputSchema.extend({ files: FILES_INPUT_SCHEMA }))
+		.input(acceptsFiles ? inputSchema.extend({ files: FILES_INPUT_SCHEMA }) : inputSchema)
 		.output(
 			z.object({
 				executionId: z.string(),
@@ -1193,13 +1195,15 @@ function assembleWorkflowTool(
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
-				const { files, ...modelInput } = input;
-				const resolved = files
-					? await Container.get(AgentFileBridge).toBinary(files, {
-							projectId: context.projectId,
-							threadId: ctx.persistence?.threadId,
-						})
-					: undefined;
+				const { files, ...rest } = input;
+				const modelInput = acceptsFiles ? rest : input;
+				const resolved =
+					acceptsFiles && files
+						? await Container.get(AgentFileBridge).toBinary(files, {
+								projectId: context.projectId,
+								threadId: ctx.persistence?.threadId,
+							})
+						: undefined;
 				inputFiles = resolved?.stored;
 				const parsedInput = await resolveWorkflowToolInput(
 					modelInput,
