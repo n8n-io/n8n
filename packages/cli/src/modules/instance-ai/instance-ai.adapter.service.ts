@@ -2982,6 +2982,8 @@ export class InstanceAiAdapterService {
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const { assertCredentialInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
+		const assertInstanceWritable = () => this.assertInstanceNotReadOnly('credentials');
+
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
@@ -3052,6 +3054,12 @@ export class InstanceAiAdapterService {
 					type: credential.type,
 					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
+			},
+
+			async updateDescription(credentialId, description) {
+				assertInstanceWritable();
+				await assertCredentialInBoundProject(credentialId);
+				await credentialsService.updateDescription(user, credentialId, description);
 			},
 
 			async delete(credentialId: string) {

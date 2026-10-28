@@ -903,6 +903,15 @@ describe('credentialService.get — credential ownership revalidation', () => {
 // ---------------------------------------------------------------------------
 
 describe('bound project write guard', () => {
+	it('rejects description edits on a protected instance', async () => {
+		instanceWriteAccess.isReadOnly.mockReturnValue(true);
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await expect(ctx.credentialService.updateDescription('cred-1', 'Reporting')).rejects.toThrow(
+			'protected instance',
+		);
+		expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+	});
+
 	type Context = ReturnType<typeof service.createContext>;
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 
@@ -919,6 +928,28 @@ describe('bound project write guard', () => {
 	const expectRejectedOutsideProject = async (write: Promise<unknown>) => {
 		await expect(write).rejects.toThrow(OutsideThreadProjectError);
 	};
+
+	it.each(['bound-project', 'other-project'])(
+		'checks the credential owner project before updating a description: %s',
+		async (projectId) => {
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+				id: projectId,
+			} as never);
+			const ctx = service.createContext(user, { projectId: 'bound-project' });
+			const write = ctx.credentialService.updateDescription('cred-1', 'Reporting');
+			if (projectId === 'bound-project') {
+				await write;
+				expect(credentialsService.updateDescription).toHaveBeenCalledWith(
+					user,
+					'cred-1',
+					'Reporting',
+				);
+			} else {
+				await expectRejectedOutsideProject(write);
+				expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+			}
+		},
+	);
 
 	it('rejects tagWorkflow on a workflow owned by another project before loading it', async () => {
 		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project']);

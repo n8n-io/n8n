@@ -4087,6 +4087,7 @@
 	"settings.mcp.oAuthClients.scope.skill.read": "List and read skills",
 	"settings.mcp.oAuthClients.scope.skill.write": "Create, update and delete skills",
 	"settings.mcp.oAuthClients.scope.credential.read": "List credentials",
+	"settings.mcp.oAuthClients.scope.credential.update": "Update credential descriptions",
 	"settings.mcp.oAuthClients.scope.dataTable.read": "List data tables",
 	"settings.mcp.oAuthClients.scope.dataTable.write": "Create and update data tables",
 	"settings.mcp.oAuthClients.scope.project.read": "Search projects and folders",

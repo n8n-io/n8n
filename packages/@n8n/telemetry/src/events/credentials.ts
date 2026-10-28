@@ -53,7 +53,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_CREDENTIALS: {
 		name: 'User updated credentials',
 		description:
-			'The server updated a credential through the internal credential API. Description metadata comes from the saved record. Description text is never included.',
+			'The server updated a credential through the internal credential API, Assistant, or MCP. Description metadata comes from the saved record. Description text is never included.',
 		properties: z.object({
 			user_id: z.string(),
 			user_role: z.string().optional(),
@@ -63,10 +63,10 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			has_description: descriptionProperties.has_description.optional(),
 			description_length: descriptionProperties.description_length.optional(),
 			is_private: z.boolean(),
-			uses_external_secrets: z.boolean(),
-			jwe_enabled: z.boolean(),
-			credential_supports_managed_auth: z.boolean(),
-			credential_uses_managed_auth: z.boolean(),
+			uses_external_secrets: z.boolean().optional(),
+			jwe_enabled: z.boolean().optional(),
+			credential_supports_managed_auth: z.boolean().optional(),
+			credential_uses_managed_auth: z.boolean().optional(),
 		}),
 	},
 	USER_STARTED_CREDENTIAL_CONNECTION: {

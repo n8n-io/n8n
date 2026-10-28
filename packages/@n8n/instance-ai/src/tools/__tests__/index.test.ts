@@ -19,6 +19,7 @@ vi.mock('../attachments/parse-file.tool', () => ({
 
 vi.mock('../credentials.tool', () => ({
 	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
+	createUpdateCredentialDescriptionTool: vi.fn(() => ({ id: 'update_credential_description' })),
 	createSearchCredentialTypesTool: vi.fn(() => ({ id: 'search_credential_types' })),
 	createSetupCredentialsTool: vi.fn(() => ({ id: 'setup_credentials' })),
 	createTestCredentialTool: vi.fn(() => ({ id: 'test_credential' })),
@@ -364,3 +365,15 @@ describe('domain tool construction', () => {
 		expect(withSession.has('get-session')).toBe(true);
 	});
 });
+
+it.each([true, false, undefined])(
+	'gates description updates when the flag is %s',
+	(credentialDescriptionsEnabled) => {
+		const context = mock<InstanceAiContext>({
+			credentialDescriptionsEnabled,
+			currentUserAttachments: [],
+		});
+		const names = getActiveOrchestratorDomainToolNames(context);
+		expect(names.has('update_credential_description')).toBe(credentialDescriptionsEnabled === true);
+	},
+);

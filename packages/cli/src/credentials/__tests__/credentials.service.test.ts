@@ -459,6 +459,141 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('updateDescription', () => {
+		let credential: CredentialsEntity;
+
+		beforeEach(() => {
+			credential = Object.assign(new CredentialsEntity(), {
+				id: 'description-credential',
+				name: 'Reporting',
+				type: 'postgres',
+				data: 'encrypted-value',
+				description: 'Old description',
+				isManaged: false,
+				isResolvable: false,
+				usageScope: 'project',
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			credentialsRepository.updateDescription.mockResolvedValue(true);
+		});
+
+		it.each(['  New description  ', '', '  ', null, 'x'.repeat(512)])(
+			'saves a normalized description: %s',
+			async (description) => {
+				await service.updateDescription(ownerUser, credential.id, description);
+				const saved = description?.trim() || null;
+				expect(credentialsRepository.updateDescription).toHaveBeenCalledWith(credential.id, saved, {
+					policyCleared: cleared,
+				});
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+					credential.id,
+					ownerUser,
+					['credential:update'],
+					{ includeInstanceCredentials: true },
+				);
+				expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledWith(
+					{
+						credential: { id: credential.id, type: credential.type },
+						storedCredential: { id: credential.id, type: credential.type },
+						projectId: 'project-1',
+					},
+					ownerActor,
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({
+						credentialId: credential.id,
+						credentialDescriptionLength: saved?.length ?? 0,
+						descriptionOnly: true,
+					}),
+				);
+				expect(credential.data).toBe('encrypted-value');
+				expect(credential.description).toBe('Old description');
+				expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+				expect(credentialsRepository.updateContent).not.toHaveBeenCalled();
+				expect(connectionStatusProxy.deleteAllUserEntries).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['disabled', 'invalid', 'missing', 'managed', 'policy'])(
+			'rejects %s before hooks and writes',
+			async (reason) => {
+				if (reason === 'disabled') postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+				if (reason === 'missing')
+					credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+				if (reason === 'managed') credential.isManaged = true;
+				if (reason === 'policy')
+					policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+						new Error('Policy rejected'),
+					);
+				await expect(
+					service.updateDescription(
+						ownerUser,
+						credential.id,
+						reason === 'invalid' ? 'x'.repeat(513) : 'New',
+					),
+				).rejects.toThrow();
+				expect(externalHooks.run).not.toHaveBeenCalled();
+				expect(credentialsRepository.updateDescription).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			},
+		);
+
+		it('uses and validates the description returned by the hook', async () => {
+			externalHooks.run.mockImplementation(async (_name, parameters) => {
+				const [payload] = parameters as [ICredentialsDb];
+				expect(payload.data).toBe('encrypted-value');
+				payload.description = '  Hook description  ';
+			});
+			await service.updateDescription(ownerUser, credential.id, 'New');
+			expect(credentialsRepository.updateDescription).toHaveBeenCalledWith(
+				credential.id,
+				'Hook description',
+				{ policyCleared: cleared },
+			);
+		});
+
+		it.each([
+			'data',
+			'name',
+			'type',
+			'isGlobal',
+			'extra',
+			'removed',
+			'invalid-description',
+			'missing-description',
+			'rejected',
+		])('does not save when the hook changes %s', async (change) => {
+			externalHooks.run.mockImplementation(async (_name, parameters) => {
+				const [payload] = parameters as [ICredentialsDb];
+				if (change === 'rejected') throw new Error('Hook rejected');
+				if (change === 'data') payload.data = 'changed';
+				if (change === 'name') payload.name = 'Changed';
+				if (change === 'type') payload.type = 'changed';
+				if (change === 'isGlobal') payload.isGlobal = true;
+				if (change === 'extra') Object.assign(payload, { extra: true });
+				if (change === 'removed') Reflect.deleteProperty(payload, 'name');
+				if (change === 'invalid-description') payload.description = 'x'.repeat(513);
+				if (change === 'missing-description') delete payload.description;
+			});
+			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow();
+			expect(credentialsRepository.updateDescription).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(credential.data).toBe('encrypted-value');
+		});
+
+		it('does not emit a success event when the row disappeared', async () => {
+			credentialsRepository.updateDescription.mockResolvedValue(false);
+			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('prepareUpdateData description handling', () => {
 		const storedCredential = () => {
 			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({});

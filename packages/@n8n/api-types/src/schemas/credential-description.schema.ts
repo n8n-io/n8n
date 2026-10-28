@@ -12,3 +12,10 @@ export const credentialDescriptionSchema = z
 	})
 	.nullable()
 	.transform((value) => (value === '' ? null : value));
+
+export const updateCredentialDescriptionSchema = z.object({
+	credentialId: z.string().min(1).describe('ID of the credential to update'),
+	description: credentialDescriptionSchema.describe(
+		'Description to save, replacing any existing description. A blank string clears it.',
+	),
+});

@@ -238,6 +238,19 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return await this.managerFor(ctx).save(CredentialsEntity, credential);
 	}
 
+	async updateDescription(
+		id: string,
+		description: string | null,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
+		const result = await this.managerFor(ctx).update(CredentialsEntity, id, {
+			description,
+			updatedAt: new Date(),
+		});
+		return (result.affected ?? 0) > 0;
+	}
+
 	async updateContent(
 		id: string,
 		content: QueryDeepPartialEntity<CredentialsEntity>,

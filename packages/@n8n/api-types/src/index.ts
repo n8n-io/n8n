@@ -207,6 +207,7 @@ export {
 export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
 	credentialDescriptionSchema,
+	updateCredentialDescriptionSchema,
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';

@@ -1,10 +1,11 @@
 /**
- * Shared credential tools for the workflow and Agent builders: list, search types, set up, test, and delete.
+ * Shared credential tools for the workflow and Agent builders: list, search types, set up, test, update descriptions, and delete.
  */
 import { Tool } from '@n8n/agents';
 import { getCredentialDescriptionPreview } from '@n8n/ai-utilities/credential-description';
 import {
 	getLegacyBuilderToolNames,
+	updateCredentialDescriptionSchema,
 	AI_GATEWAY_MANAGED_TAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialSetupHint,
@@ -1084,5 +1085,20 @@ export function createDeleteCredentialTool(context: InstanceAiContext) {
 		.handler(
 			async (input, ctx) => await handleDelete(context, deleteCredentialSchema.parse(input), ctx),
 		)
+		.build();
+}
+
+export function createUpdateCredentialDescriptionTool(context: InstanceAiContext) {
+	return new Tool(DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION)
+		.description(
+			'Update the description of an existing credential. The credential name, type, and secret data stay unchanged.',
+		)
+		.input(sanitizeInputSchema(updateCredentialDescriptionSchema))
+		.output(z.object({ success: z.literal(true) }))
+		.handler(async (input) => {
+			const { credentialId, description } = updateCredentialDescriptionSchema.parse(input);
+			await context.credentialService.updateDescription(credentialId, description);
+			return { success: true };
+		})
 		.build();
 }

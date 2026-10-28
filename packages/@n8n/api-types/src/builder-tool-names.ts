@@ -68,6 +68,7 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	SETUP_CREDENTIALS: 'setup_credentials',
 	TEST_CREDENTIAL: 'test_credential',
 	DELETE_CREDENTIAL: 'delete_credential',
+	UPDATE_CREDENTIAL_DESCRIPTION: 'update_credential_description',
 	DATA_TABLES: 'data_tables',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',

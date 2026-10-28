@@ -802,6 +802,7 @@ export interface CredentialHostInfo {
 }
 
 export interface InstanceAiCredentialService {
+	updateDescription(credentialId: string, description: string | null): Promise<void>;
 	/**
 	 * List credentials.
 	 *

@@ -52,7 +52,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential` | single-purpose |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -840,6 +840,17 @@ With `ids`, the tool **returns** `{ credentials: [{ id, name, type, description,
 nodesWithAccess? }], notFound? }`. The description contains the full stored
 text, or `null` when unset. `notFound` lists the ids that did not resolve. The
 response never contains credential secret data.
+
+### `update_credential_description`
+
+Set or replace an existing credential description. Pass `credentialId` and `description`.
+The description is trimmed and limited to 512 characters. Pass `null` or a blank string to clear it.
+Returns `{ success: true }`.
+
+The tool is available when credential descriptions are enabled. The user must have
+`credential:update` permission, and the credential must belong to the conversation's project.
+Managed credentials and protected instances cannot be edited. The operation keeps credential
+secrets, names, and types unchanged.
 
 ### `delete_credential`
 

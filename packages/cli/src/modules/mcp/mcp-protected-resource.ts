@@ -1,5 +1,6 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
@@ -106,6 +107,11 @@ export class McpProtectedResource implements ProtectedResource {
 			// Keep context tools hidden when the gate cannot be read.
 		}
 
+		const credentialDescriptionsEnabled =
+			(await this.postHogClient
+				.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)
+				.catch(() => false)) === true;
+
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
 				.filter(([scope]) => supportedScopes.has(scope))
@@ -117,7 +123,8 @@ export class McpProtectedResource implements ProtectedResource {
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
-							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),
 				]),
 		);

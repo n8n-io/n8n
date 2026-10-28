@@ -1039,6 +1039,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private credentialsUpdated({
+		descriptionOnly,
 		user,
 		credentialId,
 		credentialType,
@@ -1060,10 +1061,16 @@ export class TelemetryEventRelay extends EventRelay {
 				description_length: credentialDescriptionLength,
 			}),
 			is_private: isDynamic ?? false,
-			uses_external_secrets: usesExternalSecrets ?? false,
-			jwe_enabled: jweEnabled ?? false,
-			credential_supports_managed_auth: supportsManagedAuth ?? false,
-			credential_uses_managed_auth: usesManagedAuth ?? false,
+			...(!descriptionOnly || usesExternalSecrets !== undefined
+				? { uses_external_secrets: usesExternalSecrets ?? false }
+				: {}),
+			...(!descriptionOnly || jweEnabled !== undefined ? { jwe_enabled: jweEnabled ?? false } : {}),
+			...(!descriptionOnly || supportsManagedAuth !== undefined
+				? { credential_supports_managed_auth: supportsManagedAuth ?? false }
+				: {}),
+			...(!descriptionOnly || usesManagedAuth !== undefined
+				? { credential_uses_managed_auth: usesManagedAuth ?? false }
+				: {}),
 		});
 	}
 
