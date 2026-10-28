@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { DiffCount } from './skillVersionDiff';
 
-/** Lines removed and added, as "−2 +3". Shows nothing when nothing changed. */
-defineProps<{ count?: DiffCount }>();
+/**
+ * Lines removed and added, as "−2 +3". Shows nothing when nothing changed. `hideZero` leaves
+ * out the side with no lines, for a file that is new or deleted.
+ */
+defineProps<{ count?: DiffCount; hideZero?: boolean }>();
 </script>
 
 <template>
@@ -11,8 +14,8 @@ defineProps<{ count?: DiffCount }>();
 		:class="$style.counts"
 		data-testid="skill-diff-count"
 	>
-		<span :class="$style.removed">−{{ count.removed }}</span>
-		<span :class="$style.added">+{{ count.added }}</span>
+		<span v-if="!hideZero || count.removed > 0" :class="$style.removed">−{{ count.removed }}</span>
+		<span v-if="!hideZero || count.added > 0" :class="$style.added">+{{ count.added }}</span>
 	</span>
 </template>
 

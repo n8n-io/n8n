@@ -9486,6 +9486,8 @@
 	"agents.builder.skills.menu.addToThisAgent": "Add to this agent",
 	"agents.builder.skills.menu.changeScope": "Change scope",
 	"agents.builder.skills.menu.delete": "Delete skill",
+	"agents.builder.skills.versions.fileAdded": "New file",
+	"agents.builder.skills.versions.fileDeleted": "Deleted file",
 	"agents.builder.skills.versions.title": "Versions",
 	"agents.builder.skills.versions.toggle": "Show versions",
 	"agents.builder.skills.versions.number": "v{version}",
