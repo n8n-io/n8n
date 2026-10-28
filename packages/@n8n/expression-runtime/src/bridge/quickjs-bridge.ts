@@ -8,13 +8,13 @@ import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
 	isEscapedTransferValue,
-	isOpaqueTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
 	isErrorSentinel,
@@ -117,8 +117,7 @@ function isNaNSentinel(value: unknown): value is { __isNaN: true } {
 	);
 }
 
-// The guest escapes a user object with this key, unless the object also has
-// __isError. Only the sentinel has this key alone.
+// The guest escapes a user object with this key. Only the sentinel has this key alone.
 function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
 	return (
 		typeof value === 'object' &&
@@ -172,19 +171,17 @@ function isEscapedObject(
 /**
  * Give back the payload of an escape wrapper.
  *
- * A walked payload only had its own keys collide, so the walk goes on and
- * rebuilds the markers deeper in it. An opaque payload is a value the guest
- * could not walk, so `opaque` keeps every marker in it as data.
+ * The guest escapes every marker-shaped object inside an opaque payload, so the
+ * host walk can rebuild the markers in any payload.
  */
 function unescapeTransferValue(value: EscapedTransferValue): unknown {
 	const inner: unknown = value.__value;
-	const opaque = isOpaqueTransferValue(value);
 	if (typeof inner !== 'object' || inner === null) return inner;
-	if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
-	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
+	if (isEscapedObject(inner)) return unwrapSentinels(inner);
+	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry));
 	const unescaped: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(inner)) {
-		unescaped[key] = unwrapSentinels(entry, opaque);
+		unescaped[key] = unwrapSentinels(entry);
 	}
 	return unescaped;
 }
@@ -192,13 +189,8 @@ function unescapeTransferValue(value: EscapedTransferValue): unknown {
 /**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
- *
- * With `markersAsData` set, a transfer marker is left as the plain object it
- * is, for the contents of a payload the guest marked opaque. The guest escapes
- * most such objects itself, but one that also carries `__isError` leaves the
- * guest walk before the escape, so the host must not read it as a marker.
  */
-function unwrapSentinels(value: unknown, markersAsData = false): unknown {
+function unwrapSentinels(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	// Escaped user objects: keys collided with the sentinel markers, so the
@@ -208,14 +200,12 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key], markersAsData);
+			result[key] = unwrapSentinels(inner[key]);
 		}
 		return result;
 	}
-	if (!markersAsData) {
-		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-		if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
-	}
+	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
 	if (isUndefinedSentinel(value)) return undefined;
@@ -234,29 +224,21 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, markersAsData);
+				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v);
 			}
 		}
 		return err;
 	}
 	if (isMapSentinel(value)) {
-		return new Map(
-			value.__entries.map(([k, v]) => [
-				unwrapSentinels(k, markersAsData),
-				unwrapSentinels(v, markersAsData),
-			]),
-		);
+		return new Map(value.__entries.map(([k, v]) => [unwrapSentinels(k), unwrapSentinels(v)]));
 	}
 	if (isSetSentinel(value)) {
-		return new Set(value.__values.map((entry) => unwrapSentinels(entry, markersAsData)));
+		return new Set(value.__values.map((entry) => unwrapSentinels(entry)));
 	}
-	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, markersAsData));
-	// Pass error sentinels through untouched — execute() detects them after
-	// unwrapping and reconstructs the Error on the host.
-	if (isErrorSentinel(value)) return value;
+	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry));
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], markersAsData);
+		result[key] = unwrapSentinels((value as Record<string, unknown>)[key]);
 	}
 	return result;
 }
@@ -270,6 +252,7 @@ const TRANSFER_MARKER_KEYS = new Set([
 	'__isMap',
 	'__isSet',
 	'__isEscaped',
+	'__isError',
 ]);
 
 /**
@@ -300,8 +283,6 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
 	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
-	// Error sentinels are already in transfer shape — leave them intact.
-	if (isErrorSentinel(value)) return value;
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
@@ -971,8 +952,6 @@ export class QuickJsBridge implements RuntimeBridge {
 			return { __isSet: true, __values: values };
 		}
 		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
-		// Error sentinels are already in transfer shape — leave them intact.
-		if (v.__isError) return v;
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
@@ -1018,10 +997,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			// Inside a collection a transfer marker is user data, so escape the object
-			// and the host reads the keys as the plain data they are.
+			// Inside a collection a transfer marker or an error flag is user data, so
+			// escape the object and the host reads the keys as the plain data they are.
 			if (
 				inCollection && (
+					key === '__isError' ||
 					key === '${TRANSFER_TYPE_KEY}' ||
 					key === '${TRANSFER_ESCAPED_KEY}' ||
 					key === '${TRANSFER_OPAQUE_KEY}'
@@ -1041,8 +1021,6 @@ export class QuickJsBridge implements RuntimeBridge {
 	// wrapSpecialValuesForGuest() produces for callback results.
 	globalThis.__unwrapFromHost = function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
-		// Error sentinels stay as-is — the in-context proxy detects and throws them.
-		if (v.__isError === true) return v;
 		if (v.__isDate === true) return new Date(v.__isoString);
 		if (v.__isNaN === true) return NaN;
 		if (v.__isMap === true) {
@@ -1187,7 +1165,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
 			const rawMsg = vm.dump(msgHandle);
 			try {
-				const result = dispatchHostCall(rawMsg, data);
+				const result = escapeHostResult(dispatchHostCall(rawMsg, data));
 				return this.hostValueToQuickJSHandle(result);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1342,11 +1320,13 @@ export class QuickJsBridge implements RuntimeBridge {
 				throw new Error(`Expression evaluation failed: ${errStr}`);
 			}
 
-			const result = unwrapSentinels(outcome.dump);
-
-			if (isErrorSentinel(result)) {
-				throw reconstructError(result);
+			// Only a thrown error reaches the host as a bare sentinel. The guest walk
+			// escapes any user object with the same flag.
+			if (isErrorSentinel(outcome.dump)) {
+				throw reconstructError(outcome.dump);
 			}
+
+			const result = unwrapSentinels(outcome.dump);
 
 			this.logger.debug('[QuickJsBridge] Expression executed successfully');
 
