@@ -81,9 +81,25 @@ describe('SourceControlPreferencesService initialization', () => {
 			]),
 		).resolves.toHaveLength(2);
 
-		const rows = await repository.findByKeys([SSH_KEYS, SOURCE_CONTROL_PREFERENCES_DB_KEY]);
-		expect(rows.map((row) => row.key).sort()).toEqual(
-			[SOURCE_CONTROL_PREFERENCES_DB_KEY, SSH_KEYS].sort(),
-		);
+		// Both mains saw an empty database, so both generated a key pair. This is the
+		// race itself: if a refactor bypasses the barriers, only one key is generated.
+		expect(generateSshKeyPair).toHaveBeenCalledTimes(2);
+
+		const keyRow = await repository.findByKey(SSH_KEYS);
+		const preferencesRow = await repository.findByKey(SOURCE_CONTROL_PREFERENCES_DB_KEY);
+
+		// Last write wins, but the stored row is one complete key pair, not a mix.
+		expect(keyRow?.loadOnStartup).toBe(true);
+		expect([
+			'{"encryptedPrivateKey":"encrypted:private-1","publicKey":"public-1"}',
+			'{"encryptedPrivateKey":"encrypted:private-2","publicKey":"public-2"}',
+		]).toContain(keyRow?.value);
+
+		// The preferences row is fully initialized.
+		expect(preferencesRow?.loadOnStartup).toBe(true);
+		expect(JSON.parse(preferencesRow?.value ?? '{}')).toMatchObject({
+			keyGeneratorType: 'ed25519',
+			environmentsVersion: 'v2',
+		});
 	});
 });
