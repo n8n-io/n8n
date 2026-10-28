@@ -57,6 +57,33 @@ export default {
 	},
 };
 
+type Account = Person & {
+	email: string;
+	lastActive: string;
+	twoFactor: string;
+	projects: string;
+	createdAt: string;
+};
+
+const accounts: Account[] = people.slice(0, 8).map((person, index) => ({
+	...person,
+	email: `person.${person.id}@example.com`,
+	lastActive: `${index + 1} day${index === 0 ? '' : 's'} ago`,
+	twoFactor: index % 2 === 0 ? 'Enabled' : 'Disabled',
+	projects: ['Marketing', 'Sales', 'Engineering', 'Support'].slice(0, (index % 4) + 1).join(', '),
+	createdAt: `2026-0${(index % 9) + 1}-14`,
+}));
+
+const wideHeaders: Array<TableHeader<Account>> = [
+	{ title: 'Name', key: 'name', width: 220 },
+	{ title: 'Email', key: 'email', width: 260 },
+	{ title: 'Role', key: 'role', width: 160 },
+	{ title: 'Last active', key: 'lastActive', width: 160 },
+	{ title: '2FA', key: 'twoFactor', width: 120 },
+	{ title: 'Projects', key: 'projects', width: 320, disableSort: true },
+	{ title: 'Created', key: 'createdAt', width: 140 },
+];
+
 export const Default: StoryFn = () => ({
 	// The generic table is not assignable to Storybook's component type.
 	components: { N8nDataTableServer: N8nDataTableServer as unknown as Component },
@@ -118,3 +145,29 @@ export const Default: StoryFn = () => ({
 		</div>
 	`,
 });
+
+export const HorizontalScroll: StoryFn = (args) => ({
+	components: { N8nDataTableServer: N8nDataTableServer as unknown as Component },
+	setup() {
+		return { args, headers: wideHeaders, items: accounts, total: accounts.length };
+	},
+	template: `
+		<div style="max-width: 720px; padding: var(--spacing--md);">
+			<N8nDataTableServer
+				v-bind="args"
+				:headers="headers"
+				:items="items"
+				:items-length="total"
+			/>
+		</div>
+	`,
+});
+HorizontalScroll.args = { pinFirstColumn: true, showSelect: false };
+HorizontalScroll.parameters = {
+	docs: {
+		description: {
+			story:
+				'Wider than its container, so it scrolls sideways. A shadow fades in over whichever edge still hides columns. With `pin-first-column` the first column (and the selection column) stays in place and the left shadow sits at its edge.',
+		},
+	},
+};

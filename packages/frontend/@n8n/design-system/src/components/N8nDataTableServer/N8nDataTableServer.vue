@@ -27,7 +27,9 @@ import type {
 	AccessorFn,
 	Cell,
 	CellContext,
+	Column,
 	ColumnDef,
+	ColumnPinningState,
 	CoreColumn,
 	CoreOptions,
 	DeepKeys,
@@ -45,8 +47,9 @@ import { ElSkeletonItem } from 'element-plus';
 // `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
 // subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
 import get from 'lodash/get.js';
-import { computed, h, shallowRef, useSlots, watch } from 'vue';
+import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
+import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
@@ -82,6 +85,12 @@ const props = withDefaults(
 		 */
 		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
+		/**
+		 * Keep the first column (and the selection column, if shown) in place while the rest of
+		 * the table scrolls horizontally.
+		 * @default false
+		 */
+		pinFirstColumn?: boolean;
 	}>(),
 	{
 		itemSelectable: undefined,
@@ -90,6 +99,7 @@ const props = withDefaults(
 		pagination: true,
 		showAll: false,
 		rowProps: undefined,
+		pinFirstColumn: false,
 	},
 );
 
@@ -235,6 +245,30 @@ const columnsDefinition = computed(() => {
 	return [...(props.showSelect ? [selectColumn] : []), ...mapHeaders(props.headers)];
 });
 
+// The pinned set is the selection column plus the first header column, so a pinned
+// checkbox never scrolls away from the row it belongs to.
+const columnPinning = computed<ColumnPinningState>(() => {
+	if (!props.pinFirstColumn) return { left: [], right: [] };
+
+	const pinnedCount = props.showSelect ? 2 : 1;
+	const left = columnsDefinition.value
+		.slice(0, pinnedCount)
+		.map((column) => column.id)
+		.filter((id): id is string => id !== undefined);
+
+	return { left, right: [] };
+});
+
+function getPinnedCellBindings(column: Column<T, unknown>) {
+	if (column.getIsPinned() !== 'left') return undefined;
+
+	return { class: 'is-pinned', style: { left: `${column.getStart('left')}px` } };
+}
+
+const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
+const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
+const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
@@ -375,6 +409,9 @@ const table = useVueTable({
 		get rowSelection() {
 			return rowSelection.value;
 		},
+		get columnPinning() {
+			return columnPinning.value;
+		},
 	},
 	getCoreRowModel: getCoreRowModel(),
 	onSortingChange: handleSortingChange,
@@ -415,13 +452,18 @@ const table = useVueTable({
 
 <template>
 	<div>
-		<div class="n8n-data-table-server-wrapper">
-			<div class="table-scroll">
+		<div
+			class="n8n-data-table-server-wrapper"
+			:class="{ 'can-scroll-left': canScrollLeft, 'can-scroll-right': canScrollRight }"
+			:style="{ '--data-table--pinned-width': `${table.getLeftTotalSize()}px` }"
+		>
+			<div ref="scrollContainer" class="table-scroll">
 				<table
+					ref="tableElement"
 					class="n8n-data-table-server"
 					:class="{ 'table--loading': loading }"
 					:style="{
-						width: `${table.getCenterTotalSize()}px`,
+						width: `${table.getTotalSize()}px`,
 						borderSpacing: 0,
 						minWidth: '100%',
 						tableLayout: 'fixed',
@@ -431,6 +473,7 @@ const table = useVueTable({
 						<tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
 							<template v-for="header in headerGroup.headers" :key="header.id">
 								<th
+									v-bind="getPinnedCellBindings(header.column)"
 									:style="{
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
@@ -481,6 +524,7 @@ const table = useVueTable({
 								<td
 									v-for="coll in table.getVisibleFlatColumns()"
 									:key="coll.id"
+									v-bind="getPinnedCellBindings(coll)"
 									class="el-skeleton is-animated"
 								>
 									<ElSkeletonItem />
@@ -496,6 +540,7 @@ const table = useVueTable({
 									>
 										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
 											<td
+												v-bind="getPinnedCellBindings(cell.column)"
 												:class="{
 													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
 														getColumnMeta(cell.column).cellProps.align,
@@ -532,6 +577,8 @@ const table = useVueTable({
 </template>
 
 <style lang="scss" scoped>
+@use '../../css/mixins/motion';
+
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
@@ -570,6 +617,22 @@ const table = useVueTable({
 	thead {
 		background-color: var(--color--background--light-1);
 		border-bottom: 1px solid var(--color--foreground);
+	}
+
+	// Pinned cells stay put while the rest of the row scrolls under them, so they need an
+	// opaque background. Body cells take the row's, which keeps the hover colour in sync.
+	th.is-pinned,
+	td.is-pinned {
+		position: sticky;
+		z-index: 1;
+	}
+
+	th.is-pinned {
+		background-color: var(--color--background--light-1);
+	}
+
+	td.is-pinned {
+		background-color: inherit;
 	}
 
 	tbody > tr {
@@ -613,9 +676,42 @@ const table = useVueTable({
 }
 
 .n8n-data-table-server-wrapper {
+	position: relative;
 	border-radius: 8px;
 	border: 1px solid var(--color--foreground);
 	overflow: hidden;
+
+	// Scroll hints: a shadow fades in over whichever edge still has columns hidden behind it.
+	// The left one sits at the inner edge of the pinned columns, if any, so they read as fixed.
+	&::before,
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: var(--spacing--xl);
+		z-index: 3;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity var(--duration--snappy) var(--easing--ease-out);
+
+		@include motion.reduced-motion;
+	}
+
+	&::before {
+		left: var(--data-table--pinned-width, 0);
+		background: linear-gradient(to right, var(--shadow-color), transparent);
+	}
+
+	&::after {
+		right: 0;
+		background: linear-gradient(to left, var(--shadow-color), transparent);
+	}
+
+	&.can-scroll-left::before,
+	&.can-scroll-right::after {
+		opacity: 1;
+	}
 }
 
 .table-scroll {
