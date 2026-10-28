@@ -259,6 +259,35 @@ it('keeps a failed foreground checkpoint stop retryable', async () => {
 	expect(await service.request('thread', null)).toMatchObject({ status: 'stopped', failures: [] });
 });
 
+it('reports failures from both the current response and background jobs', async () => {
+	const { service, repository, executions, chat, jobs, work } = setup();
+	const failures = [
+		{ jobId: 'response', title: 'Current response' },
+		{ jobId: 'workflow', title: 'Workflow' },
+	];
+	repository.captureStopTargets.mockResolvedValue({
+		executionIds: ['response'],
+		jobIds: ['workflow'],
+		threadIds: [],
+	});
+	executions.findLatestByThreadId.mockResolvedValue(
+		mock<AgentExecution>({ id: 'response', status: 'running' }),
+	);
+	repository.findStopTargetsStillActive.mockResolvedValue(failures);
+	work.push(
+		mock<AgentBackgroundJob>({
+			id: 'workflow',
+			title: 'Workflow',
+			status: 'running',
+			parentThreadId: 'thread',
+		}),
+	);
+	chat.requestCancel.mockRejectedValueOnce(new Error('Response stop failed'));
+	jobs.requestPause.mockRejectedValueOnce(new Error('Background stop failed'));
+
+	expect(await service.request('thread', null)).toMatchObject({ status: 'failed', failures });
+});
+
 it('deletes discarded attachments after the stop transaction commits', async () => {
 	const { service, queue, attachments, jobs } = setup();
 	queue.discardPending.mockResolvedValue(['attachment-1']);
