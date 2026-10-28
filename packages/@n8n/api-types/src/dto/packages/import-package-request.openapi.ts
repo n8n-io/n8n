@@ -68,8 +68,12 @@ export const importPackageRequestFieldDocs = {
 			'matched definitions and saves a changed skill as a new version. ' +
 			'`fail` rejects the import when an Agent or workflow matches, or when a matched skill ' +
 			'has other content. A matched skill with the same content is kept. ' +
-			'`skip` leaves matched definitions unchanged. ' +
-			'All policies create entities that have no match. Matched workflows also follow the package ' +
+			'`skip` leaves matched definitions and skills unchanged. ' +
+			'All policies create entities and skills that have no match. ' +
+			'A new version of a project or instance skill applies to all Agents on the instance that ' +
+			'follow the skill, also Agents that are not in the package. ' +
+			'A skill conflict under `fail` is an `agent-invalid` issue, so it returns 422. ' +
+			'Matched workflows also follow the package ' +
 			'archive state under `new-version`; this change needs `workflow:delete`. ' +
 			'This required field replaces `workflowConflictPolicy`. The old field is rejected.',
 	},

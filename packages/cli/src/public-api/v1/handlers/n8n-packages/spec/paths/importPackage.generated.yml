@@ -72,7 +72,7 @@ requestBody:
               - new-version
               - fail
               - skip
-            description: Applies to Agents, workflows and the skills of imported Agents. `new-version` replaces matched definitions and saves a changed skill as a new version. `fail` rejects the import when an Agent or workflow matches, or when a matched skill has other content. A matched skill with the same content is kept. `skip` leaves matched definitions unchanged. All policies create entities that have no match. Matched workflows also follow the package archive state under `new-version`; this change needs `workflow:delete`. This required field replaces `workflowConflictPolicy`. The old field is rejected.
+            description: Applies to Agents, workflows and the skills of imported Agents. `new-version` replaces matched definitions and saves a changed skill as a new version. `fail` rejects the import when an Agent or workflow matches, or when a matched skill has other content. A matched skill with the same content is kept. `skip` leaves matched definitions and skills unchanged. All policies create entities and skills that have no match. A new version of a project or instance skill applies to all Agents on the instance that follow the skill, also Agents that are not in the package. A skill conflict under `fail` is an `agent-invalid` issue, so it returns 422. Matched workflows also follow the package archive state under `new-version`; this change needs `workflow:delete`. This required field replaces `workflowConflictPolicy`. The old field is rejected.
           publishingPolicy:
             type: string
             enum:
@@ -223,7 +223,7 @@ responses:
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
-    description: Import blocked by non-conflict issues only — for example unresolved credentials or variables, invalid Agent definitions or dependencies, node types this instance does not have, a delete the caller may not perform, or variable stubs whose creation would exceed the instance variable quota.
+    description: Import blocked by non-conflict issues only — for example unresolved credentials or variables, invalid Agent definitions or dependencies, node types this instance does not have, a delete the caller may not perform, or variable stubs whose creation would exceed the instance variable quota. A skill problem is an `agent-invalid` issue on each Agent that uses the skill, with the path `skills.<skillId>`. The import plans a skill as part of the Agent definition. Thus a skill problem returns 422, also a skill conflict under `conflictPolicy=fail`.
     content:
       application/json:
         schema:

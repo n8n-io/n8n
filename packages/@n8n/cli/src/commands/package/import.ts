@@ -30,7 +30,8 @@ export default class PackageImport extends BaseCommand {
 			aliases: ['folder-id', 'folder'],
 		}),
 		conflictPolicy: Flags.option({
-			description: 'What to do when an Agent or workflow already exists in the target project',
+			description:
+				'What to do when an Agent or workflow already exists in the target project, or a skill of an imported Agent already exists. new-version saves a new version, skip keeps the existing one, and fail blocks the import. A missing skill is always created',
 			options: ['new-version', 'fail', 'skip'] as const,
 			default: 'new-version',
 			aliases: ['conflict-policy'],

@@ -33,7 +33,7 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
 | `--include-archived-workflows` | `false` (default) or `true`. Whether folder and project exports include their archived workflows. When `true`, they travel with `isArchived: true` and are archived on import. Workflows given by `--workflow-id` always export, also when archived. |
 | `--dependency-policy` | Policy for workflow and agent dependencies outside the selected package contents. `fail` (default) aborts when a required definition is absent from the package. `include-in-package` adds accessible dependencies recursively. `reference-only` records external requirements without including their definitions. |
-| `--version-policy` | Which version of each workflow and agent to export. `latest` (default) exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. |
+| `--version-policy` | Which version of each workflow and agent to export. `latest` (default) exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. Skills always export their latest saved version. |
 | `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. Literal values never travel either way. |
 
 Provide at least one `--agent-id`, `--workflow-id`, `--folder-id`, or `--project-id`.
@@ -52,6 +52,10 @@ values. Under `ignore-unpublished`, dependencies that cannot be included cause
 the export to fail only when `--dependency-policy` is `fail` or
 `include-in-package`. With `reference-only`, the export records them as external
 requirements.
+
+Skills have no published versions. The package always contains the latest saved
+version of each skill that an exported Agent uses. This also applies under
+`published-strict`. The package does not pin a skill version.
 
 `--dependency-policy` also applies to workflows and agents. Dependencies include
 static workflow references and disabled agent references. With `fail`, include
@@ -79,7 +83,7 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"c
 | Flag | Description |
 |------|-------------|
 | `--file` | Path to the `.n8np` package file. (required) |
-| `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. The policy also applies to the skills of imported Agents: `new-version` saves a changed skill as a new version, and `fail` blocks the import when a matched skill has other content. |
+| `--conflict-policy` | What to do when an Agent or workflow matches an existing destination. `new-version` (CLI default) replaces its definition. It also archives or restores a matched workflow to match the package. These transitions require `workflow:delete`. `fail` blocks the import. `skip` leaves it unchanged. All modes create entities without a match. The policy also applies to the skills of imported Agents: `new-version` saves a changed skill as a new version, `skip` keeps the existing skill, and `fail` blocks the import when a matched skill has other content. The import always creates a skill that does not exist. See [Skills](#skills). |
 | `-p, --project-id` | Target project ID. Defaults to your personal project. (alias: `--project`) |
 | `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
 | `--publishing-policy` | Publication policy for Agents and workflows. `preserve-published-state` (instance default) keeps new entities unpublished. It republishes an updated entity only if it was published and the package contains the source-published version. `match-source` publishes that version, or unpublishes when the source has no published version. Both policies leave publication unchanged when the source publishes a version absent from the package. `publish-all` requests publication. `unpublish-all` leaves imported entities unpublished. Skipped entities remain unchanged. Archived workflows remain unpublished. |
@@ -129,6 +133,23 @@ There are no per-kind overrides. Use `--conflict-policy`, `--id-policy`, and
 The API fields are `conflictPolicy`, `idPolicy`, and `publishingPolicy`.
 The API rejects the old workflow-specific and Agent-specific policy fields.
 
+### Skills
+
+The import plans the skills of each imported Agent together with that Agent.
+It does not change the skills of skipped Agents.
+
+- `--conflict-policy` applies to skills too. `new-version` saves a changed skill
+  as a new skill version. `skip` keeps the existing skill. `fail` blocks the
+  import when a matched skill has other content. A matched skill with the same
+  content stays unchanged. The import always creates a skill that does not exist.
+- A new version of a project or instance skill applies to all Agents on the
+  instance that follow the skill. This includes Agents that are not in the
+  package, and their drafts.
+- The import reports a skill problem as an `agent-invalid` issue on each Agent
+  that uses the skill. The issue path is `skills.<skillId>`. The import plans a
+  skill as part of the Agent definition. Thus a skill problem returns HTTP 422,
+  not 409. This also applies to a skill conflict under `--conflict-policy=fail`.
+
 Human and JSON results include `agents`, `bindings.agents`, and `counts.agents`.
 Each Agent summary reports its source and destination IDs, name, project,
 active version, import status, separate `publishing` outcome, and `channels`.
@@ -160,6 +181,7 @@ issues. Examples:
 
 - an Agent or workflow conflict under `--conflict-policy=fail`
 - an invalid Agent definition or an unresolved Agent dependency
+- a skill problem, for example a skill conflict under `--conflict-policy=fail`
 - a project that already exists under `--project-conflict-policy=fail`
 - a workflow that `--folder-conflict-policy=overwrite` would remove but you lack
   `workflow:delete` on
