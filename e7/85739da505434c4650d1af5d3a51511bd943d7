@@ -39,6 +39,7 @@ packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
   s_127a9acd7ce7b7::t_0e341e58ca3b27 345-346
   s_127a9acd7ce7b7::t_2c4185a894cb18 196
   s_127a9acd7ce7b7::t_f9c9103d2d5411 182
+  s_127a9acd7ce7b7::t_f1e2837701a9e7 54-59,193
 packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
   s_127a9acd7ce7b7::t_a51ff6e34f0405 33,135-137,144-148,183-186
 packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
@@ -49,6 +50,7 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integratio
   s_127a9acd7ce7b7::t_9e9b8fa5d5c6a7 37,61,114-123,308-309,352,354-357,359,645,650,652-659,669,679-716,722-724,726-734,737-738,762,768-788,790-791,847-850,849-850,851-855,857-874
   s_127a9acd7ce7b7::t_5090c35ca99a69 353,792-814,815-820,825-828,830-845,847-848,875-893
   s_127a9acd7ce7b7::t_eaead1e95b56a3 894
+  s_127a9acd7ce7b7::t_ef1c22e7f3e9d0 821-824,829,846
 packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
   s_127a9acd7ce7b7::t_bf5b278df14196 31-37,218-226
 packages/cli/src/modules/promotions.ee/base-branch-files.ts
@@ -112,6 +114,7 @@ packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
   s_127a9acd7ce7b7::t_fea2df9e4f5738 427
   s_127a9acd7ce7b7::t_5090c35ca99a69 389,401-405,409
   s_127a9acd7ce7b7::t_88e0157a181c4a 410-411
+  s_127a9acd7ce7b7::t_f1e2837701a9e7 38,406-408
 packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
   s_127a9acd7ce7b7::t_6f16b4100840b4 49,98-114,193,201,204,246,249,252,255
 packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
