@@ -20,6 +20,7 @@ import {
 	folderRemovalForbiddenIssueOpenApi,
 	missingNodeTypeFieldDocs,
 	missingNodeTypeIssueOpenApi,
+	policyCheckFailedIssueOpenApi,
 	policyViolationFieldDocs,
 	policyViolationIssueOpenApi,
 	projectConflictFieldDocs,
@@ -130,6 +131,10 @@ const credentialUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('credential-unresolved'),
 		kind: z.enum(['not_found', 'unknown_type', 'source_not_found', 'type_mismatch']),
+		reason: z
+			.enum(['not-on-instance', 'access-required', 'incompatible-usage-scope'])
+			.optional()
+			.openapi(credentialUnresolvedFieldDocs.reason),
 		sourceId: z.string(),
 		targetId: z.string().optional().openapi(credentialUnresolvedFieldDocs.targetId),
 		expectedType: z.string().optional().openapi(credentialUnresolvedFieldDocs.expectedType),
@@ -164,7 +169,9 @@ const credentialUpdateForbiddenIssueSchema = z
 const projectConflictIssueSchema = z
 	.object({
 		type: z.literal('project-conflict'),
-		kind: z.literal('fail-policy'),
+		kind: z
+			.enum(['fail-policy', 'not-team', 'update-forbidden', 'create-forbidden', 'license'])
+			.openapi(projectConflictFieldDocs.kind),
 		sourceProjectId: z.string(),
 		name: z.string().openapi(projectConflictFieldDocs.name),
 	})
@@ -272,6 +279,7 @@ const dataTableUnresolvedIssueSchema = z
 			'schema-incompatible',
 			'module-disabled',
 			'permission-denied',
+			'column-id-conflict',
 		]),
 		sourceId: z.string().optional().openapi(dataTableUnresolvedFieldDocs.sourceId),
 		name: z.string().optional(),
@@ -307,6 +315,10 @@ const dataTableUnresolvedIssueSchema = z
 			.optional()
 			.openapi(dataTableUnresolvedFieldDocs.conflictingTableId),
 		currentName: z.string().optional().openapi(dataTableUnresolvedFieldDocs.currentName),
+		column: z
+			.object({ id: z.string(), name: z.string() })
+			.optional()
+			.openapi(dataTableUnresolvedFieldDocs.column),
 		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(dataTableUnresolvedIssueOpenApi);
@@ -382,6 +394,13 @@ const policyViolationIssueSchema = z
 	})
 	.openapi(policyViolationIssueOpenApi);
 
+const policyCheckFailedIssueSchema = z
+	.object({
+		type: z.literal('policy-check-failed'),
+		point: z.enum(['contentImport', 'credentialSave']),
+	})
+	.openapi(policyCheckFailedIssueOpenApi);
+
 const credentialPolicyViolationIssueSchema = z
 	.object({
 		type: z.literal('credential-policy-violation'),
@@ -398,6 +417,35 @@ const credentialPolicyViolationIssueSchema = z
 
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
+		z.object({
+			type: z.literal('agent-conflict'),
+			kind: z.enum(['existing', 'id', 'task-id']),
+			sourceAgentId: z.string(),
+			projectId: z.string(),
+			sourceTaskId: z.string().optional(),
+			targetIds: z.array(z.string()),
+		}),
+		z.object({
+			type: z.literal('agent-invalid'),
+			sourceAgentId: z.string(),
+			path: z.string(),
+			message: z.string(),
+		}),
+		z.object({
+			type: z.literal('agent-dependency-unresolved'),
+			sourceAgentId: z.string(),
+			projectId: z.string(),
+			dependencyType: z.enum(['agent', 'workflow', 'credential']),
+			referenceId: z.string(),
+			path: z.string(),
+			reason: z.enum(['missing', 'inaccessible', 'ambiguous', 'unsupported']),
+		}),
+		z.object({
+			type: z.literal('agent-policy-violation'),
+			sourceAgentId: z.string(),
+			name: z.string(),
+			violations: z.array(policyViolationSchema),
+		}),
 		workflowConflictIssueSchema,
 		workflowLineageConflictIssueSchema,
 		workflowIdConflictIssueSchema,
@@ -418,8 +466,18 @@ export const importBlockingIssueSchema = z
 		variableLimitExceededIssueSchema,
 		missingNodeTypeIssueSchema,
 		policyViolationIssueSchema,
+		policyCheckFailedIssueSchema,
 		credentialPolicyViolationIssueSchema,
 	])
+	.refine(
+		(issue) =>
+			issue.type !== 'agent-conflict' ||
+			(issue.kind === 'task-id') === (issue.sourceTaskId !== undefined),
+		{
+			path: ['sourceTaskId'],
+			message: 'Task ID conflicts require sourceTaskId. Other conflicts must omit it.',
+		},
+	)
 	.openapi('ImportBlockingIssue');
 
 export type ImportBlockingIssue = z.infer<typeof importBlockingIssueSchema>;

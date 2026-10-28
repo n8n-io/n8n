@@ -155,15 +155,39 @@ deduplicated. There is no retry cap for runs that finish without a result.
 
 ## Configure self-healing
 
-Project Settings provides configuration management under the existing `project:update` permission.
+Project Settings provides configuration management for team projects under the existing `project:update` permission.
+Only the owner of a personal project can manage the configurations of that project. `project:update` from a global role does not give access.
+This check uses the current `project:personalOwner` relation. Chat users have only the viewer role on their personal project, so they cannot manage its configurations.
+Personal configurations use `includeAllProjectMembers` with no individual reviewers.
+The owner is the only member of a personal project. The shared reviewer rules require current membership and workflow edit access.
+This exception applies only to self-healing configurations. It does not grant `project:update`.
+Personal projects show the configurations on their own Self-healing tab, not in Project Settings.
 The same rollout flag controls settings, investigations, and reviews.
 Each project can have one all-workflows configuration and multiple selected-workflow configurations.
 Explicit workflow selections cannot overlap, including when configurations are paused.
 Moving a workflow to another project removes its explicit selections. The destination project's
 configuration applies to later failures. Moving between folders in the same project keeps selections.
 New configurations created in Project Settings start enabled.
-The form selects the creator as the initial reviewer.
+The form selects the creator as the initial reviewer when the creator can be selected.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
+
+### Reviewers
+
+Only current members of the configuration's project are reviewers.
+A global role does not make a user outside the project a reviewer.
+A configuration can select individual members, the project members group, or both.
+The group stores the `includeAllProjectMembers` flag, not a list of users.
+Each check reads current project membership. A user who joins the project joins the group.
+A user who leaves the project stops being a reviewer, also when selected individually.
+The individual picker offers enabled members who can edit a project workflow. The access can come
+from a project role, a global role, or a workflow share. Save accepts the same members, so a
+selected reviewer stays valid after a role change while a share still gives edit access.
+Existing permissions still apply. A reviewer reviews a result only with edit access to its
+workflow, from a project role, a global role, or a workflow share.
+Admins outside the project can manage and enable a configuration without being a reviewer.
+The configuration must have at least one enabled reviewer with edit access to a covered workflow.
+Save and enable reject the configuration otherwise. When an access check finds no
+such reviewer, the configuration pauses.
 
 Pause stops new investigations and prevents results from being saved while paused.
 After an explicit pause commits, the service requests cancellation of its unfinished investigations.
@@ -278,7 +302,8 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/apply`
 - `POST /:resultId/dismiss`
 
-Assigned reviewers with current workflow edit access can review results. Approval also requires
+Project members who are assigned reviewers or, when selected, part of the project members group
+can review results with current workflow edit access. Approval also requires
 publish access. Approval accepts only Fix ready results. Apply accepts Fix ready and Needs attention
 results that have a suggestion. Reviewer filtering applies to Inbox lists, counts, details, and actions.
 Each action resolves its suggestion from the result and returns the updated review.
@@ -306,7 +331,7 @@ It opens the destination only when the result becomes `applied` or `dismissed`.
 For the Assistant, pass `report` to the normal Assistant handoff. Build a workflow attachment
 from `workflowId`. Include `execution.id` only when `execution.status` is `available`.
 The normal handoff opens a new chat in the clicking user's personal project.
-Do not use the result's `projectId`. A reviewer can lack read access to that project.
+Use the reviewer's personal project, not the result's `projectId`, for this chat.
 Load the personal project before the review action. If it cannot load, keep the result open.
 Normal chat ownership and tool permissions apply. Do not copy the background conversation or grants.
 

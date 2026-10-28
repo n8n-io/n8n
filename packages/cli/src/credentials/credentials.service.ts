@@ -17,6 +17,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import type {
+	CredentialUsageScope,
 	ListQueryDb,
 	SlimProject,
 	User,
@@ -615,6 +616,17 @@ export class CredentialsService {
 				} satisfies ICredentialsDecrypted<ICredentialDataDecryptedObject>;
 			}),
 		);
+	}
+
+	/** The usage scope of each credential in `ids` that exists. Does not check access. */
+	async findUsageScopes(ids: string[]): Promise<Map<string, CredentialUsageScope>> {
+		if (ids.length === 0) return new Map();
+		const [existingIds, nonProject] = await Promise.all([
+			this.credentialsRepository.findExistingIds(ids),
+			this.credentialsRepository.findNonProjectCredentialsByIds(ids),
+		]);
+		const instanceIds = new Set(nonProject.map(({ id }) => id));
+		return new Map(existingIds.map((id) => [id, instanceIds.has(id) ? 'instance' : 'project']));
 	}
 
 	/**

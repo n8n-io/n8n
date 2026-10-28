@@ -12,6 +12,7 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
@@ -25,6 +26,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -39,7 +41,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -62,6 +64,7 @@ import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import { McpConfig } from './mcp.config';
 import {
 	INSTALL_COMMUNITY_NODE_TOOL,
+	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
@@ -281,6 +284,7 @@ export class McpService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly mcpConfig: McpConfig,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -393,7 +397,20 @@ export class McpService {
 				const workflowId = getWorkflowId(handlerArgs[0]);
 
 				try {
-					const result = await invoke(...handlerArgs);
+					const isProductionExecution =
+						tool.name === 'execute_workflow' &&
+						isRecord(handlerArgs[0]) &&
+						handlerArgs[0].executionMode === 'production';
+					const isBlocked =
+						this.instanceWriteAccess.isReadOnly() &&
+						tool.config.annotations?.readOnlyHint !== true &&
+						!isProductionExecution;
+					const result: ToolHandlerResult = isBlocked
+						? {
+								isError: true,
+								content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+							}
+						: await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
 					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 					if (
@@ -863,7 +880,7 @@ export class McpService {
 			);
 		}
 
-		if (Container.get(SkillAgentsProxy).hasProvider) {
+		if (Container.get(SkillsGate).isEnabled) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
 			await Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
 			if (featureFlags.skillsExtensionEnabled && (allowedToolNames?.has('get_skill') ?? true)) {

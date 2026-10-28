@@ -17,6 +17,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
+	proxyFetch,
 } from '@n8n/ai-utilities';
 import {
 	getGoogleModelLabel,
@@ -266,9 +267,12 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, egressFilter }),
 			model: modelName,
 			topK: options.topK,
 			topP: options.topP,

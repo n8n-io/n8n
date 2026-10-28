@@ -11,6 +11,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;
 
+	/**
+	 * Whether n8n runs the n8n Assistant on the agents runtime as well. This is an
+	 * experimental preview for development and evaluation. Don't turn it on in
+	 * production.
+	 */
+	@Env('N8N_INSTANCE_AI_ASSISTANT_AGENT_ENABLED')
+	assistantAgentEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';

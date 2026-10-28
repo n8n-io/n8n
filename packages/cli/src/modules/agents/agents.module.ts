@@ -12,8 +12,8 @@ export class AgentsModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
 		// The skills module starts before this module. Tell it which agents use skills.
-		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
-		registerSkillAgentsProvider();
+		const { registerSkillUsage } = await import('./register-skill-usage.js');
+		registerSkillUsage();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -261,6 +261,7 @@ export class AgentsModule implements ModuleInterface {
 		const { Agent } = await import('./entities/agent.entity.js');
 		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
+		const { AgentFileGrant } = await import('./entities/agent-file-grant.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
 		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
@@ -277,6 +278,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
 		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
+		const { AgentPublishHistory } = await import('./entities/agent-publish-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -317,6 +319,7 @@ export class AgentsModule implements ModuleInterface {
 			Agent,
 			AgentFile,
 			AgentChatAttachment,
+			AgentFileGrant,
 			AgentChatSubscription,
 			AgentChannelStatus,
 			AgentCheckpoint,
@@ -332,6 +335,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentPlan,
 			AgentPlanHistory,
 			AgentHistory,
+			AgentPublishHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,
