@@ -94,6 +94,9 @@ watch(
 		<template v-if="$slots.titlePrefix" #titlePrefix>
 			<slot name="titlePrefix" />
 		</template>
+		<template v-if="$slots.sidePanel" #sidePanel>
+			<slot name="sidePanel" />
+		</template>
 		<template v-if="$slots.titleSuffix" #titleSuffix>
 			<slot name="titleSuffix" />
 		</template>
