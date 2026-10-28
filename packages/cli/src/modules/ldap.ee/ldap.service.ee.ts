@@ -2,7 +2,7 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
+import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { chunkIds, isValidEmail, SettingsRepository, User, UserRepository } from '@n8n/db';
 import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
