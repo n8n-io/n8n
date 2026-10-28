@@ -2078,7 +2078,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		path = '',
 		runData = {},
 	}: { node?: INode; path?: string; runData?: IRunData } = {}) => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: true,
 			value: { execution: snapshot('waiting'), target },
 		});
@@ -2132,11 +2132,11 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
-		expect(dataPlane.locateResumeTarget).not.toHaveBeenCalled();
+		expect(dataPlane.locateResume).not.toHaveBeenCalled();
 	});
 
 	it("relays the data plane's refusal of the token as 401, without its reason", async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: false,
 			status: 401,
 			error: 'invalid_token',
@@ -2145,13 +2145,15 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 'bad' }), res);
 
-		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'bad' });
+		expect(dataPlane.locateResume).toHaveBeenCalledWith(
+			expect.objectContaining({ id: EXECUTION_ID, token: 'bad' }),
+		);
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
 	});
 
 	it('answers 404 for an execution the data plane does not have', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status: 404, error: 'not_found' });
+		dataPlane.locateResume.mockResolvedValue({ ok: false, status: 404, error: 'not_found' });
 
 		await expect(
 			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
@@ -2163,7 +2165,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		[501, 'unimplemented', NotImplementedError],
 		[400, 'invalid_request', BadRequestError],
 	])("answers the data plane's %s refusal with its own status", async (status, error, expected) => {
-		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status, error });
+		dataPlane.locateResume.mockResolvedValue({ ok: false, status, error });
 
 		await expect(
 			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
@@ -2178,7 +2180,7 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	] as const)(
 		'answers 409 when no step accepts the request and the execution is %s',
 		async (status, message) => {
-			dataPlane.locateResumeTarget.mockResolvedValue({
+			dataPlane.locateResume.mockResolvedValue({
 				ok: true,
 				value: { execution: snapshot(status), target: null },
 			});
@@ -2201,7 +2203,9 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			noWebhookResponse: true,
 		});
 
-		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+		expect(dataPlane.locateResume).toHaveBeenCalledWith(
+			expect.objectContaining({ id: EXECUTION_ID, token: 'token' }),
+		);
 		const [, , , startNode, , , runExecutionData, executionId, calledReq, , , , options] =
 			executeWebhookSpy.mock.calls[0];
 		expect(executionId).toBe(EXECUTION_ID);
@@ -2226,7 +2230,9 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			),
 		).resolves.toEqual({ noWebhookResponse: true });
 
-		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+		expect(dataPlane.locateResume).toHaveBeenCalledWith(
+			expect.objectContaining({ id: EXECUTION_ID, token: 'token' }),
+		);
 	});
 
 	it('answers 404 when the reader cannot map the snapshot to an execution', async () => {
