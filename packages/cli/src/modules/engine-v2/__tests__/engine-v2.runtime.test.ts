@@ -1,6 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
-import { mintResumeToken, type ExecutionResponseSender } from '@n8n/engine';
+import {
+	mintApprovalCallback,
+	mintResumeToken,
+	mintStepBoundResumeToken,
+	type ExecutionResponseSender,
+} from '@n8n/engine';
+import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -85,6 +91,8 @@ vi.mock('@n8n/engine', () => ({
 	createDataSource: mocks.createDataSource,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
+	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
+	mintApprovalCallback: vi.fn(() => 'approval-callback'),
 }));
 
 vi.mock('@n8n/node-engine-compatibility', () => ({
@@ -247,7 +255,7 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
-		it('gives the engine the resume secret and the executor a minter when a secret is set', async () => {
+		it('gives the engine the resume secret and the executor its minters when a secret is set', async () => {
 			const resumeSecret = 's'.repeat(32);
 			await newRuntime('postgres://engine', { resumeSecret }).init(responseSender());
 
@@ -255,23 +263,30 @@ describe('EngineV2Runtime', () => {
 				expect.objectContaining({ resumeSecret }),
 			);
 			externalDependencies({ executionStore: {}, stepStore: {} });
-			const deps = mocks.V1StepExecutor.mock.calls[0][0] as unknown as {
-				resumeToken?: (context: { executionId: string }) => string;
-			};
+			const deps = mocks.V1StepExecutor.mock.calls[0][0] as unknown as V1StepExecutorDeps;
 			expect(deps.resumeToken?.({ executionId: 'exec-1' })).toBe('token-for-exec-1');
 			expect(mintResumeToken).toHaveBeenCalledWith(resumeSecret, 'exec-1');
+			expect(deps.stepBoundResumeToken?.({ stepId: 'step-1', binding: '/b?x=1' })).toBe(
+				'step-bound-token',
+			);
+			expect(mintStepBoundResumeToken).toHaveBeenCalledWith(resumeSecret, 'step-1', '/b?x=1');
+			expect(deps.approvalCallback?.({ stepId: 'step-1', decision: 'd' })).toBe(
+				'approval-callback',
+			);
+			expect(mintApprovalCallback).toHaveBeenCalledWith(resumeSecret, 'step-1', 'd');
 		});
 
-		it('passes an unset secret through and gives the executor no minter', async () => {
+		it('passes an unset secret through and gives the executor no minters', async () => {
 			await newRuntime().init(responseSender());
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ resumeSecret: '' }),
 			);
 			externalDependencies({ executionStore: {}, stepStore: {} });
-			expect(mocks.V1StepExecutor.mock.calls[0][0]).toEqual(
-				expect.objectContaining({ resumeToken: undefined }),
-			);
+			const deps = mocks.V1StepExecutor.mock.calls[0][0] as unknown as V1StepExecutorDeps;
+			expect(deps.resumeToken).toBeUndefined();
+			expect(deps.stepBoundResumeToken).toBeUndefined();
+			expect(deps.approvalCallback).toBeUndefined();
 		});
 
 		it('builds the v1 additional data from the step context, not from the control plane', async () => {
