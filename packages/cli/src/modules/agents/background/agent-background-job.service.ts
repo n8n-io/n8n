@@ -313,7 +313,7 @@ export class AgentBackgroundJobService {
 		parentResourceId: string,
 	): Promise<void> {
 		await this.pruneExpiredPausedJobs(parentThreadId);
-		await this.jobRepository.requestPause(
+		await this.jobRepository.requestPauseForActiveJobs(
 			parentAgentId,
 			parentThreadId,
 			parentResourceId,

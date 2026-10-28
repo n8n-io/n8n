@@ -311,16 +311,16 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return result.affected === 1;
 	}
 
-	async requestPause(
+	async requestPauseForActiveJobs(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
 		pauseRequestId: string,
-		jobIds?: string[],
 	): Promise<void> {
 		await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(parentThreadId, ctx);
-			const query = manager
+
+			await manager
 				.createQueryBuilder()
 				.update(AgentBackgroundJob)
 				.set({ pauseRequestId, notifiedAt: null })
@@ -328,15 +328,32 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 					parentAgentId,
 					parentThreadId,
 					parentResourceId,
-					...(jobIds ? { id: In(jobIds) } : {}),
 				})
-				.andWhere(
-					jobIds
-						? "(status IN ('running', 'suspended') OR notifiedAt IS NULL)"
-						: "status IN ('running', 'suspended')",
-				);
-			if (!jobIds) query.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)');
-			await query.execute();
+				.andWhere("status IN ('running', 'suspended')")
+				// Keep the existing Stop group until its notification is delivered.
+				.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)')
+				.execute();
+		});
+	}
+
+	async requestPauseForCapturedJobs(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId: string,
+		pauseRequestId: string,
+		jobIds: string[],
+	): Promise<void> {
+		await this.runInTransaction({}, async (manager, ctx) => {
+			await this.threadRepository.lockById(parentThreadId, ctx);
+
+			await manager
+				.createQueryBuilder()
+				.update(AgentBackgroundJob)
+				.set({ pauseRequestId, notifiedAt: null })
+				.where({ parentAgentId, parentThreadId, parentResourceId, id: In(jobIds) })
+				// Include unreported results from jobs that finished after capture.
+				.andWhere("(status IN ('running', 'suspended') OR notifiedAt IS NULL)")
+				.execute();
 		});
 	}
 

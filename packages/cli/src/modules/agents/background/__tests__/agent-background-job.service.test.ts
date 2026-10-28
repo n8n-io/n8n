@@ -209,7 +209,7 @@ describe('user pause', () => {
 			['exec-1', ['workflow-1']],
 			['exec-2', ['workflow-1']],
 		]);
-		expect(jobRepository.requestPause.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(jobRepository.requestPauseForActiveJobs.mock.invocationCallOrder[0]).toBeLessThan(
 			executionService.stop.mock.invocationCallOrder[0],
 		);
 		expect(pause).toHaveBeenCalledWith(child.id);
