@@ -172,7 +172,14 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(
 			await repository.reservePausedGroup(parentThreadId, agentId, ids.slice(1), timeoutAt, 5),
 		).toBe('reserved');
-		await repository.requestPause(agentId, parentThreadId, 'draft-chat:user-1', uuidv7());
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			parentThreadId,
+			'draft-chat:user-1',
+			uuidv7(),
+		);
+
 		expect(await repository.resumeIfPaused(ids[1], agentId, 'running', timeoutAt, timeoutAt)).toBe(
 			false,
 		);
@@ -255,7 +262,14 @@ describe('AgentBackgroundJobRepository', () => {
 			),
 		).toEqual([]);
 		expect((await repository.findById(oldJobs[0]))?.status).toBe('paused');
-		await repository.requestPause(agentId, parentThreadId, 'draft-chat:user-1', uuidv7());
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			parentThreadId,
+			'draft-chat:user-1',
+			uuidv7(),
+		);
+
 		expect((await repository.findById(finishingId))?.pauseRequestId).toBe(newerId);
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
@@ -480,8 +494,15 @@ describe('AgentBackgroundJobRepository', () => {
 			status: 'running',
 			settledAt: null,
 		});
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuid());
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			'parent',
+			'draft-chat:user-1',
+			pauseRequestId,
+		);
+		await repository.requestPauseForActiveJobs(agentId, 'parent', 'draft-chat:user-1', uuid());
+
 		expect(
 			(await repository.findByParentThread('parent'))
 				.filter((job) => job.pauseRequestId === pauseRequestId)
@@ -546,7 +567,14 @@ describe('AgentBackgroundJobRepository', () => {
 				settledAt: null,
 			});
 		}
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			'parent',
+			'draft-chat:user-1',
+			pauseRequestId,
+		);
+
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
 		await repository.settleIfActive(cancelled, { status: 'cancelled' });
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
@@ -559,7 +587,9 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
 		expect(await repository.markMailConsumed('parent', [cancelled, completed], true)).toBe(2);
 		const delivered = await repository.findById(cancelled);
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuidv7());
+
+		await repository.requestPauseForActiveJobs(agentId, 'parent', 'draft-chat:user-1', uuidv7());
+
 		expect(await repository.findById(cancelled)).toEqual(delivered);
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(false);
