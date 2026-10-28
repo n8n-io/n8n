@@ -187,7 +187,7 @@
 		"src/modules/chat-hub/chat-hub.models.service.ts",
 		"src/modules/chat-hub/chat-hub.service.ts",
 		"src/modules/chat-hub/chat-hub.settings.service.ts",
-		"src/modules/data-table/data-table-ddl.service.ts",
+		"src/modules/data-table/persistence/data-table-ddl.ts",
 		"src/modules/data-table/data-table.service.ts",
 		"src/modules/data-table/utils/sql-utils.ts",
 		"src/modules/dynamic-credentials.ee/database/entities/credential-resolver.ts",
