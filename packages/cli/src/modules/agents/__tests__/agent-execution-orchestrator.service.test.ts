@@ -1,6 +1,10 @@
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
-import { EPISODIC_SCOPE_METADATA_KEY, encodeEpisodicScopeMetadata } from '@n8n/agents';
+import {
+	EPISODIC_SCOPE_METADATA_KEY,
+	createAbortError,
+	encodeEpisodicScopeMetadata,
+} from '@n8n/agents';
 import type {
 	Agent as RuntimeAgent,
 	CredentialProvider,
@@ -1334,7 +1338,8 @@ describe('AgentExecutionOrchestratorService', () => {
 					executionId: 'execution-1',
 					userId,
 				});
-				const error = new Error('Agent run was aborted');
+
+				const error = createAbortError('Agent run was aborted');
 
 				if (failure === 'chunk') {
 					await writer.write({ type: 'error', error });
