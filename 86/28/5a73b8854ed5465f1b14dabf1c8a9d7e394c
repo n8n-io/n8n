@@ -1,0 +1,39 @@
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_565818c1363886::t_c720c50852837b 162-167
+  s_565818c1363886::t_a315517270a8db 161
+packages/@n8n/db/src/migrations/common/1793182657728-AddLastSucceededAtToScheduledJob.ts
+  s_565818c1363886::t_4600c5606b5332 3-32
+  s_565818c1363886::t_3e2760862e1e77 1-2
+  s_565818c1363886::t_775f927530488a 33-34
+packages/cli/test/migration/1793182657728-add-last-succeeded-at-to-scheduled-job.test.ts
+  s_565818c1363886::t_551200ae57a094 1-103,105,109-130
+  s_565818c1363886::t_e268c6915dee92 104,106-108
+docs/generated/postgres-schema/README.md
+  s_565818c1363886::t_d61f5292ef9d2f 132,1698
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_565818c1363886::t_d9990f46e3f2a5 16,92
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_565818c1363886::t_b0510db65ecc74 98
+docs/generated/sqlite-schema/README.md
+  s_565818c1363886::t_d291de85b52f7b 132,1684
+docs/generated/sqlite-schema/scheduled_job.md
+  s_565818c1363886::t_f1dcd33fbbba1b 9,27,88
+docs/generated/sqlite-schema/scheduled_task.md
+  s_565818c1363886::t_ac3c27189be73e 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86285a73b8854ed5465f1b14dabf1c8a9d7e394c",
+  "prompts": {},
+  "sessions": {
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
