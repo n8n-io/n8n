@@ -1,0 +1,30 @@
+packages/cli/src/modules/skills/services/skills-telemetry.service.ts
+  s_127a9acd7ce7b7::t_0d76af8920de86 13-14
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_127a9acd7ce7b7::t_ff0e10a9b70a90 224
+  s_127a9acd7ce7b7::t_d3183efd6a2fcb 225-244
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  s_127a9acd7ce7b7::t_7df0a8997b539f 198-199,201-210,212-228
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_127a9acd7ce7b7::t_0d76af8920de86 34-35,37
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  s_127a9acd7ce7b7::t_0d76af8920de86 258-264,266-272,274-292
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_127a9acd7ce7b7::t_0d76af8920de86 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6acf9eb50a4bcd3c9d8e26f427fb17ff410b686",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
