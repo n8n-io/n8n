@@ -1,0 +1,35 @@
+packages/cli/src/modules/promotions.ee/cross-project-moves.ts
+  s_d0583de1726c5e::t_d5fcc99bc27801 1,4
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_d0583de1726c5e::t_ef18fcb4b4631d 21
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.ts
+  s_d0583de1726c5e::t_ea481cd245fa8f 1,14
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_d0583de1726c5e::t_34e0dd128e88d2 1,8
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_d0583de1726c5e::t_bd2178f5c293ed 1,5
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.test.ts
+  s_d0583de1726c5e::t_1c28f5270dfc22 1
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.ts
+  s_d0583de1726c5e::t_31dbe321b8353d 8
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.types.ts
+  s_d0583de1726c5e::t_f18c7a726257af 1-8
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_d0583de1726c5e::t_0fa348bc44a0a6 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b758091b15e31467f191a979a4726ac88fb12ed",
+  "prompts": {},
+  "sessions": {
+    "s_d0583de1726c5e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a180c8-c87d-7a92-8626-97e1ed657d10",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
