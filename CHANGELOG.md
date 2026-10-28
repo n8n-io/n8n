@@ -1,3 +1,13 @@
+## [2.46.1](https://github.com/n8n-io/n8n/compare/n8n@2.46.0...n8n@2.46.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **core:** Improve removed-node and Edit Image entries in v3 migration report ([#42270](https://github.com/n8n-io/n8n/issues/42270)) ([d73a148](https://github.com/n8n-io/n8n/commit/d73a148fdd08ddbc8b5df81b1be141ad92de4195))
+* **core:** Keep the ExpressionError name in minified builds ([#42308](https://github.com/n8n-io/n8n/issues/42308)) ([4068bb0](https://github.com/n8n-io/n8n/commit/4068bb0fa31730da6be816ab671db09b22cd8ccd))
+* **core:** Keep undefined values in QuickJS expression results ([#42263](https://github.com/n8n-io/n8n/issues/42263)) ([3a6ce61](https://github.com/n8n-io/n8n/commit/3a6ce61211d8452ca342a3a87073225fcb51fd78))
+
+
 # [2.46.0](https://github.com/n8n-io/n8n/compare/n8n@2.45.0...n8n@2.46.0) (2026-10-27)
 
 
