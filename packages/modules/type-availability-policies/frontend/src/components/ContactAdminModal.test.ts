@@ -1,5 +1,6 @@
 import { ROLE } from '@n8n/api-types';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import type { Project } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -386,6 +387,53 @@ describe('ContactAdminModal', () => {
 			expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
 				'No project admin is listed here.',
 			);
+		});
+
+		describe('with an explicit project', () => {
+			const destinationAdmin = {
+				...projectAdmin,
+				id: 'destination-admin-1',
+				firstName: 'Dorothy',
+				lastName: 'Vaughan',
+				email: 'dorothy@example.com',
+			};
+			const destination: Project = {
+				id: 'project-dest',
+				name: 'Marketing',
+				type: 'team',
+				icon: null,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				relations: [destinationAdmin],
+				scopes: [],
+				rolesManaged: false,
+			};
+
+			it('lists the admins of the given project instead of the open one', async () => {
+				setup([owner]);
+				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
+				const { findByTestId } = renderComponent({
+					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: destination },
+				});
+
+				const list = await findByTestId('contact-admin-list');
+
+				expect(list).toHaveTextContent('Dorothy Vaughan');
+				expect(list).not.toHaveTextContent('Grace Hopper');
+			});
+
+			it('lists no admin of the open project while the given project is null', async () => {
+				setup([owner]);
+				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
+				const { findByTestId, queryByText } = renderComponent({
+					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: null },
+				});
+
+				expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
+					'No project admin is listed here.',
+				);
+				expect(queryByText('Grace Hopper')).not.toBeInTheDocument();
+			});
 		});
 	});
 });
