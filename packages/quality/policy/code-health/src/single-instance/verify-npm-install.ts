@@ -36,6 +36,8 @@ const NPM_INSTALL_EXCLUSIONS = [
 	'@napi-rs/image-linux-x64-musl',
 ];
 const NPM_INSTALL_EXCLUSION_REPLACEMENT = 'empty-npm-package';
+const NPM_INSTALL_ALLOWLIST_FILE =
+	'packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts';
 
 interface ExpectedNpmDuplicate {
 	reason: string;
@@ -506,7 +508,11 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		if (failures.length > 0) {
 			keepScratch = !reportOnly;
 			const scratchHint = keepScratch ? scratch : undefined;
-			const remediationOptions = { exemptPackages: exemptPackages(byName), scratch: scratchHint };
+			const remediationOptions = {
+				exemptPackages: exemptPackages(byName),
+				scratch: scratchHint,
+				allowlistFile: NPM_INSTALL_ALLOWLIST_FILE,
+			};
 			console.log('\nHow to fix\n');
 			for (const line of formatRemediation(explained, remediationOptions)) console.log(line);
 			writeStepSummary(formatStepSummary(explained, { reportOnly, ...remediationOptions }));

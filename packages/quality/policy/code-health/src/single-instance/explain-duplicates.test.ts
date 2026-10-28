@@ -280,6 +280,15 @@ describe('formatRemediation', () => {
 		);
 	});
 
+	it('can point at a command-specific allowlist', () => {
+		expect(
+			formatRemediation(explainAll(), {
+				exemptPackages: NO_EXEMPTIONS,
+				allowlistFile: 'custom-allowlist.ts',
+			}).join('\n'),
+		).toContain('custom-allowlist.ts');
+	});
+
 	it('mentions the kept install tree only when one is kept', () => {
 		const options = { exemptPackages: NO_EXEMPTIONS };
 		expect(

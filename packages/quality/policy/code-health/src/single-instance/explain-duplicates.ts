@@ -250,7 +250,11 @@ function bucketFor(requirer: Requirer, exemptPackages: Set<string>): Bucket {
  */
 export function formatRemediation(
 	explained: ExplainedDuplicate[],
-	{ exemptPackages, scratch }: { exemptPackages: Set<string>; scratch?: string },
+	{
+		exemptPackages,
+		scratch,
+		allowlistFile = ALLOWLIST_FILE,
+	}: { exemptPackages: Set<string>; scratch?: string; allowlistFile?: string },
 ): string[] {
 	// Keyed, not per copy: npm installs the same requirer at several nesting depths, and the fix is
 	// one manifest edit however many copies it produced.
@@ -331,7 +335,7 @@ export function formatRemediation(
 	}
 	lines.push(
 		`  ${++step}. If the split cannot be removed yet, add an EXPECTED_DUPLICATES entry in`,
-		`     ${ALLOWLIST_FILE} documenting why it is tolerated and what removes it.`,
+		`     ${allowlistFile} documenting why it is tolerated and what removes it.`,
 		'',
 		'  Reproduce locally (packs + installs the same closure, no CI needed):',
 		'     pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-npm-install <pkgName>...',
@@ -367,7 +371,13 @@ export function formatStepSummary(
 		reportOnly,
 		exemptPackages,
 		scratch,
-	}: { reportOnly: boolean; exemptPackages: Set<string>; scratch?: string },
+		allowlistFile,
+	}: {
+		reportOnly: boolean;
+		exemptPackages: Set<string>;
+		scratch?: string;
+		allowlistFile?: string;
+	},
 ): string {
 	const rows = explained.flatMap((dup) =>
 		dup.copies.map(
@@ -387,7 +397,7 @@ export function formatStepSummary(
 		'<details><summary>How to fix</summary>',
 		'',
 		FENCE,
-		...formatRemediation(explained, { exemptPackages, scratch }),
+		...formatRemediation(explained, { exemptPackages, scratch, allowlistFile }),
 		FENCE,
 		'',
 		'</details>',
