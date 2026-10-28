@@ -28,18 +28,20 @@
                                             "items": {
                                                 "type": "object",
                                                 "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
                                                     "style": {
                                                         "type": "object",
-                                                        "properties": {
-                                                            "italic": {
-                                                                "type": "boolean"
-                                                            }
-                                                        }
+                                                        "properties": {}
                                                     },
                                                     "text": {
                                                         "type": "string"
                                                     },
                                                     "type": {
+                                                        "type": "string"
+                                                    },
+                                                    "unicode": {
                                                         "type": "string"
                                                     },
                                                     "url": {
@@ -97,6 +99,9 @@
                         },
                         "updated": {
                             "type": "integer"
+                        },
+                        "user_id": {
+                            "type": "string"
                         }
                     }
                 },
@@ -124,5 +129,5 @@
             "type": "boolean"
         }
     },
-    "version": 3
+    "version": 4
 }
