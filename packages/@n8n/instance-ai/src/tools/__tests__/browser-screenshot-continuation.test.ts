@@ -115,7 +115,10 @@ describe('Browser Use tool continuation', () => {
 			expect(result.error).toBeUndefined();
 			expect(nextPrompt.at(-1)?.role).not.toBe('assistant');
 			expect(result.finishReason).toBe('stop');
-			expect(result.messages.at(-1)?.content).toContainEqual({ type: 'text', text: FINAL_REPLY });
+			expect(result.messages.at(-1)).toMatchObject({
+				role: 'assistant',
+				content: expect.arrayContaining([{ type: 'text', text: FINAL_REPLY }]),
+			});
 		},
 	);
 });
