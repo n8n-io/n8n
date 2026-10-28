@@ -142,7 +142,7 @@ export class InstanceAiCloudBrowserTaskService {
 				if (fields.length === 0) {
 					return {
 						status: 'rejected',
-						message: `There is no credential type "${type}". Find the type with workflow_builder_credentials(action="search-types").`,
+						message: `There is no credential type "${type}". Find the type with search_credential_types.`,
 					};
 				}
 				credentialsToCreate.push({ type, name, fields });
