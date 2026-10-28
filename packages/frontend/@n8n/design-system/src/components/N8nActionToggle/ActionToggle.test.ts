@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { render, waitFor, within } from '@testing-library/vue';
 
 import ActionToggle from './ActionToggle.vue';
 
@@ -42,7 +42,10 @@ describe('N8nActionToggle', () => {
 		await openMenu(container);
 
 		const items = document.querySelectorAll('[role="menuitem"]');
-		expect(items[0]?.querySelector('[data-icon="pencil"]')).not.toBeNull();
+		const icon = items[0]?.querySelector('[data-icon="pencil"]');
+		const label = within(items[0] as HTMLElement).getByText('Edit');
+		expect(icon).not.toBeNull();
+		expect(icon?.compareDocumentPosition(label)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		expect(items[1]?.querySelector('[data-icon]')).toBeNull();
 	});
 

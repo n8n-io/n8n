@@ -557,7 +557,9 @@ describe('SkillsController', () => {
 				version: 2,
 				createdBy: expect.objectContaining({ id: editorUser.id }),
 				createdAt: expect.any(String),
+				isLatest: true,
 			});
+			expect(list.data[1].isLatest).toBe(false);
 		});
 
 		it('returns the content of one version', async () => {
