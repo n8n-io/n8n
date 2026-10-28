@@ -1,5 +1,9 @@
 import type { BuiltFileStore } from '../../types/sdk/file-store';
-import { toolOutputFileParts, type AgentDbMessage, type ContentFile } from '../../types/sdk/message';
+import {
+	toolOutputFileParts,
+	type AgentDbMessage,
+	type ContentFile,
+} from '../../types/sdk/message';
 
 /** Only the newest file parts are hydrated; older ones stay reference-only. */
 export const MAX_HYDRATED_FILE_PARTS = 20;
