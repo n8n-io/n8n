@@ -21,6 +21,7 @@ import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
+import OnboardingExampleCard from './OnboardingExampleCard.vue';
 import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
@@ -291,6 +292,13 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 					:metadata="formatArtifactMetadata(artifact)"
 				/>
 			</template>
+
+			<!-- The onboarding example the host wrote: step through its nodes -->
+			<OnboardingExampleCard
+				v-else-if="block.type === 'example'"
+				:nodes="block.nodes"
+				:class="$style.timelineItem"
+			/>
 
 			<!-- A preference the assistant saved: edit or undo it from the latest turn -->
 			<PreferenceCard

@@ -36,6 +36,7 @@ import {
 	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { ARTIFACT_TAB_ICONS } from './composables/useOpenArtifactTabs';
 import { useCanvasPreview } from './useCanvasPreview';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
@@ -98,25 +99,37 @@ const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversatio
 // descendant of it.
 const handoffContext = computed(() => conversationRef.value?.pendingComposerContext ?? null);
 
-// An onboarding answer ("build it myself") sends the user to a blank canvas in this tab, once the
-// chat has played its thinking beat and shown "Opening a blank canvas…".
-let onboardingCanvasTimer: ReturnType<typeof setTimeout> | null = null;
+// An onboarding answer acts here once the chat has played its thinking beat and shown its message.
+// "Build it myself" sends the user to a blank canvas in this tab. The saved example opens in the
+// preview panel next to the chat.
+let onboardingNavigationTimer: ReturnType<typeof setTimeout> | null = null;
 watch(
-	() => store.onboardingCanvasRequest,
+	() => store.onboardingNavigationRequest,
 	(request) => {
 		if (request?.threadId !== props.threadId) return;
-		store.clearOnboardingCanvasRequest();
-		if (onboardingCanvasTimer) clearTimeout(onboardingCanvasTimer);
-		onboardingCanvasTimer = setTimeout(() => {
-			onboardingCanvasTimer = null;
+		store.clearOnboardingNavigationRequest();
+		if (onboardingNavigationTimer) clearTimeout(onboardingNavigationTimer);
+		const { target } = request;
+		onboardingNavigationTimer = setTimeout(() => {
+			onboardingNavigationTimer = null;
 			// The user may have opened another thread in the meantime.
 			if (router.currentRoute.value.params.threadId !== props.threadId) return;
-			void router.push({ name: VIEWS.NEW_WORKFLOW });
+			if (target === 'new-workflow') {
+				void router.push({ name: VIEWS.NEW_WORKFLOW });
+				return;
+			}
+			// The example stays next to the chat, so the user can try it and keep talking.
+			preview.openTab({
+				id: target.workflowId,
+				type: 'workflow',
+				name: target.workflowName,
+				icon: ARTIFACT_TAB_ICONS.workflow,
+			});
 		}, ONBOARDING_STEP_THINKING_MS + ONBOARDING_CANVAS_READ_MS);
 	},
 );
 onUnmounted(() => {
-	if (onboardingCanvasTimer) clearTimeout(onboardingCanvasTimer);
+	if (onboardingNavigationTimer) clearTimeout(onboardingNavigationTimer);
 });
 
 function onThreadMissing() {

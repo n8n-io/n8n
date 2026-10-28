@@ -732,13 +732,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_PICKED_AI_ASSISTANT_ONBOARDING_OPTION: {
 		name: 'User picked AI Assistant onboarding option',
 		description:
-			'The user answered a routing card of an onboarding thread: the intent card, or the build card that follows it. Fires once per card, from the backend, when the answer is stored.',
+			'The user answered a routing card of an onboarding thread: the intent card, the build card that follows it, or the example card. Fires once per card, from the backend, when the answer is stored.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string(),
 			card: z
-				.enum(['intent', 'build'])
-				.describe('intent: "What do you want to do first?". build: "How do you want to build it?"'),
+				.enum(['intent', 'build', 'example'])
+				.describe(
+					'intent: "What do you want to do first?". build: "How do you want to build it?". example: the end card of the example walkthrough',
+				),
 			route: z
 				.enum(INSTANCE_AI_ONBOARDING_ROUTES)
 				.describe(
@@ -748,6 +750,16 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.string()
 				.nullable()
 				.describe('Free text typed in the card in place of a pick, redacted'),
+			choice: z
+				.enum(['build', 'something_else'])
+				.optional()
+				.describe(
+					'The pick on the example card: "Build this for me" or "Build something else". Absent on the other cards',
+				),
+			workflow_id: z
+				.string()
+				.optional()
+				.describe('The example workflow the host saved, when the choice is build'),
 		}),
 	},
 	USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD: {
@@ -784,14 +796,14 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_ONBOARDING_ENDED: {
 		name: 'AI Assistant onboarding ended',
 		description:
-			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, when a run fails, or when the user goes to a blank canvas.',
+			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, when a run fails, when the user goes to a blank canvas, or when the user saves the example.',
 		properties: z.object({
 			thread_id: z.string(),
 			instance_id: z.string(),
 			outcome: z
-				.enum(['build', 'left', 'run_failed', 'canvas'])
+				.enum(['build', 'left', 'run_failed', 'canvas', 'example'])
 				.describe(
-					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted. canvas: the user picked "build it myself" and went to a blank canvas',
+					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted. canvas: the user picked "build it myself" and went to a blank canvas. example: the user picked "Build this for me" on the example card, and the saved example opened next to the chat',
 				),
 			route: z
 				.enum(INSTANCE_AI_ONBOARDING_ROUTES)

@@ -966,6 +966,25 @@ describe('buildTimelineBlocks', () => {
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
 	});
 
+	test('renders the host-written onboarding example as an example block', () => {
+		const node = {
+			name: 'Read BBC News',
+			type: 'n8n-nodes-base.rssFeedRead',
+			typeVersion: 1.2,
+			explanation: 'Gets stories.',
+		};
+		const tc = makeToolCall({
+			toolCallId: 'tc-1',
+			toolName: 'onboarding-example-preview',
+			args: { nodes: [node, { name: 'broken' }] },
+			result: { nodes: [node] },
+		});
+
+		expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([
+			{ type: 'example', key: 'example-0', nodes: [node] },
+		]);
+	});
+
 	describe('save_user_preference', () => {
 		const base: Partial<InstanceAiToolCallState> = {
 			toolCallId: 'tc-1',

@@ -576,7 +576,7 @@ export class InstanceAiController {
 		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
 			await this.requireModelConfigured();
 		}
-		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
+		const card = await this.onboarding.answerCard(req.user, requestId, parseResult.data);
 		if (card) {
 			const runId =
 				'firstMessage' in card

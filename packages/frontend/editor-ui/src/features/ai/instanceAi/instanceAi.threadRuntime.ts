@@ -20,6 +20,7 @@ import {
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
+	type InstanceAiOnboardingNavigation,
 	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
@@ -130,7 +131,7 @@ type SetupChatTelemetryContext = Pick<
 const MAX_DEBUG_EVENTS = 1000;
 /** Tool calls that end the onboarding flow: the agent's explicit exit, or the start of a build. */
 /** How an onboarding thread ended; the telemetry value of each exit. */
-export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed' | 'canvas';
+export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed' | 'canvas' | 'example';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
 	['leave-onboarding', 'left'],
@@ -182,7 +183,7 @@ export interface ThreadRuntimeHooks {
 		leaveReason?: string,
 	) => void;
 	/** An onboarding card answer asked for a blank canvas ("build it myself"). */
-	onOnboardingCanvas?: (threadId: string) => void;
+	onOnboardingNavigate?: (threadId: string, target: InstanceAiOnboardingNavigation) => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
@@ -1805,7 +1806,7 @@ export function createThreadRuntime(
 				payload,
 			);
 			ensureSSEConnected();
-			if (response.navigateTo === 'new-workflow') hooks.onOnboardingCanvas?.(threadId);
+			if (response.navigateTo) hooks.onOnboardingNavigate?.(threadId, response.navigateTo);
 			if (shouldRearmRunAfterConfirm(payload)) {
 				rearmRunState(
 					resolveActiveRunId({

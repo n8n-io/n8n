@@ -1724,16 +1724,38 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 
 /**
  * Where an onboarding thread goes after its intent card, stored as `onboardingRoute` in the thread
- * metadata. `build`: the build card is open. `other`: free text started a normal first turn.
+ * metadata. `build`: the build card is open. `explore`: the example card is open. `other`: free
+ * text started a normal first turn.
  */
 export const INSTANCE_AI_ONBOARDING_ROUTES = [
 	'build',
 	'build_ai',
 	'build_canvas',
 	'idea',
+	'explore',
 	'other',
 ] as const;
 export type InstanceAiOnboardingRoute = (typeof INSTANCE_AI_ONBOARDING_ROUTES)[number];
+
+/**
+ * The host-written tool call that carries the onboarding example: the timeline renders it as the
+ * example card. No agent has a tool with this name.
+ */
+export const ONBOARDING_EXAMPLE_PREVIEW_TOOL_NAME = 'onboarding-example-preview';
+
+/**
+ * The start of the request id of the question under the onboarding example. The example card
+ * shows its options on the last node, so the chat does not show the question on its own.
+ */
+export const ONBOARDING_EXAMPLE_REQUEST_ID_PREFIX = 'onboarding-example~';
+
+/** One node of the onboarding example card, in workflow order. */
+export interface OnboardingExampleNode {
+	name: string;
+	type: string;
+	typeVersion: number;
+	explanation: string;
+}
 
 export function isInstanceAiOnboardingRoute(value: unknown): value is InstanceAiOnboardingRoute {
 	return INSTANCE_AI_ONBOARDING_ROUTES.some((route) => route === value);
@@ -2261,11 +2283,19 @@ export interface InstanceAiThreadStatusResponse {
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
 }
 
+export type InstanceAiOnboardingNavigation =
+	| 'new-workflow'
+	| { workflowId: string; workflowName: string };
+
 export interface InstanceAiConfirmResponse {
 	ok: true;
 	runId?: string;
-	/** Where the client goes after the answer. `new-workflow`: a blank canvas (the onboarding "build it myself" pick). */
-	navigateTo?: 'new-workflow';
+	/**
+	 * Where the client goes after the answer. `new-workflow`: a blank canvas (the onboarding "build
+	 * it myself" pick). `{ workflowId, workflowName }`: the onboarding example the host saved, which
+	 * opens in the preview panel next to the chat.
+	 */
+	navigateTo?: InstanceAiOnboardingNavigation;
 }
 
 // ---------------------------------------------------------------------------

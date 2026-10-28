@@ -18,7 +18,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { isPendingItemFloating } from '../confirmationKinds';
+import { isOnboardingExampleQuestion, isPendingItemFloating } from '../confirmationKinds';
 import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -123,7 +123,7 @@ const chunks = computed((): ConfirmationChunk[] => {
 	if (props.kind === 'inline') {
 		const result: ConfirmationChunk[] = [];
 		for (const item of thread.pendingConfirmations) {
-			if (isPendingItemFloating(item)) continue;
+			if (isPendingItemFloating(item) || isOnboardingExampleQuestion(item)) continue;
 			result.push({ type: 'standalone', item });
 		}
 		return result;

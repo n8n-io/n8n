@@ -823,6 +823,30 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 		});
 	});
 
+	describe('onboarding example question', () => {
+		// The example card shows it on its last node, so neither slot may render it.
+		it.each(['floating', 'inline'] as const)('renders nothing in the %s slot', (kind) => {
+			injectPendingConfirmation(thread, {
+				requestId: 'onboarding-example~abc',
+				severity: 'info',
+				message: 'Welcome to n8n',
+				inputType: 'questions',
+				questions: [
+					{
+						id: 'example',
+						question: 'What do you want to do next?',
+						type: 'single',
+						options: ['Build this for me', 'Build something else'],
+					},
+				],
+			});
+
+			const { queryByTestId, queryByText } = renderComponent({ props: { kind } });
+			expect(queryByText('What do you want to do next?')).toBeNull();
+			expect(queryByTestId('instance-ai-confirmation-panel')).toBeNull();
+		});
+	});
+
 	describe('credential setup', () => {
 		it('passes requireUserSelection and falls back to the thread project', () => {
 			thread.projectId = 'thread-project';

@@ -1,4 +1,13 @@
+import { ONBOARDING_EXAMPLE_REQUEST_ID_PREFIX } from '@n8n/api-types';
+
 import type { PendingConfirmationItem } from './instanceAi.store';
+
+/** The question under the onboarding example. The example card shows it, on its last node. */
+export function isOnboardingExampleQuestion(item: PendingConfirmationItem): boolean {
+	return (
+		item.toolCall.confirmation.requestId?.startsWith(ONBOARDING_EXAMPLE_REQUEST_ID_PREFIX) === true
+	);
+}
 
 /**
  * Decides whether a pending confirmation belongs in the floating slot (takes
@@ -16,6 +25,7 @@ import type { PendingConfirmationItem } from './instanceAi.store';
 export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
 
+	if (isOnboardingExampleQuestion(item)) return false;
 	if (conf.setupRequests?.length) return false;
 	if (conf.credentialRequests?.length) return false;
 	if (conf.credentialFlow) return false;

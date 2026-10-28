@@ -569,13 +569,34 @@ describe('InstanceAiThreadView', () => {
 		try {
 			renderView({ props: { threadId: 'thread-1' } });
 
-			store.onboardingCanvasRequest = { threadId: 'thread-1' };
+			store.onboardingNavigationRequest = { threadId: 'thread-1', target: 'new-workflow' };
 			await nextTick();
 
 			// The chat first plays its thinking beat and shows the canvas message.
 			expect(routerPushSpy).not.toHaveBeenCalled();
 			await vi.advanceTimersByTimeAsync(3000);
 			expect(routerPushSpy).toHaveBeenCalledExactlyOnceWith({ name: VIEWS.NEW_WORKFLOW });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('opens the saved example next to the chat a moment after the user asks for it', async function () {
+		vi.useFakeTimers();
+		try {
+			renderView({ props: { threadId: 'thread-1' } });
+
+			store.onboardingNavigationRequest = {
+				threadId: 'thread-1',
+				target: { workflowId: 'wf-1', workflowName: 'Daily BBC News digest' },
+			};
+			await nextTick();
+			expect(workflowPreviewEmit).toBeNull();
+			await vi.advanceTimersByTimeAsync(3000);
+
+			// The preview panel mounts the workflow; the user stays in the chat.
+			expect(workflowPreviewEmit).not.toBeNull();
+			expect(routerPushSpy).not.toHaveBeenCalled();
 		} finally {
 			vi.useRealTimers();
 		}
