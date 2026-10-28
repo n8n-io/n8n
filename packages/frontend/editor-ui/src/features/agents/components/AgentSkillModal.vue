@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -155,6 +155,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const uiStore = useUIStore();
 const router = useRouter();
 const rootStore = useRootStore();
@@ -444,7 +445,8 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 					})
 				: i18n.baseText('agents.builder.skills.menu.addToThisAgent'),
 			icon: 'bot',
-			checked: true,
+			// The row draws a switch that is on: the skill is attached.
+			customClass: $style.menuItem,
 			testId: 'agent-skill-menu-attach',
 		});
 	}
@@ -452,10 +454,14 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'change-scope',
 			label: i18n.baseText('agents.builder.skills.menu.changeScope'),
-			icon: selectedScope.value?.icon ?? 'layers',
+			icon: 'globe',
 			disabled: !scopeEditable.value,
+			customClass: $style.menuItem,
 			testId: 'agent-skill-menu-change-scope',
-			children: scopeItems('agent-skill-menu-scope-option-'),
+			children: scopeItems('agent-skill-menu-scope-option-').map((item) => ({
+				...item,
+				customClass: $style.menuItem,
+			})),
 		});
 	}
 	if (isEditing.value && (props.data.onDelete || showAttachToggle.value)) {
@@ -463,12 +469,10 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 			id: 'delete',
 			label: i18n.baseText('agents.builder.skills.menu.delete'),
 			icon: 'trash-2',
-			variant: 'destructive',
 			divided: items.length > 0,
 			// A skill attached to this agent is in use, so the builder cannot delete it.
 			disabled: !props.data.onDelete || !!props.data.deleteDisabledReason || isSaving.value,
-			// The menu has no tooltip, so the reason shows under the label.
-			description: props.data.deleteDisabledReason,
+			customClass: [$style.menuItem, $style.deleteItem].join(' '),
 			testId: 'agent-skill-menu-delete',
 		});
 	}
@@ -1108,7 +1112,29 @@ function onRemove() {
 				activator-size="small"
 				data-testid="agent-skill-header-menu"
 				@select="onHeaderMenuSelect"
-			/>
+			>
+				<template #menuItem="item">
+					<span v-if="item.id === 'attach'" :class="$style.menuSwitchRow">
+						{{ item.label }}
+						<!-- The whole row toggles, so the switch only shows the state. -->
+						<N8nSwitch
+							:model-value="true"
+							:class="$style.menuSwitch"
+							tabindex="-1"
+							aria-hidden="true"
+							data-testid="agent-skill-menu-attach-switch"
+						/>
+					</span>
+					<N8nTooltip
+						v-else-if="item.id === 'delete' && data.deleteDisabledReason"
+						:content="data.deleteDisabledReason"
+						placement="right"
+					>
+						<span data-testid="agent-skill-menu-delete-reason">{{ item.label }}</span>
+					</N8nTooltip>
+					<template v-else>{{ item.label }}</template>
+				</template>
+			</N8nActionDropdown>
 		</template>
 		<template v-if="isFormStep && (showAssistantToggle || latestVersion)" #headerActions>
 			<N8nSwitch
@@ -1491,6 +1517,26 @@ function onRemove() {
 
 .callout {
 	margin-bottom: var(--spacing--md);
+}
+
+/* The header menu, as the design: grey icons and check mark, a red Delete when it is allowed. */
+.menuItem :global(svg) {
+	color: var(--color--text--tint-1);
+}
+
+.deleteItem:not([data-disabled]) {
+	color: var(--color--danger);
+}
+
+.menuSwitchRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--lg);
+}
+
+.menuSwitch {
+	pointer-events: none;
 }
 
 /* A pinned skill: a warning strip over the file list and the form, as the design does. */

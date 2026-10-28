@@ -6,7 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
+import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -140,7 +140,7 @@ const ActionDropdownStub = defineComponent({
 				:data-checked="item.checked ? 'true' : undefined"
 				:disabled="item.disabled"
 				@click="$emit('select', item.id)"
-			>{{ item.label }}</button>
+			><slot name="menuItem" v-bind="item">{{ item.label }}</slot></button>
 		</div>
 	`,
 });
@@ -1846,7 +1846,9 @@ describe('header and footer', () => {
 
 		const toggle = await findByTestId('agent-skill-menu-attach');
 		expect(toggle).toHaveTextContent('agents.builder.skills.menu.addToAgent');
-		expect(toggle).toHaveAttribute('data-checked', 'true');
+		// The row shows a switch that is on, not a check mark.
+		expect(toggle).not.toHaveAttribute('data-checked');
+		expect(within(toggle).getByRole('switch', { hidden: true })).toBeChecked();
 		expect(queryByTestId('agent-skill-remove')).not.toBeInTheDocument();
 		// The skill is attached to this agent, so the builder cannot delete it.
 		expect(await findByTestId('agent-skill-menu-delete')).toBeDisabled();
@@ -1870,7 +1872,7 @@ describe('header and footer', () => {
 		expect(onDelete).toHaveBeenCalledWith('tone');
 	});
 
-	it('disables delete when agents use the skill', () => {
+	it('disables delete when agents use the skill and gives the reason on hover', async () => {
 		const { getByTestId } = renderModal({
 			skill: savedSkill,
 			skillId: 'tone',
@@ -1878,6 +1880,12 @@ describe('header and footer', () => {
 		});
 
 		expect(getByTestId('agent-skill-menu-delete')).toBeDisabled();
+		// The reason is a tooltip, not a line under the label.
+		expect(getByTestId('agent-skill-menu-delete')).toHaveTextContent(
+			/^agents.builder.skills.menu.delete$/,
+		);
+		await userEvent.hover(getByTestId('agent-skill-menu-delete-reason'));
+		expect(await screen.findByText('Used by 1 agent')).toBeInTheDocument();
 	});
 
 	it('changes the scope from the header menu', async () => {
