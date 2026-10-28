@@ -422,6 +422,8 @@ function onOpenAutoFocus(event: Event) {
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
 	padding: 0;
+	/* Full-width strips reach the edge, so no space is kept for a scrollbar. */
+	scrollbar-gutter: auto;
 }
 
 .body[data-scrollable='false'] {
