@@ -44,7 +44,20 @@ describe('useSkillVersions', () => {
 		expect(viewedVersion.value?.version).toBe(2);
 	});
 
-	it('keeps the version list of one skill apart from another skill', async () => {
+	it('loads the version list again for another skill', async () => {
+		const skillId = { value: 'tone' };
+		const { versions, loadVersions } = useSkillVersions(() => skillId.value);
+		await loadVersions();
+		listSkillVersions.mockResolvedValueOnce([detail(1)]);
+
+		skillId.value = 'voice';
+		await loadVersions();
+
+		expect(listSkillVersions).toHaveBeenLastCalledWith(expect.anything(), 'voice');
+		expect(versions.value?.map((version) => version.version)).toEqual([1]);
+	});
+
+	it('keeps the version details of one skill apart from another skill', async () => {
 		getSkillVersion.mockImplementation(async (_context: unknown, skillId: string) => ({
 			...detail(1),
 			skill: { name: skillId, description: '', instructions: '' },
