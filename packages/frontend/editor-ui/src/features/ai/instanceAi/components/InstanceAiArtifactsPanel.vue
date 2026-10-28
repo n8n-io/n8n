@@ -14,6 +14,7 @@ import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { skillsHubHref } from '../canvasPreview.utils';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -55,6 +56,7 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+const openSkillPreview = inject<((id: string) => void) | undefined>('openSkillPreview', undefined);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -87,6 +89,12 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openAgentPreview) return;
 		e.preventDefault();
 		openAgentPreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'skill' && artifact.id) {
+		if (!openSkillPreview) return;
+		// Always prevent: this row has no target="_blank", so the browser would
+		// navigate the chat tab away even when the skill tab is already active.
+		e.preventDefault();
+		openSkillPreview(artifact.id);
 	}
 }
 
@@ -112,7 +120,12 @@ const buildingArtifactIds = useBuildingArtifactIds();
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+		if (
+			entry.type === 'workflow' ||
+			entry.type === 'data-table' ||
+			entry.type === 'agent' ||
+			entry.type === 'skill'
+		) {
 			result.push(entry);
 		}
 	}
@@ -123,6 +136,7 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	skill: 'book-open',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -138,6 +152,7 @@ function artifactHref(artifact: ResourceEntry) {
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';
 	}
+	if (artifact.type === 'skill') return skillsHubHref(artifact.id);
 	return '#';
 }
 

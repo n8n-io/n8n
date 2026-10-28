@@ -23,6 +23,8 @@ import {
 	N8nCallout,
 	N8nFormInput,
 	N8nIcon,
+	N8nOption,
+	N8nSelect,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
@@ -31,6 +33,8 @@ import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { preferenceUserName } from '@/features/settings/context/context.utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -40,6 +44,7 @@ import type {
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
+import { useSkillVersions } from '../composables/useSkillVersions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import {
@@ -51,6 +56,8 @@ import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import SkillVersionDiff from './skillVersions/SkillVersionDiff.vue';
+import SkillVersionTimeline from './skillVersions/SkillVersionTimeline.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -113,6 +120,12 @@ export type AgentSkillModalData = {
 	onDelete?: (id: string) => void | Promise<void>;
 	/** Why "Delete skill" is disabled, for example because agents use the skill. */
 	deleteDisabledReason?: string;
+	/** The latest version of a saved hub skill. Set means the skill has versions to show. */
+	latestVersion?: number;
+	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
+	initialVersionsOpen?: boolean;
+	/** Opens the editor comparing the latest version with the one before it. */
+	initialCompare?: boolean;
 	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
 	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
@@ -286,9 +299,10 @@ const showRemove = computed(() => {
 	return isEditing.value && !props.data.skillRefsEnabled;
 });
 
-const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
+const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | 'viewing' | undefined>(() => {
 	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
+	if (viewedVersion.value) return 'viewing';
 	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
 	return isReadOnly.value ? undefined : 'save';
 });
@@ -296,7 +310,7 @@ const modalTitle = computed(() => {
 	if (step.value === 'select') return i18n.baseText('agents.builder.skills.title');
 	if (step.value === 'upload') return i18n.baseText('agents.builder.skills.add');
 	if (step.value === 'preview') return previewSkill.value?.name ?? '';
-	return skill.value.name;
+	return viewedVersion.value?.skill.name ?? skill.value.name;
 });
 
 const skillAccess = ref<SkillDetail | null>(null);
@@ -733,6 +747,91 @@ onMounted(() => {
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });
 
+const showAssistantToggle = computed(
+	() => showScope.value && showAssistantAvailability.value && !cannotEdit.value,
+);
+
+const latestVersion = computed(() => (props.data.skillId ? props.data.latestVersion : undefined));
+const versionsOpen = ref(!!props.data.initialVersionsOpen);
+const {
+	versions,
+	viewedVersion,
+	loadVersions,
+	fetchVersion,
+	openVersion,
+	comparison,
+	diffSections,
+	diffCounts,
+	comparedSkill,
+	compareVersions,
+	compareLatestTwo,
+} = useSkillVersions(() => props.data.skillId);
+/** The Versions panel shows beside the editor once its list has loaded. Compare mode hides it. */
+const showVersionsPanel = computed(
+	() => isFormStep.value && versionsOpen.value && !!versions.value && !comparison.value,
+);
+// The list loads the first time the panel opens.
+watch(
+	versionsOpen,
+	(open) => {
+		if (open) void loadVersions();
+	},
+	{ immediate: true },
+);
+const displayedSkill = computed(() => viewedVersion.value?.skill ?? skill.value);
+const viewingText = computed(() => {
+	const viewed = viewedVersion.value;
+	if (!viewed) return '';
+	const { date, time } = convertToDisplayDate(viewed.createdAt);
+	return i18n.baseText('agents.builder.skills.versions.viewing', {
+		interpolate: {
+			version: viewed.version,
+			author:
+				preferenceUserName(viewed.createdBy) ||
+				i18n.baseText('agents.builder.skills.versions.unknownUser'),
+			date,
+			time: time.slice(0, 5),
+		},
+	});
+});
+const canRestore = computed(() => !isReadOnly.value);
+
+async function onOpenVersion(version: number) {
+	selectedPath.value = SKILL_FILE;
+	await openVersion(version);
+}
+
+const versionOptions = computed(() =>
+	(versions.value ?? []).map(({ version }) => ({
+		value: version,
+		label: i18n.baseText('agents.builder.skills.versions.number', { interpolate: { version } }),
+	})),
+);
+
+async function onCompare(a: number, b: number) {
+	selectedPath.value = SKILL_FILE;
+	await compareVersions(a, b);
+}
+
+/** Done leaves compare mode for the latest version, which the user can edit. */
+function leaveCompare() {
+	comparison.value = null;
+	viewedVersion.value = null;
+}
+
+onMounted(() => {
+	if (props.data.initialCompare) void compareLatestTwo();
+});
+
+/** Saves the content of an older version as the next version, like any other save. */
+async function restoreVersion(version: number) {
+	if (!canRestore.value || isSaving.value) return;
+	const detail =
+		viewedVersion.value?.version === version ? viewedVersion.value : await fetchVersion(version);
+	if (!detail) return;
+	await submit(normalizeSkill({ ...detail.skill }), {});
+}
+
 function onSkillUploaded(importedSkill: AgentSkill) {
 	createMethod.value = 'upload';
 	skill.value = normalizeSkill(importedSkill);
@@ -841,19 +940,25 @@ async function onSave() {
 	});
 
 	const targetChanged = !isEditing.value || availableTo.value !== savedTarget.value;
+	await submit(payload, {
+		...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
+		...(canChangeScope.value ? { scope: scope.value } : {}),
+		...(assistantAvailabilityChanged.value
+			? { availableToAssistant: availableToAssistant.value }
+			: {}),
+		...(isEditing.value ? {} : { method: createMethod.value }),
+	});
+}
+
+/** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
+async function submit(
+	payload: AgentSkill,
+	extras: Omit<Parameters<AgentSkillModalData['onConfirm']>[0], 'id' | 'skill'>,
+) {
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
 	try {
-		result = await props.data.onConfirm({
-			id: props.data.skillId,
-			skill: payload,
-			...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
-			...(canChangeScope.value ? { scope: scope.value } : {}),
-			...(assistantAvailabilityChanged.value
-				? { availableToAssistant: availableToAssistant.value }
-				: {}),
-			...(isEditing.value ? {} : { method: createMethod.value }),
-		});
+		result = await props.data.onConfirm({ id: props.data.skillId, skill: payload, ...extras });
 	} catch {
 		// The caller reports its own errors. Keep the modal open with the user's edits.
 		return;
@@ -909,8 +1014,11 @@ function onRemove() {
 		:step="step"
 		:title="modalTitle"
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
-		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
-		:show-cancel="step !== 'select'"
+		:show-footer="
+			!comparison &&
+			(step === 'select' || step === 'manual' || step === 'edit' || step === 'preview')
+		"
+		:show-cancel="step !== 'select' && !viewedVersion"
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
 		:header-divider="isFormStep"
 		:body-flush="isFormStep"
@@ -959,17 +1067,32 @@ function onRemove() {
 				@select="onHeaderMenuSelect"
 			/>
 		</template>
-		<template
-			v-if="isFormStep && showScope && showAssistantAvailability && !cannotEdit"
-			#headerActions
-		>
+		<template v-if="isFormStep && (showAssistantToggle || latestVersion)" #headerActions>
 			<N8nSwitch
+				v-if="showAssistantToggle"
 				id="skill-assistant-availability"
 				v-model="availableToAssistant"
 				:label="i18n.baseText('settings.context.skills.assistant.toggle')"
 				:disabled="editorLocked"
 				data-testid="skill-assistant-availability"
 			/>
+			<N8nButton
+				v-if="latestVersion"
+				variant="ghost"
+				size="small"
+				:class="versionsOpen && $style.versionsButtonActive"
+				:aria-pressed="versionsOpen"
+				:aria-label="i18n.baseText('agents.builder.skills.versions.toggle')"
+				data-testid="agent-skill-versions-button"
+				@click="versionsOpen = !versionsOpen"
+			>
+				<template #icon><N8nIcon icon="history" :size="16" /></template>
+				{{
+					i18n.baseText('agents.builder.skills.versions.number', {
+						interpolate: { version: latestVersion },
+					})
+				}}
+			</N8nButton>
 		</template>
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
 			<ToolsConnectionModal
@@ -1051,7 +1174,69 @@ function onRemove() {
 			>
 				{{ accessWarning }}
 			</N8nCallout>
-			<div :class="[$style.content, isFormStep && $style.contentFlush]">
+			<div v-if="comparison" :class="$style.compareBar" data-testid="agent-skill-compare-bar">
+				<N8nIcon icon="file-diff" :size="14" />
+				<N8nText size="small">
+					{{ i18n.baseText('agents.builder.skills.versions.compare.from') }}
+				</N8nText>
+				<N8nSelect
+					:model-value="comparison.from"
+					size="small"
+					:teleported="false"
+					:class="$style.compareSelect"
+					data-testid="agent-skill-compare-from"
+					@update:model-value="onCompare(Number($event), comparison.to)"
+				>
+					<N8nOption
+						v-for="option in versionOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+				<N8nText size="small">
+					{{ i18n.baseText('agents.builder.skills.versions.compare.to') }}
+				</N8nText>
+				<N8nSelect
+					:model-value="comparison.to"
+					size="small"
+					:teleported="false"
+					:class="$style.compareSelect"
+					data-testid="agent-skill-compare-to"
+					@update:model-value="onCompare(comparison.from, Number($event))"
+				>
+					<N8nOption
+						v-for="option in versionOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+				<N8nButton
+					variant="outline"
+					size="small"
+					:class="$style.compareDone"
+					data-testid="agent-skill-compare-done"
+					@click="leaveCompare"
+				>
+					{{ i18n.baseText('agents.builder.skills.versions.done') }}
+				</N8nButton>
+			</div>
+			<div
+				v-else-if="viewedVersion"
+				:class="$style.viewingBar"
+				data-testid="agent-skill-viewing-version"
+			>
+				<N8nIcon icon="history" :size="14" />
+				<N8nText size="small">{{ viewingText }}</N8nText>
+			</div>
+			<div
+				:class="[
+					$style.content,
+					isFormStep && $style.contentFlush,
+					showVersionsPanel && $style.contentBesidePanel,
+				]"
+			>
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1059,24 +1244,40 @@ function onRemove() {
 					@add-manually="onAddManually"
 					@import:skill="onImportSkill"
 				/>
+				<template v-else-if="comparison && comparedSkill">
+					<AgentSkillFileNav
+						:class="$style.fileColumn"
+						:skill="comparedSkill"
+						:selected-path="selectedPath"
+						:change-counts="diffCounts"
+						read-only
+						@select="selectedPath = $event"
+					/>
+					<SkillVersionDiff
+						:class="$style.formColumn"
+						:sections="diffSections"
+						:selected-path="selectedPath"
+					/>
+				</template>
 				<template v-else>
 					<AgentSkillFileNav
 						:class="isFormStep && $style.fileColumn"
-						:skill="skill"
+						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
-						:read-only="editorLocked"
+						:read-only="editorLocked || !!viewedVersion"
 						:invalid-paths="visibleInvalidReferencePaths"
 						@add-reference="onAddReference"
 						@remove-reference="onRemoveReference"
 						@select="selectedPath = $event"
 					/>
 					<AgentSkillViewer
+						:key="viewedVersion?.version ?? 'latest'"
 						:class="isFormStep && $style.formColumn"
-						:skill="skill"
+						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
-						:read-only="cannotEdit"
+						:read-only="cannotEdit || !!viewedVersion"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
 						@select:path="selectedPath = $event"
@@ -1112,6 +1313,17 @@ function onRemove() {
 			</div>
 		</template>
 
+		<template v-if="showVersionsPanel && versions" #sidePanel>
+			<SkillVersionTimeline
+				:versions="versions"
+				:shown-version="viewedVersion?.version ?? versions[0]?.version"
+				:can-restore="canRestore"
+				@open="onOpenVersion"
+				@restore="restoreVersion"
+				@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
+			/>
+		</template>
+
 		<template v-if="showRemove" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
 				<template #icon
@@ -1145,6 +1357,24 @@ function onRemove() {
 			>
 				{{ i18n.baseText('agents.builder.skills.picker.add') }}
 			</N8nButton>
+			<template v-else-if="footerPrimaryAction === 'viewing'">
+				<N8nButton
+					variant="outline"
+					data-testid="agent-skill-version-done"
+					@click="viewedVersion = null"
+				>
+					{{ i18n.baseText('agents.builder.skills.versions.done') }}
+				</N8nButton>
+				<N8nButton
+					v-if="canRestore"
+					variant="solid"
+					:loading="isSaving"
+					data-testid="agent-skill-version-restore"
+					@click="restoreVersion(viewedVersion!.version)"
+				>
+					{{ i18n.baseText('agents.builder.skills.versions.restore') }}
+				</N8nButton>
+			</template>
 			<N8nButton
 				v-else-if="footerPrimaryAction === 'useLatest'"
 				variant="solid"
@@ -1184,6 +1414,38 @@ function onRemove() {
 	margin-bottom: var(--spacing--md);
 }
 
+/* A full-width strip under the header, as the body of the form steps is flush. */
+.viewingBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--lg);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
+}
+
+.compareBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--lg);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+}
+
+.compareSelect {
+	width: calc(var(--spacing--3xl) + var(--spacing--xs));
+}
+
+.compareDone {
+	margin-left: auto;
+}
+
+.versionsButtonActive {
+	background-color: var(--background--active);
+}
+
 /* The form steps have a flush body, so their callouts keep the body inset themselves. */
 .calloutInset {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
@@ -1193,6 +1455,13 @@ function onRemove() {
 .contentFlush {
 	gap: 0;
 	align-items: stretch;
+}
+
+/* Beside the Versions panel, the editor gives up the width of the panel. */
+@media (min-width: 769px) {
+	.contentBesidePanel {
+		width: min(52rem, calc(100dvw - var(--spacing--lg) * 3 - var(--spacing--5xl) * 1.25));
+	}
 }
 
 /* Nested, so it wins over the file list's own background. */

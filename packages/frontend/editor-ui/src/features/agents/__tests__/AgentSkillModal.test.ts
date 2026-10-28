@@ -34,14 +34,20 @@ vi.mock('@n8n/i18n', () => {
 });
 
 const apiCreateSpy = vi.fn();
-const { listAttachableSkills, getSkillDetail } = vi.hoisted(() => ({
-	listAttachableSkills: vi.fn(),
-	getSkillDetail: vi.fn(),
-}));
+const { listAttachableSkills, getSkillDetail, listSkillVersions, getSkillVersion } = vi.hoisted(
+	() => ({
+		listAttachableSkills: vi.fn(),
+		getSkillDetail: vi.fn(),
+		listSkillVersions: vi.fn(),
+		getSkillVersion: vi.fn(),
+	}),
+);
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: (...args: unknown[]) => apiCreateSpy(...args),
 	listAttachableSkills,
 	getSkillDetail,
+	listSkillVersions,
+	getSkillVersion,
 }));
 
 const { showMessage, showError, trackImportedSkill } = vi.hoisted(() => ({
@@ -163,6 +169,9 @@ function renderModal({
 		| 'usedBy'
 		| 'onDelete'
 		| 'deleteDisabledReason'
+		| 'initialVersionsOpen'
+		| 'initialCompare'
+		| 'latestVersion'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -214,6 +223,15 @@ function renderModal({
 		},
 	});
 }
+
+// Every suite renders an open modal with fresh stores.
+beforeEach(() => {
+	vi.clearAllMocks();
+	createTestingPinia({ stubActions: false });
+	const uiStore = mockedStore(useUIStore);
+	uiStore.openModal(MODAL_NAME);
+	uiStore.closeModal = vi.fn();
+});
 
 const SAVED_SKILL: AgentSkill = {
 	name: 'brand-voice',
@@ -1455,14 +1473,6 @@ describe('AgentSkillModal', () => {
 });
 
 describe('AgentSkillModal from Settings', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		createTestingPinia({ stubActions: false });
-		const uiStore = mockedStore(useUIStore);
-		uiStore.openModal(MODAL_NAME);
-		uiStore.closeModal = vi.fn();
-	});
-
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
@@ -1908,5 +1918,190 @@ describe('header and footer', () => {
 		await waitFor(() =>
 			expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ scope: 'project:p1' })),
 		);
+	});
+});
+
+describe('Versions panel', () => {
+	const latest = { name: 'Tone', description: 'Writing style', instructions: 'Be brief.' };
+	const old = { name: 'Tone', description: 'Old style', instructions: 'Be long.' };
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+		latestVersion: 2,
+	};
+	const author = { id: 'u1', email: 'ana@acme.test', firstName: 'Ana', lastName: 'Lima' };
+
+	beforeEach(() => {
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v2', version: 2, createdBy: author, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		getSkillVersion.mockResolvedValue({
+			id: 'v1',
+			version: 1,
+			createdBy: author,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: old,
+		});
+	});
+
+	it('shows the latest version in the header and toggles the panel', async () => {
+		const { findByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			settings,
+		});
+
+		const button = await findByTestId('agent-skill-versions-button');
+		expect(button).toHaveTextContent('agents.builder.skills.versions.number 2');
+		expect(queryByTestId('skill-version-timeline')).not.toBeInTheDocument();
+
+		await userEvent.click(button);
+
+		expect(await findByTestId('skill-version-row-2')).toHaveTextContent(
+			'agents.builder.skills.versions.latest',
+		);
+		expect(await findByTestId('skill-version-row-1')).toHaveTextContent(
+			'agents.builder.skills.versions.unknownUser',
+		);
+	});
+
+	it('opens an older version read-only and goes back with Done', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+
+		expect(await findByTestId('agent-skill-viewing-version')).toHaveTextContent('Ana Lima');
+		expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Old style');
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-cancel')).not.toBeInTheDocument();
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
+
+		await userEvent.click(getByTestId('agent-skill-version-done'));
+
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
+
+	it('saves an older version as a new version', async () => {
+		const onConfirm = vi.fn();
+		const { findByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			onConfirm,
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		await userEvent.click(await findByTestId('agent-skill-version-restore'));
+
+		await waitFor(() => expect(onConfirm).toHaveBeenCalledWith({ id: 'tone', skill: old }));
+	});
+
+	it('lets a read-only user open older versions but not restore them', async () => {
+		const { findByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			settings: { ...settings, readOnly: true, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-version-restore')).not.toBeInTheDocument();
+	});
+
+	it('loads the version list only when the panel opens', async () => {
+		const { findByTestId } = renderModal({ skill: latest, skillId: 'tone', settings });
+
+		const button = await findByTestId('agent-skill-versions-button');
+		expect(listSkillVersions).not.toHaveBeenCalled();
+
+		await userEvent.click(button);
+
+		await waitFor(() => expect(listSkillVersions).toHaveBeenCalledWith(expect.anything(), 'tone'));
+	});
+
+	it('has no versions for a new skill', () => {
+		const { queryByTestId } = renderModal({ settings });
+
+		expect(queryByTestId('agent-skill-versions-button')).not.toBeInTheDocument();
+	});
+});
+
+describe('Compare mode', () => {
+	const settings = {
+		scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' as const }],
+		initialScope: 'instance',
+		latestVersion: 2,
+	};
+	const v1 = { name: 'research-sources', description: 'Cite the source.', instructions: 'Read.' };
+	const v2 = { name: 'research-search', description: 'Cite the evidence.', instructions: 'Read.' };
+
+	beforeEach(() => {
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v2', version: 2, createdBy: null, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `v${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: version === 1 ? v1 : v2,
+		}));
+	});
+
+	it('opens comparing the latest version with the one before it', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialCompare: true },
+		});
+
+		expect(await findByTestId('agent-skill-compare-bar')).toBeInTheDocument();
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
+		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
+		// The footer is hidden while comparing.
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
+	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-compare-1'));
+
+		expect(await findByTestId('skill-version-diff')).toBeInTheDocument();
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 2);
+
+		await userEvent.click(getByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-compare-bar')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
+	it('returns to the latest version with Done when the user compared from an older one', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		await userEvent.click(getByTestId('skill-version-compare-2'));
+		await userEvent.click(await findByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
 });
