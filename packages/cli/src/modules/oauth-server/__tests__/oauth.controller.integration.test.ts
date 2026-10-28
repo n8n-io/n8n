@@ -20,6 +20,8 @@ import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 import { pendingFlowFrom } from './oauth-flow-test-utils';
 
+// This suite starts backend modules and a database. The integration runner reuses
+// the migrated SQLite template in CI.
 const testServer = setupTestServer({
 	// Production order: the MCP middleware and metadata need the inbound-auth contracts.
 	modules: ['inbound-auth-core', 'oauth-server', 'mcp'],
