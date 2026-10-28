@@ -403,16 +403,14 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * WhatsApp lists (`select`/`radio_select`) are natively supported by the
-	 * adapter's own Card-to-interactive-message conversion, so they pass
-	 * through unchanged. Only reply buttons need handling here: the Cloud API
-	 * caps interactive messages at 3 buttons and otherwise rejects the send.
+	 * The Cloud API caps a message at 3 reply buttons and a list at 10 rows.
+	 * Extra buttons fold into a list, and a long list is split into pages.
 	 */
 	async normalizeComponents(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
 	): Promise<SuspendComponent[]> {
-		return await this.paginateSelect(this.foldButtonsIntoSelect(components, context));
+		return await this.paginateSelect(this.foldButtonsIntoSelect(components, context), context);
 	}
 
 	private foldButtonsIntoSelect(
@@ -466,7 +464,10 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	 * shows 9 options and a "More…" row. The full list is kept in the option
 	 * store, and {@link claimAction} sends the next page when the user taps it.
 	 */
-	private async paginateSelect(components: SuspendComponent[]): Promise<SuspendComponent[]> {
+	private async paginateSelect(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): Promise<SuspendComponent[]> {
 		const select = components.find((c) => c.type === 'select' || c.type === 'radio_select');
 		if (!select?.options || select.options.length <= WHATSAPP_MAX_LIST_ROWS) return components;
 
@@ -478,7 +479,17 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			options = options.slice(0, WHATSAPP_MAX_PAGED_OPTIONS);
 		}
 
-		const key = await this.optionPages.save({ options, label: select.label });
+		const prompt = components
+			.filter((c) => c.type === 'section')
+			.map((c) => componentTextToString(c.text))
+			.filter(Boolean)
+			.join('\n\n');
+		const key = await this.optionPages.save({
+			options,
+			label: select.label,
+			title: context.title,
+			prompt: prompt || undefined,
+		});
 		if (!key) {
 			// Without the stored list, a "More…" row cannot open the next page.
 			// Show the first 10 options and no "More…" row.
@@ -531,8 +542,12 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		const first = page.start + 1;
 		const last = page.start + page.options.length;
 		const sdk = await loadChatSdk();
+		// Repeat the original question, so the list still makes sense when the
+		// first message has scrolled out of view.
 		const card = sdk.Card({
+			title: stored.title,
 			children: [
+				...(stored.prompt ? [sdk.Section([sdk.CardText(stored.prompt)] as never)] : []),
 				sdk.Section([
 					sdk.CardText(`Options ${first}–${last} of ${stored.options.length}`),
 				] as never),

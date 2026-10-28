@@ -1010,6 +1010,38 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('repeats the title and prompt of the question on the next page', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-page-5',
+						toolCallId: 'tool-page-5',
+						toolName: 'select',
+						suspendPayload: {
+							type: 'form',
+							toolName: 'pick_option',
+							title: 'Pick a city',
+							components: [{ type: 'section', text: 'Where should we ship?' }, ...buttons(14)],
+						},
+					},
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				await tapListRow(ctx, fixtures, listRows(ctx.lastPost()?.body)[9]);
+
+				const body = JSON.stringify(ctx.lastPost()?.body);
+				expect(body).toContain('Pick a city');
+				expect(body).toContain('Where should we ship?');
+				expect(body).toContain('Options 10–14 of 14');
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('resumes the run with the option picked on a later page', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures, {

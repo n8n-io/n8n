@@ -28,6 +28,10 @@ export interface StoredOptionPages {
 	options: PagedOption[];
 	/** The label of the list button. */
 	label?: string;
+	/** The card title of the original question, shown again on later pages. */
+	title?: string;
+	/** The text of the original question, shown again on later pages. */
+	prompt?: string;
 }
 
 export interface OptionPage {
