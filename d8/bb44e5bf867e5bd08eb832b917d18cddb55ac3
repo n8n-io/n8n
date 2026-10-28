@@ -4,6 +4,7 @@ packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
   s_195c75d7f98b4a::t_f5d690e47c6442 831-834,836-840
 packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
   s_195c75d7f98b4a::t_eace5bd6ad6060 523-534,538-539,542-543,545-546,580,584-585,587,590,593,596-598,601-618,620-622,624-630,633-635,637-638,640,642-662,664-679
+  s_ae8c4d27e8031a::t_481c42b7019b0d 550-552,555,558-559,563,566-570,573,575-576,631-632,636,639,641,663
 packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
   s_195c75d7f98b4a::t_e052d0119c435d 64-107
 packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
@@ -22,6 +23,14 @@ packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
         "tool": "claude",
         "id": "c3885c74-afc1-4635-9654-ff109015348d",
         "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_ae8c4d27e8031a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8a19bf9-672c-4086-93a2-90c89a896afc",
+        "model": "claude-opus-5-5"
       },
       "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
     }
