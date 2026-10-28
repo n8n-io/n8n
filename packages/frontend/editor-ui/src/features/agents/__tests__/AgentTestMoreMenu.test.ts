@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import AgentPreviewMoreMenu from '../components/AgentPreviewMoreMenu.vue';
+import AgentTestMoreMenu from '../components/AgentTestMoreMenu.vue';
 import type { AgentExecution, ThreadDetail } from '../composables/useAgentThreadsApi';
 
 enableAutoUnmount(afterEach);
@@ -157,7 +157,7 @@ const thread = {
 const slackExecution = mock<AgentExecution>({ source: 'slack', duration: 0 });
 const defaultDetail: ThreadDetail = { thread, executions: [slackExecution] };
 
-type MenuProps = InstanceType<typeof AgentPreviewMoreMenu>['$props'];
+type MenuProps = InstanceType<typeof AgentTestMoreMenu>['$props'];
 
 const defaultProps = {
 	projectId: 'project-1',
@@ -175,7 +175,7 @@ const defaultProps = {
 } satisfies MenuProps;
 
 function mountMenu(overrides: Partial<MenuProps> = {}) {
-	return mount(AgentPreviewMoreMenu, {
+	return mount(AgentTestMoreMenu, {
 		props: { ...defaultProps, ...overrides },
 		global: { stubs: { ...stubs, DropdownMenu: stubs.N8nDropdownMenu, Switch: stubs.N8nSwitch } },
 	});
@@ -198,7 +198,7 @@ beforeEach(function resetMocks() {
 	clipboardCopy.mockReset().mockResolvedValue(undefined);
 });
 
-describe('AgentPreviewMoreMenu', function describeMenu() {
+describe('AgentTestMoreMenu', function describeMenu() {
 	it('renders a leading icon for each default menu item', function rendersIcons() {
 		const wrapper = mountMenu();
 
@@ -327,6 +327,13 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		} finally {
 			open.mockRestore();
 		}
+	});
+
+	it('hides the full-width option when the host controls the width', () => {
+		const wrapper = mountMenu({ hideLayoutToggle: true });
+		expect(getMenuItem(wrapper, 'toggle-full-width')).toBeUndefined();
+		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
+		expect(wrapper.emitted('toggle-full-width')).toBeUndefined();
 	});
 
 	it('emits an event to toggle full width', function togglesFullWidth() {
@@ -753,10 +760,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 	});
 });
 
-describe('AgentPreviewMoreMenu with design system components', function describeRealMenu() {
+describe('AgentTestMoreMenu with design system components', function describeRealMenu() {
 	it('supports keyboard toggling without closing and blocks disabled deletion', async function usesRealControls() {
 		const user = userEvent.setup();
-		const view = render(AgentPreviewMoreMenu, {
+		const view = render(AgentTestMoreMenu, {
 			props: { ...defaultProps, isDeletingSession: true },
 		});
 		expect(track).not.toHaveBeenCalled();

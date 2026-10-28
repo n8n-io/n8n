@@ -1,9 +1,6 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
-import {
-	resolveAgentPreviewSession,
-	saveAgentPreviewSession,
-} from '../agent-preview-session-binding';
+import { resolveAgentPreviewSession, saveAgentPreviewSession } from '../agent-test-session-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
 function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
