@@ -360,7 +360,6 @@ function onApprovalSelect(key: string) {
 		/>
 		<GatewayResourceDecision
 			v-else-if="variant === 'resource-decision' && input.resourceDecision"
-			data-test-id="assistant-agent-resource-decision"
 			:resource="input.resourceDecision.resource"
 			:description="input.resourceDecision.description"
 			:options="input.resourceDecision.options"
