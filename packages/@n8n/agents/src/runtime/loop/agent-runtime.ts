@@ -72,7 +72,7 @@ import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap } from '../tools/tool-adapter';
+import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -90,7 +90,8 @@ const MAX_LOOP_ITERATIONS = 100;
 
 function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
 	return batch.results.some(
-		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+		({ toolName, input, toolEntry }) =>
+			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
 	);
 }
 
@@ -113,7 +114,7 @@ function resumedTurnEnds(
 			(c) =>
 				c.type === 'tool-call' &&
 				c.state === 'resolved' &&
-				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
 }
@@ -545,8 +546,11 @@ export class AgentRuntime {
 		// A skill dependency loads a deferred tool without a `load_tool` record, and
 		// skills restore only when the loop starts. Accept any registered deferred tool.
 		const tool =
-			buildToolMap(this.context.getCurrentTools(state.persistence)).get(toolCall.toolName) ??
-			this.deferredToolManager?.getTool(toolCall.toolName);
+			resolveToolForCall(
+				buildToolMap(this.context.getCurrentTools(state.persistence)),
+				toolCall.toolName,
+				toolCall.input,
+			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;

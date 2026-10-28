@@ -243,6 +243,7 @@ describe('Agent thread repository queries for system agents', () => {
 						agentId,
 						projectId,
 						threadId,
+						createdByThreadId: threadId,
 						binaryDataId: 'filesystem-v2:file',
 						fileName: 'file.txt',
 						mimeType: 'text/plain',

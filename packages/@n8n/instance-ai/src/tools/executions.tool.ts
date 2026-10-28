@@ -510,7 +510,7 @@ export function createExecutionsTool(
 				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 					'get node output, get resolved node parameters for a past run, and stop. ' +
 					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					"list_workflows, then run it here with the user's values as inputData — " +
 					'do not treat such a request as a request to build something. ' +
 					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
 					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
