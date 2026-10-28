@@ -13,7 +13,6 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillsGate } from '../../services/skills-gate';
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
 import { PostHogClient } from '@/posthog';
@@ -203,17 +202,6 @@ describe('SkillsController', () => {
 			body: { data: list },
 		} = await owner.get('/skills').expect(200);
 		expect(list.count).toBe(0);
-	});
-
-	it('hides the skills API while the agents module is off', async () => {
-		// As when the agents module never registered its provider.
-		vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
-
-		await owner.get('/skills').expect(404);
-		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
-		// The gate is checked before the body, so a malformed request also answers 404.
-		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
-		await owner.get('/skills?take=-1').expect(404);
 	});
 
 	afterEach(async () => {

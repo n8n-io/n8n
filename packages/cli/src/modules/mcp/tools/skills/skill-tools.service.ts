@@ -9,15 +9,9 @@ import {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
 import { z } from 'zod';
 
-import {
-	AssistantSkillsFlagGate,
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-	SkillService,
-} from '@/modules/skills';
+import { AssistantSkillsFlagGate, SkillService, toSkillToolRefusal } from '@/modules/skills';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -191,12 +185,9 @@ export class McpSkillToolsService {
 						);
 						return details(detail, assistantSkillsEnabled);
 					} catch (error) {
-						if (!(error instanceof SkillNameTakenError)) throw error;
-						return {
-							ok: false,
-							code: 'skill_name_taken',
-							message: skillNameTakenToolMessage(error.skillName),
-						};
+						const refusal = await toSkillToolRefusal(error);
+						if (!refusal) throw error;
+						return { ok: false, ...refusal };
 					}
 				}),
 		});
@@ -226,22 +217,16 @@ export class McpSkillToolsService {
 						);
 						return saved;
 					} catch (error) {
-						if (error instanceof SkillNameTakenError) {
-							return {
-								ok: false,
-								code: 'skill_name_taken',
-								skillId,
-								message: skillNameTakenToolMessage(error.skillName),
-							};
-						}
-						if (!(error instanceof ConflictError)) throw error;
-						const { skillHash } = await this.skillService.get(user, skillId);
-						if (skillHash === update.baseSkillHash) throw error;
+						const refusal = await toSkillToolRefusal(error, {
+							baseSkillHash: update.baseSkillHash,
+							currentHash: async () => (await this.skillService.get(user, skillId)).skillHash,
+						});
+						if (!refusal) throw error;
+						if (refusal.code === 'skill_name_taken') return { ok: false, skillId, ...refusal };
 						return {
 							ok: false,
-							code: 'stale_skill',
 							skillId,
-							skillHash,
+							...refusal,
 							message: 'The skill changed since you read it. Call get_skill before retrying.',
 						};
 					}
