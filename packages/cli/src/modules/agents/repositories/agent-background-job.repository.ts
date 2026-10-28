@@ -66,9 +66,12 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			if (!(await this.threadRepository.lockById(job.parentThreadId, ctx))) {
 				throw new UserError('Session not found');
 			}
+
 			if ((await this.countActiveSubAgentsByParentThread(job.parentThreadId, ctx)) >= limit)
 				return false;
+
 			await manager.insert(AgentBackgroundJob, { ...job, status: 'running' });
+
 			return true;
 		});
 	}
@@ -178,8 +181,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')
 			.andWhere('notifiedAt IS NULL');
+
 		if (!includePauseReports) query.andWhere('pauseRequestId IS NULL');
+
 		const result = await query.execute();
+
 		return result.affected ?? 0;
 	}
 
@@ -201,6 +207,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.andWhere('checkpoint.state = :state')
 			.andWhere('checkpoint.expired = :expired')
 			.getQuery();
+
 		return `EXISTS ${checkpoint}`;
 	}
 
@@ -274,10 +281,13 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.andWhere('checkpoint.state IS NOT NULL')
 			.andWhere('checkpoint.updatedAt > :updatedAfter')
 			.getQuery();
+
 		const query = this.createQueryBuilder('job')
 			.where({ kind: 'subagent', status: 'paused' })
 			.andWhere(`NOT EXISTS ${checkpoint}`, { expired: false, updatedAfter });
+
 		if (parentThreadId) query.andWhere('job.parentThreadId = :parentThreadId', { parentThreadId });
+
 		return await query.getMany();
 	}
 
@@ -300,6 +310,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.where({ id, status: 'running' })
 			.andWhere(this.matchCheckpoint(), { runId, state, expired: false })
 			.execute();
+
 		return result.affected === 1;
 	}
 
@@ -308,6 +319,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			{ id, status: 'suspended', pauseRequestId: IsNull() },
 			{ status: 'running', timeoutAt, notifiedAt: null },
 		);
+
 		return result.affected === 1;
 	}
 
