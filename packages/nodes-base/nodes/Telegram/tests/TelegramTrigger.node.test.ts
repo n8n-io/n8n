@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { HITL_CALLBACK_PREFIX, HITL_CALLBACK_PREFIX_V2, InstanceSettings } from 'n8n-core';
+import { HITL_CALLBACK_PREFIX, HITL_CALLBACK_PREFIX_V2 } from 'n8n-core';
 import type { IHookFunctions, IWebhookFunctions, INode, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,8 +10,6 @@ import { apiRequest } from '../GenericFunctions';
 import type * as _importType0 from '../GenericFunctions';
 import { deriveHitlSecretToken } from '../hitl/tokens';
 import { TelegramTrigger } from '../TelegramTrigger.node';
-
-Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
 
 vi.mock('../GenericFunctions', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../GenericFunctions');

@@ -1,5 +1,3 @@
-import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions, INode, Logger } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -9,9 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import * as genericFunctions from '../../GenericFunctions';
 import { prepareChatApproval } from '../../hitl/setup';
 import { deriveHitlSecretToken } from '../../hitl/tokens';
-
-const TEST_HMAC_SECRET = 'test-hmac-secret';
-Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 const ACCESS_TOKEN = '123456:test-bot-token';
 const SIGNED_RESUME_URL =

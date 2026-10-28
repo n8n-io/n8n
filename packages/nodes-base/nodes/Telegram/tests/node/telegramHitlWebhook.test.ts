@@ -1,8 +1,6 @@
-import { Container } from '@n8n/di';
 import {
 	buildHitlCallbackReference,
 	HITL_CALLBACK_PREFIX_V2,
-	InstanceSettings,
 	markTelegramInteractionRequest,
 } from 'n8n-core';
 import type { IWebhookFunctions } from 'n8n-workflow';
@@ -12,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 import type * as _sendAndWaitUtils from '../../../../utils/sendAndWait/utils';
 
 const TEST_HMAC_SECRET = 'test-hmac-secret';
-Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 const ACCESS_TOKEN = '123456:test-bot-token';
 
