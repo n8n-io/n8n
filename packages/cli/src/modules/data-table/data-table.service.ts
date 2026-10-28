@@ -10,15 +10,17 @@ import type {
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
 	ProjectNotFoundError,
 	ProjectScopeService,
 	RoleService,
 } from '@n8n/backend-services';
+import { MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
@@ -66,6 +68,7 @@ export class DataTableService {
 		private readonly eventService: EventService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -97,6 +100,35 @@ export class DataTableService {
 		}
 
 		return dataTable;
+	}
+
+	/**
+	 * The flag pair mirrors `shouldReturnData` in `DataTableRowsRepository`: a dry run
+	 * returns rows whether or not `returnData` was asked for. Keyed on the data table
+	 * so the check resolves the same project the `dataTable:writeRow` guard resolved.
+	 */
+	async assertRowReadAccessIfReturningRows(
+		user: User,
+		dataTableId: string,
+		{ dryRun, returnData }: { dryRun?: boolean; returnData?: boolean },
+	): Promise<void> {
+		if (!dryRun && !returnData) return;
+
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['dataTable:readRow']);
+		if (projectIds === null) return;
+
+		if (!this.moduleRegistry.isActive('data-table')) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
+		const projectId = await this.dataTableRepository.findProjectIdForScope(dataTableId);
+		if (projectId === null) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
+		if (!projectIds.includes(projectId)) {
+			throw new ForbiddenError(MISSING_SCOPE_ERROR_MESSAGE);
+		}
 	}
 
 	async assertProjectExists(projectId: string): Promise<void> {
