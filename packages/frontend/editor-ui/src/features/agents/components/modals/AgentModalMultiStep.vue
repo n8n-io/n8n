@@ -18,6 +18,7 @@ const props = withDefaults(
 		showCancel?: boolean;
 		cancelLabel?: string;
 		headerDivider?: boolean;
+		headerDividerTone?: 'default' | 'warning';
 		bodyFlush?: boolean;
 		fixedSize?: boolean;
 		stableHeight?: boolean;
@@ -37,6 +38,7 @@ const props = withDefaults(
 		showCancel: true,
 		cancelLabel: undefined,
 		headerDivider: false,
+		headerDividerTone: 'default',
 		bodyFlush: false,
 		fixedSize: false,
 		stableHeight: false,
@@ -80,6 +82,7 @@ watch(
 		:show-cancel="showCancel"
 		:cancel-label="cancelLabel"
 		:header-divider="headerDivider"
+		:header-divider-tone="headerDividerTone"
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
 		:fixed-size="fixedSize"

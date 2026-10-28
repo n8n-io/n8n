@@ -33,6 +33,8 @@ const props = withDefaults(
 		cancelLabel?: string;
 		/** Draws a line under the header, for a body whose columns start at the top edge. */
 		headerDivider?: boolean;
+		/** Warning colors the divider over the body, to match a warning strip at the top of it. */
+		headerDividerTone?: 'default' | 'warning';
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
 		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
@@ -55,6 +57,7 @@ const props = withDefaults(
 		showCancel: true,
 		cancelLabel: undefined,
 		headerDivider: false,
+		headerDividerTone: 'default',
 		bodyScrollable: true,
 		bodyFlush: false,
 		stableHeight: false,
@@ -152,7 +155,9 @@ function onOpenAutoFocus(event: Event) {
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogHeader :class="[$style.header, props.headerDivider && $style.headerDivider]">
+		<N8nDialogHeader
+			:class="[$style.header, props.headerDivider && !props.fixedSize && $style.headerDivider]"
+		>
 			<div :class="$style.headerContent">
 				<N8nIconButton
 					v-if="props.showBack"
@@ -212,7 +217,15 @@ function onOpenAutoFocus(event: Event) {
 		</N8nDialogHeader>
 
 		<!-- A fixed dialog keeps the split layout, so the panel can slide in and out. -->
-		<div :class="[$style.split, ($slots.sidePanel || props.fixedSize) && $style.splitWithPanel]">
+		<!-- A fixed dialog draws the divider over each column, so the body and the panel can differ. -->
+		<div
+			:class="[
+				$style.split,
+				($slots.sidePanel || props.fixedSize) && $style.splitWithPanel,
+				props.headerDivider && props.fixedSize && $style.splitDivided,
+				props.headerDividerTone === 'warning' && $style.dividerWarning,
+			]"
+		>
 			<div :class="$style.main">
 				<N8nDialogBody
 					ref="bodyRoot"
@@ -297,6 +310,17 @@ function onOpenAutoFocus(event: Event) {
 
 .headerDivider {
 	border-bottom: var(--border);
+}
+
+.splitDivided {
+	> .main,
+	.sidePanel {
+		border-top: var(--border);
+	}
+
+	&.dividerWarning > .main {
+		border-top-color: var(--callout--border-color--warning);
+	}
 }
 
 .titleError {

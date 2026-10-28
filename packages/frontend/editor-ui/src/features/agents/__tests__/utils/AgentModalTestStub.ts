@@ -15,6 +15,7 @@ export const AgentModalTestStub = defineComponent({
 		bodyFlush: { type: Boolean, default: false },
 		stableHeight: { type: Boolean, default: false },
 		fixedSize: { type: Boolean, default: false },
+		headerDividerTone: { type: String, default: 'default' },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -32,6 +33,7 @@ export const AgentModalTestStub = defineComponent({
 			:data-disable-outside-pointer-events="disableOutsidePointerEvents"
 			:data-body-flush="bodyFlush"
 			:data-fixed-size="fixedSize"
+			:data-header-divider-tone="headerDividerTone"
 		>
 			<header>
 				<button

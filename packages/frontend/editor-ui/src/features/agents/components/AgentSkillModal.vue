@@ -781,6 +781,9 @@ const {
 	compareVersions,
 	compareLatestTwo,
 } = useSkillVersions(() => props.data.skillId);
+
+/** The warning strip of a pinned skill. Compare mode and an opened version have their own bars. */
+const showPinnedBar = computed(() => isPinned.value && !viewedVersion.value && !comparison.value);
 /** The Versions panel shows beside the editor once its list has loaded. Compare mode hides it. */
 const showVersionsPanel = computed(
 	() => isFormStep.value && versionsOpen.value && !!versions.value && !comparison.value,
@@ -1068,6 +1071,7 @@ function onRemove() {
 		:show-cancel="step !== 'select' && !viewedVersion"
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
 		:header-divider="isFormStep"
+		:header-divider-tone="showPinnedBar ? 'warning' : 'default'"
 		:body-flush="isFormStep"
 		:fixed-size="isFormStep"
 		:busy="isImporting || previewLoading || isSaving"
@@ -1289,7 +1293,7 @@ function onRemove() {
 				</N8nButton>
 			</div>
 			<div
-				v-else-if="isPinned && !viewedVersion && data.agentVersions"
+				v-else-if="showPinnedBar && data.agentVersions"
 				:class="$style.pinnedBar"
 				data-testid="agent-skill-pinned-bar"
 			>

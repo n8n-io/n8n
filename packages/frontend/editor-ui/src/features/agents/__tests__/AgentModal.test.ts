@@ -180,6 +180,24 @@ describe('AgentModal', () => {
 		sized.unmount();
 	});
 
+	it('draws the divider over each column of a fixed dialog, in warning color when asked', () => {
+		const wrapper = mountModal(
+			{ fixedSize: true, headerDivider: true, headerDividerTone: 'warning' },
+			{ default: '<p>Form</p>', sidePanel: '<p>Versions</p>' },
+		);
+		const split = wrapper.find('[class*="splitDivided"]');
+
+		expect(split.exists()).toBe(true);
+		expect(split.classes().some((name) => /dividerWarning/.test(name))).toBe(true);
+		expect(
+			wrapper
+				.get('header')
+				.classes()
+				.some((name) => /headerDivider/.test(name)),
+		).toBe(false);
+		wrapper.unmount();
+	});
+
 	it('names the cancel button Cancel by default', () => {
 		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
 

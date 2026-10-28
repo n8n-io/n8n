@@ -2215,6 +2215,8 @@ describe('Versions in the agent builder', () => {
 		expect(await findByTestId('agent-skill-pinned-bar')).toHaveTextContent(
 			'agents.builder.skills.versions.pinned Darwin 1',
 		);
+		// The line over the form takes the color of the warning strip.
+		expect(getByTestId('agent-skill-modal')).toHaveAttribute('data-header-divider-tone', 'warning');
 		// The fields stay in the form, disabled, and Save skill is disabled.
 		expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
 		expect(
