@@ -18,8 +18,8 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 	const versions = ref<SkillVersionSummary[] | null>(null);
 	/** An older version the user opened. Null shows the latest. */
 	const viewedVersion = ref<SkillVersionDetail | null>(null);
-	// A saved version never changes, so a fetched one is kept for the life of the editor.
-	const fetched = new Map<number, SkillVersionDetail>();
+	// A saved version never changes, so a fetched one is kept, keyed by skill and version.
+	const fetched = new Map<string, SkillVersionDetail>();
 
 	function reportLoadError(error: unknown) {
 		showError(error, i18n.baseText('agents.builder.skills.versions.loadError'));
@@ -38,11 +38,12 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 	async function fetchVersion(version: number): Promise<SkillVersionDetail | undefined> {
 		const id = toValue(skillId);
 		if (!id) return undefined;
-		const cached = fetched.get(version);
+		const key = `${id}:${version}`;
+		const cached = fetched.get(key);
 		if (cached) return cached;
 		try {
 			const detail = await getSkillVersion(rootStore.restApiContext, id, version);
-			fetched.set(version, detail);
+			fetched.set(key, detail);
 			return detail;
 		} catch (error) {
 			reportLoadError(error);
@@ -90,10 +91,14 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 	});
 
 	/** Compares two versions, in either order. */
+	let compareRequest = 0;
+
 	async function compareVersions(a: number, b: number) {
 		const [from, to] = a < b ? [a, b] : [b, a];
+		const request = ++compareRequest;
 		const [fromDetail, toDetail] = await Promise.all([fetchVersion(from), fetchVersion(to)]);
-		if (!fromDetail || !toDetail) return;
+		// A later pick of the version selectors wins over a slower earlier one.
+		if (!fromDetail || !toDetail || request !== compareRequest) return;
 		comparison.value = { from, to, fromSkill: fromDetail.skill, toSkill: toDetail.skill };
 	}
 
