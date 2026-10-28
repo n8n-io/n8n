@@ -447,7 +447,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	describe('finalizeExecution', () => {
-		describe('waiting sub-workflow cleanup', () => {
+		describe('waiting execution cleanup', () => {
 			const queueConfig = mock<ExecutionsConfig>({ mode: 'queue' });
 			const regularConfig = mock<ExecutionsConfig>({ mode: 'regular' });
 			const workerSettings = mock<InstanceSettings>({ isWorker: true });
@@ -473,58 +473,41 @@ describe('ActiveExecutions', () => {
 					eventService,
 					queueConfig,
 					workerSettings,
+					unsavedManualExecutionService,
 				);
 			});
 
-			test('releases a waiting sub-workflow on a queue worker and delivers its result', async () => {
-				const executionId = await activeExecutions.add(integratedExecutionData);
-				const result = activeExecutions.getPostExecutePromise(executionId);
-				activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
-				activeExecutions.setResponseMode(executionId, 'lastNode');
-				activeExecutions.setStatus(executionId, 'waiting');
+			test.each(['integrated', 'webhook'] as const)(
+				'removes a waiting %s execution on a worker and still delivers its result',
+				async (mode) => {
+					const executionId = await activeExecutions.add({ ...executionData, executionMode: mode });
+					const result = activeExecutions.getPostExecutePromise(executionId);
+					activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+					activeExecutions.setResponseMode(executionId, 'lastNode');
+					activeExecutions.setStatus(executionId, 'waiting');
 
-				activeExecutions.finalizeExecution(executionId, waitingRunData);
+					activeExecutions.finalizeExecution(executionId, { ...waitingRunData, mode });
 
-				await expect(result).resolves.toBe(waitingRunData);
-				await new Promise(setImmediate);
-				expect(activeExecutions.has(executionId)).toBe(false);
-				expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
-				expect(activeExecutions.getResponseMode(executionId)).toBeUndefined();
-				expect(concurrencyControl.release).toHaveBeenCalledExactlyOnceWith({ mode: 'integrated' });
-			});
+					await expect(result).resolves.toMatchObject({ status: 'waiting', mode });
+					await new Promise(setImmediate);
+					expect(activeExecutions.has(executionId)).toBe(false);
+					expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+					expect(activeExecutions.getResponseMode(executionId)).toBeUndefined();
+					expect(concurrencyControl.release).toHaveBeenCalledExactlyOnceWith({ mode });
+				},
+			);
 
 			test.each([
+				{ name: 'a main in queue mode', config: queueConfig, withResponse: false },
 				{
-					name: 'a queue main instance',
+					name: 'a main in queue mode with a response promise',
 					config: queueConfig,
-					settings: instanceSettings,
-					mode: 'integrated',
-					withResponse: false,
-				},
-				{
-					name: 'a regular instance',
-					config: regularConfig,
-					settings: instanceSettings,
-					mode: 'integrated',
-					withResponse: false,
-				},
-				{
-					name: 'a queue worker with a response promise',
-					config: queueConfig,
-					settings: workerSettings,
-					mode: 'integrated',
 					withResponse: true,
 				},
-				{
-					name: 'a non-integrated execution on a queue worker',
-					config: queueConfig,
-					settings: workerSettings,
-					mode: 'manual',
-					withResponse: false,
-				},
+				{ name: 'a main in regular mode', config: regularConfig, withResponse: false },
 			] as const)(
-				'preserves waiting context for $name',
-				async ({ config, settings, mode, withResponse }) => {
+				'keeps a waiting execution on $name so a resume can reuse it',
+				async ({ config, withResponse }) => {
 					activeExecutions = new ActiveExecutions(
 						logger,
 						executionRepository,
@@ -532,17 +515,17 @@ describe('ActiveExecutions', () => {
 						concurrencyControl,
 						eventService,
 						config,
-						settings,
+						instanceSettings,
+						unsavedManualExecutionService,
 					);
-					const data = { ...integratedExecutionData, executionMode: mode };
-					const executionId = await activeExecutions.add(data);
+					const executionId = await activeExecutions.add(integratedExecutionData);
 					const waitingExecution = activeExecutions.getExecutionOrFail(executionId);
 					activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 					activeExecutions.setResponseMode(executionId, 'lastNode');
 					if (withResponse) activeExecutions.attachResponsePromise(executionId, responsePromise);
 					activeExecutions.setStatus(executionId, 'waiting');
 
-					activeExecutions.finalizeExecution(executionId, { ...waitingRunData, mode });
+					activeExecutions.finalizeExecution(executionId, waitingRunData);
 					await new Promise(setImmediate);
 
 					expect(activeExecutions.getExecutionOrFail(executionId)).toBe(waitingExecution);
@@ -550,7 +533,10 @@ describe('ActiveExecutions', () => {
 					expect(waitingExecution.workflowExecution).toBeUndefined();
 					expect(activeExecutions.getResponseMode(executionId)).toBe('lastNode');
 
-					await activeExecutions.add(data, { executionId, expectedStatus: 'waiting' });
+					await activeExecutions.add(integratedExecutionData, {
+						executionId,
+						expectedStatus: 'waiting',
+					});
 					const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
 					expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
 					expect(resumedExecution.responsePromise).toBe(withResponse ? responsePromise : undefined);
