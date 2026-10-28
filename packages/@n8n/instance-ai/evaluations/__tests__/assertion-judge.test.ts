@@ -9,7 +9,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 }));
 
 import { createEvalAgent } from '../../src/utils/eval-agents';
-import { judgeExpectations } from '../build-expectations/assertion-judge';
+import { expectationResultSchema, judgeExpectations } from '../build-expectations/assertion-judge';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 
@@ -34,6 +34,15 @@ describe('judgeExpectations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+	});
+
+	it('asks for the reason before the verdict', () => {
+		// Structured output writes keys in schema order, so `pass` must come after `reason`.
+		expect(Object.keys(expectationResultSchema.shape.results.element.shape)).toEqual([
+			'index',
+			'reason',
+			'pass',
+		]);
 	});
 
 	it('returns empty and never calls the agent when there are no assertions', async () => {

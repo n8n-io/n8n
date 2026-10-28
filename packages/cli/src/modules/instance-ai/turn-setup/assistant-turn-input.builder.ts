@@ -150,7 +150,19 @@ export interface AssistantTurnInputParams {
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
 	/** Receives the instance-context summary as soon as the block is built. */
 	onInstanceContextInjection?: (injection: InstanceContextInjection) => void;
+	/**
+	 * The agent runtime titles the thread after the turn. The opening turn then
+	 * keeps only the final titles of a hand-off or an onboarding thread, and
+	 * leaves an ordinary thread without a title for the runtime.
+	 */
+	titledByRuntime?: boolean;
 }
+
+/**
+ * Thread metadata key that the opening turn sets. A thread can stay untitled
+ * after its opening turn while the agents runtime titles it in the background.
+ */
+export const OPENED_METADATA_KEY = 'assistantOpened';
 
 export interface AssistantTurnInput {
 	/** The model input text: handoff and setup blocks, thread context, then the user message. */
@@ -268,6 +280,7 @@ export class AssistantTurnInputBuilder {
 			resumeReason,
 			threadArtifacts,
 			onInstanceContextInjection,
+			titledByRuntime = false,
 		} = params;
 		let turnHadFileAttachments = false;
 
@@ -323,39 +336,47 @@ export class AssistantTurnInputBuilder {
 		const setupStateBlock =
 			resumeReason === undefined ? await this.buildWorkflowSetupStateBlock(context) : '';
 
-		// Set heuristic title before agent starts — thread always has a title.
-		// For an editor hand-off the user text is empty (the workflow is the
+		// Set a heuristic title before the agent starts, unless the agents runtime
+		// titles the thread after the turn. For an editor hand-off the user text is empty (the workflow is the
 		// message), so title it with the workflow name and mark it refined so
 		// the LLM title pass doesn't summarize the internal context block.
 		const thread = await memory.getThread(threadId);
-		// The heuristic title lands on the opening turn, so "no title yet" marks it.
 		// An onboarding thread is titled at creation and opens with a seeded greeting. Its first
 		// user turn answers it, and is the turn that marks the title final below.
 		const unopenedOnboarding =
 			thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
-		const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
+		// The opening turn sets the opened flag. Threads from before the flag have no flag, and
+		// their opening turn left a title, so "no title yet" still marks the opening turn for them.
+		const isOpeningTurn = Boolean(
+			thread && !thread.metadata?.[OPENED_METADATA_KEY] && (!thread.title || unopenedOnboarding),
+		);
 		const onboardingSkill = unopenedOnboarding
 			? (await this.skillsService.loadSkill(SKILLS.suggestAutomations, skillScope)).instructions
 			: undefined;
 
-		if (isOpeningTurn) {
-			const handoffTitle = unopenedOnboarding
-				? ONBOARDING_OPENING.title
-				: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
+		const handoffTitle = unopenedOnboarding
+			? ONBOARDING_OPENING.title
+			: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
 
+		if (isOpeningTurn) {
 			await patchThread(memory, {
 				threadId,
-				update: ({ metadata }) =>
-					handoffTitle
-						? {
-								title: truncateToTitle(handoffTitle),
-								metadata: { ...metadata, titleRefined: true },
-							}
-						: // Attachment-only openers keep a title too, so the opening-turn signal holds.
-							{
-								title:
-									truncateToTitle(message) || truncateToTitle(fileAttachments[0]?.fileName ?? ''),
-							},
+				update: ({ metadata }) => {
+					const opened = { ...metadata, [OPENED_METADATA_KEY]: true };
+					if (handoffTitle) {
+						return {
+							title: truncateToTitle(handoffTitle),
+							metadata: { ...opened, titleRefined: true },
+						};
+					}
+					// The agents runtime titles an ordinary thread after the turn.
+					if (titledByRuntime) return { metadata: opened };
+					// Attachment-only openers keep a title too.
+					return {
+						title: truncateToTitle(message) || truncateToTitle(fileAttachments[0]?.fileName ?? ''),
+						metadata: opened,
+					};
+				},
 			});
 		}
 

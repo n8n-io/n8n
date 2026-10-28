@@ -277,6 +277,7 @@ function onOpenAutoFocus(event: Event) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
 	min-width: 0;
 }
 
@@ -423,7 +424,7 @@ function onOpenAutoFocus(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		button {
+		button:not([role='checkbox']) {
 			flex: 1;
 		}
 	}

@@ -6,6 +6,7 @@ import type {
 	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalFailedExecutionEnvelope,
 	InstanceAiEvalLlmUsage,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
@@ -326,6 +327,17 @@ export interface ExecutionScenarioResult {
  * execution history is unreachable as a premise: the harness only ever executes a
  * workflow *after* a build.
  */
+/**
+ * A failed run recorded on another instance (`/eval/export-execution`), restored as-is
+ * BEFORE the graded turn. Nothing runs, so every eval sees the same failure, unlike a
+ * `SeedPriorRun`, which the mock layer generates again each time.
+ */
+export interface SeedRecordedRun {
+	/** Seeded workflow the run belongs to, by the `id` the seed declares. */
+	workflow: string;
+	envelope: InstanceAiEvalFailedExecutionEnvelope;
+}
+
 export interface SeedPriorRun {
 	/** Seeded workflow to run, by the `id` the seed declares — the same key
 	 *  `conversation[0].attach.workflow` uses. */

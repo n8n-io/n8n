@@ -52,6 +52,10 @@ describe('identifyRequirements', () => {
 		const scoped = identifyRequirements(requirements, [prepared('W1')]);
 
 		expect(scoped).toEqual([requirement('credA', [{ kind: 'workflow', id: 'W1' }])]);
+		expect(identifyRequirements(requirements, [], [{ sourceAgentId: 'W1' }])).toEqual([
+			requirement('credA', [{ kind: 'agent', id: 'W1' }]),
+			requirement('credB', [{ kind: 'agent', id: 'W1' }]),
+		]);
 	});
 });
 

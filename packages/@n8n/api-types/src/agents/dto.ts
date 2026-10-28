@@ -26,6 +26,10 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
+import {
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
+} from '../schemas/workflow-version.schema';
 
 export class AgentsSettingsDto extends Z.class({
 	enabled: z.boolean(),
@@ -486,7 +490,15 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	deleteExternalResource: z.boolean().optional(),
 }) {}
 
+const agentVersionMetadataShape = {
+	name: workflowVersionNameSchema.unwrap().trim().nullable().optional(),
+	description: workflowVersionDescriptionSchema.nullable(),
+};
+
+export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
+
 export class PublishAgentDto extends Z.class({
+	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
 }) {}
 

@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Create a promotion environment
 description: Creates an environment for one direction on an existing provider. The settings must match the direction. A GitLab remote URL must belong to the saved provider. The environment stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git environments keep the full remote URL. The instance can have one environment for each direction.
-x-required-scope: gitConnection:create
+x-required-scope: promotions:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:

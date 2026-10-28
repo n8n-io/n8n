@@ -12,7 +12,7 @@ import {
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
-	type SkillUsage,
+	type SkillUsedBy,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -38,7 +38,7 @@ import type {
 	ToolCategoryKey,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
-import { getHubSkill, listAttachableSkills } from '../composables/useAgentApi';
+import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import {
@@ -78,7 +78,7 @@ export type AgentSkillModalData = {
 	 * the modal is still open — skill names must be unique per agent.
 	 */
 	existingSkillNames?: string[];
-	hubSkillsEnabled?: boolean;
+	skillRefsEnabled?: boolean;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	/** The agent's project as the user knows it. Names the picker tab and the "available to" option. */
 	projectLabel?: string;
@@ -100,7 +100,7 @@ export type AgentSkillModalData = {
 	/** Locks the scope field and explains why in a tooltip. */
 	scopeLockedReason?: string;
 	/** Settings only: the agents that use the skill, to warn about a scope that drops them. */
-	usedBy?: SkillUsage;
+	usedBy?: SkillUsedBy;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
 	/**
@@ -165,7 +165,7 @@ const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 // An upload lands on the edit step like a saved skill does, so the step alone cannot tell.
 const createMethod = ref<SkillCreateMethod>('manual');
-const hasPicker = !props.data.skillId && !!props.data.hubSkillsEnabled && !!props.data.onAttach;
+const hasPicker = !props.data.skillId && !!props.data.skillRefsEnabled && !!props.data.onAttach;
 const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
 );
@@ -311,7 +311,7 @@ const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
 	return skillAccess.value.scope === 'instance' ? 'instance' : 'project';
 });
 const showAvailabilitySelect = computed(() => {
-	if (!props.data.hubSkillsEnabled || step.value === 'preview') return false;
+	if (!props.data.skillRefsEnabled || step.value === 'preview') return false;
 	if (!isEditing.value) return true;
 	return !!savedTarget.value && !cannotEdit.value;
 });
@@ -341,7 +341,7 @@ const availabilityOptions = computed(() => [
 ]);
 /** Where a changed scope or "available to" field moves the skill, with its label and users. */
 const pendingMove = computed<
-	{ target: SkillMoveTarget; destination: string; usage: SkillUsage } | undefined
+	{ target: SkillMoveTarget; destination: string; usage: SkillUsedBy } | undefined
 >(() => {
 	if (showScope.value) {
 		if (!canChangeScope.value || scope.value === props.data.initialScope) return undefined;
@@ -395,7 +395,7 @@ const accessWarning = computed(() => {
 	return parts.join(' ');
 });
 const removeLabel = computed(() =>
-	props.data.hubSkillsEnabled
+	props.data.skillRefsEnabled
 		? i18n.baseText('agents.builder.skills.detach')
 		: i18n.baseText('agents.builder.skills.remove'),
 );
@@ -549,7 +549,7 @@ function onPickerCreate(category: ToolCategoryKey) {
 async function loadSkillAccess(skillId: string) {
 	skillAccessLoading.value = true;
 	try {
-		skillAccess.value = await getHubSkill(rootStore.restApiContext, skillId);
+		skillAccess.value = await getSkillDetail(rootStore.restApiContext, skillId);
 		availableTo.value = savedTarget.value ?? 'project';
 	} catch (error) {
 		skillAccess.value = null;
@@ -569,7 +569,7 @@ async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
 	previewLoading.value = true;
 	try {
-		previewSkill.value = await getHubSkill(rootStore.restApiContext, item.skillId);
+		previewSkill.value = await getSkillDetail(rootStore.restApiContext, item.skillId);
 		previewPath.value = SKILL_FILE;
 		step.value = 'preview';
 	} catch (error) {
@@ -605,7 +605,7 @@ function onPreviewAdd() {
 
 onMounted(() => {
 	if (hasPicker) void loadLibrarySkills();
-	if (props.data.skillId && props.data.hubSkillsEnabled) void loadSkillAccess(props.data.skillId);
+	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });
 
 function onSkillUploaded(importedSkill: AgentSkill) {
@@ -1004,7 +1004,7 @@ function onRemove() {
 		<template v-if="showRemove" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
 				<template #icon
-					><N8nIcon :icon="data.hubSkillsEnabled ? 'unlink' : 'trash-2'" :size="16"
+					><N8nIcon :icon="data.skillRefsEnabled ? 'unlink' : 'trash-2'" :size="16"
 				/></template>
 				{{ removeLabel }}
 			</N8nButton>

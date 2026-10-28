@@ -32,6 +32,7 @@ describe('nodeRemovalMigrations', () => {
 			'read-binary-file-removed-v3',
 			'read-binary-files-removed-v3',
 			'http-request-tool-removed-v3',
+			'interval-removed-v3',
 			'openai-removed-v3',
 			'openai-assistant-removed-v3',
 			'openai-model-removed-v3',

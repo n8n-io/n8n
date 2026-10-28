@@ -7,7 +7,7 @@ import { setActivePinia } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { createAgentSkill, getHubSkill, getNewSkillName } from '../composables/useAgentApi';
+import { createAgentSkill, getSkillDetail, getNewSkillName } from '../composables/useAgentApi';
 import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import type {
@@ -36,7 +36,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
-	getHubSkill: vi.fn(),
+	getSkillDetail: vi.fn(),
 	getNewSkillName: vi.fn(),
 }));
 
@@ -173,7 +173,7 @@ type SkillModalData = {
 	skillId?: string;
 	skill?: AgentSkill;
 	existingSkillNames?: string[];
-	hubSkillsEnabled?: boolean;
+	skillRefsEnabled?: boolean;
 	outdated?: boolean;
 	onUseLatestVersion?: (skillId: string) => void;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
@@ -622,7 +622,7 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 	});
 });
 
-describe('useAgentCapabilitiesActions — skills hub', () => {
+describe('useAgentCapabilitiesActions — skill refs', () => {
 	const supportTone: AgentSkill = {
 		name: 'Support tone',
 		description: 'Use for support replies',
@@ -711,7 +711,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		hasScopeSpy.mockReturnValue(true);
 		const { modalData } = setupHub();
 
-		expect(modalData.hubSkillsEnabled).toBe(true);
+		expect(modalData.skillRefsEnabled).toBe(true);
 		expect(modalData.getAttachedSkills?.()).toEqual([{ id: 'tone', name: supportTone.name }]);
 		expect(modalData.canCreateInstanceSkills).toBe(true);
 		expect(hasScopeSpy).toHaveBeenCalledWith('skill:create');
@@ -761,14 +761,14 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.create.error');
 	});
 
-	it('attaches a hub skill as a ref through the config save, without a copy', async () => {
-		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+	it('attaches a skill as a ref through the config save, without a copy', async () => {
+		vi.mocked(getSkillDetail).mockResolvedValue(makeDetail('sql', sqlHelper));
 		const { modalData, scheduleConfigUpdate, agent } = setupHub();
 
 		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
 		await flushPromises();
 
-		expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
+		expect(getSkillDetail).toHaveBeenCalledWith(expect.anything(), 'sql');
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
 			skills: [
 				{ type: 'skill', id: 'tone' },
@@ -781,7 +781,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	});
 
 	it('undoes an attach when the config save fails', async () => {
-		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		vi.mocked(getSkillDetail).mockResolvedValue(makeDetail('sql', sqlHelper));
 		const { modalData, scheduleConfigUpdate, agent } = setupHub({
 			flushConfigSave: async () => await Promise.reject(new Error('refused')),
 		});
@@ -798,7 +798,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	});
 
 	it('keeps an attach when the config save succeeds', async () => {
-		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		vi.mocked(getSkillDetail).mockResolvedValue(makeDetail('sql', sqlHelper));
 		const { modalData, scheduleConfigUpdate, agent } = setupHub({
 			flushConfigSave: async () => await Promise.resolve(undefined),
 		});
@@ -811,7 +811,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	});
 
 	it('refuses to attach a skill whose name is hard to tell apart from an attached one', async () => {
-		vi.mocked(getHubSkill).mockResolvedValue(
+		vi.mocked(getSkillDetail).mockResolvedValue(
 			makeDetail('tone-2', { ...supportTone, name: 'support_tone' }),
 		);
 		const { modalData, scheduleConfigUpdate } = setupHub();
@@ -826,7 +826,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	});
 
 	it('reports an attach failure and leaves the config alone', async () => {
-		vi.mocked(getHubSkill).mockRejectedValue(new Error('Not found'));
+		vi.mocked(getSkillDetail).mockRejectedValue(new Error('Not found'));
 		const { modalData, scheduleConfigUpdate } = setupHub();
 
 		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
@@ -892,7 +892,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 	it('unpins the skill and saves before it opens the latest version in the editor', async () => {
 		const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
-		vi.mocked(getHubSkill).mockResolvedValue({
+		vi.mocked(getSkillDetail).mockResolvedValue({
 			...makeDetail('tone', latest),
 			skillHash: 'hash-latest',
 		});
@@ -966,10 +966,10 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
 		expect(modalData.skillId).toBe('tone');
-		expect(modalData.hubSkillsEnabled).toBe(true);
+		expect(modalData.skillRefsEnabled).toBe(true);
 	});
 
-	it('never enables the hub for a host that keeps its own skill bodies', () => {
+	it('never enables skill refs for a host that keeps its own skill bodies', () => {
 		const localConfig = ref<AgentJsonConfig | null>(makeConfig());
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		const uiStore = useUIStore();
@@ -987,6 +987,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		actions.onOpenAddSkillModal();
 
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		expect(modalData.hubSkillsEnabled).toBe(false);
+		expect(modalData.skillRefsEnabled).toBe(false);
 	});
 });

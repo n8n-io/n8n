@@ -331,6 +331,49 @@ describe('AgentIntegrationManagementService', () => {
 			// Nothing was running, so there is nothing to put back.
 			expect(chatService.connect).not.toHaveBeenCalled();
 		});
+
+		it('keeps the settings and approval of the draft it completes', async () => {
+			const { service, persistenceService } = makeService();
+			const draft = {
+				type: 'slack',
+				credentialId: '',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				approval: { mode: 'global' },
+			} satisfies AgentIntegrationConfig;
+			const agent = makeAgent({ activeVersionId: null, integrations: [draft] });
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: { ...draft, credentialId: integration.credentialId } },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+
+		it('prefers the settings in the request over the draft settings', async () => {
+			const { service, persistenceService } = makeService();
+			const draft = {
+				type: 'slack',
+				credentialId: '',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				approval: { mode: 'global' },
+			} satisfies AgentIntegrationConfig;
+			const agent = makeAgent({ activeVersionId: null, integrations: [draft] });
+			const settings = { messagingExperience: 'assistant' as const };
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration: { ...integration, settings },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: { ...integration, settings, approval: draft.approval } },
+				{ user, modifiedBy: 'user' },
+			);
+		});
 	});
 
 	describe('connecting n8n Chat', () => {

@@ -7,6 +7,8 @@ import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	Person,
+	type PersonRepository,
 	ProjectRelation,
 	ProjectRepository,
 	Role,
@@ -66,6 +68,7 @@ describe('UserService', () => {
 	});
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const personRepository = mock<PersonRepository>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -83,6 +86,7 @@ describe('UserService', () => {
 		externalHooks,
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
+		personRepository,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -254,21 +258,38 @@ describe('UserService', () => {
 		// With `update` it would only receive the updated fields, e.g. the `id`
 		// would be missing.
 		it('should use `save` instead of `update`', async () => {
-			const user = new User();
-			user.firstName = 'Not Nathan';
-			user.lastName = 'Nathaniel';
+			const person = new Person();
+			person.firstName = 'Not Nathan';
+			person.lastName = 'Nathaniel';
 
 			const userId = '1234';
 			const data = {
 				firstName: 'Nathan',
 			};
 
-			userRepository.findOneBy.mockResolvedValueOnce(user);
+			personRepository.findById.mockResolvedValueOnce(person);
 
 			await userService.update(userId, data);
 
-			expect(userRepository.save).toHaveBeenCalledWith({ ...user, ...data }, { transaction: true });
-			expect(userRepository.update).not.toHaveBeenCalled();
+			expect(personRepository.save).toHaveBeenCalledWith(person);
+			expect(person.firstName).toBe('Nathan');
+			expect(person.lastName).toBe('Nathaniel');
+		});
+
+		it('should not save when no person has the id', async () => {
+			personRepository.findById.mockResolvedValueOnce(null);
+
+			await userService.update('1234', { firstName: 'Nathan' });
+
+			expect(personRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findUserWithAuthIdentities', () => {
+		it('should throw NotFoundError when no person has the id', async () => {
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(null);
+
+			await expect(userService.findUserWithAuthIdentities('1234')).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -663,8 +684,8 @@ describe('UserService', () => {
 	describe('findSsoIdentity', () => {
 		it('should return undefined when user has no SSO identity', async () => {
 			const userId = uuid();
-			userRepository.findOne.mockResolvedValue(
-				Object.assign(new User(), {
+			personRepository.findByIdWithAuthIdentities.mockResolvedValue(
+				Object.assign(new Person(), {
 					id: userId,
 					authIdentities: [{ providerType: 'email' }],
 				}),
@@ -678,8 +699,8 @@ describe('UserService', () => {
 		it('should return SSO identity when user has LDAP identity', async () => {
 			const userId = uuid();
 			const ldapIdentity = { providerType: 'ldap', providerId: 'ldap-id' };
-			userRepository.findOne.mockResolvedValue(
-				Object.assign(new User(), {
+			personRepository.findByIdWithAuthIdentities.mockResolvedValue(
+				Object.assign(new Person(), {
 					id: userId,
 					authIdentities: [ldapIdentity],
 				}),
@@ -693,8 +714,8 @@ describe('UserService', () => {
 		it('should return SSO identity when user has both email and SSO identity', async () => {
 			const userId = uuid();
 			const samlIdentity = { providerType: 'saml', providerId: 'saml-id' };
-			userRepository.findOne.mockResolvedValue(
-				Object.assign(new User(), {
+			personRepository.findByIdWithAuthIdentities.mockResolvedValue(
+				Object.assign(new Person(), {
 					id: userId,
 					authIdentities: [{ providerType: 'email' }, samlIdentity],
 				}),

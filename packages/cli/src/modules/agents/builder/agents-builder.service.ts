@@ -1,4 +1,5 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -7,6 +8,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
@@ -34,6 +36,7 @@ export class AgentsBuilderService {
 		private readonly settings: AgentsSettingsService,
 		private readonly validation: AgentValidationService,
 		private readonly skillRefs: AgentSkillRefsService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	private async assertProjectScope(user: User, projectId: string, scopes: Scope[]): Promise<void> {
@@ -81,7 +84,11 @@ export class AgentsBuilderService {
 
 	async getSessionContext(user: User, projectId: string, agentId: string): Promise<string> {
 		await this.assertAccess(user, projectId, ['agent:read']);
-		return await buildBuilderSessionContext(projectId, agentId);
+		return await buildBuilderSessionContext(
+			projectId,
+			agentId,
+			createAiProxyFetch(this.outboundHttp),
+		);
 	}
 
 	async getCredentialDefaults(user: User, projectId: string, agentId: string) {
