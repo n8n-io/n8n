@@ -49,6 +49,17 @@ const inlineSeedSchema = CaseSeedSchema.refine(
 				'an inline seed must carry something the stub instance serves — messages, workflows, dataTables, or agents',
 		});
 	}
+	// A prior run must name a seeded workflow, so a priorRuns-only seed is never valid.
+	const declared = new Set(seed.workflows.map((workflow) => workflow.id));
+	(seed.priorRuns ?? []).forEach((run, index) => {
+		if (!declared.has(run.workflow)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['priorRuns', index, 'workflow'],
+				message: `priorRuns names workflow id ${run.workflow}, which this seed does not declare`,
+			});
+		}
+	});
 });
 
 const forbiddenToolCallSchema = z

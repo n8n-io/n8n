@@ -136,6 +136,30 @@ describe('discoveryTestCaseSchema', () => {
 		expect(discoveryTestCaseSchema.safeParse(seeded).success).toBe(true);
 	});
 
+	it('accepts priorRuns that name a seeded workflow', () => {
+		const seeded = {
+			...valid,
+			seed: {
+				mode: 'inline',
+				workflows: [{ id: 'wf-seeded-1', name: 'Seeded', nodes: [], connections: {} }],
+				priorRuns: [{ workflow: 'wf-seeded-1' }],
+			},
+		};
+		expect(discoveryTestCaseSchema.safeParse(seeded).success).toBe(true);
+	});
+
+	it('rejects priorRuns that name a workflow the seed does not declare', () => {
+		const dangling = {
+			...valid,
+			seed: { mode: 'inline', priorRuns: [{ workflow: 'wf-missing' }] },
+		};
+		const parsed = discoveryTestCaseSchema.safeParse(dangling);
+		expect(parsed.success).toBe(false);
+		expect(parsed.error?.issues.map((issue) => issue.path.join('.'))).toContain(
+			'seed.priorRuns.0.workflow',
+		);
+	});
+
 	it('rejects a replay seed', () => {
 		const replay = { ...valid, seed: { mode: 'replay', threadId: 'thread-1' } };
 		expect(discoveryTestCaseSchema.safeParse(replay).success).toBe(false);
