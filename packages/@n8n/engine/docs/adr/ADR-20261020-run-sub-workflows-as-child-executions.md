@@ -39,14 +39,14 @@ the credential checks read control-plane state.
    a more explicit method by which the node can request some action ("execute a sub-workflow"),
    have the engine invoke the action (run the sub-workflow), and pass the results back to the
    node for processing (post-processing with paired items). This would not rely on the fact
-   that the code before `executeWorkflow` is idempotent, for example, and would be a clearer 
-   interface. We plan to tackle this future work in the context of the AI agent node, which 
+   that the code before `executeWorkflow` is idempotent, for example, and would be a clearer
+   interface. We plan to tackle this future work in the context of the AI agent node, which
    will require it. At that time, we may refactor the execute re-invocation and also revisit
    the way wait-resume is implemented, to have a single unified mechanism.
 4. **We reject `executeWorkflow` outside of the `Execute Workflow` node.** There are other
    nodes that use the method. We know it is safe for the `Execute Workflow` node
    implementation. We should be explicit about the cases where we do and do not support it,
-   and reject by default. 
+   and reject by default.
 5. **The control plane resolves the child, and the engine starts it.** When a node asks
    for a sub-workflow, the shim calls the control plane. The control plane looks up the
    workflow, applies the caller policy and the credential checks, and returns the graph.
