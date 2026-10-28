@@ -58,6 +58,7 @@ export const AgentModalTestStub = defineComponent({
 			</header>
 			<div v-if="!trapFocus" data-testid="nested-credential-focus-scope" />
 			<main><slot /></main>
+			<aside v-if="$slots.sidePanel" data-testid="agent-modal-side-panel"><slot name="sidePanel" /></aside>
 			<footer
 				v-if="
 					showFooter === true ||
