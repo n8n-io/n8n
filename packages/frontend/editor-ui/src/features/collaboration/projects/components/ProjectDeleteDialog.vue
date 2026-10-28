@@ -70,9 +70,7 @@ const onDelete = () => {
 };
 
 function onOperation(value: string) {
-	if (value === 'transfer' || value === 'wipe') {
-		operation.value = value;
-	}
+	operation.value = value;
 }
 </script>
 <template>
