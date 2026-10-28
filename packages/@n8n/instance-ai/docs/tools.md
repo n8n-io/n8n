@@ -1408,9 +1408,9 @@ The Agent id is optional when the conversation has a bound Agent target. Use
 returned config as the current draft. It wraps all returned context as untrusted
 data before it returns it to the model.
 
-### `skills` *(domain tool — requires the `agents` backend module and the skills hub)*
+### `skills` *(domain tool — requires the `agents` backend module and the skills module)*
 
-Manages skills in the skills hub without an Agent. The host wires the tool only
+Manages skills in the skills module without an Agent. The host wires the tool only
 when the `agents` and `skills` modules are active.
 The tool calls the same service as the Skills settings page, so the same
 permission checks and name rules apply. It reports telemetry with the

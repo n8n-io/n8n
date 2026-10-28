@@ -204,7 +204,7 @@ The following operations remain available:
 - Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
-${skillManagementEnabled ? '- Creating, editing, and deleting skills in the skills hub\n' : ''}- Restoring workflow versions
+${skillManagementEnabled ? '- Creating, editing, and deleting skills\n' : ''}- Restoring workflow versions
 - Browsing the filesystem, fetching URLs, and searching the web
 
 If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
