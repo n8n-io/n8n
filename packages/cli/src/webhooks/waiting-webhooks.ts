@@ -315,7 +315,6 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		this.logReceivedWebhook(req.method, executionId);
 
-		// The id shape picks the engine. A v2 execution has no control-plane row.
 		if (isExecutionIdV2(executionId)) {
 			return await this.resumeEngineV2Execution(req, res, executionId, suffix);
 		}

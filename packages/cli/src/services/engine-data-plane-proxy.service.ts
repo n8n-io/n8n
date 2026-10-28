@@ -90,7 +90,7 @@ export interface EngineDataPlaneProvider {
 		request: ResumeTargetRequest,
 	): Promise<ResumeOutcome<ResumeTargetResponse>>;
 
-	/** Phase two: ends the wait of one step with what the node's resume method produced. */
+	/** Phase two: ends the wait of one step with the output of the node's resume method. */
 	resolveStep(
 		stepId: string,
 		request: ResolveStepRequest,

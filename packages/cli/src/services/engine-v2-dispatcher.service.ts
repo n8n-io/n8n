@@ -158,6 +158,7 @@ export class EngineV2Dispatcher {
 		}
 
 		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		// End the wait: the data plane resumes the step with these outputs.
 		const outcome = await this.proxy.resolveStep(engineResume.stepId, {
 			token: engineResume.token,
 			outputs: toStepOutputs(withoutNullSlots(items)),
