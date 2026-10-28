@@ -21,9 +21,9 @@
 	--n8n-markdown--radius: var(--radius);
 
 	display: block;
-	color: var(--n8n-markdown--color, inherit);
-	font-size: var(--n8n-markdown--font-size--base, inherit);
-	line-height: inherit;
+	color: var(--n8n-markdown--color, color-mix(in oklch, var(--text-color), transparent 10%));
+	font-size: var(--n8n-markdown--font-size--base, var(--font-size--md));
+	line-height: var(--n8n-markdown--line-height, var(--line-height--xl));
 	-webkit-text-size-adjust: 100%;
 	word-break: break-word;
 
