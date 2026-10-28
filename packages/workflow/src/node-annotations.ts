@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	NodeOperationAnnotations,
 } from './interfaces';
-import { displayParameter, getNodeParameters } from './node-helpers';
+import { displayParameter, getNodeParameters, getPropertyValues } from './node-helpers';
 import {
 	isINodePropertiesList,
 	isINodePropertyCollectionList,
@@ -58,18 +58,18 @@ const toEntries = (value: unknown): INodeParameters[] =>
 function dependsOnExpression(
 	property: INodeProperties,
 	values: INodeParameters,
-	root: INodeParameters,
+	{ node, nodeType, root }: ResolutionContext,
 ): boolean {
 	const { show = {}, hide = {} } = property.displayOptions ?? {};
 	return [...Object.keys(show), ...Object.keys(hide)].some((key) =>
-		isExpression(key.startsWith('/') ? root[key.slice(1)] : values[key]),
+		getPropertyValues(values, key, node, nodeType, root).some(isExpression),
 	);
 }
 
 function optionAnnotations(
 	property: INodeProperties,
 	values: INodeParameters,
-	root: INodeParameters,
+	context: ResolutionContext,
 ): Annotations[] {
 	const { options } = property;
 	if (!isINodePropertyOptionsList(options) || !options.some((option) => option.annotations)) {
@@ -77,7 +77,7 @@ function optionAnnotations(
 	}
 
 	const value = values[property.name] ?? property.default;
-	if (isExpression(value) || dependsOnExpression(property, values, root)) {
+	if (isExpression(value) || dependsOnExpression(property, values, context)) {
 		return [
 			mergeAnnotations(
 				options.map((option) => option.annotations ?? {}),
@@ -105,12 +105,14 @@ function collectAnnotations(
 
 		const { options } = property;
 		if (property.type === 'options' || property.type === 'multiOptions') {
-			return optionAnnotations(property, values, context.root);
+			return optionAnnotations(property, values, context);
 		}
 
 		if (property.type === 'collection' && isINodePropertiesList(options)) {
-			const [children = {}] = toEntries(values[property.name]);
-			return collectAnnotations(options, children, context);
+			const entries = toEntries(values[property.name]);
+			return (entries.length > 0 ? entries : [{}]).flatMap((children) =>
+				collectAnnotations(options, children, context),
+			);
 		}
 
 		if (property.type === 'fixedCollection' && isINodePropertyCollectionList(options)) {

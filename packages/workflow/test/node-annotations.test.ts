@@ -154,6 +154,41 @@ describe('resolveNodeAnnotations', () => {
 		);
 	});
 
+	it('uses the most restrictive option when visibility depends on a nested expression', () => {
+		const description = describeNode([
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [{ displayName: 'Advanced', name: 'advanced', type: 'boolean', default: false }],
+			},
+			{ ...recordOperations, displayOptions: { hide: { 'options.advanced': [true] } } },
+		]);
+		expect(resolve(description, { options: { advanced: false }, operation: 'get' })).toEqual(READ);
+		expect(
+			resolve(description, { options: { advanced: '={{ $json.advanced }}' }, operation: 'get' }),
+		).toEqual(RESTRICTIVE);
+	});
+
+	it('uses the most restrictive option when visibility depends on a resource locator expression', () => {
+		const description = describeNode([
+			{
+				displayName: 'Table',
+				name: 'table',
+				type: 'resourceLocator',
+				default: { __rl: true, mode: 'id', value: '' },
+				modes: [{ displayName: 'ID', name: 'id', type: 'string' }],
+			},
+			{ ...recordOperations, displayOptions: { hide: { table: ['locked'] } } },
+		]);
+		const table = (value: string) => ({ __rl: true, mode: 'id', value });
+		expect(resolve(description, { table: table('users'), operation: 'get' })).toEqual(READ);
+		expect(resolve(description, { table: table('={{ $json.table }}'), operation: 'get' })).toEqual(
+			RESTRICTIVE,
+		);
+	});
+
 	it('uses the restrictive default for a value that matches no option', () => {
 		const allRead = describeNode([
 			{ ...tableOperations, displayOptions: undefined, options: [listOption] },
@@ -192,6 +227,7 @@ describe('resolveNodeAnnotations', () => {
 
 	describe('nested parameters', () => {
 		const NOTIFY = { effect: 'write', destructive: false, idempotent: false } as const;
+		const PURGE = { effect: 'write', destructive: true, idempotent: true } as const;
 
 		const sideEffect = (
 			defaultValue = 'none',
@@ -205,10 +241,11 @@ describe('resolveNodeAnnotations', () => {
 			options: [
 				{ name: 'None', value: 'none' },
 				{ name: 'Notify', value: 'notify', annotations: NOTIFY },
+				{ name: 'Purge', value: 'purge', annotations: PURGE },
 			],
 		});
 
-		const withCollection = (child: INodeProperties) =>
+		const withCollection = (child: INodeProperties, multipleValues = false) =>
 			describeNode([
 				resourceProperty,
 				recordOperations,
@@ -216,6 +253,7 @@ describe('resolveNodeAnnotations', () => {
 					displayName: 'Additional Fields',
 					name: 'additionalFields',
 					type: 'collection',
+					typeOptions: { multipleValues },
 					default: {},
 					options: [child],
 				},
@@ -246,12 +284,20 @@ describe('resolveNodeAnnotations', () => {
 			expect(resolve(withCollection(sideEffect('notify')))).toEqual(NOTIFY);
 		});
 
+		it('combines every entry of a collection with multiple values', () => {
+			expect(
+				resolve(withCollection(sideEffect(), true), {
+					additionalFields: [{ sideEffect: 'purge' }, { sideEffect: 'notify' }],
+				}),
+			).toEqual(RESTRICTIVE);
+		});
+
 		it('combines every entry of a fixedCollection', () => {
 			expect(
 				resolve(withFixedCollection(sideEffect()), {
-					rules: { rule: [{ sideEffect: 'none' }, { sideEffect: 'notify' }] },
+					rules: { rule: [{ sideEffect: 'purge' }, { sideEffect: 'notify' }] },
 				}),
-			).toEqual(NOTIFY);
+			).toEqual(RESTRICTIVE);
 		});
 
 		it('ignores a fixedCollection without entries', () => {
