@@ -38,7 +38,7 @@ import type {
 	SideCallUsageReport,
 	TokenUsage,
 } from '../../types/sdk/agent';
-import type { AgentDbMessage } from '../../types/sdk/message';
+import { stripHydratedFileData, type AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -73,7 +73,8 @@ function stringifyForBudget(value: unknown): string {
 function serializeMessageForBudget(message: AgentDbMessage): string {
 	if (!('role' in message) || !Array.isArray(message.content)) return '';
 	const parts: string[] = [];
-	for (const content of message.content) {
+	// File bytes are not text tokens, so count only the text around them.
+	for (const content of stripHydratedFileData(message).content) {
 		if (content.type === 'text') {
 			parts.push(content.text);
 		} else if (content.type === 'tool-call') {
