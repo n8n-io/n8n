@@ -2052,4 +2052,19 @@ describe('Compare mode', () => {
 		expect(queryByTestId('agent-skill-compare-bar')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
+	it('returns to the latest version with Done when the user compared from an older one', async () => {
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: v2,
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		await userEvent.click(getByTestId('skill-version-compare-2'));
+		await userEvent.click(await findByTestId('agent-skill-compare-done'));
+
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
 });
