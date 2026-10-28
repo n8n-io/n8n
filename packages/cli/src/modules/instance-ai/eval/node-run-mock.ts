@@ -200,7 +200,7 @@ function itemsForPrompt(items: NodeRunRequest['items']): {
 	let size = 0;
 	for (const { json, parameters } of items) {
 		const own = Object.fromEntries(
-			Object.entries(parameters).filter(([name]) => !(name in shared)),
+			Object.entries(parameters).filter(([name]) => !Object.hasOwn(shared, name)),
 		);
 		const line = forPrompt({ json, parameters: own });
 		if (shownItems.length > 0 && size + line.length > MAX_ITEMS_CHARS) break;
