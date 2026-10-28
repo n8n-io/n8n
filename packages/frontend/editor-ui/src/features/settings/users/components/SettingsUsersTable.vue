@@ -43,7 +43,8 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.user'),
 		key: 'name',
-		width: 300,
+		// Same as the project members table: room for an email plus its Pending badge on one line.
+		width: 400,
 		value(row) {
 			return {
 				...row,

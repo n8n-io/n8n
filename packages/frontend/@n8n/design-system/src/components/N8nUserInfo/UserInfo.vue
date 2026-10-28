@@ -65,8 +65,8 @@ const classes = computed(
 </template>
 
 <style lang="scss" module>
-// The component never grows past its parent (a table cell, a dropdown option). Long text
-// truncates with an ellipsis and a badge that no longer fits next to it wraps below, so
+// The component never grows past its parent (a table cell, a dropdown option): text that
+// does not fit truncates with an ellipsis and the badge next to it keeps its size, so
 // neither one spills into the neighbouring column.
 .container {
 	display: inline-flex;
@@ -94,9 +94,8 @@ const classes = computed(
 .pendingUser,
 .nameLine {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: 0 var(--spacing--xs);
+	gap: var(--spacing--xs);
 	min-width: 0;
 }
 
