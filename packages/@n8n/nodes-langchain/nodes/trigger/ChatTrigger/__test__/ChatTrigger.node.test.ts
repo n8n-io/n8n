@@ -275,4 +275,51 @@ describe('ChatTrigger Node', () => {
 			expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('createChat'));
 		});
 	});
+
+	describe('setup webhook outside hostedChat mode', () => {
+		const setNodeParameters = (authentication: string) =>
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'webhook';
+					if (paramName === 'options') return { loadPreviousSession: 'memory' };
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return authentication;
+					return defaultValue;
+				},
+			);
+
+		beforeEach(() => {
+			mockContext.getWebhookName.mockReturnValue('setup');
+		});
+
+		it.each([
+			['n8nUserAuth', { action: 'loadPreviousSession', sessionId: 'user-42' }],
+			['n8nUserAuth', { chatInput: 'hello', sessionId: 'user-42' }],
+			['none', { action: 'loadPreviousSession', sessionId: 'user-42' }],
+			['none', { chatInput: 'hello', sessionId: 'user-42' }],
+		])('should answer 404 and not read memory or start a run (%s, %j)', async (auth, body) => {
+			setNodeParameters(auth);
+			mockContext.getBodyData.mockReturnValue(body);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(404);
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockContext.getInputConnectionData).not.toHaveBeenCalled();
+		});
+
+		it('should still handle the default webhook in webhook mode', async () => {
+			setNodeParameters('none');
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getBodyData.mockReturnValue({ chatInput: 'hello', sessionId: 'user-42' });
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(result.workflowData).toBeDefined();
+		});
+	});
 });

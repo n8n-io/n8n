@@ -10,6 +10,7 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
+import chunk from 'lodash/chunk';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
@@ -28,6 +29,9 @@ import type {
 import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
+import { withTransaction } from '../utils/transaction';
+
+const ID_QUERY_BATCH_SIZE = 10_000;
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -92,6 +96,139 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.count({
 			where: { activeVersionId: Not(IsNull()) },
 		});
+	}
+
+	/** Remove every id in `workflowIds` from the `callerIds` allowlist of every other workflow. */
+	async removeFromCallerAllowlists(workflowIds: string[], trx?: EntityManager): Promise<void> {
+		if (workflowIds.length === 0) return;
+
+		await withTransaction(this.manager, trx, async (tx) => {
+			const candidates = await this.findCallerAllowlistCandidates(tx);
+			await this.purgeCallerAllowlists(candidates, new Set(workflowIds), tx);
+		});
+	}
+
+	/** Remove every id that has no workflow row from every `callerIds` allowlist. */
+	async removeMissingFromCallerAllowlists(trx?: EntityManager): Promise<void> {
+		await withTransaction(this.manager, trx, async (tx) => {
+			const candidates = await this.findCallerAllowlistCandidates(tx);
+			const namedIds = [
+				...new Set(candidates.flatMap((workflow) => this.callerIdEntries(workflow))),
+			];
+
+			const existingIds = new Set<string>();
+			for (const ids of chunk(namedIds, ID_QUERY_BATCH_SIZE)) {
+				const existing = await tx.find(WorkflowEntity, {
+					select: ['id'],
+					where: { id: In(ids) },
+				});
+				for (const { id } of existing) existingIds.add(id);
+			}
+
+			const missingIds = new Set(namedIds.filter((id) => !existingIds.has(id)));
+			if (missingIds.size > 0) await this.purgeCallerAllowlists(candidates, missingIds, tx);
+		});
+	}
+
+	/** Rewrite the allowlists among `candidates` that name any of `removedIds`, under a row lock. */
+	private async purgeCallerAllowlists(
+		candidates: WorkflowEntity[],
+		removedIds: Set<string>,
+		tx: EntityManager,
+	): Promise<void> {
+		const affected = candidates.filter(
+			(workflow) => this.callerIdsWithout(workflow, removedIds) !== undefined,
+		);
+
+		for (const workflow of await this.lockCallerAllowlists(affected, tx)) {
+			const remaining = this.callerIdsWithout(workflow, removedIds);
+			if (remaining !== undefined) await this.writeCallerIds(workflow, remaining, tx);
+		}
+	}
+
+	/** The non-empty, trimmed entries of the `callerIds` allowlist of `workflow`. */
+	private callerIdEntries(workflow: WorkflowEntity): string[] {
+		const callerIds = workflow.settings?.callerIds;
+		if (typeof callerIds !== 'string') return [];
+
+		return callerIds
+			.split(',')
+			.map((callerId) => callerId.trim())
+			.filter((callerId) => callerId !== '');
+	}
+
+	/** The allowlist of `workflow` without `removedIds`, or `undefined` when it names none of them. */
+	private callerIdsWithout(workflow: WorkflowEntity, removedIds: Set<string>): string | undefined {
+		const entries = this.callerIdEntries(workflow);
+		if (!entries.some((callerId) => removedIds.has(callerId))) return undefined;
+
+		return entries.filter((callerId) => !removedIds.has(callerId)).join(',');
+	}
+
+	/** Find every workflow that has a `callerIds` allowlist. */
+	private async findCallerAllowlistCandidates(tx: EntityManager): Promise<WorkflowEntity[]> {
+		// On Postgres, match the raw text rather than extract: the `json` column accepts characters,
+		// such as an escaped NUL, that extracting `callerIds` rejects with `unsupported Unicode
+		// escape sequence`, which fails the query for every row.
+		const hasAllowlist =
+			this.globalConfig.database.type === 'postgresdb'
+				? 'workflow.settings::text LIKE \'%"callerIds"%\''
+				: "JSON_EXTRACT(workflow.settings, '$.callerIds') IS NOT NULL";
+
+		return await tx
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.select(['workflow.id', 'workflow.settings'])
+			.where(hasAllowlist)
+			.getMany();
+	}
+
+	/** Lock `workflows` until the transaction ends and re-read their settings under the lock. */
+	private async lockCallerAllowlists(
+		workflows: WorkflowEntity[],
+		tx: EntityManager,
+	): Promise<WorkflowEntity[]> {
+		// SQLite serialises writes, so what it read is already current.
+		if (this.globalConfig.database.type === 'sqlite') return workflows;
+
+		const locked: WorkflowEntity[] = [];
+		for (const ids of chunk(
+			workflows.map(({ id }) => id),
+			ID_QUERY_BATCH_SIZE,
+		)) {
+			locked.push(
+				...(await tx
+					.createQueryBuilder(WorkflowEntity, 'workflow')
+					.select(['workflow.id', 'workflow.settings'])
+					.where('workflow.id IN (:...ids)', { ids })
+					.setLock('pessimistic_write')
+					.getMany()),
+			);
+		}
+		return locked;
+	}
+
+	/** Store `callerIds` back on one workflow, keeping its other settings. */
+	private async writeCallerIds(
+		workflow: WorkflowEntity,
+		callerIds: string,
+		tx: EntityManager,
+	): Promise<void> {
+		const update = tx
+			.createQueryBuilder()
+			.update(WorkflowEntity)
+			.where('id = :workflowId', { workflowId: workflow.id });
+
+		if (this.globalConfig.database.type === 'postgresdb') {
+			// `jsonb_set` rejects characters the `json` column accepts, so rewrite the whole document
+			// read under the row lock.
+			await update.set({ settings: { ...workflow.settings, callerIds } }).execute();
+			return;
+		}
+
+		await update
+			.set({ settings: () => "JSON_SET(COALESCE(settings, '{}'), '$.callerIds', :callerIds)" })
+			.setParameter('callerIds', callerIds)
+			.execute();
 	}
 
 	async findById(workflowId: string) {

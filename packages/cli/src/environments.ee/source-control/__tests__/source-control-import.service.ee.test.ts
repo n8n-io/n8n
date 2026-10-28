@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import {
 	type Variables,
 	type VariablesRepository,
+	Folder,
 	type FolderRepository,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -15,7 +16,7 @@ import {
 	type WorkflowPublishHistoryRepository,
 	type WorkflowRepository,
 } from '@n8n/db';
-import { In } from '@n8n/typeorm';
+import { type EntityManager, In } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
@@ -47,7 +48,8 @@ const globalMemberContext = new SourceControlContext(
 );
 
 describe('SourceControlImportService', () => {
-	const workflowRepository = mock<WorkflowRepository>();
+	const cascadeManager = mock<EntityManager>();
+	const workflowRepository = mock<WorkflowRepository>({ manager: cascadeManager });
 	const folderRepository = mock<FolderRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -85,6 +87,17 @@ describe('SourceControlImportService', () => {
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
 	const fsReadFile = jest.spyOn(fsp, 'readFile');
+
+	cascadeManager.delete.mockImplementation(async (entity, criteria) =>
+		entity === Folder
+			? await folderRepository.delete(criteria as never)
+			: await projectRepository.delete(criteria as never),
+	);
+	cascadeManager.transaction.mockImplementation(async (...args: unknown[]) => {
+		const callback = args.find((arg) => typeof arg === 'function');
+		if (!callback) throw new Error('Transaction callback is required');
+		return await callback(cascadeManager);
+	});
 
 	beforeEach(() => jest.clearAllMocks());
 
@@ -1010,6 +1023,28 @@ describe('SourceControlImportService', () => {
 				});
 			});
 
+			it('should purge caller allowlists in the folder delete transaction', async () => {
+				await service.deleteFoldersNotInWorkfolder([mock<SourceControlledFile>({ id: 'folder1' })]);
+
+				expect(cascadeManager.transaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepository.removeMissingFromCallerAllowlists).toHaveBeenCalledWith(
+					cascadeManager,
+				);
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
+				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
+			});
+
+			it('should fail the folder deletion when the caller allowlist purge fails', async () => {
+				workflowRepository.removeMissingFromCallerAllowlists.mockRejectedValueOnce(
+					new Error('statement timeout'),
+				);
+
+				await expect(
+					service.deleteFoldersNotInWorkfolder([mock<SourceControlledFile>({ id: 'folder1' })]),
+				).rejects.toThrow('statement timeout');
+			});
+
 			it('should not call folderRepository.delete if candidates is empty', async () => {
 				await service.deleteFoldersNotInWorkfolder([]);
 				expect(folderRepository.delete).not.toHaveBeenCalled();
@@ -1443,6 +1478,20 @@ describe('SourceControlImportService', () => {
 				expect(projectRepository.delete).toHaveBeenCalledWith({
 					id: In(['project-1', 'project-2']),
 				});
+			});
+
+			it('should purge caller allowlists in the project delete transaction', async () => {
+				await service.deleteTeamProjectsNotInWorkfolder([
+					mock<SourceControlledFile>({ id: 'project-1' }),
+				]);
+
+				expect(cascadeManager.transaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepository.removeMissingFromCallerAllowlists).toHaveBeenCalledWith(
+					cascadeManager,
+				);
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
+				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
 			});
 
 			it('should handle empty candidates array', async () => {

@@ -1,11 +1,15 @@
 import { mock } from 'jest-mock-extended';
+import type { IWebhookFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
 	fetchAllTeams,
 	fetchAllChannels,
 	createSubscription,
+	deleteSubscriptions,
+	generateClientState,
 	getResourcePath,
+	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
 import { microsoftApiRequest } from '../../v2/transport';
 
@@ -112,6 +116,26 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 		});
 
+		it.each([
+			['send the clientState it is given', 'a-secret', ['clientState']],
+			['leave clientState off the body when it is not given', undefined, []],
+		])('should %s', async (_label, clientState, expectedKeys) => {
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({ id: 'subscription123' });
+
+			await createSubscription.call(
+				mockHookFunctions,
+				'https://webhook.url',
+				'/resource/path',
+				clientState,
+			);
+
+			const [, , , body] = (microsoftApiRequest.call as jest.Mock).mock.calls[0];
+			// Compare keys: a present key holding undefined satisfies both `toBe` and
+			// `toEqual`, so neither tells the two branches apart.
+			expect(Object.keys(body).filter((key) => key === 'clientState')).toEqual(expectedKeys);
+			if (clientState) expect(body.clientState).toBe(clientState);
+		});
+
 		it('should throw a NodeApiError if the API request fails', async () => {
 			const error = new NodeApiError(mockHookFunctions.getNode(), {
 				message: 'API request failed',
@@ -122,6 +146,120 @@ describe('Microsoft Teams Helpers Functions', () => {
 			await expect(
 				createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path'),
 			).rejects.toThrow(NodeApiError);
+		});
+	});
+
+	describe('deleteSubscriptions', () => {
+		const graphError = (httpCode: string) =>
+			new NodeApiError(mockHookFunctions.getNode(), { message: 'Graph rejected it' }, { httpCode });
+
+		it('should delete every id it is given', async () => {
+			(microsoftApiRequest.call as jest.Mock).mockResolvedValue({});
+
+			await deleteSubscriptions.call(mockHookFunctions, ['sub1', 'sub2']);
+
+			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+				mockHookFunctions,
+				'DELETE',
+				'/v1.0/subscriptions/sub1',
+			);
+			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+				mockHookFunctions,
+				'DELETE',
+				'/v1.0/subscriptions/sub2',
+			);
+		});
+
+		// The transport reports the status on `httpCode`, so reading `httpStatusCode`
+		// rethrows the 404 this is meant to tolerate.
+		it('should accept a subscription that is already gone', async () => {
+			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(graphError('404'));
+
+			await expect(deleteSubscriptions.call(mockHookFunctions, ['sub1'])).resolves.toBeUndefined();
+		});
+
+		it.each([
+			['any other status', () => graphError('500')],
+			['an error the transport did not wrap', () => new Error('socket hang up')],
+		])('should rethrow %s', async (_label, buildError) => {
+			(microsoftApiRequest.call as jest.Mock).mockRejectedValue(buildError());
+
+			await expect(deleteSubscriptions.call(mockHookFunctions, ['sub1'])).rejects.toThrow();
+		});
+	});
+
+	describe('generateClientState', () => {
+		it('should generate a 64-character hex string', () => {
+			const state = generateClientState();
+			expect(state).toHaveLength(64);
+			expect(/^[0-9a-f]+$/.test(state)).toBe(true);
+		});
+
+		it('should generate unique values', () => {
+			expect(generateClientState()).not.toBe(generateClientState());
+		});
+	});
+
+	describe('verifyWebhook', () => {
+		let mockWebhookFunctions: any;
+
+		beforeEach(() => {
+			mockWebhookFunctions = mock<IWebhookFunctions>();
+		});
+
+		const callWith = (staticData: object, body: unknown) => {
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({ body });
+			return verifyWebhook.call(mockWebhookFunctions);
+		};
+
+		it('should return false when no secret is stored', () => {
+			expect(callWith({}, { value: [{ clientState: 'anything' }] })).toBe(false);
+		});
+
+		it('should return false when the stored secret is empty', () => {
+			expect(callWith({ webhookSecret: '' }, { value: [{ clientState: '' }] })).toBe(false);
+		});
+
+		it('should return true when clientState matches the stored secret', () => {
+			expect(
+				callWith(
+					{ webhookSecret: 'expected-secret' },
+					{ value: [{ clientState: 'expected-secret' }] },
+				),
+			).toBe(true);
+		});
+
+		it.each([
+			['the clientState does not match', [{ clientState: 'wrong-secret-aa' }]],
+			['the clientState is missing', [{}]],
+			['the batch has no notifications', []],
+			[
+				'one of a batch does not match',
+				[{ clientState: 'expected-secret' }, { clientState: 'wrong' }],
+			],
+			['one of a batch is missing it', [{ clientState: 'expected-secret' }, {}]],
+		])('should return false when %s', (_label, value) => {
+			expect(callWith({ webhookSecret: 'expected-secret' }, { value })).toBe(false);
+		});
+
+		it('should return true when every notification in a batch matches', () => {
+			expect(
+				callWith(
+					{ webhookSecret: 'expected-secret' },
+					{
+						value: [
+							{ clientState: 'expected-secret' },
+							{ clientState: 'expected-secret' },
+							{ clientState: 'expected-secret' },
+						],
+					},
+				),
+			).toBe(true);
+		});
+
+		it('should return false when the body carries no notification array', () => {
+			expect(callWith({ webhookSecret: 'expected-secret' }, undefined)).toBe(false);
 		});
 	});
 

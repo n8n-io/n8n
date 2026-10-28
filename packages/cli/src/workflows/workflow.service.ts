@@ -2,7 +2,6 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
-	WorkflowEntity,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
@@ -10,6 +9,7 @@ import type {
 } from '@n8n/db';
 import {
 	SharedWorkflow,
+	WorkflowEntity,
 	ExecutionRepository,
 	FolderRepository,
 	WorkflowTagMappingRepository,
@@ -774,7 +774,12 @@ export class WorkflowService {
 				rows.map(({ id: executionId }) => FileLocation.ofExecution(workflowId, executionId)),
 			);
 
-		await this.workflowRepository.delete(workflowId);
+		// A new workflow can be created at this id once the row is gone, so allowlists lose the
+		// entry in the same transaction.
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			await this.workflowRepository.removeFromCallerAllowlists([workflowId], trx);
+			await trx.delete(WorkflowEntity, { id: workflowId });
+		});
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
 		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);

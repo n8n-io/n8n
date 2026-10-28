@@ -12,16 +12,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager);
 	}
 
-	async getSharedWorkflowIds(workflowIds: string[]) {
-		const sharedWorkflows = await this.find({
-			select: ['workflowId'],
-			where: {
-				workflowId: In(workflowIds),
-			},
-		});
-		return sharedWorkflows.map((sharing) => sharing.workflowId);
-	}
-
 	async findByWorkflowIds(workflowIds: string[]) {
 		return await this.find({
 			where: {

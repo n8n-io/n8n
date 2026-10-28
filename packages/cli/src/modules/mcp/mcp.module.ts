@@ -1,6 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 /**
  * Handles instance-level MCP access.
@@ -10,6 +12,20 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'mcp' })
 export class McpModule implements ModuleInterface {
 	async init() {
+		const { OAuthGrantRepository } = await import('./database/repositories/oauth-grant.repository');
+		const { UserDeactivationHooks } = await import('@/services/user-deactivation-hooks.service');
+		const grants = Container.get(OAuthGrantRepository);
+		Container.get(UserDeactivationHooks).register('mcp', async (userId, manager) => {
+			await grants.deleteUserGrants(userId, manager);
+		});
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			await grants.deleteGrantsForDisabledUsers().catch((error: unknown) => {
+				Container.get(Logger).error('Failed to clean up OAuth grants for disabled users', {
+					error,
+				});
+			});
+		}
+
 		await import('./mcp.controller');
 		await import('./mcp.settings.controller');
 		await import('./mcp.oauth.controller');

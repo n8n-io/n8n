@@ -13,6 +13,7 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
+import { Stream } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
@@ -37,8 +38,27 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 
 export const REDACTED = '**hidden**';
 
+export const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+
 function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
+}
+
+/**
+ * Checks for a stream by its shape, not its class. An `instanceof` check misses a
+ * stream from another realm or from a different stream implementation.
+ */
+export function isStream(value: unknown): boolean {
+	if (value instanceof Stream) {
+		return true;
+	}
+
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'pipe' in value &&
+		typeof value.pipe === 'function'
+	);
 }
 
 function redactString(str: string, secrets: string[]): string {

@@ -198,6 +198,7 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
       "lodash@4.18.0": "patches/lodash@4.18.0.patch",
+      "weaviate-client@3.6.2": "patches/weaviate-client@3.6.2.patch",
       "@n8n/typeorm@0.3.20-15": "patches/@n8n__typeorm@0.3.20-15.patch"
     }
   }

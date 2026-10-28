@@ -6,6 +6,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthHelpers } from './mcp-oauth.helpers';
+import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 
 /**
@@ -18,8 +19,9 @@ export class McpOAuthConsentService {
 		private readonly logger: Logger,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
-		private readonly userConsentRepository: UserConsentRepository,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
+		private readonly grantService: OAuthGrantService,
+		private readonly userConsentRepository: UserConsentRepository,
 	) {}
 
 	/**
@@ -83,19 +85,18 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		await this.userConsentRepository.insert({
-			userId,
-			clientId: sessionPayload.clientId,
-			grantedAt: Date.now(),
-		});
+		const code = await this.grantService.runForActiveUser(userId, async (ctx) => {
+			await this.userConsentRepository.saveGrant(userId, sessionPayload.clientId, ctx);
 
-		const code = await this.authorizationCodeService.createAuthorizationCode(
-			sessionPayload.clientId,
-			userId,
-			sessionPayload.redirectUri,
-			sessionPayload.codeChallenge,
-			sessionPayload.state,
-		);
+			return await this.authorizationCodeService.createAuthorizationCode(
+				sessionPayload.clientId,
+				userId,
+				sessionPayload.redirectUri,
+				sessionPayload.codeChallenge,
+				sessionPayload.state,
+				ctx,
+			);
+		});
 
 		const successRedirectUrl = McpOAuthHelpers.buildSuccessRedirectUrl(
 			sessionPayload.redirectUri,

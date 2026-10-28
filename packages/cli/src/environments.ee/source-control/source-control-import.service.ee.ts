@@ -1,16 +1,11 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type {
-	FindOptionsWhere,
-	Project,
-	TagEntity,
-	User,
-	Variables,
-	WorkflowTagMapping,
-} from '@n8n/db';
+import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowTagMapping } from '@n8n/db';
 import {
 	CredentialsRepository,
+	Folder,
 	FolderRepository,
+	Project,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -24,7 +19,7 @@ import {
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { type EntityManager, In } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -1172,8 +1167,8 @@ export class SourceControlImportService {
 		}
 		const candidateIds = candidates.map((c) => c.id);
 
-		await this.folderRepository.delete({
-			id: In(candidateIds),
+		await this.deleteWithCallerAllowlistPurge(async (trx) => {
+			await trx.delete(Folder, { id: In(candidateIds) });
 		});
 	}
 
@@ -1183,8 +1178,20 @@ export class SourceControlImportService {
 		}
 		const candidateIds = candidates.map((c) => c.id);
 
-		await this.projectRepository.delete({
-			id: In(candidateIds),
+		await this.deleteWithCallerAllowlistPurge(async (trx) => {
+			await trx.delete(Project, { id: In(candidateIds) });
+		});
+	}
+
+	/**
+	 * Run a folder/project row delete and drop every id left without a row from the `callerIds`
+	 * allowlists, in one transaction, so no new workflow can take a freed id first.
+	 */
+	private async deleteWithCallerAllowlistPurge(deleteRows: (trx: EntityManager) => Promise<void>) {
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			await deleteRows(trx);
+			// Purge by what is gone: the cascade also removes every workflow in a deleted folder or project.
+			await this.workflowRepository.removeMissingFromCallerAllowlists(trx);
 		});
 	}
 

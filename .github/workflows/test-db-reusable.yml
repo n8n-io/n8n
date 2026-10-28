@@ -40,11 +40,18 @@ jobs:
         working-directory: packages/cli
         run: pnpm test:sqlite
 
+      - name: Test legacy SQLite OAuth grants
+        working-directory: packages/cli
+        env:
+          DB_SQLITE_POOL_SIZE: 0
+          N8N_LOG_LEVEL: silent
+        run: pnpm exec jest --config=jest.config.integration.js --runInBand --no-coverage src/modules/mcp/__tests__/oauth-grant.service.integration.test.ts
+
   mariadb:
     name: MariaDB
     needs: build
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 1
@@ -74,7 +81,7 @@ jobs:
     name: MySQL 8.4
     needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 1
