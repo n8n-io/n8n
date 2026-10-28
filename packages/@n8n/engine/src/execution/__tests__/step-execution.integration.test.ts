@@ -69,6 +69,7 @@ describe('step execution (integration)', () => {
 			lifecycleEventCallback,
 			waitSweepIntervalMs,
 			resolveOn = 'finish',
+			finishCount = 1,
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
@@ -82,6 +83,8 @@ describe('step execution (integration)', () => {
 			 * wait for the finish, or the runtime stops before the sweep runs.
 			 */
 			resolveOn?: 'finish' | 'suspend';
+			/** How many executions must finish first: a sub-execution finishes before its parent. */
+			finishCount?: number;
 		} = {},
 	) {
 		let done!: () => void;
@@ -98,9 +101,10 @@ describe('step execution (integration)', () => {
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				let finished = 0;
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
-					if (resolveOn === 'finish') done();
+					if (resolveOn === 'finish' && recorded && ++finished === finishCount) done();
 					return recorded;
 				});
 				const suspendStep = stepStore.suspendStep.bind(stepStore);
@@ -613,6 +617,74 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it('starts a detached sub-execution from a completed step and does not wait for it', async () => {
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'fire', name: 'Fire', type: 'v1-node' },
+				{ id: 'after', name: 'After', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'fire', outputIndex: 0, inputIndex: 0 },
+				{ from: 'fire', to: 'after', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const subWorkflowGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'sub-trigger', name: 'When Executed by Another Workflow', type: 'trigger' },
+				{ id: 'x', name: 'X', type: 'v1-node' },
+			],
+			edges: [{ from: 'sub-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
+		};
+		const subExecutionId = generateId();
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				if (request.node.id === 'fire') {
+					return {
+						outputs: [[{ json: { startedSubExecution: subExecutionId } }]],
+						detached: [
+							{
+								executionId: subExecutionId,
+								workflowId: 'wf-sub',
+								graph: subWorkflowGraph,
+								workflow: { id: 'wf-sub' },
+								triggerOutputs: [[{ json: { in: 1 } }]],
+							},
+						],
+					};
+				}
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { executionId, execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-parent-detached',
+			graph: parentGraph,
+			finishCount: 2,
+		});
+
+		expect(execution.status).toBe('completed');
+		const fire = steps.find(({ nodeId }) => nodeId === 'fire');
+		expect(fire?.status).toBe('completed');
+		expect(fire?.waitDeclaration).toBeNull();
+		expect(fire?.resumeCause).toBeNull();
+		expect(fire?.outputs).toEqual([[{ json: { startedSubExecution: subExecutionId } }]]);
+
+		const subExecution = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: subExecutionId } });
+		expect(subExecution.status).toBe('completed');
+		expect(subExecution.parentExecutionId).toBe(executionId);
+		expect(subExecution.parentStepId).toBe(fire?.id);
+		expect(subExecution.parentAwaited).toBe(false);
+
+		// `fire` ran once: nothing resumed it.
+		expect(requests.filter(({ node }) => node.id === 'fire')).toHaveLength(1);
+	});
+
 	it('is idempotent across duplicate step:ready deliveries', async () => {
 		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
@@ -624,6 +696,7 @@ describe('step execution (integration)', () => {
 			{ v1StepExecutor: { execute } },
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
+			{ start: vi.fn() },
 		);
 
 		const executionId = generateId();
