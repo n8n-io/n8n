@@ -1,5 +1,4 @@
-import { Container } from '@n8n/di';
-import { InstanceSettings, parseHitlCallbackReference } from 'n8n-core';
+import { buildHitlCallbackReference, parseHitlCallbackReference } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
@@ -8,9 +7,6 @@ import * as genericFunctions from '../../GenericFunctions';
 import { Telegram } from '../../Telegram.node';
 import type { Mock } from 'vitest';
 import type * as _importType0 from '../../GenericFunctions';
-
-const TEST_HMAC_SECRET = 'test-hmac-secret';
-Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 vi.mock('../../GenericFunctions', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
@@ -146,7 +142,9 @@ describe('createSendAndWaitMessageBody - chat approval callback references', () 
 
 	it('mints an approve callback with decision "a" and a decline callback with decision "d"', () => {
 		const context = mock<IExecuteFunctions>();
-		context.getExecutionId.mockReturnValue('exec-42');
+		context.getApprovalCallbackReference.mockImplementation((decision) =>
+			buildHitlCallbackReference('exec-42', decision, 'secret'),
+		);
 		context.getInstanceId.mockReturnValue('instanceId');
 		context.getSignedResumeUrl.mockImplementation(
 			(params) =>
