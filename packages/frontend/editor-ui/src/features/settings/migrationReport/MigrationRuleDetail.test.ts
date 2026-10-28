@@ -1828,7 +1828,45 @@ describe('MigrationRuleDetail', () => {
 
 				await selectRow('Test Workflow 2');
 
-				expect(screen.getByTestId('migration-bulk-notify-button')).toBeDisabled();
+				const button = screen.getByTestId('migration-bulk-notify-button');
+				expect(button).toBeDisabled();
+				expect(button).toHaveTextContent('Notify owners');
+			});
+
+			it('should count distinct owners, not workflows, in the action label', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							mockWorkflowWithIssue,
+							{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+							{
+								...mockWorkflowWithIssue,
+								id: 'workflow-3',
+								name: 'Test Workflow 3',
+								owner: { ...grace, source: 'assigned' as const },
+							},
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('3 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 2');
+				expect(screen.getByTestId('migration-bulk-notify-button')).toHaveTextContent(
+					'Notify 1 owner',
+				);
+
+				await selectRow('Test Workflow 3');
+				const button = screen.getByTestId('migration-bulk-notify-button');
+				expect(button).toHaveTextContent('Notify 2 owners');
+
+				await userEvent.hover(button);
+				expect(
+					await screen.findByText(
+						'Each owner gets one email that lists all of their selected workflows',
+					),
+				).toBeInTheDocument();
 			});
 
 			it('should leave a skipped row open and warn with the reason', async () => {
