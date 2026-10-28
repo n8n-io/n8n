@@ -2,17 +2,17 @@
 import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import {
-	buildAgentPreviewHref,
-	resolveAgentPreviewLink,
-	type AgentPreviewTarget,
-} from '@/features/agents/utils/agentPreviewUrl';
+	buildAgentTestHref,
+	resolveAgentTestLink,
+	type AgentTestTarget,
+} from '@/features/agents/utils/agentTestUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const props = defineProps<{
 	content: string;
-	agentPreviewTarget?: AgentPreviewTarget;
+	agentPreviewTarget?: AgentTestTarget;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
 	 * the resource-name decoration — O(content × resources), re-run on every
@@ -286,13 +286,13 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 }
 
 function resolveContextualAgentPreviewLink(href: string) {
-	const resolved = resolveAgentPreviewLink(href);
+	const resolved = resolveAgentTestLink(href);
 	if (!resolved || !props.agentPreviewTarget) return resolved;
 	const resolvedUrl = new URL(resolved.href, window.location.origin);
 
 	return {
 		...props.agentPreviewTarget,
-		href: buildAgentPreviewHref(
+		href: buildAgentTestHref(
 			props.agentPreviewTarget.projectId,
 			props.agentPreviewTarget.agentId,
 			resolvedUrl.searchParams,

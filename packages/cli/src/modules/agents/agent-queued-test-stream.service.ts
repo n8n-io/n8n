@@ -15,7 +15,7 @@ import { AgentMessageQueueRepository } from './repositories/agent-message-queue.
 type QueueStreamEvent = PubSubCommandMap['relay-agent-queued-chat'];
 
 @Service()
-export class AgentQueuedPreviewStreamService {
+export class AgentQueuedTestStreamService {
 	private static readonly RECOVERY_GRACE_MS = 10_000;
 	private static readonly RELAY_HEARTBEAT_MS = 5_000;
 	private static readonly RELAY_TIMEOUT_MS = 30_000;
@@ -111,7 +111,7 @@ export class AgentQueuedPreviewStreamService {
 		if (this.instanceSettings.isMultiMain && !failed) {
 			heartbeat = setInterval(
 				() => send(undefined),
-				AgentQueuedPreviewStreamService.RELAY_HEARTBEAT_MS,
+				AgentQueuedTestStreamService.RELAY_HEARTBEAT_MS,
 			);
 			heartbeat.unref();
 		}
@@ -138,7 +138,7 @@ export class AgentQueuedPreviewStreamService {
 		}
 		listener.sequence = sequence;
 		listener.recoveryDeadline = undefined;
-		listener.relayDeadline = Date.now() + AgentQueuedPreviewStreamService.RELAY_TIMEOUT_MS;
+		listener.relayDeadline = Date.now() + AgentQueuedTestStreamService.RELAY_TIMEOUT_MS;
 		if (event !== undefined) listener.send(event);
 	}
 
@@ -150,13 +150,13 @@ export class AgentQueuedPreviewStreamService {
 			if (item && (!item.execution || item.execution.status === 'running')) {
 				listener.recoveryDeadline = undefined;
 				if (item.execution && this.instanceSettings.isMultiMain) {
-					listener.relayDeadline ??= Date.now() + AgentQueuedPreviewStreamService.RELAY_TIMEOUT_MS;
+					listener.relayDeadline ??= Date.now() + AgentQueuedTestStreamService.RELAY_TIMEOUT_MS;
 					if (Date.now() >= listener.relayDeadline) listener.close();
 				}
 				continue;
 			}
 			// Allow final relay events to arrive after database settlement.
-			listener.recoveryDeadline ??= Date.now() + AgentQueuedPreviewStreamService.RECOVERY_GRACE_MS;
+			listener.recoveryDeadline ??= Date.now() + AgentQueuedTestStreamService.RECOVERY_GRACE_MS;
 			if (Date.now() >= listener.recoveryDeadline) listener.close();
 		}
 	}

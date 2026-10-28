@@ -20,7 +20,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -97,7 +97,7 @@ function makeController() {
 		onInserted?.('queue-1');
 		return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
 	});
-	const previewStreams = new AgentQueuedPreviewStreamService(
+	const previewStreams = new AgentQueuedTestStreamService(
 		mock<Publisher>(),
 		mock<InstanceSettings>({ isMultiMain: false }),
 		mock<AgentMessageQueueRepository>(),

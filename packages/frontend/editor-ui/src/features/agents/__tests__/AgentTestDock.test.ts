@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 
 enableAutoUnmount(afterEach);
 
@@ -89,8 +89,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 
 const chatPageClearBudgetStopsMock = vi.fn();
 
-const AgentPreviewChatPageStub = {
-	name: 'AgentPreviewChatPage',
+const AgentTestChatPageStub = {
+	name: 'AgentTestChatPage',
 	props: ['beforeSend', 'initialPrompt', 'visible'],
 	emits: [
 		'continue-loaded',
@@ -110,14 +110,15 @@ const AgentPreviewChatPageStub = {
 		'<div data-testid="agent-preview-chat-page-stub"><textarea class="ignore-key-press-canvas" /></div>',
 };
 
-const AgentPreviewMoreMenuStub = {
-	name: 'AgentPreviewMoreMenu',
+const AgentTestMoreMenuStub = {
+	name: 'AgentTestMoreMenu',
 	props: [
 		'projectId',
 		'agentId',
 		'effectiveSessionId',
 		'hasSession',
 		'isFullWidth',
+		'hideLayoutToggle',
 		'isDeletingSession',
 		'canDeleteSession',
 		'getConversationMarkdown',
@@ -130,6 +131,7 @@ const AgentPreviewMoreMenuStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		overlay: boolean;
 		inline: boolean;
 		sessionTitle: string;
 		effectiveSessionId?: string;
@@ -147,7 +149,7 @@ function mountDock(
 	}> = {},
 	attachTo?: HTMLElement,
 ) {
-	return mount(AgentPreviewDock, {
+	return mount(AgentTestDock, {
 		...(attachTo ? { attachTo } : {}),
 		props: {
 			isOpen: true,
@@ -167,17 +169,30 @@ function mountDock(
 		},
 		global: {
 			stubs: {
-				AgentPreviewChatPage: AgentPreviewChatPageStub,
-				AgentPreviewMoreMenu: AgentPreviewMoreMenuStub,
+				AgentTestChatPage: AgentTestChatPageStub,
+				AgentTestMoreMenu: AgentTestMoreMenuStub,
 			},
 		},
 	});
 }
 
-describe('AgentPreviewDock', () => {
+describe('AgentTestDock', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
+	});
+
+	it('ignores the saved full-width layout in an overlay', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ overlay: true });
+
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.classes()).toContain('overlay');
+		expect(wrapper.findComponent(AgentTestMoreMenuStub).props('hideLayoutToggle')).toBe(true);
+		await wrapper.get('[data-testid="agent-preview-more-btn"]').trigger('click');
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('fullpage');
+		await wrapper.get('[data-testid="agent-preview-close-btn"]').trigger('click');
+		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
 	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {
@@ -189,8 +204,8 @@ describe('AgentPreviewDock', () => {
 
 	it('keeps the last usage on completion', async () => {
 		const wrapper = mountDock();
-		const chat = wrapper.getComponent({ name: 'AgentPreviewChatPage' });
-		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+		const chat = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentTestMoreMenu' });
 		const update = {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
@@ -209,8 +224,8 @@ describe('AgentPreviewDock', () => {
 
 	it('keeps live usage when switching away from a session and back', async () => {
 		const wrapper = mountDock();
-		const chat = wrapper.getComponent({ name: 'AgentPreviewChatPage' });
-		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+		const chat = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const menu = wrapper.getComponent({ name: 'AgentTestMoreMenu' });
 		const update = {
 			sessionId: 'thread-1',
 			executionId: 'execution-1',
@@ -316,7 +331,7 @@ describe('AgentPreviewDock', () => {
 		});
 
 		expect(wrapper.findComponent({ name: 'N8nActionDropdown' }).exists()).toBe(false);
-		wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
+		wrapper.getComponent({ name: 'AgentTestMoreMenu' }).vm.$emit('delete-session');
 		expect(wrapper.emitted('delete-session')).toBeUndefined();
 	});
 
@@ -380,11 +395,11 @@ describe('AgentPreviewDock', () => {
 
 	it('keeps the preview page mounted when the dock closes and reopens', async () => {
 		const wrapper = mountDock();
-		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		const chatPage = wrapper.findComponent({ name: 'AgentTestChatPage' });
 		expect(chatPage.props('visible')).toBe(true);
 		await wrapper.setProps({ isOpen: false });
 		expect(chatPage.props('visible')).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).vm).toBe(chatPage.vm);
+		expect(wrapper.findComponent({ name: 'AgentTestChatPage' }).vm).toBe(chatPage.vm);
 		await wrapper.setProps({ isOpen: true });
 		expect(chatPage.props('visible')).toBe(true);
 	});
@@ -403,7 +418,7 @@ describe('AgentPreviewDock', () => {
 			],
 		};
 		const wrapper = mountDock({ beforeSend, initialPrompt: 'Test these instructions' });
-		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		const chatPage = wrapper.findComponent({ name: 'AgentTestChatPage' });
 
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
 		expect(chatPage.props('initialPrompt')).toBe('Test these instructions');
@@ -438,7 +453,7 @@ describe('AgentPreviewDock', () => {
 
 	it('passes the active session to the more menu and forwards its deletion request', () => {
 		const wrapper = mountDock();
-		const moreMenu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+		const moreMenu = wrapper.getComponent({ name: 'AgentTestMoreMenu' });
 
 		expect(moreMenu.props()).toMatchObject({
 			projectId: 'project-1',
@@ -580,7 +595,7 @@ describe('AgentPreviewDock', () => {
 	});
 });
 
-describe('AgentPreviewChatPage', () => {
+describe('AgentTestChatPage', () => {
 	function mountChatPage(
 		beforeSend?: () => Promise<void> | void,
 		increaseBudget?: (payload: {
@@ -589,7 +604,7 @@ describe('AgentPreviewChatPage', () => {
 		}) => Promise<boolean>,
 		standalone = false,
 	) {
-		return shallowMount(AgentPreviewChatPage, {
+		return shallowMount(AgentTestChatPage, {
 			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: standalone } },
 			props: {
 				initialized: true,
@@ -662,7 +677,7 @@ describe('AgentPreviewChatPage', () => {
 
 	it('exposes clearBudgetStops through to the chat panel', () => {
 		const clearBudgetStops = vi.fn();
-		const wrapper = shallowMount(AgentPreviewChatPage, {
+		const wrapper = shallowMount(AgentTestChatPage, {
 			props: {
 				initialized: true,
 				projectId: 'project-1',
@@ -694,7 +709,7 @@ describe('AgentPreviewChatPage', () => {
 
 	it('sends the initial prompt once when the chat panel is ready', async () => {
 		const sendMessageFromOutside = vi.fn();
-		const wrapper = shallowMount(AgentPreviewChatPage, {
+		const wrapper = shallowMount(AgentTestChatPage, {
 			props: {
 				initialized: true,
 				projectId: 'project-1',
