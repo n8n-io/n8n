@@ -16,6 +16,7 @@ import {
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -74,11 +75,13 @@ import {
 	buildSelectionPromotionCommitMessage,
 } from './promotion-commit-message';
 import { ApplyPreviewService } from './apply-preview.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
 import { PromotionReviewsService } from './promotion-reviews.service';
+import { observePromotion, type ObservedOperation } from './promotion-telemetry';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
@@ -159,14 +162,30 @@ export class PromotionsService {
 		private readonly packageImportConfig: PackageImportConfig,
 		private readonly runRepository: PromotionRunRepository,
 		private readonly reviewsService: PromotionReviewsService,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
 
 	/** Clones the environment's branch into local storage. Safe to call repeatedly. */
-	async clone(environmentId: string): Promise<PromotionCheckoutPublicDto> {
+	async clone(environmentId: string, actor: User): Promise<PromotionCheckoutPublicDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId);
+		return await observePromotion(
+			async () => await this.cloneResolved(input),
+			(observed) =>
+				this.eventService.emit('promotion-environment-connected', {
+					user: actor,
+					environmentId: input.environmentId,
+					direction: input.config.direction,
+					outcome: observed.ok ? 'success' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async cloneResolved(input: PromotionOperationInput): Promise<PromotionCheckoutPublicDto> {
 		const branchName = checkoutBranchName(input.config);
 
 		await this.gitService.clone({
@@ -203,6 +222,19 @@ export class PromotionsService {
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		return await this.trackPromote(
+			input,
+			actor,
+			{},
+			async () => await this.promoteResolved(input, actor, request),
+		);
+	}
+
+	private async promoteResolved(
+		input: PromotionOperationInput,
+		actor: User,
+		request: PromotePackageDto & { canExportVariableValues: boolean },
+	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 
@@ -224,7 +256,7 @@ export class PromotionsService {
 		const projectIds = await this.projectRepository.findTeamProjectIds();
 
 		this.logger.info('Exporting projects for a promotion', {
-			environmentId,
+			environmentId: input.environmentId,
 			projectCount: projectIds.length,
 		});
 
@@ -580,17 +612,66 @@ export class PromotionsService {
 		// the user previewed. resolveForProject validates the project and environment too.
 		const input = await this.resolver.resolveForProject(projectId, 'promote');
 
-		const { selection, movedTo } = await this.classifySelection(projectId, request.workflowIds);
-
-		return await this.promoteSelectionResolved(
+		return await this.trackPromote(
 			input,
 			actor,
-			{
-				commitMessage: request.commitMessage,
-				canExportVariableValues: request.canExportVariableValues,
+			{ projectId, selectedWorkflowCount: request.workflowIds.length },
+			async () => {
+				const { selection, movedTo } = await this.classifySelection(projectId, request.workflowIds);
+				return await this.promoteSelectionResolved(
+					input,
+					actor,
+					{
+						commitMessage: request.commitMessage,
+						canExportVariableValues: request.canExportVariableValues,
+					},
+					selection,
+					movedTo,
+				);
 			},
-			selection,
-			movedTo,
+		);
+	}
+
+	private async trackPromote(
+		input: PromotionOperationInput,
+		actor: User,
+		{ projectId, selectedWorkflowCount }: { projectId?: string; selectedWorkflowCount?: number },
+		run: () => Promise<PromotePackageResultDto>,
+	): Promise<PromotePackageResultDto> {
+		return await observePromotion(run, (observed) =>
+			this.eventService.emit('promotion-promoted', {
+				user: actor,
+				environmentId: input.environmentId,
+				scope: projectId ? 'project' : 'instance',
+				projectId,
+				selectedWorkflowCount,
+				durationMs: observed.durationMs,
+				...(observed.ok
+					? {
+							outcome: observed.result.warnings?.length ? 'success_with_warnings' : 'success',
+							counts: observed.result.counts,
+							openedReview: !!observed.result.review,
+						}
+					: { outcome: 'failed', failureKind: observed.failureKind }),
+			}),
+		);
+	}
+
+	private async trackApply(
+		input: PromotionOperationInput,
+		actor: User,
+		{ projectId }: { projectId?: string },
+		run: () => Promise<ApplyPackageResultDto>,
+	): Promise<ApplyPackageResultDto> {
+		return await observePromotion(run, (observed) =>
+			this.eventService.emit('promotion-applied', {
+				user: actor,
+				environmentId: input.environmentId,
+				scope: projectId ? 'project' : 'instance',
+				projectId,
+				durationMs: observed.durationMs,
+				...appliedOutcome(observed),
+			}),
 		);
 	}
 
@@ -795,6 +876,30 @@ export class PromotionsService {
 		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		return await this.trackApply(
+			input,
+			actor,
+			{ projectId },
+			async () =>
+				await this.applySelectionResolved(
+					input,
+					projectId,
+					actor,
+					workflowIds,
+					expectedSource,
+					confirmDestructiveChanges,
+				),
+		);
+	}
+
+	private async applySelectionResolved(
+		input: PromotionOperationInput,
+		projectId: string,
+		actor: User,
+		workflowIds: string[],
+		expectedSource: ApplySelectionDto['expectedSource'],
+		confirmDestructiveChanges: boolean,
+	): Promise<ApplyPackageResultDto> {
 		await this.assertCheckoutReady(input, 'applying');
 
 		const branchName = checkoutBranchName(input.config);
@@ -919,6 +1024,20 @@ export class PromotionsService {
 		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+		return await this.trackApply(
+			input,
+			actor,
+			{},
+			async () => await this.applyResolved(input, actor, expectedSource, confirmDestructiveChanges),
+		);
+	}
+
+	private async applyResolved(
+		input: PromotionOperationInput,
+		actor: User,
+		expectedSource: ApplyPackageDto['expectedSource'],
+		confirmDestructiveChanges: boolean,
+	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
 
@@ -988,7 +1107,7 @@ export class PromotionsService {
 		}
 
 		this.logger.info('Importing a package', {
-			environmentId,
+			environmentId: input.environmentId,
 			confirmDestructiveChanges,
 		});
 
@@ -1469,6 +1588,25 @@ async function isDirectory(folder: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+function appliedOutcome(
+	observed: ObservedOperation<ApplyPackageResultDto>,
+): Pick<
+	RelayEventMap['promotion-applied'],
+	'outcome' | 'failureKind' | 'workflowsChanged' | 'workflowsFailedToPublish'
+> {
+	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
+	const { result } = observed;
+	if (result.status === 'blocked') return { outcome: 'blocked' };
+	if (result.status === 'source-changed') return { outcome: 'source_changed' };
+	const { workflows } = result.counts;
+	return {
+		outcome: 'applied',
+		workflowsChanged:
+			workflows.created + workflows.updated + workflows.archived + workflows.deleted,
+		workflowsFailedToPublish: workflows.publishing.failed,
+	};
 }
 
 const BRANCH_MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;

@@ -1,5 +1,6 @@
 import type { PromotionBindingPreflightResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -33,6 +34,7 @@ import type { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
+import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
@@ -78,6 +80,13 @@ describe('PromotionsService', () => {
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
+	const eventService = mock<EventService>();
+	const actor = mock<User>({
+		id: 'actor',
+		firstName: 'Ada',
+		lastName: 'Lovelace',
+		email: 'ada@example.com',
+	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -170,6 +179,7 @@ describe('PromotionsService', () => {
 			packageImportConfig,
 			runRepository,
 			reviewsService,
+			eventService,
 			logger,
 		);
 		runRepository.insertRun.mockResolvedValue(mock<PromotionRun>({ id: 'run-1' }));
@@ -191,7 +201,7 @@ describe('PromotionsService', () => {
 			const input = promoteInput();
 			resolver.resolveForEnvironment.mockResolvedValue(input);
 
-			const result = await service.clone(ENVIRONMENT_ID);
+			const result = await service.clone(ENVIRONMENT_ID, actor);
 
 			expect(gitService.clone).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -211,13 +221,46 @@ describe('PromotionsService', () => {
 				branchName: 'staging',
 				hasCheckout: true,
 			});
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-connected', {
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				direction: 'promote',
+				outcome: 'success',
+				durationMs: expect.any(Number),
+			});
+		});
+
+		it('records a user failure when the clone is rejected as a bad request', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			gitService.clone.mockRejectedValueOnce(new BadRequestError('cannot connect'));
+
+			await expect(service.clone(ENVIRONMENT_ID, actor)).rejects.toThrow(BadRequestError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-environment-connected',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'user' }),
+			);
+		});
+
+		it('records a git remote failure when Git cannot reach the remote', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			gitService.clone.mockRejectedValueOnce(
+				new PromotionGitError('Could not complete the Git operation'),
+			);
+
+			await expect(service.clone(ENVIRONMENT_ID, actor)).rejects.toThrow(PromotionGitError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-environment-connected',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'git_remote' }),
+			);
 		});
 
 		it('records nothing when the clone fails, so the checkout stays unusable', async () => {
 			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
 			gitService.clone.mockRejectedValueOnce(new BadRequestError('cannot connect'));
 
-			await expect(service.clone(ENVIRONMENT_ID)).rejects.toThrow(BadRequestError);
+			await expect(service.clone(ENVIRONMENT_ID, actor)).rejects.toThrow(BadRequestError);
 			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toBeNull();
 		});
 	});
@@ -244,13 +287,6 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promote', () => {
-		const actor = mock<User>({
-			id: 'actor',
-			firstName: 'Ada',
-			lastName: 'Lovelace',
-			email: 'ada@example.com',
-		});
-
 		beforeEach(async () => {
 			const input = promoteInput();
 			resolver.resolveForEnvironment.mockResolvedValue(input);
@@ -633,6 +669,32 @@ describe('PromotionsService', () => {
 			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
+		it('emits one event with the exported counts when the push works', async () => {
+			await service.promote(ENVIRONMENT_ID, actor, {
+				canExportVariableValues: true,
+				commitMessage: 'sync projects',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-promoted', {
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				scope: 'instance',
+				outcome: 'success',
+				durationMs: expect.any(Number),
+				counts: {
+					agents: 0,
+					workflows: 0,
+					folders: 0,
+					credentials: 0,
+					dataTables: 0,
+					variables: 0,
+					tags: 0,
+				},
+				openedReview: false,
+			});
+		});
+
 		it('generates a commit message when the request has none', async () => {
 			await service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true });
 
@@ -663,6 +725,14 @@ describe('PromotionsService', () => {
 			).rejects.toThrow(BadRequestError);
 			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-promoted', {
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				scope: 'instance',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: expect.any(Number),
+			});
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/staging',
 			);
@@ -816,6 +886,10 @@ describe('PromotionsService', () => {
 					webUrl: 'https://gitlab/mr/3',
 				});
 				expect(result.warnings).toBeUndefined();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'promotion-promoted',
+					expect.objectContaining({ outcome: 'success', openedReview: true }),
+				);
 				expect(runRepository.insertRun).toHaveBeenCalledWith(
 					expect.objectContaining({
 						details: expect.objectContaining({
@@ -1237,6 +1311,10 @@ describe('PromotionsService', () => {
 				'run-1',
 			);
 			expect(result.warnings).toEqual([{ message: 'no merge request' }]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-promoted',
+				expect.objectContaining({ outcome: 'success_with_warnings', openedReview: false }),
+			);
 			// The package keeps the pushed selection. No rollback happened.
 			await expect(
 				readFile(path.join(packageFolder, 'projects/alpha/workflows/w1/workflow.json'), 'utf8'),
@@ -1707,6 +1785,14 @@ describe('PromotionsService', () => {
 				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
 				new Map(),
 			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-promoted',
+				expect.objectContaining({
+					scope: 'project',
+					projectId: 'p1',
+					selectedWorkflowCount: 4,
+				}),
+			);
 		});
 
 		it('forwards a client commit message when one is sent', async () => {
@@ -2162,6 +2248,15 @@ describe('PromotionsService', () => {
 				status: 'applied',
 				warnings: [],
 			});
+			expect(eventService.emit).toHaveBeenCalledWith('promotion-applied', {
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				scope: 'instance',
+				outcome: 'applied',
+				durationMs: expect.any(Number),
+				workflowsChanged: 6,
+				workflowsFailedToPublish: 0,
+			});
 		});
 
 		const consumers = [
@@ -2244,6 +2339,10 @@ describe('PromotionsService', () => {
 					git: { commitSha: 'remotesha', branchName: 'dev' },
 					preflight,
 				});
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'promotion-applied',
+					expect.objectContaining({ outcome: 'blocked' }),
+				);
 				expect(bindingPreflight.checkInventory).toHaveBeenCalledWith({
 					inventory: expect.objectContaining({ workflows: [] }),
 				});
@@ -2317,6 +2416,10 @@ describe('PromotionsService', () => {
 					git: { branchName: 'dev', commitSha: 'remotesha' },
 				});
 				expect(gitService.refreshCheckout).toHaveBeenCalledOnce();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'promotion-applied',
+					expect.objectContaining({ outcome: 'source_changed' }),
+				);
 				expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
 				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
@@ -2330,6 +2433,10 @@ describe('PromotionsService', () => {
 			);
 			await expect(service.continueApply(ENVIRONMENT_ID, actor, request)).rejects.toThrow(
 				'Import blocked',
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-applied',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'user' }),
 			);
 			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
 			expect(projectService.deleteProject).not.toHaveBeenCalled();
