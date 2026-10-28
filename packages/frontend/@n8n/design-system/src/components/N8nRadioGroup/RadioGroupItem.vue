@@ -137,6 +137,11 @@ function onItemFocusIn(event: FocusEvent) {
 .body {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
+
+	.itemVertical & {
+		flex: 1;
+	}
 }
 
 .followUp {
