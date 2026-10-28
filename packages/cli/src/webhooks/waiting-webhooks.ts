@@ -42,6 +42,15 @@ import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
 
+function toLocateRefusal(executionId: string, status: number, reason: string): Error {
+	if (status === 404) return new NotFoundError(`The execution "${executionId}" does not exist.`);
+	const refusal = `The execution "${executionId}" cannot be resumed: ${reason}.`;
+	if (status === 409) return new ConflictError(refusal);
+	// A data plane without a resume secret, so not a wait that is over.
+	if (status === 501) return new NotImplementedError(refusal);
+	return new BadRequestError(refusal);
+}
+
 const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
 	status === 'queued' || status === 'running' || status === 'waiting';
 
@@ -435,14 +444,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		const located = await this.dataPlane.locateResumeTarget(executionId, { token });
 		if (!located.ok) {
 			if (located.status === 401) return this.respondInvalidToken(res);
-			if (located.status === 404) {
-				throw new NotFoundError(`The execution "${executionId}" does not exist.`);
-			}
-			const refusal = `The execution "${executionId}" cannot be resumed: ${located.error}.`;
-			if (located.status === 409) throw new ConflictError(refusal);
-			// A data plane without a resume secret, so not a wait that is over.
-			if (located.status === 501) throw new NotImplementedError(refusal);
-			throw new BadRequestError(refusal);
+			throw toLocateRefusal(executionId, located.status, located.error);
 		}
 
 		this.stripTokenFromRequest(req);
