@@ -340,7 +340,7 @@ function allWrites(plan: SkillImportPlan): SkillWrite[] {
 function packageNameClash(name: string): SkillDecision {
 	return {
 		kind: 'issue',
-		message: `Another skill of this package has the same name "${name}" in this scope.`,
+		message: `Another skill of this package has the same name "${name}" in this scope. Rename one of the skills.`,
 	};
 }
 

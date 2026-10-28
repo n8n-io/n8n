@@ -41,7 +41,8 @@ describe('reconcileSharedWrites', () => {
 					type: 'agent-invalid',
 					sourceAgentId: 'agent_second',
 					path: 'skills.second',
-					message: 'Another instance skill of this package has the same name "FIRST".',
+					message:
+						'Another instance skill of this package has the same name "FIRST". Rename one of the skills.',
 				},
 			],
 		]);

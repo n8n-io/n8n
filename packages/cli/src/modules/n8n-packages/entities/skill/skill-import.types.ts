@@ -66,7 +66,7 @@ export function reconcileSharedWrites(plans: SkillImportPlan[]): AgentImportIssu
 }
 
 function instanceNameClash({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
-	const message = `Another instance skill of this package has the same name "${skill.skill.name}".`;
+	const message = `Another instance skill of this package has the same name "${skill.skill.name}". Rename one of the skills.`;
 	return usedBy.map((agentId) => skillIssue(agentId, skill.id, message));
 }
 
