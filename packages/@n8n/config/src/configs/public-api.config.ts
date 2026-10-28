@@ -11,7 +11,7 @@ export class PublicApiRateLimitConfig {
 	enabled: boolean = false;
 
 	/**
-	 * Maximum number of read requests (`GET` and `HEAD`) that one API key can make to all public
+	 * Maximum number of read requests (`GET`) that one API key can make to all public
 	 * API endpoints together in each window. Set to 0 for no limit.
 	 */
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', nonnegativeIntSchema)
@@ -25,7 +25,7 @@ export class PublicApiRateLimitConfig {
 	globalReadWindowSeconds: number = 60;
 
 	/**
-	 * Maximum number of write requests (all methods other than `GET` and `HEAD`) that one API key
+	 * Maximum number of write requests (`POST`, `PUT`, `PATCH`, and `DELETE`) that one API key
 	 * can make to all public API endpoints together in each window. Set to 0 for no limit.
 	 */
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT', nonnegativeIntSchema)
@@ -39,7 +39,7 @@ export class PublicApiRateLimitConfig {
 	globalWriteWindowSeconds: number = 60;
 
 	/**
-	 * Maximum number of read requests (`GET` and `HEAD`) that one API key can make to each public
+	 * Maximum number of read requests (`GET`) that one API key can make to each public
 	 * API endpoint in each window. An endpoint is a method and a path, so `GET /workflows/{id}` is
 	 * one endpoint for every workflow ID. Set to 0 for no limit.
 	 */
@@ -54,7 +54,7 @@ export class PublicApiRateLimitConfig {
 	endpointReadWindowSeconds: number = 60;
 
 	/**
-	 * Maximum number of write requests (all methods other than `GET` and `HEAD`) that one API key
+	 * Maximum number of write requests (`POST`, `PUT`, `PATCH`, and `DELETE`) that one API key
 	 * can make to each public API endpoint in each window. An endpoint is a method and a path, so
 	 * `DELETE /workflows/{id}` is one endpoint for every workflow ID. Set to 0 for no limit.
 	 */
