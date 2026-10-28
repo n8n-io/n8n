@@ -19,6 +19,7 @@ const props = withDefaults(
 		cancelLabel?: string;
 		headerDivider?: boolean;
 		bodyFlush?: boolean;
+		fixedSize?: boolean;
 		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
@@ -37,6 +38,7 @@ const props = withDefaults(
 		cancelLabel: undefined,
 		headerDivider: false,
 		bodyFlush: false,
+		fixedSize: false,
 		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
@@ -80,6 +82,7 @@ watch(
 		:header-divider="headerDivider"
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
+		:fixed-size="fixedSize"
 		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"

@@ -1834,6 +1834,12 @@ describe('header and footer', () => {
 		expect(getByTestId('agent-modal-cancel')).toHaveTextContent('generic.close');
 	});
 
+	it('keeps the same size on the form, so opening a version does not resize it', () => {
+		const { getByTestId } = renderModal({ skill: savedSkill, skillId: 'tone', settings });
+
+		expect(getByTestId('agent-skill-modal')).toHaveAttribute('data-fixed-size', 'true');
+	});
+
 	it('detaches a hub skill with the agent toggle in the header menu', async () => {
 		const onRemove = vi.fn();
 		const { findByTestId, queryByTestId } = renderModal({

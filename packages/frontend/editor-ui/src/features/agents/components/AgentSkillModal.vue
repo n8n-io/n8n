@@ -1069,6 +1069,7 @@ function onRemove() {
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
 		:header-divider="isFormStep"
 		:body-flush="isFormStep"
+		:fixed-size="isFormStep"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
 		data-testid="agent-skill-modal"
@@ -1320,13 +1321,7 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div
-				:class="[
-					$style.content,
-					isFormStep && $style.contentFlush,
-					showVersionsPanel && $style.contentBesidePanel,
-				]"
-			>
+			<div :class="[$style.content, isFormStep && $style.contentFlush]">
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1600,17 +1595,13 @@ function onRemove() {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
 }
 
-/* The file list runs to the edges of the modal and each column keeps its own inset. */
+/* The file list runs to the edges of the modal and each column keeps its own inset. The modal has
+   a fixed size on these steps, so the columns fill it, beside the Versions panel or not. */
 .contentFlush {
 	gap: 0;
 	align-items: stretch;
-}
-
-/* Beside the Versions panel, the editor gives up the width of the panel. */
-@media (min-width: 769px) {
-	.contentBesidePanel {
-		width: min(52rem, calc(100dvw - var(--spacing--lg) * 3 - var(--spacing--5xl) * 1.25));
-	}
+	width: auto;
+	min-height: 100%;
 }
 
 /* Nested, so it wins over the file list's own background. */
