@@ -1,0 +1,30 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7a118b07ee147d::t_9a951ea2bafbdc 1815-1816
+packages/frontend/editor-ui/src/features/agents/components/SessionMemoryDetail.vue
+  s_7a118b07ee147d::t_9a951ea2bafbdc 9,41-43,48-53,114-125,127-165,167-174,178-184,194,198-201
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionMemoryDetail.test.ts
+  s_7a118b07ee147d::t_45089faf42c172 91-98,103-133,135-158
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMemoryItem.vue
+  s_7a118b07ee147d::t_a30bdbbddff52d 5,7,20-31
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_7a118b07ee147d::t_bb1b16136b0482 28,74,173-175,177-189,191-224
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_7a118b07ee147d::t_316bd80bc99608 77,105
+  s_7a118b07ee147d::t_90d1755610f7e6 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f9cfd3b0a22a69e8a3f9386c7f52ebf5075cb16",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
