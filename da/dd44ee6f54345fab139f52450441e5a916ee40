@@ -1,0 +1,26 @@
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_f9291447050482::t_3db1be10f916fb 735-751
+  s_f9291447050482::t_251886faadaeba 6
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_f9291447050482::t_423c30590112e7 788,792-793
+  s_f9291447050482::t_3ba8d4cd8c035e 535,538-542,544-554
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_f9291447050482::t_b3701a779bdc41 21
+  s_f9291447050482::t_1a8932944ca0f5 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dadd44ee6f54345fab139f52450441e5a916ee40",
+  "prompts": {},
+  "sessions": {
+    "s_f9291447050482": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0dd38f1d-cb99-4da1-bffd-bbd074761a07",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
