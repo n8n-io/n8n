@@ -60,7 +60,7 @@ the credential checks read control-plane state.
    as engine v1 orders execution, by canvas position from top to bottom, and then by run. Engine v1
    returns the output of the last node that ran. This is a breaking change for a sub-workflow with
    several end branches. We may revisit this decision when we look at backwards compatible execution
-   order in https://linear.app/n8n/issue/CET-460.
+   order.
 7. **Cancellation cascades.** Cancelling a parent execution cancels its sub-executions, awaited or
    not. A timeout that ends the parent execution does the same, once engine v2 has timeouts. We may
    later introduce a sub-workflow execution mode that detaches the sub-execution fully from the
@@ -91,8 +91,8 @@ the credential checks read control-plane state.
 
 - The wait ADR's rule that the engine never runs the node's execute method again holds
   for deadline and request resumes only.
-- A caller with side effects before its `executeWorkflow` call cannot have its node run
-  again. The AI Agent tools need their own design (CET-291).
+- A caller with side effects before its `executeWorkflow` call cannot have its node run again. The
+  AI Agent tools need their own design.
 - The sub-execution row carries a parent link that the engine alone sets. The read path can show
   parent execution and sub-execution links.
 - A parent execution that awaits a sub-execution reports `waiting`. Engine v1 reports `running`.
