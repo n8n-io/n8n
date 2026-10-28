@@ -327,13 +327,22 @@ export class AgentBackgroundJobService {
 		jobIds?: string[],
 	): Promise<void> {
 		await this.pruneExpiredPausedJobs(parentThreadId);
-		await this.jobRepository.requestPauseForActiveJobs(
-			parentAgentId,
-			parentThreadId,
-			parentResourceId,
-			pauseRequestId,
-			jobIds,
-		);
+		if (jobIds) {
+			await this.jobRepository.requestPauseForCapturedJobs(
+				parentAgentId,
+				parentThreadId,
+				parentResourceId,
+				pauseRequestId,
+				jobIds,
+			);
+		} else {
+			await this.jobRepository.requestPauseForActiveJobs(
+				parentAgentId,
+				parentThreadId,
+				parentResourceId,
+				pauseRequestId,
+			);
+		}
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(parentAgentId, parentThreadId);
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		const selected = jobs.filter(

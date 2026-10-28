@@ -167,6 +167,22 @@ describe('markMailConsumed', () => {
 });
 
 describe('user pause', () => {
+	it.each([{ jobIds: [] }, { jobIds: ['job-1'] }])(
+		'keeps the captured Stop selection $jobIds',
+		async ({ jobIds }) => {
+			const { service, jobRepository } = setup();
+			await service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1', 'stop-1', jobIds);
+			expect(jobRepository.requestPauseForCapturedJobs).toHaveBeenCalledExactlyOnceWith(
+				'agent-1',
+				'thread-1',
+				'draft-chat:user-1',
+				'stop-1',
+				jobIds,
+			);
+			expect(jobRepository.requestPauseForActiveJobs).not.toHaveBeenCalled();
+		},
+	);
+
 	afterEach(() => Container.reset());
 
 	it('attempts every selected workflow and keeps a failed cancellation available for retry', async () => {
