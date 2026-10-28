@@ -160,6 +160,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			'agents.chat.backgroundTasks.stopAll': 'Stop all tasks',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
 			'agents.chat.backgroundTasks.status.suspended': 'Waiting for approval',
+			'agents.chat.backgroundTasks.approvalFor': `Approval for ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.status.running': 'Running',
 			'agents.chat.backgroundTasks.status.stopping': 'Stopping…',
 			'agents.chat.backgroundTasks.status.paused': 'Stopped',
@@ -2311,8 +2312,8 @@ describe('AgentChatPanel', () => {
 
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
 				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
-				expect(wrapper.get('[data-testid="agent-approval-card"]').text()).not.toContain(
-					'Approval for',
+				expect(wrapper.get('[data-testid="agent-approval-task-title"]').text()).toBe(
+					'Approval for Check escalations',
 				);
 				expect(wrapper.get('[data-test-id="approval-card-args"]').text()).toContain(
 					'team@example.com',
@@ -2343,6 +2344,9 @@ describe('AgentChatPanel', () => {
 				await nextTick();
 
 				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
+				expect(wrapper.get('[data-testid="agent-approval-task-title"]').text()).toBe(
+					'Approval for Other child',
+				);
 				expect(wrapper.get('[data-test-id="approval-card-args"]').text()).toContain(
 					'other@example.com',
 				);
@@ -3351,6 +3355,8 @@ describe('AgentChatPanel', () => {
 				];
 				await nextTick();
 				const approvals = wrapper.get('[data-testid="agent-chat-approvals"]');
+
+				expect(approvals.find('[data-testid="agent-approval-task-title"]').exists()).toBe(false);
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
 				expect(document.activeElement).toBe(
 					approvals.get('[role="toolbar"] button[tabindex="0"]').element,

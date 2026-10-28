@@ -8865,6 +8865,7 @@
 	"agents.chat.backgroundTasks.stopError": "Couldn't stop background tasks. Try again.",
 	"agents.chat.backgroundTasks.status.waiting": "Waiting",
 	"agents.chat.backgroundTasks.status.suspended": "Waiting for approval",
+	"agents.chat.backgroundTasks.approvalFor": "Approval for {title}",
 	"agents.chat.backgroundTasks.approvalError": "Couldn't send the response. Refresh the chat and try again.",
 	"agents.chat.backgroundTasks.status.running": "Running",
 	"agents.chat.backgroundTasks.status.stopping": "Stopping…",

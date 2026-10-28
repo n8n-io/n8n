@@ -576,7 +576,7 @@ const backgroundApproval = computed(() => {
 
 		const input = parseApprovalInput(job.approval.suspendPayload);
 
-		if (input) return { id: job.id, approval: job.approval, input };
+		if (input) return { id: job.id, title: job.title, approval: job.approval, input };
 	}
 
 	return undefined;
@@ -1629,6 +1629,7 @@ onBeforeUnmount(() => {
 						v-else-if="backgroundApproval"
 						:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
 						:input="backgroundApproval.input"
+						:task-title="backgroundApproval.title"
 						:agent-name="agentConfig?.name"
 						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"

@@ -528,6 +528,8 @@ If a surface keeps a resolved card, show the decision without active actions.
 
 Attach the plan card directly above the approval card. Keep both in one stack
 without a gap. Use the standard approval header with the Agent and tool names.
+For background tasks, show **Approval for [task title]** above these names inside
+the approval header.
 Keep the approval card in front of the plan card's overlapping lower edge.
 
 In the session timeline, show pending background tool approvals below their
