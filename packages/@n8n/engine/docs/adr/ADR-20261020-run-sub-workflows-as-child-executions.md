@@ -10,9 +10,9 @@ Source: https://linear.app/n8n/issue/CET-292
 
 ## Context
 
-In engine v1 the Execute Sub-workflow node asks the engine to run the child directly in-line.
-The engine loads the workflow, checks the caller policy and the credentials, and runs it.
-A parent that waits for the child parks on a sentinel date, and the child's completion
+In engine v1 the Execute Sub-workflow node asks the engine to run the sub-workflow directly in-line.
+The engine loads the workflow, checks the caller policy and the credentials, and runs it. A parent
+that waits for the sub-execution parks on a sentinel date, and the sub-execution's completion
 resumes it.
 
 Engine v2 cannot do this today. The shim has no `executeWorkflow`, and it fails a step that
@@ -20,19 +20,19 @@ waits for a sub-execution. ADR-20260902-steps-declare-waits left that pause out 
 expected a step type of its own to carry it; this ADR takes a different route, below. The
 engine cannot load a workflow or build a graph
 (ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution). A step cannot block
-for the length of a child run
+for the length of a sub-execution
 (ADR-20260828-obtain-trigger-output-before-creating-the-execution). The caller policy and
 the credential checks read control-plane state.
 
 ## Decision
 
-1. **A sub-workflow call uses a similar mechanism to wait-resume.** We receive the
-   child execution request in the shim and return a `child` declaration, similar to `wait`.
-   The engine is responsible for persisting the child declaration: suspending the parent,
-   running the child, and resuming the parent when the child is complete.
+1. **A sub-workflow call uses a similar mechanism to wait-resume.** We receive the sub-execution
+   request in the shim and return a `child` declaration, similar to `wait`. The engine is
+   responsible for persisting the child declaration: suspending the parent, running the
+   sub-execution, and resuming the parent when the sub-execution is complete.
 2. **We re-invoke the execute method when the parent is resumed.** On the second
-   invocation, the shim answers the `executeWorkflow` call with the output of the child
-   execution. Then all of the existing post-processing is automatically applied. This
+   invocation, the shim answers the `executeWorkflow` call with the output of the
+   sub-execution. Then all of the existing post-processing is automatically applied. This
    decision supersedes the decision in ADR-20260902-steps-declare-waits which states that
    we do not re-invoke execute. That decision still holds for waiting, but not sub-workflows.
 3. **An explicit suspend-action-response mechanism is planned future work.** We would prefer
@@ -46,31 +46,31 @@ the credential checks read control-plane state.
 4. **Only the Execute Sub-workflow node can call a sub-workflow.** When any other node calls
    `executeWorkflow`, the call throws. Decision 2 needs a node whose code before the call has
    no side effects. We know this only for the Execute Sub-workflow node.
-5. **The control plane resolves the child, and the engine starts it.** When a node asks
-   for a sub-workflow, the shim calls the control plane. The control plane looks up the
-   workflow, applies the caller policy and the credential checks, and returns the graph.
-   The engine then starts the child itself as it processes the step result. Starting it in
-   the engine keeps admittance and the parent link in one place.
-6. **Suspend before start.** The engine suspends the parent step before it starts the
-   child, so the child cannot end before the parent can resume. When the start fails,
+5. **The control plane resolves the sub-workflow, and the engine starts the sub-execution.** When a
+   node asks for a sub-workflow, the shim calls the control plane. The control plane looks up the
+   workflow, applies the caller policy and the credential checks, and returns the graph. The engine
+   then starts the sub-execution itself as it processes the step result. Starting it in the engine
+   keeps admittance and the parent link in one place.
+6. **Suspend before start.** The engine suspends the parent step before it starts the sub-execution,
+   so the sub-execution cannot end before the parent can resume. When the start fails,
    reconciliation recovers the waiting step.
-7. **The child returns all its terminal branches, concatenated.** The branches are ordered
-   as engine v1 orders execution, by canvas position from top to bottom, and then by run.
-   Engine v1 returns the output of the last node that ran. This is a breaking change for a
-   child with several end branches. We may revisit this decision when we look at backwards
-   compatible execution order in https://linear.app/n8n/issue/CET-460.
-8. **Cancellation cascades.** Cancelling a parent cancels its children, awaited or not. A
-   timeout that ends the parent does the same, once engine v2 has timeouts. We may later
-   introduce a sub-workflow execution mode that detaches the child fully from the parent.
+7. **The sub-execution returns all its terminal branches, concatenated.** The branches are ordered
+   as engine v1 orders execution, by canvas position from top to bottom, and then by run. Engine v1
+   returns the output of the last node that ran. This is a breaking change for a sub-workflow with
+   several end branches. We may revisit this decision when we look at backwards compatible execution
+   order in https://linear.app/n8n/issue/CET-460.
+8. **Cancellation cascades.** Cancelling a parent cancels its sub-executions, awaited or not. A
+   timeout that ends the parent does the same, once engine v2 has timeouts. We may later introduce a
+   sub-workflow execution mode that detaches the sub-execution fully from the parent.
 9. **Dropped or postponed features.** The "run once for each item" mode and the inline,
    local file and URL sources are refused. v1-v2 cross-engine sub-workflow executions are
    not supported.
 
 ## Alternatives Considered
 
-- **The control plane starts the child.** Rejected. The child starts before the parent step
-  is suspended, and the data plane asks the control plane to start an execution in the data
-  plane.
+- **The control plane starts the sub-execution.** Rejected. The sub-execution starts before the
+  parent step is suspended, and the data plane asks the control plane to start an execution in the
+  data plane.
 - **A native step type that the converter builds.** The converter cannot resolve the
   expressions that choose the workflow. The option stays available for a static native node
   later.
@@ -89,13 +89,13 @@ the credential checks read control-plane state.
   for deadline and request resumes only.
 - A caller with side effects before its `executeWorkflow` call cannot have its node run
   again. The AI Agent tools need their own design (CET-291).
-- The child row carries a parent link that the engine alone sets. The read path can show
+- The sub-execution row carries a parent link that the engine alone sets. The read path can show
   parent and sub-execution links.
-- A parent that awaits a child reports `waiting`. Engine v1 reports `running`.
-- Fire-and-forget children stop with the parent. Engine v1 lets them run on.
-- Reconciliation repairs a waiting step whose child never started, and an ended child whose
-  parent still waits.
-- Engine v2 has no timeout yet, so a child outlives a parent that v1 would have timed out.
+- A parent that awaits a sub-execution reports `waiting`. Engine v1 reports `running`.
+- Fire-and-forget sub-executions stop with the parent. Engine v1 lets them run on.
+- Reconciliation repairs a waiting step whose sub-execution never started, and an ended
+  sub-execution whose parent still waits.
+- Engine v2 has no timeout yet, so a sub-execution outlives a parent that v1 would have timed out.
   When we implement timeouts, they will cascade.
 
 ## Links
