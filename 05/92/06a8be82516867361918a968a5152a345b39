@@ -1,17 +1,17 @@
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.5.2",
+  "git_ai_version": "1.7.5",
   "base_commit_sha": "059206a8be82516867361918a968a5152a345b39",
   "prompts": {},
   "sessions": {
-    "s_ab80bf3dba8421": {
+    "s_4e2ee7d47fe6b4": {
       "agent_id": {
-        "tool": "claude",
-        "id": "622abbc5-a35f-4cfa-a072-d511338d74e1",
-        "model": "claude-opus-5-5"
+        "tool": "pi",
+        "id": "01a0aecf-d437-75f5-ad41-07955fdf504d",
+        "model": "gpt-5.6-sol"
       },
-      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
     }
   }
 }
