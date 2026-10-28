@@ -1,5 +1,5 @@
 packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
-  ai_agent 1399-1400,1402-1410,1412-1420,1422-1423,1425-1429,1431
+  ai_agent 1399-1400,1400,1402-1410,1412-1420,1422-1423,1425-1429,1431
   s_ef2fe8491daaf9::t_150fdd83020a14 1411
 packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
   s_ef2fe8491daaf9::t_01b5423b4735c0 445-446,472
