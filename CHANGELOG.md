@@ -82,6 +82,7 @@
 * **Databricks AI Agent Node:** Scrub MLflow trace request and response previews ([#41247](https://github.com/n8n-io/n8n/issues/41247)) ([bed2ab9](https://github.com/n8n-io/n8n/commit/bed2ab921080d9be7cff059bed8d564bc17f9afa))
 * **Databricks Node:** Send a JSON body for a Lakebase function call that has no arguments ([#41632](https://github.com/n8n-io/n8n/issues/41632)) ([6da54e1](https://github.com/n8n-io/n8n/commit/6da54e1650ac6a80e525c7cb58e418c551d63ff6))
 * **editor:** Adapt Agent Builder panel widths to available space ([#41562](https://github.com/n8n-io/n8n/issues/41562)) ([d8809f6](https://github.com/n8n-io/n8n/commit/d8809f641c3e2b677843922cc0617d95cbc2a5a0))
+* **editor:** Align agent dialog header actions to the right edge ([#41969](https://github.com/n8n-io/n8n/issues/41969)) ([0fee1e7](https://github.com/n8n-io/n8n/commit/0fee1e701bb6d3f7ec2b132be2f4b7ef9abfff79))
 * **editor:** Align carets within split buttons ([#42168](https://github.com/n8n-io/n8n/issues/42168)) ([1634a42](https://github.com/n8n-io/n8n/commit/1634a422dea49c6cc9d74364bca45004ee101b06))
 * **editor:** Align ellipsis action buttons across the editor ([#41912](https://github.com/n8n-io/n8n/issues/41912)) ([e6b2c83](https://github.com/n8n-io/n8n/commit/e6b2c8304bc5abe5fdaee81493b822801caac6d0))
 * **editor:** Allow dismissing the n8n Assistant limited mode banner ([#41885](https://github.com/n8n-io/n8n/issues/41885)) ([50cdf14](https://github.com/n8n-io/n8n/commit/50cdf1480b58a762ad309513808b7163322041b9))
