@@ -9,6 +9,7 @@ import { type AgentChatIntegration, ChatIntegrationRegistry } from './agent-chat
 import {
 	AgentOutboundFiles,
 	type OutboundPostable,
+	captionLimits,
 	postWithFileGroups,
 } from './agent-outbound-files.service';
 import type { CallbackMetadata } from './callback-store';
@@ -449,8 +450,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			files.length > 0
 				? await this.outboundFiles.load(params.descriptor.integration.type, files)
 				: [],
-			this.integrationRegistry.get(params.descriptor.integration.type)?.fileUploadLimits
-				?.maxCaptionLength,
+			captionLimits(this.integrationRegistry.get(params.descriptor.integration.type)),
 		);
 	}
 

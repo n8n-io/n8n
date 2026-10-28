@@ -5,10 +5,12 @@ import { OperationalError } from 'n8n-workflow';
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import {
+	type AgentChatIntegration,
 	ChatIntegrationRegistry,
 	MAX_CHANNEL_SEND_FILE_BYTES,
 	MAX_FILE_MESSAGES_PER_SEND,
 } from './agent-chat-integration';
+import { splitMessage } from './message-split';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
 	fileAttachmentType,
@@ -35,22 +37,29 @@ export type OutboundPostable =
 /**
  * Post a message with its files, one message for each file group. The text
  * or card goes with the first group. Text longer than `maxCaptionLength` is
- * posted as its own message before the files, so the platform does not cut it.
- * Return the result of the first post.
+ * posted on its own before the files, split at `maxMessageLength`, so the
+ * platform does not cut it. Return the result of the first post.
  */
 export async function postWithFileGroups<T>(
 	post: (message: OutboundPostable) => Promise<T>,
 	message: OutboundPostable,
 	groups: OutboundFileFields[],
-	maxCaptionLength?: number,
+	limits: { maxCaptionLength?: number; maxMessageLength?: number } = {},
 ): Promise<T> {
 	const [firstGroup, ...otherGroups] = groups;
 	if (!firstGroup) return await post(message);
 	const text = postableText(message);
+	const { maxCaptionLength, maxMessageLength } = limits;
 	if (maxCaptionLength !== undefined && text !== undefined && text.length > maxCaptionLength) {
-		const first = await post(message);
-		for (const group of groups) await post({ raw: '', ...group });
-		return first;
+		const parts = maxMessageLength === undefined ? [text] : splitMessage(text, maxMessageLength);
+		let first: T | undefined;
+		for (const part of parts) {
+			const sent = await post(withText(message, part));
+			first ??= sent;
+		}
+		const firstFiles = await post({ raw: '', ...firstGroup });
+		for (const group of otherGroups) await post({ raw: '', ...group });
+		return first ?? firstFiles;
 	}
 	const first = await post(
 		typeof message === 'string' ? { raw: message, ...firstGroup } : { ...message, ...firstGroup },
@@ -64,6 +73,12 @@ function postableText(message: OutboundPostable): string | undefined {
 	if ('raw' in message) return message.raw;
 	if ('markdown' in message) return message.markdown;
 	return undefined;
+}
+
+function withText(message: OutboundPostable, text: string): OutboundPostable {
+	if (typeof message === 'string') return text;
+	if ('markdown' in message) return { markdown: text };
+	return { raw: text };
 }
 
 export interface OutboundFileScope {
@@ -180,9 +195,16 @@ export class AgentOutboundFiles {
 			async (message) => await thread.post(message),
 			caption,
 			groups,
-			this.integrationRegistry.get(platform)?.fileUploadLimits?.maxCaptionLength,
+			captionLimits(this.integrationRegistry.get(platform)),
 		);
 	}
+}
+
+export function captionLimits(integration: AgentChatIntegration | undefined) {
+	return {
+		maxCaptionLength: integration?.fileUploadLimits?.maxCaptionLength,
+		maxMessageLength: integration?.maxMessageLength,
+	};
 }
 
 function chunk<T>(items: T[], size: number): T[][] {

@@ -210,6 +210,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				service,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const settled = vi.fn();
 			const result = executor.execute({
