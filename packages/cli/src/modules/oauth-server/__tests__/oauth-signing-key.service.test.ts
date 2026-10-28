@@ -238,6 +238,42 @@ describe('OAuthSigningKeyService', () => {
 			expect(await publishedKids(service)).not.toContain('retired');
 			await expect(verify(service, token)).rejects.toThrow('kid is unknown');
 		});
+
+		it('skips unreadable retired keys without hiding the active key', async () => {
+			const { service, keyStore, cipher, logger } = createSigningKeyService();
+			keyStore.rows.push(makeKeyRow('active'));
+			keyStore.rows.push(
+				makeKeyRow('recently-retired', {
+					status: 'inactive',
+					value: 'unreadable:recent',
+					updatedAt: new Date(Date.now() - 60_000),
+				}),
+			);
+			keyStore.rows.push(
+				makeKeyRow('long-retired', {
+					status: 'inactive',
+					value: 'unreadable:old',
+					updatedAt: new Date(Date.now() - RETIRED_SIGNING_KEY_GRACE_MS - 60_000),
+				}),
+			);
+			cipher.decryptDEKWithInstanceKey.mockImplementation((value: string) => {
+				if (value.startsWith('unreadable:')) throw new Error('Unable to decrypt stored key');
+				return value.slice('wrapped:'.length);
+			});
+
+			await service.initialize();
+			cipher.decryptDEKWithInstanceKey.mockClear();
+
+			await expect(service.getPublicJwks()).resolves.toEqual([
+				expect.objectContaining({ kid: 'active' }),
+			]);
+			expect(cipher.decryptDEKWithInstanceKey).toHaveBeenCalledTimes(2);
+			expect(logger.warn).toHaveBeenCalledOnce();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to read retired OAuth signing key; skipping it',
+				expect.objectContaining({ keyId: 'recently-retired', error: expect.any(Error) }),
+			);
+		});
 	});
 
 	describe('in-memory key list', () => {
