@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { BinaryDataService } from 'n8n-core';
+import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -400,6 +400,29 @@ describe('AgentChatAttachmentService', () => {
 
 			const unknown = service.getFileStore({ agentId: 'agent-1', projectId: 'project-1' }, 'nope');
 			expect(unknown.isMediaTypeSupported?.('image/png')).toBe(false);
+		});
+	});
+
+	describe('hasStoredData', () => {
+		const attachment = mock<AgentChatAttachment>({ binaryDataId: 'filesystem-v2:abc' });
+
+		it('returns true when the bytes are in storage', async () => {
+			binaryDataService.getMetadata.mockResolvedValue({ fileSize: 3, mimeType: 'image/png' });
+
+			expect(await service.hasStoredData(attachment)).toBe(true);
+			expect(binaryDataService.getMetadata).toHaveBeenCalledWith('filesystem-v2:abc');
+		});
+
+		it('returns false when the bytes are gone', async () => {
+			binaryDataService.getMetadata.mockRejectedValue(new FileNotFoundError('abc'));
+
+			expect(await service.hasStoredData(attachment)).toBe(false);
+		});
+
+		it('throws other storage errors', async () => {
+			binaryDataService.getMetadata.mockRejectedValue(new Error('storage down'));
+
+			await expect(service.hasStoredData(attachment)).rejects.toThrow('storage down');
 		});
 	});
 

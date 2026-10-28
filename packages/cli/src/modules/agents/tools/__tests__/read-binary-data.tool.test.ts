@@ -29,7 +29,10 @@ describe('createReadBinaryDataTool', () => {
 		});
 	}
 
-	beforeEach(() => vi.resetAllMocks());
+	beforeEach(() => {
+		vi.resetAllMocks();
+		attachmentService.hasStoredData.mockResolvedValue(true);
+	});
 
 	it('returns an image as a file reference part for the runtime to load', async () => {
 		attachmentService.getReadable.mockResolvedValue(file());
@@ -92,6 +95,15 @@ describe('createReadBinaryDataTool', () => {
 
 		await expect(build().handler!({ fileId: 'other' }, ctx)).rejects.toThrow(
 			'File "other" not found in this conversation',
+		);
+	});
+
+	it('rejects a file whose stored bytes are gone', async () => {
+		attachmentService.getReadable.mockResolvedValue(file());
+		attachmentService.hasStoredData.mockResolvedValue(false);
+
+		await expect(build().handler!({ fileId: 'file-1' }, ctx)).rejects.toThrow(
+			'File "file-1" is no longer available',
 		);
 	});
 

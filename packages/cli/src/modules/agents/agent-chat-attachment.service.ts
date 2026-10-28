@@ -227,6 +227,17 @@ export class AgentChatAttachmentService {
 			: null;
 	}
 
+	/** Whether the bytes of the file are still in storage. Retention can remove them. */
+	async hasStoredData(attachment: AgentChatAttachment): Promise<boolean> {
+		try {
+			await this.binaryDataService.getMetadata(attachment.binaryDataId);
+			return true;
+		} catch (error) {
+			if (error instanceof FileNotFoundError) return false;
+			throw error;
+		}
+	}
+
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
 		return await this.binaryDataService.getAsStream(attachment.binaryDataId);
 	}

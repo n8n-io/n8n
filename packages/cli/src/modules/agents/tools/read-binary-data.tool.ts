@@ -50,6 +50,9 @@ export function createReadBinaryDataTool({
 			if (!threadId) throw new UserError('Files can only be read in a conversation');
 			const file = await attachmentService.getReadable(fileId, { projectId, threadId });
 			if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
+			if (!(await attachmentService.hasStoredData(file))) {
+				throw new UserError(`File "${fileId}" is no longer available`);
+			}
 
 			const { mimeType } = file;
 			const metadata = {
