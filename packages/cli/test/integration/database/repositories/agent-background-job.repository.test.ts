@@ -14,6 +14,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
+import type { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import {
 	AgentBackgroundJobService,
@@ -885,6 +886,10 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentMessageRepository>(),
 				mock<AgentPlanRepository>(),
 			);
+
+			const planService = mock<AgentPlanService>();
+			planService.findActivePlan.mockResolvedValue(null);
+
 			const wakeService = new AgentWakeService(
 				Container.get(AgentExecutionThreadRepository),
 				repository,
@@ -899,6 +904,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				logger,
 				jobService,
+				planService,
 			);
 			Container.set(AgentWakeService, wakeService);
 
