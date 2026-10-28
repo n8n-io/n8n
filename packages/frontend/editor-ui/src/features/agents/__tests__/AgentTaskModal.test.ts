@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { AGENT_TASK_OBJECTIVE_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
-import { defineComponent, h, nextTick, onMounted, watch } from 'vue';
+import { defineComponent, h, nextTick, onMounted, ref, watch } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -137,10 +137,10 @@ const stubs = {
 			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
 	AgentPreviewButton: {
-		props: ['isRunnable', 'testId', 'validationIssues', 'variant'],
+		props: ['isRunnable', 'testId', 'validationIssues', 'variant', 'disabledReason'],
 		emits: ['open-preview'],
 		template:
-			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable" @click="isRunnable && $emit(\'open-preview\')">Preview</button>',
+			'<button :data-testid="testId" :data-variant="variant" :disabled="!isRunnable || !!disabledReason" @click="isRunnable && !disabledReason && $emit(\'open-preview\')">Preview</button>',
 	},
 	N8nInput: {
 		props: ['modelValue'],
@@ -537,6 +537,30 @@ describe('AgentTaskModal', () => {
 		await fireEvent.click(getByTestId('agent-task-preview'));
 
 		expect(onPreview).not.toHaveBeenCalled();
+	});
+
+	it('updates Test availability while the task modal is open', async () => {
+		const reason = ref<string>();
+		const onPreview = vi.fn();
+		const { getByTestId } = renderModal({
+			task: makeTask(),
+			isRunnable: true,
+			onPreview,
+			getPreviewDisabledReason: () => reason.value,
+		});
+		const button = getByTestId('agent-task-preview');
+		expect(button).toBeEnabled();
+		reason.value = 'Assistant is working';
+		await nextTick();
+		expect(button).toBeDisabled();
+		await fireEvent.click(button);
+		expect(onPreview).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		reason.value = undefined;
+		await nextTick();
+		expect(button).toBeEnabled();
+		await fireEvent.click(button);
+		expect(onPreview).toHaveBeenCalledWith('Obj');
 	});
 
 	it('does not open Preview when the objective is invalid', async () => {

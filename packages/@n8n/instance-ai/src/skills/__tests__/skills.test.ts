@@ -89,13 +89,13 @@ describe('Instance AI skills', () => {
 		expect(skill).toContain('.group(name, members, { description })');
 	});
 
-	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
+	it('defers sticky and other SDK defects to the build source lint', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
 		expect(skill).toContain('unsolicited `sticky()`');
-		expect(skill).toContain('workflow-sdk validate');
+		expect(skill).toContain('The SDK source lint in `workflow_builder_build_workflow`');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
 	});
 
@@ -107,7 +107,7 @@ describe('Instance AI skills', () => {
 
 		expect(recipeResearch).toMatchObject({
 			name: 'credential-recipe-research',
-			recommendedTools: ['research', 'workflow_builder_workflows'],
+			recommendedTools: ['research', 'setup_workflow'],
 		});
 		expect(recipeResearch?.description).toContain('Load before composing');
 		expect(recipeResearch?.description).toContain('credentialHints');
@@ -401,7 +401,9 @@ describe('Instance AI skills', () => {
 			'edit_file',
 			'execute_command',
 			'workflow_builder_build_workflow',
-			'workflow_builder_workflows',
+			'list_workflows',
+			'get_workflow_as_code',
+			'setup_workflow',
 			'search_nodes',
 			'get_node_types',
 			'get_node_parameter_options',
@@ -421,7 +423,8 @@ describe('Instance AI skills', () => {
 		expect(skill?.description).toContain(
 			'For any other new workflow, load intent-recognition first when it is listed',
 		);
-		expect(skill?.description).toContain('workflow-sdk validate');
+		expect(skill?.description).toContain('The build validates the source');
+		expect(skill?.description).not.toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 
 		const loaded = await source.loadSkill('workflow-builder');
@@ -430,8 +433,9 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace_write_file');
 		expect(loaded?.instructions).toContain(
-			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
+			'Do not run a separate validation command before the build',
 		);
+		expect(loaded?.instructions).toContain('Do not run it by default');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
@@ -443,9 +447,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not call\n    `workflow_builder_verify_built_workflow` directly',
 		);
-		expect(loaded?.instructions).toContain(
-			'workflow_builder_workflows(action="get-as-code", workflowId)',
-		);
+		expect(loaded?.instructions).toContain('get_workflow_as_code(workflowId)');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('the `error-workflows` reference');
 		expect(loaded?.instructions).toContain('settings.errorWorkflow');
@@ -571,7 +573,7 @@ describe('Instance AI skills', () => {
 		expect(publishing).toContain('acknowledgeUnverified: true');
 		expect(publishing).toContain('Fixing a workflow that is already published');
 		expect(publishing).toContain(
-			'Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks',
+			'Only call `publish_workflow` when the user explicitly asks',
 		);
 
 		const recipes = (await source.loadSkill('credential-recipe-research'))?.instructions ?? '';
@@ -604,7 +606,8 @@ describe('Instance AI skills', () => {
 
 		expect(skill?.recommendedTools).toEqual([
 			'workflow_builder_executions',
-			'workflow_builder_workflows',
+			'get_workflow',
+			'get_workflow_as_code',
 		]);
 
 		const loaded = await source.loadSkill('debugging-executions');

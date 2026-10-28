@@ -9,7 +9,7 @@ description: >-
   key page or test endpoint is wrong.
 recommended_tools:
   - research
-  - workflow_builder_workflows
+  - setup_workflow
 ---
 
 # Credential Recipe Research
@@ -90,7 +90,7 @@ Token"); never include a real secret.
 ## Recipe fields
 
 When the workflow authenticates a service through Simplified Custom Auth,
-include `credentialHints` in the same `workflow_builder_workflows(action="setup")` call so the
+include `credentialHints` in the same `setup_workflow` call so the
 setup card pre-fills the credential and the user only pastes their secret —
 instead of facing an empty JSON template they'd have to decode from the
 provider's docs. Before composing the hints, execute the lookup procedure in

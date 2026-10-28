@@ -137,6 +137,23 @@ describe('ChatInputBase', () => {
 		expect(emitted().submit).toBeFalsy();
 	});
 
+	it('keeps multiline keyboard behavior when the composer has a fixed height', () => {
+		const { getByRole, emitted } = renderComponent({
+			props: makeProps({ composerHeight: '184px', modelValue: 'A longer prompt' }),
+		});
+		const textarea = getByRole('textbox');
+		textarea.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'Enter',
+				shiftKey: true,
+				bubbles: true,
+			}),
+		);
+		expect(emitted().submit).toBeFalsy();
+		textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(emitted().submit).toEqual([[]]);
+	});
+
 	it('should NOT emit submit on Enter during IME composition', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),

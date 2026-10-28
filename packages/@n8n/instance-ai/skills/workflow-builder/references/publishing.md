@@ -5,7 +5,8 @@ description: >-
   the user started as publishing evidence, or repair a workflow that is already
   published.
 recommended_tools:
-  - workflow_builder_workflows
+  - publish_workflow
+  - get_workflow
   - workflow_builder_executions
   - workflow_builder_verify_built_workflow
 ---
@@ -23,7 +24,7 @@ publish-readiness evidence. If the user explicitly asks to publish before a
 live execution succeeds, warn that the live path remains untested, then follow
 the requested publish flow.
 
-`workflow_builder_workflows(action="publish")` enforces this. While the latest verification left
+`publish_workflow` enforces this. While the latest verification left
 nodes unreached or simulated, the call is refused and returns
 `verificationDisclosure` — the coverage facts, generated from the run. Relay
 those facts to the user and offer a live end-to-end test. Publish only if they
@@ -42,7 +43,7 @@ was used. You may offer publishing after that confirmation.
 
 ## When to publish
 
-Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks to
+Only call `publish_workflow` when the user explicitly asks to
 publish. Never publish automatically or proactively offer publishing before
 the publish-readiness requirement above is met. A repair of a workflow that
 is already published is the exception: you may ask whether to publish the fix
@@ -65,7 +66,7 @@ For a repair on a published workflow:
 - `workflow_builder_verify_built_workflow` returns `claim.liveState`. `live-stale` means the
   published version is older than the draft you just verified. The result also
   carries `liveStateNote`. Relay it.
-- Without a claim, call `workflow_builder_workflows(action="get", workflowId)` and compare
+- Without a claim, call `get_workflow(workflowId)` and compare
   `versionId` (the draft) with `activeVersionId` (the published version). They
   differ while the fix is not live. A null `activeVersionId` means the workflow
   is not published at all.

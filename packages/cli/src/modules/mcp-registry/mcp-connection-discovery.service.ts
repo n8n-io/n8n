@@ -24,6 +24,7 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import type { AuthFetchDomainPolicy } from '@/utils/auth-fetch';
 
 import { createMcpAuthFetch } from './mcp-auth-fetch';
+import { findUsableMcpCredential } from './mcp-credential-access';
 import {
 	findAiGatewayCredentialType,
 	getConfiguredEndpointUrl,
@@ -276,42 +277,32 @@ export class McpConnectionDiscoveryService {
 	}
 
 	private async resolveCredential(user: User, credentialId: string): Promise<ResolvedCredential> {
-		const readableCredential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			credentialId,
 			user,
-			['credential:read'],
 		);
-		if (!readableCredential) {
+		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
-		}
-		if (readableCredential.isResolvable) {
-			const connectableCredential = await this.credentialsFinderService.findCredentialForUser(
-				credentialId,
-				user,
-				['credential:connect'],
-			);
-			if (!connectableCredential) {
-				throw new NotFoundError('Credential not found or not accessible');
-			}
 		}
 
 		const projectId =
-			readableCredential.shared?.find((share) => share.role === 'credential:owner')?.projectId ??
-			readableCredential.shared?.[0]?.projectId;
+			credential.shared?.find((share) => share.role === 'credential:owner')?.projectId ??
+			credential.shared?.[0]?.projectId;
 		if (!projectId) throw new BadRequestError('Credential has no owning project');
 
 		const { getBase } = await import('@/workflow-execute-additional-data.js');
 		const additionalData = await getBase({ projectId, userId: user.id });
 		const data = await this.credentialsHelper.getDecrypted(
 			additionalData,
-			{ id: readableCredential.id, name: readableCredential.name },
-			readableCredential.type,
+			{ id: credential.id, name: credential.name },
+			credential.type,
 			'internal',
 		);
 		if (!isObjectLiteral(data) || Object.keys(data).length === 0) {
 			throw new BadRequestError('Credential could not be resolved');
 		}
-		return { credential: readableCredential, data, projectId };
+		return { credential, data, projectId };
 	}
 
 	private createCredentialFetch(

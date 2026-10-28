@@ -8,7 +8,11 @@ description: >-
 recommended_tools:
   - workflow_builder_ask_user
   - workflow_builder_verify_built_workflow
-  - workflow_builder_workflows
+  - get_workflow
+  - get_workflow_as_code
+  - setup_workflow
+  - validate_workflow
+  - publish_workflow
   - workflow_builder_build_workflow
   - workflow_builder_executions
 ---
@@ -57,7 +61,7 @@ setup returns `announced: true`, or the current user input contains
   Execute. A block in conversation history does not request another execution.
   Use the workflow ID in the current block. Inspect its current
   `<workflow-setup-state>` and read the saved workflow with
-  `workflow_builder_workflows(action="get-as-code")`. Do not call `workflow_builder_workflows(action="setup")`
+  `get_workflow_as_code`. Do not call `setup_workflow`
   for this precheck. It announces setup and ends the turn. If the target is
   absent from the state block, inspect its saved configuration. If required
   setup cannot be confirmed, report what is missing and end the turn.
@@ -84,7 +88,7 @@ flow. Its result is not a panel announcement unless it has `announced: true`.
 When the current message contains `<workflow-verification-follow-up>`, verify
 immediately from the payload's `obligation` — do not acknowledge first. If the
 obligation is `ready_to_verify` or `verifying`, call `workflow_builder_verify_built_workflow`. Do
-**not** call `workflow_builder_workflows(action="setup")` in this turn and do **not** declare the
+**not** call `setup_workflow` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
 verification. For a multi-trigger outcome, verify every trigger that does not
@@ -93,7 +97,7 @@ yet have a recorded successful verification. Make all of these calls in this tur
 ## Setup follow-up
 
 When the current message contains `<workflow-setup-required>`, your first action
-is to call `workflow_builder_workflows(action="setup")` with the `workflowId` from the payload. Do
+is to call `setup_workflow` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
 the n8n Assistant panel is the user-visible surface. If the result has
 `announced: true`, use the persistent panel instructions above and end the turn.
@@ -130,7 +134,7 @@ Pick in this order:
 
 When the workflow authenticates a service through Simplified Custom Auth
 (`httpTemplatedCustomAuth`), include `credentialHints` in the same
-`workflow_builder_workflows(action="setup")` call, so the setup card pre-fills
+`setup_workflow` call, so the setup card pre-fills
 the credential and the user only pastes their secret. Before you compose the
 hints, load the `credential-recipe-research` reference and follow it. It lists
 every field and its rules.
@@ -153,7 +157,7 @@ Instead, in your normal message:
 
 Only once the user asks for a specific credential — "connect Slack now", "let's
 do the Slack setup", or picking it out of an offer you made — call
-`workflow_builder_workflows(action="setup", reopenSkipped: ["slackApi"])`, naming just what they
+`setup_workflow(reopenSkipped: ["slackApi"])`, naming just what they
 asked for so the rest stays skipped. A generic "yes" to an unrelated question is
 not an ask.
 
@@ -255,7 +259,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
    `setupRequirement`, and `postBuildFlow` from the tool output. If the output
    is missing a `workflowId`, explain that the build did not submit.
    - Before treating a saved workflow as done, inspect the persisted workflow
-     with `workflow_builder_workflows(action="get-as-code", workflowId)` or read the bound
+     with `get_workflow_as_code(workflowId)` or read the bound
      workspace source file, and compare the actual graph to the user's requested
      outcome. Build/save success only means a workflow was saved; it does not
      prove the saved workflow is good.
@@ -276,10 +280,10 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 - If `verificationReadiness.status === "needs_setup"` and the persistent setup
   panel is enabled, first try `workflow_builder_verify_built_workflow` when verification has not
   run. It can verify simulated paths or report that a simulation plan is
-  unavailable. Then announce setup with `workflow_builder_workflows(action="setup")`. Do not use
+  unavailable. Then announce setup with `setup_workflow`. Do not use
   a live execution to work around a blocker.
 - If `verificationReadiness.status === "needs_setup"` and the persistent setup
-  panel is disabled, call `workflow_builder_workflows(action="setup")` with the workflow ID.
+  panel is disabled, call `setup_workflow` with the workflow ID.
   The user configures the workflow through the inline setup card.
 - If `verificationReadiness.status === "not_verifiable"`, do not infer
   lower-level verification conditions; use the readiness guidance to give a
@@ -327,17 +331,17 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      State that limitation even if the run succeeded and no parameter warnings
      were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and
-   setup has not already run for this build, call `workflow_builder_workflows(action="setup")`
+   setup has not already run for this build, call `setup_workflow`
    with the workflowId.
-4. When `workflow_builder_workflows(action="setup")` returns `announced: true`, summarize the
+4. When `setup_workflow` returns `announced: true`, summarize the
    panel state and end the turn. The live-test follow-up waits for a later user
    turn or Execute request. When the tool opens the inline setup card, the card is the
    user-visible surface. Do not tell the user to open the editor, use the canvas,
    or click a Setup button; the user does not need to navigate anywhere.
-5. When `workflow_builder_workflows(action="setup")` returns `deferred: true`, or reports
+5. When `setup_workflow` returns `deferred: true`, or reports
    `skippedByUser`, or applies only part of the card, respect the user's
    decision — do not retry with `setup_credentials`, another
-   `workflow_builder_workflows(action="setup")` call, or any other setup tool. `partial: true`
+   `setup_workflow` call, or any other setup tool. `partial: true`
    with `nodesStillNeedingSetup` is not permission to re-open the card in the
    same turn: report what remains as described in
    [Credentials the user skipped](#credentials-the-user-skipped).
@@ -359,7 +363,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 8. If testing has not already been offered or completed, ask whether the user
    wants to test the workflow. Skip this if `workflow_builder_verify_built_workflow` already
    proved it works end-to-end with full coverage.
-9. Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks to
+9. Only call `publish_workflow` when the user explicitly asks to
    publish, and load the `publishing` reference first.
 10. After a direct new primary workflow is successfully published, load `error-workflows` and follow its
     error workflow follow-up.
@@ -468,7 +472,7 @@ Without a claim, do not tell the user a workflow is "fixed", "verified",
 `workflow_builder_executions(action="run")` or an inspected user-run execution that exercised the
 path being claimed. Do not call a workflow "ready to use" or "ready to publish"
 unless a passing execution met the publish-readiness requirement above. A
-successful `workflow_builder_build_workflow`/save, a static `workflow_builder_workflows(action="validate")`, or
+successful `workflow_builder_build_workflow`/save, a static `validate_workflow`, or
 your own narration are NOT execution evidence. For a produced artifact (a file,
 generated document, or Code-node output), read the real output before calling it
 complete; do not infer correctness from the fact that a node ran. The same

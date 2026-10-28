@@ -7,7 +7,9 @@ description: >-
   any question about what has recently run or broken.
 recommended_tools:
   - activity
-  - workflow_builder_workflows
+  - list_workflows
+  - get_workflow_node_usage
+  - get_workflow
   - workflow_builder_executions
   - list_credentials
   - search_credential_types
@@ -68,7 +70,7 @@ come from the block, and `workflow_builder_executions` has the detail.
 
 ### 2. One workflow, read in full
 
-`workflow_builder_workflows(action="get", workflowId, full=true)` on **one** example — the one
+`get_workflow(workflowId, full=true)` on **one** example — the one
 the block points at, or the one the user named. This rung is for what an entry
 cannot express: parameter values, naming, retry settings, error-workflow
 wiring, how a prompt is structured.

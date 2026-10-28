@@ -25,6 +25,7 @@ const props = withDefaults(
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 	}>(),
 	{
 		taskRefs: () => [],
@@ -164,6 +165,7 @@ function openTaskModal(task: TaskRow | null) {
 			isPublished: props.isPublished,
 			isRunnable: props.isRunnable,
 			validationIssues: props.validationIssues,
+			getPreviewDisabledReason: () => props.previewDisabledReason,
 			taskState: task
 				? {
 						enabled: task.enabled,

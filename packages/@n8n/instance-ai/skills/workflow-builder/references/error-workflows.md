@@ -32,7 +32,7 @@ When creating an error workflow to attach to another workflow:
    an error workflow for it.
 2. Build the error workflow as a separate workflow. It starts with an Error
    Trigger and sends the notification the user requested.
-3. Publish the error workflow with `workflow_builder_workflows(action="publish")` before setting
+3. Publish the error workflow with `publish_workflow` before setting
    it on the target workflow: `settings.errorWorkflow` only accepts a published
    workflow, and publishing goes through HITL approval, so the user confirms it.
    This applies to the error workflow only; never publish the target workflow
@@ -80,13 +80,13 @@ If the user says yes:
 3. The error workflow must be published before it can be assigned. If the user
    has not already asked you to publish and attach it, ask whether to publish it
    and set it as the error workflow for the named target workflow. When the user
-   agrees, call `workflow_builder_workflows(action="publish")` for the error workflow and let the
+   agrees, call `publish_workflow` for the error workflow and let the
    HITL approval card handle confirmation.
 4. After publish succeeds, set the original workflow's workflow-level
    `settings.errorWorkflow` to the **error workflow's workflowId**. Do not use
    the published `activeVersionId`, workflow name, a placeholder, or a local SDK
    id. If you have the original source file, edit it; otherwise call
-   `workflow_builder_workflows(action="get-as-code", workflowId)` for the original workflow,
+   `get_workflow_as_code(workflowId)` for the original workflow,
    write the returned code to a `.workflow.ts` file, add
    `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, and call
    `workflow_builder_build_workflow` for the original workflow. The workflow edit approval card
