@@ -1,7 +1,7 @@
 packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
   s_bccf3616ba1e3f::t_53c29727598102 57-58,60-62
 packages/cli/src/modules/agents/tools/read-binary-data.tool.ts
-  s_bccf3616ba1e3f::t_af0144eb03e3ce 1-15,17-51,53-61,68,70-72,79-81
+  s_bccf3616ba1e3f::t_af0144eb03e3ce 1-15,17-51,17-72,53-61,68,70-72,74-81,79-81
 ---
 {
   "schema_version": "authorship/3.0.0",
