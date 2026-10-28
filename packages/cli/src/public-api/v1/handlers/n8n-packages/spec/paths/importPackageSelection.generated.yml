@@ -7,9 +7,9 @@ description: |-
 
   Imports a chosen subset of workflows from one source project of a gzip-compressed tar package (`.n8np`), instead of the whole package. Send the archive as the multipart field `package`. The import is **additive** (cherry-pick): it never removes a workflow the selection omits. It creates or updates only the workflows named in `selectedWorkflowIds`, and deletes only the destination workflows named in `deletedWorkflowIds`.
 
-  `selectedProjectId` names the single source project the selection is scoped to (its id as it appears in the package). The selected workflows are written into the instance project whose id matches that source project, which is created if it does not yet exist; there is no separate target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an absent id is a tolerated no-op, and a delete needs the `workflow:delete` scope. A delete id must not match the destination id of a selected workflow, including when `workflowConflictPolicy=skip`. This overlap returns a 409 before any writes.
+  `selectedProjectId` names the single source project the selection is scoped to (its id as it appears in the package). The selected workflows are written into the instance project whose id matches that source project, which is created if it does not yet exist; there is no separate target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an absent id is a tolerated no-op, and a delete needs the `workflow:delete` scope. A delete id must not match the destination id of a selected workflow, including when `conflictPolicy=skip`. This overlap returns a 409 before any writes.
 
-  The package must be a project package (a workflow package is rejected with a 400). The cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted here; only `workflowConflictPolicy`, `workflowIdPolicy`, and `overwriteDeletionPolicy` are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The caller is authorised through the `workflow:import` scope.
+  The package must be a project package (a workflow package is rejected with a 400). The cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16). The caller is authorised through the `workflow:import` scope. Packages that contain Agents are rejected before writes. Use the ordinary import endpoint for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and `idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. Publication remains fixed to `match-source`.
 x-required-scope: workflow:import
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -34,7 +34,7 @@ requestBody:
           deletedWorkflowIds:
             type: string
             description: Optional JSON-encoded array of destination workflow ids to remove from the scoped project, e.g. `["wf-3"]`. Removal happens even under the additive profile, and the manner of removal follows `overwriteDeletionPolicy` (archive by default). An absent id is a no-op unless it is also a selected destination. Must not contain a selected workflow's destination id. Needs the `workflow:delete` scope.
-          workflowConflictPolicy:
+          conflictPolicy:
             type: string
             enum:
               - new-version
@@ -42,13 +42,12 @@ requestBody:
               - skip
             default: new-version
             description: What happens when a selected workflow matches an existing workflow by source id in the target project. `new-version` (default) updates it and creates a new version; `fail` rejects the import when any matching workflow exists; `skip` leaves matching workflows unchanged. An archive state change also needs the `workflow:delete` scope.
-          workflowIdPolicy:
+          idPolicy:
             type: string
             enum:
-              - new
               - source
             default: source
-            description: Controls the id each newly created workflow receives. `source` (default) reuses the package's own workflow id on the target instance; `new` mints a fresh id and records the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep that workflow's current id, regardless of policy.
+            description: Controls IDs for newly created workflows. Only `source` is supported. It uses the package ID. An ID already used by an unmatched workflow, in any project, blocks the import. Matched workflows keep their destination ID.
           overwriteDeletionPolicy:
             type: string
             enum:
@@ -77,7 +76,7 @@ responses:
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
-    description: Import blocked by at least one conflict among the issues — for example a workflow source-id conflict under `workflowConflictPolicy=fail`, or a selected destination also named for deletion (`workflow-removal-conflict`).
+    description: Import blocked by at least one conflict among the issues — for example a workflow source-id conflict under `conflictPolicy=fail`, or a selected destination also named for deletion (`workflow-removal-conflict`).
     content:
       application/json:
         schema:

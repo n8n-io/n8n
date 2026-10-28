@@ -306,6 +306,7 @@ describe('router', () => {
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
 			workflowSuggestionsEnabled: false,
+			assistantAgentEnabled: false,
 		};
 
 		const runRootRedirect = () => {

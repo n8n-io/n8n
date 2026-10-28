@@ -40,9 +40,9 @@ describe('Apply response documentation', () => {
 				.getControllerMetadata(PromotionsPublicController as never)
 				.routes.get(handler);
 			expect(route?.responseDto).toBe(ApplyPackageResultDto);
-			expect(route?.accessScope).toEqual({ scope: 'gitConnection:pull', globalOnly: true });
-			expect(route?.apiKeyScope).toBe('gitConnection:pull');
-			expect(route?.licenseFeature).toBe('feat:gitConnections');
+			expect(route?.accessScope).toEqual({ scope: 'promotions:apply', globalOnly: true });
+			expect(route?.apiKeyScope).toBe('promotions:apply');
+			expect(route?.licenseFeature).toBe('feat:promotions');
 			const artifacts = getGeneratedArtifacts();
 			const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 			const operation = parse(
@@ -88,14 +88,14 @@ describe('Discovery response documentation', () => {
 			.getControllerMetadata(PromotionsPublicController as never)
 			.routes.get(handler);
 		expect(route?.responseDto).toBe(responseDto);
-		expect(route?.accessScope).toEqual({ scope: 'gitConnection:discover', globalOnly: true });
-		expect(route?.apiKeyScope).toBe('gitConnection:discover');
-		expect(route?.licenseFeature).toBe('feat:gitConnections');
+		expect(route?.accessScope).toEqual({ scope: 'promotions:discover', globalOnly: true });
+		expect(route?.apiKeyScope).toBe('promotions:discover');
+		expect(route?.licenseFeature).toBe('feat:promotions');
 		const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 		const operation = parse(
 			getGeneratedArtifacts().find((artifact) => artifact.outputPath === outputPath)!.content,
 		) as OpenAPIV3.OperationObject;
-		expect(operation).toHaveProperty('x-required-scope', 'gitConnection:discover');
+		expect(operation).toHaveProperty('x-required-scope', 'promotions:discover');
 		expect(operation.parameters).toContainEqual({
 			$ref: '../../../../shared/spec/parameters/limit.yml',
 		});

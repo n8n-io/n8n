@@ -282,7 +282,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * Provide a proxy-aware `fetch` for the agent's model and catalog calls. When unset, model
 	 * construction falls back to the ambient HTTP_PROXY resolver.
 	 */
 	modelFetch(fetch: FetchFn): this {
@@ -1140,7 +1140,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
 		try {
-			modelCost = await getModelCost(getCatalogModelId(modelConfig));
+			modelCost = await getModelCost(getCatalogModelId(modelConfig), this.modelFetchValue);
 		} catch {
 			modelCost = undefined;
 		}

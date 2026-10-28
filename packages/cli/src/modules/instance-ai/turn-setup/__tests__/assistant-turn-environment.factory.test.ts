@@ -60,7 +60,6 @@ function createSetupFactory() {
 		},
 		browserSessionService: { findMcpServer: vi.fn() },
 		aiService: { isProxyEnabled: vi.fn(() => false) },
-		dbIterationLogStorage: {},
 		instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
 		telemetry: { track: vi.fn() },
 		evalCredentialAllowlists: {},
@@ -91,9 +90,9 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 	return {
 		memory: mock<AssistantTurnRuntime['memory']>({
 			getThread: vi.fn(async () => null),
-			getThreadProjectId: vi.fn(async () => 'project-1'),
 		}),
 		resourceId: 'user-1',
+		getProjectId: vi.fn(async () => 'project-1'),
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
 			getBuildMode: vi.fn(() => 'progressive' as const),
@@ -201,7 +200,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const runtime = createRuntime({
 				memory: mock<AssistantTurnRuntime['memory']>({
 					getThread: vi.fn(async () => ({ resourceId: 'user-2' }) as never),
-					getThreadProjectId: vi.fn(),
 				}),
 			});
 
@@ -300,7 +298,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
-				mock(),
 				mock(),
 				mock(),
 				mock(),

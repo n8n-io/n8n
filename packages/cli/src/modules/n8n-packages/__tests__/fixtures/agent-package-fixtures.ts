@@ -83,7 +83,6 @@ export function looseAgentsFixture(): AgentPackageFixture {
 	return {
 		manifest: {
 			packageFormatVersion: '1',
-			exportedAt: '2026-10-01T12:00:00.000Z',
 			sourceN8nVersion: '2.0.0',
 			sourceId: 'source-instance',
 			agents,
@@ -111,7 +110,12 @@ export function projectAgentsFixture(): AgentPackageFixture {
 			agents,
 			projects: [{ id: 'project_source', name: 'Operations', target: projectTarget }],
 			workflows: [
-				{ id: 'workflow_source', name: 'Lookup', target: `${projectTarget}/workflows/lookup` },
+				{
+					id: 'workflow_source',
+					name: 'Lookup',
+					target: `${projectTarget}/workflows/lookup`,
+					isArchived: false,
+				},
 			],
 		},
 		files: {

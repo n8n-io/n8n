@@ -122,11 +122,12 @@ function parseRoutingCaseFile(filePath: string): ParsedFile {
 
 	const { tags, conversation = [], seed, credentials, credentialFixture } = parsed.data;
 	if (!tags.includes('routing')) throw new Error(`${filePath}: has no "routing" tag`);
-	// ponytail: the stub instance has no thread replay, browser sign-in, folders or projects.
+	// ponytail: the stub instance has no thread replay, browser sign-in, folders, projects or recorded runs.
 	if (
 		seed?.mode === 'replay' ||
 		credentialFixture ||
-		(seed && (seed.folders.length > 0 || seed.projects.length > 0))
+		(seed && (seed.folders.length > 0 || seed.projects.length > 0)) ||
+		(seed?.mode === 'inline' && (seed.recordedRuns?.length ?? 0) > 0)
 	) {
 		return { kind: 'needs-setup', id };
 	}

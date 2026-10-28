@@ -364,6 +364,7 @@ export class RuntimeContextBuilder {
 			scope: capture.scope,
 			persistence,
 			list,
+			guidance: capture.config.guidance,
 		});
 	}
 

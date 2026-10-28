@@ -4,9 +4,11 @@ import {
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Middleware, Patch, Post, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@n8n/errors';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
+
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 import { SelfHealingConfigurationService } from './self-healing-configuration.service';
 
@@ -22,26 +24,31 @@ function configurationId(req: ConfigurationRequest) {
 export class SelfHealingConfigurationsController {
 	constructor(private readonly configurations: SelfHealingConfigurationService) {}
 
+	@Middleware()
+	async checkAccess(req: ConfigurationRequest, res: Response, next: NextFunction) {
+		if (!(await this.configurations.canConfigure(req.user, req.params.projectId))) {
+			res.status(403).json({ status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+			return;
+		}
+		next();
+	}
+
 	@Get('/')
-	@ProjectScope('project:update')
 	async list(req: ConfigurationRequest) {
 		return await this.configurations.list(req.params.projectId);
 	}
 
 	@Get('/options')
-	@ProjectScope('project:update')
 	async options(req: ConfigurationRequest) {
 		return await this.configurations.getConfigurationChoices(req.params.projectId);
 	}
 
 	@Get('/:configurationId')
-	@ProjectScope('project:update')
 	async get(req: ConfigurationRequest) {
 		return await this.configurations.get(req.params.projectId, configurationId(req));
 	}
 
 	@Post('/')
-	@ProjectScope('project:update')
 	async create(
 		req: ConfigurationRequest,
 		_res: Response,
@@ -51,7 +58,6 @@ export class SelfHealingConfigurationsController {
 	}
 
 	@Patch('/:configurationId')
-	@ProjectScope('project:update')
 	async update(
 		req: ConfigurationRequest,
 		_res: Response,
@@ -66,7 +72,6 @@ export class SelfHealingConfigurationsController {
 	}
 
 	@Patch('/:configurationId/enabled')
-	@ProjectScope('project:update')
 	async setEnabled(
 		req: ConfigurationRequest,
 		_res: Response,
@@ -81,7 +86,6 @@ export class SelfHealingConfigurationsController {
 	}
 
 	@Delete('/:configurationId')
-	@ProjectScope('project:update')
 	async remove(req: ConfigurationRequest) {
 		await this.configurations.remove(req.params.projectId, configurationId(req));
 	}

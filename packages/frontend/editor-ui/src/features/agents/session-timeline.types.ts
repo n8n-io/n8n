@@ -1,4 +1,4 @@
-import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobDto, AgentBackgroundJobSignal } from '@n8n/api-types';
 import type { BadgeVariant } from '@n8n/design-system';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 
@@ -12,9 +12,11 @@ export type EventKind =
 	| 'execution-error'
 	| 'suspension'
 	| 'hitl-response'
-	| 'background-task-signal';
+	| 'background-task-signal'
+	| 'background-task';
 
 export type ToolCallOutcome = 'success' | 'error';
+export type TimelineActivityStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'interrupted';
 /**
  * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
  * node: nobody is being asked anything, the resume arrives from the workflow.
@@ -24,13 +26,17 @@ export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
 export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
 export interface TimelineItem {
+	id?: string;
 	kind: EventKind;
 	executionId: string;
 	timestamp: number;
 	endTimestamp?: number;
+	activityStatus?: TimelineActivityStatus;
 	content?: string;
 	thinkingSegments?: ThinkingSegment[];
 	backgroundJobSignal?: AgentBackgroundJobSignal;
+	/** Current task state. The task ID stays stable across updates. */
+	backgroundTask?: AgentBackgroundJobDto;
 	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
 	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
@@ -74,11 +80,6 @@ export interface TimelineItem {
 	subAgentName?: string;
 	resumed?: boolean;
 	guardrailCode?: string;
-}
-
-export interface IdleRange {
-	start: number;
-	end: number;
 }
 
 interface BaseFilterOption {

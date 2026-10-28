@@ -51,46 +51,46 @@ async function records() {
 }
 
 async function resolve(projectId = project.id) {
-	return await service.allocateAgentIds(
-		await service.findBySourceAgentIds(
-			{ user, projectId },
-			sources.map(({ sourceAgentId }) => sourceAgentId),
-		),
+	return await service.findImportMatches(
+		{ user, projectId },
+		sources.map(({ sourceAgentId }) => sourceAgentId),
 	);
 }
 
 it('retains persisted Agent and task identities on re-import', async () => {
 	const sourceBefore = structuredClone(sources);
-	const identities = await resolve();
-	expect(identities.idConflicts).toEqual([]);
+	const initial = await resolve();
+	expect(initial.idConflicts).toEqual([]);
+	expect(initial.matches.size).toBe(0);
 	expect(await service.findTaskIdConflicts(sources)).toEqual([]);
 	for (const source of sources) {
-		const { targetAgentId } = identities.identities.get(source.sourceAgentId)!;
-		await seedAgent(targetAgentId);
-		expect(targetAgentId).toBe(source.sourceAgentId);
+		await seedAgent(source.sourceAgentId);
 		for (const [id, body] of Object.entries(source.tasks)) {
-			await tasks.save({ ...body, id, agentId: targetAgentId });
+			await tasks.save({ ...body, id, agentId: source.sourceAgentId });
 		}
 	}
 	const before = await records();
 	const repeated = await resolve();
-	expect([...repeated.identities.values()].map(({ targetAgentId }) => targetAgentId)).toEqual(
-		[...identities.identities.values()].map(({ targetAgentId }) => targetAgentId),
-	);
+	expect(repeated.idConflicts).toEqual([]);
+	for (const { sourceAgentId } of sources) {
+		expect(repeated.matches.get(sourceAgentId)).toMatchObject({
+			id: sourceAgentId,
+			projectId: project.id,
+		});
+	}
 	expect(await service.findTaskIdConflicts(sources)).toEqual([]);
 	expect(await records()).toEqual(before);
 	expect(sources).toEqual(sourceBefore);
 });
 
-it('reports an occupied Agent ID in another project under source policy', async () => {
+it('reports an occupied Agent ID in another project', async () => {
 	await seedAgent('support_source', otherProject.id);
 	const before = await records();
 	const result = await resolve();
-	expect(result.identities.has('support_source')).toBe(false);
+	expect(result.matches.has('support_source')).toBe(false);
 	expect(result.idConflicts).toEqual([
 		{
 			sourceAgentId: 'support_source',
-			existingAgentId: 'support_source',
 			existingProjectId: otherProject.id,
 		},
 	]);
@@ -137,23 +137,21 @@ it('restricts destination matching to projects the user can read', async () => {
 	const matches = await service.findBySourceAgentIds({ user: member, projectId: project.id }, [
 		'support_source',
 	]);
-	expect(matches.matches.get('support_source')?.id).toBe('support_source');
+	expect(matches.get('support_source')?.id).toBe('support_source');
 });
 
 it('keeps global ID checks for an authorized pending project', async () => {
 	await seedAgent('support_source');
 	const member = await createMember();
 	const read = vi.spyOn(agents, 'findImportCandidates');
-	const matches = await service.findBySourceAgentIds(
+	const result = await service.findImportMatches(
 		{ user: member, projectId: 'pending-project', projectPendingCreation: true },
 		['support_source'],
 	);
-	const result = await service.allocateAgentIds(matches);
-	expect(result.identities.size).toBe(0);
+	expect(result.matches.size).toBe(0);
 	expect(result.idConflicts).toEqual([
 		{
 			sourceAgentId: 'support_source',
-			existingAgentId: 'support_source',
 			existingProjectId: project.id,
 		},
 	]);
@@ -186,8 +184,10 @@ it('bounds candidate and ownership queries for large ID lists', async () => {
 it('returns empty results without database reads', async () => {
 	const agentRead = vi.spyOn(agents, 'find');
 	const taskRead = vi.spyOn(tasks, 'find');
-	const matches = await service.findBySourceAgentIds({ user, projectId: project.id }, []);
-	expect((await service.allocateAgentIds(matches)).identities.size).toBe(0);
+	expect(await service.findImportMatches({ user, projectId: project.id }, [])).toEqual({
+		matches: new Map(),
+		idConflicts: [],
+	});
 	expect(await service.findTaskIdConflicts([])).toEqual([]);
 	expect(await agents.findImportCandidates(project.id, [])).toEqual([]);
 	expect(agentRead).not.toHaveBeenCalled();

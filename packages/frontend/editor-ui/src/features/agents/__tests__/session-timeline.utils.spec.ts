@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-	computeIdleRanges,
 	builtinToolLabelKey,
+	timelineItemKey,
 	itemFilterKey,
 	sessionBounds,
-	kindColorToken,
 	formatDuration,
-	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
 	itemStatusFilterKey,
 	hitlRequestLabelKey,
@@ -27,47 +25,6 @@ function item(partial: Partial<TimelineItem>): TimelineItem {
 		...partial,
 	};
 }
-
-describe('computeIdleRanges', () => {
-	it('returns [] when no gaps exceed threshold', () => {
-		const items = [item({ timestamp: 0 }), item({ timestamp: 1000 })];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('detects a gap greater than 10 minutes between events', () => {
-		const items = [item({ timestamp: 0 }), item({ timestamp: IDLE_THRESHOLD_MS + 1 })];
-		expect(computeIdleRanges(items)).toEqual([{ start: 0, end: IDLE_THRESHOLD_MS + 1 }]);
-	});
-
-	it('excludes gaps adjacent to a suspension (before the gap)', () => {
-		const items = [
-			item({ kind: 'suspension', timestamp: 0 }),
-			item({ timestamp: IDLE_THRESHOLD_MS + 1 }),
-		];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('excludes gaps adjacent to a suspension (after the gap)', () => {
-		const items = [
-			item({ timestamp: 0 }),
-			item({ kind: 'suspension', timestamp: IDLE_THRESHOLD_MS + 1 }),
-		];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('never produces a trailing idle gap after the last event', () => {
-		const items = [item({ timestamp: 0 })];
-		expect(computeIdleRanges(items)).toEqual([]);
-	});
-
-	it('uses endTimestamp when set for the previous item', () => {
-		const items = [
-			item({ timestamp: 0, endTimestamp: 100 }),
-			item({ timestamp: 100 + IDLE_THRESHOLD_MS + 1 }),
-		];
-		expect(computeIdleRanges(items)).toEqual([{ start: 100, end: 100 + IDLE_THRESHOLD_MS + 1 }]);
-	});
-});
 
 describe('itemFilterKey', () => {
 	it('returns the literal kind for every event', () => {
@@ -137,17 +94,6 @@ describe('sessionBounds', () => {
 
 	it('enforces a minimum span of 1ms for single-item sessions', () => {
 		expect(sessionBounds([item({ timestamp: 500 })])).toEqual({ start: 500, end: 501 });
-	});
-});
-
-describe('kindColorToken', () => {
-	it('maps each kind to a CSS token', () => {
-		expect(kindColorToken('user')).toBe('var(--color--blue-400)');
-		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
-		expect(kindColorToken('skill')).toBe('var(--color--orange-400)');
-		expect(kindColorToken('tool')).toBe('var(--color--success)');
-		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
-		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
 	});
 });
 
@@ -270,6 +216,18 @@ function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionT
 	};
 }
 
+describe('timeline identity', () => {
+	it('distinguishes events with the same kind and timestamp across refreshes', () => {
+		const execution = withTimeline([
+			{ type: 'text', timestamp: 100, content: 'First' },
+			{ type: 'text', timestamp: 100, content: 'Second' },
+		]);
+		const keys = flattenExecutionsToTimelineItems([execution]).map(timelineItemKey);
+		expect(new Set(keys).size).toBe(2);
+		expect(flattenExecutionsToTimelineItems([execution]).map(timelineItemKey)).toEqual(keys);
+	});
+});
+
 describe('session timeline reasoning', () => {
 	it('keeps reasoning with the next response across tool calls', () => {
 		const items = flattenExecutionsToTimelineItems([
@@ -368,6 +326,74 @@ function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecut
 	return { type: 'hitl-response', toolCallId: 'tc-1', timestamp: 190, ...overrides };
 }
 
+describe('timeline activity status', () => {
+	it.each(['tool', 'skill', 'node', 'workflow'] as const)(
+		'updates a running %s call when its result arrives',
+		(kind) => {
+			const call = toolCallEvent({ kind });
+			const running = flattenExecutionsToTimelineItems([
+				withTimeline([call], { status: 'running' }),
+			]);
+			const completed = flattenExecutionsToTimelineItems([
+				withTimeline([{ ...call, endTime: 200, success: true }], { status: 'running' }),
+			]);
+			expect(running[0]).toMatchObject({ activityStatus: 'running', endTimestamp: undefined });
+			expect(completed[0]).toMatchObject({
+				activityStatus: 'completed',
+				endTimestamp: 200,
+				toolOutput: undefined,
+			});
+		},
+	);
+
+	it('marks a finished call with an error as failed', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent({ endTime: 200, success: false })]),
+		]);
+		expect(items[0].activityStatus).toBe('failed');
+	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'marks an unfinished call as interrupted when the execution is %s',
+		(status) => {
+			const items = flattenExecutionsToTimelineItems([withTimeline([toolCallEvent()], { status })]);
+			expect(items[0].activityStatus).toBe('interrupted');
+		},
+	);
+
+	it('marks a suspended call as waiting', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent(), suspensionEvent()], { hitlStatus: 'suspended' }),
+		]);
+		expect(items[0].activityStatus).toBe('waiting');
+	});
+
+	it('updates a waiting call after resume', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent(), suspensionEvent()], { hitlStatus: 'suspended' }),
+			withTimeline([toolCallEvent({ endTime: 300, success: true })], {
+				id: 'e-2',
+				hitlStatus: 'resumed',
+			}),
+		]);
+		expect(items[0]).toMatchObject({ activityStatus: 'completed', endTimestamp: 300 });
+	});
+
+	it('keeps completed calls complete when a later call is interrupted', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({ endTime: 200, success: true }),
+					toolCallEvent({ toolCallId: 'tc-2', startTime: 210 }),
+				],
+				{ status: 'interrupted' },
+			),
+		]);
+		expect(items[0].activityStatus).toBe('completed');
+		expect(items[1].activityStatus).toBe('interrupted');
+	});
+});
+
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
 
@@ -453,6 +479,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items).toEqual([
 			{
 				kind: 'execution-error',
+				id: 'e-1:execution-error:1777024805000:0',
 				executionId: 'e-1',
 				executionStatus: status,
 				content: error,
@@ -472,6 +499,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items).toEqual([
 			{
 				kind: 'execution-error',
+				id: 'e-1:execution-error:500:0',
 				executionId: 'e-1',
 				guardrailCode: 'budget.session',
 				timestamp: 500,
@@ -855,25 +883,29 @@ describe('flattenExecutionsToTimelineItems', () => {
 
 	it('maps a running tool-call without marking it failed', () => {
 		const items = flattenExecutionsToTimelineItems([
-			withTimeline([
-				{
-					type: 'tool-call',
-					kind: 'tool',
-					name: 'http',
-					toolCallId: 'tc-1',
-					input: { method: 'GET' },
-					output: undefined,
-					startTime: 1000,
-					endTime: 0,
-					success: false,
-				},
-			]),
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'http',
+						toolCallId: 'tc-1',
+						input: { method: 'GET' },
+						output: undefined,
+						startTime: 1000,
+						endTime: 0,
+						success: false,
+					},
+				],
+				{ status: 'running' },
+			),
 		]);
 		const tool = items.find((i) => i.kind === 'tool');
 		expect(tool).toMatchObject({
 			toolName: 'http',
+			activityStatus: 'running',
 			timestamp: 1000,
-			endTimestamp: 1000,
+			endTimestamp: undefined,
 			toolInput: { method: 'GET' },
 			toolOutput: undefined,
 			toolOutcome: undefined,
@@ -1202,6 +1234,7 @@ describe('background task signals', () => {
 		expect(items).toEqual([
 			{
 				kind: 'background-task-signal',
+				id: 'e-1:background-task-signal:1000:0',
 				executionId: 'e-1',
 				timestamp: 1000,
 				backgroundJobSignal: signal,
@@ -1226,7 +1259,6 @@ describe('background task signals', () => {
 		for (const query of ['results received', 'invoices', 'canceled', 'completed']) {
 			expect(matchesSearch(event, query, labelForKey)).toBe(true);
 		}
-		expect(kindColorToken(event.kind)).toBeDefined();
 	});
 });
 
