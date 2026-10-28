@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_82789c69de1855::t_f70682e6918dde 10,85-88,93,104,106,122,139-143,145-148,574
+  s_82789c69de1855::t_d6d62a221d8ac3 144
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_82789c69de1855::t_f70682e6918dde 1-47,49-50,53-119,121-158,160-214,216-222,226-230,232-248,250-259,261-267,271-286
+  s_82789c69de1855::t_d6d62a221d8ac3 51-52,231,249
+  s_82789c69de1855::t_352ae039a39205 223-225,268-270
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_82789c69de1855::t_f70682e6918dde 10,56,74,87,92-93,156,171,173-176,178-179,184-186,355
+  s_82789c69de1855::t_d6d62a221d8ac3 177
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_82789c69de1855::t_f70682e6918dde 42,147-172,214,217-218,444-445,447,451-458,460-463,465-475,486-489,521,525-526,528-531,533-538,582-585
+  s_82789c69de1855::t_d6d62a221d8ac3 459,464,532
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_82789c69de1855::t_f70682e6918dde 189-201,204-227,229-254,256-276
+  s_82789c69de1855::t_d6d62a221d8ac3 202-203,228,255
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_82789c69de1855::t_f70682e6918dde 1-66,68-122,124-162,164-185,187-220
+  s_82789c69de1855::t_d6d62a221d8ac3 123,163,186
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_82789c69de1855::t_f70682e6918dde 108,265-271,911
+  s_82789c69de1855::t_d6d62a221d8ac3 264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24a573f789fb1b49279f75b7d14960c5524f60ab",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
