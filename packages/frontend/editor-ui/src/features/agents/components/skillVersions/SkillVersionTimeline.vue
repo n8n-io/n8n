@@ -45,8 +45,7 @@ function savedBy(version: SkillVersionSummary): string {
 				preferenceUserName(version.createdBy) ||
 				i18n.baseText('agents.builder.skills.versions.unknownUser'),
 			date,
-			// The panel shows minutes, as the design does.
-			time: time.slice(0, 5),
+			time,
 		},
 	});
 }
@@ -97,7 +96,7 @@ function dotClass(version: number, index: number) {
 <template>
 	<aside :class="$style.panel" data-testid="skill-version-timeline">
 		<div :class="$style.header">
-			<N8nText tag="h3" size="small" bold :class="$style.title">
+			<N8nText tag="h3" size="medium" bold :class="$style.title">
 				{{ i18n.baseText('agents.builder.skills.versions.title') }}
 			</N8nText>
 			<N8nSwitch
@@ -118,12 +117,14 @@ function dotClass(version: number, index: number) {
 			>
 				<span :class="[$style.dot, dotClass(version.version, index)]" aria-hidden="true" />
 				<div :class="$style.text">
-					<N8nText size="small" color="text-dark">
-						{{
-							i18n.baseText('agents.builder.skills.versions.number', {
-								interpolate: { version: version.version },
-							})
-						}}
+					<span :class="$style.versionLine">
+						<N8nText size="small" color="text-dark" bold>
+							{{
+								i18n.baseText('agents.builder.skills.versions.number', {
+									interpolate: { version: version.version },
+								})
+							}}
+						</N8nText>
 						<N8nText v-if="index === 0" size="small" color="text-light">
 							{{ i18n.baseText('agents.builder.skills.versions.latest') }}
 						</N8nText>
@@ -135,8 +136,8 @@ function dotClass(version: number, index: number) {
 						>
 							· {{ i18n.baseText('agents.builder.skills.versions.inPublishedAgent') }}
 						</N8nText>
-					</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ savedBy(version) }}</N8nText>
+					</span>
+					<N8nText size="small" color="text-light">{{ savedBy(version) }}</N8nText>
 				</div>
 				<span :class="$style.actions" @click.stop>
 					<N8nIconButton
@@ -185,8 +186,10 @@ function dotClass(version: number, index: number) {
 }
 
 .list {
+	--skill-version-timeline--gap: var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
+	gap: var(--skill-version-timeline--gap);
 	margin: 0;
 	padding: 0;
 	list-style: none;
@@ -212,7 +215,8 @@ function dotClass(version: number, index: number) {
 		position: absolute;
 		left: calc(var(--spacing--xs) + var(--spacing--5xs) - 0.5px);
 		top: calc(50% + var(--spacing--2xs));
-		height: calc(100% - var(--spacing--xs));
+		/* Down to the dot of the next row, across the gap between the rows. */
+		height: calc(100% - var(--spacing--xs) + var(--skill-version-timeline--gap));
 		border-left: var(--border);
 	}
 }
@@ -231,16 +235,26 @@ function dotClass(version: number, index: number) {
 	background-color: var(--color--warning);
 }
 
-.publishedDot,
 .latestDot {
 	border-color: var(--color--success);
 	background-color: var(--color--success);
 }
 
-/* The draft and the published agent run the same version: an amber dot with a green ring. */
+.publishedDot {
+	border-color: var(--color--teal);
+	background-color: var(--color--teal);
+}
+
+/* The draft and the published agent run the same version: an amber dot with a teal ring. */
 .draftDot.publishedDot {
-	border-color: var(--color--success);
+	border-color: var(--color--teal);
 	background-color: var(--color--warning);
+}
+
+.versionLine {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--4xs);
 }
 
 .text {

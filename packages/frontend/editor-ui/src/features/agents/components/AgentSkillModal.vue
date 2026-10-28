@@ -1601,7 +1601,7 @@ function onRemove() {
 	gap: 0;
 	align-items: stretch;
 	width: auto;
-	min-height: 100%;
+	flex: 1;
 }
 
 /* Nested, so it wins over the file list's own background. */

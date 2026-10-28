@@ -390,6 +390,13 @@ function onOpenAutoFocus(event: Event) {
 		flex: 1;
 		max-height: none;
 	}
+
+	/* The content fills the body, so a full-height column reaches the footer. */
+	.body > * {
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+	}
 }
 
 /* Without a side panel the wrappers add no boxes, so the layout stays as before. */
