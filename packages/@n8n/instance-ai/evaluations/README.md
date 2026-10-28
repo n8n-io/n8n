@@ -1091,7 +1091,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 A seed can create folders in the thread's project before the live turn, and place its
 workflows inside them. Use it to grade how the agent finds the contents of a folder the
-user names (CONTEXT-86: `workflow_builder_workflows(action="list")` takes `folderPath` or `folderId`).
+user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
 
 ```jsonc
 "seed": {

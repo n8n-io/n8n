@@ -13,7 +13,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
-| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
+| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 13 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 7 |  | BASE TABLE |
 | [public.agent_credential_dependency](public.agent_credential_dependency.md) | 3 |  | BASE TABLE |
@@ -24,6 +24,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution](public.agent_execution.md) | 28 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
+| [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 11 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
@@ -231,6 +232,7 @@ erDiagram
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_file_grants" }o--|| "public.agent_chat_attachments" : "FOREIGN KEY (#quot;attachmentId#quot;) REFERENCES agent_chat_attachments(id) ON DELETE CASCADE"
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -544,6 +546,7 @@ erDiagram
   varchar_36_ agentId FK
   text binaryDataId
   timestamp_3__with_time_zone createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -689,6 +692,12 @@ erDiagram
   double_precision totalCost
   integer totalDuration
   integer totalPromptTokens
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_file_grants" {
+  varchar_16_ attachmentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_files" {
