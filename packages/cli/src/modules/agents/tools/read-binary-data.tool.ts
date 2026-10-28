@@ -2,7 +2,10 @@ import { text } from 'node:stream/consumers';
 
 import { isTextMediaType } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import {
+	isAttachmentMediaTypeSupported,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+} from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -67,6 +70,12 @@ export function createReadBinaryDataTool({
 			if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
 				if (!isAttachmentMediaTypeSupported(provider, mimeType)) {
 					throw new UserError(`This model cannot read files of type "${mimeType}"`);
+				}
+				// A read file stays attached, so a file that is too large makes every later model call fail.
+				if (file.fileSizeBytes > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+					throw new UserError(
+						`File "${fileId}" is too large to read. The limit is ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES} bytes`,
+					);
 				}
 			} else {
 				throw new UserError(

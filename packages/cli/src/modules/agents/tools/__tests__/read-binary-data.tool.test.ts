@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 
+import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
@@ -116,6 +117,28 @@ describe('createReadBinaryDataTool', () => {
 			'This model cannot read files of type "image/png"',
 		);
 	});
+
+	it.each(['image/tiff', 'image/heic'])(
+		'rejects a %s image that the model cannot read',
+		async (mimeType) => {
+			attachmentService.getReadable.mockResolvedValue(file({ mimeType }));
+
+			await expect(build().handler!({ fileId: 'file-1' }, ctx)).rejects.toThrow(
+				expect.objectContaining({ message: expect.stringContaining(mimeType) }),
+			);
+		},
+	);
+
+	it.each(['image/png', 'application/pdf'])(
+		'rejects a %s file that is too large',
+		async (mimeType) => {
+			attachmentService.getReadable.mockResolvedValue(
+				file({ mimeType, fileSizeBytes: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES + 1 }),
+			);
+
+			await expect(build().handler!({ fileId: 'file-1' }, ctx)).rejects.toThrow('too large');
+		},
+	);
 
 	it('rejects a text file that is too large', async () => {
 		attachmentService.getReadable.mockResolvedValue(
