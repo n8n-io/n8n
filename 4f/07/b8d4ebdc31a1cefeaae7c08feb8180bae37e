@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/credential-utils.test.ts
+  s_442fddecb5db3a::t_bf7e7798715780 18
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_442fddecb5db3a::t_bf7e7798715780 30
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_442fddecb5db3a::t_bf7e7798715780 62
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  s_442fddecb5db3a::t_bf7e7798715780 44
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_442fddecb5db3a::t_bf7e7798715780 8451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f07b8d4ebdc31a1cefeaae7c08feb8180bae37e",
+  "prompts": {},
+  "sessions": {
+    "s_442fddecb5db3a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1822e-a82a-7650-8aca-70edc33a562f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
