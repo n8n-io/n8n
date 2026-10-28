@@ -36,12 +36,21 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 
 	const state = ref<PromotionPreviewState>('loading');
 	const preview = shallowRef<PromotionPreview | null>(null);
-	/** The Apply check. `null` on Promote, and when the branch has no commit yet. */
-	const check = shallowRef<ApplyCheckResult | null>(null);
 	const refreshing = ref(false);
 	/** True when a refresh failed. The page keeps the last preview and says so. */
 	const refreshFailed = ref(false);
 	const lastRefreshedAt = ref<Date | null>(null);
+	/** The Apply check. `null` on Promote, and when the branch has no commit yet. */
+	const check = computed<ApplyCheckResult | null>(() => {
+		const result = preview.value;
+		return result?.check && result.commitSha
+			? {
+					environmentId: result.source.environmentId,
+					git: { commitSha: result.commitSha, branchName: result.source.branchName },
+					...result.check,
+				}
+			: null;
+	});
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
 	);
@@ -65,7 +74,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			if (connectionFailed.value || !environment.value) {
 				state.value = connectionFailed.value ? 'connectionFailed' : 'disconnected';
 				preview.value = null;
-				check.value = null;
 				return;
 			}
 
@@ -76,14 +84,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			);
 			if (!isLatest()) return;
 			preview.value = result;
-			check.value =
-				result.check && result.commitSha
-					? {
-							environmentId: result.source.environmentId,
-							git: { commitSha: result.commitSha, branchName: result.source.branchName },
-							...result.check,
-						}
-					: null;
 			lastRefreshedAt.value = new Date();
 			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {
@@ -93,7 +93,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				refreshFailed.value = true;
 			} else {
 				preview.value = null;
-				check.value = null;
 				state.value = 'error';
 			}
 		} finally {
@@ -105,7 +104,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		[projectId, direction],
 		async () => {
 			preview.value = null;
-			check.value = null;
 			lastRefreshedAt.value = null;
 			await load();
 		},
