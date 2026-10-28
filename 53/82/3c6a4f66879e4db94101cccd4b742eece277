@@ -1,0 +1,30 @@
+packages/cli/package.json
+  s_05b78bc80227e1::t_acfa1e60dba445 148
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_05b78bc80227e1::t_acfa1e60dba445 16,40-95,458,462-475,526
+packages/@n8n/nodes-langchain/package.json
+  s_05b78bc80227e1::t_acfa1e60dba445 248-249
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.test.ts
+  s_05b78bc80227e1::t_acfa1e60dba445 7,14-66
+  s_05b78bc80227e1::t_4d7db9f10e7607 67
+pnpm-workspace.yaml
+  s_05b78bc80227e1::t_acfa1e60dba445 399-400
+pnpm-lock.yaml
+  s_05b78bc80227e1::t_4c66fc65ccd634 985-986,1274,1280,1317,1408,3665-3666,3668-3669,3693,4393,4541,4686-4687,4699,4834,4846,4849,4852,4984,10804-10805,10819-10821,10823-10825,12157,12171,19054-19057,19066-19068,19097-19100,22254-22256,22652-22655,23659-23662,28138,28140-28146,28160,28162,28166,28168,28617,28637,28641,28643,28647,28653,28655,28659,28665,28671,28676,28687,28710,28715,28730,28736,28741,28768-28783,32460-32461,32552-32553,32839,37275-37286,37309,37312,37314-37316,37318,37320-37321,37360-37366,37540,38427-38436,41122,41679-41686,43088-43096,43107,43467-43493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53823c6a4f66879e4db94101cccd4b742eece277",
+  "prompts": {},
+  "sessions": {
+    "s_05b78bc80227e1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e8389c9a1ffenqwshS91TZY8sP",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_ce2d87572e1814::t_d227d39f503d12 54,69,166,220,289,345,382,389-400
+  s_ce2d87572e1814::t_27f2aef1e687d4 116-118
+  s_ce2d87572e1814::t_cbcdaac0699284 346
+  s_ce2d87572e1814::t_48a89d9e35bd25 401-402
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_ce2d87572e1814::t_d227d39f503d12 473,527-529,819,832,929,1093
+  s_ce2d87572e1814::t_27f2aef1e687d4 533,539-540,542-543
+  s_ce2d87572e1814::t_cbcdaac0699284 537,541,831,928
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_ce2d87572e1814::t_27f2aef1e687d4 120,133,183-193
+  s_ce2d87572e1814::t_e9ab4a4dae3e49 194-195
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_ce2d87572e1814::t_d227d39f503d12 25,131
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  s_ce2d87572e1814::t_d227d39f503d12 49,100,113
+  s_ce2d87572e1814::t_27f2aef1e687d4 55-60,101-112
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_ce2d87572e1814::t_cbcdaac0699284 57,116,123,133
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ce2d87572e1814::t_d227d39f503d12 193-194,218,3361,3516-3518,3574,3640-3642
+  s_ce2d87572e1814::t_27f2aef1e687d4 3520-3573
+  s_ce2d87572e1814::t_6deabb0b79c404 3643-3644
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  s_ce2d87572e1814::t_27f2aef1e687d4 332-338
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_ce2d87572e1814::t_27f2aef1e687d4 1898-1899,1922-1923,1925-1926,2008
+  s_ce2d87572e1814::t_9e560bedcb9c06 2019
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ce2d87572e1814::t_27f2aef1e687d4 663,2378-2394,2401-2407
+  s_ce2d87572e1814::t_4e154678c0a932 2395-2398,2400
+  s_ce2d87572e1814::t_cbcdaac0699284 2399
+  s_ce2d87572e1814::t_e6d52c8f7f03d6 2408-2409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe017a8b98f248fc5391df0a4a3583da6da09d8f",
+  "prompts": {},
+  "sessions": {
+    "s_ce2d87572e1814": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17e45-49e1-79f1-94ce-d469e4a0f0de",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_0124dfca07eaee::t_a2bc5069f92fb9 144-148,491-495,514-518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6a863dbc1b031ac18b4bb56b55c6e080c7b21f5",
+  "prompts": {},
+  "sessions": {
+    "s_0124dfca07eaee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4432e389-b611-4d01-a0b8-3b2bacf20633",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
