@@ -38,7 +38,8 @@ own summary table, and a fold step fills it from the ledger.
 5. One file in `@n8n/backend-services` holds every counting rule, for example
    `isBillableExecution`. Every fold step uses it. No fold step keeps its own copy of a rule.
 6. A feature that must decide at the moment of an event reads at record time, beside the ledger
-   insert. A feature that accepts about 5 s of delay reads its summary table.
+   insert. A feature that accepts about 5 s of delay reads its summary table. Execution limits v1
+   accept the delay, so they read their summary table.
 
 The main reason: one record of the facts lets every feature count the same runs. No feature needs
 its own write path, and no run waits on a shared row.
@@ -51,8 +52,8 @@ its own write path, and no run waits on a shared row.
    a prototype, this cost 377% Postgres CPU on one busy workflow at 1,500 runs/s. The table would
    also keep lifetime totals, so it could not be pruned. Its one benefit: a new feature could read
    old data.
-2. **A separate counter for limits, with its own database write.** We rejected it because it would
-   add a write on every run, and a fourth number to explain.
+2. **A separate counter as the record for limits, with its own database write.** We rejected it
+   because it would add a write on every run, and a fourth number to explain.
 3. **Build on Insights.** We rejected it because Insights can lose its buffer, an admin can turn it
    off, and it moves history when a workflow moves to another project. It also does not store
    manual runs, sub-workflows or `internal` runs. The licence count needs all of these, for the
@@ -63,15 +64,16 @@ its own write path, and no run waits on a shared row.
 
 ## Consequences
 
-1. Counts are up to about 5 s late. An exact limit needs an atomic counter beside the ledger
-   insert. The ledger stays the record, and it can fill the counter again.
+1. Counts are up to about 5 s late. An exact limit would need an atomic counter (Redis, or memory
+   on one main) beside the ledger insert. That counter only decides. It is not a record: the
+   ledger stays the record, and it can fill the counter again.
 2. A summary table that a feature adds later starts with no history, because the fold deletes the
    ledger rows.
 3. Every run writes two rows. In a prototype, the `started` row added about 300 B of WAL for each
    run.
 4. The licence count and Insights fold in the same transaction, so they always count the same set
-   of runs. A failing fold step delays every other step. The fold needs bounded retries, and a way
-   to set the rows of a failing step aside without losing them.
+   of runs. A failing fold step delays every other step until it is set aside. The fold needs
+   bounded retries, and a way to set the rows of a failing step aside without losing them.
 5. A fold step does only small upserts on small tables. It makes no network call.
 6. On SQLite, `workflow_statistics` updates up to 5 s after a run ends. The fold holds the write
    lock for a few milliseconds every 5 s.
