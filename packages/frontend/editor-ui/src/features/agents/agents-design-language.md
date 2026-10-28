@@ -17,6 +17,20 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+## History entry points
+
+Put `Version history` in the Agent actions menu. Put `View timeline` in the
+Publish dropdown. Each action opens its tab, including when the panel is already
+open. Keep history available for saved Agents during edits and with read-only access.
+Hide these entry points in embedded Agent artifacts.
+
+## Configuration add actions
+
+Show a leading `plus` icon beside empty-state configuration add labels. Use
+the ghost button variant for skills, channels, schedules, and capabilities.
+Keep the icon visible before hover so users can identify each action.
+Use the existing icon-only add button when the row contains items.
+
 ## Narrow builder panels
 
 Keep a chip and its adjacent add action inside the available row width. Truncate
@@ -45,12 +59,30 @@ remaining width in proportion to each panel's requested extra width above
 
 ## Preview history
 
+Show token usage after a model turn reports it. Hide the cost when pricing is
+unavailable. Keep known token counts visible. Show a positive cost below the
+display precision as `<$0.0001`. Replace live totals with saved session totals
+after the execution completes. Show server-measured duration with each model
+turn update and when execution ends. Hide duration until a positive server value
+is available. Keep the last confirmed duration between updates. Exclude time
+spent waiting for human approval. Keep progress visible in the session trace
+when the Preview panel is closed.
+
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or
 the icon to open history. Show only “Chat history” when no chat title exists. Do
 not show “New session” before the Preview session starts. Truncate long titles
 inside the shared button. Keep the header actions visible.
 Use the `x` icon for the Preview close action, as the Assistant does.
+
+## Session trace actions
+
+Put the session actions menu after `Edit in builder` in the trace header.
+Use the same copy-link, LangSmith export, and delete labels as Preview.
+Show export only when debug export is enabled. Show delete only when the user
+can update the Agent. Confirm session deletion and return to the session list.
+Disable session actions until the current session loads. Disable export and
+delete while their request runs.
 
 ## Fix with Assistant
 
@@ -179,6 +211,8 @@ The workspace must then own all of its edge spacing.
 Keep the shell's bottom body padding when a footer is present. Leave
 `--spacing--md` between the last form control and the footer divider, including
 after scrolling to the end. Do not add this space again in individual forms.
+Stretch footer action buttons on narrow screens. Keep checkbox controls at their
+normal size.
 
 When a nested credential or parameter editor dialog is open, release the parent
 focus trap and block parent dismissal. The nested dialog owns Escape until it
@@ -290,8 +324,9 @@ the Global tab at `Global`, and the other tabs at `This agent only`. Only a
 user who can create global skills sees `Global`. An existing skill that the
 user can edit shows the same field. Disable it, with a tooltip that gives the
 reason, when another Agent uses the skill. `Save skill` stays disabled until
-the user changes the skill or its target. Do not show the field when the
-skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
+the user changes the skill or its target. Do not show the field for an inline
+Agent, which keeps its skills in the node. Then `Add skill` creates the skill on
+the Agent, without the picker.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the
@@ -361,6 +396,9 @@ Use `N8nApprovalCard` for Preview tool approvals, including background child
 approvals. It owns the shared layout, keyboard controls, and standard choices
 for the Assistant and Agent Preview. Pass the app catalog labels through
 `useApprovalCardLabels`.
+Use the description slot to show the Agent name and the requested tool name.
+Show a node icon only when configured tool metadata identifies its node type.
+Use the localized Agent label when no name is available.
 Pass the sanitized display arguments from the backend to the shared card.
 For node tools, include the resolved node parameters and any model input.
 The card formats and shows these values inline for both surfaces. Leave space
@@ -374,6 +412,11 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+In the session timeline, show pending background tool approvals below their
+job row. Use the shared approval card and disable automatic focus so rows do
+not take focus as the user scrolls. Keep each card disabled while its response
+is pending. Remove its choices when the approval is resolved.
 
 ## Preview composer queue
 
@@ -408,3 +451,20 @@ failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.
+
+## Versions and publication
+
+Use separate Versions and Publish Timeline tabs. Versions show saved drafts,
+including versions that have never been published. Show the current draft and
+the published version with separate status markers. The timeline keeps each
+publication and unpublication event, including repeated publication of a version.
+Show unknown durations for incomplete legacy records.
+
+Use the small Agent modal shell for version details and publication. Reuse the
+workflow version name and description fields. Both fields are optional. Keep
+Cancel before Save or Publish. Keep entered values when the request fails.
+
+Flush pending editor changes before opening the publish dialog. Keep the selected
+saved version fixed while the dialog is open. Later edits remain in the draft.
+Editing version details does not create another saved version. Restoring a version
+creates a new draft without copying the version name or description.

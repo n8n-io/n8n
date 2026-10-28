@@ -40,6 +40,16 @@ export const CAPABILITIES = {
 			N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN: 'e2e-test-endpoint-token',
 		},
 	},
+	/** Keycloak as an external trusted source for the inbound auth suite. */
+	'trusted-sources': {
+		services: ['keycloak'],
+		env: {
+			// Read once at boot: registers the /rest/trusted-sources routes
+			N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED: 'true',
+			// Discovery and the code exchange run under the enforced SSRF policy
+			N8N_SSRF_ALLOWED_HOSTNAMES: 'keycloak',
+		},
+	},
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
 // Community package requests add unrelated traffic to proxy recordings.

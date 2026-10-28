@@ -10,6 +10,12 @@ executes for real: its routing, pagination, response parsing, and
 post-processing (e.g. `simplify` options) all run against the mocked body.
 
 - Shape source: the LLM's own knowledge of the API + endpoint quirks.
+- Reserved placeholder hosts (`example.com`, `example.net`, `example.org`, and
+  `*.example`, `*.test`, `*.invalid`, `*.localhost`) called by a generic HTTP
+  client node (HTTP Request, its tool variants, GraphQL) have no real API: the
+  layout the scenario or hints state wins, else a list is a bare top-level array
+  and a single record is a bare object. A service node on such a host (e.g.
+  WordPress at `blog.example.com`) keeps its real API's layout.
 - Used when a node executes against intercepted HTTP.
 
 ## Node-output level — pin data / simulation fixtures

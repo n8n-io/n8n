@@ -1,15 +1,20 @@
 <script lang="ts" setup>
 import { truncate } from '@n8n/utils/string/truncate';
-import { VIEWS } from '@/app/constants';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
-	EXECUTIONS_SECTION_KEY,
+	AGENT_SESSIONS_LIST_VIEW,
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
+import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
+import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import {
 	defaultAgentSessionFilters,
@@ -18,25 +23,18 @@ import {
 	type ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
-import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
-import AgentPreviewDock from '@/features/agents/components/AgentPreviewDock.vue';
-import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBuilderSession';
-import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
-import { getAgent } from '@/features/agents/composables/useAgentApi';
-import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
-import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
-import type { AgentResource } from '@/features/agents/types';
+import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import {
 	increasedBudgetConfig,
 	type BudgetAmountField,
 } from '@/features/agents/utils/budget-config';
 import { useToast } from '@n8n/composables/useToast';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { useI18n } from '@n8n/i18n';
-import { N8nEmptyState } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -49,50 +47,78 @@ const {
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
-const rootStore = useRootStore();
-const toast = useToast();
 const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
 
+const clipboard = useClipboard();
+const toast = useToast();
+const { canUpdate, canUpdate: canDeleteSession } = useAgentPermissions(projectId);
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
+const isDeletingSession = ref(false);
+let isDisposed = false;
+onScopeDispose(() => {
+	isDisposed = true;
+});
+
+async function copySessionLink() {
+	if (!hasLoadedThread.value) return;
+	try {
+		const { href } = router.resolve({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: { projectId: projectId.value, agentId: agentId.value, threadId: threadId.value },
+		});
+		await clipboard.copy(new URL(href, window.location.origin).href);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.preview.more.linkCopied'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.preview.more.copyLinkError'));
+	}
+}
+
+async function deleteSession() {
+	if (!hasLoadedThread.value || !canDeleteSession.value || isDeletingSession.value) return;
+	const target = { projectId: projectId.value, agentId: agentId.value, threadId: threadId.value };
+	const isCurrentSession = () =>
+		!isDisposed &&
+		projectId.value === target.projectId &&
+		agentId.value === target.agentId &&
+		threadId.value === target.threadId;
+	isDeletingSession.value = true;
+	try {
+		const confirmed = await openAgentConfirmationModal({
+			title: i18n.baseText('agentSessions.deleteConfirm.headline'),
+			description: i18n.baseText('agentSessions.deleteConfirm.message'),
+			confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		});
+		if (confirmed !== MODAL_CONFIRM || !isCurrentSession() || !canDeleteSession.value) return;
+		await sessionsStore.deleteThread(target.projectId, target.agentId, target.threadId);
+		toast.showMessage({
+			title: i18n.baseText('agentSessions.showMessage.deleted'),
+			type: 'success',
+		});
+		if (isCurrentSession()) {
+			await router.push({
+				name: AGENT_SESSIONS_LIST_VIEW,
+				params: { projectId: target.projectId, agentId: target.agentId },
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+	} finally {
+		isDeletingSession.value = false;
+	}
+}
+
 // Populated by the timeline panel's `loaded` event so the header can render its
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
-const agent = ref<AgentResource | null>(null);
-const isPreviewOpen = ref(false);
-const previewInitialized = ref(false);
-const { canUpdate } = useAgentPermissions(projectId);
-const canDeleteSession = computed(() => canUpdate.value);
-const {
-	activeChatSessionId,
-	effectiveSessionId,
-	currentSessionHasMessages,
-	currentSessionIsEphemeral,
-	currentSessionIsLocallyMinted,
-	currentSessionTitle,
-	sessionMenu,
-	isDeletingSession,
-	onSessionPick,
-	onNewChat,
-	markSessionCreated,
-	deleteSession,
-} = useAgentBuilderSession({ routeBacked: computed(() => false), projectId, agentId });
-
-/**
- * True while the docked preview sits on a brand-new session that has no thread
- * yet, so this page's thread is no longer what the preview is running. Picking
- * an existing session is excluded: that one has a thread to show right away,
- * and the dock's own trace action navigates to it.
- */
-const isPreviewSessionStale = computed(
-	() =>
-		currentSessionIsLocallyMinted.value &&
-		effectiveSessionId.value !== undefined &&
-		effectiveSessionId.value !== threadId.value,
-);
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
@@ -148,11 +174,6 @@ const agentRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: projectId.value, agentId: agentId.value },
 }));
 
-const agentExecutionsRoute = computed<RouteLocationRaw>(() => ({
-	...(typeof agentRoute.value === 'object' ? agentRoute.value : {}),
-	query: { section: EXECUTIONS_SECTION_KEY },
-}));
-
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: projectId.value,
@@ -193,119 +214,51 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 	}));
 });
 
-const totalTokens = computed(() => {
-	if (!thread.value) return 0;
-	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
-});
+const {
+	usage: sessionUsage,
+	duration,
+	onExecutionUpdated,
+} = useAgentSessionUsage(
+	() => (thread.value ? { thread: thread.value, executions: executions.value } : null),
+	() => ({}),
+);
+useAgentExecutionUpdates({ projectId, agentId, threadId }, () => {}, onExecutionUpdated);
+const totalTokens = computed(() => sessionUsage.value.totalTokens);
 
 const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
-const canPreviewSession = computed(
-	() =>
-		currentSessionIsLocallyMinted.value ||
-		(hasLoadedThread.value && thread.value?.canContinueInPreview === true),
-);
-const previewVisible = computed(() => canPreviewSession.value && isPreviewOpen.value);
-const totalCost = computed(() => thread.value?.totalCost ?? 0);
-const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
-
-/**
- * The dock resolves the live session's title and its trace/export/delete
- * gates by looking it up in the store's thread list. That list holds only the
- * first page fetched on load, so it misses a session started since then and any
- * thread opened by link from outside that page. When the loaded thread is the
- * live session, it is the authoritative answer, so prefer it over the lookup.
- */
-const dockShowsLoadedThread = computed(
-	() => thread.value !== null && thread.value.id === effectiveSessionId.value,
-);
-const dockSessionTitle = computed(() =>
-	dockShowsLoadedThread.value ? sessionTitle.value : currentSessionTitle.value,
-);
-const dockHasSession = computed(
-	() => dockShowsLoadedThread.value || currentSessionHasMessages.value,
-);
+const totalCost = computed(() => sessionUsage.value.cost);
+const durationLabel = computed(() => formatDuration(duration.value));
+const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
+	trigger: {
+		source: triggerSource.value,
+		icon: triggerIcon.value,
+		label: triggerLabel.value,
+	},
+	totalTokens: totalTokens.value,
+	totalCost: totalCost.value,
+	durationLabel: durationLabel.value,
+}));
 
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
-	upsertLoadedPreviewThread(projectId.value, agentId.value);
 }
 
-function upsertLoadedPreviewThread(targetProjectId: string, targetAgentId: string) {
-	const loadedThread = thread.value;
-	if (
-		loadedThread?.canContinueInPreview &&
-		loadedThread.projectId === targetProjectId &&
-		loadedThread.agentId === targetAgentId
-	) {
-		sessionsStore.upsertThread(loadedThread);
-	}
-}
-
-let previewLoadRequestId = 0;
-
-/** Load the agent data required by the shared preview dock. */
 watch(
 	[projectId, agentId],
 	async ([nextProjectId, nextAgentId]) => {
-		const requestId = ++previewLoadRequestId;
-		previewInitialized.value = false;
-		agent.value = null;
-		try {
-			const [loadedAgent] = await Promise.all([
-				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
-				fetchConfig(nextProjectId, nextAgentId),
-				sessionsStore.fetchThreads(nextProjectId, nextAgentId, {
-					filters: defaultAgentSessionFilters(),
-				}),
-			]);
-			if (requestId === previewLoadRequestId) {
-				agent.value = loadedAgent;
-				upsertLoadedPreviewThread(nextProjectId, nextAgentId);
-			}
-		} finally {
-			if (requestId === previewLoadRequestId) previewInitialized.value = true;
-		}
+		await Promise.all([
+			fetchConfig(nextProjectId, nextAgentId),
+			sessionsStore.fetchThreads(nextProjectId, nextAgentId, {
+				filters: defaultAgentSessionFilters(),
+			}),
+		]);
 	},
 	{ immediate: true },
 );
-
-watch(
-	threadId,
-	(nextThreadId) => {
-		activeChatSessionId.value = nextThreadId;
-	},
-	{ immediate: true },
-);
-
-/**
- * Clear this thread's data the instant the live preview session moves on, so
- * its error markers/title/metrics don't linger next to a new session.
- */
-watch(isPreviewSessionStale, (stale) => {
-	if (!stale) return;
-	thread.value = null;
-	executions.value = [];
-});
-
-/**
- * The new session has no thread to fetch until the backend records its first
- * turn, and that push is the signal it now has one — so re-bind the page to it.
- */
-useAgentExecutionUpdates({ projectId, agentId, threadId: effectiveSessionId }, () => {
-	if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
-	void router.replace({
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			threadId: effectiveSessionId.value,
-		},
-	});
-});
 
 function formatDuration(ms: number): string {
-	if (!ms || ms <= 0) return '0ms';
+	if (!Number.isFinite(ms) || ms <= 0) return '';
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -316,9 +269,10 @@ function formatDate(fullDate: string): string {
 	return `${date} ${time}`;
 }
 
-// Returns to the correct starting point (e.g. Preview) when there is one;
-// otherwise falls back to the agent's executions tab, e.g. for a direct visit.
-const closeTimeline = useBackOrFallback(agentExecutionsRoute);
+const closeTimeline = useBackOrFallback(() => ({
+	name: AGENT_SESSIONS_LIST_VIEW,
+	params: { projectId: projectId.value, agentId: agentId.value },
+}));
 
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id === projectId.value) {
@@ -334,13 +288,6 @@ function onSessionSelect(nextThreadId: string) {
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
 	});
-}
-
-async function onDeletePreviewSession(sessionId: string) {
-	if (!canDeleteSession.value) return;
-	const deleted = await deleteSession(sessionId);
-	if (!deleted || sessionId !== threadId.value) return;
-	void router.replace(agentExecutionsRoute.value);
 }
 
 /**
@@ -365,16 +312,6 @@ async function onIncreaseBudget(payload: {
 		return false;
 	}
 }
-
-function togglePreview() {
-	if (!canPreviewSession.value) return;
-	isPreviewOpen.value = !isPreviewOpen.value;
-}
-
-function viewPreviewTrace() {
-	if (!effectiveSessionId.value) return;
-	onSessionSelect(effectiveSessionId.value);
-}
 </script>
 
 <template>
@@ -384,63 +321,30 @@ function viewPreviewTrace() {
 			:project-icon="projectIcon"
 			:session-title="sessionTitle"
 			:session-options="sessionOptions"
-			:show-metrics="Boolean(thread)"
-			:trigger-source="triggerSource"
-			:trigger-icon="triggerIcon"
-			:trigger-label="triggerLabel"
-			:total-tokens="totalTokens"
-			:total-cost="totalCost"
-			:duration-label="durationLabel"
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
-			:show-preview="canPreviewSession"
-			:is-preview-open="previewVisible"
+			:metadata="hasLoadedThread ? sessionMetadata : undefined"
+			:has-session="hasLoadedThread"
+			:can-delete-session="canDeleteSession"
+			:is-deleting-session="isDeletingSession"
+			@copy-link="copySessionLink"
+			@delete-session="deleteSession"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
 			@langsmith-export="sendSession({ projectId, agentId, threadId })"
-			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 
-		<div :class="[$style.content, { [$style.previewOpen]: previewVisible }]">
+		<div :class="$style.content">
 			<AgentSessionTimelinePanel
-				v-if="!isPreviewSessionStale"
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
 				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
+				:agent-name="thread?.agentName"
+				:personalisation="localConfig?.personalisation"
+				:tools="localConfig?.tools"
 				@loaded="onPanelLoaded"
-			/>
-			<div v-else :class="$style.newSessionEmpty">
-				<N8nEmptyState
-					:icon="{ type: 'icon', value: 'message-square' }"
-					:heading="i18n.baseText('agentSessions.timeline.emptyState.heading')"
-					:description="i18n.baseText('agentSessions.timeline.emptyState.description')"
-				/>
-			</div>
-
-			<AgentPreviewDock
-				v-if="canPreviewSession"
-				:is-open="previewVisible"
-				:session-title="dockSessionTitle"
-				:session-options="sessionMenu"
-				:has-session="dockHasSession"
-				:initialized="previewInitialized"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:agent="agent"
-				:local-config="localConfig"
-				:connected-triggers="[]"
-				:effective-session-id="effectiveSessionId"
-				:new-session="currentSessionIsEphemeral"
-				:can-delete-session="canDeleteSession"
-				:is-deleting-session="isDeletingSession"
-				@view-trace="viewPreviewTrace"
-				@new-session="onNewChat"
-				@delete-session="onDeletePreviewSession"
-				@session-select="onSessionPick"
-				@session-created="markSessionCreated"
-				@close="togglePreview"
 			/>
 		</div>
 	</div>
@@ -460,24 +364,5 @@ function viewPreviewTrace() {
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
-	padding-right: 0;
-	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
-
-	&.previewOpen {
-		padding-right: var(--agent-preview-chat-column-width, 30rem);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-	}
-}
-
-.newSessionEmpty {
-	display: flex;
-	flex: 1 1 auto;
-	min-height: 0;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--xl);
 }
 </style>

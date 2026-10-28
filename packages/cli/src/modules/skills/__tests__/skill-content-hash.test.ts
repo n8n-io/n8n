@@ -12,8 +12,8 @@ const content: SkillContent = {
 };
 
 describe('skillContentHash', () => {
-	// The data migration (MigrateAgentSkillsToHub.contentHash, CONTEXT-225) must produce the
-	// same value for the same skill. Its test must pin this input to this literal too.
+	// The data migration `MigrateAgentSkillsToHub` must produce the same value for the same
+	// skill. Its test checks the hashes it writes against `skillContentHash`.
 	it('pins the hash that the data migration must also write', () => {
 		expect(skillContentHash(content)).toBe(
 			'fb5a3e8555463ac71ac16733c2b9fdf41d0e15977ac1583646823b0d6d855ab2',

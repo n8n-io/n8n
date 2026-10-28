@@ -3,6 +3,7 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
+import ResourcesListSkeleton from '@/app/components/layouts/ResourcesListSkeleton.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
@@ -23,7 +24,6 @@ import {
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
-	N8nLoading,
 	N8nOption,
 	N8nPagination,
 	N8nRecycleScroller,
@@ -604,9 +604,7 @@ defineExpose({
 		<template #header>
 			<slot name="header" />
 		</template>
-		<div v-if="showLoadingState" class="resource-list-loading">
-			<N8nLoading :rows="25" :shrink-last="false" />
-		</div>
+		<ResourcesListSkeleton v-if="showLoadingState" />
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">
@@ -699,9 +697,7 @@ defineExpose({
 
 				<slot name="preamble" />
 
-				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
-					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />
-				</div>
+				<ResourcesListSkeleton v-if="resourcesRefreshing" :rows="rowsPerPage" immediate />
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
@@ -870,49 +866,5 @@ defineExpose({
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
-}
-</style>
-
-<style lang="scss" scoped>
-.resource-list-loading {
-	position: relative;
-	height: 0;
-	width: 100%;
-	overflow: hidden;
-	/*
-	Show the loading skeleton only if the loading takes longer than 300ms
-	*/
-	animation: 0.01s linear 0.3s forwards changeVisibility;
-	:deep(.el-skeleton) {
-		position: absolute;
-		height: 100%;
-		width: 100%;
-		overflow: hidden;
-
-		> div {
-			> div:first-child {
-				.el-skeleton__item {
-					height: 42px;
-					margin: 0;
-				}
-			}
-		}
-
-		.el-skeleton__item {
-			height: 69px;
-		}
-	}
-}
-.resource-list-loading-instant {
-	animation: 0.01s linear 0s forwards changeVisibility;
-}
-
-@keyframes changeVisibility {
-	from {
-		height: 0;
-	}
-	to {
-		height: 100%;
-	}
 }
 </style>

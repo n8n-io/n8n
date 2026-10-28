@@ -6,7 +6,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplySelection extends PromotionApplyCommand {
 	static override description =
-		"Apply a chosen set of a project's workflow changes from its Apply branch. Selected IDs on the branch are imported, and instance workflows this project owns whose IDs are absent from the branch are removed. Unselected content stays unchanged. Pass the three --expected-* flags to apply only the reviewed commit. Exits 3 when the source changed since the review and 4 when bindings must be set up first; nothing is imported in either case. Requires the project's Apply environment, or the instance Apply environment, to be connected first.";
+		"Apply a chosen set of a project's workflow changes from its Apply branch. Selected IDs on the branch are imported, and instance workflows this project owns whose IDs are absent from the branch are removed. Unselected content stays unchanged. A selected workflow moves within the project to match the branch, together with the folders that hold it, and those folders take the name on the branch. A selected workflow, or a folder that the branch holds in this project, that the branch and this instance hold in different projects is refused before any write. Pass the three --expected-* flags to apply only the reviewed commit. Exits 3 when the source changed since the review and 4 when bindings must be set up first; nothing is imported in either case. Requires the project's Apply environment, or the instance Apply environment, to be connected first.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-selection proj-abc -w wf-1 -w wf-2',

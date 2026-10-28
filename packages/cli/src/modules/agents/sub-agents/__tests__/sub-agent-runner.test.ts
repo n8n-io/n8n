@@ -1574,7 +1574,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					...parentTelemetry,
 					functionId: undefined,
-					metadata: { agent_id: 'agent-1', thread_id: 'parent-thread-1', source: 'sub-agent' },
+					metadata: { thread_id: 'parent-thread-1', source: 'sub-agent' },
 					rootAnchored: false,
 				},
 			}),

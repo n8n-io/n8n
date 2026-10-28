@@ -35,7 +35,6 @@ import {
 	formatWarning,
 	getBuildFailureTrackingKey,
 	grantSessionWorkflowUpdate,
-	isApprovedBuildContext,
 	canSkipWorkflowUpdateHitl,
 	markSourceBuildFailed,
 	recordSessionOwnedWorkflow,
@@ -192,7 +191,7 @@ export const buildWorkflowInputSchema = z
 			.optional()
 			.describe(
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
+					'Save the main workflow later.',
 			),
 		preferNewCredentials: z
 			.array(z.string())
@@ -393,12 +392,11 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 ]);
 
 async function directPostBuildFlowHandoff(
-	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
 	activate?: RuntimeSkillLoader,
 ): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
-	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
+	if (isAuxiliarySupportingWorkflow) return undefined;
 
 	// One-off instructions only apply when the workflow can actually run — their
 	// completion criterion is a live run. A triggerless or otherwise unrunnable
@@ -439,8 +437,6 @@ interface ValidationFailureArgs {
 	filePath: string;
 	resolvedWorkItemId: string;
 	resolvedTaskId: string;
-	plannedTaskId?: string;
-	owner: WorkflowBuildOutcome['owner'];
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
@@ -495,8 +491,6 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		filePath,
 		resolvedWorkItemId,
 		resolvedTaskId,
-		plannedTaskId,
-		owner,
 		isSupportingWorkflow = false,
 		isAuxiliarySupportingWorkflow = false,
 		withEscalation,
@@ -520,8 +514,6 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		sourceFilePath: filePath,
 		workItemId: resolvedWorkItemId,
 		taskId: resolvedTaskId,
-		plannedTaskId,
-		owner,
 		remediation,
 		errors: formattedErrors,
 		summary,
@@ -854,7 +846,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (
 				targetWorkflowId &&
 				!canSkipUpdateHitl &&
-				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
 				if (ctx.resumeData && !ctx.resumeData.approved) {
@@ -1012,18 +1003,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const { name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
-			const {
-				isAuxiliarySupportingWorkflow,
-				plannedTaskId,
-				owner,
-				resolvedWorkItemId,
-				resolvedTaskId,
-			} = resolveBuildIdentifiers({
-				context,
-				filePath,
-				inputWorkItemId: input.workItemId,
-				isSupportingWorkflow,
-			});
+			const { isAuxiliarySupportingWorkflow, resolvedWorkItemId, resolvedTaskId } =
+				resolveBuildIdentifiers({
+					context,
+					filePath,
+					inputWorkItemId: input.workItemId,
+					isSupportingWorkflow,
+				});
 			const workItemKey = getBuildFailureTrackingKey({
 				workItemId: resolvedWorkItemId,
 				workflowId: targetWorkflowId,
@@ -1128,8 +1114,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
-					plannedTaskId,
-					owner,
 					remediation,
 					errors,
 					summary: compiled.summary,
@@ -1187,8 +1171,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					filePath,
 					resolvedWorkItemId,
 					resolvedTaskId,
-					plannedTaskId,
-					owner,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
@@ -1210,8 +1192,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
-					plannedTaskId,
-					owner,
 					remediation,
 					errors: [
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
@@ -1331,7 +1311,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					informational,
 					reason: 'chat_model_validation_failed',
 					guidance:
-						'Fix the chat-model configuration using workflow_builder_nodes(action="explore-resources") to pick a model the connected credential supports, then call workflow_builder_build_workflow again.',
+						'Fix the chat-model configuration using get_node_parameter_options to pick a model the connected credential supports, then call workflow_builder_build_workflow again.',
 					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
 					binding,
 					sourceHash,
@@ -1339,8 +1319,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					filePath,
 					resolvedWorkItemId,
 					resolvedTaskId,
-					plannedTaskId,
-					owner,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
@@ -1432,8 +1410,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						filePath,
 						resolvedWorkItemId,
 						resolvedTaskId,
-						plannedTaskId,
-						owner,
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
 						withEscalation,
@@ -1559,6 +1535,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
 							fallbackModelConfig: context.modelId,
+							modelFetch: context.modelFetch,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {
@@ -1623,8 +1600,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
-						owner,
-						plannedTaskId,
 						workflowId: saved.id,
 						sourceFilePath: filePath,
 						submitted: true,
@@ -1657,7 +1632,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						summary,
 					});
 					const postBuildFlow = await directPostBuildFlowHandoff(
-						owner,
 						isAuxiliarySupportingWorkflow,
 						outcome,
 						ctx.loadSkill,
@@ -1666,7 +1640,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					await promoteMainWorkflow(context, saved.id);
 					await reportWorkflowBuildOutcome(context, outcome, {
 						storeOnRunContext: !isAuxiliarySupportingWorkflow,
-						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
 
 					failureTracker.clear(workItemKey);
@@ -1802,8 +1775,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						sourceFilePath: filePath,
 						workItemId: resolvedWorkItemId,
 						taskId: resolvedTaskId,
-						plannedTaskId,
-						owner,
 						remediation,
 						errors: [message],
 						summary: 'Workflow save conflict — the workflow changed outside this conversation.',
@@ -1838,8 +1809,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					sourceFilePath: filePath,
 					workItemId: resolvedWorkItemId,
 					taskId: resolvedTaskId,
-					plannedTaskId,
-					owner,
 					remediation,
 					errors: [`Workflow save failed: ${message}`],
 					summary: 'Workflow source parsed but did not save.',

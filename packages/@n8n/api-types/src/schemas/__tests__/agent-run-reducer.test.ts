@@ -227,6 +227,34 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	it('keeps skill updates through history restore and deduplicates replay', () => {
+		const state = stateWithRun('run-1', 'root');
+		const event: InstanceAiEvent = {
+			type: 'skill-update',
+			runId: 'run-1',
+			agentId: 'root',
+			payload: {
+				skillId: 'hub:1',
+				name: 'Writing',
+				version: 'v2',
+				change: 'updated',
+				content: 'Use the revised writing instructions.',
+			},
+		};
+		reduceEvent(state, event);
+		const restored = stateFromAgentTree(deepCopy(toAgentTree(state)))!;
+		reduceEvent(restored, event);
+		expect(restored.agentsById.root.timeline).toEqual([
+			{ type: 'skill-update', runId: 'run-1', ...event.payload },
+		]);
+		reduceEvent(restored, {
+			...event,
+			payload: { skillId: 'hub:1', version: null, change: 'unavailable' },
+		});
+		expect(restored.agentsById.root.timeline).toHaveLength(2);
+		expect(restored.agentsById.root.toolCalls).toEqual([]);
+	});
+
 	describe('instance context', () => {
 		it('appends what the turn was handed to the root timeline', () => {
 			const state = stateWithRun('run-1', 'root');
@@ -660,7 +688,7 @@ describe('agent-run-reducer', () => {
 		it('routes a follow-up run to the tree after the state is rebuilt from a snapshot', () => {
 			// A two-run group, as a run-sync frame or history hydration delivers it.
 			const original = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-first', 'workspace'));
 			reduceEvent(original, makeRunStart('run-2', 'orchestrator-run-2'));
 			reduceEvent(original, makeToolCall('run-2', 'orchestrator-run-2', 'tc-folder', 'workspace'));
 			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
@@ -688,7 +716,7 @@ describe('agent-run-reducer', () => {
 
 		it('attaches a sub-agent spawned by a follow-up run after a snapshot rebuild', () => {
 			const original = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-first', 'workspace'));
 			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
 
 			reduceEvent(
@@ -701,7 +729,7 @@ describe('agent-run-reducer', () => {
 
 		it('does not alias an agent whose id is not the orchestrator id of its run', () => {
 			const original = stateWithRun('run-1', 'orchestrator-run-1');
-			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-plan', 'create-tasks'));
+			reduceEvent(original, makeToolCall('run-1', 'orchestrator-run-1', 'tc-first', 'workspace'));
 			const state = stateFromAgentTree(deepCopy(toAgentTree(original)))!;
 
 			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-3', 'tc-stray', 'workspace'));
