@@ -191,7 +191,12 @@ export async function resolveNodeTool(
 				projectId: ctx.projectId,
 				threadId,
 			});
-			return { ...result, data: adopted.items, files: adopted.files };
+			return {
+				...result,
+				data: adopted.items,
+				files: adopted.files,
+				...(adopted.skippedFiles.length > 0 && { skippedFiles: adopted.skippedFiles }),
+			};
 		})
 		.build();
 

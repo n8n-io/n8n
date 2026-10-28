@@ -1,3 +1,4 @@
+import { MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -81,6 +82,7 @@ describe('AgentFileBridge', () => {
 		expect(result).toEqual({
 			items: [{ json: { prompt: 'cat', id: pngBinary.id }, binary: {} }],
 			files: [],
+			skippedFiles: [],
 		});
 		expect(logger.warn).toHaveBeenCalled();
 	});
@@ -128,6 +130,39 @@ describe('AgentFileBridge', () => {
 		expect(id).toEqual(expect.any(String));
 		expect(fileName).toBe(`${id}.png`);
 		expect(result.files[0]).toMatchObject({ fileId: id, fileName: `${id}.png` });
+	});
+
+	describe('size limit', () => {
+		it('reports a file over the limit as skipped and does not read it', async () => {
+			binaryDataService.getMetadata.mockResolvedValue({
+				fileSize: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES + 1,
+			});
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: pngBinary } }],
+				scope,
+			);
+
+			expect(binaryDataService.getMetadata).toHaveBeenCalledWith(pngBinary.id);
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				items: [{ json: {}, binary: {} }],
+				files: [],
+				skippedFiles: [{ fileName: 'cat.png', reason: 'larger than 50 MB' }],
+			});
+		});
+
+		it('stores a file at the limit', async () => {
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: { ...pngBinary, bytes: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } } }],
+				scope,
+			);
+
+			expect(attachmentService.storeInbound).toHaveBeenCalled();
+			expect(result.files).toHaveLength(1);
+			expect(result.skippedFiles).toEqual([]);
+		});
 	});
 
 	describe('file names', () => {

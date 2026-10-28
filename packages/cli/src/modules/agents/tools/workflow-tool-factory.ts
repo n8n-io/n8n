@@ -8,6 +8,7 @@ import {
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
 	type AgentToolOutputFile,
+	type AgentToolSkippedFile,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -143,6 +144,8 @@ interface WorkflowToolResult {
 	jobId?: string;
 	/** Binary output, stored as agent files. The model gets this metadata, not the bytes. */
 	files?: AgentToolOutputFile[];
+	/** Binary output that was not stored, with the reason. */
+	skippedFiles?: AgentToolSkippedFile[];
 }
 
 /** Internal result, carrying details that are stripped before the model sees them. */
@@ -757,6 +760,7 @@ function extractWaitState(data: IRun['data'] | undefined): WorkflowWaitState | u
 /**
  * Strip the internal details and store binary output as agent files. In the
  * data, each binary entry becomes its file ID, and `files` lists the metadata.
+ * `skippedFiles` lists the files that are too large to store.
  * Without a thread there is no scope for the files, so the binary is dropped.
  */
 async function finishResult(
@@ -772,13 +776,15 @@ async function finishResult(
 	const scope = { agentId: context.agentId ?? null, projectId: context.projectId, threadId };
 	const data = { ...rest.data };
 	const files: AgentToolOutputFile[] = [];
+	const skippedFiles: AgentToolSkippedFile[] = [];
 	const stored = new Map<string, AgentToolOutputFile>();
 	for (const [nodeName, nodeItems] of Object.entries(items)) {
 		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored);
 		data[nodeName] = adopted.items.map(({ json, binary }) => (binary ? { ...json, binary } : json));
 		files.push(...adopted.files);
+		skippedFiles.push(...adopted.skippedFiles);
 	}
-	return { ...rest, data, files };
+	return { ...rest, data, files, ...(skippedFiles.length > 0 && { skippedFiles }) };
 }
 
 /**
@@ -1161,6 +1167,7 @@ function assembleWorkflowTool(
 				note: z.string().optional(),
 				jobId: z.string().optional(),
 				files: z.array(z.custom<AgentToolOutputFile>()).optional(),
+				skippedFiles: z.array(z.custom<AgentToolSkippedFile>()).optional(),
 			}),
 		)
 		.suspend(WAIT_SUSPEND_SCHEMA)

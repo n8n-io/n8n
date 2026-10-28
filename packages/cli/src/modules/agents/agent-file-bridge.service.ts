@@ -1,6 +1,8 @@
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	MAX_AGENT_TOOL_OUTPUT_FILE_BYTES,
 	type AgentToolOutputFile,
+	type AgentToolSkippedFile,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -44,16 +46,22 @@ export class AgentFileBridge {
 	/**
 	 * Copy each `item.binary` entry into agent storage. The copy keeps the file
 	 * available after the tool's execution is pruned. `files` lists the metadata
-	 * of each new file. Pass the same `stored` map to calls for one tool result,
-	 * so a binary that many nodes pass on is stored one time.
+	 * of each new file, and `skippedFiles` the files that are too large to store.
+	 * Pass the same `stored` map to calls for one tool result, so a binary that
+	 * many nodes pass on is stored one time.
 	 */
 	async adoptFromItems(
 		items: INodeExecutionData[],
 		scope: AgentFileScope,
 		stored = new Map<string, AgentToolOutputFile>(),
-	): Promise<{ items: AdoptedItem[]; files: AgentToolOutputFile[] }> {
+	): Promise<{
+		items: AdoptedItem[];
+		files: AgentToolOutputFile[];
+		skippedFiles: AgentToolSkippedFile[];
+	}> {
 		const adopted: AdoptedItem[] = [];
 		const files: AgentToolOutputFile[] = [];
+		const skippedFiles: AgentToolSkippedFile[] = [];
 
 		for (const item of items) {
 			if (!item.binary) {
@@ -66,6 +74,13 @@ export class AgentFileBridge {
 			for (const [key, binary] of Object.entries(item.binary)) {
 				let file = binary.id ? stored.get(binary.id) : undefined;
 				if (!file) {
+					if (await this.isTooLarge(binary)) {
+						skippedFiles.push({
+							fileName: binary.fileName ?? key,
+							reason: `larger than ${MAX_AGENT_TOOL_OUTPUT_FILE_BYTES / 1024 / 1024} MB`,
+						});
+						continue;
+					}
 					file = await this.store(binary, scope);
 					if (!file) continue;
 					if (binary.id) stored.set(binary.id, file);
@@ -80,7 +95,29 @@ export class AgentFileBridge {
 			adopted.push({ json, binary: fileIds });
 		}
 
-		return { items: adopted, files };
+		return { items: adopted, files, skippedFiles };
+	}
+
+	/** Read the size from the metadata, so the bytes are not loaded. An unknown size is not too large. */
+	private async isTooLarge(binary: IBinaryData): Promise<boolean> {
+		let size = binary.bytes;
+		if (size === undefined && binary.id) {
+			try {
+				size = (await this.binaryDataService.getMetadata(binary.id)).fileSize;
+			} catch {
+				// The size stays unknown, so the file is stored as before.
+			}
+		}
+		// Without an ID the bytes are already in memory as base64.
+		if (size === undefined && !binary.id) size = Buffer.byteLength(binary.data, 'base64');
+		const tooLarge = size !== undefined && size > MAX_AGENT_TOOL_OUTPUT_FILE_BYTES;
+		if (tooLarge) {
+			this.logger.warn('Skipped an agent tool output file that is too large', {
+				fileName: binary.fileName,
+				size,
+			});
+		}
+		return tooLarge;
 	}
 
 	/**
@@ -95,7 +132,7 @@ export class AgentFileBridge {
 		const id = generateNanoId();
 		let fileName = binary.fileName ?? id;
 		try {
-			// ponytail: loads the whole file into memory, the same as storeInbound. Copy by ID if tools return large files.
+			// ponytail: loads the whole file (up to MAX_AGENT_TOOL_OUTPUT_FILE_BYTES) into memory, the same as storeInbound. Copy by ID if that is too much.
 			const data = await this.binaryDataService.getAsBuffer(binary);
 			const mimeType = await resolveInboundMimeType(binary.mimeType, data);
 			if (!hasExtension(fileName) || fileName.length > MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH) {

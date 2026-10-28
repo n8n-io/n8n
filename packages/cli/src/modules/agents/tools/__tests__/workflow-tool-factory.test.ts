@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentToolSkippedFile } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -924,7 +924,7 @@ describe('workflow tool → binary output', () => {
 	};
 	const file = { fileId: 'aid-1', fileName: 'data.png', mimeType: 'image/png', sizeBytes: 3 };
 
-	async function runTool(ctx: object) {
+	async function runTool(ctx: object, skippedFiles: AgentToolSkippedFile[] = []) {
 		Container.set(ExecutionPersistence, {
 			findSingleExecution: vi.fn().mockResolvedValue({
 				status: 'success',
@@ -935,6 +935,7 @@ describe('workflow tool → binary output', () => {
 		bridge.adoptFromItems.mockResolvedValue({
 			items: [{ json: { revisedPrompt: 'a cat' }, binary: { data: 'aid-1' } }],
 			files: [file],
+			skippedFiles,
 		});
 		Container.set(AgentFileBridge, bridge);
 
@@ -968,6 +969,13 @@ describe('workflow tool → binary output', () => {
 		});
 		// The model sees the same JSON, with no file parts.
 		expect(tool.toModelOutput).toBeUndefined();
+	});
+
+	it('lists the files that are too large to store', async () => {
+		const skipped = { fileName: 'big.mp4', reason: 'larger than 50 MB' };
+		const { output } = await runTool({ persistence: { threadId: 't-1' } }, [skipped]);
+
+		expect(output).toMatchObject({ files: [file], skippedFiles: [skipped] });
 	});
 
 	it('drops the binary when the run has no thread', async () => {

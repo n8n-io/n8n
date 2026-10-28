@@ -1,4 +1,4 @@
-import type { AgentJsonToolConfig } from '@n8n/api-types';
+import type { AgentJsonToolConfig, AgentToolSkippedFile } from '@n8n/api-types';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { hasPolicyRefusalMarker } from 'n8n-workflow';
@@ -364,11 +364,12 @@ describe('resolveNodeTool → binary output', () => {
 		Container.reset();
 	});
 
-	async function runTool(toolCtx: object) {
+	async function runTool(toolCtx: object, skippedFiles: AgentToolSkippedFile[] = []) {
 		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [binaryItem] });
 		const adoptFromItems = vi.fn().mockResolvedValue({
 			items: [{ json: { id: 'drive-1' }, binary: { data: 'aid-2' } }],
 			files: [file],
+			skippedFiles,
 		});
 		Container.set(AgentFileBridge, { adoptFromItems } as unknown as AgentFileBridge);
 		const tool = await resolveNodeTool(baseToolSchema, {
@@ -394,6 +395,13 @@ describe('resolveNodeTool → binary output', () => {
 			files: [file],
 		});
 		expect(tool.toModelOutput).toBeUndefined();
+	});
+
+	it('lists the files that are too large to store', async () => {
+		const skipped = { fileName: 'big.mp4', reason: 'larger than 50 MB' };
+		const { output } = await runTool({ persistence: { threadId: 't1' } }, [skipped]);
+
+		expect(output).toMatchObject({ files: [file], skippedFiles: [skipped] });
 	});
 
 	it('drops the binary when the run has no thread', async () => {
