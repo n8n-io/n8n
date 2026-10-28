@@ -572,9 +572,7 @@ describe('Instance AI skills', () => {
 		expect(publishing).toContain('A user-run execution satisfies the publishing gate only');
 		expect(publishing).toContain('acknowledgeUnverified: true');
 		expect(publishing).toContain('Fixing a workflow that is already published');
-		expect(publishing).toContain(
-			'Only call `publish_workflow` when the user explicitly asks',
-		);
+		expect(publishing).toContain('Only call `publish_workflow` when the user explicitly asks');
 
 		const recipes = (await source.loadSkill('credential-recipe-research'))?.instructions ?? '';
 		expect(recipes).toContain('"suggestedName": "fal.ai API Key"');
