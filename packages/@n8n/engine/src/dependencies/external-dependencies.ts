@@ -77,6 +77,7 @@ export type SubExecutionDeclaration = {
 	| {
 			/** The step suspends until the sub-execution ends, and has no outputs yet. */
 			awaited: true;
+			outputs?: never;
 	  }
 	| {
 			/** Nothing waits for the sub-execution. It ends with the parent. */
