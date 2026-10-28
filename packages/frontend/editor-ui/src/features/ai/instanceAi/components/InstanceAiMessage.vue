@@ -178,7 +178,7 @@ function formatJson(value: unknown): string {
 	>
 		<!-- User message -->
 		<div v-if="isUser" :class="$style.userMessage">
-			<N8nText v-if="props.message.content" size="large">{{ props.message.content }}</N8nText>
+			<span v-if="props.message.content">{{ props.message.content }}</span>
 			<div v-if="attachments.length > 0" :class="$style.userAttachments">
 				<AttachmentPreview
 					v-for="(attachment, index) in attachments"
@@ -233,9 +233,11 @@ function formatJson(value: unknown): string {
 			</N8nCallout>
 
 			<!-- Text content (shown when no agentTree, or streaming dots) -->
-			<N8nText v-if="showContent && !props.message.agentTree && props.message.content" size="large">
-				<InstanceAiMarkdown :content="props.message.content" />
-			</N8nText>
+
+			<InstanceAiMarkdown
+				v-if="showContent && !props.message.agentTree && props.message.content"
+				:content="props.message.content"
+			/>
 
 			<!-- Status indicator while preparing context -->
 			<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">

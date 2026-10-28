@@ -221,6 +221,48 @@ function blockArtifacts(block: TimelineBlock): ArtifactInfo[] {
 	return builtArtifactsByBlock.value.get(block.key) ?? [];
 }
 
+type AnswerItem =
+	| { type: 'artifact'; key: string; artifact: ArtifactInfo }
+	| Extract<TimelineBlock, { type: 'text' }>;
+
+type RenderGroup =
+	| { type: 'activity'; key: string; block: TimelineBlock }
+	| { type: 'answer'; key: string; items: AnswerItem[] };
+
+/** Keep cards and adjacent answer text together without changing activity spacing. */
+const renderGroups = computed(() => {
+	const groups: RenderGroup[] = [];
+
+	function appendAnswerItem(item: AnswerItem) {
+		const previous = groups.at(-1);
+		if (previous?.type === 'answer') {
+			previous.items.push(item);
+		} else {
+			groups.push({ type: 'answer', key: item.key, items: [item] });
+		}
+	}
+
+	for (const block of renderBlocks.value) {
+		if (block.type === 'text') {
+			appendAnswerItem(block);
+			continue;
+		}
+
+		groups.push({ type: 'activity', key: block.key, block });
+		if (block.type === 'child' && props.visibleEntries) continue;
+
+		for (const artifact of blockArtifacts(block)) {
+			appendAnswerItem({
+				type: 'artifact',
+				key: `${block.key}-${artifact.resourceId}`,
+				artifact,
+			});
+		}
+	}
+
+	return groups;
+});
+
 /** An in-transcript card is read-only once its tool call has settled OR its
  *  confirmation was resolved client-side. Without the resolvedConfirmationIds
  *  check, a freshly-loading tool call could briefly re-enable the old
@@ -235,94 +277,77 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 
 <template>
 	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
-		<template v-for="block in renderBlocks" :key="block.key">
-			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
-			<template v-if="block.type === 'thinking'">
-				<ThinkingBlock
-					:agent-node="props.agentNode"
-					:entries="block.entries"
-					:active="block.active"
-					:awaiting-input="block.active && thread.isAwaitingConfirmation"
-				/>
-				<ArtifactCard
-					v-for="artifact in blockArtifacts(block)"
-					:key="artifact.resourceId"
-					:type="artifact.type"
-					:name="resolveArtifactName(artifact)"
-					:resource-id="artifact.resourceId"
-					:project-id="artifact.projectId"
-					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-					:metadata="formatArtifactMetadata(artifact)"
-				/>
-			</template>
-
-			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
-			<TimelineTextSegment
-				v-else-if="block.type === 'text'"
-				:entry="block.entry"
-				:compact="props.compact"
-				:streaming="isStreamingTimelineEntry(props.agentNode, block.entry)"
-				:class="$style.timelineItem"
-			/>
-
-			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
-
-			<InstanceAiMcpConnect
-				v-else-if="block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest"
-				:key="block.toolCall.confirmation.requestId"
-				:request-id="block.toolCall.confirmation.requestId"
-				:input-thread-id="block.toolCall.confirmation.inputThreadId"
-				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
-				:read-only="isCardReadOnly(block.toolCall)"
-				:expired="block.toolCall.confirmation.expired"
-			/>
-
-			<!-- Answered questions (read-only after resolution) -->
-			<template v-else-if="block.type === 'questions'">
-				<AnsweredQuestions :tool-call="block.toolCall" />
-				<ArtifactCard
-					v-for="artifact in blockArtifacts(block)"
-					:key="artifact.resourceId"
-					:type="artifact.type"
-					:name="resolveArtifactName(artifact)"
-					:resource-id="artifact.resourceId"
-					:project-id="artifact.projectId"
-					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-					:metadata="formatArtifactMetadata(artifact)"
-				/>
-			</template>
-
-			<!-- A preference the assistant saved: edit or undo it from the latest turn -->
-			<PreferenceCard
-				v-else-if="block.type === 'preference'"
-				:tool-call="block.toolCall"
-				:run-id="props.runId ?? ''"
-				:read-only="!canActOnPreferenceCard"
-				:class="$style.timelineItem"
-			/>
-
-			<!-- The run is live but a committed answer settled the block behind it -->
-			<TimelineActivityIndicator
-				v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
-				:progress-token="progressToken"
-			/>
-
-			<!-- Child agent — flat section -->
-			<template v-else-if="block.type === 'child'">
-				<AgentSection :agent-node="block.child" />
-
-				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
-				<template v-if="!props.visibleEntries">
+		<template v-for="group in renderGroups" :key="group.key">
+			<div v-if="group.type === 'answer'" :class="$style.answerGroup">
+				<template v-for="item in group.items" :key="item.key">
 					<ArtifactCard
-						v-for="artifact in blockArtifacts(block)"
-						:key="artifact.resourceId"
-						:type="artifact.type"
-						:name="resolveArtifactName(artifact)"
-						:resource-id="artifact.resourceId"
-						:project-id="artifact.projectId"
-						:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
-						:metadata="formatArtifactMetadata(artifact)"
+						v-if="item.type === 'artifact'"
+						:type="item.artifact.type"
+						:name="resolveArtifactName(item.artifact)"
+						:resource-id="item.artifact.resourceId"
+						:project-id="item.artifact.projectId"
+						:archived="thread.producedArtifacts.get(item.artifact.resourceId)?.archived"
+						:metadata="formatArtifactMetadata(item.artifact)"
 					/>
+					<TimelineTextSegment
+						v-else
+						:entry="item.entry"
+						:compact="props.compact"
+						:streaming="isStreamingTimelineEntry(props.agentNode, item.entry)"
+						:class="$style.timelineItem"
+					/>
+				</template>
+			</div>
+			<template v-else>
+				<template v-for="block in [group.block]" :key="block.key">
+					<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
+					<template v-if="block.type === 'thinking'">
+						<ThinkingBlock
+							:agent-node="props.agentNode"
+							:entries="block.entries"
+							:active="block.active"
+							:awaiting-input="block.active && thread.isAwaitingConfirmation"
+						/>
+					</template>
+
+					<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
+
+					<InstanceAiMcpConnect
+						v-else-if="
+							block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest
+						"
+						:key="block.toolCall.confirmation.requestId"
+						:request-id="block.toolCall.confirmation.requestId"
+						:input-thread-id="block.toolCall.confirmation.inputThreadId"
+						:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
+						:read-only="isCardReadOnly(block.toolCall)"
+						:expired="block.toolCall.confirmation.expired"
+					/>
+
+					<!-- Answered questions (read-only after resolution) -->
+					<template v-else-if="block.type === 'questions'">
+						<AnsweredQuestions :tool-call="block.toolCall" />
+					</template>
+
+					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
+					<PreferenceCard
+						v-else-if="block.type === 'preference'"
+						:tool-call="block.toolCall"
+						:run-id="props.runId ?? ''"
+						:read-only="!canActOnPreferenceCard"
+						:class="$style.timelineItem"
+					/>
+
+					<!-- The run is live but a committed answer settled the block behind it -->
+					<TimelineActivityIndicator
+						v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
+						:progress-token="progressToken"
+					/>
+
+					<!-- Child agent — flat section -->
+					<template v-else-if="block.type === 'child'">
+						<AgentSection :agent-node="block.child" />
+					</template>
 				</template>
 			</template>
 		</template>
@@ -331,11 +356,23 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 
 <style lang="scss" module>
 .timeline {
-	/** Keep in sync with the nested activity rail overshoot in N8nAiActivityStep. */
-	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
-	gap: var(--n8n--ai-activity-step-gap);
+}
+
+.answerGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	margin-block: var(--spacing--sm);
+
+	&:first-child {
+		margin-top: 0;
+	}
+
+	&:last-child {
+		margin-bottom: 0;
+	}
 }
 
 .timelineItem {

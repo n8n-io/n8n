@@ -1813,7 +1813,7 @@ describe('AgentChatPanel', () => {
 				);
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
-				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
+				expect(wrapper.findAll('[data-testid="tool-approval-card"]')).toHaveLength(1);
 				expect(wrapper.text()).not.toContain('Approval for Other child');
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 				expect(wrapper.text()).toContain('Approval for Check escalations');
@@ -1833,7 +1833,7 @@ describe('AgentChatPanel', () => {
 				expect(sendMessageMock).not.toHaveBeenCalled();
 				backgroundJobsMock.value = [job, nextJob];
 				await nextTick();
-				expect(wrapper.findAll('[data-testid="agent-approval-card"]')).toHaveLength(1);
+				expect(wrapper.findAll('[data-testid="tool-approval-card"]')).toHaveLength(1);
 				expect(wrapper.text()).toContain('Approval for Other child');
 				expect(wrapper.text()).not.toContain('Approval for Check escalations');
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);

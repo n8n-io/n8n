@@ -1,6 +1,56 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nMarkdown from './Markdown.vue';
+import N8nCodeBlock from '../N8nCodeBlock';
+import N8nIcon from '../N8nIcon';
+
+/** Show icons for same-origin workflow paths and leave other links unchanged. */
+export const LinkSlot: StoryFn = (args) => ({
+	components: { N8nMarkdown, N8nIcon },
+	setup() {
+		const pathIcons: Record<string, InstanceType<typeof N8nIcon>['$props']['icon']> = {
+			'/workflow': 'workflow',
+		};
+
+		function getLinkIcon(href: string) {
+			try {
+				const url = new URL(href, window.location.origin);
+				if (url.origin !== window.location.origin) return undefined;
+
+				for (const [path, icon] of Object.entries(pathIcons)) {
+					if (url.pathname === path || url.pathname.startsWith(`${path}/`)) return icon;
+				}
+			} catch {
+				return undefined;
+			}
+			return undefined;
+		}
+
+		return { args, getLinkIcon };
+	},
+	template: `
+		<N8nMarkdown v-bind="args">
+			<template #link="link">
+				<a :href="link.href" :title="link.title" :target="link.target" :rel="link.rel">
+					<N8nIcon v-if="getLinkIcon(link.href)" :icon="getLinkIcon(link.href)" aria-hidden="true" />
+					{{ link.label }}
+				</a>
+			</template>
+		</N8nMarkdown>
+	`,
+});
+
+LinkSlot.args = {
+	content: [
+		'## Custom links',
+		'Open [My workflow](/workflow/123 "Open workflow") to edit it.',
+		'',
+		'- [Workflow root](/workflow) also shows an icon.',
+		'- [Workflow list](/workflows) does not match the path.',
+		'- [External workflow](https://example.com/workflow/123) stays a normal link.',
+		'- [Documentation](https://docs.n8n.io) stays a normal link.',
+	].join('\n'),
+};
 
 export default {
 	title: 'Core/Markdown',
@@ -48,20 +98,6 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
 });
 
-export const Headings = Template.bind({});
-Headings.args = {
-	content: `# Heading 1
-## Heading 2
-### Heading 3
-#### Heading 4
-##### Heading 5
-###### Heading 6
-
-Paragraph with **medium emphasis**, *italic*, and a [link](https://docs.n8n.io).
-`,
-	loading: false,
-};
-
 export const Default = Template.bind({});
 Default.args = {
 	content:
@@ -75,40 +111,115 @@ Default.args = {
 	],
 };
 
-const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
+/** Show Markdown and GFM elements with a Vue component for fenced code. */
+export const GfmWithCustomComponents: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nMarkdown,
-	},
-	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
+	components: { N8nMarkdown, N8nCodeBlock },
+	template: `
+		<N8nMarkdown v-bind="args">
+			<template #code-block="{ code, language }">
+				<N8nCodeBlock :code="code" :language="language || 'auto'" />
+			</template>
+		</N8nMarkdown>
+	`,
 });
 
-export const WithCheckboxes = TemplateWithCheckboxes.bind({});
-WithCheckboxes.args = {
-	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
-	loading: false,
-};
-
-export const WithCodeBlock = Template.bind({});
-WithCodeBlock.args = {
-	content:
-		'To get started, run the following in a terminal:\n\n```\necho "Hello world"\n```\n\nInline code like `EXAMPLE_VAR=true` should also render.\n',
-	loading: false,
-};
-
-const TemplateWithYoutubeEmbed: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nMarkdown,
-	},
-	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
-});
-
-export const WithYoutubeEmbed = TemplateWithYoutubeEmbed.bind({});
-WithYoutubeEmbed.args = {
-	content:
-		"## I'm markdown \n**Please check** this out. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)\n@[youtube](ZCuL2e4zC_4)\n",
+GfmWithCustomComponents.args = {
+	content: [
+		'# Heading 1',
+		'## Heading 2',
+		'### Heading 3',
+		'#### Heading 4',
+		'##### Heading 5',
+		'###### Heading 6',
+		'',
+		'## Paragraphs and line breaks',
+		'This is a paragraph with a line break.  ',
+		'This line stays in the same paragraph.',
+		'',
+		'This is a separate paragraph.',
+		'',
+		'## Inline formatting',
+		'Use **bold**, *italic*, ***bold italic***, ~~strikethrough~~, and `inline code`.',
+		'Escaped punctuation: \\*plain text\\*. An entity: &amp;.',
+		'',
+		'## Links and autolinks',
+		'[Inline link](https://docs.n8n.io "n8n documentation") and [reference link][docs].',
+		'',
+		'<https://docs.n8n.io> and <builder@example.com>.',
+		'',
+		'GFM autolinks: https://docs.n8n.io and www.example.com.',
+		'',
+		'[docs]: https://docs.n8n.io',
+		'',
+		'## Images',
+		'![Workflow editor](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png "Workflow editor")',
+		'',
+		'## Blockquotes',
+		'> A blockquote with **bold text**.',
+		'>',
+		'> > A nested blockquote.',
+		'',
+		'## Unordered lists',
+		'- First item',
+		'- Second item',
+		'  - Nested item',
+		'',
+		'## Ordered lists',
+		'1. First step',
+		'2. Second step',
+		'   1. Nested step',
+		'',
+		'## Task lists',
+		'- [x] Read the input',
+		'- [ ] Transform the data',
+		'- [ ] Send the output',
+		'',
+		'## Tables',
+		'| Left | Center | Right |',
+		'| :--- | :---: | ---: |',
+		'| **Bold** | `code` | 42 |',
+		'| [Link](https://docs.n8n.io) | Plain text | 100 |',
+		'',
+		'## Thematic break',
+		'',
+		'---',
+		'',
+		'## Fenced code with custom components',
+		'```typescript',
+		'function greet(name: string) {',
+		'  return "Hello, " + name;',
+		'}',
+		'```',
+		'',
+		'```json',
+		'{ "enabled": true, "items": [1, 2, 3] }',
+		'```',
+		'',
+		'```',
+		'Code without a language uses automatic detection.',
+		'```',
+		'',
+		'### Code inside a list',
+		'- Run this command:',
+		'',
+		'  ```bash',
+		'  echo "Hello world"',
+		'  ```',
+		'',
+		'### Code inside a blockquote',
+		'> ```python',
+		'> print("Hello world")',
+		'> ```',
+		'',
+		'## Indented code',
+		'',
+		'    Indented code keeps the default Markdown renderer.',
+		'',
+		'## Raw HTML',
+		'Raw HTML is disabled. These tags must appear as text:',
+		'',
+		'<strong>Not rendered as HTML</strong>',
+	].join('\n'),
 	loading: false,
 };

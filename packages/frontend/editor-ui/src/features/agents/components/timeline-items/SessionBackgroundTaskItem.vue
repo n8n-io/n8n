@@ -4,7 +4,7 @@ import { N8nAiActivityStepButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/desi
 import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
 import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ApprovalResume } from '@/features/ai/shared/agentsChat/types';
-import ApprovalCard from '../interactive/ApprovalCard.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { formatTimelineTime } from '../../utils/timeline-time';
 import type { TimelineItem } from '../../session-timeline.types';
@@ -73,7 +73,7 @@ function submitApproval(resumeData: ApprovalResume) {
 			@keydown.stop
 		>
 			<div :class="$style.approvalRail" aria-hidden="true"></div>
-			<ApprovalCard
+			<ToolApprovalCard
 				:key="`${task.approval.runId}:${task.approval.toolCallId}`"
 				:input="approvalInput"
 				:agent-name="agentName"

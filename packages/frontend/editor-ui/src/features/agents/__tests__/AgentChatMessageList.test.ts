@@ -34,6 +34,12 @@ vi.mock('@n8n/design-system', () => ({
 			'<section><button :aria-expanded="open" @click="open = !open">{{ label }}</button><div v-if="open"><slot /></div></section>',
 	},
 
+	N8nChatMessage: {
+		name: 'N8nChatMessage',
+		props: ['role'],
+		template:
+			'<section data-testid="chat-message-shell" :data-role="role"><div data-testid="shell-content"><slot /></div><div data-testid="shell-actions"><slot name="actions" /></div><div data-testid="shell-after-actions"><slot name="after-actions" /></div></section>',
+	},
 	N8nChatActions: {
 		props: ['content'],
 		setup: function setup(props: { content: string }) {
@@ -149,6 +155,35 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('uses shared message shells without merging consecutive assistant output', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'user', role: 'user', content: 'Question' },
+					{ id: 'narration', role: 'assistant', content: 'Searching.' },
+					{
+						id: 'tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'search', state: 'done' }],
+					},
+					{ id: 'answer', role: 'assistant', content: 'Answer', status: 'success' },
+				] satisfies ChatMessage[],
+				messagingState: 'idle',
+			},
+		});
+
+		const shells = wrapper.findAll('[data-testid="chat-message-shell"]');
+		expect(shells.map((shell) => shell.attributes('data-role'))).toEqual([
+			'user',
+			'assistant',
+			'assistant',
+		]);
+		expect(shells.map((shell) => shell.text())).toEqual(['Question', 'Searching.', 'Answer']);
+		expect(wrapper.findAll('[data-test-id="agent-chat-message-actions"]')).toHaveLength(1);
+		wrapper.unmount();
+	});
+
 	const emptyAnswerError =
 		'The model finished without returning an answer. Try again or use another model.';
 	const streamStallError =
@@ -600,6 +635,18 @@ describe('AgentChatMessageList', () => {
 			.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
 			.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
 		expect(renderOrder).toEqual(['markdown-chunk', 'shared-thinking-block']);
+		expect(
+			wrapper
+				.get('[data-testid="shell-after-actions"]')
+				.find('[data-test-id="shared-thinking-block"]')
+				.exists(),
+		).toBe(true);
+		expect(
+			wrapper
+				.get('[data-testid="shell-content"]')
+				.find('[data-test-id="shared-thinking-block"]')
+				.exists(),
+		).toBe(false);
 	});
 
 	it('keeps aggregated thinking below the final output in a tool run', () => {
@@ -1171,6 +1218,23 @@ describe('AgentChatMessageList', () => {
 			},
 		});
 
+		const shells = wrapper.findAll('[data-testid="chat-message-shell"]');
+		expect(shells).toHaveLength(1);
+		expect(
+			shells[0].get('[data-testid="shell-content"]').findAll('[data-testid="markdown-chunk"]'),
+		).toHaveLength(2);
+		expect(
+			shells[0]
+				.get('[data-testid="shell-content"]')
+				.find('[data-testid="interactive-card-stub"]')
+				.exists(),
+		).toBe(true);
+		expect(
+			shells[0]
+				.get('[data-testid="shell-actions"]')
+				.find('[data-test-id="agent-chat-message-actions"]')
+				.exists(),
+		).toBe(true);
 		const chunks = wrapper.findAll('[data-testid="markdown-chunk"]');
 		const card = wrapper.find('[data-testid="interactive-card-stub"]').element;
 		const actions = wrapper.find('[data-test-id="agent-chat-message-actions"]').element;

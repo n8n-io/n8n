@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -55,56 +55,62 @@ const displayName = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
-		<header :class="$style.header">
-			<CredentialIcon
-				v-if="isCredentialOnlySection"
-				:credential-type-name="credentialType ?? null"
-				:size="16"
-			/>
-			<NodeIcon v-else :node-type="nodeType" :size="16" />
-			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-				{{ displayName }}
-			</N8nText>
-			<N8nText
-				v-if="isComplete"
-				data-test-id="instance-ai-workflow-setup-card-check"
-				:class="$style.statusLabel"
-				size="medium"
-				color="success"
-			>
-				<N8nIcon icon="check" size="large" />
-				{{ i18n.baseText('generic.complete') }}
-			</N8nText>
-			<N8nText
-				v-else-if="isSkipped"
-				data-test-id="instance-ai-workflow-setup-card-skipped"
-				:class="$style.statusLabel"
-				size="medium"
-				color="text-light"
-			>
-				<N8nIcon icon="arrow-right" size="large" />
-				{{ i18n.baseText('instanceAi.workflowSetup.cardSkipped') }}
-			</N8nText>
-		</header>
+	<N8nCard :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
+		<div :class="$style.layout">
+			<header :class="$style.header">
+				<CredentialIcon
+					v-if="isCredentialOnlySection"
+					:credential-type-name="credentialType ?? null"
+					:size="16"
+				/>
+				<NodeIcon v-else :node-type="nodeType" :size="16" />
+				<N8nText :class="$style.title" size="medium" color="text-dark" bold>
+					{{ displayName }}
+				</N8nText>
+				<N8nText
+					v-if="isComplete"
+					data-test-id="instance-ai-workflow-setup-card-check"
+					:class="$style.statusLabel"
+					size="medium"
+					color="success"
+				>
+					<N8nIcon icon="check" size="large" />
+					{{ i18n.baseText('generic.complete') }}
+				</N8nText>
+				<N8nText
+					v-else-if="isSkipped"
+					data-test-id="instance-ai-workflow-setup-card-skipped"
+					:class="$style.statusLabel"
+					size="medium"
+					color="text-light"
+				>
+					<N8nIcon icon="arrow-right" size="large" />
+					{{ i18n.baseText('instanceAi.workflowSetup.cardSkipped') }}
+				</N8nText>
+			</header>
 
-		<div :class="$style.bodyWrapper">
-			<WorkflowSetupSectionBody :section="section" />
+			<div :class="$style.bodyWrapper">
+				<WorkflowSetupSectionBody :section="section" />
+			</div>
+
+			<slot name="footer" />
 		</div>
-
-		<slot name="footer" />
-	</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--sm);
+	padding: var(--spacing--sm) 0 0;
+	border: 0;
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
 	box-shadow: var(--shadow--sm), var(--shadow--outline);
+}
+
+.layout {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
 .header {
