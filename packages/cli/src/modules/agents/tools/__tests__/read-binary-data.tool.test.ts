@@ -53,6 +53,10 @@ describe('createReadBinaryDataTool', () => {
 		});
 	});
 
+	it('marks its output as untrusted', () => {
+		expect(build().outputTrust).toBe('untrusted');
+	});
+
 	it('reads a PDF', async () => {
 		attachmentService.getReadable.mockResolvedValue(file({ mimeType: 'application/pdf' }));
 

@@ -36,10 +36,12 @@ export function createReadBinaryDataTool({
 	provider: string;
 	attachmentService: AgentChatAttachmentService;
 }) {
+	// File content comes from users and tools, so the model must treat it as data.
 	return new Tool(READ_BINARY_DATA_TOOL_NAME)
 		.description(DESCRIPTION)
 		.input(z.object({ fileId: z.string().trim().min(1) }))
 		.output(outputSchema)
+		.untrustedOutput()
 		.handler(async ({ fileId }, ctx) => {
 			const threadId = ctx.persistence?.threadId;
 			if (!threadId) throw new UserError('Files can only be read in a conversation');
@@ -84,7 +86,11 @@ export function createReadBinaryDataTool({
 						{
 							type: 'file',
 							mediaType: output.mimeType,
-							fileRef: { id: output.fileId, fileName: output.fileName, sizeBytes: output.sizeBytes },
+							fileRef: {
+								id: output.fileId,
+								fileName: output.fileName,
+								sizeBytes: output.sizeBytes,
+							},
 						},
 			],
 		}));
