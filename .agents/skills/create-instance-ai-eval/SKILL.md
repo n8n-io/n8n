@@ -1044,4 +1044,6 @@ after the change. It needs no instance. It prints the size of the system prompt,
 the skill catalog, each always-loaded tool, and the skills that a build keeps
 loaded. Its test fails when a section grows past its ceiling. Use it next to an
 eval: a smaller context is not an improvement until an eval shows no quality
-loss.
+loss. To compare two builds end to end, for example master and your branch (tokens per LLM
+call, call counts, and deterministic checks), use `pnpm eval:ab-bench`; see
+[its README](../../../packages/@n8n/instance-ai/evaluations/ab-bench/README.md).

@@ -518,52 +518,44 @@ pattern:
 workflow code or build specs unless the workflow actually needs to send or
 store its own public endpoint.
 
-## Credentials before build
+## Credential choices during setup
 
-Call `list_credentials` first to know what's available. Build the
-workflow immediately — the builder preserves explicit valid credentials and
-auto-mocks missing or unselected ones. Do not ask whether to build now and set up
-credentials later; building first and routing setup after verification is the
-default path. Workflow verification is automatic from the build outcome; the
-orchestrator handles workflow setup after verification when the saved workflow
-still has mocked credentials or placeholders.
+These rules apply after the first build, while setup runs. Before the first
+build, do not ask about credentials: the builder preserves explicit valid
+credentials and auto-mocks missing or unselected ones.
+Do not ask whether to build now and set up credentials later; building first
+and routing setup after verification is the default path.
 
 **Trust the build outcome over your own source file.** When `workflow_builder_build_workflow`
 returns `resolvedCredentialsByNode` (or `setupRequirement.status ===
-"not_required"`), the saved workflow is already connected to existing
-credentials — even if your source used an unresolved `newCredential()` call.
-Do not ask the user to connect those credentials, do not offer the setup card
-for them, and do not describe them as missing; at most mention which existing
-credential is being used. Route credential setup only when the build outcome
-reports mocked credentials or `setupRequirement.status === "required"`.
+"not_required"`), the saved workflow is already connected to those credentials,
+even if your source used an unresolved `newCredential()` call. Route credential
+setup only when the build outcome reports mocked credentials or
+`setupRequirement.status === "required"`.
 
-**Ask once when a service has multiple credentials of the same type.** If
-`list_credentials` shows more than one entry of the type a requested
-integration needs (e.g. two `openAiApi` accounts, three Google Calendar
-accounts), use `workflow_builder_ask_user` with a single-select to let the user pick one before
-building, and use the chosen credential name in the workflow code. Exception: the
-user already named the credential in their message — use it directly. With a
-single candidate, auto-apply and do not ask.
+**Let setup collect the choice when a service has multiple credentials of the
+same type.** The setup card lists every credential of that type, so the user
+picks one there. Do not ask this in chat or with `workflow_builder_ask_user`.
+Exception: the user already named the credential in their message — use it
+directly.
 
-**Honor an explicit "create a new credential" request.** When the user asks for a
-new credential of a type, never pick an existing one for them and never ask them
-to choose among existing ones — not even when exactly one exists (the build would
-otherwise attach it silently and skip setup entirely). Pass the credential type in
-`preferNewCredentials` on both `workflow_builder_build_workflow` and `workflow_builder_workflows(action="setup")`
-(or `preferNew: true` on the `setup_credentials` entry). Setup then
-opens on credential creation while still listing the existing credentials, so the
-user can change their mind — say so in one short sentence rather than
-re-litigating the choice. If they had skipped that card earlier, pass
-`reopenSkipped` alongside it: `preferNewCredentials` decides what the card offers,
-`reopenSkipped` decides whether the card comes back at all.
+**Honor an explicit "create a new credential" request** with
+`preferNewCredentials` (see Credential Rules). Never ask the user to choose among
+existing credentials, not even when exactly one exists. Setup opens on
+credential creation and still lists the existing credentials, so the user can
+change their mind — say so in one short sentence. If they had skipped that card
+earlier, pass `reopenSkipped` alongside it: `preferNewCredentials` decides what
+the card offers, `reopenSkipped` decides whether the card comes back at all.
 
-**Ask which auth type to use when a service supports more than one.**
-`setup_credentials` opens a picker locked to a single `credentialType`
-— the user cannot switch auth types from there. So when
-`search_credential_types` returns more than one auth option for a
-service (e.g. `notionApi` and `notionOAuth2Api`, or `slackApi` and
-`slackOAuth2Api`), use `workflow_builder_ask_user` with a single-select to let the user pick the
-auth type before calling `setup_credentials`. List OAuth2 first and
-present it as the recommended option. Exception: the user has clearly indicated
-an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching
-`credentialType` and use it directly without asking.
+**Ask which auth type to use when a service supports more than one** only for a
+standalone credential request: `setup_credentials`
+outside any workflow. That picker is locked to a single
+`credentialType`. So when `search_credential_types`
+returns more than one auth option for the service (e.g. `notionApi` and
+`notionOAuth2Api`), use `workflow_builder_ask_user` with a single-select before
+the setup call. List OAuth2 first and present it as the recommended option.
+Exception: the user has clearly indicated an auth type (e.g. "api key", "oauth",
+"personal token") — map it to the matching `credentialType` without asking. In a
+workflow build, never ask about the auth type, before or after the build: leave
+an ambiguous auth type out of early setup, let the build pick it from the node
+definition, and let setup collect the credential.

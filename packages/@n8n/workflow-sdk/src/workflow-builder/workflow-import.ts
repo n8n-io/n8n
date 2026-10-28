@@ -11,6 +11,7 @@ import {
 	normalizeConnections,
 	generateUniqueName,
 	type AuthoredNodeGroup,
+	type FromJSONOptions,
 	type WorkflowJSON,
 	type NodeInstance,
 	type GraphNode,
@@ -42,7 +43,7 @@ export interface ParsedWorkflow {
  * Parse workflow JSON into internal graph structures.
  * This is a pure function that doesn't depend on WorkflowBuilderImpl.
  */
-export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
+export function parseWorkflowJSON(json: WorkflowJSON, options?: FromJSONOptions): ParsedWorkflow {
 	const nodes = new Map<string, GraphNode>();
 	// Map from connection name (how nodes reference each other) to map key
 	const nameToKey = new Map<string, string>();
@@ -67,6 +68,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 
 		// For nodes without a name (like sticky notes), use the id as the internal name
 		const nodeName = n8nNode.name ?? n8nNode.id;
+		const output = n8nNode.name ? options?.declaredOutputs?.[n8nNode.name] : undefined;
 		// An imported handle builds no connections of its own — the builder wires the graph.
 		// An error route is the exception: recording it like an authored node does is what
 		// gives the handler's chain or composite the usual expansion.
@@ -94,6 +96,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				onError: n8nNode.onError,
 				extendsCredential: n8nNode.extendsCredential,
 				customTelemetryTags: n8nNode.customTelemetryTags,
+				...(output ? { output } : {}),
 			},
 			update(config) {
 				return { ...this, config: { ...this.config, ...config } };

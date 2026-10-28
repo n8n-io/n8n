@@ -590,6 +590,8 @@ every reported error and warning before calling `workflow_builder_build_workflow
   (never empty or placeholder).
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
+- SDK node mock `output` items are raw `$json` objects: write `[{ total: 42 }]`,
+  never `[{ json: { total: 42 } }]`.
 - Whenever a node declares mock `output` for verification, include every field
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
@@ -608,13 +610,6 @@ every reported error and warning before calling `workflow_builder_build_workflow
   (`body.message.toolCalls[0].function.arguments`), not at the body root and
   not under `call.arguments`. Coding against an invented flat mock
   self-verifies green, then every field parses empty on the first real call.
-- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
-  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
-  expressions intentionally read `$json.json.*`. Correct:
-  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
-  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
-  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
-  this rule applies to SDK `node({ output: [...] })` mocks.
 
 Use this import shape unless the task needs fewer symbols:
 
@@ -712,21 +707,13 @@ Follow these rules strictly when generating workflows:
    upstream of the data producer, or have B reference `$('Data Node')`
    explicitly.
 8. A polling trigger (Gmail Trigger, Outlook Trigger, or similar) feeding an
-   action that creates or writes records must ensure each polled item is
-   processed once — poll cursors are best-effort bookkeeping (they reset when
-   the trigger node is recreated or renamed) and every still-matching item is
-   then re-delivered as a duplicate. Either restrict the trigger to
-   unread/unprocessed items AND mark each item handled once its record exists,
-   in a way the trigger's own filter excludes — mark as read when filtering
-   unread, move out of the watched folder, or apply a label only if the
-   trigger's query also excludes that label (a label does not mark a message
-   read) — or record handled ids in a Data Table: look the id up before
-   creating the record, skip ids already seen, and insert it only after the
-   create succeeds. An unread filter alone is not enough: if no step ever
-   marks the item read, it never excludes anything. Wire the mark-as-handled
-   step AFTER the record-creating node, so a mid-run failure cannot consume an
-   item without producing its output — this trades a rare duplicate (create
-   succeeded, marking failed) for never losing an item; do not invert it.
+   action that creates or writes records must process each polled item once:
+   poll cursors are best-effort, so the same item can come back. Mark each item
+   handled in a way the trigger's own filter excludes, or record handled ids in
+   a Data Table: look the id up before creating the record, skip ids already
+   seen, and insert the id after the record is created. Wire the mark-as-handled
+   step after the record-creating node. When the trigger has a `@builderHint`,
+   it has the details for that service.
 
 ## Tool Naming Rules
 
@@ -751,9 +738,6 @@ asked for that exact name.
   Paths are shared by all workflows on the instance: a second active workflow
   with the same path and method cannot be published. Without a path, the URL
   uses the random webhook ID.
-- Gmail archive: the message resource has no `archive` operation. To archive a
-  Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
-  `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.
 
 ## Expression Reference
 
@@ -814,62 +798,28 @@ export default workflow('id', 'name').add(startTrigger).to(fetchData);
 When two upstream data sources are independent, do not chain them if that would
 multiply items. Use `executeOnce: true` or parallel branches plus Merge.
 
-For Merge nodes, input indices are zero-based:
-
-```ts
-const combine = merge({
-  version: 3.2,
-  config: { name: 'Combine Results', parameters: { mode: 'combine', combineBy: 'combineByPosition' } },
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(sourceA.to(combine.input(0)))
-  .add(startTrigger)
-  .to(sourceB.to(combine.input(1)))
-  .add(combine)
-  .to(processResults);
-```
+For Merge nodes, input indices are zero-based: wire each source to
+`combine.input(0)`, `combine.input(1)`, and so on. The Merge type definition
+lists the modes and full patterns.
 
 For IF, each branch is a complete processing path. Wire branches on the workflow
 builder, not as standalone calls on the IF node variable. Chain steps inside a
-branch with `.to()`, or pass an array for parallel fan-out.
+branch with `.to()`, or pass an array for parallel fan-out:
 
 ```ts
-const isImportant = ifElse({
-  version: 2.2,
-  config: {
-    name: 'Is Important',
-    parameters: {
-      conditions: {
-        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-        conditions: [
-          { id: 'priority', leftValue: expr('{{ $json.priority }}'), rightValue: 'high', operator: { type: 'string', operation: 'equals' } },
-        ],
-        combinator: 'and',
-      },
-    },
-  },
-});
+const isImportant = ifElse({ version: 2.2, config: { name: 'Is Important', parameters: { conditions } } });
 
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(isImportant)
   .onTrue(handleImportant)                               // single step
   .onFalse(sendHolding.to(createTicket.to(alertSlack))); // chained multi-step
-// Equivalent inline form: .to(isImportant.onTrue(a).onFalse(b))
-// Parallel fan-out on a branch: .onFalse([a, b, c])
+// Inline form: .to(isImportant.onTrue(a).onFalse(b)). Fan-out: .onFalse([a, b, c])
 ```
 
 Do NOT wire branches as standalone statements after `export default` — those
-calls never reach the builder (`workflow-sdk validate` flags this).
-
-```ts
-// WRONG
-export default workflow('id', 'name').add(startTrigger).to(isImportant);
-isImportant.onTrue(handleImportant); // never reaches the builder
-isImportant.onFalse(sendHolding);
-```
+calls never reach the builder (`workflow-sdk validate` flags this). The IF type
+definition shows the `conditions` shape.
 
 For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
 or inline — using zero-based `.onCase(index, target)` for each rule output.
@@ -892,17 +842,6 @@ For AI Agent workflows:
 - Prefer `fromAi(...)` for values the agent should supply to tools.
 - Use explicit node references instead of `$json` in subnodes when the value
   comes from a trigger or a main-flow node.
-
-## Additional SDK Functions
-
-- `placeholder('hint')`: marks a parameter value for user input (use directly as
-  the parameter value; `workflow-sdk validate` flags wrapping it in `expr()`).
-- `.output(n)`: selects a zero-based output index.
-- `.onError(handler)`: connects a node's error output to a handler, on the node
-  or on the workflow builder. It sets `onError: 'continueErrorOutput'` on the
-  node, so you do not declare that in the config.
-- `nodeJson(node, 'field.path')`: creates an explicit expression reference to a
-  specific node's JSON output.
 - Subnode factories follow the same pattern as `languageModel()` and `tool()`:
   `memory()`, `outputParser()`, `embeddings()`, `vectorStore()`, `retriever()`,
   `documentLoader()`, and `textSplitter()`.
