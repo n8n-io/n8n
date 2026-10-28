@@ -1,4 +1,4 @@
-# Run sub-workflows as child executions
+# Run a sub-workflow as its own execution
 
 Date: 2026-10-20
 
