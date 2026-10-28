@@ -997,6 +997,7 @@ describe('workflow tool → background job handoff', () => {
 
 	function makeParentCtx(resourceId = 'resource-1') {
 		const suspend = vi.fn().mockResolvedValue(undefined);
+
 		return {
 			ctx: {
 				suspend,
@@ -1026,6 +1027,7 @@ describe('workflow tool → background job handoff', () => {
 		const tool = await buildBackgroundTool();
 		const { ctx } = makeParentCtx('draft-chat:user-1');
 		await tool.handler?.({}, ctx);
+
 		expect(jobService.registerWorkflowJob).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({

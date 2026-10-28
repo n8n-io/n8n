@@ -463,6 +463,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 		const resumeSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.resumeSubAgent;
 		expect(resumeSubAgent).toBeDefined();
+
 		const request = {
 			subAgentId: 'agent-2',
 			taskName: 'Research API',

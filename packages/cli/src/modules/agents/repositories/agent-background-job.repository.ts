@@ -87,9 +87,12 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				return false;
 
 			const { planTask, validatePlanTask, inheritedPlanTask, ...stored } = job;
+
 			if (validatePlanTask || planTask)
 				await this.plans.validateTask(job.parentThreadId, planTask, ctx, inheritedPlanTask);
+
 			await manager.insert(AgentBackgroundJob, { ...stored, ...planTask, status: 'running' });
+
 			if (planTask) await this.plans.bindJob(job.parentThreadId, planTask, job.id, ctx);
 
 			return true;
@@ -105,12 +108,15 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
 		await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(job.parentThreadId, ctx);
+
 			const { planTask, ...stored } = job;
+
 			if (
 				planTask &&
 				!(await manager.existsBy(AgentBackgroundJob, { childExecutionId: job.childExecutionId }))
 			)
 				await this.plans.validateTask(job.parentThreadId, planTask, ctx, true);
+
 			await manager
 				.createQueryBuilder()
 				.insert()
@@ -118,15 +124,19 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				.values({ ...stored, ...planTask, status: 'running' })
 				.orIgnore()
 				.execute();
+
 			if (planTask && (await manager.existsBy(AgentBackgroundJob, { id: job.id })))
 				await this.plans.bindJob(job.parentThreadId, planTask, job.id, ctx);
+
 			// The service stops late workflow receipts before returning them to the caller.
 		});
 
 		const inserted = await this.existsBy({ id: job.id });
+
 		if (inserted) return { inserted: true };
 
 		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
+
 		if (existing) return { inserted: false, existing };
 
 		throw new OperationalError('Failed to register workflow background job');
@@ -508,21 +518,30 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	) {
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(threadId, ctx);
+
 			const stop = await this.threadRepository.findTaskStop(threadId, ctx);
+
 			if (stop?.pause.id !== stopId || !stop.pause.resumedAt) return 'changed' as const;
+
 			if (!ids.length) return 'reserved' as const;
+
 			const jobs = await manager.find(AgentBackgroundJob, { where: { id: In(ids) } });
+
 			if (
 				jobs.length !== ids.length ||
 				jobs.some((job) => job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt)
 			)
 				return 'changed' as const;
+
 			for (const parentThreadId of new Set(jobs.map((job) => job.parentThreadId))) {
 				const selected = jobs.filter((job) => job.parentThreadId === parentThreadId).length;
+
 				if ((await this.countActiveSubAgentsByParentThread(parentThreadId, ctx)) + selected > limit)
 					return 'limit-reached' as const;
 			}
+
 			await manager.update(AgentBackgroundJob, { id: In(ids) }, { status: 'suspended', timeoutAt });
+
 			return 'reserved' as const;
 		});
 	}
@@ -562,9 +581,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				})
 			).filter((job) => {
 				if (job.planId || !job.pauseRequestId || job.pauseRequestId === latestId) return false;
+
 				if (job.pauseRequestId[14] !== '7') return true;
 				return latestId[14] === '7' && job.pauseRequestId < latestId;
 			});
+
 			if (older.length === 0) return [];
 			await manager.update(
 				AgentBackgroundJob,
@@ -619,6 +640,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 						: null,
 			},
 		);
+
 		return result.affected === 1;
 	}
 

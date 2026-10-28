@@ -117,6 +117,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		messageRepository,
 		plans,
 	);
+
 	return {
 		plans,
 		service,
@@ -171,7 +172,9 @@ describe('user pause', () => {
 		'keeps the captured Stop selection $jobIds',
 		async ({ jobIds }) => {
 			const { service, jobRepository } = setup();
+
 			await service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1', 'stop-1', jobIds);
+
 			expect(jobRepository.requestPauseForCapturedJobs).toHaveBeenCalledExactlyOnceWith(
 				'agent-1',
 				'thread-1',
@@ -420,6 +423,7 @@ describe('user pause', () => {
 		}) => {
 			const { service, jobRepository, executionRepository, messageRepository, cancellation } =
 				setup();
+
 			if (planStop)
 				cancellation.findTaskStop.mockResolvedValue({
 					threadId: 'thread-1',
@@ -429,6 +433,7 @@ describe('user pause', () => {
 					failures: [],
 					pause: { id: 'plan-stop', reportedAt: new Date().toISOString() },
 				});
+
 			const job = makeJob({
 				status: 'paused',
 				pauseRequestId: 'stop-1',
@@ -963,12 +968,15 @@ describe('listCurrentGroupForThread', () => {
 				notifiedAt: new Date(3000),
 			});
 			jobRepository.findGroupCandidates.mockResolvedValue([stopped]);
+
 			expect(
 				await service.listCurrentGroupForThread('agent-1', 'thread-1', { includePaused: true }),
 			).toEqual([stopped]);
 			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
+
 			const next = makeJob({ id: 'next', createdAt: new Date(4000) });
 			jobRepository.findGroupCandidates.mockResolvedValue([stopped, next]);
+
 			expect(
 				await service.listCurrentGroupForThread('agent-1', 'thread-1', { includePaused: true }),
 			).toEqual([next]);
@@ -1426,6 +1434,7 @@ describe('registerWorkflowJob', () => {
 		const { service } = setup();
 		const pause = vi.spyOn(service, 'requestPause');
 		const cancel = vi.spyOn(service, 'cancel');
+
 		await expect(service.registerWorkflowJob(workflowParams)).resolves.toEqual({
 			status: 'started',
 			jobId: 'wf-job-1',
@@ -1966,12 +1975,14 @@ it('reserves selected plan jobs and releases tasks after they resume', async () 
 		blocked: [],
 	});
 	jobRepository.reservePlanJobs.mockResolvedValue('reserved');
+
 	const result = await service.preparePausedResume(
 		'agent-1',
 		'thread-1',
 		'draft-chat:user-1',
 		'execution-1',
 	);
+
 	expect(plans.selectStoppedTasks).toHaveBeenCalledWith('thread-1', 'saved-plan', undefined);
 	expect(jobRepository.reservePlanJobs).toHaveBeenCalledWith(
 		'thread-1',
@@ -1985,11 +1996,13 @@ it('reserves selected plan jobs and releases tasks after they resume', async () 
 		jobs: [job],
 		selection: { planId: 'saved-plan', stopId: 'stop', taskIds: ['task-1', 'task-2'] },
 	});
+
 	await service.finishPlanResume('agent-1', 'thread-1', {
 		planId: 'saved-plan',
 		stopId: 'stop',
 		taskIds: ['task-1', 'task-2'],
 	});
+
 	expect(plans.releaseStoppedTasks).toHaveBeenCalledWith('thread-1', 'saved-plan', 'stop', [
 		'task-1',
 		'task-2',

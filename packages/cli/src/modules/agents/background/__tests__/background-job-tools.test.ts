@@ -85,6 +85,7 @@ describe('delegate_subagent background mode', () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockRejectedValue(new AgentPlanValidationError('Read the plan again.'));
 		const tool = createBackgroundDelegateTool(options);
+
 		expect(
 			await tool.handler!(
 				{ mode: 'background', subAgentId: 'sub-1', taskName: 'Research', goal: 'Research' },
@@ -100,6 +101,7 @@ describe('delegate_subagent background mode', () => {
 		const override = { planId: randomUUID(), planTaskId: randomUUID() };
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createBackgroundDelegateTool(options);
+
 		await tool.handler!(
 			{
 				mode: 'background',
@@ -115,6 +117,7 @@ describe('delegate_subagent background mode', () => {
 				},
 			},
 		);
+
 		expect(backgroundRunner.spawn).toHaveBeenCalledWith(
 			expect.objectContaining({ planTask: inherited, inheritedPlanTask: true }),
 			expect.anything(),
@@ -127,6 +130,7 @@ describe('delegate_subagent background mode', () => {
 			const { backgroundRunner, options } = setup();
 			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 			const tool = createBackgroundDelegateTool(options);
+
 			await tool.handler!(
 				{ mode: 'background', subAgentId: 'sub-1', taskName: 'Research', goal: 'Research' },
 				{
@@ -136,12 +140,14 @@ describe('delegate_subagent background mode', () => {
 					},
 				} as never,
 			);
+
 			expect(backgroundRunner.spawn).toHaveBeenCalledWith(
 				expect.objectContaining({ sourceExecutionId: typeof id === 'string' ? id : undefined }),
 				expect.anything(),
 			);
 		},
 	);
+
 	it.each([255, 256])('enforces the stored job title limit (%s characters)', async (length) => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
@@ -502,7 +508,9 @@ describe('resume_background_jobs', () => {
 				[EXECUTION_METADATA_KEY]: 'execution-1',
 			},
 		};
+
 		await tool.handler!({ planId, taskIds }, { persistence: userPersistence });
+
 		expect(jobService.preparePausedResume).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',
@@ -554,6 +562,7 @@ describe('resume_background_jobs', () => {
 		backgroundRunner.resumePaused
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('checkpoint has expired'));
+
 		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
 			status: 'partial',
 			jobs: [

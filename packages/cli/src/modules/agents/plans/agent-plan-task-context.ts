@@ -9,5 +9,6 @@ export function readPlanTaskContext(
 	metadata?: Record<string, unknown>,
 ): AgentPlanTaskRef | undefined {
 	const result = planTaskSchema.safeParse(metadata?.[PLAN_TASK_METADATA_KEY]);
+
 	return result.success ? result.data : undefined;
 }

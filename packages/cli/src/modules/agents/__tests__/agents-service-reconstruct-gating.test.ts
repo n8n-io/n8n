@@ -1244,9 +1244,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			Container.get(AgentsConfig).backgroundTasksEnabled = true;
 			Container.get(AgentsConfig).planToolsEnabled = planToolsEnabled;
 			Container.set(AgentPlanService, mock<AgentPlanService>());
+
 			const backgroundRunner = mock<SubAgentBackgroundRunner>();
 			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 			Container.set(SubAgentBackgroundRunner, backgroundRunner);
+
 			try {
 				await makeReconstructionService().reconstructFromAgentEntity(
 					storedRunSource(makeAgentEntity()),
@@ -1259,8 +1261,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 					undefined,
 					{ previewChat, allowPlanTools },
 				);
+
 				const delegate = getInjectedDelegateTool();
+
 				if (!delegate?.handler) throw new Error('Expected delegation tool');
+
 				await delegate.handler(
 					{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
 					{
@@ -1274,6 +1279,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 						},
 					},
 				);
+
 				expect(backgroundRunner.spawn).toHaveBeenCalledWith(
 					expect.objectContaining({ validatePlanTask: expected }),
 					expect.any(Object),

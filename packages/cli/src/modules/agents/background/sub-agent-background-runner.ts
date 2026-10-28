@@ -109,6 +109,7 @@ export class SubAgentBackgroundRunner {
 			subAgentId: request.subAgentId,
 			childThreadId,
 		});
+
 		if (receipt.status !== 'started') return receipt;
 
 		// The job runs on its own abort scope: the parent's signal dies with the
@@ -124,6 +125,7 @@ export class SubAgentBackgroundRunner {
 				abortController.signal.throwIfAborted();
 			}
 			expected.timeoutAt = job?.timeoutAt;
+
 			return await this.runner.run(
 				{
 					goal: request.goal,
@@ -255,7 +257,9 @@ export class SubAgentBackgroundRunner {
 						},
 					},
 				);
+
 				if (!admitted) throw new UserError('This background approval could not be resumed');
+
 				return result;
 			},
 			() => claimed,

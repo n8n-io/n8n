@@ -414,6 +414,7 @@ export class SubAgentRunner {
 			context.abortSignal?.throwIfAborted();
 			executionStarted = operation.type === 'run';
 			let resultStream: StreamResult;
+
 			if (operation.type === 'run') {
 				resultStream = await agent.stream(
 					bindExecutionInput(userMessage ?? '', admission.inputMessageIds),
@@ -729,8 +730,10 @@ function createHostMetadata(
 	let metadata = principalHash
 		? encodeAgentSandboxHostMetadata({ projectId: context.projectId, principalHash })
 		: undefined;
+
 	if (context.planTask)
 		metadata = { ...metadata, [PLAN_TASK_METADATA_KEY]: { ...context.planTask } };
+
 	if (context.backgroundJobId) {
 		metadata = {
 			...metadata,

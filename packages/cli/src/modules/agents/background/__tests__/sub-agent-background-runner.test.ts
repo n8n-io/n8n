@@ -101,6 +101,7 @@ describe('resumePaused', () => {
 		subAgentId: 'sub-1',
 		childThreadId: 'child-thread-1',
 	});
+
 	function prepare(approval = false) {
 		const setupResult = setup();
 		const taskPath = '/root/research_0';
@@ -150,6 +151,7 @@ describe('resumePaused', () => {
 		});
 		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
 		await flushDetachedRun();
+
 		expect(runner.resumePaused).toHaveBeenCalledWith(
 			expect.objectContaining({ childThreadId: job.childThreadId, childRunId: 'run-1' }),
 			expect.objectContaining({

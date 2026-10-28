@@ -1235,6 +1235,7 @@ export class AgentRuntimeReconstructionService {
 			abortSignal: params.abortSignal,
 		};
 		let runBackgroundSubAgent: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
+
 		if (backgroundTasksEnabled) {
 			// Background tools attach only to the root agent, so its cap is the root cap.
 			const budget = config.config?.guardrails?.budget;
@@ -1250,6 +1251,7 @@ export class AgentRuntimeReconstructionService {
 				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
 			});
 		}
+
 		throwIfAborted(params.abortSignal);
 		await this.attachSubAgentDelegationTool({
 			...delegationParams,
@@ -1432,6 +1434,7 @@ export class AgentRuntimeReconstructionService {
 		);
 
 		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
+
 		return createBackgroundSubAgentHandler({
 			planTasksEnabled,
 			jobService,

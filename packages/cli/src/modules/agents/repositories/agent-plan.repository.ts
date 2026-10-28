@@ -291,38 +291,49 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 			AgentPlan,
 			ref ? { id: ref.planId, closedAt: IsNull() } : { threadId, closedAt: IsNull() },
 		);
+
 		if (!ref) {
 			if (plan)
 				throw new AgentPlanValidationError(
 					'Read the plan and pass planTask with its plan ID and leaf task ID.',
 				);
+
 			return;
 		}
+
 		let owner = threadId;
+
 		if (inherited) {
 			while (owner !== plan?.threadId) {
 				const thread = await manager.findOneBy(AgentExecutionThread, { id: owner });
+
 				if (!thread?.parentThreadId) break;
+
 				owner = thread.parentThreadId;
 			}
 		}
+
 		if (!plan || plan.threadId !== owner)
 			throw new AgentPlanValidationError(
 				'The plan reference is stale or belongs to another conversation. Read the plan again.',
 			);
+
 		const data = await this.resolvePlan(plan, ctx);
 		const task = planLeaves(data).find(
 			(item) => item.kind === 'task' && item.id === ref.planTaskId,
 		);
+
 		if (!task || task.kind !== 'task' || !['pending', 'in_progress'].includes(task.status)) {
 			throw new AgentPlanValidationError(
 				'The plan task must be an unfinished leaf task. Resume paused tasks before continuing them.',
 			);
 		}
+
 		if (plan.threadId === threadId && task.jobId)
 			throw new AgentPlanValidationError(
 				'This task already has a background job. Create a new task for further work.',
 			);
+
 		if (getAgentPlanReadiness(data).blocked.some((item) => item.id === task.id)) {
 			throw new AgentPlanValidationError(
 				'The plan task has unfinished prerequisites. Complete them first.',
@@ -332,47 +343,64 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 
 	async bindJob(threadId: string, ref: AgentPlanTaskRef, jobId: string, ctx: OperationContext) {
 		const plan = await this.findPlan(threadId, ref.planId, ctx);
+
 		// Descendants keep the link for Stop, but only the owning job supplies task status.
 		if (!plan) return;
+
 		const data = await this.resolvePlan(plan, ctx);
 		const task = planLeaves(data).find((item) => item.id === ref.planTaskId);
+
 		if (task?.kind === 'task' && task.jobId === jobId) return;
+
 		if (!task || task.kind !== 'task' || task.jobId)
 			throw new AgentPlanValidationError('This task already has a background job.');
+
 		task.jobId = jobId;
 		await this.saveDefinition(plan, data, ctx);
 	}
 
 	async pauseManualTasks(threadId: string, planId: string, ctx: OperationContext) {
 		const plan = await this.findPlan(threadId, planId, ctx);
+
 		if (!plan || plan.closedAt) return;
+
 		const data = await this.resolvePlan(plan, ctx);
 		let changed = false;
+
 		for (const item of planLeaves(data)) {
 			if (item.kind !== 'task' || item.jobId || !['pending', 'in_progress'].includes(item.status))
 				continue;
+
 			item.status = 'paused';
 			item.endedAt = new Date().toISOString();
 			changed = true;
 		}
+
 		if (changed) await this.saveDefinition(plan, data, ctx);
+
 		return derivePlanGroups(data);
 	}
 
 	async selectStoppedTasks(threadId: string, planId: string, taskIds?: string[]) {
 		const plan = await this.findPlan(threadId, planId, {});
+
 		if (!plan || plan.closedAt)
 			throw new AgentPlanValidationError('The plan reference is stale. Read the plan again.');
+
 		const stop = await this.threadRepository.findTaskStop(threadId, {});
+
 		if (stop?.planId !== planId || !stop.pause.reportedAt || !stop.pause.resumedAt)
 			return { status: 'stopping' as const };
+
 		const planJobs = await this.jobsForPlan(planId);
 		const data = resolveAgentPlan(parseStoredAgentPlan(plan.data, plan.formatVersion), planJobs);
 		const all = data.items.flatMap((item) =>
 			item.kind === 'group' ? [item, ...item.tasks] : [item],
 		);
+
 		if (taskIds?.some((id) => !all.some((item) => item.id === id)))
 			throw new AgentPlanValidationError('A selected task does not exist. Read the plan again.');
+
 		const selected = taskIds
 			? all
 					.filter((item) => taskIds.includes(item.id))
@@ -385,6 +413,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 					.map((item) => item.id),
 			),
 		];
+
 		const blocked = getAgentPlanReadiness(data).blocked.filter((item) =>
 			requestedIds.includes(item.id),
 		);
@@ -392,6 +421,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		const jobs = planJobs.filter(
 			(job) => job.pauseRequestId && job.planTaskId && ids.includes(job.planTaskId),
 		);
+
 		return {
 			status: 'selected' as const,
 			planId,
@@ -405,13 +435,19 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 	async releaseStoppedTasks(threadId: string, planId: string, stopId: string, ids: string[]) {
 		return await this.runInTransaction({}, async (_manager, ctx) => {
 			await this.threadRepository.lockById(threadId, ctx);
+
 			const stop = await this.threadRepository.findTaskStop(threadId, ctx);
+
 			if (stop?.pause.id !== stopId || !stop.pause.resumedAt) return false;
+
 			const plan = await this.findPlan(threadId, planId, ctx);
+
 			if (!plan || plan.closedAt) return false;
+
 			const data = await this.resolvePlan(plan, ctx);
 			const blocked = new Set(getAgentPlanReadiness(data).blocked.map((item) => item.id));
 			let changed = false;
+
 			for (const item of planLeaves(data)) {
 				if (
 					item.kind !== 'task' ||
@@ -421,11 +457,14 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 					(item.startedAt && blocked.has(item.id))
 				)
 					continue;
+
 				item.status = item.startedAt ? 'in_progress' : 'pending';
 				item.endedAt = null;
 				changed = true;
 			}
+
 			if (changed) await this.saveDefinition(plan, data, ctx);
+
 			return true;
 		});
 	}

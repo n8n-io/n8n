@@ -286,6 +286,7 @@ describe('SubAgentRunner', () => {
 			runType: 'production',
 			shouldPause,
 		});
+
 		expect(await childAgent.stream.mock.calls[0][1]?.shouldPause?.()).toBe(true);
 	});
 
@@ -1095,6 +1096,7 @@ describe('SubAgentRunner', () => {
 		});
 
 		const options = childAgent.stream.mock.calls[0]?.[1];
+
 		expect(options?.guardrails?.hooks).toHaveLength(0);
 		expect(options?.guardrails?.onNotice).toBeDefined();
 	});

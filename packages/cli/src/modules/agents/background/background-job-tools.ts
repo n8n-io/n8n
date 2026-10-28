@@ -124,8 +124,10 @@ export function createBackgroundSubAgentHandler(
 			.catch((error: unknown) => {
 				if (error instanceof AgentPlanValidationError)
 					return { status: 'rejected' as const, note: error.message };
+
 				throw error;
 			});
+
 		if (receipt.status === 'rejected') return receipt;
 
 		if (receipt.status === 'started') {
@@ -133,6 +135,7 @@ export function createBackgroundSubAgentHandler(
 			if (ctx.abortSignal?.reason === PARENT_TASK_CANCELLED_REASON) {
 				await options.jobService.cancel(parentThreadId, receipt.jobId);
 			}
+
 			return {
 				status: 'started',
 				jobId: receipt.jobId,
@@ -140,6 +143,7 @@ export function createBackgroundSubAgentHandler(
 				note: 'Job dispatched. Continue independent work or end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or poll for completion.',
 			};
 		}
+
 		return {
 			status: 'limit-reached',
 			note: 'This conversation already has the maximum number of running background jobs. Wait for one to finish or cancel one.',
@@ -184,6 +188,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					)
 					.map((job) => job.id),
 			);
+
 			return {
 				jobs: jobs.map((job) => ({
 					jobId: job.id,
@@ -232,6 +237,7 @@ export function createResumeBackgroundJobsTool(
 			const { persistence } = ctx;
 			const executionId = persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
 			const scope = decodeAgentSandboxHostMetadata(persistence?.hostMetadata);
+
 			if (
 				!persistence ||
 				persistence.hostMetadata?.[BACKGROUND_PAUSE_USER_TURN_KEY] !== true ||
@@ -243,6 +249,7 @@ export function createResumeBackgroundJobsTool(
 					note: 'Resuming needs an explicit user request in this conversation.',
 				};
 			}
+
 			const candidates = await options.jobService
 				.preparePausedResume(
 					options.parentAgentId,
@@ -254,24 +261,30 @@ export function createResumeBackgroundJobsTool(
 				.catch((error: unknown) => {
 					if (error instanceof AgentPlanValidationError)
 						return { status: 'rejected' as const, jobs: [], note: error.message };
+
 					throw error;
 				});
+
 			if (candidates.status === 'rejected')
 				return { status: candidates.status, note: candidates.note };
+
 			if (candidates.status === 'limit-reached') {
 				return {
 					status: candidates.status,
 					note: 'There are not enough active task slots for the stopped group. Wait for active tasks to finish, then ask to continue again.',
 				};
 			}
+
 			if (candidates.status === 'expired')
 				return { status: candidates.status, note: EXPIRED_BACKGROUND_CHECKPOINT_ERROR };
+
 			if (candidates.status !== 'ready') {
 				return {
 					status: candidates.status,
 					note: 'Wait for the combined status report, then ask to continue again.',
 				};
 			}
+
 			try {
 				const results = await Promise.allSettled(
 					candidates.jobs.map(
@@ -287,6 +300,7 @@ export function createResumeBackgroundJobsTool(
 							),
 					),
 				);
+
 				return {
 					status:
 						results.some((result) => result.status === 'rejected') || candidates.failed?.length
@@ -306,6 +320,7 @@ export function createResumeBackgroundJobsTool(
 				};
 			} finally {
 				await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);
+
 				if (candidates.selection)
 					await options.jobService.finishPlanResume(
 						options.parentAgentId,

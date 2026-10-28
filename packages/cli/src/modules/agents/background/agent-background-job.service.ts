@@ -251,22 +251,30 @@ export class AgentBackgroundJobService {
 	): Promise<boolean> {
 		const controller = this.abortControllers.get(jobId);
 		let releaseController = true;
+
 		try {
 			const settled = await this.jobRepository.settleIfActive(jobId, settlement, expected);
 			releaseController = settled;
+
 			const job = await this.findJob(jobId);
+
 			if (job && job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 				await this.clearChildCheckpoint(job);
+
 			if (!settled || !job) {
 				if (job?.status === 'cancelled' && settlement.status === 'completed' && settlement.result) {
 					await this.jobRepository.preserveLateCompletedResult(jobId, settlement.result);
 					this.notifyJobUpdate(job);
 				}
+
 				return settled;
 			}
+
 			if (job.pauseRequestId) await this.retainLatestStopGroup(job);
+
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
+
 			return true;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
@@ -327,6 +335,7 @@ export class AgentBackgroundJobService {
 		jobIds?: string[],
 	): Promise<void> {
 		await this.pruneExpiredPausedJobs(parentThreadId);
+
 		if (jobIds) {
 			await this.jobRepository.requestPauseForCapturedJobs(
 				parentAgentId,
@@ -343,7 +352,9 @@ export class AgentBackgroundJobService {
 				pauseRequestId,
 			);
 		}
+
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(parentAgentId, parentThreadId);
+
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		const selected = jobs.filter(
 			(job) =>
@@ -377,9 +388,11 @@ export class AgentBackgroundJobService {
 		selection?: { planId: string; taskIds?: string[] },
 	) {
 		const execution = await this.executionRepository.findExecution(executionId);
+
 		if (execution?.threadId !== parentThreadId || execution.status !== 'running') {
 			return { status: 'unavailable' as const, jobs: [] };
 		}
+
 		const inputs =
 			(await this.messageRepository.findExecutionInputs([executionId])).get(executionId) ?? [];
 		const userInput = inputs
@@ -391,7 +404,9 @@ export class AgentBackgroundJobService {
 					message.resourceId === parentResourceId,
 			)
 			.at(-1);
+
 		if (!userInput) return { status: 'unavailable' as const, jobs: [] };
+
 		await this.pruneExpiredPausedJobs(parentThreadId);
 		await this.releaseStaleResumeReservations(
 			parentAgentId,
@@ -399,21 +414,26 @@ export class AgentBackgroundJobService {
 			parentResourceId,
 			execution.startedAt ?? execution.createdAt,
 		);
+
 		const planStop = await this.threadRepository.findTaskStop(parentThreadId);
 		const planSelection = selection ?? (planStop?.planId ? { planId: planStop.planId } : undefined);
+
 		if (planSelection) {
 			const selected = await this.plans.selectStoppedTasks(
 				parentThreadId,
 				planSelection.planId,
 				planSelection.taskIds,
 			);
+
 			if (selected.status !== 'selected') return { status: selected.status, jobs: [] };
+
 			if (
 				selected.jobs.some(
 					(job) => job.status === 'running' || job.status === 'suspended' || !job.notifiedAt,
 				)
 			)
 				return { status: 'stopping' as const, jobs: [] };
+
 			const paused = selected.jobs.filter(
 				(job) => job.kind === 'subagent' && job.status === 'paused',
 			);
@@ -425,12 +445,14 @@ export class AgentBackgroundJobService {
 				timeoutAt,
 				MAX_RUNNING_JOBS_PER_THREAD,
 			);
+
 			if (admission !== 'reserved')
 				return {
 					status:
 						admission === 'limit-reached' ? ('limit-reached' as const) : ('stopping' as const),
 					jobs: [],
 				};
+
 			return {
 				status: 'ready' as const,
 				jobs: paused,
@@ -454,6 +476,7 @@ export class AgentBackgroundJobService {
 					})),
 			};
 		}
+
 		const newPlanRequest = Boolean(
 			planStop?.pause.reportedAt && !planStop.generation.executionIds.includes(executionId),
 		);
@@ -463,6 +486,7 @@ export class AgentBackgroundJobService {
 				job.parentResourceId === parentResourceId &&
 				job.pauseRequestId,
 		);
+
 		if (
 			jobs.some(
 				(job) =>
@@ -474,6 +498,7 @@ export class AgentBackgroundJobService {
 		) {
 			return { status: 'stopping' as const, jobs: [] };
 		}
+
 		const stoppedGroup = latestStopGroup(jobs);
 		const workflowsToRestart = stoppedGroup
 			.filter((job) => job.kind === 'workflow' && job.status === 'cancelled')
@@ -486,14 +511,17 @@ export class AgentBackgroundJobService {
 		const paused = stoppedGroup.filter((job) => job.kind === 'subagent' && job.status === 'paused');
 		const latestId = paused[0]?.pauseRequestId;
 		const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+
 		if (!latestId) {
 			if (
 				workflowsToRestart.length === 0 &&
 				stoppedGroup.some((job) => job.error === EXPIRED_BACKGROUND_CHECKPOINT_ERROR)
 			)
 				return { status: 'expired' as const, jobs: [] };
+
 			return { status: 'ready' as const, jobs: [], timeoutAt, workflowsToRestart };
 		}
+
 		const admission = await this.jobRepository.reservePausedGroup(
 			parentThreadId,
 			latestId,
@@ -501,8 +529,11 @@ export class AgentBackgroundJobService {
 			timeoutAt,
 			MAX_RUNNING_JOBS_PER_THREAD,
 		);
+
 		if (admission === 'limit-reached') return { status: 'limit-reached' as const, jobs: [] };
+
 		if (admission !== 'reserved') return { status: 'stopping' as const, jobs: [] };
+
 		return { status: 'ready' as const, jobs: paused, timeoutAt, workflowsToRestart };
 	}
 
@@ -517,6 +548,7 @@ export class AgentBackgroundJobService {
 			selection.stopId,
 			selection.taskIds,
 		);
+
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(parentAgentId, threadId);
 	}
 
@@ -817,6 +849,7 @@ export class AgentBackgroundJobService {
 			)
 		)
 			return [];
+
 		return await Promise.all(
 			group.map(async (job) => {
 				if (job.status !== 'suspended' || job.pauseRequestId) return job;
