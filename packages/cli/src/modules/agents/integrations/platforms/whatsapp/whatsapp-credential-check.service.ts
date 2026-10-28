@@ -175,9 +175,10 @@ export class WhatsAppCredentialCheckService {
 			return { state: 'unknown' };
 		}
 
-		// The caller was checked above. The key names the number, so a credential
-		// edited to point at another number does not get the old answer.
-		const key = `${phoneNumberId}:${businessAccountId}`;
+		// The caller was checked above. The key names the credential as well as the
+		// number, so a credential that holds the same ids and a bad token does not
+		// read the answer of a working one.
+		const key = `${credentialId}:${phoneNumberId}:${businessAccountId}`;
 		const cached = this.metaStatusCache.get(key);
 		if (cached && cached.expiresAt > Date.now()) return cached.status;
 

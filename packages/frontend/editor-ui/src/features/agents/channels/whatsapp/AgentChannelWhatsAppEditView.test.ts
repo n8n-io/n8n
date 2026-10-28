@@ -24,6 +24,7 @@ vi.mock('./useWhatsAppMetaStatus', () => ({
 const baseProps = {
 	mode: 'edit' as const,
 	modelValue: 'cred-1',
+	savedCredentialId: 'cred-1',
 	integration: {
 		type: 'whatsapp',
 		label: 'WhatsApp',
@@ -100,7 +101,7 @@ describe('AgentChannelWhatsAppEditView', () => {
 	});
 
 	it('asks for the Meta status of the connected credential', () => {
-		mountView({ connected: true, modelValue: 'cred-1' });
+		mountView({ connected: true, modelValue: 'cred-1', savedCredentialId: 'cred-1' });
 
 		expect(askedCredential()).toBe('cred-1');
 		expect(
@@ -136,5 +137,19 @@ describe('AgentChannelWhatsAppEditView', () => {
 		await flushPromises();
 
 		expect(askedCredential()).toBe('cred-1');
+	});
+
+	it('asks for the status of the new credential once a credential swap is saved', async () => {
+		const wrapper = mountView({
+			connected: true,
+			modelValue: 'cred-1',
+			savedCredentialId: 'cred-1',
+		});
+		await flushPromises();
+
+		await wrapper.setProps({ modelValue: 'cred-2', savedCredentialId: 'cred-2' });
+		await flushPromises();
+
+		expect(askedCredential()).toBe('cred-2');
 	});
 });

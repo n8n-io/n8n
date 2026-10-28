@@ -271,6 +271,16 @@ describe('WhatsAppCredentialCheckService.getMetaStatus', () => {
 
 			expect(request.mock.calls.length).toBeGreaterThan(callsAfterFirst);
 		});
+
+		it('does not give one credential the answer for another that holds the same ids', async () => {
+			await service.getMetaStatus(user, 'project-1', 'cred-1');
+			const callsAfterFirst = request.mock.calls.length;
+			credentialLookup.decryptForUser.mockResolvedValue({ ...credential, accessToken: 'junk' });
+
+			await service.getMetaStatus(user, 'project-2', 'cred-2');
+
+			expect(request.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+		});
 	});
 
 	it('throws NotFoundError when the caller cannot use the credential', async () => {
