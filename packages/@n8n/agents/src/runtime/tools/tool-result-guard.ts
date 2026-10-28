@@ -1,3 +1,4 @@
+import { MAX_AGENT_FILE_SIZE_BYTES } from '@n8n/api-types';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentMessage } from '../../types/sdk/message';
@@ -196,6 +197,7 @@ async function tryOffloadResult(
 	storage?: ToolResultGuardStorage,
 ): Promise<OffloadedToolResult | undefined> {
 	if (!storage || storage.filesystem.readOnly === true) return undefined;
+	if (Buffer.byteLength(serialized, 'utf8') > MAX_AGENT_FILE_SIZE_BYTES) return undefined;
 
 	try {
 		const path = await storeToolResult(storage.filesystem, storage, kind, serialized);

@@ -3,7 +3,7 @@ import type { AgentJsonConfig, InstanceAiAttachment } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
@@ -13,12 +13,15 @@ import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import {
 	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
 	ASSISTANT_AGENT_ID,
+	ASSISTANT_AGENT_THREAD_ID,
 	consumePendingAssistantAgentMessage,
 } from './assistantAgentThreads';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
+
+provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
 
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
@@ -58,6 +61,7 @@ function onMessageAccepted(): void {
 	if (nodeCount > 0) {
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 			node_count: nodeCount,
+			runtime: 'agents',
 		});
 	}
 	pendingReferences = [];
