@@ -188,12 +188,9 @@ export class StepReadyHandler {
 	}
 
 	/**
-	 * Suspends the step on an awaited sub-execution, then starts it. Suspend
-	 * before start, so the sub-execution cannot end before this step can be
-	 * resumed; a crash between the two leaves a waiting step with no
-	 * sub-execution row, which reconciliation (CAT-2938) fails. A sub-execution
-	 * that never started resumes nothing, so the step fails here, where the
-	 * reason is known, and the failure settles it like any other.
+	 * Suspend the step on an awaited sub-execution, then start the sub-execution.
+	 *
+	 * We suspend first so the sub-execution never finishes before we suspend.
 	 */
 	private async handleAwaitedSubExecution(
 		event: StepReadyEvent,
