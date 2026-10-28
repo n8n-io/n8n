@@ -9,4 +9,10 @@ export type RadioGroupItemProps = Omit<RekaRadioGroupItemProps, 'value'> & {
 
 export type RadioGroupItemSlots = {
 	label(props: { label?: string; description?: string }): unknown;
+	/**
+	 * Fields for this option.
+	 * The component renders them under the label and outside the labeling element.
+	 * The radio name stays the option text.
+	 */
+	content(): unknown;
 };

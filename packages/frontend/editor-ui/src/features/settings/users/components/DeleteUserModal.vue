@@ -147,7 +147,9 @@ function onDialogOpenUpdate(open: boolean) {
 								<N8nText color="text-dark">{{
 									i18n.baseText('settings.users.transferWorkflowsAndCredentials')
 								}}</N8nText>
-								<div v-if="operation === 'transfer'" class="pt-2xs" @mousedown.stop @click.stop>
+							</template>
+							<template #content>
+								<div v-if="operation === 'transfer'" class="pt-2xs">
 									<N8nText color="text-dark">{{
 										i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
 									}}</N8nText>
@@ -168,13 +170,9 @@ function onDialogOpenUpdate(open: boolean) {
 								<N8nText color="text-dark">{{
 									i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
 								}}</N8nText>
-								<div
-									v-if="operation === 'delete'"
-									class="pt-2xs"
-									data-test-id="delete-data-input"
-									@mousedown.stop
-									@click.stop
-								>
+							</template>
+							<template #content>
+								<div v-if="operation === 'delete'" class="pt-2xs" data-test-id="delete-data-input">
 									<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
 										<N8nInput
 											v-model="deleteConfirmText"
