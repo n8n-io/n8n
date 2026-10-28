@@ -82,7 +82,7 @@ describe('Plan task ownership and continuation', () => {
 				threadId: thread.id,
 				planId,
 				requestedAt: new Date().toISOString(),
-				generation: await stops.captureGeneration(thread.id, {}),
+				generation: await stops.captureStopTargets(thread.id, {}),
 				failures: [],
 				pause: {
 					id: uuidv7(),
