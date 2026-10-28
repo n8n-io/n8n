@@ -9,7 +9,7 @@ import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';
 import N8nTooltip from '../N8nTooltip';
-import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
@@ -153,7 +153,7 @@ function scroll(direction: 'left' | 'right') {
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewBadge v-if="option.preview" :class="$style.badge" />
+							<N8nFeatureMaturityBadges v-if="option.preview" preview :class="$style.badge" />
 							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 						</div>
 					</a>
@@ -167,7 +167,7 @@ function scroll(direction: 'left' | 'right') {
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewBadge v-if="option.preview" :class="$style.badge" />
+						<N8nFeatureMaturityBadges v-if="option.preview" preview :class="$style.badge" />
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</RouterLink>
 					<div
@@ -203,7 +203,7 @@ function scroll(direction: 'left' | 'right') {
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewBadge v-if="option.preview" :class="$style.badge" />
+						<N8nFeatureMaturityBadges v-if="option.preview" preview :class="$style.badge" />
 						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>

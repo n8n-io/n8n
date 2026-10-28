@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import { computed, useSlots, watchEffect } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
+import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
+import { readFeatureMaturity } from '../FeatureMaturityBadges/featureMaturityState';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
@@ -27,6 +30,13 @@ export interface SettingsPageHeaderProps {
 	docsLeadingText?: string;
 	/** Heading element for the page title. */
 	headingTag?: string;
+	/**
+	 * Feature id from `featureMaturity`. When the entry has a docs page, that page is the docs link
+	 * unless `docsUrl` is set. Badges render beside the title only when `showBadges` is true.
+	 */
+	feature?: FeatureMaturityId;
+	/** Render this feature's badges beside the title. Leave this off when the enable row shows them. */
+	showBadges?: boolean;
 }
 
 defineOptions({ name: 'N8nSettingsPageHeader' });
@@ -38,6 +48,8 @@ const props = withDefaults(defineProps<SettingsPageHeaderProps>(), {
 	docsLabel: undefined,
 	docsLeadingText: undefined,
 	headingTag: 'h1',
+	feature: undefined,
+	showBadges: false,
 });
 
 const slots = useSlots();
@@ -50,6 +62,12 @@ const resolvedDocsLabel = computed(() => props.docsLabel ?? t('settingsPageHeade
 const resolvedDocsLeadingText = computed(
 	() => props.docsLeadingText ?? t('settingsPageHeader.docsLeadingText'),
 );
+const featureDocsUrl = computed(() =>
+	props.feature ? readFeatureMaturity(props.feature).docsUrl : undefined,
+);
+const resolvedDocsUrl = computed(() => props.docsUrl ?? featureDocsUrl.value);
+const showFeatureBadges = computed(() => Boolean(props.showBadges && props.feature));
+const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.titleTrailing));
 
 // Default-on means a developer who forgets to wire a docs URL is nudged (not silently broken):
 // the link word still renders as a placeholder and a dev-only warning prompts them to act.
@@ -57,7 +75,7 @@ const resolvedDocsLeadingText = computed(
 // disabled: still visible as the nudge, but not a focusable no-op control.
 if (import.meta.env.DEV) {
 	watchEffect(() => {
-		if (props.showDocsLink && !props.docsUrl) {
+		if (props.showDocsLink && !resolvedDocsUrl.value) {
 			console.warn(
 				'[N8nSettingsPageHeader] The docs link is enabled but no `docsUrl` was provided. ' +
 					'Set `docs-url` to your documentation page, or pass `:show-docs-link="false"` to remove it.',
@@ -69,10 +87,11 @@ if (import.meta.env.DEV) {
 
 <template>
 	<header :class="$style.header">
-		<div v-if="slots.titleTrailing" :class="$style.titleRow">
+		<div v-if="showTitleRow" :class="$style.titleRow">
 			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 				{{ title }}
 			</N8nHeading>
+			<N8nFeatureMaturityBadges v-if="showFeatureBadges" :feature="feature" placement="title" />
 			<slot name="titleTrailing" />
 		</div>
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
@@ -94,8 +113,8 @@ if (import.meta.env.DEV) {
 					}}<N8nExternalLink
 						inline
 						size="small"
-						:href="docsUrl || undefined"
-						:disabled="docsUrl ? undefined : true"
+						:href="resolvedDocsUrl || undefined"
+						:disabled="resolvedDocsUrl ? undefined : true"
 						data-test-id="settings-page-header-docs"
 						>{{ resolvedDocsLabel }}</N8nExternalLink
 					></N8nText

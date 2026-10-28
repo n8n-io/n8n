@@ -957,7 +957,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
+			expect(getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent('Preview');
 		});
 
 		it('should persist workflow reviews toggle changes', async () => {

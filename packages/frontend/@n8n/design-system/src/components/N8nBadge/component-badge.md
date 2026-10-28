@@ -23,6 +23,7 @@ A compact label that identifies a status, category, count, or other metadata. A 
   - `danger`: Red badge for failed or critical states
   - `success`: Green badge for positive or complete states
   - `info`: Blue badge for informational states
+  - `pink`: Soft brand-pink badge for labels that should stand out from the page
 - `size?: BadgeSize` - Badge height, horizontal padding, text size, and icon size | `default: 'xsmall'`
 - `clickable?: boolean` - When `true`, renders the badge as a native `button` instead of a `span` and enables hover, active, focus, and disabled styles | `default: false`
 - `disabled?: boolean` - Disables the native button when `clickable` is `true`. Use this prop only with `clickable`
@@ -53,7 +54,8 @@ type BadgeVariant =
   | 'warning'
   | 'danger'
   | 'success'
-  | 'info';
+  | 'info'
+  | 'pink';
 
 type BadgeSize = 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 ```

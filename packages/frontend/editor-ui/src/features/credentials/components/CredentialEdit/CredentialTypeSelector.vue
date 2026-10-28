@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import {
+	N8nFeatureMaturityBadges,
 	N8nIcon,
 	N8nLink,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
@@ -69,7 +69,7 @@ function onSelect(value: string): void {
 			<N8nText size="medium" :bold="true">
 				{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.title') }}
 			</N8nText>
-			<N8nPreviewBadge size="xxsmall" />
+			<N8nFeatureMaturityBadges feature="endUserCredentials" />
 			<N8nTooltip v-if="infoTip" placement="top">
 				<template #content>
 					<div>

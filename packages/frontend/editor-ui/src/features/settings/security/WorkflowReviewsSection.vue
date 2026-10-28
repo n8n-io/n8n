@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { N8nAlertDialog, N8nPreviewBadge, N8nSettingsEnableRow } from '@n8n/design-system';
+import { N8nAlertDialog, N8nSettingsEnableRow } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
@@ -20,14 +20,6 @@ const { showToast, showError } = useToast();
 const enabled = ref(props.initialEnabled);
 const showDisableDialog = ref(false);
 const isSaving = ref(false);
-
-function onToggle(value: boolean) {
-	if (!value) {
-		showDisableDialog.value = true;
-		return;
-	}
-	void persist(true);
-}
 
 async function persist(value: boolean): Promise<void> {
 	const previousValue = enabled.value;
@@ -61,23 +53,30 @@ function confirmDisable() {
 	showDisableDialog.value = false;
 	void persist(false);
 }
+
+function onToggle(value: boolean) {
+	if (!value) {
+		showDisableDialog.value = true;
+		return;
+	}
+	void persist(true);
+}
 </script>
 
 <template>
+	<!-- `display: contents` keeps the enable row a direct child of the settings card. -->
 	<div :class="$style.root">
 		<N8nSettingsEnableRow
+			feature="workflowReviews"
+			show-badges
 			:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
 			:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
+			:max-description-lines="3"
 			:model-value="enabled"
 			:disabled="managedByEnv || isSaving"
 			switch-test-id="security-workflow-reviews-toggle"
 			@update:model-value="onToggle"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xxsmall" data-test-id="security-workflow-reviews-preview-tag" />
-			</template>
-		</N8nSettingsEnableRow>
-
+		/>
 		<N8nAlertDialog
 			:open="showDisableDialog"
 			:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"

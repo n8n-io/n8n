@@ -10,6 +10,15 @@ function renderNode(tag: { text: string; pill?: boolean; type?: string }) {
 }
 
 describe('N8nNodeCreatorNode', () => {
+	it('shows a custom Preview label for a preview node', () => {
+		const { getByText } = render(NodeCreatorNode, {
+			props: { title: 'Message an Agent', tag: { preview: true, text: 'Early preview' } },
+			global: { stubs: ['N8nIcon'] },
+		});
+
+		expect(getByText('Early preview')).toBeInTheDocument();
+	});
+
 	it('shows the New badge for new nodes', () => {
 		const { getByText } = render(NodeCreatorNode, {
 			props: { title: 'Gmail', isNew: true },

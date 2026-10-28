@@ -3,6 +3,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
 import SettingsContextView from './SettingsContextView.vue';
 import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
@@ -48,9 +50,23 @@ describe('SettingsContextView', () => {
 	});
 
 	it('shows a Preview label next to the page title', () => {
-		const { getByText } = renderView();
+		const { getByRole, getByTestId, queryByTestId } = renderView();
+		const badge = getByTestId('settings-context-preview-badge');
 
-		expect(getByText('Preview')).toBeInTheDocument();
+		expect(getByRole('heading', { name: 'Context' }).parentElement).toContainElement(badge);
+		expect(queryByTestId('settings-context-enterprise-readiness-badge')).not.toBeInTheDocument();
+	});
+
+	it('shows limited enterprise support beside Preview on an enterprise plan', () => {
+		useSettingsStore().$patch({
+			settings: { license: { planName: 'Enterprise' } },
+		});
+
+		const { getByTestId, getByRole } = renderView();
+		const badge = getByTestId('settings-context-enterprise-readiness-badge');
+
+		expect(badge).toHaveTextContent('Limited enterprise support');
+		expect(getByRole('heading', { name: 'Context' }).parentElement).toContainElement(badge);
 	});
 
 	it('lists Preferences, Skills and Sources', () => {

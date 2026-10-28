@@ -14,6 +14,7 @@ const VARIANT_EXAMPLES = [
 	{ variant: 'danger', label: 'Failed', icon: 'circle-x' },
 	{ variant: 'success', label: 'Active', icon: 'circle-check' },
 	{ variant: 'info', label: 'Information', icon: 'info' },
+	{ variant: 'pink', label: 'Preview', icon: 'flask-conical' },
 ] as const;
 
 const ICON_EXAMPLES = [

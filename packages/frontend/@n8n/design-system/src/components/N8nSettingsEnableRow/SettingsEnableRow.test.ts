@@ -1,19 +1,34 @@
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { computed, defineComponent, ref } from 'vue';
 
+import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
 import N8nSettingsEnableRow from './SettingsEnableRow.vue';
+import N8nSettingsPageHeader from '../N8nSettingsPageHeader/SettingsPageHeader.vue';
+
+const enterprisePlan = {
+	global: {
+		provide: {
+			[EnterprisePlanKey as symbol]: computed(() => true),
+		},
+	},
+};
 
 describe('N8nSettingsEnableRow', () => {
-	it('renders the title and the switch', () => {
-		const { getByRole } = render(N8nSettingsEnableRow, {
+	it('renders the title, the switch, and the feature badges', () => {
+		const { getByRole, getByTestId, queryByTestId } = render(N8nSettingsEnableRow, {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
+				feature: 'agents',
+				showBadges: true,
 				modelValue: false,
 			},
 		});
 
 		expect(getByRole('switch', { name: 'Enable Agents' })).toHaveAttribute('aria-checked', 'false');
+		expect(getByTestId('agents-preview-badge')).toHaveTextContent('Preview');
+		expect(queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('emits the next switch value', async () => {
@@ -26,24 +41,28 @@ describe('N8nSettingsEnableRow', () => {
 		expect(emitted()['update:modelValue'][0]).toEqual([true]);
 	});
 
-	it('renders trailing content beside the title', () => {
-		const { getByTestId } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable workflow reviews', modelValue: true },
-			slots: {
-				titleTrailing: '<span data-test-id="trailing-badge">Preview</span>',
+	it('renders badges only on the part that sets showBadges', () => {
+		const Page = defineComponent({
+			components: { N8nSettingsPageHeader, N8nSettingsEnableRow },
+			setup() {
+				const enabled = ref(true);
+				return { enabled };
 			},
+			template: `
+				<N8nSettingsPageHeader title="Assistant" feature="assistant" :show-docs-link="false" />
+				<N8nSettingsEnableRow
+					v-model="enabled"
+					feature="assistant"
+					show-badges
+					title="Enable Assistant"
+				/>
+			`,
 		});
 
-		expect(getByTestId('trailing-badge')).toHaveTextContent('Preview');
-	});
+		const { getAllByTestId, getByRole } = render(Page, enterprisePlan);
 
-	it('renders a custom action instead of the switch', () => {
-		const { queryByRole, getByRole } = render(N8nSettingsEnableRow, {
-			props: { title: 'Enable Assistant', modelValue: false },
-			slots: { action: '<button type="button">Enable</button>' },
-		});
-
-		expect(queryByRole('switch')).not.toBeInTheDocument();
-		expect(getByRole('button', { name: 'Enable' })).toBeInTheDocument();
+		const badges = getAllByTestId('n8n-agent-enterprise-readiness-badge');
+		expect(badges).toHaveLength(1);
+		expect(getByRole('heading', { name: 'Assistant' })).not.toContainElement(badges[0]!);
 	});
 });

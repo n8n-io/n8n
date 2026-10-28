@@ -1,17 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 
-import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
+import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsEnableRow from './SettingsEnableRow.vue';
 
 const meta = {
-	title: 'Areas/Settings/SettingsEnableRow',
+	title: 'Areas/Settings/EnableRow',
 	component: N8nSettingsEnableRow,
 	parameters: {
 		docs: {
 			description: {
 				component:
-					'A settings row with a switch. Use it for the enable control at the top of a settings screen. Pass a badge through the titleTrailing slot when the setting still uses a standalone badge.',
+					"The enable control for a settings feature. It renders the title, the description, and the switch. Pass a `feature` id and `show-badges` to render that feature's badges beside the title. The row reads the feature list and the instance plan.",
 			},
 		},
 	},
@@ -21,40 +22,38 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-	render: () => ({
-		components: { N8nSettingsEnableRow, N8nPreviewBadge },
-		setup() {
-			const agents = ref(true);
-			const roles = ref(false);
-			return { agents, roles };
+	render: (args) => ({
+		components: { N8nSettingsEnableRow, N8nSettingsRowGroup },
+		setup: () => {
+			provide(
+				EnterprisePlanKey,
+				computed(() => true),
+			);
+			const enabled = ref(false);
+			const plain = ref(false);
+			return { args, enabled, plain };
 		},
 		template: `
-			<div style="display: flex; flex-direction: column; max-width: 720px;">
-				<N8nSettingsEnableRow
-					v-model="agents"
-					title="Enable Agents"
-					description="Allow users to build and run agents on this instance."
-				>
-					<template #titleTrailing>
-						<N8nPreviewBadge />
-					</template>
-				</N8nSettingsEnableRow>
-				<N8nSettingsEnableRow
-					v-model="roles"
-					title="Enable roles"
-					description="Let admins assign project roles to members."
-				/>
+			<div style="max-width: 45rem;">
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow v-bind="args" v-model="enabled" />
+					<N8nSettingsEnableRow
+						v-model="plain"
+						title="Enable roles"
+						description="Let admins assign project roles to members."
+						feature="roles"
+						show-badges
+					/>
+				</N8nSettingsRowGroup>
 			</div>
 		`,
 	}),
-};
-
-export const Disabled: Story = {
 	args: {
-		title: 'Enable Chat',
-		description: 'Chat is turned off for this instance.',
-		modelValue: false,
-		disabled: true,
-		disabledTooltip: 'Ask an instance owner to turn Chat on.',
+		title: 'Enable Agents',
+		description:
+			'Allow users to build and run agents. Turning this off blocks new runs and cancels pending messages.',
+		feature: 'agents',
+		showBadges: true,
+		maxDescriptionLines: 3,
 	},
 };

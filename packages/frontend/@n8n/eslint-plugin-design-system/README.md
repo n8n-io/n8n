@@ -19,3 +19,9 @@ The recommended flat config enables all rules for Vue files and is included by `
 Requires `N8nTooltip` nested anywhere inside `N8nDropdownMenu` to keep teleportation enabled. Dropdown content clips overflow, so an inline tooltip can otherwise be cropped.
 
 The `teleported` prop may be omitted because it defaults to `true`, or it may be set explicitly to `true`. Dynamic values are rejected because they cannot guarantee teleportation.
+
+### `use-feature-maturity-badges`
+
+Requires Preview and Limited enterprise support to render through `N8nFeatureMaturityBadges`. A Vue file must not render `N8nPreviewBadge` or `N8nEnterpriseReadinessBadge`, and it must not import those components.
+
+`N8nFeatureMaturityBadges` reads `featureMaturity`, the enterprise plan, and the badge size. The badge components themselves, and `N8nFeatureMaturityBadges`, may still render the individual badges.

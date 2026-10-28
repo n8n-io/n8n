@@ -6,10 +6,11 @@ import N8nBadge from '../N8nBadge';
 import PreviewBadge from './PreviewBadge.vue';
 
 describe('PreviewBadge', () => {
-	it('uses the outline variant and forwards its size', () => {
+	it('uses the pink variant, a flask icon, and the given size', () => {
 		const wrapper = mount(PreviewBadge, { props: { size: 'small' } });
 		expect(wrapper.getComponent(N8nBadge).props()).toMatchObject({
-			variant: 'outline',
+			variant: 'pink',
+			leadingIcon: 'flask-conical',
 			size: 'small',
 		});
 	});

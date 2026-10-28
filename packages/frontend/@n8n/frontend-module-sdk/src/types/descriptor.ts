@@ -37,7 +37,9 @@ export type SettingsSectionId =
 	| 'operations'
 	| 'billing';
 
-/** A link in the settings sidebar. Shell and modules both use it. */
+/**
+ * A link in the settings sidebar. Shell and modules both use it.
+ */
 export type IMenuSettingItem = IMenuItem & {
 	/**
 	 * @description Sort position inside the section, low to high. Shell links use 10, 20, 30, ...

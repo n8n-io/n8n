@@ -1,4 +1,15 @@
 <script setup lang="ts">
+import {
+	showsFeatureMaturityBadges,
+	type FeatureMaturityId,
+} from '@n8n/frontend-constants/feature-maturity';
+import { computed } from 'vue';
+
+import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
+import {
+	readFeatureMaturity,
+	useEnterprisePlan,
+} from '../FeatureMaturityBadges/featureMaturityState';
 import N8nSettingsRow from '../N8nSettingsRow';
 import N8nSwitch from '../N8nSwitch';
 import N8nTooltip from '../N8nTooltip';
@@ -8,6 +19,13 @@ export interface SettingsEnableRowProps {
 	title: string;
 	/** Short description under the title. */
 	description?: string;
+	/**
+	 * Feature id from `featureMaturity`. The row reads the flags from this id.
+	 * Badges render beside the title only when `showBadges` is true.
+	 */
+	feature?: FeatureMaturityId;
+	/** Render this feature's badges beside the row title. Leave this off when the page title shows them. */
+	showBadges?: boolean;
 	/** Disables the switch. */
 	disabled?: boolean;
 	/** Tooltip shown while the switch is disabled. */
@@ -20,8 +38,10 @@ export interface SettingsEnableRowProps {
 
 defineOptions({ name: 'N8nSettingsEnableRow', inheritAttrs: false });
 
-withDefaults(defineProps<SettingsEnableRowProps>(), {
+const props = withDefaults(defineProps<SettingsEnableRowProps>(), {
 	description: undefined,
+	feature: undefined,
+	showBadges: false,
 	disabled: false,
 	disabledTooltip: undefined,
 	switchTestId: undefined,
@@ -29,6 +49,14 @@ withDefaults(defineProps<SettingsEnableRowProps>(), {
 });
 
 const enabled = defineModel<boolean>({ default: false });
+const enterprisePlan = useEnterprisePlan();
+// Skip the trailing slot when nothing would render, so the title does not keep an empty gap.
+const renderBadges = computed(
+	() =>
+		props.showBadges &&
+		props.feature !== undefined &&
+		showsFeatureMaturityBadges(readFeatureMaturity(props.feature), enterprisePlan.value),
+);
 </script>
 
 <template>
@@ -38,8 +66,8 @@ const enabled = defineModel<boolean>({ default: false });
 		:description="description"
 		:max-description-lines="maxDescriptionLines"
 	>
-		<template v-if="$slots.titleTrailing" #titleTrailing>
-			<slot name="titleTrailing" />
+		<template v-if="renderBadges" #titleTrailing>
+			<N8nFeatureMaturityBadges :feature="feature" placement="enable" />
 		</template>
 		<template #action>
 			<slot name="action">
@@ -53,7 +81,7 @@ const enabled = defineModel<boolean>({ default: false });
 						v-model="enabled"
 						:disabled="disabled"
 						:aria-label="title"
-						:data-test-id="switchTestId"
+						v-bind="switchTestId ? { 'data-test-id': switchTestId } : {}"
 					/>
 				</N8nTooltip>
 				<N8nSwitch
@@ -61,7 +89,7 @@ const enabled = defineModel<boolean>({ default: false });
 					v-model="enabled"
 					:disabled="disabled"
 					:aria-label="title"
-					:data-test-id="switchTestId"
+					v-bind="switchTestId ? { 'data-test-id': switchTestId } : {}"
 				/>
 			</slot>
 		</template>

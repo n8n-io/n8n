@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import CredentialTypeSelector from './CredentialTypeSelector.vue';
@@ -7,6 +8,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 const renderComponent = createComponentRenderer(CredentialTypeSelector);
 
 describe('CredentialTypeSelector', () => {
+	beforeEach(() => {
+		createTestingPinia();
+	});
+
 	it('renders the selector', () => {
 		renderComponent({ props: { modelValue: false } });
 

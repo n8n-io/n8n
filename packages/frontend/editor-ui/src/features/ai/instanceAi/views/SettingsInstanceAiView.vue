@@ -6,14 +6,13 @@ import {
 	N8nCallout,
 	N8nDropdownMenu,
 	N8nEmptyState,
-	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
-	N8nSettingsEnableRow,
 	N8nSettingsLayout,
+	N8nSettingsEnableRow,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
@@ -70,7 +69,6 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
 const DATA_SHARING_DOCS_URL =
 	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
 
@@ -136,7 +134,6 @@ const neverConfigured = computed(() => {
 	if (!isSelfManaged.value || !store.settings) return true;
 	return !isModelConfigured.value && !isSandboxConfigured.value && searchState.value === 'notset';
 });
-
 const emptyStateIcon: EmptyStateIconCards = {
 	type: 'cards',
 	center: 'sparkles',
@@ -492,18 +489,12 @@ async function handleDataSharingToggle(value: boolean) {
 <template>
 	<N8nSettingsLayout data-test-id="n8n-agent-settings">
 		<N8nSettingsPageHeader
+			feature="assistant"
+			show-badges
 			:title="i18n.baseText('settings.n8nAgent')"
 			:description="i18n.baseText('settings.n8nAgent.description')"
-			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
-		>
-			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
-				<N8nEnterpriseReadinessBadge
-					size="xsmall"
-					data-test-id="n8n-agent-enterprise-readiness-badge"
-				/>
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 
 		<N8nLoading v-if="store.isLoading" :rows="3" :shrink-last="false" />
 
