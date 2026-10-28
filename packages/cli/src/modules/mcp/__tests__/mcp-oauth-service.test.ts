@@ -6,11 +6,13 @@ import { mock } from 'jest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import type { OAuthGrantContext } from '../database/oauth-grant-context';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import type { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthSessionService } from '../oauth-session.service';
 
 let logger: jest.Mocked<Logger>;
@@ -19,6 +21,8 @@ let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
+const gate = mock<OAuthGrantService>();
+const ctx = mock<OAuthGrantContext>();
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
 
 describe('McpOAuthService', () => {
@@ -38,11 +42,13 @@ describe('McpOAuthService', () => {
 			tokenService,
 			authorizationCodeService,
 			userConsentRepository,
+			gate,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		gate.runForActiveUser.mockImplementation(async (_userId, work) => await work(ctx));
 	});
 
 	describe('clientsStore', () => {
@@ -338,6 +344,7 @@ describe('McpOAuthService', () => {
 				clientId: 'client-123',
 			} as AuthorizationCode;
 
+			authorizationCodeService.findAndValidateAuthorizationCode.mockResolvedValue(authRecord);
 			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
@@ -356,6 +363,7 @@ describe('McpOAuthService', () => {
 				'auth-code-123',
 				'client-123',
 				'https://example.com/callback',
+				ctx,
 			);
 			expect(tokenService.generateTokenPair).toHaveBeenCalledWith('user-456', 'client-123');
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
@@ -363,6 +371,7 @@ describe('McpOAuthService', () => {
 				'refresh-token-456',
 				'client-123',
 				'user-456',
+				ctx,
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
@@ -390,6 +399,7 @@ describe('McpOAuthService', () => {
 				clientId: 'client-123',
 			} as AuthorizationCode;
 
+			authorizationCodeService.findAndValidateAuthorizationCode.mockResolvedValue(authRecord);
 			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
@@ -402,6 +412,7 @@ describe('McpOAuthService', () => {
 				'auth-code-123',
 				'client-123',
 				undefined,
+				ctx,
 			);
 		});
 	});

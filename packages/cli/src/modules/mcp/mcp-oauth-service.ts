@@ -19,6 +19,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
@@ -43,6 +44,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -160,35 +162,43 @@ export class McpOAuthService implements OAuthServerProvider {
 		_codeVerifier?: string,
 		redirectUri?: string,
 	): Promise<OAuthTokens> {
-		const authRecord = await this.authorizationCodeService.validateAndConsumeAuthorizationCode(
+		const authRecord = await this.authorizationCodeService.findAndValidateAuthorizationCode(
 			authorizationCode,
 			client.client_id,
-			redirectUri,
 		);
+		return await this.grantService.runForActiveUser(authRecord.userId, async (ctx) => {
+			await this.authorizationCodeService.validateAndConsumeAuthorizationCode(
+				authorizationCode,
+				client.client_id,
+				redirectUri,
+				ctx,
+			);
 
-		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
-			authRecord.userId,
-			client.client_id,
-		);
+			const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
+				authRecord.userId,
+				client.client_id,
+			);
 
-		await this.tokenService.saveTokenPair(
-			accessToken,
-			refreshToken,
-			client.client_id,
-			authRecord.userId,
-		);
+			await this.tokenService.saveTokenPair(
+				accessToken,
+				refreshToken,
+				client.client_id,
+				authRecord.userId,
+				ctx,
+			);
 
-		this.logger.info('Authorization code exchanged for tokens', {
-			clientId: client.client_id,
-			userId: authRecord.userId,
+			this.logger.info('Authorization code exchanged for tokens', {
+				clientId: client.client_id,
+				userId: authRecord.userId,
+			});
+
+			return {
+				access_token: accessToken,
+				token_type: 'Bearer',
+				expires_in: 3600,
+				refresh_token: refreshToken,
+			};
 		});
-
-		return {
-			access_token: accessToken,
-			token_type: 'Bearer',
-			expires_in: 3600,
-			refresh_token: refreshToken,
-		};
 	}
 
 	async exchangeRefreshToken(

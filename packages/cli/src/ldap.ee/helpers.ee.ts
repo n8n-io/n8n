@@ -16,6 +16,8 @@ import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
 import { License } from '@/license';
+import { UserDeactivationHooks } from '@/services/user-deactivation-hooks.service';
+import { UserLifecycleTransactionService } from '@/services/user-lifecycle-transaction.service';
 
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 
@@ -187,8 +189,7 @@ export const processUsers = async (
 	toDisableUsers: string[],
 ): Promise<void> => {
 	const userRepository = Container.get(UserRepository);
-	const { manager: dbManager } = userRepository;
-	await dbManager.transaction(async (transactionManager) => {
+	await Container.get(UserLifecycleTransactionService).run(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
 				const { user: savedUser } = await userRepository.createUserWithProject(
@@ -220,6 +221,7 @@ export const processUsers = async (
 					if (user) {
 						user.disabled = true;
 						await transactionManager.save(user);
+						await Container.get(UserDeactivationHooks).run(user.id, transactionManager);
 					}
 
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });

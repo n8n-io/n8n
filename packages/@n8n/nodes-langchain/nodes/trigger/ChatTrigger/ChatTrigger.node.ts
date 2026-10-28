@@ -636,6 +636,12 @@ export class ChatTrigger extends Node {
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
 
+		// The GET `setup` route only serves the hosted chat page. Other modes have no handler for it.
+		if (ctx.getWebhookName() === 'setup' && nodeMode !== 'hostedChat') {
+			res.status(404).end();
+			return { noWebhookResponse: true };
+		}
+
 		if (!isPublic) {
 			res.status(404).end();
 			return {
