@@ -126,7 +126,7 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots }
+			| { kind: 'outputs'; outputs: StepSlots; detached: ChildDeclaration[] }
 			| { kind: 'wait'; wait: WaitDeclaration }
 			| { kind: 'child'; child: ChildDeclaration }
 			| { kind: 'error'; error: unknown };
@@ -141,7 +141,7 @@ export class StepReadyHandler {
 			}
 			if (result.wait) run = { kind: 'wait', wait: result.wait };
 			else if (result.child) run = { kind: 'child', child: result.child };
-			else run = { kind: 'outputs', outputs: result.outputs };
+			else run = { kind: 'outputs', outputs: result.outputs, detached: result.detached ?? [] };
 		} catch (error) {
 			run = { kind: 'error', error };
 		}
@@ -181,7 +181,7 @@ export class StepReadyHandler {
 
 		if (run.kind === 'child') {
 			await this.executionStore.refreshLiveStatus(execution.id);
-			const started = await this.startChild(step, execution, run.child);
+			const started = await this.startChild(step, execution, run.child, true);
 			// A child that never started resumes nothing, so the step fails here,
 			// where the reason is known. The failure settles it like any other.
 			if (started.kind === 'error') {
@@ -200,6 +200,12 @@ export class StepReadyHandler {
 			return;
 		}
 
+		// After the outcome is on the row, so a child that ends at once finds a
+		// settled step and nothing to resume. Before the announcement, so the
+		// children exist by the time anything reads the step.
+		const notStarted =
+			run.kind === 'outputs' ? await this.startDetachedChildren(step, execution, run.detached) : [];
+
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
@@ -213,10 +219,34 @@ export class StepReadyHandler {
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
+
+		// The step's outcome stands: the node reported the children, and nothing
+		// can fail a completed step. The miss is raised once the step is settled.
+		if (notStarted.length > 0) {
+			throw new UnexpectedError(
+				`step ${step.id} completed but these detached children did not start: ${notStarted
+					.map(({ executionId, error }) => `${executionId} (${toStepError(error).message})`)
+					.join(', ')}`,
+			);
+		}
+	}
+
+	/** Starts every detached child, and returns the ones that could not start. */
+	private async startDetachedChildren(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		children: ChildDeclaration[],
+	): Promise<Array<{ executionId: string; error: unknown }>> {
+		const notStarted: Array<{ executionId: string; error: unknown }> = [];
+		for (const child of children) {
+			const started = await this.startChild(step, execution, child, false);
+			if (started.kind === 'error') notStarted.push({ executionId: child.executionId, ...started });
+		}
+		return notStarted;
 	}
 
 	/**
-	 * Starts the child a step asked for, linked to the step that awaits it. The
+	 * Starts the child a step asked for, linked to the step that asked. The
 	 * child inherits the mode and the caller context, and never the response
 	 * expectation: a child does not answer the parent's caller.
 	 */
@@ -224,6 +254,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		child: ChildDeclaration,
+		awaited: boolean,
 	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
 		try {
 			await this.childStarter.start({
@@ -234,7 +265,7 @@ export class StepReadyHandler {
 				triggerOutputs: child.triggerOutputs,
 				mode: execution.mode,
 				callerContext: execution.callerContext,
-				parent: { executionId: execution.id, stepId: step.id, awaited: true },
+				parent: { executionId: execution.id, stepId: step.id, awaited },
 			});
 		} catch (error) {
 			return { kind: 'error', error };

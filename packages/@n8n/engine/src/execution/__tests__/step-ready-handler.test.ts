@@ -1282,6 +1282,132 @@ describe('StepReadyHandler child executions', () => {
 		});
 	});
 
+	it('starts the detached children after the step completes, without awaiting them', async () => {
+		const order: string[] = [];
+		const stepStore = makeStepStore(
+			{},
+			{
+				completeStep: vi.fn().mockImplementation(async () => {
+					order.push('complete');
+					return await Promise.resolve(true);
+				}),
+			},
+		);
+		const childStarter: ChildStarter = {
+			start: vi.fn().mockImplementation(async () => {
+				order.push('start');
+				return await Promise.resolve({ executionId: 'exec-child' });
+			}),
+		};
+		const queue = makeQueue();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{
+				v1StepExecutor: makeExecutor({
+					outputs: [[{ json: { id: 'exec-child' } }]],
+					detached: [child],
+				}),
+			},
+			undefined,
+			undefined,
+			undefined,
+			childStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [
+			[{ json: { id: 'exec-child' } }],
+		]);
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(childStarter.start).toHaveBeenCalledWith(
+			expect.objectContaining({
+				executionId: 'exec-child',
+				parent: { executionId: 'exec-1', stepId: 'step-a', awaited: false },
+			}),
+		);
+		// The step's outcome is on the row before the child exists, so a child
+		// that ends at once finds a settled step and nothing to resume.
+		expect(order).toEqual(['complete', 'start']);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('cancels the detached children it started when the parent ended in the meantime', async () => {
+		const executionStore = makeExecutionStore();
+		const live = await executionStore.loadExecution('exec-1');
+		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
+		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
+		const childCanceller: ChildCanceller = { cancelChildren: vi.fn() };
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [child] }) },
+			undefined,
+			undefined,
+			undefined,
+			makeChildStarter(),
+			childCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(childCanceller.cancelChildren).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('starts no detached child when another owner took the step over', async () => {
+		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
+		const childStarter = makeChildStarter();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [child] }) },
+			undefined,
+			undefined,
+			undefined,
+			childStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(childStarter.start).not.toHaveBeenCalled();
+	});
+
+	it('settles the completed step and then reports a detached child that could not start', async () => {
+		const stepStore = makeStepStore();
+		const childStarter: ChildStarter = {
+			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
+		};
+		const queue = makeQueue();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [child] }) },
+			undefined,
+			undefined,
+			undefined,
+			childStarter,
+		);
+
+		await expect(handler.handle(event)).rejects.toThrow(/exec-child.*admittance rejected/);
+
+		// The step completed, so its outcome stands; only the child is missing.
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
 	it('runs the node again with the child result when a child resume dispatches the step', async () => {
 		const cause = {
 			kind: 'child' as const,
