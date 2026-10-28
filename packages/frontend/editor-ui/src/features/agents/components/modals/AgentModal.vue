@@ -474,9 +474,14 @@ function onOpenAutoFocus(event: Event) {
 		border-top: var(--border);
 	}
 
+	/* The body and the panel share the height of the window. */
+	.splitWithPanel .body {
+		max-height: 40dvh;
+	}
+
 	.sidePanelScroll {
 		position: static;
-		max-height: 40dvh;
+		max-height: 30dvh;
 	}
 }
 
