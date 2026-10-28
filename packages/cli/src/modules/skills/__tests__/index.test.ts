@@ -24,6 +24,7 @@ describe('public API', () => {
 			'getSkillHash',
 			'isSameSkillTarget',
 			'renameIntroducesClash',
+			'skillContentHashOf',
 			'skillNameTakenToolMessage',
 			'skillScopeOf',
 			'withTrimmedName',

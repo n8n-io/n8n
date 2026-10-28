@@ -9,6 +9,8 @@ import {
 	type AgentImportPlan,
 	type AgentPlanItem,
 } from '@/modules/n8n-packages/entities/agent/agent-import.types';
+import type { SkillWrite } from '@/modules/n8n-packages/entities/skill/skill-import.types';
+import { requiredSharedSkillScopes } from '@/modules/n8n-packages/engine/import-gates';
 
 import { resolvePublicApiRoutes, scopesInRequirement } from '../../public-api-route-resolver';
 
@@ -47,6 +49,13 @@ describe('Public API scope parity', () => {
 			}),
 		);
 		for (const scope of plannedScopes) consumed.add(scope);
+		const createAndUpdate = [
+			{ base: undefined },
+			{ base: { skillHash: 'hash', versionId: 'version' } },
+		] as SkillWrite[];
+		for (const scope of requiredSharedSkillScopes([{ shared: createAndUpdate }])) {
+			consumed.add(scope);
+		}
 		const declared = new Set<string>();
 		for (const [resource, operations] of Object.entries(API_KEY_RESOURCES)) {
 			for (const operation of operations) {

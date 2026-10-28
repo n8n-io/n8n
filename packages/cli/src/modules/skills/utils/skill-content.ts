@@ -2,7 +2,7 @@ import type { AgentSkill, SkillScope } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 
-import type { SkillContent } from './skill-content-hash';
+import { skillContentHash, type SkillContent } from './skill-content-hash';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill } from '../database/entities/skill.entity';
@@ -146,6 +146,14 @@ export function toLatestSkill(row: ResolvedSkillRow): LatestSkill {
 		frontmatter: row.version.frontmatter,
 		contentHash: row.version.contentHash,
 	};
+}
+
+/** The content hash that a version with this skill and frontmatter stores. */
+export function skillContentHashOf(
+	skill: AgentSkill,
+	frontmatter: SkillFrontmatter | null,
+): string {
+	return skillContentHash(toSkillContent(skill, frontmatter));
 }
 
 /** Who owns a skill: one agent, one project, or the instance. */

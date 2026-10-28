@@ -7,6 +7,7 @@ import type { WorkflowImportPlan } from '../../entities/workflow/workflow-import
 import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
+	assertSharedSkillWritesAllowed,
 	packageImportScopes,
 } from '../import-gates';
 
@@ -108,5 +109,35 @@ describe('assertCredentialUpdatesAllowed', () => {
 		expect(() =>
 			assertCredentialUpdatesAllowed(['workflow:import'], policy, [{ updates: [update] }]),
 		).not.toThrow();
+	});
+});
+
+describe('assertSharedSkillWritesAllowed', () => {
+	const create = {
+		skill: {
+			id: 'skill_review',
+			scope: 'instance' as const,
+			skill: { name: 'Review', description: 'Review.', instructions: 'Review.' },
+			frontmatter: null,
+		},
+		target: { projectId: null, agentId: null },
+	};
+	const update = { ...create, base: { skillHash: 'hash', versionId: 'version' } };
+
+	it.each([
+		['a create without skill:create', [create], ['agent:import', 'skill:update']],
+		['an update without skill:update', [update], ['agent:import', 'skill:create']],
+	])('refuses %s', (_case, shared, apiKeyScopes) => {
+		expect(() => assertSharedSkillWritesAllowed(apiKeyScopes, [{ shared }])).toThrow(
+			ForbiddenError,
+		);
+	});
+
+	it.each([
+		['a user without an API key', undefined, [create, update]],
+		['an API key with both skill scopes', ['skill:create', 'skill:update'], [create, update]],
+		['an API key that writes no shared skill', ['agent:import'], []],
+	])('allows %s', (_case, apiKeyScopes, shared) => {
+		expect(() => assertSharedSkillWritesAllowed(apiKeyScopes, [{ shared }])).not.toThrow();
 	});
 });
