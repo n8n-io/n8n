@@ -1,9 +1,11 @@
-import type { InstanceWriteAccessService } from '@n8n/backend-services';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { type InstanceWriteAccessService, ProjectScopeService } from '@n8n/backend-services';
+import { MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
+import { Container } from '@n8n/di';
 import type { User } from '@n8n/db';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { DataTableRepository } from './data-table.repository';
 
 /**
  * On a protected instance, source control owns the table structure, so a pull
@@ -30,7 +32,21 @@ export async function assertRowReadAccessIfReturningRows(
 ): Promise<void> {
 	if (!dryRun && !returnData) return;
 
-	if (!(await userHasScopes(user, ['dataTable:readRow'], false, { dataTableId }))) {
-		throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
+	const projectIds = await Container.get(ProjectScopeService).getProjectIds(user, [
+		'dataTable:readRow',
+	]);
+	if (projectIds === null) return;
+
+	if (!Container.get(ModuleRegistry).isActive('data-table')) {
+		throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+	}
+
+	const projectId = await Container.get(DataTableRepository).findProjectIdForScope(dataTableId);
+	if (projectId === null) {
+		throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+	}
+
+	if (!projectIds.includes(projectId)) {
+		throw new ForbiddenError(MISSING_SCOPE_ERROR_MESSAGE);
 	}
 }
