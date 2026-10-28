@@ -181,13 +181,17 @@ function getDefaultSkillName(): string {
 	return `${baseName} ${suffix}`;
 }
 
-const initialSkill = normalizeSkill({
-	name: props.data.skill?.name ?? getDefaultSkillName(),
-	description: props.data.skill?.description ?? '',
-	instructions: props.data.skill?.instructions ?? '',
-	...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
-});
-const skill = ref<AgentSkill>(cloneDeep(initialSkill));
+function toFormSkill(source: AgentSkill | undefined): AgentSkill {
+	return normalizeSkill({
+		name: source?.name ?? getDefaultSkillName(),
+		description: source?.description ?? '',
+		instructions: source?.instructions ?? '',
+		...(source?.references ? { references: source.references } : {}),
+	});
+}
+
+const initialSkill = ref<AgentSkill>(toFormSkill(props.data.skill));
+const skill = ref<AgentSkill>(cloneDeep(initialSkill.value));
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
@@ -656,7 +660,7 @@ const canSave = computed(
 const hasChanges = computed(
 	() =>
 		!isEditing.value ||
-		!isEqual(skill.value, initialSkill) ||
+		!isEqual(skill.value, initialSkill.value) ||
 		assistantAvailabilityChanged.value ||
 		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
 		(canChangeScope.value && scope.value !== props.data.initialScope),
@@ -882,7 +886,6 @@ async function useVersion(version: number) {
 			: await fetchVersion(version);
 	// The user may have closed the editor while the version loaded: then nothing is pinned.
 	if (!detail || !modalOpen.value) return;
-	closeModal();
 	props.data.onUseVersion(skillId, detail);
 }
 
@@ -1069,10 +1072,24 @@ watch(step, async (next) => {
 
 function onUseLatestVersion() {
 	if (!props.data.skillId) return;
-	const skillId = props.data.skillId;
-	closeModal();
-	props.data.onUseLatestVersion?.(skillId);
+	props.data.onUseLatestVersion?.(props.data.skillId);
 }
+
+// After a version change the builder sends the saved skill to the open editor. Show it in place,
+// so the editor does not close and open again.
+watch(
+	() => props.data.skill,
+	(next) => {
+		if (!next || !isEditing.value) return;
+		initialSkill.value = toFormSkill(next);
+		skill.value = cloneDeep(initialSkill.value);
+		viewedVersion.value = null;
+		comparison.value = null;
+		if (!(next.references ?? []).some((file) => file.path === selectedPath.value)) {
+			selectedPath.value = SKILL_FILE;
+		}
+	},
+);
 
 function onRemove() {
 	if (step.value === 'preview') {

@@ -961,6 +961,26 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 		expect(reopened.agentVersions?.pinned).toBe(true);
 	});
 
+	it('does not open the editor again when the user closed it during the save', async () => {
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+			skillVersions: { tone: { draft: 1, published: 2, latest: 3, pinned: true } },
+		} as unknown as AgentResource);
+		const { actions, uiStore, localConfig } = setup({ agent, agentId: ref('agent-1') });
+		localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone', versionId: 'v1' }] });
+		actions.onOpenSkillFromList('tone');
+		const data = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+
+		data.onUseLatestVersion?.('tone');
+		await flushPromises();
+
+		expect(agent.value?.skillVersions?.tone?.pinned).toBe(false);
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBe(false);
+	});
+
 	describe('when the agent refuses the config save', () => {
 		function setupPinned(outcome: unknown = Promise.reject(new Error('refused'))) {
 			const agent = ref<AgentResource | null>({
