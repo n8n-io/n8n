@@ -4,6 +4,7 @@ import type { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
+	type AgentHitlConfiguration,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
@@ -374,6 +375,95 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		describe('HITL configurations', () => {
+			const configurations: AgentHitlConfiguration[] = [
+				{
+					id: 'workflow-review',
+					name: 'Workflow review',
+					method: 'workflow',
+					workflowId: 'review',
+				},
+				{
+					id: 'channel-review',
+					name: 'Channel review',
+					method: 'channel',
+					channel: 'telegram',
+					credentialId: 'bot',
+					recipient: { kind: 'user', id: '12345' },
+				},
+			];
+
+			it.each(configurations)(
+				'saves and updates a $method destination in the returned config',
+				async (configuration) => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent();
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+					const added = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configuration] },
+						user,
+						fencedOn(agent),
+					);
+					expect(added.config.hitlConfigurations).toEqual([configuration]);
+					expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+					expect(agent.schema?.hitlConfigurations).toEqual([configuration]);
+					expect((await service.getConfig(agentId, projectId)).hitlConfigurations).toEqual([
+						configuration,
+					]);
+					const updated = {
+						...configuration,
+						name: 'Administrator review',
+						disallowRequesterApproval: true,
+						expirySeconds: 3600 as const,
+					};
+					const changed = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [updated] },
+						user,
+						fencedOn(agent),
+					);
+					expect(changed.config.hitlConfigurations).toEqual([updated]);
+					expect(changed.configHash).not.toBe(added.configHash);
+				},
+			);
+
+			it.each([false, true])(
+				'handles omitted destinations with clearOmittedOptionalFields=%s',
+				async (clearOmittedOptionalFields) => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({
+						schema: { ...baseConfig, hitlConfigurations: configurations },
+					});
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+					const result = await service.updateConfig(agentId, projectId, baseConfig, user, {
+						...fencedOn(agent),
+						clearOmittedOptionalFields,
+					});
+					expect(result.config.hitlConfigurations).toEqual(
+						clearOmittedOptionalFields ? undefined : configurations,
+					);
+				},
+			);
+
+			it('clears all destinations when the submitted list is empty', async () => {
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent({ schema: { ...baseConfig, hitlConfigurations: configurations } });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const result = await service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, hitlConfigurations: [] },
+					user,
+					fencedOn(agent),
+				);
+				expect(result.config.hitlConfigurations).toEqual([]);
+				expect((await service.getConfig(agentId, projectId)).hitlConfigurations).toEqual([]);
+			});
+		});
+
 		it('rejects an update based on a stale config without mutating the agent', async () => {
 			const { service, agentRepository, eventService, telemetry } = makeService();
 			const agent = makeAgent();

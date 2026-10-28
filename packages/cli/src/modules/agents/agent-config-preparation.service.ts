@@ -536,6 +536,7 @@ const OPTIONAL_SCHEMA_FIELDS = [
 	'config',
 	'mcpServers',
 	'vectorStores',
+	'hitlConfigurations',
 ] as const;
 
 /**
