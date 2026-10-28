@@ -99,9 +99,33 @@ describe('skill lifetime', () => {
 		expect(text).toContain('Build one workflow.');
 		expect(text).not.toContain('Pick a route.');
 		expect(text).toContain('{"skillId":"router","active":false}');
-		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
-			'builder',
-		]);
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual({
+			skillIds: ['builder'],
+		});
+	});
+
+	// A null version marks a revoked skill. Expiry is not a revocation, so the model
+	// can load the skill again on a later turn.
+	it('does not mark an expired skill with tracked versions as revoked', async () => {
+		const versionedSource: RuntimeSkillSource = {
+			...turnSource,
+			shouldAppendSkillUpdates: () => true,
+		};
+		const memory = new InMemoryMemory();
+		const routerHash = turnSource.registry.skills.find(({ id }) => id === 'router')?.hash;
+		await memory.skillState.save(
+			{ ...scope, agentName: 'assistant' },
+			{ skillIds: ['router'], versions: { router: routerHash ?? null } },
+		);
+		const active = new ActiveSkills(versionedSource, 'assistant', memory.skillState);
+		const list = threadWithLoads(FIVE_MINUTES + 1, 'router');
+
+		await active.restore(list, scope, freshRun());
+
+		expect(list.activeSkillIds).not.toContain('router');
+		expect(list.activeSkillVersions?.router).not.toBeNull();
+		const stored = await memory.skillState.load({ ...scope, agentName: 'assistant' });
+		expect(stored?.versions?.router).not.toBeNull();
 	});
 
 	// Collapsing the early load rewrites every cached message after it. While the
@@ -130,7 +154,7 @@ describe('skill lifetime', () => {
 	// The skill already rides in the system block, so dropping it would rewrite the warm cache.
 	it('keeps a stored turn-lifetime skill that has no load record on a warm cache', async () => {
 		const memory = new InMemoryMemory();
-		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['router']);
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, { skillIds: ['router'] });
 		const active = new ActiveSkills(turnSource, 'assistant', memory.skillState);
 		const list = threadWithLoads(60_000);
 

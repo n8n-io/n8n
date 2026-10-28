@@ -97,7 +97,8 @@ export class ActiveSkills {
 		);
 		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
-			if (versions[id] === null) continue;
+			// An expired skill keeps its version: expiry is not a revocation.
+			if (versions[id] === null || expired.has(id)) continue;
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
 			if (skill) this.loaded.set(id, skill);
 			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
