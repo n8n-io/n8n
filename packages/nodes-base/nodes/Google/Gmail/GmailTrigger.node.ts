@@ -342,6 +342,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 		if (this.getMode() !== 'manual') {
 			nodeStaticData.lastTimeChecked ??= +now;
+			// Repair saved future cursors before a query or an early return.
+			if (nodeStaticData.lastTimeChecked > +now) {
+				nodeStaticData.lastTimeChecked = +now;
+			}
 		}
 		const startDate = nodeStaticData.lastTimeChecked ?? +now;
 
