@@ -271,14 +271,13 @@ describe('WorkflowApiHelper.waitForExecutionById engine routing', () => {
 	}
 	const v2 = { workflowSettings: { engineType: 'v2' as const } };
 
-	test.each(['manual', 'webhook', 'trigger'])(
-		'rejects a legacy id on a %s execution when the stack routes to engine v2',
-		async (mode) => {
+	for (const mode of ['manual', 'webhook', 'trigger']) {
+		test(`rejects a legacy id on a ${mode} execution when the stack routes to engine v2`, async () => {
 			const { api } = apiReturning({ id: '1783', mode, status: 'success' }, v2);
 
 			await expect(new WorkflowApiHelper(api).waitForExecutionById('1783')).rejects.toThrow(/1783/);
-		},
-	);
+		});
+	}
 
 	// A sub-workflow runs in `integrated` mode, which engine v2 does not route.
 	test('accepts a legacy id on a sub-workflow execution', async () => {
