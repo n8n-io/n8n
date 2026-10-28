@@ -1,0 +1,45 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_127a9acd7ce7b7::t_fb393e2f1daee6 8815-8817
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPermissions.test.ts
+  s_127a9acd7ce7b7::t_49f895c5bb69ed 193-211
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_127a9acd7ce7b7::t_536d3e2c0e6b94 797,801-802,2787-2796,2798-2812,2814,2816-2828,2844-2852,2854-2858,2861-2871,2873-2880,2882,2884-2886,2943-2944,2947-2948
+  s_127a9acd7ce7b7::t_8690d94b8f7128 49,2829-2833,2835-2837
+  s_127a9acd7ce7b7::t_79e7c1ab36c712 21-27,147-148,2765,2797,2813,2815,2843
+  s_127a9acd7ce7b7::t_c2d8ee106c56b0 20
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPermissions.ts
+  s_127a9acd7ce7b7::t_49f895c5bb69ed 7-8,21,52-53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_127a9acd7ce7b7::t_a77caffb960758 87-88,90-91,104-105,108-111,130
+  s_127a9acd7ce7b7::t_793a1ed51d7e78 6865,7114-7116,7120-7239
+  s_127a9acd7ce7b7::t_953d181779cd65 7117-7119
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_127a9acd7ce7b7::t_6fc35593bb2847 368
+  s_127a9acd7ce7b7::t_5b9e61f560cfb4 367
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_127a9acd7ce7b7::t_4c8329d85aff32 21,50-51
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_127a9acd7ce7b7::t_773539e0d5c109 156-158,195-197
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_127a9acd7ce7b7::t_9991e5a4151e3f 246-259
+  s_127a9acd7ce7b7::t_574f436cfee1c9 245
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_127a9acd7ce7b7::t_9991e5a4151e3f 139,141-142
+  s_127a9acd7ce7b7::t_773539e0d5c109 115-116,118,120-121,127-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25b55309f616a9411191357648baf04a2ed74786",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
