@@ -150,7 +150,7 @@ export interface ResumableExecution {
 
 /** What the control plane forwards to the data plane to end a wait. */
 export interface EngineV2ResumeRequest {
-	/** The waiting step that the data plane named in phase one. */
+	/** The waiting step that `locateResumeTarget` named. */
 	stepId: string;
 	/**
 	 * The resume token from the request. The control plane does not read it

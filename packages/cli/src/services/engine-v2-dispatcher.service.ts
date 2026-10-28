@@ -61,12 +61,8 @@ const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
 const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecutionData[][] =>
 	main.map((slot) => slot ?? []);
 
-/**
- * Maps the refusal of phase two. A 409 means that the wait ended after phase
- * one. v1 also answers 409 for a wait that is over. Phase one verified the
- * token, so a 401 means that the step went away with its execution.
- */
 function toResumeRefusal(executionId: string, status: number, reason: string): Error {
+	// `locateResumeTarget` already verified this token, so a 401 means the step is gone.
 	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
 	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
 	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);

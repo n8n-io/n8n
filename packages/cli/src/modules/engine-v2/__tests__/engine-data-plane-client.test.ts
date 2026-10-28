@@ -353,7 +353,7 @@ describe('EngineDataPlaneClient', () => {
 	});
 
 	describe('resume requests', () => {
-		it('posts phase one to the execution and relays the answer', async () => {
+		it("posts `locateResumeTarget` to the execution's resume-target route", async () => {
 			const value = {
 				execution: { id: EXECUTION_ID },
 				target: { stepId: 'step-1', nodeId: 'wait' },
@@ -376,7 +376,7 @@ describe('EngineDataPlaneClient', () => {
 			);
 		});
 
-		it('posts phase two to the step', async () => {
+		it("posts `resolveStep` to the step's resolve route", async () => {
 			respondWith(200, { executionId: EXECUTION_ID, stepId: 'step-1' });
 
 			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).resolves.toEqual({
