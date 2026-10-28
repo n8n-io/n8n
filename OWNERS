@@ -132,7 +132,8 @@ packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/modules/insights/                              @n8n-io/ligo
 
 packages/cli/src/posthog/                              @n8n-io/growth
-packages/cli/src/modules/data-table/                    @n8n-io/knowledge
+packages/modules/data-table/backend/                    @n8n-io/knowledge
+packages/cli/test/integration/data-table/                @n8n-io/knowledge
 packages/cli/src/modules/knowledge/                     @n8n-io/knowledge
 
 packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust

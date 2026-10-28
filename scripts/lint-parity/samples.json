@@ -333,11 +333,6 @@
 		"src/features/shared/editors/plugins/codemirror/completions/__tests__/mock.ts",
 		"src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts"
 	],
-	"packages/modules/data-table/backend": [
-		"src/persistence/data-table-ddl.ts",
-		"src/data-table.service.ts",
-		"src/utils/sql-utils.ts"
-	],
 	"packages/modules/insights/frontend": [
 		"src/__tests__/setup.ts",
 		"src/chartjs.utils.ts",

@@ -41,8 +41,7 @@ vi.mock('@/evaluation.ee/evaluation-concurrency.helper', () => ({
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
 }));
-vi.mock('@n8n/backend-module-data-table', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/backend-module-data-table')>()),
+vi.mock('@n8n/backend-module-data-table', () => ({
 	DataTableService: class DataTableService {},
 }));
 vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
