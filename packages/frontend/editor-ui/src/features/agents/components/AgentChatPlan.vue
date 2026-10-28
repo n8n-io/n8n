@@ -27,34 +27,41 @@ const props = defineProps<{
 	stoppedAt?: string;
 	stopFailed?: boolean;
 }>();
+
 const isStopped = computed(
 	() =>
 		props.stopped ||
 		(tasks.value.some((task) => task.status === 'paused') &&
 			tasks.value.every((task) => ['paused', 'done', 'failed', 'cancelled'].includes(task.status))),
 );
+
 const expanded = defineModel<boolean>('expanded', { default: false });
+
 watch(
 	() => props.plan.planId,
 	() => {
 		expanded.value = false;
 	},
 );
+
 const emit = defineEmits<{ stop: [event: MouseEvent] }>();
 const i18n = useI18n();
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
 const startTime = computed(() => Date.parse(props.plan.startedAt ?? ''));
+
 const tasks = computed(() =>
 	props.plan.document.items.flatMap((item) =>
 		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
 	),
 );
+
 const isFinished = computed(
 	() =>
 		tasks.value.length > 0 &&
 		tasks.value.every((task) => ['done', 'failed', 'cancelled'].includes(task.status)),
 );
+
 const { pause, resume } = useIntervalFn(
 	() => {
 		now.value = Date.now();
@@ -62,6 +69,7 @@ const { pause, resume } = useIntervalFn(
 	TIME.SECOND,
 	{ immediate: false },
 );
+
 watch(
 	() =>
 		Number.isFinite(startTime.value) &&
@@ -77,6 +85,7 @@ watch(
 	},
 	{ immediate: true },
 );
+
 const elapsed = computed(() => {
 	const endTime = isFinished.value
 		? Date.parse(props.plan.finishedAt ?? props.plan.closedAt ?? '') || now.value
@@ -87,13 +96,19 @@ const elapsed = computed(() => {
 				: tasks.value.some((task) => task.status === 'in_progress')
 					? now.value
 					: Date.parse(props.plan.lastActivityAt ?? '') || now.value;
+
 	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
+
 	return formatAgentElapsedTime(endTime - startTime.value);
 });
+
 const label = computed(() => {
 	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+
 	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.stopFailedTitle');
+
 	if (isStopped.value) return i18n.baseText('agents.chat.tasks.stopped');
+
 	return props.plan.closed
 		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
 		: (props.plan.document.presentation?.label ??
@@ -101,11 +116,14 @@ const label = computed(() => {
 					interpolate: { title: props.plan.document.title },
 				}));
 });
+
 type PlanItem = AgentPlanView['document']['items'][number];
 type DisplayStatus = AgentPlanItemStatus;
+
 function displayStatus(item: PlanItem): DisplayStatus {
 	return item.status;
 }
+
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
@@ -115,6 +133,7 @@ const isRunning = computed(
 			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
 			.some((item) => displayStatus(item) === 'in_progress'),
 );
+
 const statusLabels: Record<DisplayStatus, BaseTextKey> = {
 	pending: 'agents.chat.plan.status.pending',
 	in_progress: 'agents.chat.plan.status.inProgress',
@@ -123,6 +142,7 @@ const statusLabels: Record<DisplayStatus, BaseTextKey> = {
 	failed: 'agents.chat.plan.status.failed',
 	cancelled: 'agents.chat.plan.status.canceled',
 };
+
 const statusIcons = {
 	pending: 'circle',
 	in_progress: 'loader',
@@ -131,6 +151,7 @@ const statusIcons = {
 	failed: 'x',
 	cancelled: 'x',
 } as const;
+
 const statusIconColors: Record<DisplayStatus, IconColor> = {
 	pending: 'text-light',
 	in_progress: 'text-light',
@@ -139,6 +160,7 @@ const statusIconColors: Record<DisplayStatus, IconColor> = {
 	failed: 'danger',
 	cancelled: 'text-xlight',
 } as const;
+
 const summary = computed(() => {
 	return i18n.baseText('agents.chat.plan.progress', {
 		adjustToNumber: tasks.value.length,

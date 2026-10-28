@@ -287,6 +287,7 @@ provide(
 );
 
 const planStopActive = computed(() => props.channel === 'chat' && props.backgroundJobsActive);
+
 const completedPlanCalls = computed(() =>
 	messages.value
 		.flatMap((message) => message.toolCalls ?? [])
@@ -298,6 +299,7 @@ const completedPlanCalls = computed(() =>
 		.map((call) => call.toolCallId)
 		.join(','),
 );
+
 const {
 	state: planStop,
 	isStopping: stoppingPlan,
@@ -310,6 +312,7 @@ const {
 	planId: () => currentPlan.value?.planId ?? null,
 	requestStop: requestTaskStop,
 });
+
 const { plan: currentPlan, refresh: refreshPlan } = useAgentPlan({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
@@ -317,15 +320,19 @@ const { plan: currentPlan, refresh: refreshPlan } = useAgentPlan({
 	active: () => true,
 	channel: () => props.channel,
 });
+
 watch(completedPlanCalls, () => {
 	void refreshPlan();
 });
+
 const currentPlanStop = computed(() =>
 	planStopActive.value && planStop.value?.planId === (currentPlan.value?.planId ?? null)
 		? planStop.value
 		: null,
 );
+
 const planExpanded = ref(false);
+
 watch(
 	[
 		() => props.projectId,
@@ -354,6 +361,7 @@ const canStopPlan = computed(
 							)),
 				))),
 );
+
 const showPlanStop = computed(
 	() => planStopActive.value && (canStopPlan.value || tasksStopping.value),
 );
@@ -566,6 +574,7 @@ const backgroundStoppingIds = computed(
 );
 
 const stopFailed = ref(false);
+
 const tasksStopping = computed(
 	() =>
 		isStopping.value ||
@@ -573,6 +582,7 @@ const tasksStopping = computed(
 		currentPlanStop.value?.status === 'stopping' ||
 		backgroundStoppingIds.value.size > 0,
 );
+
 const canRetryStop = computed(
 	() =>
 		stopFailed.value ||
@@ -582,11 +592,13 @@ const canRetryStop = computed(
 				(job) => job.kind === 'workflow' && job.status === 'running' && job.pauseRequested,
 			)),
 );
+
 const stopDisabled = computed(() =>
 	props.channel === 'n8n-chat'
 		? isStopping.value
 		: isStopping.value || stoppingPlan.value || (tasksStopping.value && !canRetryStop.value),
 );
+
 const backgroundStopLabel = computed(() =>
 	locale.baseText(
 		props.channel === 'n8n-chat'
@@ -601,14 +613,19 @@ const backgroundStopLabel = computed(() =>
 
 const tasksStopped = computed(() => {
 	if (!planStopActive.value) return false;
+
 	if (tasksStopping.value || canStopBackgroundJobs.value) return false;
+
 	if (backgroundJobs.value.some((job) => job.status === 'paused')) return true;
+
 	// A job that finishes after Continue supersedes an earlier workflow stop.
 	const latest = [...backgroundJobs.value].sort((a, b) =>
 		(b.settledAt ?? '').localeCompare(a.settledAt ?? ''),
 	)[0];
+
 	return Boolean(latest?.pauseRequested);
 });
+
 const planStopped = computed(() => {
 	const tasks =
 		currentPlan.value?.document.items.flatMap((item) =>
@@ -617,8 +634,10 @@ const planStopped = computed(() => {
 	const unfinished = tasks.filter((item) =>
 		['pending', 'in_progress', 'paused'].includes(item.status),
 	);
+
 	return unfinished.length > 0 && unfinished.every((item) => item.status === 'paused');
 });
+
 watch(
 	[
 		() => props.projectId,
@@ -634,11 +653,14 @@ watch(
 let taskStopFocus:
 	| { button: EventTarget | null; threadId?: string; projectId: string; agentId: string }
 	| undefined;
+
 async function restoreTaskStopFocus() {
 	if (!taskStopFocus) return;
+
 	const target = taskStopFocus;
 	taskStopFocus = undefined;
 	await nextTick();
+
 	if (
 		disposed ||
 		!props.visible ||
@@ -649,6 +671,7 @@ async function restoreTaskStopFocus() {
 		document.activeElement !== document.body
 	)
 		return;
+
 	if (
 		target.button instanceof HTMLElement &&
 		target.button.isConnected &&
@@ -657,18 +680,23 @@ async function restoreTaskStopFocus() {
 		target.button.focus({ preventScroll: true });
 	else focusInput({ preventScroll: true });
 }
+
 watch(stopDisabled, () => {
 	void restoreTaskStopFocus();
 });
+
 async function stopBackgroundJobs(event: MouseEvent) {
 	const stopCurrentPlan = planStopActive.value;
+
 	if (
 		stopDisabled.value ||
 		!(canRetryStop.value || (stopCurrentPlan ? canStopPlan.value : canStopBackgroundJobs.value))
 	)
 		return;
+
 	stopFailed.value = false;
 	const threadId = props.continueSessionId;
+
 	if (event.currentTarget === document.activeElement) {
 		taskStopFocus = {
 			button: event.currentTarget,
@@ -677,15 +705,19 @@ async function stopBackgroundJobs(event: MouseEvent) {
 			agentId: props.agentId,
 		};
 	}
+
 	try {
 		if (stopCurrentPlan) await stopPlan();
 		else await stopAll();
 	} catch (error) {
 		if (disposed || props.continueSessionId !== threadId) return;
+
 		stopFailed.value = true;
+
 		if (!planStopActive.value)
 			toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
 	}
+
 	await restoreTaskStopFocus();
 }
 
@@ -697,22 +729,28 @@ const backgroundInProgress = computed(
 );
 const backgroundTitle = computed(() => {
 	if (tasksStopped.value) return locale.baseText('agents.chat.tasks.stopped');
+
 	const stoppingCount = backgroundStoppingIds.value.size;
+
 	if (stoppingCount > 0) {
 		return locale.baseText('agents.chat.backgroundTasks.stoppingCount', {
 			adjustToNumber: stoppingCount,
 			interpolate: { count: stoppingCount },
 		});
 	}
+
 	if (backgroundJobs.value.some((job) => job.status === 'suspended')) {
 		return locale.baseText('agents.chat.backgroundTasks.status.suspended');
 	}
+
 	const count = backgroundRunningCount.value;
+
 	if (count === 0) {
 		return locale.baseText('agents.chat.backgroundTasks.finished', {
 			adjustToNumber: backgroundJobs.value.length,
 		});
 	}
+
 	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
 		adjustToNumber: count,
 		interpolate: { count },
@@ -892,16 +930,24 @@ const hideStoppedStack = computed(
 			(currentPlanStop.value && currentPlanStop.value.status !== 'resumed') ||
 			(currentPlan.value ? planStopped.value : tasksStopped.value)),
 );
+
 const planFinished = computed(() => currentPlan.value && isAgentPlanFinished(currentPlan.value));
+
 const showPlanCard = computed(
 	() => Boolean(currentPlan.value) && !hideStoppedStack.value && !planFinished.value,
 );
+
 const stopNotice = computed(() => {
 	if (!planStopActive.value) return null;
+
 	if (stoppingPlan.value) return 'stopping';
+
 	if (stopFailed.value || currentPlanStop.value?.status === 'failed') return 'failed';
+
 	if (currentPlanStop.value?.status === 'resumed') return null;
+
 	if (currentPlanStop.value?.status === 'stopping') return 'stopping';
+
 	const report = currentPlanStop.value?.report;
 	const savedReply = messages.value.some(
 		(message) =>
@@ -909,8 +955,11 @@ const stopNotice = computed(() => {
 			message.stopReport &&
 			(message.content.trim() || message.status !== 'streaming'),
 	);
+
 	if (savedReply) return null;
+
 	if (currentPlanStop.value?.reportFailed) return 'reportFailed';
+
 	if (
 		report &&
 		['queued', 'running'].includes(report.status) &&
@@ -922,8 +971,10 @@ const stopNotice = computed(() => {
 		)
 	)
 		return 'preparing';
+
 	return null;
 });
+
 watch(hideStoppedStack, () => {
 	void restoreTaskStopFocus();
 });

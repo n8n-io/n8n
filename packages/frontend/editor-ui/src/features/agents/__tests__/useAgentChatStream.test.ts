@@ -3097,9 +3097,11 @@ describe('useAgentChatStream — done executionId', () => {
 			const hook = buildHook('thread-1');
 			await hook.sendMessage('Stop');
 			await flushPromises();
+
 			expect(hook.messages.value.filter((message) => message.stopReport)).toMatchObject([
 				{ role: 'assistant', content, executionId: 'report' },
 			]);
+
 			getChatMessagesMock.mockResolvedValue({
 				messages: [
 					{
@@ -3117,6 +3119,7 @@ describe('useAgentChatStream — done executionId', () => {
 			});
 			const reopened = buildHook('thread-1');
 			await reopened.loadHistory();
+
 			expect(reopened.messages.value).toMatchObject([
 				{ role: 'assistant', stopReport: true, content, executionId: 'report' },
 				{ role: 'user', content: 'Continue' },
@@ -4188,12 +4191,14 @@ describe('useAgentChatStream — execution recovery', () => {
 		);
 		const hook = buildHook('thread-1');
 		await hook.requestTaskStop(null);
+
 		expect(fetch).toHaveBeenCalledWith(
 			expect.stringContaining('/thread-1/task-cancellation/stream'),
 			expect.objectContaining({ body: JSON.stringify({ planId: null }) }),
 		);
 		expect(hook.messages.value).toEqual([]);
 		expect(hook.isStreaming.value).toBe(false);
+
 		hook.detachStream();
 	});
 
@@ -4202,6 +4207,7 @@ describe('useAgentChatStream — execution recovery', () => {
 			makeSseResponse([{ type: 'error', message: 'Stop failed' }], false),
 		);
 		const hook = buildHook('thread-1');
+
 		await expect(hook.requestTaskStop(null)).rejects.toThrow('Could not confirm');
 		expect(hook.messages.value).toEqual([]);
 	});

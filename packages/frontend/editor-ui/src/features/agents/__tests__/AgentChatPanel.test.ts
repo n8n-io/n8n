@@ -84,14 +84,17 @@ const refreshPlanMock = vi.fn();
 vi.mock('../composables/useAgentPlan', () => ({
 	useAgentPlan: () => ({ plan: livePlan, refresh: refreshPlanMock }),
 }));
+
 // Supply the server view and the tool message as separate inputs.
 function publishPlan(
 	plan: ReturnType<typeof planView> | null,
 	overrides: Parameters<typeof planMessage>[1] = {},
 ) {
 	if (overrides.state !== 'running') livePlan.value = plan;
+
 	return planMessage(plan, overrides);
 }
+
 const planStopState = ref<import('@n8n/api-types').AgentTaskCancellationState | null>(null);
 vi.mock('../composables/useAgentTaskCancellation', () => ({
 	useAgentTaskCancellation: () => ({
@@ -164,6 +167,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			'agents.chat.backgroundTasks.status.failed': 'Failed',
 			'agents.chat.backgroundTasks.status.cancelled': 'Canceled',
 		};
+
 		return translations[key] ?? key;
 	};
 	const i18n = { baseText };
@@ -296,6 +300,7 @@ vi.mock('../components/AgentChatMessageList.vue', async () => {
 	const { AGENTS_CHAT_INTERACTION_EXTENSIONS } = await import(
 		'@/features/ai/shared/agentsChat/interactionRegistry'
 	);
+
 	return {
 		default: {
 			name: 'AgentChatMessageList',
@@ -1191,6 +1196,7 @@ describe('AgentChatPanel', () => {
 			{ backgroundJobsActive: true, continueSessionId: 't1' },
 			document.body,
 		);
+
 		try {
 			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
 			const button = wrapper.get<HTMLButtonElement>('[data-testid="agent-chat-plan-stop"]');
@@ -1201,7 +1207,9 @@ describe('AgentChatPanel', () => {
 			});
 			await button.trigger('click');
 			await flushPromises();
+
 			expect(document.activeElement).toBe(wrapper.get('textarea').element);
+
 			backgroundJobsMock.value = [];
 			planStopState.value = {
 				planId: plan.planId,
@@ -1212,6 +1220,7 @@ describe('AgentChatPanel', () => {
 			};
 			isStoppingMock.value = false;
 			await flushPromises();
+
 			expect(document.activeElement).toBe(wrapper.get('textarea').element);
 		} finally {
 			wrapper.unmount();
@@ -1612,20 +1621,25 @@ describe('AgentChatPanel', () => {
 			status: 'running',
 			startedAt: '2026-10-01T10:00:00Z',
 		};
+
 		it('keeps Stop available between jobs and hides a completed plan', async () => {
 			const plan = planView();
 			messagesMock.value = [publishPlan(plan)];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
+
 			for (const jobs of [[job], [{ ...job, status: 'completed' as const }], []]) {
 				backgroundJobsMock.value = jobs;
 				await nextTick();
+
 				expect(
 					wrapper.get('[data-testid="agent-chat-plan-stop"]').attributes('disabled'),
 				).toBeUndefined();
 			}
+
 			messagesMock.value = [publishPlan({ ...plan, closed: true })];
 			await nextTick();
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
 		});
 
@@ -1643,10 +1657,14 @@ describe('AgentChatPanel', () => {
 				plan: planSnapshot(plan),
 			};
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			backgroundJobsMock.value = [{ ...job, status: 'suspended', pauseRequested: true }];
 			await nextTick();
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			messagesMock.value.push(
 				publishPlan({
 					...plan,
@@ -1660,10 +1678,12 @@ describe('AgentChatPanel', () => {
 			await nextTick();
 			const card = wrapper.getComponent(AgentChatPlan);
 			await card.get('button').trigger('click');
+
 			expect(card.props('stopped')).toBe(false);
 			expect(card.findAll('[data-status="paused"]')).toHaveLength(3);
 			expect(card.findAll('[data-status="in_progress"]')).toHaveLength(1);
 			expect(card.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(true);
+
 			await wrapper.setProps({ channel: 'n8n-chat' });
 			wrapper.unmount();
 		});
@@ -1679,12 +1699,16 @@ describe('AgentChatPanel', () => {
 				plan: null,
 			};
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
 			expect(wrapper.get('[role="status"]').text()).toContain('agents.chat.tasks.inline.stopping');
+
 			planStopState.value.status = 'stopped';
 			planStopState.value.report = { status: 'running', executionId: 'report' };
 			await nextTick();
+
 			expect(wrapper.get('[role="status"]').text()).toContain('agents.chat.tasks.inline.preparing');
+
 			messagesMock.value.push({
 				id: 'report-message',
 				role: 'assistant',
@@ -1693,12 +1717,15 @@ describe('AgentChatPanel', () => {
 				executionId: 'report',
 			});
 			await nextTick();
+
 			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			planStopState.value.status = 'resumed';
 			messagesMock.value.push({ id: 'next', role: 'user', content: 'Continue reading.' });
 			await nextTick();
 			const list = wrapper.getComponent({ name: 'AgentChatMessageList' });
+
 			expect(list.props('messages')).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
@@ -1708,6 +1735,7 @@ describe('AgentChatPanel', () => {
 				]),
 			);
 			expect(list.props('taskTraceRoute')).toMatchObject({ params: { threadId: 't1' } });
+
 			wrapper.unmount();
 		});
 
@@ -1722,13 +1750,17 @@ describe('AgentChatPanel', () => {
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			await wrapper.getComponent(AgentChatPlan).get('button').trigger('click');
 			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			const status = wrapper
 				.getComponent({ name: 'AgentChatMessageList' })
 				.get('[data-testid="agent-task-stop-status"]');
+
 			expect(status.attributes('aria-live')).toBe('polite');
 			expect(status.text()).toContain('agents.chat.tasks.inline.wait');
 			expect(stopGeneratingMock).not.toHaveBeenCalled();
+
 			pending.resolve();
 			await flushPromises();
 		});
@@ -1741,13 +1773,17 @@ describe('AgentChatPanel', () => {
 				];
 				backgroundJobsMock.value = [{ ...job, status, pauseRequested: true }];
 				const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 				expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 				backgroundJobsMock.value.push({ ...job, id: 'active-sibling' });
 				livePlan.value = planView({
 					document: { title: 'Plan', items: [planTask(1, status), planTask(2, 'in_progress')] },
 				});
 				await nextTick();
+
 				expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
+
 				wrapper.unmount();
 			},
 		);
@@ -1765,11 +1801,13 @@ describe('AgentChatPanel', () => {
 				report: { status: 'failed', executionId: 'report' },
 			};
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
 			expect(wrapper.get('[role="status"]').text()).toContain(
 				'agents.chat.tasks.inline.reportFailed',
 			);
 			expect(wrapper.get('[role="status"]').text()).toContain('agents.chat.plan.viewTrace');
+
 			const failedReport: ChatMessage = {
 				id: 'failed-report',
 				role: 'assistant',
@@ -1786,6 +1824,7 @@ describe('AgentChatPanel', () => {
 			await nextTick();
 			const card = wrapper.getComponent(AgentChatPlan);
 			await card.get('button').trigger('click');
+
 			expect(card.text()).not.toContain('agents.chat.tasks.reportFailed');
 			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
 			expect(
@@ -1807,6 +1846,7 @@ describe('AgentChatPanel', () => {
 			];
 			backgroundJobsMock.value = [job, { ...job, id: 'finished', status: 'failed' }];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
 		});
@@ -1817,12 +1857,18 @@ describe('AgentChatPanel', () => {
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			const card = wrapper.getComponent(AgentChatPlan);
 			await card.get('button').trigger('click');
+
 			expect(card.props('stopped')).toBe(false);
+
 			const stop = card.get('[data-testid="agent-chat-plan-stop"]');
+
 			expect(stop.attributes('disabled')).toBeUndefined();
 			expect(stop.text()).toBe('Retry stopping');
+
 			await stop.trigger('click');
+
 			expect(stopAllMock).toHaveBeenCalledOnce();
+
 			wrapper.unmount();
 		});
 
@@ -1840,7 +1886,9 @@ describe('AgentChatPanel', () => {
 				},
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
+
 			wrapper.unmount();
 		});
 
@@ -1850,24 +1898,34 @@ describe('AgentChatPanel', () => {
 				{ ...job, status: 'paused', pauseRequested: true, settledAt: '2026-10-01T10:05:00Z' },
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
+
 			messagesMock.value = [publishPlan(planView({ closed: true }))];
 			await nextTick();
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			wrapper.unmount();
 		});
 
 		it('keeps plan stopping available only in Preview', async () => {
 			messagesMock.value = [publishPlan(planView())];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
+
 			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
 			await wrapper.setProps({ channel: 'n8n-chat' });
+
 			expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(false);
+
 			isStoppingMock.value = true;
 			await nextTick();
+
 			expect(wrapper.getComponent(AgentChatPlan).props('showStop')).toBe(false);
+
 			wrapper.unmount();
 		});
 
@@ -1894,17 +1952,23 @@ describe('AgentChatPanel', () => {
 				},
 			});
 			await nextTick();
+
 			expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(true);
 			expect(
 				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
 			).toBe('true');
+
 			await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+
 			expect(stopAllMock).toHaveBeenCalledOnce();
+
 			messagesMock.value.pop();
 			await nextTick();
+
 			expect(
 				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
 			).toBe('true');
+
 			wrapper.unmount();
 		});
 
@@ -1913,10 +1977,13 @@ describe('AgentChatPanel', () => {
 				document: { title: 'Plan', items: [planTask(1, 'in_progress')] },
 			});
 			const wrapper = mountPanel({ continueSessionId: 'thread', backgroundJobsActive: true });
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(true);
+
 			livePlan.value = planView({ document: { title: 'Plan', items: [planTask(1, 'done')] } });
 			backgroundJobsMock.value = [{ ...job, status: 'completed' }];
 			await nextTick();
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
 			expect(messagesMock.value).toHaveLength(0);
 			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
@@ -1925,15 +1992,19 @@ describe('AgentChatPanel', () => {
 		it('does not restore a deleted plan from historical tool output', async () => {
 			messagesMock.value = [planMessage(planView())];
 			const wrapper = mountPanel({ continueSessionId: 'old-thread' });
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			livePlan.value = planView({ planId: '22222222-2222-4222-8222-222222222222' });
 			await nextTick();
+
 			expect(wrapper.getComponent(AgentChatPlan).props('plan').planId).toBe(livePlan.value.planId);
 		});
 
 		it('renders live plan results above the input without changing submission', async () => {
 			const wrapper = mountPanel();
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			messagesMock.value = [publishPlan(planView(), { state: 'running', output: undefined })];
 			await nextTick();
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
@@ -1991,19 +2062,28 @@ describe('AgentChatPanel', () => {
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			const card = wrapper.getComponent(AgentChatPlan);
+
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+
 			await card.get('button').trigger('click');
+
 			expect(card.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(true);
+
 			messagesMock.value.push(publishPlan(planView({ closed: true }), { tool: 'update_plan' }));
 			await nextTick();
+
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+
 			messagesMock.value.push(publishPlan(null, { tool: 'read_plan' }));
 			await nextTick();
+
 			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
 			const job = wrapper.get('[data-testid="agent-background-jobs"]');
 			await job.get('button').trigger('click');
 			expect(job.text()).toContain('Separate work');
 			expect(job.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(true);
+
 			wrapper.unmount();
 		});
 
@@ -2020,8 +2100,10 @@ describe('AgentChatPanel', () => {
 			async (continueSessionId) => {
 				messagesMock.value = [publishPlan(planView())];
 				const wrapper = mountPanel({ continueSessionId });
+
 				try {
 					await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+
 					expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(
 						Boolean(continueSessionId),
 					);
@@ -2077,12 +2159,14 @@ describe('AgentChatPanel', () => {
 		it('shows new running jobs', () => {
 			backgroundJobsMock.value = [job];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
 			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).not.toContain(
 				'Stopped',
 			);
 			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).toContain(
 				'Running',
 			);
+
 			wrapper.unmount();
 		});
 
@@ -2094,6 +2178,7 @@ describe('AgentChatPanel', () => {
 				{ backgroundJobsActive: true, continueSessionId: 't1' },
 				document.body,
 			);
+
 			try {
 				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
@@ -2119,12 +2204,17 @@ describe('AgentChatPanel', () => {
 			stopAllMock.mockRejectedValueOnce(new Error('Request failed'));
 			await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
 			await flushPromises();
+
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+
 			const notice = wrapper.get('[data-testid="agent-task-stop-status"]');
+
 			expect(notice.text()).toContain('agents.chat.tasks.inline.failed');
 			expect(notice.get('button').text()).toBe('Retry stopping');
 			expect(showErrorMock).not.toHaveBeenCalled();
+
 			await notice.get('button').trigger('click');
+
 			expect(stopAllMock).toHaveBeenCalledTimes(2);
 		});
 
@@ -2468,18 +2558,26 @@ describe('AgentChatPanel', () => {
 					{ ...job, status: 'completed', settledAt: '2026-09-09T10:00:31Z' },
 					{ ...job, id: 'job-2', status: 'failed', settledAt: '2026-09-09T10:00:32Z' },
 				];
+
 				if (hasPlan)
 					livePlan.value = planView({
 						document: { title: 'Research', items: [planTask(1, 'done'), planTask(2, 'failed')] },
 					});
+
 				await flushPromises();
+
 				expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+
 				await vi.advanceTimersByTimeAsync(10_000);
+
 				expect(vi.getTimerCount()).toBe(0);
+
 				backgroundJobsMock.value = [];
 				await flushPromises();
+
 				expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+
 				wrapper.unmount();
 			},
 		);
@@ -2526,6 +2624,7 @@ describe('AgentChatPanel', () => {
 			'keeps n8n Chat background controls without a trace link, plan=%s',
 			async (hasPlan) => {
 				if (hasPlan) messagesMock.value = [publishPlan(planView())];
+
 				backgroundJobsMock.value = [job];
 				const wrapper = mountPanel({
 					backgroundJobsActive: true,
@@ -2534,12 +2633,16 @@ describe('AgentChatPanel', () => {
 				});
 				const panel = wrapper.get('[data-testid="agent-background-jobs"]');
 				await panel.get('button').trigger('click');
+
 				// `/sessions/<threadId>` is the builder's session view, which needs
 				// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
 				expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+
 				await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
+
 				expect(stopAllMock).toHaveBeenCalledOnce();
 				expect(stopPlanMock).not.toHaveBeenCalled();
+
 				wrapper.unmount();
 			},
 		);

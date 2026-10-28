@@ -174,9 +174,12 @@ describe('buildAgentPlanDisplayGroups', () => {
 				},
 			});
 			const messages = [planMessage(initial), call];
+
 			expect(visibleCalls(messages)).toEqual([initialCallId]);
+
 			call.toolCalls![0].state = 'done';
 			call.toolCalls![0].output = { error: 'invalid_plan' };
+
 			expect(visibleCalls(messages)).toEqual([initialCallId, 'update']);
 		},
 	);
@@ -184,6 +187,7 @@ describe('buildAgentPlanDisplayGroups', () => {
 	it('hides partial presentation and child progress updates', () => {
 		const group = { ...planTask(10), kind: 'group' as const, tasks: initial.document.items };
 		const previous = planMessage({ ...initial, document: { ...initial.document, items: [group] } });
+
 		for (const document of [
 			{ presentation: { detail: 'Reviewed research' } },
 			{ presentation: null },

@@ -74,6 +74,7 @@ export function isAgentPlanFinished(plan: AgentPlanView): boolean {
 	const tasks = plan.document.items.flatMap((item) =>
 		item.kind === 'group' && item.tasks.length ? item.tasks : [item],
 	);
+
 	return (
 		plan.closed ||
 		(tasks.length > 0 &&
@@ -217,6 +218,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 	}
 
 	const groups = buildDisplayGroups(messages);
+
 	return groups.flatMap((group): DisplayGroup[] => {
 		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return [group];
 		if (group.kind === DISPLAY_GROUP_KIND.MESSAGE) {

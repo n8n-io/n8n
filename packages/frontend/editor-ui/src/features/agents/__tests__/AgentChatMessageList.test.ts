@@ -168,11 +168,13 @@ describe('AgentChatMessageList', () => {
 				{ ...stopped, id: 'stop-2', executionId: 'report-2', content: 'I stopped again.' },
 			],
 		});
+
 		expect(wrapper.findAll('[data-testid="agent-chat-stop-reply"]')).toHaveLength(2);
 		expect(wrapper.findAll('a[href="/trace"]')).toHaveLength(2);
 		expect(wrapper.text()).toMatch(
 			/I stopped reading[\s\S]*Continue reading[\s\S]*I stopped again/,
 		);
+
 		wrapper.unmount();
 	});
 
@@ -183,11 +185,13 @@ describe('AgentChatMessageList', () => {
 				messagingState: 'idle',
 			},
 		});
+
 		expect(wrapper.get('[data-testid="agent-chat-stop-reply"]').text()).toContain(
 			'agents.chat.tasks.inline.reportFailed',
 		);
 		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
 		expect(wrapper.find('a').exists()).toBe(false);
+
 		wrapper.unmount();
 	});
 
@@ -204,6 +208,7 @@ describe('AgentChatMessageList', () => {
 			true,
 		);
 		expect(wrapper.text()).toMatch(/Research is in progress\.[\s\S]*Stopping all tasks…/);
+
 		wrapper.unmount();
 	});
 
@@ -225,12 +230,14 @@ describe('AgentChatMessageList', () => {
 			);
 			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
 				onFrame(0);
+
 				return 0;
 			});
 			const wrapper = mount(AgentChatMessageList, {
 				props: { messages: [], messagingState: 'idle' },
 				slots: { status: '<div role="status">Stopping all tasks…</div>' },
 			});
+
 			try {
 				await flushPromises();
 				const scroller = wrapper.element as HTMLElement;
@@ -240,7 +247,9 @@ describe('AgentChatMessageList', () => {
 				await wrapper.trigger('scroll');
 
 				Object.defineProperty(scroller, 'scrollHeight', { value: 600 });
+
 				expect(resizeStatus).toBeDefined();
+
 				resizeStatus?.();
 				await flushPromises();
 
@@ -499,11 +508,15 @@ describe('AgentChatMessageList', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: { messages: [message], messagingState: 'idle' },
 		});
+
 		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="markdown-chunk"]').exists()).toBe(false);
+
 		await wrapper.setProps({ messages: [{ ...message, content: 'The plan is stopped.' }] });
+
 		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
 		expect(wrapper.get('[data-testid="markdown-chunk"]').text()).toBe('The plan is stopped.');
+
 		wrapper.unmount();
 	});
 

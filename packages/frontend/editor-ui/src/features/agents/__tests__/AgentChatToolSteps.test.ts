@@ -181,6 +181,7 @@ describe('AgentChatToolSteps', () => {
 			[{ tool: 'update_plan', toolCallId: 'tc-canceled', ...cancellation }],
 			{ canFixWithAssistant: true, executionId: 'execution-1' },
 		);
+
 		expect(wrapper.get('[data-testid="tool-step-summary"]').text()).toBe('Canceled');
 		expect(wrapper.find('[data-testid="tool-step-warning"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
@@ -195,6 +196,7 @@ describe('AgentChatToolSteps', () => {
 			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
 			{ canFixWithAssistant: true, executionId: 'execution-1' },
 		);
+
 		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
 		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
 	});

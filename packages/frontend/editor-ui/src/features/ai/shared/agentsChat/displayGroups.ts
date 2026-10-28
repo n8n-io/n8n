@@ -144,6 +144,7 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
  */
 function canAppendToToolRun(last: ToolRunGroup, message: AgentsChatMessage): boolean {
 	if (last.finalMessage || message.stopReport) return false;
+
 	if (
 		last.executionId !== undefined &&
 		message.executionId !== undefined &&
@@ -235,6 +236,7 @@ function appendInteractivePayloads(
 
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
+
 	for (const message of messages) {
 		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
@@ -245,6 +247,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					signal: message.backgroundJobSignal,
 				});
 			}
+
 			if (
 				!message.content &&
 				!message.toolCalls?.length &&
@@ -255,6 +258,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			)
 				continue;
 		}
+
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
 			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
@@ -316,6 +320,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? getMessageThinkingSegments(message) : [],
 		});
 	}
+
 	moveThinkingToRunTail(groups);
 	return groups;
 }

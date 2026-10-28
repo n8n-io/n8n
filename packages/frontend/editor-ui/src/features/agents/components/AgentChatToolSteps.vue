@@ -59,9 +59,12 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 
 	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
+
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
+
 		if (isCanceledToolCall(toolCall)) continue;
+
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
@@ -123,6 +126,7 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 
 function toolStepMetadata(tc: ToolCall): string[] {
 	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -201,6 +205,7 @@ function isCanceledToolCall(tc: ToolCall): boolean {
 
 function toolStepError(tc: ToolCall): string | undefined {
 	if (isCanceledToolCall(tc)) return undefined;
+
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
 	const refusal = toolStepRefusal(tc);

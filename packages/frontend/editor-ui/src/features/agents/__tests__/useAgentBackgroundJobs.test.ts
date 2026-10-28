@@ -189,10 +189,13 @@ describe('useAgentBackgroundJobs', () => {
 			];
 			const { jobs } = create(channel);
 			await flushPromises();
+
 			expect(jobs.value).toEqual(channel === 'chat' ? [stopped] : []);
+
 			vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [{ ...job, id: 'new-job' }] });
 			onEvent(update);
 			await flushPromises();
+
 			expect(jobs.value).toEqual([{ ...job, id: 'new-job' }]);
 		},
 	);

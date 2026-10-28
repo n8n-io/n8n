@@ -222,9 +222,12 @@ function hasBubbleContent(message: ChatMessage): boolean {
  */
 const visibleMessages = computed(() => {
 	if (!props.messages.some((message) => message.hostEvents?.length)) return props.messages;
+
 	const extensions = interactionExtensions?.value ?? [];
+
 	return props.messages.flatMap((message) => {
 		if (!message.hostEvents?.length) return [message];
+
 		const live =
 			message.status === CHAT_MESSAGE_STATUS.STREAMING ||
 			message.status === CHAT_MESSAGE_STATUS.AWAITING_USER;
@@ -236,13 +239,16 @@ const visibleMessages = computed(() => {
 						return renderer.placement !== HOST_EVENT_PLACEMENT.TRANSIENT || live;
 					})
 				: [];
+
 		if (hostEvents.length === message.hostEvents.length) return [message];
+
 		const keep =
 			hostEvents.length > 0 ||
 			hasBubbleContent(message) ||
 			!!message.backgroundJobSignal ||
 			!!message.stopReport ||
 			message.status === CHAT_MESSAGE_STATUS.STREAMING;
+
 		return keep ? [{ ...message, hostEvents: hostEvents.length ? hostEvents : undefined }] : [];
 	});
 });
@@ -641,6 +647,7 @@ watch(
 );
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
+
 useResizeObserver(statusRef, autoScrollIfSticky);
 
 // Content within the last message grew (streaming text, tool calls, thinking,

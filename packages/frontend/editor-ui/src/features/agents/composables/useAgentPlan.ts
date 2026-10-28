@@ -25,10 +25,14 @@ export function useAgentPlan(target: {
 	]);
 	let request = 0;
 	let disposed = false;
+
 	async function refresh() {
 		const threadId = target.threadId();
+
 		if (!threadId || !target.active() || disposed || visibility.value !== 'visible') return;
+
 		const read = ++request;
+
 		try {
 			const result = await getAgentPlan(
 				root.restApiContext,
@@ -37,15 +41,19 @@ export function useAgentPlan(target: {
 				threadId,
 				target.channel?.(),
 			);
+
 			// Job transitions can change status without changing the plan revision.
 			if (disposed || read !== request) return;
+
 			if (result && plan.value?.planId === result.planId && result.revision < plan.value.revision)
 				return;
+
 			plan.value = result;
 		} catch {
 			// Keep the last confirmed view until the next push or reconnect.
 		}
 	}
+
 	const unsubscribe = push.addEventListener((event) => {
 		if (
 			(event.type === 'agentBackgroundTasksUpdated' || event.type === 'agentExecutionUpdated') &&
@@ -55,6 +63,7 @@ export function useAgentPlan(target: {
 		)
 			void refresh();
 	});
+
 	watch(
 		identity,
 		() => {
@@ -64,13 +73,16 @@ export function useAgentPlan(target: {
 		},
 		{ immediate: true, flush: 'sync' },
 	);
+
 	watch([visibility, () => push.isConnected], () => {
 		void refresh();
 	});
+
 	onScopeDispose(() => {
 		disposed = true;
 		request++;
 		unsubscribe();
 	});
+
 	return { plan, refresh };
 }

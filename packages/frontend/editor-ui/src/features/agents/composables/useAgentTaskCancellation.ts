@@ -27,16 +27,21 @@ export function useAgentTaskCancellation(target: {
 
 	function applyState(result: AgentTaskCancellationState | null) {
 		const previous = state.value;
+
 		if (previous && result?.planId === previous.planId) {
 			if (result.requestedAt < previous.requestedAt) return;
+
 			if (result.plan && previous.plan && result.plan.revision < previous.plan.revision) return;
 		}
+
 		state.value = result;
+
 		if (result) awaitingState.value = false;
 	}
 
 	async function refresh(afterStop = false) {
 		const threadId = target.threadId();
+
 		if (
 			!threadId ||
 			!target.active() ||
@@ -45,8 +50,10 @@ export function useAgentTaskCancellation(target: {
 			(sending.value && !afterStop)
 		)
 			return;
+
 		const current = revision;
 		const read = ++readRevision;
+
 		try {
 			const result = await getAgentTaskCancellation(
 				root.restApiContext,
@@ -54,6 +61,7 @@ export function useAgentTaskCancellation(target: {
 				target.agentId(),
 				threadId,
 			);
+
 			if (!disposed && current === revision && read === readRevision && result !== undefined)
 				applyState(result);
 		} catch {
@@ -63,13 +71,18 @@ export function useAgentTaskCancellation(target: {
 
 	async function stopAll() {
 		const threadId = target.threadId();
+
 		if (!threadId || isStopping.value) return;
+
 		sending.value = true;
 		const current = ++revision;
+
 		try {
 			let result: AgentTaskCancellationState | undefined;
+
 			if (target.requestStop) {
 				await target.requestStop(target.planId());
+
 				if (!disposed && current === revision) awaitingState.value = true;
 			} else {
 				result = await cancelAgentTasks(
@@ -82,10 +95,12 @@ export function useAgentTaskCancellation(target: {
 					},
 				);
 			}
+
 			if (!disposed && current === revision && result !== undefined) applyState(result);
 		} finally {
 			if (!disposed && current === revision) {
 				await refresh(true);
+
 				if (!disposed && current === revision) sending.value = false;
 			}
 		}
@@ -100,6 +115,7 @@ export function useAgentTaskCancellation(target: {
 		)
 			void refresh();
 	});
+
 	watch(
 		[target.projectId, target.agentId, target.threadId],
 		() => {
@@ -111,13 +127,16 @@ export function useAgentTaskCancellation(target: {
 		},
 		{ immediate: true, flush: 'sync' },
 	);
+
 	watch([target.active, visibility, () => push.isConnected], () => {
 		void refresh();
 	});
+
 	onScopeDispose(() => {
 		disposed = true;
 		revision++;
 		unsubscribe();
 	});
+
 	return { state, isStopping, stopAll, refresh };
 }

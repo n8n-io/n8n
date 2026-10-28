@@ -434,6 +434,7 @@ export function convertDbMessages(
 			result.push(createStoppedMessage(msg.executionId));
 		}
 	}
+
 	return result;
 }
 

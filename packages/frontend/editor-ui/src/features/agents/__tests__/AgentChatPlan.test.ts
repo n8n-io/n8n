@@ -11,8 +11,10 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
 			if (key === 'agents.chat.plan.title') return `Plan: ${options?.interpolate?.title}`;
+
 			if (key === 'agents.chat.plan.progress')
 				return `${options?.interpolate?.done} of ${options?.interpolate?.total} tasks done`;
+
 			return key;
 		},
 	}),
@@ -32,9 +34,11 @@ describe('AgentChatPlan task continuation', () => {
 				}),
 			},
 		});
+
 		expect(wrapper.findAll('[data-status="paused"]')).toHaveLength(3);
 		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(1);
 		expect(wrapper.get('button').text()).toContain('Researching Groove');
+
 		await wrapper.setProps({
 			plan: planView({
 				document: {
@@ -45,9 +49,11 @@ describe('AgentChatPlan task continuation', () => {
 				},
 			}),
 		});
+
 		expect(wrapper.findAll('[data-status="paused"]')).toHaveLength(2);
 		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(2);
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+
 		wrapper.unmount();
 	});
 
@@ -70,10 +76,13 @@ describe('AgentChatPlan task continuation', () => {
 				}),
 			},
 		});
+
 		expect(wrapper.findAll('[data-status="paused"]')).toHaveLength(2);
 		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(0);
+
 		for (const status of ['done', 'failed', 'cancelled'])
 			expect(wrapper.findAll(`[data-status="${status}"]`)).toHaveLength(1);
+
 		wrapper.unmount();
 	});
 });
@@ -97,9 +106,13 @@ describe('AgentChatPlan timer', () => {
 				stoppedAt: '2026-10-01T10:00:30.000Z',
 			},
 		});
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+
 		await vi.advanceTimersByTimeAsync(20_000);
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+
 		wrapper.unmount();
 	});
 
@@ -110,18 +123,25 @@ describe('AgentChatPlan timer', () => {
 			document: { title: 'Plan', items: [planTask(1, 'paused')] },
 		});
 		const wrapper = mount(AgentChatPlan, { props: { plan: paused } });
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+
 		await vi.advanceTimersByTimeAsync(90_000);
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+
 		await wrapper.setProps({
 			plan: { ...paused, document: { title: 'Plan', items: [planTask(1, 'in_progress')] } },
 		});
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:30');
+
 		wrapper.unmount();
 	});
 
 	it('starts with stored timing and freezes when the last task finishes', async () => {
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt: null }) } });
+
 		try {
 			expect(wrapper.find('[data-testid="agent-chat-plan-timer"]').exists()).toBe(false);
 			await wrapper.setProps({ plan: planView({ startedAt, revision: 2 }) });
@@ -130,6 +150,7 @@ describe('AgentChatPlan timer', () => {
 			expect(timer().attributes('aria-live')).toBe('off');
 			await vi.advanceTimersByTimeAsync(31_000);
 			expect(timer().text()).toBe('0:31');
+
 			await wrapper.setProps({
 				plan: planView({
 					startedAt,
@@ -139,8 +160,10 @@ describe('AgentChatPlan timer', () => {
 				}),
 			});
 			await vi.advanceTimersByTimeAsync(5_000);
+
 			expect(timer().text()).toBe('0:30');
 			expect(vi.getTimerCount()).toBe(0);
+
 			await wrapper.setProps({
 				plan: planView({
 					startedAt,
@@ -175,9 +198,12 @@ describe('AgentChatPlan timer', () => {
 			},
 		});
 		const wrapper = mount(AgentChatPlan, { props: { plan } });
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
 		expect(wrapper.findComponent(N8nIcon).props('spin')).toBe(false);
+
 		await vi.advanceTimersByTimeAsync(5_000);
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
 		expect(vi.getTimerCount()).toBe(0);
 
@@ -191,9 +217,13 @@ describe('AgentChatPlan timer', () => {
 				},
 			},
 		});
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('24:00:05');
+
 		await vi.advanceTimersByTimeAsync(1_000);
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('24:00:06');
+
 		wrapper.unmount();
 	});
 
@@ -204,7 +234,9 @@ describe('AgentChatPlan timer', () => {
 			plan: planView({ startedAt, document: { title: 'Done', items: [planTask(1, 'done')] } }),
 		});
 		await vi.advanceTimersByTimeAsync(10_000);
+
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:10');
+
 		wrapper.unmount();
 	});
 
@@ -315,8 +347,10 @@ describe('AgentChatPlan', () => {
 				document: { title: 'Research options', items: [planTask(1), group] },
 			});
 			const wrapper = mount(AgentChatPlan, { props: { plan, expanded: true } });
+
 			try {
 				expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(summary);
+
 				await wrapper.setProps({
 					plan: {
 						...plan,
@@ -327,6 +361,7 @@ describe('AgentChatPlan', () => {
 						},
 					},
 				});
+
 				expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(
 					'1 of 3 tasks done',
 				);
@@ -339,6 +374,7 @@ describe('AgentChatPlan', () => {
 	it('starts collapsed and supports keyboard expansion without changing focus', async () => {
 		const user = userEvent.setup();
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView() }, attachTo: document.body });
+
 		try {
 			const trigger = wrapper.get('button');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
@@ -364,6 +400,7 @@ describe('AgentChatPlan', () => {
 				'agents.chat.plan.status.done',
 				'agents.chat.plan.status.inProgress',
 			]);
+
 			await wrapper.setProps({ plan: planView({ revision: 2, closed: true }) });
 			expect(trigger.text()).toContain('Compare support platforms');
 			expect(wrapper.text()).not.toContain('Closed');
@@ -596,14 +633,18 @@ describe('Background task stop display', () => {
 		const wrapper = mount(AgentChatPlan, { props: { plan, canStop: true } });
 		await wrapper.get('button').trigger('click');
 		await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+
 		expect(wrapper.emitted('stop')).toHaveLength(1);
+
 		await wrapper.setProps({ stopping: true });
+
 		expect(
 			wrapper.get('[data-testid="agent-chat-plan-stop"]').attributes('disabled'),
 		).toBeDefined();
 		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopping');
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
 		expect(wrapper.get('button').text()).not.toContain('Researching leads');
+
 		const paused = {
 			...plan,
 			document: {
@@ -625,6 +666,7 @@ describe('Background task stop display', () => {
 			},
 		};
 		await wrapper.setProps({ plan: paused, stopping: false, stopped: true, canStop: false });
+
 		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopped');
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
@@ -636,17 +678,20 @@ describe('Background task stop display', () => {
 			'paused',
 			'done',
 		]);
+
 		for (const row of wrapper.findAll('[data-status="paused"]')) {
 			expect(row.attributes('aria-label')).toBe('agents.chat.tasks.stopped');
 			expect(row.getComponent(N8nIcon).props('icon')).toBe('circle-pause');
 			expect(row.getComponent(N8nIcon).props('spin')).toBe(false);
 		}
+
 		expect(wrapper.findAllComponents(N8nIcon)[0].props('spin')).toBe(false);
 		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('2 of 6 tasks done');
 		expect(wrapper.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(false);
 		expect(plan).toEqual(saved);
 
 		await wrapper.setProps({ plan, stopped: false, canStop: true });
+
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
 			'done',
 			'failed',
@@ -660,6 +705,7 @@ describe('Background task stop display', () => {
 		expect(wrapper.text()).toContain('Checking sources');
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
 		expect(plan).toEqual(saved);
+
 		wrapper.unmount();
 	});
 
@@ -668,13 +714,17 @@ describe('Background task stop display', () => {
 			props: { plan: planView(), canStop: true, stopFailed: true },
 		});
 		await wrapper.get('button').trigger('click');
+
 		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopFailedTitle');
 		expect(wrapper.get('[data-testid="agent-chat-plan-stop"]').text()).toBe(
 			'agents.chat.tasks.retry',
 		);
 		expect(wrapper.find('[data-status="paused"]').exists()).toBe(false);
+
 		await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+
 		expect(wrapper.emitted('stop')).toHaveLength(1);
+
 		wrapper.unmount();
 	});
 });
