@@ -56,6 +56,7 @@ import {
 import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
+import { createFilteredLogger } from '../logger';
 
 /**
  * The memory instructions tell the model to call the runtime memory tools by name,
@@ -94,6 +95,8 @@ export interface StaticLoopContext {
 	maxOutputTokens?: number;
 }
 
+const logger = createFilteredLogger();
+
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
  * the LLM call: the model instance, reasoning, provider options, structured
@@ -102,6 +105,9 @@ export interface StaticLoopContext {
  */
 export class RuntimeContextBuilder {
 	private nativeToolDeferral?: NativeToolDeferral;
+
+	/** False while the episodic read scope of the current run has no active entry. */
+	private episodicRecallAvailable = true;
 
 	constructor(
 		private readonly config: AgentRuntimeConfig,
@@ -351,6 +357,27 @@ export class RuntimeContextBuilder {
 		return result;
 	}
 
+	/**
+	 * Checks once per run whether recall_memory can find anything, so the tool is
+	 * not offered for an empty scope. A failed check keeps the tool.
+	 */
+	async refreshEpisodicRecallAvailability(
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<void> {
+		this.episodicRecallAvailable = true;
+		const { memory, episodicMemory } = this.config;
+		if (!memory || !isEpisodicMemoryEnabled(episodicMemory) || !hasEpisodicMemoryStore(memory)) {
+			return;
+		}
+		const scope = getEpisodicMemoryScope(persistence);
+		if (!scope || !memory.episodic.hasActiveEntries) return;
+		try {
+			this.episodicRecallAvailable = await memory.episodic.hasActiveEntries(scope);
+		} catch (error) {
+			logger.warn('Failed to check for episodic memory entries; keeping recall_memory', { error });
+		}
+	}
+
 	private createRecallMemoryToolForRun(
 		persistence: AgentPersistenceOptions | undefined,
 		existingTools: BuiltTool[],
@@ -366,7 +393,7 @@ export class RuntimeContextBuilder {
 			return undefined;
 		}
 		const scope = getEpisodicMemoryScope(persistence);
-		if (!scope) return undefined;
+		if (!scope || !this.episodicRecallAvailable) return undefined;
 		if (existingTools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
 			throw new Error(
 				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,

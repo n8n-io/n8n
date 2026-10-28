@@ -154,6 +154,13 @@ export class InMemoryMemory
 			await this.findSimilarEpisodicMemoryEntries(scope, embeddings, opts),
 		addEntrySources: async (entryId, sources, lastSeenAt) =>
 			await this.addEpisodicMemoryEntrySources(entryId, sources, lastSeenAt),
+		// eslint-disable-next-line @typescript-eslint/require-await
+		hasActiveEntries: async (scope) => {
+			const scopeIds = episodicReadScopeIds(scope);
+			return this.episodicMemory.some(
+				(entry) => entry.status === 'active' && scopeIds.includes(entry.resourceId),
+			);
+		},
 		taskLock: {
 			acquire: async (scope, opts) =>
 				await this.acquireEpisodicMemoryTaskLock(episodicWriteScopeId(scope), opts),

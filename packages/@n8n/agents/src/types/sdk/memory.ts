@@ -237,6 +237,12 @@ export interface EpisodicMemoryMethods {
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]>;
 	getEntrySources(entryIds: string[]): Promise<EpisodicMemoryEntrySource[]>;
+	/**
+	 * Whether the read scope has an active entry. When it returns false, the
+	 * runtime does not offer recall_memory for the run. Without this method, the
+	 * runtime always offers it.
+	 */
+	hasActiveEntries?(scope: EpisodicMemoryScope): Promise<boolean>;
 	applyReflection(
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,

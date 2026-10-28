@@ -84,6 +84,12 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		return await this.find({ where: { agentId, resourceId, contentHash: In(contentHashes) } });
 	}
 
+	/** Whether any of the resources has an active entry of the agent. */
+	async hasActiveEntries(agentId: string, resourceIds: string[]): Promise<boolean> {
+		if (resourceIds.length === 0) return false;
+		return await this.existsBy({ agentId, resourceId: In(resourceIds), status: 'active' });
+	}
+
 	/** Entries in any status, e.g. to show what a past run recalled. */
 	async findInAnyStatus(agentId: string, ids: string[]): Promise<AgentMemoryEntryEntity[]> {
 		if (ids.length === 0) return [];

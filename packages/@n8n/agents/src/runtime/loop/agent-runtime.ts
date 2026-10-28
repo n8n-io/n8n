@@ -696,6 +696,7 @@ export class AgentRuntime {
 		});
 		this.eventBus.emit({ type: AgentEvent.AgentStart });
 		await this.ensureModelCost();
+		await this.context.refreshEpisodicRecallAvailability(options?.persistence);
 		const normalizedInput = normalizeInput(input);
 		incrementMessageCount(options?.executionCounter);
 		return await this.buildMessageList(normalizedInput, options);
