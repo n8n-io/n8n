@@ -1,5 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
@@ -149,6 +151,132 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		expect(() => next.initializeSync()).toThrow(/not loaded yet/);
 		await waitForReplacementModule();
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+	});
+});
+
+describe('QuickJsBridge workflow data', () => {
+	const bridges: RuntimeBridge[] = [];
+
+	async function newBridge(): Promise<QuickJsBridge> {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		bridges.push(bridge);
+		await bridge.initialize();
+		return bridge;
+	}
+
+	/** Runs a full GC. A WeakRef keeps its target alive until the current job ends. */
+	async function collectGarbage(): Promise<void> {
+		setFlagsFromString('--expose_gc');
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		(runInNewContext('gc') as () => void)();
+	}
+
+	/**
+	 * Replaces `vm.newFunction`. `call` counts from 1. Not vi.spyOn: a spy
+	 * records its arguments, and those hold the data.
+	 */
+	function overrideNewFunction(
+		bridge: QuickJsBridge,
+		override: (
+			call: number,
+			build: () => import('quickjs-emscripten').QuickJSHandle,
+		) => import('quickjs-emscripten').QuickJSHandle,
+	): void {
+		const vm = bridge['vm']!;
+		const newFunction = vm.newFunction.bind(vm);
+		let calls = 0;
+		vm.newFunction = ((...args: Parameters<typeof newFunction>) =>
+			override(++calls, () => newFunction(...args))) as typeof vm.newFunction;
+	}
+
+	/** Makes `handle.dispose()` free the handle and then throw. */
+	function failDispose(
+		handle: import('quickjs-emscripten').QuickJSHandle,
+	): import('quickjs-emscripten').QuickJSHandle {
+		const dispose = handle.dispose.bind(handle);
+		handle.dispose = () => {
+			dispose();
+			throw new Error('dispose failed');
+		};
+		return handle;
+	}
+
+	afterEach(async () => {
+		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
+	});
+
+	it('should free the data of a finished call while the bridge is alive', async () => {
+		const bridge = await newBridge();
+		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+		const dataRef = new WeakRef(data);
+		expect(bridge.execute('return this.$json.value', data)).toBe(42);
+		data = undefined;
+
+		await collectGarbage();
+
+		expect(dataRef.deref()).toBeUndefined();
+	});
+
+	it.each([2, 3])(
+		'should free the data of a call whose callback %i fails to build',
+		async (failingCall) => {
+			const bridge = await newBridge();
+			overrideNewFunction(bridge, (call, build) => {
+				if (call === failingCall) throw new Error('newFunction failed');
+				return build();
+			});
+			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+			const dataRef = new WeakRef(data);
+			expect(() => bridge.execute('return 1', data!)).toThrow('newFunction failed');
+			data = undefined;
+
+			await collectGarbage();
+
+			expect(dataRef.deref()).toBeUndefined();
+		},
+	);
+
+	it('should keep the build error when a built callback fails to dispose', async () => {
+		const bridge = await newBridge();
+		overrideNewFunction(bridge, (call, build) => {
+			if (call === 3) throw new Error('newFunction failed');
+			return call === 1 ? failDispose(build()) : build();
+		});
+
+		expect(() => bridge.execute('return 1', { $json: { value: 42 } })).toThrow(
+			'newFunction failed',
+		);
+	});
+
+	it('should free the data of a call whose callback fails to dispose', async () => {
+		const bridge = await newBridge();
+		overrideNewFunction(bridge, (call, build) => (call === 3 ? failDispose(build()) : build()));
+		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+		const dataRef = new WeakRef(data);
+		try {
+			bridge.execute('return 1', data!);
+		} catch {
+			// This test checks only that the data is freed, not which outcome the call has.
+		}
+		data = undefined;
+
+		await collectGarbage();
+
+		expect(dataRef.deref()).toBeUndefined();
+	});
+
+	it('should return an error from a callback that runs after its call finished', async () => {
+		const bridge = await newBridge();
+		expect(() =>
+			bridge.execute(
+				'globalThis.__getValueAtPath = __getValueAtPathImpl; throw new Error("boom")',
+				{ $json: { value: 42 } },
+			),
+		).toThrow('boom');
+
+		expect(() =>
+			bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
+		).toThrow('Host callback called after its expression finished');
 	});
 });
 
