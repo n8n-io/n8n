@@ -27,8 +27,8 @@ const userWith = (...scopes: Scope[]) =>
 	mock<User>({
 		role: mock<Role>({ scopes: scopes.map((slug) => mock<DbScope>({ slug })) }),
 	});
-const pusher = userWith('gitConnection:push');
-const puller = userWith('gitConnection:pull');
+const pusher = userWith('promotions:promote');
+const puller = userWith('promotions:apply');
 const nobody = userWith();
 
 const branched = (createBranchOnPromotion: boolean) =>

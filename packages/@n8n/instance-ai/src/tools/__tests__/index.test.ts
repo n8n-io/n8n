@@ -103,7 +103,7 @@ vi.mock('../workflows/build-workflow.tool', () => ({
 }));
 
 vi.mock('../workflows.tool', () => ({
-	createWorkflowsTool: vi.fn(() => ({ id: 'workflow_builder_workflows' })),
+	createWorkflowTool: vi.fn((_context: unknown, action: string) => ({ id: `workflow:${action}` })),
 }));
 
 vi.mock('../workspace.tool', () => ({
@@ -121,6 +121,7 @@ function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCont
 	return {
 		userId: 'user-a',
 		logger: { warn: vi.fn() },
+		workflowService: {},
 		...overrides,
 	} as unknown as InstanceAiContext;
 }
@@ -137,7 +138,15 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflow_builder_workflows: { id: 'workflow_builder_workflows' },
+			list_workflows: { id: 'workflow:list' },
+			get_workflow: { id: 'workflow:get' },
+			get_workflow_as_code: { id: 'workflow:get-as-code' },
+			archive_workflow: { id: 'workflow:delete' },
+			unarchive_workflow: { id: 'workflow:unarchive' },
+			setup_workflow: { id: 'workflow:setup' },
+			validate_workflow: { id: 'workflow:validate' },
+			publish_workflow: { id: 'workflow:publish' },
+			unpublish_workflow: { id: 'workflow:unpublish' },
 			workflow_builder_executions: { id: 'workflow_builder_executions' },
 			list_credentials: { id: 'list_credentials' },
 			search_credential_types: { id: 'search_credential_types' },
@@ -156,11 +165,13 @@ describe('domain tool construction', () => {
 			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
+		expect(orchestratorTools.has('workflow_builder_workflows')).toBe(false);
+		expect(orchestratorTools.has('workflows')).toBe(false);
 		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
 
-		const { createWorkflowsTool } = await import('../workflows.tool.js');
+		const { createWorkflowTool } = await import('../workflows.tool.js');
 		const {
 			createSearchNodesTool,
 			createGetNodeTypesTool,
@@ -169,7 +180,10 @@ describe('domain tool construction', () => {
 		} = await import('../nodes.tool.js');
 		const { createSearchModelsTool } = await import('../search-models.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
+		expect(createWorkflowTool).toHaveBeenCalledWith(context, 'list');
+		// Version and node-usage tools need host methods this context does not provide.
+		expect(orchestratorTools.has('list_workflow_versions')).toBe(false);
+		expect(orchestratorTools.has('get_workflow_node_usage')).toBe(false);
 		expect(createSearchNodesTool).toHaveBeenCalledWith(context);
 		expect(createGetNodeTypesTool).toHaveBeenCalledWith(context);
 		expect(createGetNodeParameterOptionsTool).toHaveBeenCalledWith(context);

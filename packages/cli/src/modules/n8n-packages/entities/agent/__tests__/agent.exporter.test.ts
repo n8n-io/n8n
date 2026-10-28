@@ -24,7 +24,7 @@ function definitionFixture(version: string): AgentDefinition {
 	);
 	const config = AgentJsonConfigSchema.parse(fixture.config);
 	config.instructions = `${version} instructions`;
-	fixture.skills['shared-skill'].instructions = `${version} skill`;
+	fixture.skills['support_source_skill'].instructions = `${version} skill`;
 	fixture.tools.shared_tool.code = `throw new Error("${version} tool must not run");`;
 	fixture.tasks[taskId].objective = `${version} task`;
 	return {
@@ -160,7 +160,7 @@ describe('AgentExporter', () => {
 	it.each([
 		{
 			kind: 'skill',
-			id: 'shared-skill',
+			id: 'support_source_skill',
 			remove: (definition: AgentDefinition) => {
 				definition.skills = {};
 			},
@@ -191,7 +191,7 @@ describe('AgentExporter', () => {
 		{
 			kind: 'skill',
 			corrupt: (definition: AgentDefinition) =>
-				Object.assign(definition.skills['shared-skill'], { instructions: 42 }),
+				Object.assign(definition.skills['support_source_skill'], { instructions: 42 }),
 		},
 		{
 			kind: 'tool descriptor',
@@ -211,7 +211,7 @@ describe('AgentExporter', () => {
 
 	it('omits unused bodies and normalizes an omitted timezone', async () => {
 		const { agent, draft, exporter } = setup();
-		draft.skills.unused = { ...draft.skills['shared-skill'] };
+		draft.skills.unused = { ...draft.skills['support_source_skill'] };
 		draft.tools.unused = { ...draft.tools.shared_tool };
 		const task = draft.tasks.get(taskId)!;
 		delete task.timezone;
@@ -220,7 +220,7 @@ describe('AgentExporter', () => {
 			['unused', { ...task }],
 		]);
 		const snapshot = await exporter.prepare(agent);
-		expect(Object.keys(snapshot!.content.skills)).toEqual(['shared-skill']);
+		expect(Object.keys(snapshot!.content.skills)).toEqual(['support_source_skill']);
 		expect(Object.keys(snapshot!.content.tools)).toEqual(['shared_tool']);
 		expect(snapshot?.content.tasks).toEqual({ [taskId]: { ...task, timezone: null } });
 	});
@@ -244,7 +244,7 @@ describe('AgentExporter', () => {
 		const snapshot = (await exporter.prepare(agent))!;
 		const expected = structuredClone(snapshot);
 		draft.schema!.instructions = 'Changed after preparation';
-		draft.skills['shared-skill'].references![0].content = 'Changed reference';
+		draft.skills['support_source_skill'].references![0].content = 'Changed reference';
 		Object.assign(draft.tools.shared_tool.descriptor.inputSchema!, { properties: {} });
 		Object.assign(draft.tools.shared_tool.descriptor.providerOptions!, {
 			provider: { cache: true },

@@ -948,6 +948,9 @@ const resizable = computed(() => {
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<slot name="before-suggestions"></slot>
+		<!-- EOF Experiment cleanup -->
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"

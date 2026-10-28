@@ -2,8 +2,8 @@ operationId: continueApplyProjectSelection
 tags:
   - Promotions
 summary: Continue applying a selection after binding setup
-description: "Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions."
-x-required-scope: gitConnection:pull
+description: "Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the promotions:apply scope. The importer checks user write permissions."
+x-required-scope: promotions:apply
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:

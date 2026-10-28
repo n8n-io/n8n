@@ -24,10 +24,8 @@ export { Tool };
 // Model constants
 // ---------------------------------------------------------------------------
 
-export const SONNET_MODEL = 'anthropic/claude-sonnet-4-6';
 /** Default for eval agents with no model set. CI uses the same model for its mocks. */
 const EVAL_MODEL = 'anthropic/claude-sonnet-5-5';
-export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 export const JUDGE_MODEL = 'anthropic/claude-sonnet-5-5';
 const JUDGE_EFFORT: AnthropicThinkingEffort = 'high';
 
@@ -186,10 +184,11 @@ function effortFromEnv(name: string): AnthropicThinkingEffort | undefined {
 function resolveEvalEffort(options: {
 	judge?: boolean;
 	model?: string;
+	effort?: AnthropicThinkingEffort;
 }): AnthropicThinkingEffort | undefined {
 	if (options.judge) return effortFromEnv('N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT') ?? JUDGE_EFFORT;
-	// A caller that pins its model (an in-product helper) keeps the standard effort.
-	if (options.model !== undefined) return undefined;
+	// A caller that pins its model (an in-product helper) uses its own effort, or the standard one.
+	if (options.model !== undefined) return options.effort;
 	return effortFromEnv('N8N_INSTANCE_AI_EVAL_EFFORT');
 }
 
@@ -270,6 +269,8 @@ export function createEvalAgent(
 	name: string,
 	options: {
 		model?: string;
+		/** Thinking effort for a pinned `model`. Ignored without one. */
+		effort?: AnthropicThinkingEffort;
 		instructions: string;
 		cache?: boolean;
 		/** Host-resolved model used when no eval model API key is configured in the environment. */

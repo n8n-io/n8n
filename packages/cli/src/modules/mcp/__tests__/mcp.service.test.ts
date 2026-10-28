@@ -22,6 +22,7 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
@@ -77,10 +78,11 @@ import { McpConfig } from '../mcp.config';
 import {
 	MCP_DISCOVER_METHOD,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_SKILLS_EXTENSION_FLAG,
 } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
-import type { McpAuthContext, McpClientInfo } from '../mcp.types';
+import type { McpAuthContext, McpClientInfo, ToolDefinition } from '../mcp.types';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -109,9 +111,13 @@ describe('McpService', () => {
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
+	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 
 	beforeEach(() => {
 		eventService = mockInstance(EventService);
+		instanceWriteAccess = mockInstance(InstanceWriteAccessService, {
+			isReadOnly: vi.fn().mockReturnValue(false),
+		});
 		activeExecutions = mockInstance(ActiveExecutions);
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
@@ -166,6 +172,7 @@ describe('McpService', () => {
 			aiPreferenceService,
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
+			instanceWriteAccess,
 		);
 	});
 
@@ -223,6 +230,7 @@ describe('McpService', () => {
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -434,6 +442,7 @@ describe('McpService', () => {
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
@@ -956,6 +965,112 @@ describe('McpService', () => {
 			return await invokeTool(args, {});
 		};
 
+		describe('protected instance tool calls', () => {
+			const register = async (
+				name: string,
+				annotations?: ToolDefinition['config']['annotations'],
+			) => {
+				const user = mcpUser();
+				const server = new McpServer({ name: 'test', version: '1.0.0' });
+				const handler = vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				const tool = mcpService.createToolRegistrar(
+					server,
+					user,
+					{ name: 'Test client' },
+					{
+						grantedScopes: undefined,
+						caller: { authType: 'api_key' },
+					},
+				)({ name, config: { annotations }, handler });
+				const invoke = tool.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+				return { handler, invoke };
+			};
+
+			it.each([undefined, {}, { readOnlyHint: false }])(
+				'rejects calls without an explicit read classification: %j',
+				async (annotations) => {
+					instanceWriteAccess.isReadOnly.mockReturnValue(true);
+					const { handler, invoke } = await register('new_tool', annotations);
+
+					await expect(invoke({ workflowId: 'wf-42' }, {})).resolves.toEqual({
+						isError: true,
+						content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+					});
+					expect(handler).not.toHaveBeenCalled();
+					expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
+						user: mcpUser(),
+						toolName: 'new_tool',
+						workflowId: 'wf-42',
+						status: 'error',
+						errorMessage: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
+						authType: 'api_key',
+						clientName: 'Test client',
+					});
+				},
+			);
+
+			it.each([
+				['read_tool', true, { workflowId: 'wf-42' }],
+				['execute_workflow', false, { workflowId: 'wf-42', executionMode: 'production' }],
+			] as const)('allows %s on a protected instance', async (name, readOnlyHint, args) => {
+				instanceWriteAccess.isReadOnly.mockReturnValue(true);
+				const { handler, invoke } = await register(name, { readOnlyHint });
+
+				await expect(invoke(args, {})).resolves.toEqual({
+					content: [{ type: 'text', text: 'ok' }],
+				});
+				expect(handler).toHaveBeenCalledWith(args, {});
+			});
+
+			it.each([
+				['execute_workflow', { workflowId: 'wf-42', executionMode: 'manual' }],
+				['execute_workflow', { workflowId: 'wf-42' }],
+				['execute_workflow', undefined],
+				['test_workflow', { workflowId: 'wf-42', pinData: {} }],
+				['call_agent', { agentId: 'agent-42', request: { type: 'message', message: 'Hi' } }],
+				['test_workflow', { workflowId: 'wf-42', executionMode: 'production' }],
+				['call_agent', { agentId: 'agent-42', executionMode: 'production' }],
+			] as const)('rejects %s with %j on a protected instance', async (name, args) => {
+				instanceWriteAccess.isReadOnly.mockReturnValue(true);
+				const { handler, invoke } = await register(name, { readOnlyHint: false });
+
+				await expect(invoke(args, {})).resolves.toEqual({
+					isError: true,
+					content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+				});
+				expect(handler).not.toHaveBeenCalled();
+			});
+
+			it.each(['execute_workflow', 'test_workflow', 'call_agent'])(
+				'allows %s on an unprotected instance',
+				async (name) => {
+					instanceWriteAccess.isReadOnly.mockReturnValue(false);
+					const { handler, invoke } = await register(name, { readOnlyHint: false });
+					const args = { executionMode: 'manual' };
+
+					await expect(invoke(args, {})).resolves.toEqual({
+						content: [{ type: 'text', text: 'ok' }],
+					});
+					expect(handler).toHaveBeenCalledWith(args, {});
+				},
+			);
+
+			it('uses the current protection setting for each call', async () => {
+				const { handler, invoke } = await register('write_tool', { readOnlyHint: false });
+
+				await invoke({}, {});
+				expect(handler).toHaveBeenCalledTimes(1);
+
+				instanceWriteAccess.isReadOnly.mockReturnValue(true);
+				await expect(invoke({}, {})).resolves.toMatchObject({ isError: true });
+				expect(handler).toHaveBeenCalledTimes(1);
+
+				instanceWriteAccess.isReadOnly.mockReturnValue(false);
+				await invoke({}, {});
+				expect(handler).toHaveBeenCalledTimes(2);
+			});
+		});
+
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it.each(['search_workflows', 'get_workflow_history', 'execute_workflow'])(
 			'skips discovery bookkeeping for %s',
@@ -1404,6 +1519,7 @@ describe('McpService', () => {
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1463,6 +1579,7 @@ describe('McpService', () => {
 				mockInstance(AiPreferenceService),
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1547,6 +1664,7 @@ describe('McpService', () => {
 					mockInstance(AiPreferenceService),
 					mockInstance(McpConfig),
 					mockInstance(ExecutionRedactionServiceProxy),
+					mockInstance(InstanceWriteAccessService),
 				);
 			};
 

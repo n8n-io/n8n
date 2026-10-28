@@ -102,6 +102,7 @@ describe('Memory builder — episodic memory', () => {
 			reflection: 'reflect prompt',
 			recallToolInstruction: 'recall prompt',
 		};
+		const guidance = { include: ['timezone'], exclude: ['passwords'] };
 
 		const resolved = resolveEpisodicMemoryConfig(
 			{
@@ -113,6 +114,7 @@ describe('Memory builder — episodic memory', () => {
 				embeddingModel: 'custom/model',
 				reflect,
 				prompts,
+				guidance,
 			} as unknown as EpisodicMemoryConfig,
 			{ defaultModel: 'openai/gpt-4o-mini' },
 		);
@@ -122,6 +124,7 @@ describe('Memory builder — episodic memory', () => {
 			maxEntriesPerRun: 2,
 			embeddingModel: 'custom/model',
 			prompts,
+			guidance,
 		});
 		expect(resolved).not.toHaveProperty('halfLifeDays');
 		expect(resolved).not.toHaveProperty('maxEntryLength');

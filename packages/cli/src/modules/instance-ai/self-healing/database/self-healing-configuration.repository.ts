@@ -3,14 +3,16 @@ import {
 	BaseRepository,
 	isUniqueConstraintError,
 	parseDbTime,
+	ProjectRelation,
 	SharedWorkflow,
 	TransactionRunner,
+	User,
 	WorkflowEntity,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8n/typeorm';
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
 
@@ -21,6 +23,102 @@ import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from './self-healing-configuration-workflow.entity';
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
+
+type ReviewerRoles = {
+	projectRoleSlugs: string[];
+	globalRoleSlugs: string[];
+	workflowRoleSlugs: string[];
+};
+
+// Edit-access conditions for member queries that alias the project relation as
+// `projectMember` and its user as `user`. Each returns null when no role grants access.
+
+function editRoleCondition({ projectRoleSlugs, globalRoleSlugs }: ReviewerRoles) {
+	const conditions = [
+		...(projectRoleSlugs.length ? ['projectMember.role IN (:...projectRoleSlugs)'] : []),
+		...(globalRoleSlugs.length ? ['user.role IN (:...globalRoleSlugs)'] : []),
+	];
+	return conditions.length ? `(${conditions.join(' OR ')})` : null;
+}
+
+/** Match the workflow finder: a member can also edit a project workflow through a share. */
+function sharedWorkflowEditQuery<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	{ projectRoleSlugs, workflowRoleSlugs }: ReviewerRoles,
+) {
+	if (projectRoleSlugs.length === 0 || workflowRoleSlugs.length === 0) return null;
+
+	return query
+		.subQuery()
+		.select('1')
+		.from(ProjectRelation, 'shareMember')
+		.innerJoin(SharedWorkflow, 'share', 'share.projectId = shareMember.projectId')
+		.innerJoin(SharedWorkflow, 'owner', 'owner.workflowId = share.workflowId')
+		.where('shareMember.userId = projectMember.userId')
+		.andWhere('shareMember.role IN (:...projectRoleSlugs)', { projectRoleSlugs })
+		.andWhere('share.role IN (:...workflowRoleSlugs)', { workflowRoleSlugs })
+		.andWhere('owner.projectId = projectMember.projectId')
+		.andWhere('owner.role = :ownerRole', { ownerRole: 'workflow:owner' });
+}
+
+/**
+ * Keep only rows where the user is a current member of the configuration's project and
+ * a reviewer, either listed or included with all project members. A global role alone
+ * does not qualify. Workflow access is checked separately.
+ */
+export function whereReviewer<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	configurationAlias: string,
+	userIdExpression: string,
+) {
+	const member = query
+		.subQuery()
+		.select('1')
+		.from(ProjectRelation, 'reviewerMembership')
+		.where(`reviewerMembership.projectId = ${configurationAlias}.projectId`)
+		.andWhere(`reviewerMembership.userId = ${userIdExpression}`)
+		.getQuery();
+	const explicit = query
+		.subQuery()
+		.select('1')
+		.from(SelfHealingConfigurationReviewer, 'explicitReviewer')
+		.where(`explicitReviewer.configurationId = ${configurationAlias}.id`)
+		.andWhere(`explicitReviewer.userId = ${userIdExpression}`)
+		.getQuery();
+	return query.andWhere(
+		`(EXISTS ${member} AND (${configurationAlias}.includeAllProjectMembers = :includeAllProjectMembers OR EXISTS ${explicit}))`,
+		{ includeAllProjectMembers: true },
+	);
+}
+
+/**
+ * Keep only configurations that cover the workflow. Explicit selections take precedence
+ * over all-workflow coverage, even when paused. Callers check workflow ownership.
+ */
+function whereCoversWorkflow<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	configurationAlias: string,
+	workflowIdExpression: string,
+) {
+	const selectedHere = query
+		.subQuery()
+		.select('1')
+		.from(SelfHealingConfigurationWorkflow, 'ownSelection')
+		.where(`ownSelection.configurationId = ${configurationAlias}.id`)
+		.andWhere(`ownSelection.workflowId = ${workflowIdExpression}`)
+		.getQuery();
+	const selectedInProject = query
+		.subQuery()
+		.select('1')
+		.from(SelfHealingConfigurationWorkflow, 'projectSelection')
+		.where(`projectSelection.projectId = ${configurationAlias}.projectId`)
+		.andWhere(`projectSelection.workflowId = ${workflowIdExpression}`)
+		.getQuery();
+	return query.andWhere(
+		`(EXISTS ${selectedHere} OR (${configurationAlias}.scope = :allScope AND NOT EXISTS ${selectedInProject}))`,
+		{ allScope: 'all' },
+	);
+}
 
 @Service()
 export class SelfHealingConfigurationRepository extends BaseRepository<SelfHealingConfiguration> {
@@ -73,6 +171,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				projectId,
 				scope: configuration.scope,
 				enabled: configuration.enabled,
+				includeAllProjectMembers: configuration.includeAllProjectMembers,
 				enabledById: configuration.enabledById,
 				workflowIds: (workflowsByConfiguration[configuration.id] ?? []).map(
 					(row) => row.workflowId,
@@ -84,24 +183,10 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	}
 
 	async findForWorkflow(projectId: string, workflowId: string) {
-		const selected = await this.createQueryBuilder('configuration')
-			.innerJoin(
-				SelfHealingConfigurationWorkflow,
-				'selection',
-				'selection.configurationId = configuration.id',
-			)
-			.where('configuration.projectId = :projectId', {
-				projectId,
-			})
-			.andWhere('selection.workflowId = :workflowId', { workflowId })
-			.getOne();
-
-		// Paused explicit selections still take precedence over all-workflow coverage.
-		if (selected) {
-			return selected;
-		}
-
-		return await this.findOneBy({ projectId, scope: 'all' });
+		const query = this.createQueryBuilder('configuration')
+			.where('configuration.projectId = :projectId', { projectId })
+			.setParameter('workflowId', workflowId);
+		return await whereCoversWorkflow(query, 'configuration', ':workflowId').getOne();
 	}
 
 	async listProjectWorkflows(projectId: string, workflowIds?: string[]) {
@@ -134,10 +219,70 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		}
 	}
 
-	async hasReviewers(configurationId: number, ctx: OperationContext) {
-		return await this.managerFor(ctx).existsBy(SelfHealingConfigurationReviewer, {
-			configurationId,
-		});
+	async findProjectMembersWithEditAccess(
+		projectId: string,
+		roles: ReviewerRoles,
+		userIds?: string[],
+	) {
+		if (userIds?.length === 0) return [];
+
+		const query = this.manager
+			.createQueryBuilder(User, 'user')
+			.innerJoin(ProjectRelation, 'projectMember', 'projectMember.userId = user.id')
+			.select(['user.id', 'user.email', 'user.firstName', 'user.lastName'])
+			.where('projectMember.projectId = :projectId', { projectId })
+			.andWhere('user.disabled = :disabled', { disabled: false });
+		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
+		const editAccess = [
+			editRoleCondition(roles),
+			sharedWorkflowEdit && `EXISTS ${sharedWorkflowEdit.getQuery()}`,
+		].filter(Boolean);
+		if (editAccess.length === 0) return [];
+
+		query.andWhere(`(${editAccess.join(' OR ')})`, roles);
+		if (userIds) {
+			query.andWhere('user.id IN (:...userIds)', { userIds });
+		}
+		return await query.getMany();
+	}
+
+	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(ProjectRelation, 'projectMember')
+			.innerJoin('projectMember.user', 'user')
+			.innerJoin(
+				SelfHealingConfiguration,
+				'configuration',
+				'configuration.projectId = projectMember.projectId',
+			)
+			.where('configuration.id = :configurationId', { configurationId: configuration.id })
+			.andWhere('user.disabled = :disabled', { disabled: false });
+		return whereReviewer(query, 'configuration', 'projectMember.userId');
+	}
+
+	async hasReviewerWithEditRole(
+		configuration: SelfHealingConfiguration,
+		roles: ReviewerRoles,
+		ctx: OperationContext,
+	) {
+		const editRole = editRoleCondition(roles);
+		if (!editRole) return false;
+
+		return await this.reviewerMembers(configuration, ctx).andWhere(editRole, roles).getExists();
+	}
+
+	/** Call after selections are saved. */
+	async hasReviewerWithSharedWorkflowAccess(
+		configuration: SelfHealingConfiguration,
+		roles: ReviewerRoles,
+		ctx: OperationContext,
+	) {
+		const query = this.reviewerMembers(configuration, ctx);
+		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
+		if (!sharedWorkflowEdit) return false;
+
+		const covered = whereCoversWorkflow(sharedWorkflowEdit, 'configuration', 'share.workflowId');
+		return await query.andWhere(`EXISTS ${covered.getQuery()}`).getExists();
 	}
 
 	async replaceSelections(
@@ -169,10 +314,12 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 			throw error;
 		}
 
-		await manager.insert(
-			SelfHealingConfigurationReviewer,
-			[...new Set(input.reviewerIds)].map((userId) => ({ configurationId, userId })),
-		);
+		if (input.reviewerIds.length) {
+			await manager.insert(
+				SelfHealingConfigurationReviewer,
+				[...new Set(input.reviewerIds)].map((userId) => ({ configurationId, userId })),
+			);
+		}
 	}
 
 	async removeWorkflowSelections(workflowIds: string[]) {
@@ -214,12 +361,10 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	}
 
 	async isReviewer(configurationId: number, userId: string, ctx: OperationContext) {
-		return await this.managerFor(ctx)
-			.createQueryBuilder(SelfHealingConfigurationReviewer, 'reviewer')
-			.where('reviewer.configurationId = :configurationId AND reviewer.userId = :userId', {
-				configurationId,
-				userId,
-			})
-			.getExists();
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(SelfHealingConfiguration, 'configuration')
+			.where('configuration.id = :configurationId', { configurationId })
+			.setParameter('reviewerId', userId);
+		return await whereReviewer(query, 'configuration', ':reviewerId').getExists();
 	}
 }

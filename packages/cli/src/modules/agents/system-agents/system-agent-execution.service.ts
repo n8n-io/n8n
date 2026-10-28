@@ -182,9 +182,33 @@ export class SystemAgentExecutionService {
 		user: User,
 		threadId: string,
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.findUsableThread(agentId, user, threadId);
+		if (!thread) throw new NotFoundError('Session not found');
+		return thread;
+	}
+
+	/**
+	 * Like `getUsableThread`, but `null` when the user has no thread with this id,
+	 * for example a new session before its first message.
+	 */
+	async findUsableThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		const thread = await this.findOwnedThread(agentId, user, threadId);
+		if (!thread) return null;
 		await this.assertCanUse(agentId, user, thread.projectId);
 		return thread;
+	}
+
+	private async findOwnedThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		this.assertRegistered(agentId);
+		return await this.threadRepository.findOwnedById(agentId, user.id, threadId);
 	}
 
 	// ── Threads ──────────────────────────────────────────────────────────────
@@ -264,8 +288,7 @@ export class SystemAgentExecutionService {
 
 	/** Load a thread the user owns. It checks ownership only, not the floor. */
 	async getThread(agentId: string, user: User, threadId: string): Promise<AgentExecutionThread> {
-		this.assertRegistered(agentId);
-		const thread = await this.threadRepository.findOwnedById(agentId, user.id, threadId);
+		const thread = await this.findOwnedThread(agentId, user, threadId);
 		if (!thread) throw new NotFoundError('Session not found');
 		return thread;
 	}
@@ -588,6 +611,7 @@ export class SystemAgentExecutionService {
 				hostEvents,
 				controller.signal,
 				thread,
+				{ provider, user },
 				async () => {
 					return await provider.prepareTurn({
 						type: 'start',
@@ -681,6 +705,7 @@ export class SystemAgentExecutionService {
 			hostEvents,
 			controller.signal,
 			thread,
+			{ provider, user: params.user },
 			async () =>
 				await provider.prepareTurn({
 					type: 'resume',
@@ -929,13 +954,15 @@ export class SystemAgentExecutionService {
 	/**
 	 * Prepare a turn and attach its file store. When this fails, release the
 	 * lease before the error goes up, so that the source does not keep a lease
-	 * for a turn that never ran.
+	 * for a turn that never ran. The error goes up in the form that the
+	 * provider's `formatSetupError` gives.
 	 */
 	private async prepareOrRelease(
 		workspace: TurnWorkspace | undefined,
 		hostEvents: SystemAgentHostEventChannel,
 		signal: AbortSignal,
 		thread: AgentExecutionThread,
+		setup: { provider: SystemAgentProvider; user: User },
 		prepare: () => Promise<SystemAgentTurnHandle>,
 	): Promise<SystemAgentTurnHandle> {
 		try {
@@ -945,7 +972,32 @@ export class SystemAgentExecutionService {
 		} catch (error) {
 			hostEvents.close();
 			await workspace?.release({ status: signal.aborted ? 'cancelled' : 'errored', error });
-			throw error;
+			if (signal.aborted) throw error;
+			const formatted = await this.formatSetupError(setup.provider, setup.user, thread, error);
+			throw formatted ? new AgentFormattedTurnError(formatted, error) : error;
+		}
+	}
+
+	/**
+	 * The user-facing form of an error that `prepareTurn` threw, from the
+	 * provider hook. Follows the same rules as `formatTurnError`.
+	 */
+	private async formatSetupError(
+		provider: SystemAgentProvider,
+		user: User,
+		thread: AgentExecutionThread,
+		error: unknown,
+	): Promise<FormattedTurnError | undefined> {
+		if (!provider.formatSetupError || chatErrorCode(error) !== undefined) return undefined;
+		try {
+			const formatted = await provider.formatSetupError(user, error);
+			return formatted?.message ? formatted : undefined;
+		} catch (formatError) {
+			this.logger.warn('System agent setup error formatter failed', {
+				threadId: thread.id,
+				error: formatError,
+			});
+			return undefined;
 		}
 	}
 

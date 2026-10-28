@@ -117,6 +117,17 @@ function isNaNSentinel(value: unknown): value is { __isNaN: true } {
 	);
 }
 
+// The guest escapes a user object with this key, unless the object also has
+// __isError. Only the sentinel has this key alone.
+function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isUndefined === true &&
+		Object.keys(value).length === 1
+	);
+}
+
 function isErrorValueSentinel(value: unknown): value is {
 	__isErrorValue: true;
 	__name: string;
@@ -207,6 +218,7 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
+	if (isUndefinedSentinel(value)) return undefined;
 	if (isErrorValueSentinel(value)) {
 		const ErrorCtor =
 			(
@@ -253,6 +265,7 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 const TRANSFER_MARKER_KEYS = new Set([
 	'__isDate',
 	'__isNaN',
+	'__isUndefined',
 	'__isErrorValue',
 	'__isMap',
 	'__isSet',
@@ -946,18 +959,18 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v instanceof Map) {
 			var entries = [];
 			v.forEach(function(val, key) {
-				entries.push([wrapSpecialValues(key, true), wrapSpecialValues(val, true)]);
+				entries.push([wrapChild(key, true), wrapChild(val, true)]);
 			});
 			return { __isMap: true, __entries: entries };
 		}
 		if (v instanceof Set) {
 			var values = [];
 			v.forEach(function(val) {
-				values.push(wrapSpecialValues(val, true));
+				values.push(wrapChild(val, true));
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
+		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
 		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
 		// Outside a collection, these markers come from __prepareForTransfer above,
@@ -987,6 +1000,11 @@ export class QuickJsBridge implements RuntimeBridge {
 		return wrapOwnKeys(v, inCollection);
 	}
 
+	// vm.dump() drops an undefined object value and turns an undefined array item into null.
+	function wrapChild(v, inCollection) {
+		return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection);
+	}
+
 	function wrapOwnKeys(v, inCollection) {
 		var result = {};
 		var keys = Object.keys(v);
@@ -994,8 +1012,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
 			if (
-				key === '__isDate' || key === '__isNaN' || key === '__isErrorValue' ||
-				key === '__isMap' || key === '__isSet' || key === '__isEscaped'
+				key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
+				key === '__isErrorValue' || key === '__isMap' || key === '__isSet' ||
+				key === '__isEscaped'
 			) {
 				collides = true;
 			}
@@ -1010,7 +1029,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapSpecialValues(v[key], inCollection);
+			result[key] = wrapChild(v[key], inCollection);
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of

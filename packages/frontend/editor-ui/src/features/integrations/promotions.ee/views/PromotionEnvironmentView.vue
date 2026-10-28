@@ -58,7 +58,7 @@ const toast = useToast();
 const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
-const { canClone, connect } = usePromotionCheckout();
+const { canConnect, connect } = usePromotionCheckout();
 
 const overview = { name: PROMOTIONS_SETTINGS_VIEW };
 
@@ -233,7 +233,7 @@ async function save() {
 		}
 		isSaved = true;
 		invalidateInstancePromotionConnection();
-		if (canClone.value && !saved.checkout.matchesEnvironment) connected = await connect(saved.id);
+		if (canConnect.value && !saved.checkout.matchesEnvironment) connected = await connect(saved.id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.environment.toast.error.save'));
 		return;

@@ -16,6 +16,11 @@ reject the call.
 
 The body payload, e.g. `{event: "signup", userId: "..."}`. The adapter wraps it
 under `body`, so downstream nodes reference `$json.body.<field>`.
+A flat payload leaves `query`, `headers` and `params` empty. Those fields
+resolve empty, and a simulated downstream node can still look green. So when
+the workflow reads request fields (`$json.query.*`, `$json.headers.*` or
+`$json.params.*`), pass the full envelope `{body, query, headers, params}`, e.g.
+`{body: {...}, query: {caller: "+1555..."}, headers: {"x-github-event": "issues"}, params: {}}`.
 
 ## Chat Trigger (`@n8n/n8n-nodes-langchain.chatTrigger`)
 

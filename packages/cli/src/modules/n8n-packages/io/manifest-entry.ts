@@ -4,7 +4,11 @@ import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type {
+	ManifestEntry,
+	PackageManifest,
+	WorkflowManifestEntry,
+} from '../spec/manifest.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -132,11 +136,11 @@ export async function writeWorkflowManifestEntry(
 	workflow: { id: string; name: string },
 	content: SerializedWorkflow,
 	metadata: SerializedWorkflowMetadata,
-): Promise<ManifestEntry> {
+): Promise<WorkflowManifestEntry> {
 	const entry = await writeManifestEntry(writer, 'workflows', baseDir, workflow, content);
 	await writer.writeFile(
 		workflowMetadataFilePath(entry.target),
 		JSON.stringify(metadata, null, '\t'),
 	);
-	return entry;
+	return { ...entry, isArchived: content.isArchived };
 }

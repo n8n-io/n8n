@@ -1,10 +1,10 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { SkillsController } from '../skills.controller';
+import { SkillsController } from '../controllers/skills.controller';
 
 /**
- * The skills routes carry no scope decorator: `SkillsApiService` checks each skill row,
+ * The skills routes carry no scope decorator: `SkillService` checks each skill row,
  * or for `newName` the create permission in the requested scope, as `create` does.
  * `creators` names only the creators of the skills that `list` would show, and `agents`
  * only the agents in projects where the user holds `agent:read`.
