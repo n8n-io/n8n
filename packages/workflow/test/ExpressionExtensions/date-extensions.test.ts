@@ -87,6 +87,19 @@ describe('Data Transformation Functions', () => {
 				);
 			});
 
+			test('should extract yearDayNumber in the DateTime zone, not the system zone', () => {
+				expect(
+					evaluate(
+						'={{ DateTime.fromISO("2024-01-01T00:30", { zone: "Pacific/Kiritimati" }).extract("yearDayNumber") }}',
+					),
+				).toEqual(1);
+				expect(
+					evaluate(
+						'={{ DateTime.fromISO("2024-12-31T23:30", { zone: "Etc/GMT+12" }).extract("yearDayNumber") }}',
+					),
+				).toEqual(366);
+			});
+
 			test('should extract month from a date', () => {
 				expect(evaluate('={{ new Date("2024-03-30T18:49").extract("month") }}')).toEqual(3);
 			});

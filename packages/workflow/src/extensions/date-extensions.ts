@@ -121,7 +121,8 @@ function extract(date: Date | DateTime, args: DatePart[]): number {
 	let [part = 'week'] = args;
 
 	if (part === 'yearDayNumber') {
-		date = isDateTime(date) ? date.toJSDate() : date;
+		// Count days in the DateTime's own zone. Converting to a JS Date would use the system zone.
+		if (isDateTime(date)) return date.ordinal;
 
 		const firstDayOfTheYear = new Date(date.getFullYear(), 0, 0);
 
