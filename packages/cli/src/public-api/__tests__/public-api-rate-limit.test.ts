@@ -475,11 +475,11 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 	});
 
 	describe('when the settings change while the app runs', () => {
-		const activateWithSettings = (rateLimit: Partial<RateLimitConfig>) =>
-			activateAppWithSettings(rateLimit, createStoreFactory(mode));
-
 		it('starts to limit when rate limiting is turned on', async () => {
-			const { app, settings } = activateWithSettings({ enabled: false, globalReadLimit: 1 });
+			const { app, settings } = activateAppWithSettings(
+				{ enabled: false, globalReadLimit: 1 },
+				createStoreFactory(mode),
+			);
 			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
 
 			settings.enabled = true;
@@ -488,7 +488,10 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		});
 
 		it('stops limiting and sends no rate-limit headers when rate limiting is turned off', async () => {
-			const { app, settings } = activateWithSettings({ globalReadLimit: 1 });
+			const { app, settings } = activateAppWithSettings(
+				{ globalReadLimit: 1 },
+				createStoreFactory(mode),
+			);
 			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 429]);
 
 			settings.enabled = false;
@@ -499,7 +502,10 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		});
 
 		it('applies a lower limit on the next request', async () => {
-			const { app, settings } = activateWithSettings({ globalReadLimit: 5 });
+			const { app, settings } = activateAppWithSettings(
+				{ globalReadLimit: 5 },
+				createStoreFactory(mode),
+			);
 			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
 
 			settings.globalReadLimit = 1;
@@ -508,7 +514,10 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		});
 
 		it('starts a counter whose limit changes from 0', async () => {
-			const { app, settings } = activateWithSettings({ globalReadLimit: 0 });
+			const { app, settings } = activateAppWithSettings(
+				{ globalReadLimit: 0 },
+				createStoreFactory(mode),
+			);
 			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
 
 			settings.globalReadLimit = 1;
@@ -517,11 +526,14 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		});
 
 		it.runIf(mode === 'single main')('starts a new count with the new window', async () => {
-			const { app, settings } = activateWithSettings({
-				globalReadLimit: 10,
-				globalReadWindowSeconds: 3600,
-				endpointReadLimit: 0,
-			});
+			const { app, settings } = activateAppWithSettings(
+				{
+					globalReadLimit: 10,
+					globalReadWindowSeconds: 3600,
+					endpointReadLimit: 0,
+				},
+				createStoreFactory(mode),
+			);
 			await send(app, 'get', '/widgets');
 
 			settings.globalReadWindowSeconds = 1;
