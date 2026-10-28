@@ -1078,6 +1078,7 @@ watch(
 		skill.value = cloneDeep(initialSkill.value);
 		viewedVersion.value = null;
 		comparison.value = null;
+		if (props.data.initialVersionsOpen) versionsOpen.value = true;
 		if (!(next.references ?? []).some((file) => file.path === selectedPath.value)) {
 			selectedPath.value = SKILL_FILE;
 		}

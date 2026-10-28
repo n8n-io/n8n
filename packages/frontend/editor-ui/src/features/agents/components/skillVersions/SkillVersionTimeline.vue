@@ -133,7 +133,7 @@ function dotClass(version: number, index: number) {
 							color="text-light"
 							data-testid="skill-version-published"
 						>
-							· {{ i18n.baseText('agents.builder.skills.versions.inPublishedAgent') }}
+							{{ i18n.baseText('agents.builder.skills.versions.inPublishedAgent') }}
 						</N8nText>
 					</N8nText>
 					<N8nText size="xsmall" color="text-light">{{ savedBy(version) }}</N8nText>

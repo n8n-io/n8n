@@ -962,23 +962,39 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 	});
 
 	it('does not open the editor again when the user closed it during the save', async () => {
+		const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
+		vi.mocked(getSkillDetail).mockResolvedValue({
+			...makeDetail('tone', latest),
+			skillHash: 'hash-latest',
+		});
+		let finishSave: (value?: unknown) => void = () => {};
+		const save = new Promise((resolve) => {
+			finishSave = resolve;
+		});
 		const agent = ref<AgentResource | null>({
 			id: 'agent-1',
 			skills: { tone: supportTone },
 			skillHashes: { tone: 'hash-tone' },
 			skillVersions: { tone: { draft: 1, published: 2, latest: 3, pinned: true } },
 		} as unknown as AgentResource);
-		const { actions, uiStore, localConfig } = setup({ agent, agentId: ref('agent-1') });
+		const { actions, uiStore, localConfig } = setup({
+			agent,
+			agentId: ref('agent-1'),
+			flushConfigSave: async () => await save,
+		});
 		localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone', versionId: 'v1' }] });
 		actions.onOpenSkillFromList('tone');
 		const data = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
 
 		data.onUseLatestVersion?.('tone');
+		await flushPromises();
+		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+		finishSave(undefined);
 		await flushPromises();
 
 		expect(agent.value?.skillVersions?.tone?.pinned).toBe(false);
 		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBe(false);
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.data).toBe(data);
 	});
 
 	describe('when the agent refuses the config save', () => {
