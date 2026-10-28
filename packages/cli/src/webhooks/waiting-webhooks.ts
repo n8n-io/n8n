@@ -58,6 +58,7 @@ function seedResumingNode(execution: IExecutionResponse, node: INode): void {
 	];
 	data.executionData = {
 		contextData: {},
+		// TODO(CET-538): carry the waiting node's input items and their sources, as v1 does.
 		nodeExecutionStack: [{ node: structuredClone(node), data: { main: [[]] }, source: null }],
 		metadata: {},
 		waitingExecution: {},
@@ -88,6 +89,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	async getWebhookMethods(executionId: string) {
 		// A v2 execution has no control-plane row to read the waiting node from.
+		// TODO(CET-539): read the waiting node's methods from the data plane.
 		if (isExecutionIdV2(executionId)) return [];
 
 		const execution = await this.getExecution(executionId);
