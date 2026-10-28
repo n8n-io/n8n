@@ -980,7 +980,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 	});
 
 	describe('when the agent refuses the config save', () => {
-		function setupPinned() {
+		function setupPinned(outcome: unknown = Promise.reject(new Error('refused'))) {
 			const agent = ref<AgentResource | null>({
 				id: 'agent-1',
 				skills: { tone: supportTone },
@@ -990,7 +990,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			const result = setup({
 				agent,
 				agentId: ref('agent-1'),
-				flushConfigSave: async () => await Promise.reject(new Error('refused')),
+				flushConfigSave: async () => await outcome,
 			});
 			result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
 			result.actions.onOpenSkillFromList('tone');
@@ -1033,6 +1033,11 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 				skillHash: 'hash-latest',
 			});
 			const { agent, data, scheduleConfigUpdate, localConfig } = setupPinned();
+			agent.value = {
+				...agent.value,
+				outdatedSkillIds: ['tone'],
+				skillVersions: { tone: { draft: 1, published: 1, latest: 3, pinned: true } },
+			} as unknown as AgentResource;
 			localConfig.value = makeConfig({
 				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
 			});
@@ -1045,6 +1050,69 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			});
 			expect(agent.value?.skills.tone).toEqual(supportTone);
 			expect(agent.value?.skillHashes?.tone).toBe('hash-tone');
+			// The pin and its markers come back too.
+			expect(agent.value?.skillVersions?.tone).toEqual({
+				draft: 1,
+				published: 1,
+				latest: 3,
+				pinned: true,
+			});
+			expect(agent.value?.outdatedSkillIds).toEqual(['tone']);
+		});
+
+		it('puts back the version when the save resolves without persisting', async () => {
+			const { agent, data, scheduleConfigUpdate } = setupPinned('skipped');
+
+			data.onUseVersion?.('tone', {
+				id: 'version-1',
+				version: 1,
+				createdBy: null,
+				createdAt: '2026-10-20T00:00:00.000Z',
+				skill: { ...supportTone, instructions: 'Be brief.' },
+			});
+			await flushPromises();
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+			expect(agent.value?.skillVersions?.tone?.pinned).toBe(false);
+		});
+
+		it('keeps edits to other skills made while the save ran', async () => {
+			let refuse: (reason: Error) => void = () => {};
+			const { agent, data, localConfig, scheduleConfigUpdate } = setupPinned(
+				new Promise((_resolve, reject) => (refuse = reject)),
+			);
+			localConfig.value = makeConfig({
+				skills: [
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'sql' },
+				],
+			});
+
+			data.onUseVersion?.('tone', {
+				id: 'version-1',
+				version: 1,
+				createdBy: null,
+				createdAt: '2026-10-20T00:00:00.000Z',
+				skill: { ...supportTone, instructions: 'Be brief.' },
+			});
+			await flushPromises();
+			// The user detaches another skill while the save runs.
+			localConfig.value = makeConfig({
+				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+			});
+			agent.value = {
+				...agent.value,
+				skills: { ...agent.value?.skills, extra: sqlHelper },
+			} as unknown as AgentResource;
+			refuse(new Error('refused'));
+			await flushPromises();
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+			expect(agent.value?.skills.extra).toEqual(sqlHelper);
 		});
 	});
 

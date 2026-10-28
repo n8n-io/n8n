@@ -7,6 +7,7 @@ import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
+	type AgentSkillVersionInfo,
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillVersionDetail,
@@ -708,6 +709,44 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	 * Points the draft ref at a version of the skill: pinned with `versionId`, else following
 	 * the latest. Saves, then reopens the editor on it with the Versions panel shown.
 	 */
+	/**
+	 * Puts one skill back as it was before a version change. Only this skill's entry and ref
+	 * change, so edits made to the agent while the save ran stay.
+	 */
+	function restoreSkillVersion(
+		skillId: string,
+		previous: {
+			skill?: AgentSkill;
+			skillHash?: string;
+			outdated: boolean;
+			versions?: AgentSkillVersionInfo;
+			ref?: NonNullable<AgentJsonConfig['skills']>[number];
+		},
+	) {
+		if (!agent.value || !localConfig.value) return;
+		const outdatedSkillIds = (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId);
+		const { [skillId]: _hash, ...otherHashes } = agent.value.skillHashes ?? {};
+		agent.value = {
+			...agent.value,
+			...(previous.skill ? { skills: { ...agent.value.skills, [skillId]: previous.skill } } : {}),
+			skillHashes:
+				previous.skillHash !== undefined
+					? { ...otherHashes, [skillId]: previous.skillHash }
+					: otherHashes,
+			outdatedSkillIds: previous.outdated ? [...outdatedSkillIds, skillId] : outdatedSkillIds,
+			...(previous.versions
+				? { skillVersions: { ...agent.value.skillVersions, [skillId]: previous.versions } }
+				: {}),
+		};
+		const previousRef = previous.ref;
+		if (!previousRef) return;
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).map((ref) =>
+				ref.id === skillId ? previousRef : ref,
+			),
+		});
+	}
+
 	async function applySkillVersion(
 		skillId: string,
 		target: { skill: AgentSkill; version: number; versionId?: string; skillHash?: string },
@@ -716,14 +755,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		if (agent.value?.id !== targetAgentId || !localConfig.value) return;
 		const pinned = target.versionId !== undefined;
 		const versions = agent.value.skillVersions?.[skillId];
-		// Kept, so a refused save can put the agent back as the server still has it.
+		// Kept, so a save that does not persist can put this skill back as the server still has it.
 		const previous = {
-			skills: agent.value.skills,
-			skillHashes: agent.value.skillHashes,
-			outdatedSkillIds: agent.value.outdatedSkillIds,
-			skillVersions: agent.value.skillVersions,
+			skill: agent.value.skills?.[skillId],
+			skillHash: agent.value.skillHashes?.[skillId],
+			outdated: (agent.value.outdatedSkillIds ?? []).includes(skillId),
+			versions,
+			ref: localConfig.value.skills?.find((ref) => ref.id === skillId),
 		};
-		const previousRefs = localConfig.value.skills ?? [];
 		agent.value = {
 			...agent.value,
 			skills: { ...(agent.value.skills ?? {}), [skillId]: target.skill },
@@ -754,14 +793,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			),
 		});
 		if (flushConfigSave) {
+			let persisted: boolean;
 			try {
-				await flushConfigSave();
+				// A skipped, stale or outdated save resolves, but the server still has the old ref.
+				persisted = (await flushConfigSave()) === undefined;
 			} catch {
-				// The server keeps the old ref. Without the undo, every later save sends the refused one.
-				if (agentId.value === targetAgentId && agent.value) {
-					agent.value = { ...agent.value, ...previous };
-					scheduleConfigUpdate({ skills: previousRefs });
-				}
+				persisted = false;
+			}
+			if (!persisted) {
+				// Without the undo, every later save sends the refused ref again.
+				if (agentId.value === targetAgentId) restoreSkillVersion(skillId, previous);
 				return;
 			}
 		}
