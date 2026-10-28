@@ -7,12 +7,10 @@ description: >-
   intent-recognition first when it is listed. Write or edit a workspace source file, run
   workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
   with filePath. When the workflow creates or writes Data Tables, load
-  data-table-manager first, then this skill. Do not load planning or
-  workflow_builder_create_tasks first. Load planning only when multiple coordinated workflows
-  or shared cross-task data tables require a dependency-aware task graph.
+  data-table-manager first, then this skill.
   Don't use this skill for explicit one-off tasks that can be done by a single
   node execution: load one-off-operations and run the node with
-  workflow_builder_nodes(action="execute"). Once the user wants a workflow, load
+  execute_node. Once the user wants a workflow, load
   it before you ask any question about that workflow. Do not load it to ask
   about a request that does not yet say what to build. Also load for a
   workflow's evaluations, model choices, credential setup, error workflows, and
@@ -24,9 +22,15 @@ recommended_tools:
   - execute_command
   - workflow_builder_build_workflow
   - workflow_builder_workflows
-  - workflow_builder_nodes
+  - search_nodes
+  - get_node_types
+  - get_node_parameter_options
+  - execute_node
   - data_tables
-  - workflow_builder_credentials
+  - list_credentials
+  - search_credential_types
+  - setup_credentials
+  - test_credential
   - workflow_builder_verify_built_workflow
   - workflow_builder_executions
 ---
@@ -52,13 +56,10 @@ lines you need, apply the edit with `workspace_str_replace_file`, then call
 `workflow_builder_build_workflow({ filePath })` — the file is already bound, so no `workflowId`
 is needed. Never re-emit the whole source with `workspace_write_file`, and do
 not fetch the same unchanged workflow again in another format. All edits go
-through the workspace source file and `workflow_builder_build_workflow`. Do not load
-`planning` or call `workflow_builder_create_tasks` first; `planning` is only for coordinated
-multi-artifact work per the orchestrator routing rules. Do not create a plan
-just for verification.
+through the workspace source file and `workflow_builder_build_workflow`.
 
 When the needed node types are already obvious from the request, batch
-`workflow_builder_nodes(action="type-definition")` — object form with resource/operation or mode
+`get_node_types` — object form with resource/operation or mode
 discriminators — together with the `load_skill` call for this skill in your
 first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
@@ -66,7 +67,7 @@ process below.
 
 ## Early service connections
 
-When the `workflow_builder_credentials(action="setup")` schema offers `filePath`, announce
+When the `setup_credentials` schema offers `filePath`, announce
 known service credentials immediately after the first node definitions or
 credential type search. Do this before detailed planning, SDK research, or
 source generation. Do not wait for every service to be resolved.
@@ -117,8 +118,8 @@ the first successful `workflow_builder_build_workflow` call, use
 intent or topology, such as the missing destination service for "send my team
 a summary". But when that choice is which service to use for a capability the
 user did not name (e.g. web search, scraping, a cloud browser), do not ask yet:
-discover coverage first with `workflow_builder_nodes(action="search")` or
-`workflow_builder_nodes(action="list", gatewayCreditsOnly=true)`, and use a
+discover coverage first with `search_nodes` or
+`search_nodes(gatewayCreditsOnly=true)`, and use a
 Gateway credits–covered node instead of asking when the user has no credential
 for a comparable tool (see Gateway credits Preference). Ask only when discovery
 finds no covered option and the choice changes the workflow. Announce known credentials through early
@@ -138,7 +139,7 @@ workflow/credential setup surfaces.
 Use `placeholder('descriptive hint')` for values that cannot be safely picked
 without the user: undiscoverable user-provided values (email recipients, phone
 numbers, custom URLs, notification targets, chat IDs) and resource IDs where
-`workflow_builder_nodes(action="explore-resources")` returns multiple candidates and the user
+`get_node_parameter_options` returns multiple candidates and the user
 named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
 bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
 setup values before the first successful build — placeholders cover them, and
@@ -211,22 +212,22 @@ workflow, load the `error-workflows` reference and follow its build → publish
 
 1. Research only what the request actually needs. If the workflow fits a
    known category and you are unsure which nodes to use, call
-   `workflow_builder_nodes(action="suggested")` (categories: `notification`,
+   `search_nodes` with `categories` (categories: `notification`,
    `data_persistence`, `chatbot`, `scheduling`, `data_transformation`,
    `data_extraction`, `document_processing`, `form_input`,
    `content_generation`, `triage`, `scraping_and_research`); use
-   `workflow_builder_nodes(action="search")` for service-specific nodes you cannot name exactly
+   `search_nodes` with `query`/`queries` for service-specific nodes you cannot name exactly
    (short service names like "Gmail", not task phrases — results include
    resource/operation/mode discriminators).
-2. Call `workflow_builder_nodes(action="type-definition")` with the exact node IDs you will use
-   (up to five per call), including discriminators. Do not speculatively fetch
+2. Call `get_node_types` with the exact node IDs you will use
+   (up to ten per call), including discriminators. Do not speculatively fetch
    definitions for nodes you will not use.
 3. Read `@builderHint`, `@default`, `@searchListMethod`, `@loadOptionsMethod`,
    valid enum values, credential types, and display conditions in the returned
    definitions.
 4. Resolve real resource IDs: for each parameter with `searchListMethod` or
-   `loadOptionsMethod`, call `workflow_builder_nodes(action="explore-resources")` with the exact
-   method name, method type, credential type, and credential ID — mandatory
+   `loadOptionsMethod` (or `resourceLocator`), call `get_node_parameter_options` with the parameter
+   path (or exact method name and method type), credential type, and credential ID — mandatory
    for calendars, spreadsheets, channels, folders, databases, models, and any
    other list-backed parameter when a credential is available.
    For new model choices, follow `model-selection` before writing code,
@@ -271,9 +272,6 @@ workflow, load the `error-workflows` reference and follow its build → publish
    `workflow_builder_build_workflow` will succeed (no full node-type registry in the sandbox CLI),
    so still call `workflow_builder_build_workflow`.
 8. Call `workflow_builder_build_workflow` with the `filePath` you wrote.
-   For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
-   pass `isSupportingWorkflow: true`; that saved supporting workflow is the
-   task's final deliverable.
    When the tool offers `folderPath` and the new workflow has a home — the user
    named a folder, or you chose one from the project's folders because the
    related workflows live there — pass it on the create call, named the way the
@@ -325,10 +323,6 @@ Use the current turn's higher-priority instructions to decide who verifies:
   `postBuildFlow.required: true` is present in the tool output. Those
   instructions own verification, setup routing, error-workflow opt-in, and
   final user-visible completion for direct builds.
-- Checkpoint follow-ups: verify with `workflow_builder_verify_built_workflow` or `workflow_builder_executions` and
-  report once with `workflow_builder_complete_checkpoint`.
-- Planned build follow-ups that explicitly say to stop after save: stop after a
-  successful `workflow_builder_build_workflow`. The checkpoint task owns verification.
 
 Build/save success is not workflow-quality evidence. When this turn is
 responsible for verification or repair, inspect the persisted workflow before
@@ -382,7 +376,7 @@ decision after testing.
 
 ## Credential Rules
 
-- Call `workflow_builder_credentials(action="list")` early when the task touches external
+- Call `list_credentials` early when the task touches external
   services; note each credential's `id`, `name`, and `type` (the credential
   key, e.g. `slackApi`, comes from the node type definition).
 - Use `newCredential('Credential Name', 'credential-id')` only when the user
@@ -396,7 +390,7 @@ decision after testing.
   setup would preselect their most recent one. Pass the credential type in
   `preferNewCredentials` on `workflow_builder_build_workflow` **and** on
   `workflow_builder_workflows(action="setup")` (or `preferNew: true` on the entry of
-  `workflow_builder_credentials(action="setup")`). The slot then stays unresolved through the build
+  `setup_credentials`). The slot then stays unresolved through the build
   and the card opens on credential creation, with existing credentials still
   listed in case the user changes their mind. Pass it only on an explicit request,
   never by default — reuse is the right behavior everywhere else.
@@ -408,9 +402,9 @@ decision after testing.
   that the credential (or Gateway credits) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
-- `workflow_builder_credentials(action="list")` returns connected credential instances, not all
+- `list_credentials` returns connected credential instances, not all
   supported credential types. If it has no suitable instance for a named
-  service, call `workflow_builder_credentials(action="search-types")` with the service name
+  service, call `search_credential_types` with the service name
   before choosing generic authentication. Pick in this order:
   1. A **dedicated credential type** whenever search finds one.
      For an HTTP Request node, use the most specific type for the target service
@@ -440,7 +434,7 @@ decision after testing.
      only for what a template cannot express: basic auth's base64-encoded
      pair, digest's challenge-response, OAuth flows — or when the user
      explicitly asks for a specific plain type.
-- `workflow_builder_credentials(action="list", type=...)` may include a Gateway credits entry
+- `list_credentials(type=...)` may include a Gateway credits entry
   `{ id: "__AI_GATEWAY_MANAGED__", name: "Gateway credits", type, __aiGatewayManaged: true }`
   when the type is covered by Gateway credits (see Gateway credits Preference). Treat its
   `id` like any credential id: to use Gateway credits, write
@@ -498,18 +492,18 @@ it to choose between authentication methods for the same service.
 service. On instances licensed for it, several common AI-provider and
 scraping nodes can run with no API key required on the user's side.
 
-**Discovery (while building):** `workflow_builder_nodes(action="search")` and
-`workflow_builder_nodes(action="describe")` results carry an `aiGateway` field on covered nodes
+**Discovery (while building):** `search_nodes` and
+`get_node_types` results carry an `aiGateway` field on covered nodes
 — no separate lookup needed. When `aiGateway.supported === true`, prefer that
 node over comparable alternatives *when the user has not named a specific tool
 and has no usable credential for a comparable one* — it runs with no API key.
-Keep your normal `suggested`/search pick when the user already has a credential
+Keep your normal `categories`/search pick when the user already has a credential
 for a comparable tool.
 
-The `suggested` list and search *rank* don't prioritize Gateway credits coverage
+The `categories` list and search *rank* don't prioritize Gateway credits coverage
 (individual search results still flag it). When the user asks for a capability
 they have no usable credential for, search that
-capability — or run `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` — before
+capability — or run `search_nodes(gatewayCreditsOnly=true)` — before
 committing, and prefer a covered result.
 
 Respect the constraints it reports:
@@ -520,18 +514,18 @@ Respect the constraints it reports:
   - Do not set parameters listed in `aiGateway.hiddenProperties`.
 
 **Enumeration (answering "what does Gateway credits support?"):**
-  - All supported nodes: `workflow_builder_nodes(action="list", gatewayCreditsOnly=true)` — each
+  - All supported nodes: `search_nodes(gatewayCreditsOnly=true)` — each
     result carries the full `aiGateway` field (minVersion, operations,
     hiddenProperties).
   - All supported credential types:
-    `workflow_builder_credentials(action="search-types", gatewayCreditsOnly=true)`.
-  - Operations for a specific supported node: `workflow_builder_nodes(action="describe", …)`
+    `search_credential_types(gatewayCreditsOnly=true)`.
+  - Operations for a specific supported node: `get_node_types`
     → `aiGateway.operations`.
 
 **Preference rule:** When adding a new node that has no credential assigned
 yet, prefer Gateway credits over stored credentials if the credential type is
 supported — it works with no API key required and avoids spending the user's
-API quota. The synthetic entry in `workflow_builder_credentials(action="list", type=...)` (see
+API quota. The synthetic entry in `list_credentials(type=...)` (see
 Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
@@ -551,7 +545,7 @@ box, and do not offer a live test.
 
 ## Missing Resources
 
-When `workflow_builder_nodes(action="explore-resources")` returns no results for a required
+When `get_node_parameter_options` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
@@ -578,8 +572,7 @@ Only for large workflows with reusable chunks or independently testable parts:
 decompose into supporting sub-workflows (`executeWorkflowTrigger` v1.1 with an
 explicit input schema, built with `isSupportingWorkflow: true`) referenced from
 the main workflow's `executeWorkflow` node (`source: 'database'`, real returned
-`workflowId`), main workflow saved last. This is part of the approved build
-task — not a reason to create a new plan, and simple
+`workflowId`), main workflow saved last. Simple
 workflows stay in one workflow. Before writing multi-workflow code, load the
 `compositional-workflows` reference for the required steps and SDK examples.
 
@@ -835,8 +828,8 @@ asked for that exact name.
 
 ## Node Configuration Safety Rules
 
-- Fetch `workflow_builder_nodes(action="type-definition")` for parameter names and shapes.
-- Use live `workflow_builder_nodes(action="explore-resources")` for resource locator, list, and
+- Fetch `get_node_types` for parameter names and shapes.
+- Use live `get_node_parameter_options` for resource locator, list, and
   model fields when credentials are available, including Gateway credits.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.

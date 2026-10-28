@@ -3,7 +3,6 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
@@ -147,13 +146,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const rbacStore = useRBACStore();
-	const settingsStore = useSettingsStore();
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
-	const hubSkillsEnabled = computed(
-		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
-	);
+	// Agents keep their skills in the skills hub. Inline agents keep them in the node.
+	const hubSkillsEnabled = computed(() => !localSkills);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -399,7 +396,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					scheduleSkillSave({
 						skillId,
 						skill: sanitizedSkill,
-						...(availableTo && hubSkillsEnabled.value ? { availableTo } : {}),
+						...(availableTo ? { availableTo } : {}),
 					});
 				},
 			},
@@ -563,7 +560,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							targetProjectId,
 							targetAgentId,
 							sanitizedSkill,
-							hubSkillsEnabled.value ? availableTo : undefined,
+							availableTo,
 							method,
 						);
 					} catch (error) {

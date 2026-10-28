@@ -637,8 +637,8 @@ const commonStubs = {
 			'projectIcon',
 			'headerActions',
 			'beforeRevertToPublished',
+			'isUnsaved',
 			'artifactMode',
-			'isPreviewOpen',
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
@@ -646,14 +646,12 @@ const commonStubs = {
 		],
 		emits: [
 			'header-action',
-			'open-preview',
-			'close-preview',
 			'publish-ready',
 			'published',
 			'unpublished',
 			'reverted',
 			'switch-agent',
-			'toggle-version-history',
+			'open-publish-timeline',
 			'toggle-instance-ai',
 		],
 	},
@@ -698,6 +696,8 @@ const commonStubs = {
 	AgentVersionHistoryPanel: {
 		name: 'AgentVersionHistoryPanel',
 		template: '<aside />',
+		props: ['activeTab', 'beforePublish'],
+		emits: ['update:activeTab', 'close'],
 	},
 	InstanceAiChatPanel: {
 		name: 'InstanceAiChatPanel',
@@ -2357,7 +2357,7 @@ describe('AgentBuilderView — preview routing', () => {
 	});
 
 	it.each([
-		{ component: 'AgentBuilderHeader', source: 'primary' },
+		{ component: 'AgentBuilderEditorColumn', source: 'primary' },
 		{ component: 'AgentBuilderEditorColumn', source: 'icon' },
 	])('attributes the preview action from $component to $source', async ({ component, source }) => {
 		const wrapper = await renderView();
@@ -2372,6 +2372,19 @@ describe('AgentBuilderView — preview routing', () => {
 			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
 			{ agent_id: 'a1', source },
 		);
+	});
+
+	it('closes Preview from the primary action beside the Agent title', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('open-preview', 'primary');
+		await flushPromises();
+		expect(editor.props('isPreviewOpen')).toBe(true);
+
+		editor.vm.$emit('close-preview');
+		await flushPromises();
+		expect(editor.props('isPreviewOpen')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
 	});
 
 	it('opens Preview with the selected task instructions', async () => {
@@ -2425,9 +2438,9 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		header.vm.$emit('open-preview');
+		editor.vm.$emit('open-preview');
 		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props()).toEqual(
@@ -2446,9 +2459,9 @@ describe('AgentBuilderView — preview routing', () => {
 				artifactAgentId: 'a2',
 			},
 		});
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		header.vm.$emit('open-preview');
+		editor.vm.$emit('open-preview');
 		await flushPromises();
 
 		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
@@ -2518,7 +2531,7 @@ describe('AgentBuilderView — preview routing', () => {
 					artifactAgentId: agentId,
 				},
 			});
-			wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-preview');
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
 			await flushPromises();
 			const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
 			routerPush.mockClear();
@@ -2654,7 +2667,7 @@ describe('AgentBuilderView — preview routing', () => {
 					artifactAgentId: 'a2',
 				},
 			});
-			wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-preview');
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
 			await flushPromises();
 			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
 				'previous-agent-thread',
@@ -2855,11 +2868,11 @@ describe('AgentBuilderView — preview routing', () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		expect(header.props('agent')).toEqual(expect.objectContaining({ isRunnable: false }));
+		expect(editor.props('agent')).toEqual(expect.objectContaining({ isRunnable: false }));
 
-		header.vm.$emit('open-preview');
+		editor.vm.$emit('open-preview');
 		await flushPromises();
 
 		expect(routerPush).not.toHaveBeenCalled();
@@ -3496,6 +3509,54 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(vm.configValidation?.status).toBe('valid');
 	});
 
+	it.each([false, true])(
+		'recovers a skipped save before history publication with intervening edits=%s',
+		async (changedRemotely) => {
+			const wrapper = await renderView();
+			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			wrapper
+				.getComponent({ name: 'AgentBuilderHeader' })
+				.vm.$emit('header-action', 'version-history');
+			await nextTick();
+			const beforePublish = wrapper
+				.getComponent({ name: 'AgentVersionHistoryPanel' })
+				.props('beforePublish') as () => Promise<boolean>;
+			const vm = wrapper.vm as unknown as {
+				onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+				flushAutosave: () => Promise<string | undefined>;
+			};
+			vm.onConfigFieldUpdate({ instructions: 'Local edit' });
+			const saving = vm.flushAutosave();
+			assistant.vm.$emit('update:building', true);
+			await expect(saving).resolves.toBe('skipped');
+			await expect(beforePublish()).resolves.toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			if (changedRemotely) {
+				intendedConfig = { name: 'Agent One', ...defaultLlmConfig, instructions: 'Remote edit' };
+				updateConfigMock.mockRejectedValueOnce(
+					new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+				);
+			}
+			assistant.vm.$emit('update:building', false);
+			await nextTick();
+
+			await expect(beforePublish()).resolves.toBe(!changedRemotely);
+			expect(updateConfigMock).toHaveBeenCalledExactlyOnceWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ instructions: 'Local edit' }),
+				'hash-1',
+			);
+			expect(
+				wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).toMatchObject({ instructions: changedRemotely ? 'Remote edit' : 'Local edit' });
+			await expect(beforePublish()).resolves.toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledTimes(1);
+		},
+	);
+
 	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {
 			code: 'incompatible_reference',
@@ -3571,6 +3632,25 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
+	it.each([false, true])(
+		'flushes history edits without blocking on an invalid current draft (save fails: %s)',
+		async (saveFails) => {
+			const wrapper = await renderView();
+			getAgentConfigValidationMock.mockResolvedValue({
+				status: 'invalid',
+				issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+			});
+			const vm = wrapper.vm as unknown as {
+				flushBeforePublish: () => Promise<boolean>;
+				onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			};
+			if (saveFails) updateConfigMock.mockRejectedValueOnce(new Error('Save failed'));
+			vm.onConfigFieldUpdate({ instructions: 'New draft instructions' });
+			await expect(vm.flushBeforePublish()).resolves.toBe(!saveFails);
+			expect(updateConfigMock).toHaveBeenCalled();
+		},
+	);
+
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
@@ -3600,6 +3680,62 @@ describe('AgentBuilderView — three-column shell', () => {
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
+	});
+
+	it('opens the requested history tab from either header menu', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const historyAction = header
+			.props('headerActions')
+			.find((item: { id: string }) => item.id === 'version-history');
+		expect(historyAction).toMatchObject({ label: 'menuActions.versionHistory', disabled: false });
+		expect(historyAction.checked).toBeUndefined();
+
+		header.vm.$emit('open-publish-timeline');
+		await flushPromises();
+		const panel = wrapper.getComponent({ name: 'AgentVersionHistoryPanel' });
+		expect(panel.props('activeTab')).toBe('timeline');
+
+		header.vm.$emit('header-action', 'version-history');
+		await flushPromises();
+		expect(panel.props('activeTab')).toBe('versions');
+		header.vm.$emit('header-action', 'version-history');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(true);
+
+		header.vm.$emit('open-publish-timeline');
+		await flushPromises();
+		expect(panel.props('activeTab')).toBe('timeline');
+		panel.vm.$emit('close');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+	});
+
+	it('blocks both history entry points until the Agent is persisted', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const historyAction = () =>
+			header.props('headerActions').find((item: { id: string }) => item.id === 'version-history');
+		expect(header.props('isUnsaved')).toBe(true);
+		expect(historyAction().disabled).toBe(true);
+		for (const [event, action] of [
+			['header-action', 'version-history'],
+			['open-publish-timeline', undefined],
+		]) {
+			header.vm.$emit(event!, action);
+			await nextTick();
+			expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+		}
+
+		wrapper
+			.getComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(header.props('isUnsaved')).toBe(false));
+		expect(historyAction().disabled).toBe(false);
+		header.vm.$emit('header-action', 'version-history');
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(true);
 	});
 
 	it('renders only the manual editor without build chat controls', async () => {
@@ -6001,7 +6137,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		fetchConfigMock.mockClear();
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
-		await nextTick();
+		// The modal opens once the agent is persisted.
+		await flushPromises();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
 			expect.objectContaining({

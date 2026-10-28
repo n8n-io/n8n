@@ -192,7 +192,7 @@ export type CreateExecutionPayload = Omit<
 	| 'jsonSizeBytes'
 	| 'binaryDataSizeBytes'
 	| 'workflowVersionId'
->;
+> & { startedAt?: Date };
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {

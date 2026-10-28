@@ -10,9 +10,15 @@ import type {
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
+	AgentTokenUsage,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import {
+	AGENT_CHAT_ERROR_CODES,
+	applyForwardedChildChunk,
+	APPROVAL_TOOL_NAME,
+	emptyChildTrace,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
@@ -52,6 +58,7 @@ import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolP
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
+import type { AgentUsageUpdate } from '../types';
 
 export interface FatalAgentError {
 	message: string;
@@ -76,12 +83,14 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	/**
 	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
-	 * talks to the published n8n Chat channel. See `capabilities` for the
-	 * differences between channels.
+	 * talks to the published n8n Chat channel; `'system'` talks to a system
+	 * agent, such as the n8n Assistant. See `capabilities` for the differences
+	 * between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	onUsageUpdated?: (update: AgentUsageUpdate) => void;
 	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
 	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
@@ -128,9 +137,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * that fallback.
 	 */
 	const capabilities = computed(() => ({
-		previewHistory: channel.value !== 'n8n-chat',
-		/** n8n Chat has no session detail view to link a background job's trace to. */
-		traceLinks: channel.value !== 'n8n-chat',
+		previewHistory: channel.value === 'chat',
+		/** Only the builder chat has a session detail view to link a background job's trace to. */
+		traceLinks: channel.value === 'chat',
 	}));
 
 	const messages = ref<ChatMessage[]>([]);
@@ -603,6 +612,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queueId?: string;
 		userMessage?: ChatMessage;
 		executionId?: string;
+		sessionId?: string;
+		usageComplete?: boolean;
 		needsStartValidation?: boolean;
 		busy?: boolean;
 		/** Gets the queue item id when the message was queued rather than started. */
@@ -1055,6 +1066,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				void refreshQueue();
 				clearTimeout(stopAcceptanceTimer);
 				session.executionId = event.executionId;
+				session.sessionId = event.sessionId;
+				notifyUsage(session);
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -1267,7 +1280,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'usage':
+				notifyUsage(session, event.usage);
+				break;
 			case 'finish': {
+				if (event.usage) notifyUsage(session, event.usage);
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
@@ -1294,7 +1311,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
-				if (event.errorCode === 'turn_already_running') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.turnAlreadyRunning) {
 					session.busy = true;
 					isCancelling.value = false;
 					stopTargetId = undefined;
@@ -1304,9 +1321,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
-				if (event.errorCode === 'agent_misconfigured') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentMisconfigured) {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
-				} else if (event.errorCode === 'agent_unavailable') {
+				} else if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentUnavailable) {
 					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
@@ -1322,9 +1339,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 				}
 				session.terminalEventReceived = true;
+				notifyUsage(session, undefined, true);
 				break;
 			}
 			case 'done':
+				notifyUsage(session, undefined, true);
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);
 				if (event.executionId) {
@@ -1349,6 +1368,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 		}
 		return undefined;
+	}
+
+	function notifyUsage(session: StreamSession, usage?: AgentTokenUsage, complete = false): void {
+		const sessionId = session.sessionId;
+		if (!sessionId || !session.executionId) return;
+		if (complete) session.usageComplete = true;
+		params.onUsageUpdated?.({
+			sessionId,
+			executionId: session.executionId,
+			usage,
+			complete: session.usageComplete === true,
+		});
 	}
 
 	function detachExcessWaitingStreams(): void {
@@ -1557,7 +1588,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clientContext?: Record<string, unknown>,
 	) {
 		const target = targetKey();
-		const url = agentChatBaseUrl(
+		const baseUrl = agentChatBaseUrl(
 			rootStore.restApiContext,
 			params.projectId.value,
 			params.agentId.value,
@@ -1566,6 +1597,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
+		// The backend rejects a `projectId` that differs from an existing thread's project
+		// (e.g. after a move), so send it only when this request creates the session.
+		const url =
+			channel.value === 'system' && (!sessionId || newSession)
+				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
+				: baseUrl;
 		if (sessionId) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;

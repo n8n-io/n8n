@@ -13,6 +13,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
 	FolderRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	TagRepository,
 	type User,
@@ -43,6 +44,7 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
@@ -51,11 +53,13 @@ import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
+import { PACKAGE_SUBFOLDER } from '../constants';
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionChangesController } from '../promotion-changes.controller';
+import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -70,7 +74,7 @@ beforeAll(async () => await testModules.loadModules(['agents']));
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:gitConnections', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin'],
 });
 
 let remoteFolder: string;
@@ -269,7 +273,43 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		{ workflowId: modified.id, role: 'workflow:owner' },
 		{ projectId: otherProject.id },
 	);
-	const movedOut = (await agent.get(endpoint).expect(200)).body.data.changes;
+	const movedOutPreview = (await agent.get(endpoint).expect(200)).body.data;
+	// Promote refuses a workflow that moved to another project, so the preview names that project.
+	expect(movedOutPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'deleted',
+			movedToProject: { id: otherProject.id, name: otherProject.name },
+		}),
+	);
+	// The other side of the same move: the branch still holds the workflow in the first project.
+	const movedInPreview = (
+		await agent.get(`/promotions/${otherProject.id}/changes/promote`).expect(200)
+	).body.data;
+	expect(movedInPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'added',
+			movedFromProject: { id: project.id, name: project.name },
+		}),
+	);
+	// A personal project's name holds its owner's email, so the preview leaves it out.
+	const personal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: personal.id },
+	);
+	expect((await agent.get(endpoint).expect(200)).body.data.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			movedToProject: { id: personal.id },
+		}),
+	);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: otherProject.id },
+	);
+	const movedOut = movedOutPreview.changes;
 	expect(movedOut).toHaveLength(2);
 	expect(movedOut).toContainEqual(
 		expect.objectContaining({
@@ -278,6 +318,38 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 			status: 'deleted',
 			version: null,
 			updatedAt: null,
+		}),
+	);
+}, 30_000);
+
+it('marks a workflow that moved into a project that has no files on the branch yet', async () => {
+	const owner = await createOwner();
+	const billing = await createTeamProject('Billing', owner);
+	const workflow = await createWorkflow({ name: 'Invoices', nodes: [], connections: {} }, billing);
+	const environments = await createInstanceEnvironments();
+	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	// Created after the promote, so the branch holds nothing for it.
+	const later = await createTeamProject('Later', owner);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: workflow.id, role: 'workflow:owner' },
+		{ projectId: later.id },
+	);
+	const branch = await Container.get(PromotionsService).readBranchPackage(later.id, 'promote');
+	expect(branch.files).toEqual([]);
+	expect(branch.hasManifest).toBe(true);
+
+	const preview = (
+		await server.authAgentFor(owner).get(`/promotions/${later.id}/changes/promote`).expect(200)
+	).body.data;
+
+	expect(preview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${workflow.id}`,
+			change: 'added',
+			movedFromProject: { id: billing.id, name: billing.name },
 		}),
 	);
 }, 30_000);
@@ -539,8 +611,13 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
+	const readFromGit = vi.spyOn(Container.get(PromotionsGitService), 'readFilesAtCommit');
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data.commitSha).toBe(baseline);
+	expect(readFromGit.mock.calls.flatMap(([{ filePaths }]) => filePaths)).toEqual([
+		`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+	]);
+	readFromGit.mockRestore();
 	expect(response.body.data.changes).toHaveLength(5);
 	expect(response.body.data.changes).toEqual(
 		expect.arrayContaining([
@@ -764,25 +841,25 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
-	// A project admin manages the project, but lacks the global git connection scopes.
+	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
-	server.license.disable('feat:gitConnections');
+	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
 	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
 
-// No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
-it('requires the global pull scope of Apply for the Apply check', () => {
+// No built-in role has the read scope without the apply scope, so the requests above cannot tell them apart.
+it('requires the global apply scope for the Apply check', () => {
 	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 		PromotionChangesController as Controller,
 	);
 
 	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'gitConnection:pull',
+		scope: 'promotions:apply',
 		globalOnly: true,
 	});
 });
@@ -1026,8 +1103,8 @@ describe('resources in the preview', () => {
 		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await promoteBaseline(environments.promote.id, owner);
-		// Apply keeps the local folder and credential names. The credential stays, but no local
-		// workflow uses it, so the local export does not hold it.
+		// Apply keeps the local credential name, but gives the folder the name on the branch. The
+		// credential stays, but no local workflow uses it, so the local export does not hold it.
 		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
 		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
 		await Container.get(WorkflowRepository).delete(charge.id);
@@ -1039,6 +1116,12 @@ describe('resources in the preview', () => {
 
 		expect(body.data.resources).toEqual([
 			expect.objectContaining({ key: `project:${project.id}`, change: 'unchanged' }),
+			expect.objectContaining({
+				key: `folder:${folder.id}`,
+				name: 'Invoices',
+				previousName: 'Local invoices',
+				change: 'modified',
+			}),
 			expect.objectContaining({ key: `workflow:${charge.id}`, change: 'added' }),
 			expect.objectContaining({
 				key: `credential:${credential.id}`,

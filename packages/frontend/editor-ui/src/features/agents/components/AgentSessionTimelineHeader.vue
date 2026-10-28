@@ -5,59 +5,97 @@ import {
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
-	N8nToggle,
+	N8nText,
 	N8nTooltip,
-	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
-	type IconName,
 	type IconOrEmoji,
 	type PathItem,
 } from '@n8n/design-system';
 
-import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import type { SessionTimelineMetadata } from '@/features/agents/types';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface SessionDropdownData {
 	date: string;
 	active: boolean;
 }
 
-const props = withDefaults(
-	defineProps<{
-		breadcrumbItems: PathItem[];
-		projectIcon: IconOrEmoji;
-		sessionTitle: string;
-		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
-		showMetrics: boolean;
-		triggerSource: string | null;
-		triggerIcon: IconName;
-		triggerLabel: string;
-		totalTokens: number;
-		totalCost: number;
-		durationLabel: string;
-		showLangsmithExport: boolean;
-		langsmithExportLoading: boolean;
-		isPreviewOpen?: boolean;
-		showPreview?: boolean;
-	}>(),
-	{ isPreviewOpen: false, showPreview: false },
-);
+const props = defineProps<{
+	breadcrumbItems: PathItem[];
+	projectIcon: IconOrEmoji;
+	sessionTitle: string;
+	sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
+	showLangsmithExport: boolean;
+	langsmithExportLoading: boolean;
+	metadata?: SessionTimelineMetadata;
+	hasSession?: boolean;
+	canDeleteSession?: boolean;
+	isDeletingSession?: boolean;
+}>();
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
-	'toggle-preview': [];
+	'copy-link': [];
+	'delete-session': [];
 	close: [];
 }>();
 
 const i18n = useI18n();
 
-const breadcrumbItems = computed(() =>
-	props.breadcrumbItems.map((item, index) =>
-		index === 0 ? { ...item, icon: props.projectIcon } : item,
-	),
-);
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
+	{
+		id: 'copy-link',
+		label: i18n.baseText('agents.builder.preview.more.copyLink'),
+		icon: { type: 'icon', value: 'link' },
+		disabled: !props.hasSession,
+	},
+	...(props.showLangsmithExport
+		? ([
+				{
+					id: 'export-session',
+					label: i18n.baseText('agentSessions.langsmithExport.button'),
+					icon: { type: 'icon', value: 'bug' },
+					disabled: !props.hasSession || props.langsmithExportLoading,
+				},
+			] satisfies Array<DropdownMenuItemProps<string>>)
+		: []),
+	...(props.canDeleteSession
+		? ([
+				{
+					id: 'delete-session',
+					label: i18n.baseText('agentSessions.delete'),
+					icon: { type: 'icon', value: 'trash-2' },
+					divided: true,
+					destructive: true,
+					disabled: !props.hasSession || props.isDeletingSession,
+				},
+			] satisfies Array<DropdownMenuItemProps<string>>)
+		: []),
+]);
+
+function onMenuSelect(action: string) {
+	if (!props.hasSession) return;
+	if (action === 'copy-link') emit('copy-link');
+	if (action === 'export-session' && props.showLangsmithExport && !props.langsmithExportLoading) {
+		emit('langsmith-export');
+	}
+	if (action === 'delete-session' && props.canDeleteSession && !props.isDeletingSession) {
+		emit('delete-session');
+	}
+}
+
+const tokenFormatter = new Intl.NumberFormat('en-US', {
+	notation: 'compact',
+	maximumFractionDigits: 1,
+});
+
+const costFormatter = new Intl.NumberFormat('en-US', {
+	maximumFractionDigits: 4,
+});
 </script>
 
 <template>
@@ -68,6 +106,9 @@ const breadcrumbItems = computed(() =>
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>
+				<template #prepend>
+					<ProjectIcon :icon="props.projectIcon" size="mini" />
+				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -102,52 +143,52 @@ const breadcrumbItems = computed(() =>
 				</template>
 			</N8nBreadcrumbs>
 		</div>
-		<div v-if="props.showMetrics || props.showPreview" :class="$style.topBarRight">
-			<N8nTooltip
-				v-if="props.showMetrics && props.showLangsmithExport"
-				:content="i18n.baseText('agentSessions.langsmithExport.button')"
-				placement="bottom"
-				:show-after="TOOLTIP_DELAY_MS"
+		<div :class="$style.topBarRight">
+			<ul
+				v-if="metadata"
+				:class="$style.descriptionList"
+				data-testid="agent-session-timeline-metadata"
 			>
-				<N8nIconButton
-					icon="bug"
-					variant="ghost"
-					size="small"
-					icon-size="large"
-					:loading="props.langsmithExportLoading"
-					:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
-					data-testid="agent-session-langsmith-export"
-					@click="emit('langsmith-export')"
-				/>
+				<li v-if="metadata.trigger.label">
+					<N8nIcon color="text-light" :icon="metadata.trigger.icon" />
+					<N8nText step="xs" bold>{{ metadata.trigger.label }}</N8nText>
+				</li>
+				<li :class="$style.numericMetadata">
+					<N8nIcon color="text-light" icon="hash" />
+					<N8nText step="xs" bold>
+						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
+						<span v-if="metadata.totalCost !== null" :class="$style.innerLabel"
+							>(${{ costFormatter.format(metadata.totalCost) }})</span
+						>
+					</N8nText>
+				</li>
+				<li :class="$style.numericMetadata">
+					<N8nIcon color="text-light" icon="clock" />
+					<N8nText step="xs" bold>{{ metadata.durationLabel }}</N8nText>
+				</li>
+			</ul>
+			<N8nTooltip placement="bottom" :content="i18n.baseText('agentSessions.actions')">
+				<N8nDropdownMenu
+					:items="menuItems"
+					placement="bottom-end"
+					data-testid="agent-session-timeline-more-menu"
+					@select="onMenuSelect"
+				>
+					<template #trigger>
+						<N8nIconButton
+							icon="ellipsis"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agentSessions.actions')"
+							data-testid="agent-session-timeline-more-btn"
+						/>
+					</template>
+				</N8nDropdownMenu>
 			</N8nTooltip>
-			<span v-if="props.showMetrics && props.triggerSource" :class="$style.metricItem">
-				<N8nIcon :icon="props.triggerIcon" :size="12" />
-				<span>{{ props.triggerLabel }}</span>
-			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
-				<N8nIcon icon="circle-dollar-sign" :size="12" />
-				<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
-			</span>
-			<span v-if="props.showMetrics" :class="$style.sep">·</span>
-			<span v-if="props.showMetrics" :class="$style.metricItem">
-				<N8nIcon icon="clock" :size="12" />
-				<span>{{ props.durationLabel }}</span>
-			</span>
-			<N8nToggle
-				v-if="props.showPreview"
-				:model-value="props.isPreviewOpen"
-				variant="ghost"
-				size="medium"
-				icon="play"
-				:label="i18n.baseText('agents.builder.preview.button')"
-				data-testid="agent-session-timeline-preview-btn"
-				@click="emit('toggle-preview')"
-			/>
 			<N8nTooltip :content="i18n.baseText('generic.close')">
-				<N8nButton
+				<N8nIconButton
 					variant="ghost"
-					icon-only
 					icon="x"
 					size="medium"
 					:aria-label="i18n.baseText('generic.close')"
@@ -161,15 +202,18 @@ const breadcrumbItems = computed(() =>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/utils';
+
 .topBar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--height--4xl);
+	min-height: var(--height--4xl);
 }
 
 .topBarLeft {
@@ -183,7 +227,16 @@ const breadcrumbItems = computed(() =>
 	min-width: 0;
 }
 
+.topBarLeft :global(.n8n-breadcrumbs > ul) {
+	min-width: 0;
+}
+
+.topBarLeft :global(.n8n-breadcrumbs > ul > li:first-child) {
+	display: none;
+}
+
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	min-width: 0;
 	display: flex;
 	align-items: center;
 	height: var(--height--md);
@@ -192,24 +245,16 @@ const breadcrumbItems = computed(() =>
 
 .topBarRight {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	max-width: 100%;
 	align-items: center;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
 	user-select: none;
 	color: var(--text-color--subtler);
 	margin-left: auto;
-}
-
-.sep {
-	color: var(--text-color--subtler);
-}
-
-.metricItem {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	white-space: nowrap;
 }
 
 .crumbSeparator {
@@ -220,6 +265,7 @@ const breadcrumbItems = computed(() =>
 }
 
 .switcherButton {
+	flex-shrink: 0;
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
 }
@@ -257,5 +303,44 @@ const breadcrumbItems = computed(() =>
 	text-align: right;
 	white-space: nowrap;
 	margin-left: auto;
+}
+.numericMetadata {
+	font-variant-numeric: tabular-nums;
+}
+
+.descriptionList {
+	display: flex;
+	flex-wrap: wrap;
+	flex-direction: row;
+	gap: var(--spacing--sm);
+
+	.innerLabel {
+		color: var(--text-color--subtler);
+	}
+
+	li {
+		min-width: 0;
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		gap: var(--spacing--2xs);
+		height: var(--height--sm);
+		font-size: var(--font-size--sm);
+		padding-inline: var(--spacing--xs);
+		margin-inline: calc(var(--spacing--xs) * -1);
+		background-color: transparent;
+		border-radius: var(--radius);
+		user-select: none;
+
+		:global(.n8n-icon) {
+			flex-shrink: 0;
+			height: auto;
+		}
+
+		:global(.n8n-text) {
+			flex: 1;
+			@include utils.utils-ellipsis;
+		}
+	}
 }
 </style>

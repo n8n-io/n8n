@@ -1,6 +1,10 @@
 import { render, fireEvent, waitFor, within } from '@testing-library/vue';
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
+import {
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+	PERSONAL_SELF_HEALING_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
@@ -29,6 +33,7 @@ const configuration: SelfHealingConfigurationDto = {
 	scope: 'all',
 	workflowIds: [],
 	reviewerIds: ['creator'],
+	includeAllProjectMembers: false,
 	enabled: false,
 	enabledById: null,
 	lastActivity: null,
@@ -56,11 +61,23 @@ beforeEach(() => {
 				name: VIEWS.PROJECT_SETTINGS,
 				component: { render: () => null },
 			},
+			{
+				path: '/projects/:projectId/self-healing',
+				name: PERSONAL_SELF_HEALING_VIEW,
+				component: { render: () => null },
+			},
+			{
+				path: '/projects/:projectId/self-healing/:configurationId',
+				name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+				component: SelfHealingConfigView,
+				props: true,
+			},
 		],
 	});
 	const store = useSelfHealingStore();
 	store.configurations.project = [];
 	store.options.project = {
+		project: { name: 'Acme project', icon: { type: 'icon', value: 'rocket' } },
 		workflows: [{ id: 'workflow', name: 'Production workflow' }],
 		reviewers: [
 			{ id: 'creator', email: 'creator@example.com', firstName: 'Test', lastName: 'Reviewer' },
@@ -88,7 +105,13 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 	await waitFor(() =>
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], enabled: true },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: ['creator'],
+				includeAllProjectMembers: false,
+				enabled: true,
+			},
 			undefined,
 		),
 	);
@@ -201,7 +224,7 @@ it.each([false, true])(
 		expect(router.currentRoute.value.path).toBe('/projects/project/settings/self-healing/1');
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'] },
+			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], includeAllProjectMembers: false },
 			1,
 		);
 	},
@@ -267,6 +290,7 @@ it('selects workflow rows and reviewers before saving', async () => {
 			scope: 'selected',
 			workflowIds: ['workflow'],
 			reviewerIds: ['creator'],
+			includeAllProjectMembers: false,
 			enabled: true,
 		},
 		undefined,
@@ -405,6 +429,79 @@ it('returns to project settings at the self-healing section', async () => {
 	);
 });
 
+it('returns to the self-healing tab of a personal project', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [configuration];
+	await router.push('/projects/project/self-healing/1');
+	const view = render(RouterView, { global: { plugins: [router] } });
+	await view.findByRole('button', { name: 'Save changes' });
+	await fireEvent.click(view.getByRole('button', { name: 'Self-healing' }));
+
+	await waitFor(() =>
+		expect(router.currentRoute.value).toMatchObject({
+			name: PERSONAL_SELF_HEALING_VIEW,
+			params: { projectId: 'project' },
+		}),
+	);
+});
+
+describe('personal project', () => {
+	it('creates a personal configuration with the project member group and no reviewer section', async () => {
+		const store = useSelfHealingStore();
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		await router.push('/projects/project/self-healing/new');
+		const view = render(RouterView, { global: { plugins: [router] } });
+		const button = await view.findByRole('button', { name: 'Create configuration' });
+
+		expect(view.queryByText('Reviewers')).not.toBeInTheDocument();
+		expect(view.queryByTestId('self-healing-reviewers')).not.toBeInTheDocument();
+		expect(view.queryByText(/who hears about it/)).not.toBeInTheDocument();
+		await fireEvent.click(button);
+		await waitFor(() =>
+			expect(save).toHaveBeenCalledWith(
+				'project',
+				expect.objectContaining({ reviewerIds: [], includeAllProjectMembers: true }),
+				undefined,
+			),
+		);
+	});
+
+	it('reports a missing configuration without pointing to project settings', async () => {
+		await router.push('/projects/project/self-healing/1');
+		render(RouterView, { global: { plugins: [router] } });
+
+		await waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(
+				new Error('This configuration is no longer available.'),
+				expect.any(String),
+			),
+		);
+	});
+
+	it('uses the project member group when it saves an existing personal configuration', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [configuration];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		store.options.project.workflows.push({ id: 'other', name: 'Other workflow' });
+		await router.push('/projects/project/self-healing/1');
+		const view = render(RouterView, { global: { plugins: [router] } });
+		await view.findByRole('button', { name: 'Save changes' });
+
+		await fireEvent.click(view.getByRole('radio', { name: 'Select manually' }));
+		await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+		await fireEvent.click(await view.findByRole('option', { name: /Other workflow/ }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		await waitFor(() =>
+			expect(save).toHaveBeenCalledWith(
+				'project',
+				expect.objectContaining({ reviewerIds: [], includeAllProjectMembers: true }),
+				1,
+			),
+		);
+	});
+});
+
 it('shows an email-only reviewer once and allows removal', async () => {
 	const store = useSelfHealingStore();
 	store.options.project.reviewers = [
@@ -413,7 +510,7 @@ it('shows an email-only reviewer once and allows removal', async () => {
 	const view = await renderView('new');
 	const reviewer = within(await view.findByTestId('self-healing-selected-reviewer'));
 
-	expect(reviewer.getAllByText('creator@example.com')).toHaveLength(1);
+	expect(reviewer.getAllByText(/creator@example\.com/)).toHaveLength(1);
 	expect(reviewer.getAllByText(/\(you\)/)).toHaveLength(1);
 	await fireEvent.click(reviewer.getByRole('button', { name: 'Remove reviewer' }));
 	expect(view.queryByTestId('self-healing-selected-reviewer')).not.toBeInTheDocument();
@@ -433,4 +530,147 @@ it('keeps a saved unavailable reviewer visible and removable', async () => {
 	expect(view.getAllByTestId('self-healing-selected-reviewer')).toHaveLength(1);
 	expect(view.getByText('Test Reviewer (you)')).toBeVisible();
 	expect(view.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+});
+
+describe('project members', () => {
+	it('adds project members from the picker and saves them without individual reviewers', async () => {
+		const store = useSelfHealingStore();
+		const save = vi.spyOn(store, 'save').mockResolvedValue({
+			...configuration,
+			reviewerIds: [],
+			includeAllProjectMembers: true,
+		});
+		const view = await renderView('new');
+		await view.findByRole('button', { name: 'Create configuration' });
+		expect(view.queryByTestId('self-healing-project-members')).not.toBeInTheDocument();
+
+		await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+		const option = await view.findByRole('option', { name: 'People from Acme project' });
+		expect(within(option).getByTestId('project-members-icon')).toBeInTheDocument();
+		await fireEvent.click(option);
+
+		const group = view.getByTestId('self-healing-project-members');
+		expect(group).toHaveTextContent('People from Acme project');
+		expect(within(group).getByTestId('project-members-icon')).toBeInTheDocument();
+		expect(view.getByTestId('self-healing-selected-reviewer')).toHaveTextContent('Test Reviewer');
+		expect(view.getByRole('combobox', { name: 'Reviewers' })).toBeDisabled();
+		expect(view.getByText('All eligible project members are included.')).toBeVisible();
+
+		await fireEvent.click(view.getByRole('button', { name: 'Remove reviewer' }));
+		expect(view.queryByText('No reviewers yet.')).not.toBeInTheDocument();
+		await fireEvent.click(view.getByRole('button', { name: 'Create configuration' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [],
+				includeAllProjectMembers: true,
+				enabled: true,
+			},
+			undefined,
+		);
+	});
+
+	it('keeps individual reviewers while the project group is selected and after its removal', async () => {
+		const store = useSelfHealingStore();
+		store.options.project.reviewers.push({
+			id: 'maya',
+			email: 'maya@example.com',
+			firstName: 'Maya',
+			lastName: 'Editor',
+		});
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		const view = await renderView('new');
+		await view.findByRole('button', { name: 'Create configuration' });
+		await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+		await fireEvent.click(await view.findByRole('option', { name: /Maya Editor/ }));
+		await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+		await fireEvent.click(await view.findByRole('option', { name: 'People from Acme project' }));
+
+		expect(view.getByRole('combobox', { name: 'Reviewers' })).toBeDisabled();
+		expect(view.getByText('All eligible project members are included.')).toBeVisible();
+		expect(view.getAllByTestId('self-healing-selected-reviewer')).toHaveLength(2);
+
+		await fireEvent.click(
+			view.getByRole('button', { name: 'Remove project members from reviewers' }),
+		);
+		expect(view.getByRole('combobox', { name: 'Reviewers' })).toBeEnabled();
+		expect(view.queryByText('All eligible project members are included.')).not.toBeInTheDocument();
+		expect(view.getAllByTestId('self-healing-selected-reviewer')).toHaveLength(2);
+		await fireEvent.click(view.getByRole('button', { name: 'Create configuration' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: ['creator', 'maya'],
+				includeAllProjectMembers: false,
+				enabled: true,
+			},
+			undefined,
+		);
+	});
+
+	it('does not preselect a creator who cannot review in the project', async () => {
+		const store = useSelfHealingStore();
+		store.options.project.reviewers = [
+			{ id: 'maya', email: 'maya@example.com', firstName: 'Maya', lastName: 'Editor' },
+		];
+		const view = await renderView('new');
+		expect(await view.findByRole('button', { name: 'Create configuration' })).toBeDisabled();
+		expect(view.queryByTestId('self-healing-selected-reviewer')).not.toBeInTheDocument();
+		expect(view.getByText('No reviewers yet.')).toBeVisible();
+
+		await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+		await fireEvent.click(await view.findByRole('option', { name: 'People from Acme project' }));
+		expect(view.getByRole('button', { name: 'Create configuration' })).toBeEnabled();
+	});
+
+	it('removes saved project members and requires another reviewer', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [
+			{ ...configuration, reviewerIds: [], includeAllProjectMembers: true },
+		];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		const view = await renderView('1');
+		expect(await view.findByTestId('self-healing-project-members')).toHaveTextContent(
+			'People from Acme project',
+		);
+		expect(view.queryByTestId('self-healing-selected-reviewer')).not.toBeInTheDocument();
+
+		await fireEvent.click(
+			view.getByRole('button', { name: 'Remove project members from reviewers' }),
+		);
+		expect(view.queryByTestId('self-healing-project-members')).not.toBeInTheDocument();
+		expect(view.getByText('No reviewers yet.')).toBeVisible();
+		expect(view.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+
+		await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+		await fireEvent.click(await view.findByRole('option', { name: /Test Reviewer/ }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], includeAllProjectMembers: false },
+			1,
+		);
+	});
+
+	it('keeps project members with individual reviewers when saving edits', async () => {
+		const store = useSelfHealingStore();
+		store.configurations.project = [{ ...configuration, includeAllProjectMembers: true }];
+		const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+		const view = await renderView('1');
+		await view.findByTestId('self-healing-project-members');
+		await fireEvent.click(view.getByRole('button', { name: 'Remove reviewer' }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+		expect(save).toHaveBeenCalledWith(
+			'project',
+			{ scope: 'all', workflowIds: [], reviewerIds: [], includeAllProjectMembers: true },
+			1,
+		);
+	});
 });
