@@ -114,16 +114,13 @@ describe('TransferPolicyWarning', () => {
 			expect(queryByTestId(VIEW_RESTRICTED)).not.toBeInTheDocument();
 		});
 
-		it('falls back to the subject when the host has no label', () => {
-			const { getByTestId } = renderCredential([github]);
+		it.each([
+			['the subject when the host has no label', github, 'but githubApi credentials'],
+			['the message without a subject', { ...github, subject: undefined }, 'but "githubApi" is'],
+		])('falls back to %s', (_name, restricted, text) => {
+			const { getByTestId } = renderCredential([restricted]);
 
-			expect(getByTestId(WARNING)).toHaveTextContent('but githubApi credentials');
-		});
-
-		it('falls back to the message when there is no subject either', () => {
-			const { getByTestId } = renderCredential([{ ...github, subject: undefined }]);
-
-			expect(getByTestId(WARNING)).toHaveTextContent('but "githubApi" is blocked credentials');
+			expect(getByTestId(WARNING)).toHaveTextContent(text);
 		});
 	});
 
@@ -138,24 +135,6 @@ describe('TransferPolicyWarning', () => {
 			);
 			expect(queryByTestId(VIEW_RESTRICTED)).not.toBeInTheDocument();
 		});
-
-		it('adds an also sentence after the restricted sentence', () => {
-			const { getByTestId } = renderComponent({
-				props: { preview: previewOf({ restricted: [slack], unpublishReasons: [slack] }) },
-			});
-
-			expect(getByTestId(WARNING)).toHaveTextContent(
-				/restricted after the move\. The move will also unpublish it\./,
-			);
-		});
-
-		it('ignores the folder workflow list', () => {
-			const { queryByTestId } = renderComponent({
-				props: { preview: previewOf({ workflowsToUnpublish: [{ id: 'wf-1', name: 'Daily' }] }) },
-			});
-
-			expect(queryByTestId(WARNING)).not.toBeInTheDocument();
-		});
 	});
 
 	describe('when the move would unpublish workflows in a folder', () => {
@@ -165,29 +144,19 @@ describe('TransferPolicyWarning', () => {
 				name: `Workflow ${index}`,
 			}));
 
-		it('uses the singular copy for one workflow', () => {
+		it.each([
+			[1, 'it'],
+			[3, 'them'],
+		])('counts %i workflows in the copy', (count, pronoun) => {
 			const { getByTestId } = renderComponent({
 				props: {
 					resourceType: 'folder',
-					preview: previewOf({ workflowsToUnpublish: workflows(1) }),
+					preview: previewOf({ workflowsToUnpublish: workflows(count) }),
 				},
 			});
 
 			expect(getByTestId(WARNING)).toHaveTextContent(
-				"You can move this folder, but Marketing doesn't allow 1 of its published workflows, so the move will unpublish it.",
-			);
-		});
-
-		it('uses the plural copy with the count for several workflows', () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					resourceType: 'folder',
-					preview: previewOf({ workflowsToUnpublish: workflows(3) }),
-				},
-			});
-
-			expect(getByTestId(WARNING)).toHaveTextContent(
-				"You can move this folder, but Marketing doesn't allow 3 of its published workflows, so the move will unpublish them.",
+				`You can move this folder, but Marketing doesn't allow ${count} of its published workflows, so the move will unpublish ${pronoun}.`,
 			);
 		});
 
@@ -204,26 +173,17 @@ describe('TransferPolicyWarning', () => {
 
 			expect(getByTestId(WARNING)).toHaveTextContent(also);
 		});
-
-		it('ignores the workflow unpublish reasons', () => {
-			const { queryByTestId } = renderComponent({
-				props: { resourceType: 'folder', preview: previewOf({ unpublishReasons: [slack] }) },
-			});
-
-			expect(queryByTestId(WARNING)).not.toBeInTheDocument();
-		});
 	});
 
-	it('never mentions unpublishing for a credential', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				resourceType: 'credential',
-				preview: previewOf({
-					unpublishReasons: [slack],
-					workflowsToUnpublish: [{ id: 'a', name: 'A' }],
-				}),
-			},
-		});
+	it.each([
+		['workflow', previewOf({ workflowsToUnpublish: [{ id: 'wf-1', name: 'Daily' }] })],
+		['folder', previewOf({ unpublishReasons: [slack] })],
+		[
+			'credential',
+			previewOf({ unpublishReasons: [slack], workflowsToUnpublish: [{ id: 'a', name: 'A' }] }),
+		],
+	] as const)('ignores the unpublish fields that do not apply to a %s', (resourceType, preview) => {
+		const { queryByTestId } = renderComponent({ props: { resourceType, preview } });
 
 		expect(queryByTestId(WARNING)).not.toBeInTheDocument();
 	});
@@ -244,17 +204,6 @@ describe('TransferPolicyWarning', () => {
 			expect(queryByTestId(VIEW_RESTRICTED)).not.toBeInTheDocument();
 		});
 
-		it('appends a note after the restricted sentence', () => {
-			const { getByTestId } = renderComponent({
-				props: { preview: previewOf({ restricted: [slack], checkFailed: true }) },
-			});
-
-			expect(getByTestId(WARNING)).toHaveTextContent(
-				/restricted after the move\. Some policy checks failed, so other items may also be restricted\./,
-			);
-			expect(getByTestId(WARNING)).not.toHaveTextContent("couldn't check every policy");
-		});
-
 		it('appends the note after the unpublish sentence', () => {
 			const { getByTestId } = renderComponent({
 				props: { preview: previewOf({ unpublishReasons: [slack], checkFailed: true }) },
@@ -273,8 +222,9 @@ describe('TransferPolicyWarning', () => {
 			});
 
 			expect(getByTestId(WARNING)).toHaveTextContent(
-				/The move will also unpublish it\. Some policy checks failed/,
+				/restricted after the move\. The move will also unpublish it\. Some policy checks failed/,
 			);
+			expect(getByTestId(WARNING)).not.toHaveTextContent("couldn't check every policy");
 		});
 	});
 

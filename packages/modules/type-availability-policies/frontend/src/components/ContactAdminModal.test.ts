@@ -115,33 +115,9 @@ describe('ContactAdminModal', () => {
 	});
 
 	describe('with several type names', () => {
-		it('uses the several copy and joins the names in the description and mail subject', async () => {
-			setup([owner]);
-			const { findByTestId, getByText } = renderComponent({
-				props: {
-					open: true,
-					nodeTypeName: ['Slack', 'GitHub API'],
-					kind: 'credential',
-					audience: 'instance',
-				},
-			});
-
-			await findByTestId('contact-admin-list');
-
-			expect(
-				getByText(
-					'Instance admins manage which nodes and credential types are available. Contact one of them to request access to Slack, GitHub API.',
-				),
-			).toBeInTheDocument();
-			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
-				'href',
-				`mailto:ada@example.com?subject=${encodeURIComponent('Access request for Slack, GitHub API')}`,
-			);
-		});
-
-		it('looks up admins with the scope of the given kind', async () => {
+		it('uses the several copy, joins the names and looks up admins by the given kind', async () => {
 			const usersStore = setup([owner]);
-			const { findByTestId } = renderComponent({
+			const { findByTestId, getByText } = renderComponent({
 				props: {
 					open: true,
 					nodeTypeName: ['Slack', 'GitHub API'],
@@ -155,6 +131,15 @@ describe('ContactAdminModal', () => {
 			expect(usersStore.fetchUsers).toHaveBeenCalledWith({
 				filter: { scope: 'credentialTypePolicy:manage' },
 			});
+			expect(
+				getByText(
+					'Instance admins manage which nodes and credential types are available. Contact one of them to request access to Slack, GitHub API.',
+				),
+			).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				`mailto:ada@example.com?subject=${encodeURIComponent('Access request for Slack, GitHub API')}`,
+			);
 		});
 
 		it('uses the several copy for the project audience', async () => {

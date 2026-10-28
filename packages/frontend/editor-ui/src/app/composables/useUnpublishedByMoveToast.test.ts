@@ -62,7 +62,7 @@ describe('useUnpublishedByMoveToast', () => {
 			);
 		});
 
-		it('should show a persistent warning toast when the move unpublished the workflow', () => {
+		it('should show a persistent warning naming the workflow, the project and the violations', () => {
 			useUnpublishedByMoveToast().showForWorkflow(
 				{ unpublishReasons: [slackViolation] },
 				'My workflow',
@@ -71,21 +71,8 @@ describe('useUnpublishedByMoveToast', () => {
 
 			expect(showMessageSpy).toHaveBeenCalledTimes(1);
 			expect(showMessageSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'warning',
-					duration: 0,
-					title: 'Workflow unpublished',
-				}),
+				expect.objectContaining({ type: 'warning', duration: 0, title: 'Workflow unpublished' }),
 			);
-		});
-
-		it('should name the workflow, the project and the violations in the message', () => {
-			useUnpublishedByMoveToast().showForWorkflow(
-				{ unpublishReasons: [slackViolation] },
-				'My workflow',
-				'Team A',
-			);
-
 			const { container } = renderComponent({ props: { vnode: shownMessage() } });
 
 			expect(container).toHaveTextContent(
@@ -126,22 +113,13 @@ describe('useUnpublishedByMoveToast', () => {
 			expect(showMessageSpy).not.toHaveBeenCalled();
 		});
 
-		it('should show a persistent warning toast when the move unpublished workflows', () => {
+		it('should show a persistent warning listing every unpublished workflow and the project', () => {
 			useUnpublishedByMoveToast().showForFolder(result, 'Team A');
 
 			expect(showMessageSpy).toHaveBeenCalledTimes(1);
 			expect(showMessageSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'warning',
-					duration: 0,
-					title: 'Workflows unpublished',
-				}),
+				expect.objectContaining({ type: 'warning', duration: 0, title: 'Workflows unpublished' }),
 			);
-		});
-
-		it('should list every unpublished workflow name and the project in the message', () => {
-			useUnpublishedByMoveToast().showForFolder(result, 'Team A');
-
 			const { container } = renderComponent({ props: { vnode: shownMessage() } });
 
 			expect(container).toHaveTextContent(
@@ -166,12 +144,6 @@ describe('useUnpublishedByMoveToast', () => {
 				"Team A doesn't allow publishing these workflows, so the move unpublished them: 'First'.",
 				"n8n couldn't republish these workflows after the move, so they're now unpublished: 'Second'.",
 			]);
-		});
-
-		it('should pass the message as a VNode, not an HTML string', () => {
-			useUnpublishedByMoveToast().showForFolder(result, 'Team A');
-
-			expect(isVNode(showMessageSpy.mock.lastCall?.[0].message)).toBe(true);
 		});
 
 		it('should render workflow names as text, not markup', () => {

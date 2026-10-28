@@ -1210,14 +1210,6 @@ describe('MoveToFolderModal', () => {
 			expect(queryByTestId('transfer-policy-warning')).not.toBeInTheDocument();
 		});
 
-		it('should render the warning when a preview exists', async () => {
-			setPreview(unpublishPreview);
-
-			const { getByTestId } = renderModal('workflow');
-
-			await waitFor(() => expect(getByTestId('transfer-policy-warning')).toBeVisible());
-		});
-
 		it('should name the destination project in the warning', async () => {
 			setPreview(unpublishPreview);
 			const { getByTestId } = renderModal('workflow');

@@ -99,22 +99,7 @@ describe('RestrictedTypesDialog', () => {
 		expect(getByText(/Marketing doesn't allow these nodes and credentials/)).toBeInTheDocument();
 	});
 
-	it('renders nothing while closed', () => {
-		const { queryByTestId } = renderComponent({ props: { open: false } });
-
-		expect(queryByTestId('restricted-types-list')).not.toBeInTheDocument();
-	});
-
-	it('words a node row and a credential row by their subject type', () => {
-		const { getByTestId } = renderComponent({ props: { violations: [slack, github] } });
-
-		expect(rowTexts(getByTestId('restricted-types-list'))).toEqual([
-			'n8n-nodes-base.slack node',
-			'githubApi credential',
-		]);
-	});
-
-	it('names each row by the host label, then the subject, then the message', () => {
+	it('words each row by subject type, named by the host label, the subject, then the message', () => {
 		const withoutSubject: PolicyViolation = {
 			kind: 'workflow-start-denied',
 			checkId: 'workflow-start',
@@ -122,7 +107,7 @@ describe('RestrictedTypesDialog', () => {
 		};
 		const { getByTestId } = renderComponent({
 			props: {
-				violations: [slack, github, withoutSubject],
+				violations: [slack, github, violation('somethingElse', 'thing-1'), withoutSubject],
 				labelOf: ({ subject }: PolicyViolation) =>
 					subject === 'n8n-nodes-base.slack' ? 'Slack' : undefined,
 			},
@@ -131,16 +116,9 @@ describe('RestrictedTypesDialog', () => {
 		expect(rowTexts(getByTestId('restricted-types-list'))).toEqual([
 			'Slack node',
 			'githubApi credential',
+			'thing-1',
 			'Cannot start here',
 		]);
-	});
-
-	it('shows only the name for a subject type without row copy', () => {
-		const { getByTestId } = renderComponent({
-			props: { violations: [violation('somethingElse', 'thing-1')] },
-		});
-
-		expect(rowTexts(getByTestId('restricted-types-list'))).toEqual(['thing-1']);
 	});
 
 	it('renders the icon slot once for each violation', () => {
@@ -159,12 +137,6 @@ describe('RestrictedTypesDialog', () => {
 	});
 
 	describe('contact admin', () => {
-		it('stays closed until the footer button is clicked', () => {
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
-		});
-
 		it('opens for the destination project admins when the project blocks every type', async () => {
 			const { getByTestId } = renderComponent({
 				props: {

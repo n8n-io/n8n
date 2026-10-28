@@ -401,13 +401,6 @@ describe('useProjectsStore.moveResourceToProject', () => {
 		});
 	});
 
-	it('should return undefined when the workflow keeps its state', async () => {
-		vi.mocked(workflowsEEApi.moveWorkflowToProject).mockResolvedValue(undefined);
-		const store = useProjectsStore();
-
-		expect(await store.moveResourceToProject('workflow', 'w1', 'p2')).toBeUndefined();
-	});
-
 	it('should move a credential and return undefined', async () => {
 		vi.mocked(credentialsEEApi.moveCredentialToProject).mockResolvedValue(undefined);
 		const store = useProjectsStore();

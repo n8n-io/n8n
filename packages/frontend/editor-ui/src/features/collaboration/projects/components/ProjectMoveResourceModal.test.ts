@@ -489,7 +489,7 @@ describe('ProjectMoveResourceModal', () => {
 			expect(queryByTestId('transfer-policy-warning')).toBeNull();
 		});
 
-		it('should render the warning for a credential preview', async () => {
+		it('should render the warning naming the selected project for a credential preview', async () => {
 			setPreview(restrictedPreview);
 			const { getByTestId } = renderComponent({ props: propsFor(ResourceType.Credential) });
 
@@ -497,15 +497,6 @@ describe('ProjectMoveResourceModal', () => {
 			await userEvent.click(items[0]);
 
 			await vi.waitFor(() => expect(getByTestId('transfer-policy-warning')).toBeVisible());
-		});
-
-		it('should name the selected project in the warning', async () => {
-			setPreview(restrictedPreview);
-			const { getByTestId } = renderComponent({ props: propsFor(ResourceType.Credential) });
-
-			const items = await getDropdownItems(getByTestId('project-sharing-select'));
-			await userEvent.click(items[0]);
-
 			expect(getByTestId('transfer-policy-warning')).toHaveTextContent(destinationProject.name);
 		});
 

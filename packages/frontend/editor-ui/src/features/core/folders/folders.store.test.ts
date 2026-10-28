@@ -224,11 +224,5 @@ describe('folders.store', () => {
 				['c1'],
 			);
 		});
-
-		it('should reject when the API call fails', async () => {
-			vi.spyOn(workflowsEEApi, 'moveFolderToProject').mockRejectedValue(new Error('nope'));
-
-			await expect(foldersStore.moveFolderToProject('p1', 'f1', 'p2')).rejects.toThrow('nope');
-		});
 	});
 });

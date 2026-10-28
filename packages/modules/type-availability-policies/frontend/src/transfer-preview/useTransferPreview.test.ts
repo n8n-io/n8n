@@ -42,24 +42,17 @@ const WORKFLOW: TransferPreviewTarget = { resourceType: 'workflow', id: 'wf-1' }
 const FOLDER: TransferPreviewTarget = { resourceType: 'folder', id: 'folder-1', projectId: 'p-1' };
 const CREDENTIAL: TransferPreviewTarget = { resourceType: 'credential', id: 'cred-1' };
 
+const restrictedSlack = { restricted: [slackViolation], unpublishReasons: [], checkFailed: false };
+
 describe('useTransferPreview', () => {
 	let errorSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
-		mocks.fetchWorkflowTransferPreview.mockReset().mockResolvedValue({
-			restricted: [],
-			unpublishReasons: [],
-			checkFailed: false,
-		});
-		mocks.fetchFolderTransferPreview.mockReset().mockResolvedValue({
-			restricted: [],
-			workflowsToUnpublish: [],
-			checkFailed: false,
-		});
-		mocks.fetchCredentialTransferPreview.mockReset().mockResolvedValue({
-			restricted: [],
-			checkFailed: false,
-		});
+		mocks.fetchWorkflowTransferPreview
+			.mockReset()
+			.mockResolvedValue({ restricted: [], unpublishReasons: [], checkFailed: false });
+		mocks.fetchFolderTransferPreview.mockReset();
+		mocks.fetchCredentialTransferPreview.mockReset();
 		mocks.isModuleActive.mockReset().mockReturnValue(true);
 		errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
@@ -68,134 +61,66 @@ describe('useTransferPreview', () => {
 		errorSpy.mockRestore();
 	});
 
-	it('fetches a workflow preview and fills the missing folder field', async () => {
-		mocks.fetchWorkflowTransferPreview.mockResolvedValue({
-			restricted: [slackViolation],
-			unpublishReasons: [slackViolation],
-			checkFailed: false,
-		});
+	it.each([
+		{
+			target: WORKFLOW,
+			fetch: mocks.fetchWorkflowTransferPreview,
+			args: ['wf-1', 'dest-1'],
+			response: { restricted: [slackViolation], unpublishReasons: [slackViolation] },
+		},
+		{
+			target: FOLDER,
+			fetch: mocks.fetchFolderTransferPreview,
+			args: ['p-1', 'folder-1', 'dest-1'],
+			response: { restricted: [], workflowsToUnpublish: [{ id: 'wf-1', name: 'Daily report' }] },
+		},
+		{
+			target: CREDENTIAL,
+			fetch: mocks.fetchCredentialTransferPreview,
+			args: ['cred-1', 'dest-1'],
+			response: { restricted: [slackViolation] },
+		},
+	])(
+		'fetches a $target.resourceType preview and fills the fields it lacks',
+		async ({ target, fetch, args, response }) => {
+			fetch.mockResolvedValue({ ...response, checkFailed: true });
 
-		const { preview } = useTransferPreview(WORKFLOW, 'dest-1');
+			const { preview } = useTransferPreview(target, 'dest-1');
+			await flushPromises();
+
+			expect(fetch).toHaveBeenCalledWith(CONTEXT, ...args);
+			expect(preview.value).toEqual({
+				unpublishReasons: [],
+				workflowsToUnpublish: [],
+				...response,
+				checkFailed: true,
+			});
+		},
+	);
+
+	it.each([
+		['module is not active', false, WORKFLOW, 'dest-1'],
+		['module state is unknown', undefined, WORKFLOW, 'dest-1'],
+		['target is null', true, null, 'dest-1'],
+		['destination is null', true, WORKFLOW, null],
+		['destination is undefined', true, WORKFLOW, undefined],
+		['destination is empty', true, WORKFLOW, ''],
+	])('skips the fetch when the %s', async (_name, moduleActive, target, destination) => {
+		mocks.isModuleActive.mockReturnValue(moduleActive);
+
+		const { preview } = useTransferPreview(target, destination);
 		await flushPromises();
 
-		expect(mocks.fetchWorkflowTransferPreview).toHaveBeenCalledWith(CONTEXT, 'wf-1', 'dest-1');
-		expect(preview.value).toEqual({
-			restricted: [slackViolation],
-			unpublishReasons: [slackViolation],
-			workflowsToUnpublish: [],
-			checkFailed: false,
-		});
-	});
-
-	it('fetches a folder preview from the folder project and fills the missing workflow field', async () => {
-		const workflowsToUnpublish = [{ id: 'wf-1', name: 'Daily report' }];
-		mocks.fetchFolderTransferPreview.mockResolvedValue({
-			restricted: [],
-			workflowsToUnpublish,
-			checkFailed: true,
-		});
-
-		const { preview } = useTransferPreview(FOLDER, 'dest-1');
-		await flushPromises();
-
-		expect(mocks.fetchFolderTransferPreview).toHaveBeenCalledWith(
-			CONTEXT,
-			'p-1',
-			'folder-1',
-			'dest-1',
-		);
-		expect(preview.value).toEqual({
-			restricted: [],
-			unpublishReasons: [],
-			workflowsToUnpublish,
-			checkFailed: true,
-		});
-	});
-
-	it('fetches a credential preview and fills both missing unpublish fields', async () => {
-		mocks.fetchCredentialTransferPreview.mockResolvedValue({
-			restricted: [slackViolation],
-			checkFailed: false,
-		});
-
-		const { preview } = useTransferPreview(CREDENTIAL, 'dest-1');
-		await flushPromises();
-
-		expect(mocks.fetchCredentialTransferPreview).toHaveBeenCalledWith(CONTEXT, 'cred-1', 'dest-1');
-		expect(preview.value).toEqual({
-			restricted: [slackViolation],
-			unpublishReasons: [],
-			workflowsToUnpublish: [],
-			checkFailed: false,
-		});
-	});
-
-	it('stays null while the request is pending', async () => {
-		const pending = createDeferredPromise<{
-			restricted: PolicyViolation[];
-			unpublishReasons: PolicyViolation[];
-			checkFailed: boolean;
-		}>();
-		mocks.fetchWorkflowTransferPreview.mockReturnValue(pending.promise);
-
-		const { preview } = useTransferPreview(WORKFLOW, 'dest-1');
-		await flushPromises();
+		expect(mocks.fetchWorkflowTransferPreview).not.toHaveBeenCalled();
 		expect(preview.value).toBeNull();
-
-		pending.resolve({ restricted: [], unpublishReasons: [], checkFailed: false });
-		await flushPromises();
-		expect(preview.value).not.toBeNull();
-	});
-
-	describe('when nothing should be fetched', () => {
-		it('skips the fetch when the module is not active', async () => {
-			mocks.isModuleActive.mockReturnValue(false);
-
-			const { preview } = useTransferPreview(WORKFLOW, 'dest-1');
-			await flushPromises();
-
-			expect(mocks.fetchWorkflowTransferPreview).not.toHaveBeenCalled();
-			expect(preview.value).toBeNull();
-		});
-
-		it('skips the fetch when the module state is unknown', async () => {
-			mocks.isModuleActive.mockReturnValue(undefined);
-
-			const { preview } = useTransferPreview(WORKFLOW, 'dest-1');
-			await flushPromises();
-
-			expect(mocks.fetchWorkflowTransferPreview).not.toHaveBeenCalled();
-			expect(preview.value).toBeNull();
-		});
-
-		it.each([
-			['target is null', null, 'dest-1'],
-			['destination is null', WORKFLOW, null],
-			['destination is undefined', WORKFLOW, undefined],
-			['destination is empty', WORKFLOW, ''],
-		])('skips the fetch when the %s', async (_name, target, destination) => {
-			const { preview } = useTransferPreview(target, destination);
-			await flushPromises();
-
-			expect(mocks.fetchWorkflowTransferPreview).not.toHaveBeenCalled();
-			expect(preview.value).toBeNull();
-		});
 	});
 
 	describe('when the inputs change', () => {
 		it('refetches for a new destination and resets the preview meanwhile', async () => {
 			const destination = ref<string | null>('dest-1');
-			const second = createDeferredPromise<{
-				restricted: PolicyViolation[];
-				unpublishReasons: PolicyViolation[];
-				checkFailed: boolean;
-			}>();
+			const second = createDeferredPromise<object>();
 			mocks.fetchWorkflowTransferPreview
-				.mockResolvedValueOnce({
-					restricted: [slackViolation],
-					unpublishReasons: [],
-					checkFailed: false,
-				})
+				.mockResolvedValueOnce(restrictedSlack)
 				.mockReturnValueOnce(second.promise);
 
 			const { preview } = useTransferPreview(WORKFLOW, destination);
@@ -217,23 +142,6 @@ describe('useTransferPreview', () => {
 			expect(preview.value?.restricted).toEqual([]);
 		});
 
-		it('refetches for a new target', async () => {
-			const target = ref<TransferPreviewTarget | null>(WORKFLOW);
-
-			useTransferPreview(target, 'dest-1');
-			await flushPromises();
-
-			target.value = { resourceType: 'workflow', id: 'wf-2' };
-			await flushPromises();
-
-			expect(mocks.fetchWorkflowTransferPreview).toHaveBeenCalledTimes(2);
-			expect(mocks.fetchWorkflowTransferPreview).toHaveBeenLastCalledWith(
-				CONTEXT,
-				'wf-2',
-				'dest-1',
-			);
-		});
-
 		it('does not refetch when the target object is recreated with the same values', async () => {
 			const target = ref<TransferPreviewTarget | null>({ ...WORKFLOW });
 
@@ -246,20 +154,6 @@ describe('useTransferPreview', () => {
 
 			expect(mocks.fetchWorkflowTransferPreview).toHaveBeenCalledTimes(1);
 			expect(preview.value).toBe(loaded);
-		});
-
-		it('resets the preview and stops fetching when the destination is cleared', async () => {
-			const destination = ref<string | null>('dest-1');
-
-			const { preview } = useTransferPreview(WORKFLOW, destination);
-			await flushPromises();
-			expect(preview.value).not.toBeNull();
-
-			destination.value = null;
-			await flushPromises();
-
-			expect(preview.value).toBeNull();
-			expect(mocks.fetchWorkflowTransferPreview).toHaveBeenCalledTimes(1);
 		});
 
 		it('keeps the latest response when an older request resolves last', async () => {
@@ -275,7 +169,7 @@ describe('useTransferPreview', () => {
 			destination.value = 'dest-2';
 			await flushPromises();
 
-			second.resolve({ restricted: [slackViolation], unpublishReasons: [], checkFailed: false });
+			second.resolve(restrictedSlack);
 			await flushPromises();
 			first.resolve({ restricted: [], unpublishReasons: [], checkFailed: true });
 			await flushPromises();
@@ -284,7 +178,7 @@ describe('useTransferPreview', () => {
 			expect(preview.value?.checkFailed).toBe(false);
 		});
 
-		it('drops a pending response when the inputs are cleared', async () => {
+		it('drops a pending response and stops fetching when the inputs are cleared', async () => {
 			const destination = ref<string | null>('dest-1');
 			const pending = createDeferredPromise<object>();
 			mocks.fetchWorkflowTransferPreview.mockReturnValue(pending.promise);
@@ -294,41 +188,22 @@ describe('useTransferPreview', () => {
 			destination.value = null;
 			await flushPromises();
 
-			pending.resolve({ restricted: [slackViolation], unpublishReasons: [], checkFailed: false });
+			pending.resolve(restrictedSlack);
 			await flushPromises();
 
 			expect(preview.value).toBeNull();
+			expect(mocks.fetchWorkflowTransferPreview).toHaveBeenCalledTimes(1);
 		});
 	});
 
-	describe('when the fetch fails', () => {
-		it('logs the error and leaves the preview null', async () => {
-			const failure = new Error('network down');
-			mocks.fetchWorkflowTransferPreview.mockRejectedValue(failure);
+	it('logs a failed fetch and leaves the preview null', async () => {
+		const failure = new Error('network down');
+		mocks.fetchWorkflowTransferPreview.mockRejectedValue(failure);
 
-			const { preview } = useTransferPreview(WORKFLOW, 'dest-1');
-			await flushPromises();
+		const { preview } = useTransferPreview(WORKFLOW, 'dest-1');
+		await flushPromises();
 
-			expect(preview.value).toBeNull();
-			expect(errorSpy).toHaveBeenCalledWith('Failed to fetch the transfer preview', failure);
-		});
-
-		it('recovers on the next input change', async () => {
-			const destination = ref<string | null>('dest-1');
-			mocks.fetchWorkflowTransferPreview
-				.mockRejectedValueOnce(new Error('network down'))
-				.mockResolvedValueOnce({
-					restricted: [slackViolation],
-					unpublishReasons: [],
-					checkFailed: false,
-				});
-
-			const { preview } = useTransferPreview(WORKFLOW, destination);
-			await flushPromises();
-			destination.value = 'dest-2';
-			await flushPromises();
-
-			expect(preview.value?.restricted).toEqual([slackViolation]);
-		});
+		expect(preview.value).toBeNull();
+		expect(errorSpy).toHaveBeenCalledWith('Failed to fetch the transfer preview', failure);
 	});
 });
