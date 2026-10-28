@@ -4,14 +4,20 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { WORKFLOW_TRACER_NAME } from './tracer-names';
 
-export type TracerConfig = { enabled: boolean };
+export type TracerConfig = { enabled: boolean; provider?: TracerProvider };
 
 export type TracerConfigurator = (scope: InstrumentationScope) => TracerConfig;
 
 type GlobalTracerProvider = TracerProvider & TracerDelegator;
 
-export function createTracerConfigurator(enabledTracerNames: Set<string>): TracerConfigurator {
-	return ({ name }) => ({ enabled: enabledTracerNames.has(name) });
+export function createTracerConfigurator(
+	enabledTracerNames: Set<string>,
+	dedicatedProviders = new Map<string, TracerProvider>(),
+): TracerConfigurator {
+	return ({ name }) => {
+		const provider = dedicatedProviders.get(name);
+		return provider ? { enabled: true, provider } : { enabled: enabledTracerNames.has(name) };
+	};
 }
 
 export function isTracerProviderRegistered(): boolean {
@@ -24,10 +30,15 @@ export function applyTracerConfigurator(configurator: TracerConfigurator): void 
 	const provider = globalTracerProvider();
 	const getDelegateTracer = provider.getDelegateTracer.bind(provider);
 
-	provider.getDelegateTracer = (name, version, options) =>
-		configurator({ name, version, schemaUrl: options?.schemaUrl }).enabled
-			? getDelegateTracer(name, version, options)
-			: undefined;
+	provider.getDelegateTracer = (name, version, options) => {
+		const config = configurator({ name, version, schemaUrl: options?.schemaUrl });
+		if (!config.enabled) return undefined;
+
+		return (
+			config.provider?.getTracer(name, version, options) ??
+			getDelegateTracer(name, version, options)
+		);
+	};
 }
 
 function globalTracerProvider(): GlobalTracerProvider {

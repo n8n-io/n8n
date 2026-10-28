@@ -26,8 +26,26 @@ export class AppRepository extends BaseRepository<App> {
 		return await this.managerFor(ctx).findOneBy(App, { id: appId, projectId });
 	}
 
-	async findById(appId: string, ctx: OperationContext) {
+	async findById(appId: string, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).findOneBy(App, { id: appId });
+	}
+
+	async findByNamespace(namespace: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(App, { namespace });
+	}
+
+	async setPublishedVersion(
+		projectId: string,
+		appId: string,
+		versionId: string | null,
+		ctx: OperationContext,
+	) {
+		await this.managerFor(ctx).update(
+			App,
+			{ id: appId, projectId },
+			{ publishedVersionId: versionId },
+		);
+		return await this.findInProject(projectId, appId, ctx);
 	}
 
 	async advanceDraft(

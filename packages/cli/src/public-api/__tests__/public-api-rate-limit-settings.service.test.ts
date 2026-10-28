@@ -4,7 +4,10 @@ import type { GlobalConfig } from '@n8n/config';
 import { PublicApiRateLimitConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { BadRequestError } from '@n8n/errors';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
 	PUBLIC_API_RATE_LIMIT_SETTINGS_KEY,
@@ -33,8 +36,19 @@ describe('PublicApiRateLimitSettingsService', () => {
 	const logger = mock<Logger>();
 	const settingsRepository = mock<SettingsRepository>();
 	const eventService = mock<EventService>();
+	const publisher = mock<Publisher>();
 	let config: PublicApiRateLimitConfig;
 	let service: PublicApiRateLimitSettingsService;
+
+	const createService = ({ isMultiMain = false }: { isMultiMain?: boolean } = {}) =>
+		new PublicApiRateLimitSettingsService(
+			{ publicApi: { rateLimit: config } } as GlobalConfig,
+			mock<InstanceSettings>({ isMultiMain }),
+			settingsRepository,
+			eventService,
+			publisher,
+			logger,
+		);
 
 	const storeRow = (value: string) =>
 		settingsRepository.findByKey.mockResolvedValue(
@@ -44,12 +58,8 @@ describe('PublicApiRateLimitSettingsService', () => {
 	beforeEach(() => {
 		settingsRepository.findByKey.mockResolvedValue(null);
 		config = { ...codeDefaults };
-		service = new PublicApiRateLimitSettingsService(
-			{ publicApi: { rateLimit: config } } as GlobalConfig,
-			settingsRepository,
-			eventService,
-			logger,
-		);
+		publisher.publishCommand.mockResolvedValue(undefined);
+		service = createService();
 	});
 
 	afterEach(() => {
@@ -183,6 +193,38 @@ describe('PublicApiRateLimitSettingsService', () => {
 
 			expect(service.settings).toEqual(codeDefaults);
 			await service.load();
+
+			expect(service.settings).toEqual(stored);
+		});
+	});
+
+	describe('applying a saved change', () => {
+		it('makes the saved values the values that the limiter reads, without a reload', async () => {
+			await service.saveSettings(stored, actor);
+
+			expect(service.settings).toEqual(stored);
+		});
+
+		it('tells the other mains to reload the settings on multi-main', async () => {
+			service = createService({ isMultiMain: true });
+
+			await service.saveSettings(stored, actor);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-public-api-rate-limit-settings',
+			});
+		});
+
+		it('does not publish a command on a single main', async () => {
+			await service.saveSettings(stored, actor);
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('reloads the stored values when another main saves a change', async () => {
+			storeRow(JSON.stringify(stored));
+
+			await service.handleSettingsChanged();
 
 			expect(service.settings).toEqual(stored);
 		});

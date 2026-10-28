@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DialogSize } from '@n8n/design-system';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import AgentModal from './AgentModal.vue';
 
@@ -16,6 +16,8 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		cancelLabel?: string;
+		headerDivider?: boolean;
 		bodyFlush?: boolean;
 		stableHeight?: boolean;
 		busy?: boolean;
@@ -32,6 +34,8 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		cancelLabel: undefined,
+		headerDivider: false,
 		bodyFlush: false,
 		stableHeight: false,
 		busy: false,
@@ -49,15 +53,6 @@ const emit = defineEmits<{
 	interactOutside: [event: Event];
 }>();
 
-const agentModal = useTemplateRef<InstanceType<typeof AgentModal>>('agentModal');
-
-/** Puts the editable title in edit mode. */
-function focusTitle() {
-	agentModal.value?.focusTitle();
-}
-
-defineExpose({ focusTitle });
-
 const isPickerStep = computed(() => props.step === 'select' || props.step === 'list');
 const stepChanged = ref(false);
 watch(
@@ -72,7 +67,6 @@ watch(
 
 <template>
 	<AgentModal
-		ref="agentModal"
 		:open="open"
 		:title="title"
 		:editable-title="editableTitle"
@@ -82,6 +76,8 @@ watch(
 		:show-back="showBack"
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
+		:cancel-label="cancelLabel"
+		:header-divider="headerDivider"
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
 		:stable-height="stableHeight"
@@ -97,6 +93,12 @@ watch(
 	>
 		<template v-if="$slots.titlePrefix" #titlePrefix>
 			<slot name="titlePrefix" />
+		</template>
+		<template v-if="$slots.sidePanel" #sidePanel>
+			<slot name="sidePanel" />
+		</template>
+		<template v-if="$slots.titleSuffix" #titleSuffix>
+			<slot name="titleSuffix" />
 		</template>
 		<template #headerActions>
 			<slot name="headerActions" />

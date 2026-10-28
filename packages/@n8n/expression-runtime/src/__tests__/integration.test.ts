@@ -264,6 +264,79 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(setEntry).toEqual(expected);
 		});
 
+		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+			};
+
+			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
+			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
+
+			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
+			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
+		});
+
+		it('should return a user object with an __isError key as data', () => {
+			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
+
+			expect(
+				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
+			).toEqual({ __isError: true, message: 'hi' });
+			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
+				__isError: true,
+				message: 'from data',
+			});
+		});
+
+		it('should convert the values inside an object with an __isError key in an object or an array', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]), u: undefined }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+				u: undefined,
+			};
+
+			expect(evaluator.evaluate(`{{ ({ a: ${flagged} }) }}`, data, caller)).toStrictEqual({
+				a: expected,
+			});
+			expect(evaluator.evaluate(`{{ [${flagged}] }}`, data, caller)).toStrictEqual([expected]);
+		});
+
+		it('should give host-call data with an __isError key to the expression as data', () => {
+			const item = {
+				json: {
+					flag: { __isError: true, message: 'm', when: new Date('2024-01-15T00:00:00.000Z') },
+				},
+			};
+			const data = {
+				$input: {
+					first: () => item,
+					last: () => ({ __isError: true, message: 'root' }),
+					all: () => ({ __n8nEscaped: true, __value: 1 }),
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $input.first() }}', data, caller)).toEqual(item);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.flag.when.getTime() }}', data, caller),
+			).toBe(item.json.flag.when.getTime());
+			expect(evaluator.evaluate('{{ $input.last().message }}', data, caller)).toBe('root');
+			expect(evaluator.evaluate('{{ $input.all() }}', data, caller)).toEqual({
+				__n8nEscaped: true,
+				__value: 1,
+			});
+		});
+
 		it('should preserve Date objects (structured-cloneable)', () => {
 			const data = { $json: {} };
 			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data, caller);
@@ -456,10 +529,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		it('should keep a marker that an error flag guards inside a class instance as data', () => {
 			const data = { $json: {} };
 
-			// An object carrying `__isError` leaves the guest walk before the walk can
-			// escape it, so it reaches the host with its keys as they were written.
-			// It sits inside a class instance, which the host reads as data, so the
-			// key that names a type is the user's own and must stay a string.
+			// An object carrying `__isError` sits inside a class instance, which the
+			// host reads as data, so the key that names a type is the user's own and
+			// must stay a string.
 			const result = evaluator.evaluate(
 				'{{ (function(){ function Row(){ this.m = { __isError: true, __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
 				data,

@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
 import { OperationalError, UserError, type Logger } from 'n8n-workflow';
@@ -28,6 +29,7 @@ import {
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
+import { WhatsAppCredentialCheckService } from '../../whatsapp/whatsapp-credential-check.service';
 import type { WhatsAppSetupTelemetryService } from '../../whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
@@ -1071,19 +1073,94 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 	});
 
 	describe('onRemove', () => {
+		const removal = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: 'cred-whatsapp',
+			user: mock<User>(),
+		};
+
+		afterEach(() => {
+			Container.reset();
+		});
+
 		it('clears the recorded handshake for the agent', async () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
 			const integration = createWhatsAppIntegration(undefined, webhookVerification);
 
-			const warning = await integration.onRemove({
-				agentId: 'agent-1',
-				projectId: 'project-1',
-				credentialId: 'cred-whatsapp',
-				user: mock<User>(),
+			await integration.onRemove(removal);
+
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+
+		it('warns that the number is still connected and links to the Meta app dashboard', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			check.getMetaStatus.mockResolvedValue({
+				state: 'connected',
+				displayPhoneNumber: '+1 555-184-1090',
 			});
+			Container.set(WhatsAppCredentialCheckService, check);
+			const integration = createWhatsAppIntegration();
+
+			const warning = await integration.onRemove(removal);
+
+			expect(check.getMetaStatus).toHaveBeenCalledWith(removal.user, 'project-1', 'cred-whatsapp');
+			expect(warning).toEqual({
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+				details: { displayPhoneNumber: '+1 555-184-1090' },
+			});
+		});
+
+		it('still warns, without the number, when Meta cannot be read', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			check.getMetaStatus.mockRejectedValue(new Error('credential not found'));
+			Container.set(WhatsAppCredentialCheckService, check);
+			const integration = createWhatsAppIntegration();
+
+			const warning = await integration.onRemove(removal);
+
+			expect(warning).toEqual({
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+			});
+		});
+
+		it('does not warn for a draft entry that has no credential', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			Container.set(WhatsAppCredentialCheckService, check);
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			const warning = await integration.onRemove({ ...removal, credentialId: '' });
 
 			expect(warning).toBeUndefined();
+			expect(check.getMetaStatus).not.toHaveBeenCalled();
 			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+
+		it('does not wait long on a slow Meta', async () => {
+			vi.useFakeTimers();
+			try {
+				const check = mock<WhatsAppCredentialCheckService>();
+				check.getMetaStatus.mockReturnValue(new Promise(() => {}));
+				Container.set(WhatsAppCredentialCheckService, check);
+				const integration = createWhatsAppIntegration();
+
+				const pending = integration.onRemove(removal);
+				await vi.advanceTimersByTimeAsync(3_000);
+
+				expect(check.getMetaStatus).toHaveBeenCalledWith(
+					removal.user,
+					'project-1',
+					'cred-whatsapp',
+				);
+				expect(await pending).toEqual(expect.not.objectContaining({ details: expect.anything() }));
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 

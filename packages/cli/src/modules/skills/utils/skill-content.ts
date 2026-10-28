@@ -1,8 +1,8 @@
-import type { AgentSkill } from '@n8n/api-types';
+import type { AgentSkill, SkillScope } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 
-import type { SkillContent } from './skill-content-hash';
+import { skillContentHash, type SkillContent } from './skill-content-hash';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill } from '../database/entities/skill.entity';
@@ -13,6 +13,10 @@ import type { Skill } from '../database/entities/skill.entity';
  */
 export type SkillTarget = { projectId: string | null; agentId: string | null };
 
+export function isSameSkillTarget(a: SkillTarget, b: SkillTarget): boolean {
+	return a.projectId === b.projectId && a.agentId === b.agentId;
+}
+
 /** One skill with one of its version rows and that row's files, sorted by path. */
 export type ResolvedSkillRow = {
 	skill: Skill;
@@ -21,10 +25,35 @@ export type ResolvedSkillRow = {
 };
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
+/** The version a skill ref runs, whether a pin decides it, and the latest version. */
+export type RuntimeVersion = { version: number; pinned: boolean; latest: number };
+
 export type SkillRef = { id: string; versionId?: string };
 
-/** Fields to change, plus the hash of the version the editor started from. */
-export type SkillUpdate = Partial<AgentSkill> & { baseSkillHash: string };
+/**
+ * Fields to change, plus the hash of the version the editor started from. Omitted
+ * `frontmatter` keeps the frontmatter of the latest version. `baseSkillHash` leaves out
+ * the frontmatter, so the type requires `baseVersionId` when `frontmatter` is set. With
+ * `checkedTarget`, the save is refused if the skill left the scope the caller checked.
+ */
+export type SkillUpdate = Partial<AgentSkill> & {
+	baseSkillHash: string;
+	checkedTarget?: SkillTarget;
+} & (
+		| { frontmatter?: undefined; baseVersionId?: string }
+		| { frontmatter: SkillFrontmatter | null; baseVersionId: string }
+	);
+
+/** The latest saved version of a skill, for a module that reads skills without their rows. */
+export type LatestSkill = {
+	id: string;
+	target: SkillTarget;
+	versionId: string;
+	skill: AgentSkill;
+	frontmatter: SkillFrontmatter | null;
+	/** The hash of the stored content, frontmatter included. */
+	contentHash: string;
+};
 
 export type SkillSaveResult = {
 	versionId: string;
@@ -106,6 +135,32 @@ export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
 			? { references: row.files.map(({ path, content }) => ({ path, content })) }
 			: {}),
 	};
+}
+
+export function toLatestSkill(row: ResolvedSkillRow): LatestSkill {
+	return {
+		id: row.skill.id,
+		target: { projectId: row.skill.projectId, agentId: row.skill.agentId },
+		versionId: row.version.id,
+		skill: toAgentSkill(row),
+		frontmatter: row.version.frontmatter,
+		contentHash: row.version.contentHash,
+	};
+}
+
+/** The content hash that a version with this skill and frontmatter stores. */
+export function skillContentHashOf(
+	skill: AgentSkill,
+	frontmatter: SkillFrontmatter | null,
+): string {
+	return skillContentHash(toSkillContent(skill, frontmatter));
+}
+
+/** Who owns a skill: one agent, one project, or the instance. */
+export function skillScopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
+	if (skill.agentId) return 'agent';
+	if (skill.projectId) return 'project';
+	return 'instance';
 }
 
 /**
