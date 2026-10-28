@@ -443,7 +443,7 @@ describe('useInstanceAiStore - onboarding exit', () => {
 		});
 	});
 
-	it('openCanvasFromOnboarding ends the onboarding and asks the thread view for a blank canvas', () => {
+	it('navigateFromOnboarding ends the onboarding and asks the thread view for a blank canvas', () => {
 		const store = useInstanceAiStore();
 		store.threads = [
 			{
@@ -456,10 +456,13 @@ describe('useInstanceAiStore - onboarding exit', () => {
 		];
 
 		// The runtime calls this hook when the confirm response carries `navigateTo: 'new-workflow'`.
-		store.openCanvasFromOnboarding('thread-1');
+		store.navigateFromOnboarding('thread-1', 'new-workflow');
 
 		expect(store.isOnboardingChromeHidden('thread-1')).toBe(false);
-		expect(store.onboardingCanvasRequest).toEqual({ threadId: 'thread-1' });
+		expect(store.onboardingNavigationRequest).toEqual({
+			threadId: 'thread-1',
+			target: 'new-workflow',
+		});
 		const { track } = useTelemetry();
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
@@ -467,7 +470,31 @@ describe('useInstanceAiStore - onboarding exit', () => {
 		);
 	});
 
-	it('openCanvasFromOnboarding counts the end once when the thread list already shows it as left', () => {
+	it('navigateFromOnboarding sends the user to the saved example and tracks the example outcome', () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Onboarding',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				metadata: { source: 'onboarding', origin: 'external', onboardingRoute: 'explore' },
+			},
+		];
+
+		const target = { workflowId: 'wf-1', workflowName: 'Daily BBC News digest' };
+		store.navigateFromOnboarding('thread-1', target);
+
+		expect(store.isOnboardingChromeHidden('thread-1')).toBe(false);
+		expect(store.onboardingNavigationRequest).toEqual({ threadId: 'thread-1', target });
+		const { track } = useTelemetry();
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
+			expect.objectContaining({ outcome: 'example', route: 'explore' }),
+		);
+	});
+
+	it('navigateFromOnboarding counts the end once when the thread list already shows it as left', () => {
 		const store = useInstanceAiStore();
 		// The backend wrote `onboardingLeft` with the pick, and the list refreshed before the answer.
 		store.threads = [
@@ -485,8 +512,8 @@ describe('useInstanceAiStore - onboarding exit', () => {
 			},
 		];
 
-		store.openCanvasFromOnboarding('thread-1');
-		store.openCanvasFromOnboarding('thread-1');
+		store.navigateFromOnboarding('thread-1', 'new-workflow');
+		store.navigateFromOnboarding('thread-1', 'new-workflow');
 
 		const { track } = useTelemetry();
 		expect(track).toHaveBeenCalledTimes(1);
@@ -494,10 +521,13 @@ describe('useInstanceAiStore - onboarding exit', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED,
 			expect.objectContaining({ outcome: 'canvas', route: 'build_canvas' }),
 		);
-		expect(store.onboardingCanvasRequest).toEqual({ threadId: 'thread-1' });
+		expect(store.onboardingNavigationRequest).toEqual({
+			threadId: 'thread-1',
+			target: 'new-workflow',
+		});
 	});
 
-	it('openCanvasFromOnboarding reports the canvas route even when the stored route is older', () => {
+	it('navigateFromOnboarding reports the canvas route even when the stored route is older', () => {
 		const store = useInstanceAiStore();
 		// The list still holds the route of the intent card, from before the build card answer.
 		store.threads = [
@@ -510,7 +540,7 @@ describe('useInstanceAiStore - onboarding exit', () => {
 			},
 		];
 
-		store.openCanvasFromOnboarding('thread-1');
+		store.navigateFromOnboarding('thread-1', 'new-workflow');
 
 		const { track } = useTelemetry();
 		expect(track).toHaveBeenCalledWith(

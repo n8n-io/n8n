@@ -1,7 +1,8 @@
 import type { InstanceAiConfirmRequest, InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
@@ -11,12 +12,21 @@ import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pend
 import type { DurableEventLog } from '../event-bus/durable-event-log';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import type { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import {
 	InstanceAiOnboardingService,
 	preloadsSuggestAutomations,
 	startsOnboardingFirstTurn,
 } from '../onboarding';
-import { BUILD_OPTIONS, INTENT_OPTIONS, ONBOARDING_OPENING } from '../onboarding-opening';
+import { ONBOARDING_EXAMPLE_REQUEST_ID_PREFIX } from '@n8n/api-types';
+
+import { ONBOARDING_EXAMPLE_WORKFLOW } from '../onboarding-example-workflow';
+import {
+	BUILD_OPTIONS,
+	EXAMPLE_OPTIONS,
+	INTENT_OPTIONS,
+	ONBOARDING_OPENING,
+} from '../onboarding-opening';
 import type { InstanceAiPendingConfirmationRepository } from '../repositories/instance-ai-pending-confirmation.repository';
 
 const user = mock<User>({ id: 'user-1', firstName: 'Ada' });
@@ -24,6 +34,7 @@ const THREAD_ID = 'thread-1';
 const INTENT_CARD_ID = 'onboarding-intent~abc';
 const BUILD_CARD_ID = 'onboarding-build~abc';
 const IDEA_CARD_ID = 'onboarding-idea~abc';
+const EXAMPLE_CARD_ID = 'onboarding-example~abc';
 const urlSurvey = { survey: { what_team_are_you_on: 'Marketing' }, surveySource: 'url' };
 
 function setup(sourceContext?: Record<string, unknown>) {
@@ -31,6 +42,16 @@ function setup(sourceContext?: Record<string, unknown>) {
 	const pendingConfirmationRepo = mock<InstanceAiPendingConfirmationRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventBus = mock<InProcessEventBus>();
+	const adapterService = mock<InstanceAiAdapterService>();
+	const createFromWorkflowJSON = vi
+		.fn()
+		.mockResolvedValue({ id: 'wf-1', name: ONBOARDING_EXAMPLE_WORKFLOW.name });
+	adapterService.createContext.mockReturnValue(
+		mock<ReturnType<InstanceAiAdapterService['createContext']>>({
+			workflowService: mock({ createFromWorkflowJSON }),
+		}),
+	);
+	memoryService.getThreadProjectId.mockResolvedValue('project-1');
 	memoryService.ensureThread.mockResolvedValue({
 		thread: {
 			id: THREAD_ID,
@@ -55,8 +76,18 @@ function setup(sourceContext?: Record<string, unknown>) {
 		mock<DurableEventLog>(),
 		pendingConfirmationRepo,
 		telemetry,
+		adapterService,
+		mock<Logger>(),
 	);
-	return { service, telemetry, memoryService, pendingConfirmationRepo, eventBus };
+	return {
+		service,
+		telemetry,
+		memoryService,
+		pendingConfirmationRepo,
+		eventBus,
+		adapterService,
+		createFromWorkflowJSON,
+	};
 }
 
 /** The card the service seeded last: the payload of its `confirmation-request` event. */
@@ -81,6 +112,118 @@ const ideaAnswers: InstanceAiConfirmRequest = {
 	],
 };
 const approval: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+
+describe('InstanceAiOnboardingService example route', () => {
+	it('posts the intro, the example nodes, and the example card, with no model turn', async () => {
+		const { service, eventBus, memoryService } = setup();
+
+		const result = await service.answerCard(
+			user,
+			INTENT_CARD_ID,
+			pick('intent', INTENT_OPTIONS.explore),
+		);
+
+		expect(result).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
+		expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
+			metadata: { onboardingRoute: 'explore' },
+		});
+		const events = eventBus.publish.mock.calls.map(([, event]) => event as InstanceAiEvent);
+		const preview = events.find(
+			(event) =>
+				event.type === 'tool-call' && event.payload.toolName === 'onboarding-example-preview',
+		);
+		const nodes = preview?.type === 'tool-call' ? preview.payload.args.nodes : undefined;
+		expect(nodes).toEqual(
+			ONBOARDING_EXAMPLE_WORKFLOW.nodes.map((node) =>
+				expect.objectContaining({ name: node.name, type: node.type }),
+			),
+		);
+		expect(
+			events.some(
+				(event) =>
+					event.type === 'tool-call' &&
+					event.payload.toolName === 'workflow_builder_build_workflow',
+			),
+		).toBe(false);
+		expect(seededCard(eventBus)?.questions).toEqual([ONBOARDING_OPENING.explore.question]);
+		// The example card finds its question by this prefix, so the two must match.
+		expect(seededCard(eventBus)?.requestId).toMatch(
+			new RegExp(`^${ONBOARDING_EXAMPLE_REQUEST_ID_PREFIX}`),
+		);
+	});
+
+	it('has an explanation for every node of the example', () => {
+		for (const node of ONBOARDING_EXAMPLE_WORKFLOW.nodes) {
+			expect(ONBOARDING_OPENING.explore.explanations[node.name ?? '']).toBeTruthy();
+		}
+	});
+
+	it('saves the example without a thread id and opens it on "Build this for me"', async () => {
+		const { service, adapterService, createFromWorkflowJSON, telemetry, memoryService } = setup();
+
+		const result = await service.answerCard(
+			user,
+			EXAMPLE_CARD_ID,
+			pick('example', EXAMPLE_OPTIONS.build),
+		);
+
+		expect(adapterService.createContext).toHaveBeenCalledWith(user, { projectId: 'project-1' });
+		expect(createFromWorkflowJSON).toHaveBeenCalledWith(ONBOARDING_EXAMPLE_WORKFLOW);
+		expect(result).toEqual({
+			threadId: THREAD_ID,
+			runId: expect.any(String),
+			navigateTo: { workflowId: 'wf-1', workflowName: ONBOARDING_EXAMPLE_WORKFLOW.name },
+		});
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_PICKED_AI_ASSISTANT_ONBOARDING_OPTION,
+			expect.objectContaining({ card: 'example', choice: 'build', workflow_id: 'wf-1' }),
+		);
+		expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
+			metadata: { onboardingLeft: true },
+		});
+	});
+
+	it('posts the save error and the example question again when the save fails', async () => {
+		const { service, eventBus, createFromWorkflowJSON, telemetry, memoryService } = setup();
+		createFromWorkflowJSON.mockRejectedValueOnce(new Error('policy refused'));
+
+		const result = await service.answerCard(
+			user,
+			EXAMPLE_CARD_ID,
+			pick('example', EXAMPLE_OPTIONS.build),
+		);
+
+		expect(result).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
+		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(
+			THREAD_ID,
+			user.id,
+			ONBOARDING_OPENING.explore.saveFailedMessage,
+			expect.any(String),
+		);
+		const card = seededCard(eventBus);
+		expect(card?.questions).toEqual([ONBOARDING_OPENING.explore.question]);
+		expect(card?.requestId).toMatch(new RegExp(`^${ONBOARDING_EXAMPLE_REQUEST_ID_PREFIX}`));
+		// No build counted, and the onboarding goes on.
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(memoryService.updateThread).not.toHaveBeenCalledWith(THREAD_ID, {
+			metadata: { onboardingLeft: true },
+		});
+	});
+
+	it('asks the intent again without the example option on "Build something else"', async () => {
+		const { service, eventBus, createFromWorkflowJSON } = setup();
+
+		await service.answerCard(user, EXAMPLE_CARD_ID, pick('example', EXAMPLE_OPTIONS.somethingElse));
+
+		expect(createFromWorkflowJSON).not.toHaveBeenCalled();
+		const [question] = seededCard(eventBus)?.questions ?? [];
+		expect(question?.id).toBe('intent');
+		expect(question?.freeText).toBe(true);
+		expect(question?.options?.some((option) => option.startsWith(INTENT_OPTIONS.explore))).toBe(
+			false,
+		);
+	});
+});
 
 describe('InstanceAiOnboardingService ensureThread', () => {
 	it('opens with the greeting and the intent card', async () => {
@@ -122,7 +265,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('refuses an answer of another kind before the card is claimed', async () => {
 		const { service, pendingConfirmationRepo, eventBus } = setup();
 
-		await expect(service.answerCard(user.id, INTENT_CARD_ID, approval)).rejects.toThrow(
+		await expect(service.answerCard(user, INTENT_CARD_ID, approval)).rejects.toThrow(
 			BadRequestError,
 		);
 		expect(pendingConfirmationRepo.claim).not.toHaveBeenCalled();
@@ -132,7 +275,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('leaves a request id that names no card to the HITL path', async () => {
 		const { service, pendingConfirmationRepo } = setup();
 
-		const result = await service.answerCard(user.id, 'onboarding-V1StGXR8Z5jdHi6BmyT', ideaAnswers);
+		const result = await service.answerCard(user, 'onboarding-V1StGXR8Z5jdHi6BmyT', ideaAnswers);
 
 		expect(result).toBeUndefined();
 		expect(pendingConfirmationRepo.claim).not.toHaveBeenCalled();
@@ -142,7 +285,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 		const { service, memoryService, eventBus, telemetry } = setup();
 
 		const result = await service.answerCard(
-			user.id,
+			user,
 			INTENT_CARD_ID,
 			pick('intent', INTENT_OPTIONS.build),
 		);
@@ -169,7 +312,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('seeds the idea card with the team, apps and goal steps', async () => {
 		const { service, eventBus } = setup();
 
-		await service.answerCard(user.id, INTENT_CARD_ID, pick('intent', INTENT_OPTIONS.idea));
+		await service.answerCard(user, INTENT_CARD_ID, pick('intent', INTENT_OPTIONS.idea));
 
 		const card = seededCard(eventBus);
 		expect(card?.questions?.map((question) => question.id)).toEqual(['team', 'apps', 'goal']);
@@ -179,7 +322,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('skips the team step of the idea card when the survey answered it', async () => {
 		const { service, eventBus } = setup(urlSurvey);
 
-		await service.answerCard(user.id, INTENT_CARD_ID, pick('intent', INTENT_OPTIONS.idea));
+		await service.answerCard(user, INTENT_CARD_ID, pick('intent', INTENT_OPTIONS.idea));
 
 		const card = seededCard(eventBus);
 		expect(card?.questions?.map((question) => question.id)).toEqual(['apps', 'goal']);
@@ -189,7 +332,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('starts the first turn from free text in the intent card', async () => {
 		const { service, memoryService, telemetry } = setup();
 
-		const result = await service.answerCard(user.id, INTENT_CARD_ID, {
+		const result = await service.answerCard(user, INTENT_CARD_ID, {
 			kind: 'questions',
 			answers: [{ questionId: 'intent', selectedOptions: [], customText: 'sync my leads' }],
 		});
@@ -211,11 +354,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('posts the AI follow-up with no card when the user builds with AI', async () => {
 		const { service, memoryService, pendingConfirmationRepo } = setup();
 
-		const result = await service.answerCard(
-			user.id,
-			BUILD_CARD_ID,
-			pick('build', BUILD_OPTIONS.ai),
-		);
+		const result = await service.answerCard(user, BUILD_CARD_ID, pick('build', BUILD_OPTIONS.ai));
 
 		expect(result).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
 		expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
@@ -233,7 +372,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('starts the build turn from free text in the build card', async () => {
 		const { service, memoryService } = setup();
 
-		const result = await service.answerCard(user.id, BUILD_CARD_ID, {
+		const result = await service.answerCard(user, BUILD_CARD_ID, {
 			kind: 'questions',
 			answers: [{ questionId: 'build', selectedOptions: [], customText: 'a lead tracker' }],
 		});
@@ -251,7 +390,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 		const { service, memoryService } = setup();
 
 		const result = await service.answerCard(
-			user.id,
+			user,
 			BUILD_CARD_ID,
 			pick('build', BUILD_OPTIONS.canvas),
 		);
@@ -275,7 +414,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('starts the first turn from the idea card answers', async () => {
 		const { service, memoryService } = setup();
 
-		const result = await service.answerCard(user.id, IDEA_CARD_ID, ideaAnswers);
+		const result = await service.answerCard(user, IDEA_CARD_ID, ideaAnswers);
 
 		expect(result).toEqual({
 			threadId: THREAD_ID,
@@ -289,7 +428,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('tracks the idea card answers with the card as the team source', async () => {
 		const { service, telemetry } = setup();
 
-		await service.answerCard(user.id, IDEA_CARD_ID, ideaAnswers);
+		await service.answerCard(user, IDEA_CARD_ID, ideaAnswers);
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
@@ -308,7 +447,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('keeps the survey as the team source when the survey answered the team step', async () => {
 		const { service, telemetry } = setup(urlSurvey);
 
-		await service.answerCard(user.id, IDEA_CARD_ID, {
+		await service.answerCard(user, IDEA_CARD_ID, {
 			kind: 'questions',
 			answers: [
 				{ questionId: 'apps', selectedOptions: ['Gmail'] },
@@ -338,7 +477,7 @@ describe('ONBOARDING_OPENING routing cards', () => {
 		const { service, memoryService } = setup();
 		const [buildOption] = ONBOARDING_OPENING.intent.options ?? [];
 
-		await service.answerCard(user.id, INTENT_CARD_ID, pick('intent', buildOption));
+		await service.answerCard(user, INTENT_CARD_ID, pick('intent', buildOption));
 
 		expect(buildOption).toContain('\n');
 		expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
@@ -367,7 +506,7 @@ describe('InstanceAiOnboardingService seeded runs and answers', () => {
 		const [buildOption] = ONBOARDING_OPENING.intent.options ?? [];
 		const [title, description] = buildOption.split('\n');
 
-		await service.answerCard(user.id, INTENT_CARD_ID, pick('intent', buildOption));
+		await service.answerCard(user, INTENT_CARD_ID, pick('intent', buildOption));
 
 		const toolResult = eventBus.publish.mock.calls
 			.map(([, event]) => event as InstanceAiEvent)
@@ -405,6 +544,16 @@ describe('startsOnboardingFirstTurn', () => {
 		[false, 'a pick on the build card', BUILD_CARD_ID, pick('build', BUILD_OPTIONS.ai)],
 		[false, 'an answer of another kind on the idea card', IDEA_CARD_ID, approval],
 		[false, 'a pick on another card', 'req-1', pick('goal', 'Reply to people faster')],
+		[false, 'a pick on the example card', EXAMPLE_CARD_ID, pick('example', EXAMPLE_OPTIONS.build)],
+		[
+			false,
+			'free text on the example card',
+			EXAMPLE_CARD_ID,
+			{
+				kind: 'questions',
+				answers: [{ questionId: 'example', selectedOptions: [], customText: 'what is a node?' }],
+			},
+		],
 	])('returns %s for %s', (expected, _label, requestId, request) => {
 		expect(startsOnboardingFirstTurn(requestId, request)).toBe(expected);
 	});

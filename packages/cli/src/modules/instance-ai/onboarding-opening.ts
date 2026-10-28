@@ -38,12 +38,36 @@ interface OnboardingOpening {
 		 */
 		questions: InstanceAiQuestion[];
 	};
+	explore: {
+		/** Assistant text above the example card. */
+		intro: string;
+		/**
+		 * One short text for each node of `ONBOARDING_EXAMPLE_WORKFLOW`, by node name. The example
+		 * card shows them one at a time.
+		 */
+		explanations: Record<string, string>;
+		/** The question under the example. The example card shows its options on the last node. */
+		question: InstanceAiQuestion;
+		/** Posted when the host saved the example; the client then opens it. */
+		builtMessage: string;
+		/** Posted with the example question again when the save failed. */
+		saveFailedMessage: string;
+		/** Posted with the intent card again, without the example option. */
+		somethingElseMessage: string;
+	};
 }
 
 /** The intent card option titles, by the route each one picks. */
 export const INTENT_OPTIONS = {
 	build: 'I know what I want to build',
 	idea: 'Recommend me something',
+	explore: 'Show me an example',
+} as const;
+
+/** The example card option titles. */
+export const EXAMPLE_OPTIONS = {
+	build: 'Build this for me',
+	somethingElse: 'Build something else',
 } as const;
 
 /** The build card option titles, by the route each one picks. */
@@ -77,6 +101,7 @@ export const ONBOARDING_OPENING: OnboardingOpening = {
 		options: [
 			withDescription(INTENT_OPTIONS.build, 'Go straight to building'),
 			withDescription(INTENT_OPTIONS.idea, 'Ideas that fit your work, in a few clicks'),
+			withDescription(INTENT_OPTIONS.explore, 'See how a workflow works, step by step'),
 		],
 	},
 	build: {
@@ -150,5 +175,34 @@ export const ONBOARDING_OPENING: OnboardingOpening = {
 				],
 			},
 		],
+	},
+	explore: {
+		intro:
+			"Here's a small example: a news digest that collects the top 5 BBC News stories every morning. Click through it below to see how it works.",
+		// Keyed by the node names of `ONBOARDING_EXAMPLE_WORKFLOW`. Written for someone who has never
+		// automated anything: what the step does, in everyday words.
+		explanations: {
+			'Every day at 09:00':
+				'Every workflow starts with a **trigger**: the moment it runs. That can be a time of day, a click, or something that happens in another app, like a new email. This one runs every morning at 09:00.',
+			'Read BBC News':
+				'Next, the workflow gets the latest stories from the BBC News website. You do not have to open the site: the workflow reads it for you.',
+			'Keep the last 24 hours':
+				'Then it looks at the date of each story and keeps only the news from the last day. Older stories are left out.',
+			'Take the top 5': 'You only want a short read, so it keeps the first 5 stories.',
+			'Write the digest':
+				'Last, it puts the title and the link of each story together. Your morning digest is ready, and you did nothing.',
+		},
+		question: {
+			id: 'example',
+			question: 'What do you want to do next?',
+			type: 'single',
+			required: true,
+			// The example card shows the options as buttons; it has no text field.
+			freeText: false,
+			options: [EXAMPLE_OPTIONS.build, EXAMPLE_OPTIONS.somethingElse],
+		},
+		builtMessage: "It's ready on the right. Press **Execute workflow** to try it.",
+		saveFailedMessage: "I couldn't save the workflow. Try again, or build something else.",
+		somethingElseMessage: 'Sure. How do you want to start?',
 	},
 };

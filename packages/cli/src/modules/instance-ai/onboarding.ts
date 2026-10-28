@@ -1,14 +1,19 @@
 import type {
 	InstanceAiConfirmRequest,
+	InstanceAiOnboardingNavigation,
 	InstanceAiOnboardingRoute,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiEvent,
 	InstanceAiQuestion,
+	OnboardingExampleNode,
 } from '@n8n/api-types';
+import { ONBOARDING_EXAMPLE_PREVIEW_TOOL_NAME } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ASK_USER_TOOL_ID, orchestratorAgentId } from '@n8n/instance-ai';
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -18,12 +23,19 @@ import { Telemetry } from '@/telemetry';
 
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	InstanceAiMemoryService,
 	type InstanceAiThreadLaunchMetadata,
 } from './instance-ai-memory.service';
 import { buildOnboardingAnswerMessage } from './internal-messages';
-import { BUILD_OPTIONS, INTENT_OPTIONS, ONBOARDING_OPENING } from './onboarding-opening';
+import { ONBOARDING_EXAMPLE_WORKFLOW } from './onboarding-example-workflow';
+import {
+	BUILD_OPTIONS,
+	EXAMPLE_OPTIONS,
+	INTENT_OPTIONS,
+	ONBOARDING_OPENING,
+} from './onboarding-opening';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 
 /**
@@ -34,14 +46,14 @@ import { InstanceAiPendingConfirmationRepository } from './repositories/instance
 const CARD_REQUEST_ID_PREFIX = 'onboarding-';
 /** Length of the `requestId` column. */
 const REQUEST_ID_LENGTH = 36;
-const CARDS = ['intent', 'build', 'idea'] as const;
+const CARDS = ['intent', 'build', 'idea', 'example'] as const;
 type Card = (typeof CARDS)[number];
 type Question = InstanceAiQuestion;
 type GivenAnswer = Extract<InstanceAiConfirmRequest, { kind: 'questions' }>['answers'][number];
 /** One answer in the `workflow_builder_ask_user` result shape: the wire answer plus the question text. */
 type Answer = GivenAnswer & { question: string };
 type CardResult =
-	| { threadId: string; runId: string; navigateTo?: 'new-workflow' }
+	| { threadId: string; runId: string; navigateTo?: InstanceAiOnboardingNavigation }
 	| { threadId: string; firstMessage: string }
 	| undefined;
 
@@ -88,7 +100,8 @@ export function startsOnboardingFirstTurn(
 ): boolean {
 	const card = cardOf(requestId);
 	if (!card || request.kind !== 'questions') return false;
-	return hasFreeText(request) || card === 'idea';
+	// The example card takes picks only: it starts no model turn.
+	return card === 'idea' || (card !== 'example' && hasFreeText(request));
 }
 
 /**
@@ -114,7 +127,19 @@ function questionsOf(card: Card): Question[] {
 			return [ONBOARDING_OPENING.build.question];
 		case 'idea':
 			return ONBOARDING_OPENING.idea.questions;
+		case 'example':
+			return [ONBOARDING_OPENING.explore.question];
 	}
+}
+
+/** The nodes of the example card: each node of the example workflow, with its explanation. */
+function exampleNodes(): OnboardingExampleNode[] {
+	return ONBOARDING_EXAMPLE_WORKFLOW.nodes.map(({ name = '', type, typeVersion }) => ({
+		name,
+		type,
+		typeVersion,
+		explanation: ONBOARDING_OPENING.explore.explanations[name] ?? '',
+	}));
 }
 
 /** The route a pick on the intent or build card leads to. A pick is "title\ndescription". */
@@ -123,6 +148,7 @@ function routeOf(card: 'intent' | 'build', option: string | undefined): Instance
 	if (card === 'intent') {
 		if (pick === INTENT_OPTIONS.build) return 'build';
 		if (pick === INTENT_OPTIONS.idea) return 'idea';
+		if (pick === INTENT_OPTIONS.explore) return 'explore';
 		return 'other';
 	}
 	return pick === BUILD_OPTIONS.canvas ? 'build_canvas' : 'build_ai';
@@ -186,6 +212,8 @@ export class InstanceAiOnboardingService {
 		private readonly eventLog: DurableEventLog,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly telemetry: Telemetry,
+		private readonly adapterService: InstanceAiAdapterService,
+		private readonly logger: Logger,
 	) {}
 
 	async ensureThread(
@@ -248,12 +276,13 @@ export class InstanceAiOnboardingService {
 	 * consumed request with 404 like for any card).
 	 */
 	async answerCard(
-		userId: string,
+		user: User,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
 	): Promise<CardResult> {
 		const card = cardOf(requestId);
 		if (!card) return undefined;
+		const userId = user.id;
 		// Before the claim: a refused request must leave the card open.
 		if (request.kind !== 'questions') {
 			throw new BadRequestError('The onboarding card takes answers of kind "questions"');
@@ -322,6 +351,10 @@ export class InstanceAiOnboardingService {
 			return await this.followRoute(thread, route, survey, answerMessage, freeText);
 		}
 
+		if (card === 'example') {
+			return await this.answerExample(user, thread, answers[0]?.selectedOptions[0], answerMessage);
+		}
+
 		// A survey answer counts as a pick, so the funnel reads the same from both entry points.
 		const picked = (id: string) => {
 			const fromSurvey = answered.get(id);
@@ -366,8 +399,16 @@ export class InstanceAiOnboardingService {
 		if (freeText || route === 'other') {
 			return { threadId: thread.threadId, firstMessage: answerMessage };
 		}
-		const { build, idea } = ONBOARDING_OPENING;
+		const { build, idea, explore } = ONBOARDING_OPENING;
 		switch (route) {
+			case 'explore':
+				return await this.seedNext(
+					thread,
+					explore.intro,
+					answerMessage,
+					{ card: 'example', questions: [explore.question] },
+					exampleNodes(),
+				);
 			case 'build':
 				return await this.seedNext(thread, build.lead, answerMessage, {
 					card: 'build',
@@ -390,6 +431,66 @@ export class InstanceAiOnboardingService {
 	}
 
 	/**
+	 * Answer the example card. "Build this for me" saves the example and opens it next to the chat.
+	 * "Build something else" asks the intent again, without the example. The card takes picks only.
+	 */
+	private async answerExample(
+		user: User,
+		thread: { threadId: string; userId: string },
+		pick: string | undefined,
+		answerMessage: string,
+	): Promise<NonNullable<CardResult>> {
+		const choice = pick === EXAMPLE_OPTIONS.build ? 'build' : 'something_else';
+		const track = (workflowId?: string) =>
+			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_PICKED_AI_ASSISTANT_ONBOARDING_OPTION, {
+				user_id: user.id,
+				thread_id: thread.threadId,
+				card: 'example',
+				route: 'explore',
+				custom_text: null,
+				choice,
+				...(workflowId ? { workflow_id: workflowId } : {}),
+			});
+		const { explore, intent } = ONBOARDING_OPENING;
+		if (choice === 'something_else') {
+			track();
+			const options = intent.options?.filter(
+				(option) => !option.startsWith(INTENT_OPTIONS.explore),
+			);
+			// "Something else" is on this time: a user who said no to the example may know what to build.
+			return await this.seedNext(thread, explore.somethingElseMessage, answerMessage, {
+				card: 'intent',
+				questions: [{ ...intent, options, freeText: true }],
+			});
+		}
+		// No thread id: the save then counts as no builder action in the builder metrics.
+		const projectId = await this.memoryService.getThreadProjectId(thread.threadId);
+		const { workflowService } = this.adapterService.createContext(user, { projectId });
+		let saved: { id: string; name: string };
+		try {
+			saved = await workflowService.createFromWorkflowJSON(ONBOARDING_EXAMPLE_WORKFLOW);
+		} catch (error) {
+			// The answer is already settled: ask again, so the card shows its options and the user
+			// can retry or pick the other option. A thrown error would leave a toast and no next step.
+			this.logger.warn('Failed to save the onboarding example workflow', {
+				threadId: thread.threadId,
+				error: getErrorMessage(error),
+			});
+			return await this.seedNext(thread, explore.saveFailedMessage, answerMessage, {
+				card: 'example',
+				questions: [explore.question],
+			});
+		}
+		track(saved.id);
+		// The user leaves the onboarding for the example, like for a blank canvas.
+		await this.memoryService.updateThread(thread.threadId, { metadata: { onboardingLeft: true } });
+		return {
+			...(await this.seedNext(thread, explore.builtMessage, answerMessage)),
+			navigateTo: { workflowId: saved.id, workflowName: saved.name },
+		};
+	}
+
+	/**
 	 * Post an assistant text, and optionally the next card, under the answers of the card before.
 	 * The answers ride the hidden user turn, so the model reads every card when its turn starts.
 	 */
@@ -398,6 +499,7 @@ export class InstanceAiOnboardingService {
 		text: string,
 		answerMessage: string,
 		card?: { card: Card; questions: Question[] },
+		example?: OnboardingExampleNode[],
 	): Promise<{ threadId: string; runId: string }> {
 		const { userMessageId } = await this.memoryService.seedOpeningMessages(
 			thread.threadId,
@@ -405,14 +507,21 @@ export class InstanceAiOnboardingService {
 			text,
 			answerMessage,
 		);
-		const runId = await this.seedTurn({ ...thread, messageId: userMessageId, text, card });
+		const runId = await this.seedTurn({
+			...thread,
+			messageId: userMessageId,
+			text,
+			card,
+			example,
+		});
 		return { threadId: thread.threadId, runId };
 	}
 
 	/**
 	 * Store a host-written assistant turn as a finished synthetic run. With `card`, the run also
 	 * holds a `workflow_builder_ask_user` call that still waits for an answer, plus the pending row
-	 * `answerCard` claims. Returns the run id.
+	 * `answerCard` claims. With `example`, the run holds a finished example call before the card,
+	 * which the timeline renders as the example card. Returns the run id.
 	 */
 	private async seedTurn(turn: {
 		threadId: string;
@@ -420,8 +529,9 @@ export class InstanceAiOnboardingService {
 		messageId: string;
 		text: string;
 		card?: { card: Card; questions: Question[] };
+		example?: OnboardingExampleNode[];
 	}): Promise<string> {
-		const { threadId, card } = turn;
+		const { threadId, card, example } = turn;
 		const runId = randomUUID();
 		// Own group like a real run: history dedupes assistant rows by group inside one visible turn,
 		// and the hidden `(continue)` rows open no turn, so a groupless greeting collapses into the
@@ -440,6 +550,28 @@ export class InstanceAiOnboardingService {
 			// next card must show while the confirm request is still in flight.
 			{ type: 'text-delta', runId, agentId, responseId: nanoid(), payload: { text: turn.text } },
 		];
+		if (example) {
+			const exampleCallId = nanoid();
+			const nodes = { nodes: example };
+			events.push(
+				{
+					type: 'tool-call',
+					runId,
+					agentId,
+					payload: {
+						toolCallId: exampleCallId,
+						toolName: ONBOARDING_EXAMPLE_PREVIEW_TOOL_NAME,
+						args: nodes,
+					},
+				},
+				{
+					type: 'tool-result',
+					runId,
+					agentId,
+					payload: { toolCallId: exampleCallId, result: nodes },
+				},
+			);
+		}
 		const toolCallId = nanoid();
 		const requestId = card && requestIdFor(card.card);
 		if (card && requestId) {

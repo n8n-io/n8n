@@ -1,5 +1,6 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	ONBOARDING_EXAMPLE_PREVIEW_TOOL_NAME,
 	REMOVED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
@@ -7,6 +8,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	OnboardingExampleNode,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
@@ -65,6 +67,7 @@ export type TimelineBlock =
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'example'; key: string; nodes: OnboardingExampleNode[] }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode }
 	| { type: 'activity'; key: string };
 
@@ -75,6 +78,7 @@ type ToolCallKind =
 	| 'questions'
 	| 'questions-pending'
 	| 'preference'
+	| 'example'
 	| 'trace';
 
 /**
@@ -88,6 +92,7 @@ type ToolCallKind =
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 	if (HIDDEN_TOOLS.has(tc.toolName)) return 'hidden';
+	if (tc.toolName === ONBOARDING_EXAMPLE_PREVIEW_TOOL_NAME) return 'example';
 	if (tc.renderHint === 'tasks') return 'tasks';
 	if (tc.renderHint === 'builder' && tc.toolName.endsWith('-with-agent')) return 'hidden';
 	if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return 'hidden';
@@ -101,6 +106,22 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 		return tc.isLoading ? 'questions-pending' : 'questions';
 	}
 	return 'trace';
+}
+
+/** The nodes of a host-written onboarding example call. */
+function exampleNodesOf(tc: InstanceAiToolCallState): OnboardingExampleNode[] {
+	const nodes = isRecord(tc.args) ? tc.args.nodes : undefined;
+	return Array.isArray(nodes) ? nodes.filter(isOnboardingExampleNode) : [];
+}
+
+function isOnboardingExampleNode(value: unknown): value is OnboardingExampleNode {
+	return (
+		isRecord(value) &&
+		typeof value.name === 'string' &&
+		typeof value.type === 'string' &&
+		typeof value.typeVersion === 'number' &&
+		typeof value.explanation === 'string'
+	);
 }
 
 function hasBuilderChildInResponse(
@@ -254,6 +275,9 @@ export function buildTimelineBlocks(
 				return;
 			case 'preference':
 				pushStandalone({ type: 'preference', key: `preference-${idx}`, toolCall: tc });
+				return;
+			case 'example':
+				pushStandalone({ type: 'example', key: `example-${idx}`, nodes: exampleNodesOf(tc) });
 				return;
 			case 'trace':
 				pushTrace(entry, idx);

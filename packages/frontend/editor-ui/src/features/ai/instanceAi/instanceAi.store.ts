@@ -17,6 +17,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	UNLIMITED_CREDITS,
 	isInstanceAiOnboardingRoute,
+	type InstanceAiOnboardingNavigation,
 	type InstanceAiOnboardingRoute,
 	type InstanceAiThreadHistoryResponse,
 	type InstanceAiThreadInfo,
@@ -94,7 +95,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 		onOnboardingLeft: leaveOnboarding,
-		onOnboardingCanvas: openCanvasFromOnboarding,
+		onOnboardingNavigate: navigateFromOnboarding,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -469,9 +470,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		trackOnboardingEnded(threadId, outcome, leaveReason);
 	}
 
-	/** Set when an onboarding answer sends the user to a blank canvas; the thread view navigates. */
-	const onboardingCanvasRequest = ref<{ threadId: string } | null>(null);
-	function openCanvasFromOnboarding(threadId: string): void {
+	/**
+	 * Set when an onboarding answer sends the user to a blank canvas, or opens the saved example
+	 * next to the chat. The thread view acts on it.
+	 */
+	const onboardingNavigationRequest = ref<{
+		threadId: string;
+		target: InstanceAiOnboardingNavigation;
+	} | null>(null);
+	function navigateFromOnboarding(threadId: string, target: InstanceAiOnboardingNavigation): void {
 		// The backend ends the onboarding for this pick, so a thread list that refreshed first
 		// already shows it as left. The pick still counts as the end, once.
 		if (!leftOnboardingThreadIds.has(threadId)) {
@@ -481,12 +488,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				});
 			}
 			leftOnboardingThreadIds.add(threadId);
-			trackOnboardingEnded(threadId, 'canvas', undefined, 'build_canvas');
+			if (target === 'new-workflow') {
+				trackOnboardingEnded(threadId, 'canvas', undefined, 'build_canvas');
+			} else {
+				trackOnboardingEnded(threadId, 'example', undefined, 'explore');
+			}
 		}
-		onboardingCanvasRequest.value = { threadId };
+		onboardingNavigationRequest.value = { threadId, target };
 	}
-	function clearOnboardingCanvasRequest(): void {
-		onboardingCanvasRequest.value = null;
+	function clearOnboardingNavigationRequest(): void {
+		onboardingNavigationRequest.value = null;
 	}
 
 	return {
@@ -528,9 +539,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		clearCanvasSelectionRequest,
 		isOnboardingChromeHidden,
 		leaveOnboarding,
-		onboardingCanvasRequest,
-		openCanvasFromOnboarding,
-		clearOnboardingCanvasRequest,
+		onboardingNavigationRequest,
+		navigateFromOnboarding,
+		clearOnboardingNavigationRequest,
 		requestClearCanvasSelection,
 	};
 });
