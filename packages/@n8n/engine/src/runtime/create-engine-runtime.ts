@@ -156,6 +156,7 @@ export function createEngineRuntime({
 			stepStore,
 			lifecycleEventPublisher,
 			responseSender,
+			stepQueue,
 		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		resumeRequests:

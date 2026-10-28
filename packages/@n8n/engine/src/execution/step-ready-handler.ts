@@ -81,12 +81,15 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, and a resume emits outputs that
-		// already exist, so neither needs an executor. Looking one up for either
-		// would fail a step that this worker can serve: a resume is announced to
-		// every worker, including one that carries no shim.
+		// The engine runs a batch step itself, and a deadline or request resume
+		// emits outputs that already exist, so neither needs an executor. Looking
+		// one up for either would fail a step that this worker can serve: a resume
+		// is announced to every worker, including one that carries no shim. A
+		// sub-execution resume runs the node again, so it needs one.
+		const emitsRecordedOutputs =
+			step.resumeCause !== null && step.resumeCause.kind !== 'subExecution';
 		const executor =
-			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
+			node.type === 'batch' || emitsRecordedOutputs ? undefined : this.executorFor(step, node);
 
 		if (!isLiveExecutionStatus(execution.status)) {
 			// The execution ended after this step was announced, or after it was
@@ -100,8 +103,9 @@ export class StepReadyHandler {
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// A resume emits outputs that already exist. The node does not run again,
-		// so it has no inputs to gather. Every other dispatch gathers.
+		// A deadline or request resume emits outputs that already exist. The node
+		// does not run again, so it has no inputs to gather. Every other dispatch
+		// gathers, including a sub-execution resume, which runs the node again.
 		//
 		// The gather stays outside the `try` below on purpose. Its errors are the
 		// engine's own bookkeeping, not the node's, so they leave the step
@@ -110,7 +114,7 @@ export class StepReadyHandler {
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
 		const dispatch: { kind: 'resume'; cause: ResumeCause } | { kind: 'run'; inputs: StepSlots } =
-			step.resumeCause
+			emitsRecordedOutputs && step.resumeCause
 				? { kind: 'resume', cause: step.resumeCause }
 				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
 
@@ -283,6 +287,9 @@ export class StepReadyHandler {
 		const result = await executor.execute({
 			node,
 			inputs,
+			// Only a sub-execution resume reaches the executor; the other causes emit
+			// recorded outputs without it.
+			...(step.resumeCause?.kind === 'subExecution' ? { resume: step.resumeCause } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
@@ -502,6 +509,12 @@ function toStepError(error: unknown): StepError {
  */
 function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
 	if (cause.kind === 'request') return cause.outputs;
+	if (cause.kind === 'subExecution') {
+		// The dispatch above sends a sub-execution resume through the executor.
+		throw new UnexpectedError(
+			`step ${step.id} resumes on a sub-execution but was dispatched as a replay`,
+		);
+	}
 
 	const outputs = step.waitDeclaration?.outputsAtDeadline;
 	if (!outputs) {
