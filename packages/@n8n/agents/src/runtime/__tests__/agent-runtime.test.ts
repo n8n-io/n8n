@@ -12225,10 +12225,8 @@ describe('AgentRuntime — tool output files', () => {
 		const lastIndex = MAX_HYDRATED_FILE_PARTS + 1;
 		expect(filePartsOfCall(lastIndex)).toHaveLength(MAX_HYDRATED_FILE_PARTS);
 		const lastCall: aiModule.ModelMessage[] = generateText.mock.calls[lastIndex][0].messages ?? [];
-		expect(JSON.stringify(lastCall)).toContain(
-			JSON.stringify(
-				'[You viewed file "file" (fileId: file-0) earlier. It is no longer attached. Read it again if you need to look at it.]',
-			).slice(1, -1),
+		expect(JSON.stringify(lastCall)).toEqual(
+			expect.stringContaining('(fileId: file-0) is not attached now.'),
 		);
 	});
 

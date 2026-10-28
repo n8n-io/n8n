@@ -276,12 +276,14 @@ function toAiContent(
 }
 
 /**
- * Text for a file that a tool read for the model and that is outside the
- * hydration budget now. Keep it stable, so the prompt prefix stays cached.
+ * Text for a file in a tool output that has no loaded bytes, for example when
+ * it is outside the hydration budget or its bytes are gone. The model may
+ * never have seen the file, so the text only states that it is not attached.
+ * Keep it stable, so the prompt prefix stays cached.
  */
-function viewedFileText(part: ContentFileWithRef): string {
+function detachedFileText(part: ContentFileWithRef): string {
 	const name = part.fileRef.fileName ?? 'file';
-	return `[You viewed file "${name}" (fileId: ${part.fileRef.id}) earlier. It is no longer attached. Read it again if you need to look at it.]`;
+	return `[File "${name}" (fileId: ${part.fileRef.id}) is not attached now.]`;
 }
 
 /**
@@ -298,7 +300,7 @@ function toModelContentOutput(output: ContentToolResultOutput): ContentToolResul
 			// Keep provider options, the same as `toAiContent` does for user files.
 			const options = candidate.providerOptions && { providerOptions: candidate.providerOptions };
 			if (candidate.data === undefined) {
-				return { type: 'text', text: viewedFileText(candidate), ...options };
+				return { type: 'text', text: detachedFileText(candidate), ...options };
 			}
 			return {
 				type: 'file',

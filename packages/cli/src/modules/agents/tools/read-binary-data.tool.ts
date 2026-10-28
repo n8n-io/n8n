@@ -18,7 +18,9 @@ export const MAX_TEXT_FILE_BYTES = 200_000;
 
 const DESCRIPTION =
 	'Read a file by its fileId, such as a file from a tool result or a user upload. ' +
-	'Images and PDFs are attached for you to see. Text files are returned as text.';
+	'Images and PDFs are attached for you to see. Text files are returned as text. ' +
+	'Do not read a file that is already attached in the conversation. ' +
+	'If a file is not attached now, read it again with this tool to see it.';
 
 const outputSchema = z.object({
 	fileId: z.string(),
