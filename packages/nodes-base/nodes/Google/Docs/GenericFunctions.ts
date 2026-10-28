@@ -58,10 +58,15 @@ export async function googleApiRequest(
 		const hasHtmlContentType =
 			typeof contentType === 'string' && contentType.toLowerCase().includes('text/html');
 		const hasHtmlMessage = [apiError.message, apiError.description].some(
-			(value) => typeof value === 'string' && /<!doctype\s+html\b|<\/?[a-z][^>]*>/i.test(value),
+			(value) => typeof value === 'string' && /<!doctype\s+html(?:\s|>)|<html(?:\s|>)/i.test(value),
 		);
 
 		if (hasHtmlContentType || hasHtmlMessage) {
+			if (apiError.httpCode && apiError.httpCode !== '400') {
+				apiError.description = undefined;
+				throw apiError;
+			}
+
 			throw new NodeApiError(
 				this.getNode(),
 				{},

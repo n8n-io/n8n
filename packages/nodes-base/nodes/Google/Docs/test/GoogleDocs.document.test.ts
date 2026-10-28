@@ -1,4 +1,4 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeParameters } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { GoogleDocs } from '../GoogleDocs.node';
@@ -9,7 +9,7 @@ describe('Google Docs document input and errors', () => {
 
 	const setup = (operation: string, documentURL: string) => {
 		const context = mockDeep<IExecuteFunctions>();
-		const parameters: IDataObject = {
+		const parameters: INodeParameters = {
 			authentication: 'oAuth2',
 			resource: 'document',
 			operation,
@@ -117,4 +117,71 @@ describe('Google Docs document input and errors', () => {
 			);
 		},
 	);
+
+	it.each([
+		'Invalid user <name@example.com>',
+		'Invalid value <document-id>',
+		'Invalid value <html-file>',
+	])('should retain a non-HTML API error: %s', async (message) => {
+		const context = setup('get', documentId);
+		context.helpers.requestOAuth2.mockRejectedValue({
+			statusCode: 400,
+			error: { message },
+		});
+
+		await expect(node.execute.call(context)).rejects.toMatchObject({
+			httpCode: '400',
+			message: 'Bad request - please check your parameters',
+			description: message,
+		});
+	});
+
+	it.each([
+		['doctype', '<!DOCTYPE html><body>Document error</body>'],
+		['HTML root', '<HTML lang="en"><body>Document error</body></HTML>'],
+		['content type', '<body>Document error</body>'],
+	])('should recognize HTML from the %s', async (source, html) => {
+		const context = setup('get', documentId);
+		context.helpers.requestOAuth2.mockRejectedValue({
+			statusCode: 400,
+			error: html,
+			response: {
+				headers: source === 'content type' ? { 'content-type': 'text/html; charset=UTF-8' } : {},
+			},
+		});
+
+		await expect(node.execute.call(context)).rejects.toMatchObject({
+			httpCode: '400',
+			message: 'Google Docs could not process the request (HTTP 400)',
+			description: expect.stringContaining('Save as Google Docs'),
+		});
+	});
+
+	it.each([
+		[401, 'Authorization failed - please check your credentials'],
+		[403, 'Forbidden - perhaps check your credentials?'],
+		[404, 'The resource you are requesting could not be found'],
+		[429, 'The service is receiving too many requests from you'],
+		[500, 'The service was not able to process your request'],
+		[502, 'Bad gateway - the service failed to handle your request'],
+		[
+			503,
+			'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+		],
+		[504, 'Gateway timed out - perhaps try again later?'],
+	])('should retain status guidance for an HTML %s error', async (statusCode, message) => {
+		const context = setup('get', documentId);
+		const html = '<!DOCTYPE html><html><body>Request failed</body></html>';
+		context.helpers.requestOAuth2.mockRejectedValue({
+			statusCode,
+			error: html,
+			response: { headers: { 'content-type': 'text/html' } },
+		});
+
+		await expect(node.execute.call(context)).rejects.toMatchObject({
+			httpCode: String(statusCode),
+			message,
+			description: undefined,
+		});
+	});
 });
