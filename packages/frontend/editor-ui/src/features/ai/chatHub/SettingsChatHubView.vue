@@ -24,9 +24,9 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { useChatStore } from './chat.store';
-import ChatProvidersTable from './components/ChatProvidersTable.vue';
+import ChatHubProvidersTable from './components/ChatHubProvidersTable.vue';
 import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
-import ChatSemanticSearchSettings from './ChatSemanticSearchSettings.vue';
+import ChatHubSemanticSearchSettings from './ChatHubSemanticSearchSettings.vue';
 
 const i18n = useI18n();
 const posthogStore = usePostHog();
@@ -165,7 +165,7 @@ onMounted(async () => {
 		</label>
 
 		<template v-if="settingsStore.isChatFeatureEnabled">
-			<ChatProvidersTable
+			<ChatHubProvidersTable
 				data-test-id="chat-providers-table"
 				:settings="chatStore.settings"
 				:loading="chatStore.settingsLoading"
@@ -173,7 +173,7 @@ onMounted(async () => {
 				@edit-provider="onEditProvider"
 				@refresh="onRefreshWorkflows"
 			/>
-			<ChatSemanticSearchSettings v-if="isSemanticSearchEnabled" />
+			<ChatHubSemanticSearchSettings v-if="isSemanticSearchEnabled" />
 		</template>
 		<N8nText v-else color="text-light" data-test-id="chat-hub-disabled-notice">
 			{{ i18n.baseText('settings.chatHub.disabled.notice') }}

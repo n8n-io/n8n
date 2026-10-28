@@ -20,7 +20,7 @@ import { useI18n } from '@n8n/i18n';
 import type { CredentialsMap } from '../chat.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import ChatHubAgentAvatar from '@/features/ai/chatHub/components/ChatHubAgentAvatar.vue';
 import {
 	flattenModel,
 	fromStringToModel,
@@ -30,7 +30,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import ChatProviderAvatar from './ChatProviderAvatar.vue';
+import ChatHubProviderAvatar from './ChatHubProviderAvatar.vue';
 import { applySearch, buildModelSelectorMenuItems } from '../model-selector.utils';
 
 const {
@@ -199,7 +199,7 @@ defineExpose({
 		@select="onSelect"
 	>
 		<template #trigger-leading="{ ui }">
-			<ChatAgentAvatar
+			<ChatHubAgentAvatar
 				:agent="selectedAgent"
 				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
 				:class="ui.class"
@@ -207,7 +207,7 @@ defineExpose({
 		</template>
 
 		<template #item-leading="{ item, ui }">
-			<ChatProviderAvatar
+			<ChatHubProviderAvatar
 				v-if="item.data?.provider"
 				:provider="item.data?.provider"
 				:icon="item.icon"

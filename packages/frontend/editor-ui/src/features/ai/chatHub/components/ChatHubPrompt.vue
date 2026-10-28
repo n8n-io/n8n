@@ -11,9 +11,9 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import ChatPromptCallouts from './ChatPromptCallouts.vue';
-import ChatPromptCompact from './ChatPromptCompact.vue';
-import ChatPromptFull from './ChatPromptFull.vue';
+import ChatHubPromptCallouts from './ChatHubPromptCallouts.vue';
+import ChatHubPromptCompact from './ChatHubPromptCompact.vue';
+import ChatHubPromptFull from './ChatHubPromptFull.vue';
 
 const props = defineProps<{
 	messagingState: MessagingState;
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 	openDynamicCredentials: [];
 }>();
 
-const activePromptRef = ref<InstanceType<typeof ChatPromptCompact | typeof ChatPromptFull>>();
+const activePromptRef = ref<InstanceType<typeof ChatHubPromptCompact | typeof ChatHubPromptFull>>();
 const message = ref('');
 const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
@@ -228,7 +228,7 @@ defineExpose({
 </script>
 
 <template>
-	<ChatPromptCompact
+	<ChatHubPromptCompact
 		v-if="compact"
 		ref="activePromptRef"
 		v-model:message="message"
@@ -247,7 +247,7 @@ defineExpose({
 		@remove-attachment="removeAttachment"
 	>
 		<template #callouts>
-			<ChatPromptCallouts
+			<ChatHubPromptCallouts
 				:show-missing-agent-callout="showMissingAgentCallout"
 				:show-missing-credentials-callout="showMissingCredentialsCallout"
 				:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
@@ -262,8 +262,8 @@ defineExpose({
 				@open-dynamic-credentials="emit('openDynamicCredentials')"
 			/>
 		</template>
-	</ChatPromptCompact>
-	<ChatPromptFull
+	</ChatHubPromptCompact>
+	<ChatHubPromptFull
 		v-else
 		ref="activePromptRef"
 		v-model:message="message"
@@ -287,7 +287,7 @@ defineExpose({
 		@tool-toggle="handleToolToggle"
 	>
 		<template #callouts>
-			<ChatPromptCallouts
+			<ChatHubPromptCallouts
 				:show-missing-agent-callout="showMissingAgentCallout"
 				:show-missing-credentials-callout="showMissingCredentialsCallout"
 				:show-dynamic-credentials-missing-callout="showDynamicCredentialsMissingCallout"
@@ -301,5 +301,5 @@ defineExpose({
 				@open-dynamic-credentials="emit('openDynamicCredentials')"
 			/>
 		</template>
-	</ChatPromptFull>
+	</ChatHubPromptFull>
 </template>

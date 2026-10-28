@@ -7,7 +7,7 @@ import { LOCAL_STORAGE_FLOATING_CHAT_WINDOW } from '@/app/constants';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import CanvasChatHubPanel from './CanvasChatHubPanel.vue';
 import CanvasChatFloatingMenu from './CanvasChatFloatingMenu.vue';
-import ChatAgentAvatar from './ChatAgentAvatar.vue';
+import ChatHubAgentAvatar from './ChatHubAgentAvatar.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const CANVAS_MARGIN = 16;
@@ -120,7 +120,7 @@ defineExpose({ focusInput, canvasChatHubRef });
 		@header-double-click="onResetPosition"
 	>
 		<template #header-icon>
-			<ChatAgentAvatar :agent="null" size="sm" />
+			<ChatHubAgentAvatar :agent="null" size="sm" />
 		</template>
 		<template #header>
 			<N8nText size="medium" :bold="true" :class="$style.headerTitle">

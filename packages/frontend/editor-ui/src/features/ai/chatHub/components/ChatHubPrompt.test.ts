@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockAgent } from '../__test__/data';
-import ChatPrompt from './ChatPrompt.vue';
+import ChatHubPrompt from './ChatHubPrompt.vue';
 
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
@@ -61,7 +61,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 
 vi.mock('../chat.api');
 
-const renderComponent = createComponentRenderer(ChatPrompt);
+const renderComponent = createComponentRenderer(ChatHubPrompt);
 
 const defaultProps = {
 	messagingState: 'idle' as const,
@@ -74,7 +74,7 @@ const defaultProps = {
 	aiCreditsQuota: '0',
 };
 
-describe('ChatPrompt', () => {
+describe('ChatHubPrompt', () => {
 	let pinia: ReturnType<typeof createPinia>;
 
 	beforeEach(() => {

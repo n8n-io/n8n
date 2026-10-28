@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type ChatHubProvider, type ChatModelDto } from '@n8n/api-types';
 import { computed } from 'vue';
-import ChatAgentAvatar from './ChatAgentAvatar.vue';
+import ChatHubAgentAvatar from './ChatHubAgentAvatar.vue';
 import { createFakeAgent } from '../chat.utils';
 import type { IconOrEmoji } from '@n8n/design-system';
 
@@ -23,5 +23,5 @@ const agent = computed<ChatModelDto>(() =>
 </script>
 
 <template>
-	<ChatAgentAvatar :agent="agent" size="sm" />
+	<ChatHubAgentAvatar :agent="agent" size="sm" />
 </template>

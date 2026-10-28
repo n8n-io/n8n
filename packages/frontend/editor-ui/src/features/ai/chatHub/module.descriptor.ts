@@ -15,11 +15,11 @@ import {
 import { i18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
-const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
-const ChatWorkflowAgentsView = async () =>
-	await import('@/features/ai/chatHub/ChatWorkflowAgentsView.vue');
-const ChatPersonalAgentsView = async () =>
-	await import('@/features/ai/chatHub/ChatPersonalAgentsView.vue');
+const ChatHubView = async () => await import('@/features/ai/chatHub/ChatHubView.vue');
+const ChatHubWorkflowAgentsView = async () =>
+	await import('@/features/ai/chatHub/ChatHubWorkflowAgentsView.vue');
+const ChatHubPersonalAgentsView = async () =>
+	await import('@/features/ai/chatHub/ChatHubPersonalAgentsView.vue');
 const SettingsChatHubView = async () =>
 	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
@@ -106,7 +106,7 @@ export const ChatModule = defineFrontendModule({
 		{
 			name: CHAT_VIEW,
 			path: '/home/chat',
-			component: ChatView,
+			component: ChatHubView,
 			meta: {
 				layout: 'chat',
 				middleware: ['authenticated'],
@@ -120,7 +120,7 @@ export const ChatModule = defineFrontendModule({
 		{
 			name: CHAT_CONVERSATION_VIEW,
 			path: '/home/chat/:id',
-			component: ChatView,
+			component: ChatHubView,
 			meta: {
 				layout: 'chat',
 				middleware: ['authenticated'],
@@ -134,7 +134,7 @@ export const ChatModule = defineFrontendModule({
 		{
 			name: CHAT_WORKFLOW_AGENTS_VIEW,
 			path: '/home/chat/workflow-agents',
-			component: ChatWorkflowAgentsView,
+			component: ChatHubWorkflowAgentsView,
 			meta: {
 				layout: 'chat',
 				middleware: ['authenticated'],
@@ -148,7 +148,7 @@ export const ChatModule = defineFrontendModule({
 		{
 			name: CHAT_PERSONAL_AGENTS_VIEW,
 			path: '/home/chat/personal-agents',
-			component: ChatPersonalAgentsView,
+			component: ChatHubPersonalAgentsView,
 			meta: {
 				layout: 'chat',
 				middleware: ['authenticated'],

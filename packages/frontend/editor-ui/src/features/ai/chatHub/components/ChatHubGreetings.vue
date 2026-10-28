@@ -5,8 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { type ChatModelDto } from '@n8n/api-types';
 import { computed } from 'vue';
 import { isLlmProviderModel } from '../chat.utils';
-import ChatAgentAvatar from './ChatAgentAvatar.vue';
-import ChatSuggestedPrompts from './ChatSuggestedPrompts.vue';
+import ChatHubAgentAvatar from './ChatHubAgentAvatar.vue';
+import ChatHubSuggestedPrompts from './ChatHubSuggestedPrompts.vue';
 
 const props = defineProps<{
 	selectedAgent: ChatModelDto | null;
@@ -33,7 +33,7 @@ const isAgentModel = computed(
 					<N8nLoading :rows="1" variant="p" :class="$style.skeletonName" />
 				</template>
 				<template v-else>
-					<ChatAgentAvatar :agent="selectedAgent" size="xl" />
+					<ChatHubAgentAvatar :agent="selectedAgent" size="xl" />
 					<N8nHeading tag="h2" size="xlarge" :class="$style.agentName">
 						{{ truncate(selectedAgent.name, 40) }}
 					</N8nHeading>
@@ -54,7 +54,7 @@ const isAgentModel = computed(
 					<p v-if="selectedAgent.description" :class="$style.agentDescription">
 						{{ selectedAgent.description }}
 					</p>
-					<ChatSuggestedPrompts
+					<ChatHubSuggestedPrompts
 						v-if="selectedAgent.suggestedPrompts?.length"
 						:class="$style.suggestions"
 						:prompts="selectedAgent.suggestedPrompts"
@@ -67,7 +67,7 @@ const isAgentModel = computed(
 			<div :class="$style.header">
 				<template v-if="selectedAgent">
 					<N8nHeading tag="h2">{{ i18n.baseText('chatHub.chat.greeting') }}</N8nHeading>
-					<ChatAgentAvatar :agent="selectedAgent" size="md" :class="$style.inlineIcon" />
+					<ChatHubAgentAvatar :agent="selectedAgent" size="md" :class="$style.inlineIcon" />
 					<N8nHeading bold>{{ truncate(selectedAgent.name, 40) }}</N8nHeading>
 				</template>
 				<template v-else>

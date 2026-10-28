@@ -13,7 +13,7 @@ import {
 import { type IMenuItem, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
+import ChatHubSessionMenuItem from './ChatHubSessionMenuItem.vue';
 import SkeletonMenuItem from './SkeletonMenuItem.vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { type ChatHubSessionDto } from '@n8n/api-types';
@@ -195,7 +195,7 @@ onMounted(() => {
 					>
 						{{ group.group }}
 					</N8nText>
-					<ChatSessionMenuItem
+					<ChatHubSessionMenuItem
 						v-for="session in group.sessions"
 						:key="session.id"
 						:session="session"

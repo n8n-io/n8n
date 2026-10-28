@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import InstanceAiMessageComponent from '../InstanceAiMessage.vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
 
-vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
+vi.mock('@/features/ai/chatHub/components/ChatHubMarkdownChunk.vue', () => ({
 	default: {
 		template: '<span>{{ source.content }}</span>',
 		props: ['source'],

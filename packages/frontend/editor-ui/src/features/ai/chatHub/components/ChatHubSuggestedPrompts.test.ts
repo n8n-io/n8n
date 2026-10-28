@@ -1,10 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import ChatSuggestedPrompts from './ChatSuggestedPrompts.vue';
+import ChatHubSuggestedPrompts from './ChatHubSuggestedPrompts.vue';
 import userEvent from '@testing-library/user-event';
 
-const renderComponent = createComponentRenderer(ChatSuggestedPrompts);
+const renderComponent = createComponentRenderer(ChatHubSuggestedPrompts);
 
-describe('ChatSuggestedPrompts', () => {
+describe('ChatHubSuggestedPrompts', () => {
 	it('renders all prompt texts', () => {
 		const { getByText } = renderComponent({
 			props: {

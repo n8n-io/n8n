@@ -3,8 +3,8 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { VIEWS } from '@/app/constants';
 import { N8nText } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
-import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
-import ChatAgentSearchSort from '@/features/ai/chatHub/components/ChatAgentSearchSort.vue';
+import ChatHubAgentCard from '@/features/ai/chatHub/components/ChatHubAgentCard.vue';
+import ChatHubAgentSearchSort from '@/features/ai/chatHub/components/ChatHubAgentSearchSort.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { type ChatHubConversationModel } from '@n8n/api-types';
@@ -13,7 +13,7 @@ import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useMediaQuery } from '@vueuse/core';
 import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 import { useRouter } from 'vue-router';
-import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
+import ChatHubLayout from '@/features/ai/chatHub/components/ChatHubLayout.vue';
 import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import { useI18n } from '@n8n/i18n';
 
@@ -57,7 +57,7 @@ watch(
 </script>
 
 <template>
-	<ChatLayout>
+	<ChatHubLayout>
 		<div :class="[$style.container, { [$style.isMobileDevice]: isMobileDevice }]">
 			<div :class="$style.header">
 				<div :class="$style.headerContent">
@@ -70,7 +70,10 @@ watch(
 				</div>
 			</div>
 
-			<ChatAgentSearchSort v-if="readyToShowList && allModels.length > 0" v-model="agentFilter" />
+			<ChatHubAgentSearchSort
+				v-if="readyToShowList && allModels.length > 0"
+				v-model="agentFilter"
+			/>
 
 			<div v-if="!readyToShowList" :class="$style.agentsGrid">
 				<SkeletonAgentCard v-for="i in 5" :key="i" />
@@ -87,7 +90,7 @@ watch(
 			</div>
 
 			<div v-else :class="$style.agentsGrid">
-				<ChatAgentCard
+				<ChatHubAgentCard
 					v-for="agent in agents"
 					:key="stringifyModel(agent.model)"
 					:agent="agent"
@@ -95,7 +98,7 @@ watch(
 				/>
 			</div>
 		</div>
-	</ChatLayout>
+	</ChatHubLayout>
 </template>
 
 <style lang="scss" module>

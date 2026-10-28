@@ -28,7 +28,7 @@ vi.mock('@vueuse/core', async function mockVueUse(importOriginal) {
 	};
 });
 
-vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
+vi.mock('@/features/ai/chatHub/components/ChatHubMarkdownChunk.vue', () => ({
 	default: {
 		template: '<span>{{ source.content }}</span>',
 		props: ['source'],

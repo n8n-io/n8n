@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
-import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
+import ChatHubAgentAvatar from '@/features/ai/chatHub/components/ChatHubAgentAvatar.vue';
+import ChatHubSidebarLink from '@/features/ai/chatHub/components/ChatHubSidebarLink.vue';
 import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
 import { type ChatModelDto, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
@@ -101,7 +101,7 @@ watch(
 </script>
 
 <template>
-	<ChatSidebarLink
+	<ChatHubSidebarLink
 		:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: session.id } }"
 		:active="active"
 		:compact="compact"
@@ -120,9 +120,9 @@ watch(
 			/>
 		</template>
 		<template #icon>
-			<ChatAgentAvatar :agent="agent" size="sm" :class="$style.avatar" />
+			<ChatHubAgentAvatar :agent="agent" size="sm" :class="$style.avatar" />
 		</template>
-	</ChatSidebarLink>
+	</ChatHubSidebarLink>
 </template>
 
 <style lang="scss" module>

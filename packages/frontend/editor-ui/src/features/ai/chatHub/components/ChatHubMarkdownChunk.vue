@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ChatMarkdown from '@/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
-import ChatButtons from './ChatButtons.vue';
+import ChatHubButtons from './ChatHubButtons.vue';
 
 const {
 	source,
@@ -27,7 +27,7 @@ const emit = defineEmits<{ openArtifact: [title: string] }>();
 	/>
 	<div v-else-if="source.type === 'with-buttons'" :class="$style.container">
 		<ChatMarkdown :content="source.content" :options="{ math: true, footnotes: footnoteStyle }" />
-		<ChatButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
+		<ChatHubButtons :buttons="source.buttons" :is-disabled="isButtonsDisabled" />
 	</div>
 	<div v-else-if="source.type === 'hidden'" />
 	<button

@@ -4,7 +4,7 @@ import { waitFor } from '@testing-library/vue';
 import type { ChatArtifact } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
-import ChatArtifactViewer from './ChatArtifactViewer.vue';
+import ChatHubArtifactViewer from './ChatHubArtifactViewer.vue';
 
 const jsonArtifact: ChatArtifact = {
 	title: 'Updated workflow',
@@ -12,19 +12,19 @@ const jsonArtifact: ChatArtifact = {
 	content: JSON.stringify({ name: 'Updated workflow', nodes: [], connections: {} }),
 };
 
-const renderComponent = createComponentRenderer(ChatArtifactViewer, {
+const renderComponent = createComponentRenderer(ChatHubArtifactViewer, {
 	props: {
 		artifacts: [jsonArtifact],
 		selectedIndex: 0,
 	},
 	global: {
 		stubs: {
-			ChatMarkdownChunk: true,
+			ChatHubMarkdownChunk: true,
 		},
 	},
 });
 
-describe('ChatArtifactViewer', () => {
+describe('ChatHubArtifactViewer', () => {
 	it('emits download when the download icon button is clicked', async () => {
 		const { getAllByRole, emitted } = renderComponent({ pinia: createTestingPinia() });
 		const downloadButton = getAllByRole('button').find((button) =>
