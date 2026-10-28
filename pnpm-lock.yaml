@@ -1270,6 +1270,9 @@ importers:
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../client-oauth2
