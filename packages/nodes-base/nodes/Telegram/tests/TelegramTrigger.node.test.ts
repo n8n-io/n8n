@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { HITL_CALLBACK_PREFIX, InstanceSettings } from 'n8n-core';
+import { HITL_CALLBACK_PREFIX, HITL_CALLBACK_PREFIX_V2, InstanceSettings } from 'n8n-core';
 import type { IHookFunctions, IWebhookFunctions, INode, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -561,6 +561,7 @@ describe('TelegramTrigger', () => {
 		const createForwardingWebhookFunctions = (
 			typeVersion: number,
 			headers: Record<string, string> = { 'x-telegram-bot-api-secret-token': '1_2' },
+			data = `${HITL_CALLBACK_PREFIX}42|a|deadbeef`,
 		) => {
 			const httpRequest = vi.fn().mockResolvedValue({});
 			const status = vi.fn().mockReturnThis();
@@ -569,9 +570,7 @@ describe('TelegramTrigger', () => {
 				getNode: () => mock<INode>({ id: '2', typeVersion }),
 				getWorkflow: () => mock<Workflow>({ id: '1' }),
 				getNodeWebhookUrl: () => 'https://example.com/webhook/abc/webhook',
-				getBodyData: () => ({
-					callback_query: { data: `${HITL_CALLBACK_PREFIX}42|a|deadbeef` },
-				}),
+				getBodyData: () => ({ callback_query: { data } }),
 				getHeaderData: () => headers,
 				getResponseObject: () => ({ status, json: vi.fn() }) as never,
 				getCredentials: async <T extends object>() => ({ accessToken: '123456:test-token' }) as T,
@@ -600,6 +599,18 @@ describe('TelegramTrigger', () => {
 					},
 				}),
 			);
+		});
+
+		test('forwards an engine v2 callback, which names a step', async () => {
+			const { httpRequest, webhookFunctions } = createForwardingWebhookFunctions(
+				1.4,
+				undefined,
+				`${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|a|mac`,
+			);
+
+			await new TelegramTrigger().webhook.call(webhookFunctions);
+
+			expect(httpRequest).toHaveBeenCalledOnce();
 		});
 
 		test.each([

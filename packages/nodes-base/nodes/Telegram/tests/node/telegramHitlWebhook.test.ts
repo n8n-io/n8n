@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import {
 	buildHitlCallbackReference,
+	HITL_CALLBACK_PREFIX_V2,
 	InstanceSettings,
 	markTelegramInteractionRequest,
 } from 'n8n-core';
@@ -295,6 +296,27 @@ describe('telegramSendAndWaitWebhook', () => {
 	it('resumes with approved: false for a decline decision', async () => {
 		webhookFns.getBodyData.mockReturnValue(
 			makeCallbackQueryBody({ data: buildHitlCallbackReference('42', 'd', TEST_HMAC_SECRET) }),
+		);
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
+		});
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(
+			(result as { workflowData: Array<Array<{ json: { data: { approved: boolean } } }>> })
+				.workflowData[0][0].json.data.approved,
+		).toBe(false);
+	});
+
+	it('resumes with the decision of an engine v2 reference, which names a step', async () => {
+		webhookFns.getBodyData.mockReturnValue(
+			makeCallbackQueryBody({ data: `${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|d|mac` }),
 		);
 		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
 			if (name === 'chatApproval') return true;
