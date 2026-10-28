@@ -139,12 +139,6 @@ export class StepReadyHandler {
 				await this.handleAwaitedSubExecution(event, step, execution, node, subExecution);
 				return;
 			}
-			// A detached sub-execution starts while the step still runs, and then the
-			// step completes with the outputs the declaration carries, like any other.
-			// One that cannot start fails the step, as an awaited one does. The
-			// execution can end while this step runs (a sibling fails, or a cancel),
-			// and then it owes no sub-execution: the outputs stand, and nothing starts
-			// under an ended parent.
 			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
