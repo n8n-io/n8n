@@ -1894,7 +1894,7 @@ describe('AgentExecutionRepository', () => {
 						}),
 					);
 					if (cancel) {
-						expect(chunks).toEqual([]);
+						expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
 						expect(model.doStreamCalls).toHaveLength(0);
 					} else {
 						expect(chunks).toContainEqual(
