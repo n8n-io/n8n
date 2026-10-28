@@ -54,7 +54,8 @@ flowchart LR
   A policy check that cannot run becomes the issue `policy-check-failed`. The refusals that an
   import reports as an error (project permission, a column id of another data table) become
   issues too. `mode: 'enforce'` keeps the import's errors as they are.
-- A new gate returns issues. Throw only for API-key scopes and malformed packages.
+- A new gate returns issues. Throw only for API-key scopes and malformed packages. Two older
+  checks still throw in both modes: the folder license and `assertCanPublish`.
 
 ### Adding an IMPORT property
 
