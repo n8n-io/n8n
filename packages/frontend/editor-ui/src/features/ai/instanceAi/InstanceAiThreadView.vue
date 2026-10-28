@@ -64,7 +64,6 @@ import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgen
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
-import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 
@@ -80,7 +79,6 @@ const router = useRouter();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
-const recentWorkflowsStore = useRecentWorkflowsStore();
 const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
@@ -310,20 +308,6 @@ function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	return true;
 }
 
-function openWorkflowPreview(workflowId: string): boolean {
-	const artifact = thread.producedArtifacts.get(workflowId);
-	recentWorkflowsStore.registerWorkflowOpen(workflowId, artifact?.projectId ?? thread.projectId);
-	return preview.openWorkflowPreview(workflowId);
-}
-
-function selectArtifactTab(tabId: string): void {
-	const artifact = thread.producedArtifacts.get(tabId);
-	if (artifact?.type === 'workflow') {
-		recentWorkflowsStore.registerWorkflowOpen(tabId, artifact.projectId ?? thread.projectId);
-	}
-	preview.selectTab(tabId);
-}
-
 const activeAgentPreviewSessionId = computed(() => {
 	const context = handoffContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -337,7 +321,7 @@ const activeAgentPreviewSessionId = computed(() => {
 	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
 });
 
-provide('openWorkflowPreview', openWorkflowPreview);
+provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -362,7 +346,7 @@ const isArtifactsPanelTransitionEnabled = artifactsPanelTransitionGate.isEnabled
 const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitioning = ref(false);
 const { previewToggleLabel: artifactsPreviewToggleLabel, togglePreview: toggleArtifactsPreview } =
-	usePreviewToggle(preview, selectArtifactTab);
+	usePreviewToggle(preview);
 const artifactsPanelTransitionName = computed(() =>
 	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
@@ -935,7 +919,7 @@ function handleNewThreadClick() {
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
-						@update:model-value="selectArtifactTab"
+						@update:model-value="preview.selectTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.openTabs.value"

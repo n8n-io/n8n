@@ -149,7 +149,7 @@ const activeAgentHref = computed(() => {
 	return agentId ? `/projects/${projectId}/agents/${agentId}` : undefined;
 });
 
-const { previewToggleLabel, togglePreview } = usePreviewToggle(preview, preview.selectTab);
+const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
 // --- Header ---
 // The stored title, else the first user message, as in the Assistant runtime view.

@@ -153,7 +153,7 @@ export function usePreviewPanelWidth(options: {
 }
 
 /** Closes the preview, or opens it on the selected tab, else the first open tab. */
-export function usePreviewToggle(preview: CanvasPreview, selectTab: (tabId: string) => void) {
+export function usePreviewToggle(preview: CanvasPreview) {
 	const i18n = useI18n();
 
 	const previewToggleLabel = computed(() =>
@@ -172,7 +172,7 @@ export function usePreviewToggle(preview: CanvasPreview, selectTab: (tabId: stri
 		const tab =
 			preview.openTabs.value.find(({ id }) => id === preview.activeTabId.value) ??
 			preview.openTabs.value[0];
-		if (tab) selectTab(tab.id);
+		if (tab) preview.selectTab(tab.id);
 	}
 
 	return { previewToggleLabel, togglePreview };
