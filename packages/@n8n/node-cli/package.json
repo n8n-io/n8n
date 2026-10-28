@@ -77,7 +77,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
+    "eslint": ">= 9.24"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

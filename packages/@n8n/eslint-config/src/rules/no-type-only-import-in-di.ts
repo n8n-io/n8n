@@ -15,7 +15,7 @@ export const NoTypeOnlyImportInDiRule = ESLintUtils.RuleCreator.withoutDocs({
 	},
 	defaultOptions: [],
 	create(context) {
-		const sourceCode = context.getSourceCode();
+		const sourceCode = context.sourceCode;
 		// Track the specific node that needs fixing
 		const typeOnlyImports = new Map<
 			string,

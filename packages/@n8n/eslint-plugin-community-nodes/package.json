@@ -51,7 +51,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": "catalog:",
+    "eslint": ">= 9.24",
     "n8n-workflow": ">=2"
   },
   "eslint-doc-generator": {
