@@ -1,5 +1,5 @@
 import type {
-	PromotionApplyCheck,
+	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceDependency,
 } from '@n8n/api-types';
@@ -28,22 +28,19 @@ import {
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-import { plannedChanges, previewRevision, toApplyCheck } from './apply-preview';
+import { plannedChanges, previewRevision, toPreviewCheck } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
 import type { InstancePackage } from './instance-package';
-import {
-	collectCredentialReferences,
-	collectVariableReferences,
-} from './promotion-binding-preflight.service';
+import { collectCredentialReferences, collectVariableReferences } from './package-references';
 import { buildPreview } from './promotion-preview';
 
 export type ApplyPreview = {
 	resources: PromotionResource[];
 	dependencies: PromotionResourceDependency[];
-	check: PromotionApplyCheck;
+	check: PromotionPreviewCheck;
 	revision: string;
 };
 
@@ -195,7 +192,7 @@ export class ApplyPreviewService {
 		inventory: PackageDirectoryInventory,
 		selection: ImportSelection | undefined,
 		moves: CrossProjectMoves,
-	): PromotionApplyCheck {
+	): PromotionPreviewCheck {
 		const selected = selection && new Set(selection.selectedWorkflowIds);
 		const scoped = {
 			...inventory,
@@ -204,7 +201,7 @@ export class ApplyPreviewService {
 					!selection || (projectId === selection.selectedProjectId && selected?.has(id)),
 			),
 		};
-		return toApplyCheck({
+		return toPreviewCheck({
 			plan,
 			inventory,
 			credentials: collectCredentialReferences(scoped),
@@ -264,22 +261,20 @@ function classifyProjectWorkflows(
 	};
 }
 
-function projectNotOnBranch(projectId: string, instance: InstancePackage): PromotionApplyCheck {
+function projectNotOnBranch(projectId: string, instance: InstancePackage): PromotionPreviewCheck {
 	const name = instance.manifest.projects?.find(({ id }) => id === projectId)?.name ?? projectId;
 	return {
-		preflight: {
-			missingProjects: [],
-			missingBindings: [],
-			accessRequirements: [],
-			conflicts: [
-				{
-					kind: 'project',
-					code: 'project-not-on-branch',
-					project: { id: projectId, name },
-				},
-			],
-			warnings: [],
-		},
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [
+			{
+				kind: 'project',
+				code: 'project-not-on-branch',
+				project: { id: projectId, name },
+			},
+		],
+		warnings: [],
 		movedWorkflows: [],
 		movedFolders: [],
 	};

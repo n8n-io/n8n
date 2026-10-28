@@ -798,7 +798,7 @@ export {
 	PromotionCheckoutPublicDto,
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
-export * from './promotions/promotion-binding-preflight.dto';
+export * from './promotions/promotion-apply-check.dto';
 export * from './promotions/promotion-preview.dto';
 export {
 	CreatePromotionEnvironmentDto,
@@ -826,7 +826,6 @@ export {
 	type PromotionEnvironmentSummary,
 } from './promotions/promotion-environment.dto';
 export {
-	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -841,7 +840,6 @@ export {
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,
-	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
