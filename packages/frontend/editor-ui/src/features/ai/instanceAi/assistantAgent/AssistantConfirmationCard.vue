@@ -294,18 +294,16 @@ function onApprovalSelect(key: string) {
 		</N8nCard>
 		<DomainAccessApproval
 			v-else-if="variant === 'domain-access' && input.domainAccess"
-			:request-id="input.requestId"
 			:url="input.domainAccess.url"
 			:host="input.domainAccess.host"
 			:severity="input.severity"
-			:submit="submit"
+			@decide="submit"
 		/>
 		<DomainAccessApproval
 			v-else-if="variant === 'web-search' && input.webSearch"
-			:request-id="input.requestId"
 			:query="input.webSearch.query"
 			:severity="input.severity"
-			:submit="submit"
+			@decide="submit"
 		/>
 		<N8nCard v-else-if="variant === 'text'" :class="$style.card">
 			<N8nText tag="div">{{ input.message }}</N8nText>

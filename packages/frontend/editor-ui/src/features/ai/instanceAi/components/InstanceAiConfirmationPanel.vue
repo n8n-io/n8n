@@ -404,6 +404,15 @@ function formatDeadline(iso: string): string {
 	return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+/** Domain access and web search cards emit the decision, and the panel sends it. */
+function handleDomainDecision(conf: InstanceAiConfirmation, body: InstanceAiConfirmRequest) {
+	thread.resolveConfirmation(
+		conf.requestId,
+		body.kind === 'domainAccessApprove' ? 'approved' : 'denied',
+	);
+	void thread.confirmAction(conf.requestId, body);
+}
+
 function handleContinue(conf: InstanceAiConfirmation) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
 	trackInputCompleted(
@@ -632,19 +641,19 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				v-else-if="chunk.item.toolCall.confirmation.domainAccess"
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
 				data-test-id="instance-ai-confirmation-panel"
-				:request-id="chunk.item.toolCall.confirmation.requestId"
 				:url="chunk.item.toolCall.confirmation.domainAccess.url"
 				:host="chunk.item.toolCall.confirmation.domainAccess.host"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
 			<DomainAccessApproval
 				v-else-if="chunk.item.toolCall.confirmation.webSearch"
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
 				data-test-id="instance-ai-confirmation-panel"
-				:request-id="chunk.item.toolCall.confirmation.requestId"
 				:query="chunk.item.toolCall.confirmation.webSearch.query"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
 			<N8nApprovalCard
