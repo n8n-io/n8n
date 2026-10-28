@@ -14,7 +14,10 @@ vi.mock('@n8n/di', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/di')>();
 	return {
 		...actual,
-		Container: { ...actual.Container, get: vi.fn(() => ({ clearRuntimes })) },
+		Container: {
+			...actual.Container,
+			get: vi.fn(() => ({ clearRuntimes, captureVersion: vi.fn() })),
+		},
 	};
 });
 
@@ -28,12 +31,12 @@ describe('AgentSkillUsage', () => {
 	const agents = mock<AgentRepository>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const skillRuntime = mock<SkillRuntimeService>();
-	const service = new AgentSkillUsage(agentSkills, agents, skillRuntime, broadcaster);
+	const service = new AgentSkillUsage(agentSkills, agents, skillRuntime, broadcaster, mock());
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		agentSkills.findFollowingAgentIds.mockResolvedValue([]);
-		agents.markDraftChangedIfInSync.mockResolvedValue([]);
+		agents.markFollowerDraftsChanged.mockResolvedValue([]);
 		agents.findProjectIdsByIds.mockResolvedValue([]);
 	});
 
@@ -45,7 +48,7 @@ describe('AgentSkillUsage', () => {
 
 			expect(ids).toEqual(['agent-1', 'agent-2']);
 			expect(agentSkills.findFollowingAgentIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);
-			expect(agents.markDraftChangedIfInSync).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
+			expect(agents.markFollowerDraftsChanged).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
 		});
 	});
 

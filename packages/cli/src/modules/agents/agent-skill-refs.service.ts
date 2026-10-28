@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
@@ -87,12 +88,15 @@ export class AgentSkillRefsService {
 			pins.map((pin) => pin.skillVersionId),
 			ctx,
 		);
-		const skills: Record<string, AgentSkill> = {};
-		for (const pin of pins) {
-			const version = versions.get(pin.skillVersionId);
-			if (version) skills[pin.skillId] = version.skill;
-		}
-		return { skillRefs: toSkillRefs(Object.keys(skills).map((id) => ({ id }))), skills };
+		// Keep pin order. Object key order would move numeric ids to the front.
+		const resolved = pins.flatMap((pin): Array<[string, AgentSkill]> => {
+			const pinnedVersion = versions.get(pin.skillVersionId);
+			return pinnedVersion ? [[pin.skillId, pinnedVersion.skill]] : [];
+		});
+		return {
+			skillRefs: toSkillRefs(resolved.map(([id]) => ({ id }))),
+			skills: Object.fromEntries(resolved),
+		};
 	}
 
 	/**
@@ -278,6 +282,54 @@ export class AgentSkillRefsService {
 		return toSkillRefs(next);
 	}
 
+	async importDraftSkills(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
+		refs: AgentSkillRefs,
+		bodies: Record<string, AgentSkill>,
+		creatorId: string,
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		const imported: AgentJsonSkillConfig[] = [];
+		const ids = (refs ?? []).map(({ id }) => id);
+		await this.skillRuntime.lockForEdit(ids, ctx);
+		const existing = await this.skillRuntime.findTargets(ids, ctx);
+		// Detach old refs to prevent partial Agent snapshots during skill saves.
+		await this.writeDependencies(agent.id, [], ctx);
+		for (const ref of refs ?? []) {
+			const target = existing.get(ref.id);
+			if (target) {
+				if (target.agentId !== agent.id || target.projectId !== null) {
+					throw new ConflictError('Imported skill ID belongs to another agent or scope');
+				}
+				const current = await this.skillsForRefs([{ type: 'skill', id: ref.id }], ctx);
+				await this.skillService.saveTrusted(
+					ref.id,
+					{
+						...bodies[ref.id],
+						references: bodies[ref.id].references ?? [],
+						baseSkillHash: getAgentSkillHash(current[ref.id]),
+					},
+					creatorId,
+					ctx,
+				);
+			} else {
+				await this.skillService.createTrusted(
+					{
+						id: ref.id,
+						target: { projectId: null, agentId: agent.id },
+						skill: bodies[ref.id],
+						source: 'agent',
+						createdById: creatorId,
+					},
+					ctx,
+				);
+			}
+			imported.push({ type: 'skill', id: ref.id });
+		}
+		await this.replaceDraftRefs(agent, imported, ctx);
+		return imported;
+	}
+
 	async createSkills(
 		agent: Pick<Agent, 'id' | 'projectId'>,
 		skills: AgentSkill[],
@@ -307,7 +359,7 @@ export class AgentSkillRefsService {
 	/**
 	 * The skill version id of each draft ref, keyed by skill id, in draft order. Pin
 	 * the versions once the `agent_history` row exists (see `pinVersion`). Call it in
-	 * the publish transaction: it takes the publish lock on the skills.
+	 * the transaction that saves the draft.
 	 */
 	async versionSnapshot(
 		agent: Pick<Agent, 'id' | 'schema'>,
@@ -316,15 +368,15 @@ export class AgentSkillRefsService {
 		if (!agent.schema) return new Map();
 		const refs = await this.refsForDraft(agent, ctx);
 		if (refs.length === 0) return new Map();
-		const versionByRef = await this.skillRuntime.snapshotForPublish(toServiceRefs(refs), ctx);
+		const versionByRef = await this.skillRuntime.snapshotForSave(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
+			throw new UserError(`Cannot save agent with missing skills: ${missing.join(', ')}`);
 		}
 		return versionByRef;
 	}
 
-	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
+	/** Pin the resolved skills after the history row exists, in the same transaction. */
 	async pinVersion(
 		agentVersionId: string,
 		pins: Map<string, string>,
@@ -336,6 +388,24 @@ export class AgentSkillRefsService {
 			[...pins].map(([skillId, skillVersionId]) => ({ agentVersionId, skillId, skillVersionId })),
 			ctx,
 		);
+	}
+
+	async assertVersionAccess(
+		agent: Pick<Agent, 'id' | 'projectId'>,
+		version: AgentHistory,
+		ctx: OperationContext,
+	): Promise<void> {
+		const ids = (await this.refsForVersion(version, ctx)).map(({ id }) => id);
+		if (ids.length === 0) return;
+		await this.skillRuntime.lockForPublish(ids, ctx);
+		const targets = await this.skillRuntime.findTargets(ids, ctx);
+		const accessible = (id: string) => {
+			const skill = targets.get(id);
+			return skill !== undefined && this.isAttachable(skill, agent);
+		};
+		if (!ids.every(accessible)) {
+			throw new UserError('A saved skill is no longer available to this agent');
+		}
 	}
 
 	async availabilityOf(

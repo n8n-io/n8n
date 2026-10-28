@@ -84,7 +84,7 @@ beforeAll(async () => {
 		// A skill of a saved agent is a skill of the skills module: it has its own id, no
 		// `enabled` flag on the ref, and no `allowedTools`.
 		const skillId = `${draft.id}_skill`;
-		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];
+		const { allowedTools: _dropped, ...draftSkill } = draft.skills[skillId];
 		draft.skills = { [skillId]: draftSkill };
 		draft.config = {
 			...AgentJsonConfigSchema.parse(draft.config),
@@ -149,10 +149,11 @@ beforeAll(async () => {
 				...task,
 			})),
 		);
-		await agentRepository.setActiveVersionFenced(agent.id, agent.revision, {
-			activeVersionId: history.versionId,
-			versionId: agent.versionId!,
-		});
+		await agentRepository.setActiveVersionFenced(
+			agent.id,
+			agent.publicationRevision,
+			history.versionId,
+		);
 		sources.push({ agent: (await agentRepository.findById(agent.id))!, draft, published });
 	}
 });

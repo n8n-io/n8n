@@ -58,6 +58,29 @@ describe('cli-imports', () => {
 			]);
 		});
 
+		it('finds the module specifier of vi.mock and the other module mocking helpers', () => {
+			expect(
+				referencesOf(
+					[
+						"vi.mock('./a');",
+						"vi.mock('./b', () => ({}));",
+						'vi.doMock(`./c`);',
+						"await vi.importActual('./d');",
+						"jest.mock('./e');",
+						'vi.mock(name);',
+						"vi.fn('./f');",
+						"other.mock('./g');",
+					].join('\n'),
+				),
+			).toEqual([
+				{ specifier: './a', typeOnly: false },
+				{ specifier: './b', typeOnly: false },
+				{ specifier: './c', typeOnly: false },
+				{ specifier: './d', typeOnly: false },
+				{ specifier: './e', typeOnly: false },
+			]);
+		});
+
 		it('ignores an import type without a string literal', () => {
 			expect(referencesOf('type A = import(1);\ntype B = import(Foo);')).toEqual([]);
 		});

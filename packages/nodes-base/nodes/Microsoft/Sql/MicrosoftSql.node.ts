@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
+import { resolveSqlQueryParameters } from '@utils/sql-query-parameters';
 
 import {
 	bindQueryParameters,
@@ -21,7 +22,6 @@ import {
 	deleteOperation,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
-	normalizeQueryReplacement,
 	updateOperation,
 } from './GenericFunctions';
 import type { ITables } from './interfaces';
@@ -307,9 +307,7 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 
-					const queryValues = normalizeQueryReplacement(
-						this.getNodeParameter('options.queryReplacement', i, ''),
-					);
+					const queryValues = resolveSqlQueryParameters.call(this, i);
 
 					const results = await executeSqlQueryAndPrepareResults.call(
 						this,
@@ -347,12 +345,10 @@ export class MicrosoftSql implements INodeType {
 					);
 				}
 
-				const queryValues = normalizeQueryReplacement(
-					this.getNodeParameter('options.queryReplacement', 0, ''),
-				);
+				const queryValues = resolveSqlQueryParameters.call(this, 0);
 
 				const request = pool.request();
-				const processedQuery = bindQueryParameters(request, rawQuery, queryValues);
+				const processedQuery = bindQueryParameters(this.getNode(), request, rawQuery, queryValues);
 				const { recordsets }: IResult<any[]> = await request.query(processedQuery);
 
 				const result = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];

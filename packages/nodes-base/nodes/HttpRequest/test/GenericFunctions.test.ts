@@ -1,10 +1,11 @@
-import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	getAllowedDomains,
 	getOAuth2AdditionalParameters,
+	isStream,
 	prepareRequestBody,
 	updadeQueryParameterConfig,
 } from '../GenericFunctions';
@@ -130,6 +131,27 @@ describe('getOAuth2AdditionalParameters', () => {
 	it('should return undefined for microsoftDynamicsOAuth2Api so the stored access token is used', () => {
 		const result = getOAuth2AdditionalParameters('microsoftDynamicsOAuth2Api');
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('isStream', () => {
+	it('should detect a Node stream', () => {
+		expect(isStream(Readable.from(['data']))).toBe(true);
+	});
+
+	it('should detect a stream that is not an instance of the Node stream classes', () => {
+		expect(isStream({ pipe: () => {} })).toBe(true);
+	});
+
+	it.each([
+		['a string', 'text'],
+		['a buffer', Buffer.from('text')],
+		['a plain object', { id: 1 }],
+		['an object with a pipe property that is not a function', { pipe: 'value' }],
+		['null', null],
+		['undefined', undefined],
+	])('should not detect %s', (_name, value) => {
+		expect(isStream(value)).toBe(false);
 	});
 });
 

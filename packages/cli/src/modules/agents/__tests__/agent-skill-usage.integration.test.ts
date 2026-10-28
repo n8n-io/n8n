@@ -1,5 +1,6 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { createMember } from '@test-integration/db/users';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -12,6 +13,7 @@ import {
 
 import { AgentSkillUsage } from '../agent-skill-usage';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
+import { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import { AgentSkillRepository } from '../repositories/agent-skill.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -19,6 +21,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 async function seed(world: SkillUsageWorld) {
 	const agents = Container.get(AgentRepository);
 	const histories = Container.get(AgentHistoryRepository);
+	const publications = Container.get(AgentPublishHistoryRepository);
 	const agentSkills = Container.get(AgentSkillRepository);
 
 	const projectIds = new Map<string, string>();
@@ -70,6 +73,7 @@ async function seed(world: SkillUsageWorld) {
 			})),
 		);
 	}
+	const publisher = world.publishes?.length ? await createMember() : undefined;
 	for (const publish of world.publishes ?? []) {
 		const agentId = ids.agentId(publish.agent);
 		const agentVersionId = randomUUID();
@@ -81,6 +85,8 @@ async function seed(world: SkillUsageWorld) {
 				skillVersionId: versionId(pin.skill, pin.version),
 			})),
 		);
+		// A version counts as published once it has an activation record.
+		if (publisher) await publications.record(agentId, agentVersionId, 'activated', publisher, {});
 		// Publishes come oldest first, so the last one stays active.
 		await agents.update({ id: agentId }, { activeVersionId: agentVersionId });
 	}

@@ -65,10 +65,10 @@ describe('PromotionPreviewBadges', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
 		mockedStore(useUsersStore).currentUser = mock<IUser>({
 			globalScopes: [
-				'gitConnection:list',
-				'gitConnection:read',
-				'gitConnection:push',
-				'gitConnection:pull',
+				'promotions:list',
+				'promotions:read',
+				'promotions:promote',
+				'promotions:apply',
 			],
 		});
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([
@@ -157,7 +157,7 @@ describe('PromotionPreviewBadges', () => {
 			} else {
 				users.currentUser = mock<IUser>({
 					globalScopes: users.currentUser?.globalScopes?.filter(
-						(scope) => scope !== `gitConnection:${requirement}`,
+						(scope) => scope !== `promotions:${requirement}`,
 					),
 				});
 			}
@@ -185,7 +185,7 @@ describe('PromotionPreviewBadges', () => {
 			expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', direction);
 
 			mockedStore(useUsersStore).currentUser = mock<IUser>({
-				globalScopes: ['gitConnection:list', 'gitConnection:read'],
+				globalScopes: ['promotions:list', 'promotions:read'],
 			});
 			await waitFor(() =>
 				expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument(),
