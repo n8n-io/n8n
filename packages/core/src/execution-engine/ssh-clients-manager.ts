@@ -121,18 +121,16 @@ export class SSHClientsManager {
 					}),
 		};
 
-		// Accept the `ssh-keygen -lf` format, with or without the prefix and padding
-		const expectedFingerprint = sshHostKeyFingerprint
-			?.trim()
-			.replace(/^SHA256:/i, '')
-			.replace(/=+$/, '');
+		const pinnedFingerprint = sshHostKeyFingerprint?.trim() || undefined;
 
 		const clientHash = createHash('sha1')
-			.update(JSON.stringify({ ...sshConfig, expectedFingerprint }))
+			.update(JSON.stringify({ ...sshConfig, pinnedFingerprint }))
 			.digest('base64');
 
-		// Check the raw input so a value like `SHA256:` rejects instead of skipping the check
-		if (sshHostKeyFingerprint?.trim()) {
+		if (pinnedFingerprint) {
+			// Accept the `ssh-keygen -lf` format, with or without the prefix and padding
+			const expectedFingerprint = pinnedFingerprint.replace(/^SHA256:/i, '').replace(/=+$/, '');
+
 			sshConfig.hostVerifier = (key: Buffer) => {
 				const fingerprint = createHash('sha256').update(key).digest('base64').replace(/=+$/, '');
 				if (fingerprint === expectedFingerprint) return true;

@@ -149,6 +149,23 @@ describe('host key verification', () => {
 		},
 	);
 
+	it.each(['SHA256:', '='])(
+		'should not reuse a client without a fingerprint when the fingerprint is `%s`',
+		async (value) => {
+			const client1 = await sshClientsManager.getClient({
+				...credentials,
+				sshHostKeyFingerprint: '',
+			});
+			const client2 = await sshClientsManager.getClient({
+				...credentials,
+				sshHostKeyFingerprint: value,
+			});
+
+			expect(client1).not.toBe(client2);
+			expect(connectSpy).toHaveBeenCalledTimes(2);
+		},
+	);
+
 	it('should not reuse a client across different fingerprints', async () => {
 		const client1 = await sshClientsManager.getClient(credentials);
 		const client2 = await sshClientsManager.getClient({
