@@ -163,6 +163,28 @@ describe('prepareChatApproval', () => {
 		);
 	});
 
+	it('registers the fixed endpoint when the signed URL names a step instead of the execution', async () => {
+		// Engine v2 puts the step id where engine v1 puts the execution id.
+		const context = makeContext();
+		context.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'responseType' ? 'approval' : true,
+		);
+		context.getSignedResumeUrl.mockReturnValue(
+			'https://mybot.example.com/webhook-waiting/01926a4e-7f5c-7000-8000-000000000001/node-1?approved=true&signature=abc',
+		);
+		mockWebhookInfo({ url: '' });
+
+		const effective = await prepareChatApproval(context);
+
+		expect(effective).toBe(true);
+		expect(context.logger.warn).not.toHaveBeenCalled();
+		expect(genericFunctions.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			'setWebhook',
+			expect.objectContaining({ url: FIXED_ENDPOINT_URL }),
+		);
+	});
+
 	it('coexists with a same-instance trigger behind a reverse-proxy path prefix', async () => {
 		// The Trigger's live-webhook URL carries the same reverse-proxy prefix as our
 		// own signed resume URL; recognizing it must account for that prefix too.
