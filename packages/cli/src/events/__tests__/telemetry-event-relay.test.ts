@@ -5620,6 +5620,36 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
+		it('should track a changed Apply preview without workflow totals', () => {
+			eventService.emit('promotion-applied', {
+				user,
+				environmentId: 'env-1',
+				scope: 'project',
+				projectId: 'project-1',
+				outcome: 'preview_changed',
+				durationMs: 20,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				scope: 'project',
+				project_id: 'project-1',
+				outcome: 'preview_changed',
+				failure_kind: undefined,
+				duration_ms: 20,
+				workflows_changed: undefined,
+				workflows_failed_to_publish: undefined,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track an opened merge request', () => {
 			eventService.emit('promotion-merge-request-opened', {
 				user,

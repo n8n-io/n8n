@@ -1445,7 +1445,7 @@ export type RelayEventMap = {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
-		outcome: 'applied' | 'blocked' | 'source_changed' | 'failed';
+		outcome: 'applied' | 'blocked' | 'source_changed' | 'preview_changed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 		/** Set when the outcome is 'applied'. */
