@@ -38,7 +38,7 @@ jobs:
   run-discovery-evals:
     name: 'Run Discovery Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 60
+    timeout-minutes: 15
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
     permissions:
