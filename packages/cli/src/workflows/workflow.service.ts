@@ -88,6 +88,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
@@ -205,6 +206,7 @@ export class WorkflowService {
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	/**
@@ -1562,6 +1564,10 @@ export class WorkflowService {
 		}
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+
+		// This path emits no `workflow-deactivated` event, so remove the published
+		// dependency rows here. The call logs failures and does not throw.
+		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
 	}
 
 	/**

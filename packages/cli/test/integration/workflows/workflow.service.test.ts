@@ -144,6 +144,7 @@ beforeAll(async () => {
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
 		mock(),
+		mock(), // workflowIndexService
 	);
 });
 
