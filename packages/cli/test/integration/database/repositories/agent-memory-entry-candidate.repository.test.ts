@@ -114,7 +114,8 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 		const first = await enqueue('call-1');
 		const second = await enqueue('call-2');
 		await enqueue('call-3');
-		await enqueue('call-1', { threadId: otherThreadId });
+		const otherThread = await enqueue('call-1', { threadId: otherThreadId, runId: 'run-2' });
+		expect(otherThread.id).not.toBe(first.id);
 
 		const found = await candidateRepository.findByToolCalls(agentId, threadId, [
 			'call-1',
