@@ -208,41 +208,55 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<N8nDialogBody
-			ref="bodyRoot"
-			:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
-			:data-flush="props.bodyFlush ? 'true' : undefined"
-			:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
-			data-testid="agent-modal-body"
-		>
-			<FocusScope v-if="!trapFocus" as-child @mount-auto-focus.prevent @unmount-auto-focus.prevent>
-				<span hidden aria-hidden="true" />
-			</FocusScope>
-			<slot />
-		</N8nDialogBody>
+		<div :class="[$style.split, $slots.sidePanel && $style.splitWithPanel]">
+			<div :class="$style.main">
+				<N8nDialogBody
+					ref="bodyRoot"
+					:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
+					:data-flush="props.bodyFlush ? 'true' : undefined"
+					:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
+					data-testid="agent-modal-body"
+				>
+					<FocusScope
+						v-if="!trapFocus"
+						as-child
+						@mount-auto-focus.prevent
+						@unmount-auto-focus.prevent
+					>
+						<span hidden aria-hidden="true" />
+					</FocusScope>
+					<slot />
+				</N8nDialogBody>
 
-		<N8nDialogFooter v-if="hasFooter" :class="$style.footer">
-			<slot name="footer">
-				<div :class="$style.footerLayout">
-					<div :class="$style.footerLeft">
-						<slot name="footerLeft" />
-					</div>
-					<div :class="$style.footerActions" data-testid="agent-modal-footer-actions">
-						<slot name="footerBeforeCancel" />
-						<N8nButton
-							v-if="props.showCancel"
-							variant="outline"
-							:disabled="dismissalBlocked"
-							data-testid="agent-modal-cancel"
-							@click="close"
-						>
-							{{ props.cancelLabel ?? i18n.baseText('generic.cancel') }}
-						</N8nButton>
-						<slot name="footerActions" />
-					</div>
+				<N8nDialogFooter v-if="hasFooter" :class="$style.footer">
+					<slot name="footer">
+						<div :class="$style.footerLayout">
+							<div :class="$style.footerLeft">
+								<slot name="footerLeft" />
+							</div>
+							<div :class="$style.footerActions" data-testid="agent-modal-footer-actions">
+								<slot name="footerBeforeCancel" />
+								<N8nButton
+									v-if="props.showCancel"
+									variant="outline"
+									:disabled="dismissalBlocked"
+									data-testid="agent-modal-cancel"
+									@click="close"
+								>
+									{{ props.cancelLabel ?? i18n.baseText('generic.cancel') }}
+								</N8nButton>
+								<slot name="footerActions" />
+							</div>
+						</div>
+					</slot>
+				</N8nDialogFooter>
+			</div>
+			<aside v-if="$slots.sidePanel" :class="$style.sidePanel" data-testid="agent-modal-side-panel">
+				<div :class="$style.sidePanelScroll">
+					<slot name="sidePanel" />
 				</div>
-			</slot>
-		</N8nDialogFooter>
+			</aside>
+		</div>
 	</N8nDialog>
 </template>
 
@@ -345,6 +359,41 @@ function onOpenAutoFocus(event: Event) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	margin-left: auto;
+}
+
+/* Without a side panel the wrappers add no boxes, so the layout stays as before. */
+.split,
+.main {
+	display: contents;
+}
+
+/* A side panel runs beside the body and the footer, from the header to the bottom edge. */
+.splitWithPanel {
+	display: flex;
+	min-height: 0;
+
+	> .main {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	}
+}
+
+.sidePanel {
+	position: relative;
+	flex-shrink: 0;
+	width: var(--agent-modal-side-panel--width, calc(var(--spacing--5xl) * 1.25));
+	border-left: var(--border);
+}
+
+/* The panel takes the height of the body and the footer, and a long panel scrolls. */
+.sidePanelScroll {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+
+	@include scrollbar-mixins.scroll-bar;
 }
 
 .footer {

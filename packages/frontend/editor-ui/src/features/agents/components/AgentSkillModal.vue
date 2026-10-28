@@ -1223,13 +1223,7 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div
-				:class="[
-					$style.content,
-					isFormStep && $style.contentFlush,
-					versionsOpen && versions && $style.contentWithVersions,
-				]"
-			>
+			<div :class="[$style.content, isFormStep && $style.contentFlush]">
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1302,17 +1296,19 @@ function onRemove() {
 							</div>
 						</template>
 					</AgentSkillViewer>
-					<SkillVersionTimeline
-						v-if="versionsOpen && versions"
-						:versions="versions"
-						:shown-version="viewedVersion?.version ?? versions[0]?.version"
-						:can-restore="canRestore"
-						@open="onOpenVersion"
-						@restore="restoreVersion"
-						@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
-					/>
 				</template>
 			</div>
+		</template>
+
+		<template v-if="isFormStep && versionsOpen && versions && !comparison" #sidePanel>
+			<SkillVersionTimeline
+				:versions="versions"
+				:shown-version="viewedVersion?.version ?? versions[0]?.version"
+				:can-restore="canRestore"
+				@open="onOpenVersion"
+				@restore="restoreVersion"
+				@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
+			/>
 		</template>
 
 		<template v-if="showRemove" #footerLeft>
@@ -1403,11 +1399,6 @@ function onRemove() {
 
 .callout {
 	margin-bottom: var(--spacing--md);
-}
-
-/* The Versions panel needs room beside the file list and the form. */
-.contentWithVersions {
-	width: min(68rem, calc(100dvw - var(--spacing--lg) * 3));
 }
 
 /* A full-width strip under the header, as the body of the form steps is flush. */
