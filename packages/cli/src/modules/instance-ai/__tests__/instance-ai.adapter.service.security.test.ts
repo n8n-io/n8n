@@ -38,7 +38,7 @@ import {
 	type InstanceWriteAccessService,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { OutsideThreadProjectError } from '@n8n/instance-ai/errors';
 import { LessThan } from '@n8n/typeorm';
@@ -57,6 +57,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -915,15 +916,15 @@ describe('bound project write guard', () => {
 
 	type Context = ReturnType<typeof service.createContext>;
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
 
 	beforeEach(() => {
 		userHasScopesMock.mockResolvedValue(true);
-		vi.spyOn(Container, 'get').mockImplementation(
-			(cls) =>
-				(cls === SharedCredentialsRepository
-					? sharedCredentialsRepository
-					: executionPersistence) as never,
-		);
+		vi.spyOn(Container, 'get').mockImplementation((cls) => {
+			if (cls === SharedCredentialsRepository) return sharedCredentialsRepository as never;
+			if (cls === CredentialsRepository) return credentialsRepository as never;
+			return executionPersistence as never;
+		});
 	});
 
 	const expectRejectedOutsideProject = async (write: Promise<unknown>) => {
@@ -933,6 +934,7 @@ describe('bound project write guard', () => {
 	it.each(['bound-project', 'other-project', undefined])(
 		'checks the credential owner project before updating a description: %s',
 		async (projectId) => {
+			credentialsRepository.findExistingIds.mockResolvedValue(['cred-1']);
 			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
 				projectId ? ({ id: projectId } as never) : undefined,
 			);
@@ -951,6 +953,17 @@ describe('bound project write guard', () => {
 			}
 		},
 	);
+
+	it('returns not found for an unknown credential description target', async () => {
+		sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+		credentialsRepository.findExistingIds.mockResolvedValue([]);
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+
+		await expect(ctx.credentialService.updateDescription('missing', 'Reporting')).rejects.toThrow(
+			CredentialNotFoundError,
+		);
+		expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+	});
 
 	it('rejects tagWorkflow on a workflow owned by another project before loading it', async () => {
 		sharedWorkflowRepository.findProjectIds.mockResolvedValue(['other-project']);

@@ -41,6 +41,7 @@ import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig, IExecutionResponse } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
@@ -172,6 +173,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -1143,7 +1145,13 @@ export class InstanceAiAdapterService {
 			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 				credentialId,
 			);
-			// Description edits require a project owner; other callers retain their not-found path.
+			if (!owner && requireOwner) {
+				// An absent owner can mean a missing credential or an instance-wide credential.
+				const existingIds = await Container.get(CredentialsRepository).findExistingIds([
+					credentialId,
+				]);
+				if (existingIds.length === 0) throw new CredentialNotFoundError(credentialId);
+			}
 			if (owner || requireOwner) assertInBoundProject(owner?.id);
 		};
 

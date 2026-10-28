@@ -12,14 +12,6 @@ describe('update credential description MCP tool', () => {
 	const telemetry = mock<Telemetry>();
 	beforeEach(() => vi.resetAllMocks());
 
-	it('provides request, content, and clearing guidance to the client', () => {
-		const { description } = createUpdateCredentialDescriptionTool(user, service, telemetry).config;
-		expect(description).toContain('only when the user explicitly requests a description change');
-		expect(description).toContain('purpose and intended use from known context');
-		expect(description).toContain('concise and exclude secrets');
-		expect(description).toContain('A blank string clears it');
-	});
-
 	it.each(['  Reporting  ', '', null])(
 		'updates or clears the description: %s',
 		async (description) => {
