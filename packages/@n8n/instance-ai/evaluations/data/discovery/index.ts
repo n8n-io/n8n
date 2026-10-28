@@ -26,6 +26,29 @@ const inlineSeedSchema = CaseSeedSchema.refine(
 			});
 		}
 	}
+	// The stub has no folders, so it would show a folder-placed workflow at the root.
+	seed.workflows.forEach((workflow, index) => {
+		if (workflow.parentFolderId !== undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['workflows', index, 'parentFolderId'],
+				message: 'the discovery stub instance cannot place a workflow in a folder',
+			});
+		}
+	});
+	// An empty seed restores nothing, so the case would run against an unseeded instance.
+	if (
+		seed.messages.length === 0 &&
+		seed.workflows.length === 0 &&
+		seed.dataTables.length === 0 &&
+		seed.agents.length === 0
+	) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message:
+				'an inline seed must carry something the stub instance serves — messages, workflows, dataTables, or agents',
+		});
+	}
 });
 
 const forbiddenToolCallSchema = z

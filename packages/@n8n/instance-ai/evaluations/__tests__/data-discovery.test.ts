@@ -158,6 +158,38 @@ describe('discoveryTestCaseSchema', () => {
 		expect(parsed.error?.issues.map((issue) => issue.path.join('.'))).toContain(`seed.${slot}`);
 	});
 
+	it('rejects an inline seed that carries nothing the stub instance serves', () => {
+		const empty = { ...valid, seed: { mode: 'inline' } };
+		const parsed = discoveryTestCaseSchema.safeParse(empty);
+		expect(parsed.success).toBe(false);
+		expect(parsed.error?.issues.map((issue) => issue.message)).toContainEqual(
+			expect.stringContaining('an inline seed must carry something'),
+		);
+	});
+
+	it('rejects a seeded workflow placed in a folder, which the stub instance cannot serve', () => {
+		const placed = {
+			...valid,
+			seed: {
+				mode: 'inline',
+				workflows: [
+					{
+						id: 'wf-seeded-1',
+						name: 'Seeded',
+						nodes: [],
+						connections: {},
+						parentFolderId: 'folder-0001',
+					},
+				],
+			},
+		};
+		const parsed = discoveryTestCaseSchema.safeParse(placed);
+		expect(parsed.success).toBe(false);
+		expect(parsed.error?.issues.map((issue) => issue.path.join('.'))).toContain(
+			'seed.workflows.0.parentFolderId',
+		);
+	});
+
 	it('rejects the retired computerUse key instead of passing vacuously', () => {
 		const retired = {
 			...valid,
