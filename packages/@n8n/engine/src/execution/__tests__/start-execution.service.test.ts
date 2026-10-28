@@ -3,9 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import type { ExecutionStore } from '../execution-store';
-import type { WorkflowDocument } from '../execution.types';
-import { StartExecutionService } from '../start-execution.service';
+import {
+	ExecutionNotFoundError,
+	type ExecutionRecord,
+	type ExecutionStore,
+} from '../execution-store';
+import type { ExecutionStatus, StepStatus, WorkflowDocument } from '../execution.types';
+import { InvalidParentLinkError, StartExecutionService } from '../start-execution.service';
+import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
@@ -36,6 +41,21 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	};
 }
 
+/** Only `loadStep` is reachable from a start, and only for a parent link. */
+function makeStepStore(loadStep = vi.fn()): StepStore {
+	return { loadStep } as unknown as StepStore;
+}
+
+/** A parent execution and a step of it, in the state that starts a sub-execution. */
+function parentRows(executionStatus: ExecutionStatus, stepStatus: StepStatus) {
+	const execution = { id: 'exec-parent', status: executionStatus } as ExecutionRecord;
+	const step = { id: 'step-1', executionId: 'exec-parent', status: stepStatus } as StepRecord;
+	return {
+		store: makeStore({ loadExecution: vi.fn().mockResolvedValue(execution) }),
+		stepStore: makeStepStore(vi.fn().mockResolvedValue(step)),
+	};
+}
+
 describe('StartExecutionService', () => {
 	it('admits, persists a queued execution under the caller-minted id, publishes execution:enqueued', async () => {
 		const admittance: AdmittanceService = {
@@ -43,7 +63,7 @@ describe('StartExecutionService', () => {
 		};
 		const store = makeStore();
 		const queue = makeQueue();
-		const service = new StartExecutionService(admittance, store, queue);
+		const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
 
 		const result = await service.start({
 			workflowId: 'wf-1',
@@ -74,24 +94,113 @@ describe('StartExecutionService', () => {
 		});
 	});
 
-	it('stores the parent link as given', async () => {
+	describe('parent link', () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
-		const store = makeStore();
-		const service = new StartExecutionService(admittance, store, makeQueue());
-		const parent = { executionId: 'exec-parent', stepId: 'step-1', awaited: true };
-
-		await service.start({
+		const base = {
 			workflowId: 'wf-1',
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
-			callerContext: { hostMode: 'trigger' },
-			parent,
+			callerContext: { hostMode: 'trigger' as const },
+		};
+
+		it.each([
+			{ name: 'a waiting step that awaits it', awaited: true, stepStatus: 'waiting' as const },
+			{ name: 'a completed step that does not', awaited: false, stepStatus: 'completed' as const },
+		])('stores the link to $name', async ({ awaited, stepStatus }) => {
+			const { store, stepStore } = parentRows('running', stepStatus);
+			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
+			const parent = { executionId: 'exec-parent', stepId: 'step-1', awaited };
+
+			await service.start({ ...base, parent });
+
+			expect(store.loadExecution).toHaveBeenCalledWith('exec-parent');
+			expect(stepStore.loadStep).toHaveBeenCalledWith('step-1');
+			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
 		});
 
-		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
+		it.each([
+			{
+				name: 'the parent execution has ended',
+				executionStatus: 'completed',
+				stepStatus: 'waiting',
+			},
+			{
+				name: 'the parent execution has not started',
+				executionStatus: 'queued',
+				stepStatus: 'waiting',
+			},
+			{
+				name: 'an awaiting step is not waiting',
+				executionStatus: 'running',
+				stepStatus: 'running',
+			},
+			{
+				name: 'a non-awaiting step has not completed',
+				executionStatus: 'running',
+				stepStatus: 'running',
+				awaited: false,
+			},
+		] as Array<{
+			name: string;
+			executionStatus: ExecutionStatus;
+			stepStatus: StepStatus;
+			awaited?: boolean;
+		}>)(
+			'rejects the link without persisting when $name',
+			async ({ executionStatus, stepStatus, awaited = true }) => {
+				const { store, stepStore } = parentRows(executionStatus, stepStatus);
+				const queue = makeQueue();
+				const service = new StartExecutionService(admittance, store, stepStore, queue);
+
+				await expect(
+					service.start({
+						...base,
+						parent: { executionId: 'exec-parent', stepId: 'step-1', awaited },
+					}),
+				).rejects.toBeInstanceOf(InvalidParentLinkError);
+				expect(store.createExecution).not.toHaveBeenCalled();
+				expect(queue.publish).not.toHaveBeenCalled();
+			},
+		);
+
+		it('rejects a step of another execution', async () => {
+			const { store } = parentRows('running', 'waiting');
+			const stepStore = makeStepStore(
+				vi.fn().mockResolvedValue({ id: 'step-1', executionId: 'exec-other', status: 'waiting' }),
+			);
+			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
+
+			await expect(
+				service.start({
+					...base,
+					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
+				}),
+			).rejects.toThrow(/belongs to execution exec-other/);
+		});
+
+		it.each([
+			{ name: 'parent execution', error: new ExecutionNotFoundError('exec-parent') },
+			{ name: 'parent step', error: new StepNotFoundError('step-1') },
+		])('rejects the link when the $name does not exist', async ({ error }) => {
+			const { store, stepStore } = parentRows('running', 'waiting');
+			if (error instanceof ExecutionNotFoundError) {
+				vi.mocked(store.loadExecution).mockRejectedValue(error);
+			} else {
+				vi.mocked(stepStore.loadStep).mockRejectedValue(error);
+			}
+			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
+
+			await expect(
+				service.start({
+					...base,
+					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
+				}),
+			).rejects.toBeInstanceOf(InvalidParentLinkError);
+			expect(store.createExecution).not.toHaveBeenCalled();
+		});
 	});
 
 	it('records no parent for a top-level execution', async () => {
@@ -99,7 +208,7 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
 		const store = makeStore();
-		const service = new StartExecutionService(admittance, store, makeQueue());
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 
 		await service.start({
 			workflowId: 'wf-1',
@@ -117,7 +226,7 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
 		const store = makeStore();
-		const service = new StartExecutionService(admittance, store, makeQueue());
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
 
 		await service.start({
@@ -136,7 +245,7 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
 		const store = makeStore();
-		const service = new StartExecutionService(admittance, store, makeQueue());
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 
 		await service.start({
 			workflowId: 'wf-1',
@@ -158,7 +267,7 @@ describe('StartExecutionService', () => {
 		};
 		const store = makeStore();
 		const queue = makeQueue();
-		const service = new StartExecutionService(admittance, store, queue);
+		const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
 
 		await service.start({
 			workflowId: 'wf-1',
@@ -182,7 +291,13 @@ describe('StartExecutionService', () => {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
 		const validateGraph = vi.fn();
-		const service = new StartExecutionService(admittance, makeStore(), makeQueue(), validateGraph);
+		const service = new StartExecutionService(
+			admittance,
+			makeStore(),
+			makeStepStore(),
+			makeQueue(),
+			validateGraph,
+		);
 
 		await service.start({
 			workflowId: 'wf-1',
@@ -205,7 +320,13 @@ describe('StartExecutionService', () => {
 		const validateGraph = vi.fn().mockImplementation(() => {
 			throw rejection;
 		});
-		const service = new StartExecutionService(admittance, store, queue, validateGraph);
+		const service = new StartExecutionService(
+			admittance,
+			store,
+			makeStepStore(),
+			queue,
+			validateGraph,
+		);
 
 		await expect(
 			service.start({
@@ -227,7 +348,7 @@ describe('StartExecutionService', () => {
 		};
 		const store = makeStore();
 		const queue = makeQueue();
-		const service = new StartExecutionService(admittance, store, queue);
+		const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
 
 		await expect(
 			service.start({
@@ -270,7 +391,7 @@ describe('StartExecutionService', () => {
 
 		it('persists the seeded steps with the execution', async () => {
 			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
+			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 			const seededSteps = { a: [[[{ json: { from: 'earlier' } }]]] };
 
 			await service.start({ ...base, seededSteps });
@@ -287,7 +408,7 @@ describe('StartExecutionService', () => {
 
 		it('rejects a node outside any loop seeded with more than one pass', async () => {
 			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
+			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 
 			await expect(service.start({ ...base, seededSteps: { a: [[], []] } })).rejects.toThrow(
 				/seeded with 2 passes/,
@@ -302,7 +423,7 @@ describe('StartExecutionService', () => {
 		])('rejects seeding $name without persisting or publishing', async ({ nodeId }) => {
 			const store = makeStore();
 			const queue = makeQueue();
-			const service = new StartExecutionService(admittance, store, queue);
+			const service = new StartExecutionService(admittance, store, makeStepStore(), queue);
 
 			await expect(service.start({ ...base, seededSteps: { [nodeId]: [[]] } })).rejects.toThrow(
 				GraphValidationError,
@@ -331,7 +452,7 @@ describe('StartExecutionService', () => {
 				],
 			};
 			const store = makeStore();
-			const service = new StartExecutionService(admittance, store, makeQueue());
+			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 
 			await expect(
 				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [[]] } }),

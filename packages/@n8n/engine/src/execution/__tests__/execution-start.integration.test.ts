@@ -82,6 +82,7 @@ describe('execution start (integration)', () => {
 		const startExecution = new StartExecutionService(
 			new AllowAllAdmittance(),
 			executionStore,
+			stepStore,
 			orchestrationQueue,
 		);
 

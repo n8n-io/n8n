@@ -282,7 +282,12 @@ beforeEach(async () => {
 	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
-		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+		startExecution: new StartExecutionService(
+			new AllowAllAdmittance(),
+			executionStore,
+			stepStore,
+			workQueue,
+		),
 		cancelExecution: new CancelExecutionService(
 			executionStore,
 			stepStore,
