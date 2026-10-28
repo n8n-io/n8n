@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
+import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
@@ -17,10 +18,14 @@ import { MigrationWorkflowOwnerRepository } from '../database/repositories/migra
 import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
-/** Stable hash of a rule set. The order of `ruleIds` does not change the result. */
-export function computeRuleSetFingerprint(ruleIds: string[]): string {
+/**
+ * Stable hash of a rule set. The order of `ruleIds` does not change the result.
+ * The n8n version is part of the hash: a release can change how a rule detects
+ * issues without changing its id, so the first read after an upgrade re-syncs.
+ */
+export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = N8N_VERSION): string {
 	return createHash('sha256')
-		.update([...ruleIds].sort().join('\n'))
+		.update([n8nVersion, ...[...ruleIds].sort()].join('\n'))
 		.digest('hex');
 }
 
@@ -72,7 +77,7 @@ export class MigrationFindingSyncService {
 
 		this.logger.debug('Migration finding table is stale, syncing', {
 			targetVersion,
-			reason: record ? 'rule set changed' : 'never synced',
+			reason: record ? 'rule set or n8n version changed' : 'never synced',
 		});
 		await this.sync(targetVersion);
 	}
