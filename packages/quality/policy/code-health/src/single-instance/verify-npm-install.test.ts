@@ -2,12 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { resolve } from 'node:path';
 
 import {
+	buildNpmInstallOverrides,
 	closureOf,
 	findWorkspacePackageJsonFiles,
 	filesTriggerFullRun,
 	matchChangedFiles,
 	resolveTargets,
 } from './verify-npm-install.js';
+
+describe('buildNpmInstallOverrides', () => {
+	it('uses local tarballs and excludes Docker-only native bindings', () => {
+		expect(buildNpmInstallOverrides(['a'], { a: '/tmp/a.tgz' })).toMatchObject({
+			a: 'file:/tmp/a.tgz',
+			'@napi-rs/canvas-linux-arm64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/canvas-linux-x64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/image-linux-arm64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/image-linux-x64-musl': 'npm:empty-npm-package@1.0.0',
+		});
+	});
+});
 
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {

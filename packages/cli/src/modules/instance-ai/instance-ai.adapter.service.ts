@@ -2559,7 +2559,7 @@ export class InstanceAiAdapterService {
 				const target = nodes.find((node) => node.name === nodeName);
 				if (!target) {
 					throw new UserError(
-						`The workflow has no node named "${nodeName}". Use workflow_builder_workflows(action="get-as-code") to see the node names.`,
+						`The workflow has no node named "${nodeName}". Use get_workflow_as_code to see the node names.`,
 					);
 				}
 				if (target.disabled) {

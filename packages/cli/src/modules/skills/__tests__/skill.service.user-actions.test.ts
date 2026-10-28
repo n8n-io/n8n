@@ -494,7 +494,7 @@ describe('SkillService user actions', () => {
 					{ key: 'agent-1', name: 'Support bot', project: 'project-1' },
 					{ key: 'agent-9', name: 'Hidden bot', project: 'project-9' },
 				],
-				skills: [],
+				skills: [{ key: 'skill_a', versions: ['Brand voice', 'Brand voice', 'Brand voice'] }],
 				drafts: [
 					{ agent: 'agent-1', skill: 'skill_a' },
 					{ agent: 'agent-9', skill: 'skill_a' },
@@ -518,7 +518,15 @@ describe('SkillService user actions', () => {
 			expect(detail.skillHash).toBe(getSkillHash(detail.skill));
 			// The user may read the agents of project-1 only.
 			expect(detail.usedBy).toEqual({
-				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: 'project-1' }],
+				drafts: [
+					{
+						agentId: 'agent-1',
+						agentName: 'Support bot',
+						projectId: 'project-1',
+						version: 3,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 1,
 			});

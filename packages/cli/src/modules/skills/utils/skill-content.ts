@@ -21,6 +21,9 @@ export type ResolvedSkillRow = {
 };
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
+/** The version a skill ref runs, whether a pin decides it, and the latest version. */
+export type RuntimeVersion = { version: number; pinned: boolean; latest: number };
+
 export type SkillRef = { id: string; versionId?: string };
 
 /**

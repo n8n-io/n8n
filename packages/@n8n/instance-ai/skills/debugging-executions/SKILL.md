@@ -9,7 +9,8 @@ description: >-
   you explain the cause to the user.
 recommended_tools:
   - workflow_builder_executions
-  - workflow_builder_workflows
+  - get_workflow
+  - get_workflow_as_code
 ---
 
 # Debugging Executions
@@ -41,7 +42,7 @@ run them unprompted:
 - **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
   credential exists (`list_credentials`, with `ids` for a specific credential),
   that the node uses it (the node's `credentials` in
-  `workflow_builder_workflows(action="get")`; resolved parameters show only the
+  `get_workflow`; resolved parameters show only the
   auth type, not which credential is bound), and what
   `test_credential` reports. A generic credential,
   such as Header Auth, can pass its test without a call to the service, so a
@@ -213,7 +214,7 @@ Ticket" tool creates the ticket again, and `toolArguments` does not change that.
 Only run one when the user has accepted a second write.
 
 Use the argument names from the node's `$fromAI` calls, which
-`workflow_builder_workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+`get_workflow_as_code` shows. Pass a plain string instead for a tool
 that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
 tool).
 
