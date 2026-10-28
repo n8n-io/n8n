@@ -31,6 +31,8 @@ const props = withDefaults(
 		showCancel?: boolean;
 		/** Text of the Cancel button. Defaults to "Cancel". */
 		cancelLabel?: string;
+		/** Draws a line under the header, for a body whose columns start at the top edge. */
+		headerDivider?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
 		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
@@ -50,6 +52,7 @@ const props = withDefaults(
 		showFooter: undefined,
 		showCancel: true,
 		cancelLabel: undefined,
+		headerDivider: false,
 		bodyScrollable: true,
 		bodyFlush: false,
 		stableHeight: false,
@@ -146,7 +149,7 @@ function onOpenAutoFocus(event: Event) {
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogHeader :class="$style.header">
+		<N8nDialogHeader :class="[$style.header, props.headerDivider && $style.headerDivider]">
 			<div :class="$style.headerContent">
 				<N8nIconButton
 					v-if="props.showBack"
@@ -261,6 +264,10 @@ function onOpenAutoFocus(event: Event) {
 	padding-inline-end: calc(
 		var(--spacing--lg) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs)
 	);
+}
+
+.headerDivider {
+	border-bottom: var(--border);
 }
 
 .titleError {

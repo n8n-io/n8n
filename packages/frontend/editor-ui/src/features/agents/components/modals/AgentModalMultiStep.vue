@@ -17,6 +17,7 @@ const props = withDefaults(
 		showFooter?: boolean;
 		showCancel?: boolean;
 		cancelLabel?: string;
+		headerDivider?: boolean;
 		bodyFlush?: boolean;
 		stableHeight?: boolean;
 		busy?: boolean;
@@ -34,6 +35,7 @@ const props = withDefaults(
 		showFooter: undefined,
 		showCancel: true,
 		cancelLabel: undefined,
+		headerDivider: false,
 		bodyFlush: false,
 		stableHeight: false,
 		busy: false,
@@ -75,6 +77,7 @@ watch(
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
 		:cancel-label="cancelLabel"
+		:header-divider="headerDivider"
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
 		:stable-height="stableHeight"

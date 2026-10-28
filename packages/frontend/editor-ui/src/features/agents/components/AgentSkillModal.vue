@@ -909,6 +909,8 @@ function onRemove() {
 		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
 		:show-cancel="step !== 'select'"
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
+		:header-divider="isFormStep"
+		:body-flush="isFormStep"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
 		data-testid="agent-skill-modal"
@@ -1025,7 +1027,7 @@ function onRemove() {
 			<N8nCallout
 				v-if="data.readOnly"
 				theme="info"
-				:class="$style.callout"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-read-only-callout"
 			>
 				{{ i18n.baseText('settings.context.skills.readOnly') }}
@@ -1033,7 +1035,7 @@ function onRemove() {
 			<N8nCallout
 				v-if="openedWithMissingContent && !isReadOnly"
 				theme="warning"
-				:class="$style.callout"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-missing-content-callout"
 			>
 				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
@@ -1041,12 +1043,12 @@ function onRemove() {
 			<N8nCallout
 				v-if="accessWarning"
 				theme="warning"
-				:class="$style.callout"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-access-warning"
 			>
 				{{ accessWarning }}
 			</N8nCallout>
-			<div :class="$style.content">
+			<div :class="[$style.content, isFormStep && $style.contentFlush]">
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1056,6 +1058,7 @@ function onRemove() {
 				/>
 				<template v-else>
 					<AgentSkillFileNav
+						:class="isFormStep && $style.fileColumn"
 						:skill="skill"
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
@@ -1066,6 +1069,7 @@ function onRemove() {
 						@select="selectedPath = $event"
 					/>
 					<AgentSkillViewer
+						:class="isFormStep && $style.formColumn"
 						:skill="skill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
@@ -1175,6 +1179,26 @@ function onRemove() {
 
 .callout {
 	margin-bottom: var(--spacing--md);
+}
+
+/* The form steps have a flush body, so their callouts keep the body inset themselves. */
+.calloutInset {
+	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+/* The file list runs to the edges of the modal and each column keeps its own inset. */
+.contentFlush {
+	gap: 0;
+	align-items: stretch;
+}
+
+.fileColumn {
+	background-color: var(--color--background--light-2);
+}
+
+.formColumn {
+	flex: 1;
+	padding: var(--spacing--md) var(--spacing--lg);
 }
 
 .footerHint {
