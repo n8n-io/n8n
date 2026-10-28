@@ -42,14 +42,18 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 		}
 	}
 
+	/** The version the user asked for last, so a slower earlier answer cannot replace it. */
+	let requestedVersion: number | null = null;
+
 	/** Shows an older version. The latest version shows the editor again. */
 	async function openVersion(version: number) {
+		requestedVersion = version;
 		if (version === versions.value?.[0]?.version) {
 			viewedVersion.value = null;
 			return;
 		}
 		const detail = await fetchVersion(version);
-		if (detail) viewedVersion.value = detail;
+		if (detail && requestedVersion === version) viewedVersion.value = detail;
 	}
 
 	return { versions, viewedVersion, loadVersions, fetchVersion, openVersion };

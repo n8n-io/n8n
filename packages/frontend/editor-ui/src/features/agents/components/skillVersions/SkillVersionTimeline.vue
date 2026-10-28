@@ -82,7 +82,7 @@ function onAction(version: number, action: VersionAction) {
 							})
 						}}
 						<N8nText v-if="index === 0" size="small" color="text-light">
-							· {{ i18n.baseText('agents.builder.skills.versions.latest') }}
+							{{ i18n.baseText('agents.builder.skills.versions.latest') }}
 						</N8nText>
 					</N8nText>
 					<N8nText size="xsmall" color="text-light">{{ savedBy(version) }}</N8nText>
@@ -112,6 +112,8 @@ function onAction(version: number, action: VersionAction) {
 	flex-shrink: 0;
 	padding-left: var(--spacing--md);
 	border-left: var(--border);
+	/* Long version lists scroll inside the panel, not the whole modal body. */
+	max-height: min(60dvh, calc(var(--spacing--5xl) * 2.5));
 	overflow-y: auto;
 }
 
