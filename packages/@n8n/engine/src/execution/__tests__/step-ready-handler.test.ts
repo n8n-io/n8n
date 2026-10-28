@@ -1128,7 +1128,9 @@ describe('StepReadyHandler sub-executions', () => {
 		graph: subWorkflowGraph,
 		workflow: { id: 'wf-sub' },
 		triggerOutputs: [[{ json: { in: 1 } }]],
+		awaited: true,
 	};
+	const detached = { ...subExecution, awaited: false };
 	const subExecutionWait: WaitDeclaration = {
 		subExecutionId: 'exec-sub',
 	};
@@ -1236,7 +1238,7 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
-	it('starts the detached sub-executions before the step completes, without awaiting them', async () => {
+	it('starts a detached sub-execution before the step completes, without awaiting it', async () => {
 		const order: string[] = [];
 		const stepStore = makeStepStore(
 			{},
@@ -1261,7 +1263,7 @@ describe('StepReadyHandler sub-executions', () => {
 			{
 				v1StepExecutor: makeExecutor({
 					outputs: [[{ json: { id: 'exec-sub' } }]],
-					detached: [subExecution],
+					subExecution: detached,
 				}),
 			},
 			undefined,
@@ -1290,7 +1292,7 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
-	it('records the outputs and starts nothing more when the execution ended before a detached sub-execution started', async () => {
+	it('records the outputs when the execution ended before a detached sub-execution started', async () => {
 		// A sibling failed, or a cancel came, while the node ran: the outputs are
 		// still the node's outcome, and an ended execution is owed no sub-execution.
 		const stepStore = makeStepStore();
@@ -1304,7 +1306,7 @@ describe('StepReadyHandler sub-executions', () => {
 			{
 				v1StepExecutor: makeExecutor({
 					outputs: [[{ json: { ok: true } }]],
-					detached: [subExecution, { ...subExecution, executionId: 'exec-sub-2' }],
+					subExecution: detached,
 				}),
 			},
 			undefined,
@@ -1331,7 +1333,7 @@ describe('StepReadyHandler sub-executions', () => {
 			makeExecutionStore(),
 			stepStore,
 			queue,
-			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
+			{ v1StepExecutor: makeExecutor({ outputs: [[]], subExecution: detached }) },
 			publisher,
 			undefined,
 			undefined,
