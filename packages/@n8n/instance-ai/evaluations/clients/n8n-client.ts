@@ -1114,6 +1114,18 @@ export class N8nClient {
 	}
 
 	/**
+	 * Whether the license allows team projects (`quota:maxTeamProjects` is not 0).
+	 * GET /rest/settings
+	 */
+	async canCreateTeamProjects(): Promise<boolean> {
+		const result = (await this.fetch('/rest/settings')) as {
+			data?: { enterprise?: { projects?: { team?: { limit?: number } } } };
+		};
+		const limit = result.data?.enterprise?.projects?.team?.limit;
+		return limit !== undefined && limit !== 0;
+	}
+
+	/**
 	 * Create a team project. Used to seed the extra projects a project-scope case
 	 * needs: a second project the eval user can see but whose writes are barred,
 	 * so `isCurrentProject` has something to distinguish the bound project from.

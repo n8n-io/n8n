@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
-// Per-build users. `--build-via-mcp` builds act as a fresh member; orchestrator
-// builds keep the owner but run in a fresh member's personal project, the only
-// new project an unlicensed instance can create.
+// Per-build users. `--build-via-mcp` builds act as a fresh member. Orchestrator
+// builds keep the owner and, on an unlicensed instance, run in a fresh member's
+// personal project, the only new project it can create. n8n then hides execution
+// output from the owner; a licensed lane uses a team project instead.
 // ---------------------------------------------------------------------------
 
 import { randomBytes } from 'crypto';

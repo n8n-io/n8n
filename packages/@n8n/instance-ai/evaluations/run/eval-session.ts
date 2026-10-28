@@ -143,14 +143,23 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		const { buildUserPool } = lane;
 		// Named like the owner, so the agent's project line reads as it does for a real user.
-		const buildProject = buildUserPool
-			? async () =>
-					await provisionBuildProject({
-						pool: buildUserPool,
-						memberClient: new N8nClient(lane.baseUrl),
-						name: lane.client.userName ?? { firstName: 'Eval', lastName: 'Builder' },
-					})
-			: undefined;
+		const ownerName = lane.client.userName ?? { firstName: 'Eval', lastName: 'Builder' };
+		let buildProject: (() => Promise<{ userId?: string; projectId: string }>) | undefined;
+		if (lane.teamBuildProjects) {
+			// The owner creates it, so is its admin and keeps access to the build's credentials.
+			buildProject = async () => ({
+				projectId: (
+					await lane.client.createTeamProject(`${ownerName.firstName} ${ownerName.lastName}`)
+				).id,
+			});
+		} else if (buildUserPool) {
+			buildProject = async () =>
+				await provisionBuildProject({
+					pool: buildUserPool,
+					memberClient: new N8nClient(lane.baseUrl),
+					name: ownerName,
+				});
+		}
 		return {
 			runner: lane,
 			laneNum,

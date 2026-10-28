@@ -47,6 +47,12 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				await client.enableMcpAccess();
 			}
 			const buildUserPool = new LaneUserPool(client);
+			const teamBuildProjects = await client.canCreateTeamProjects();
+			if (!teamBuildProjects) {
+				logger.warn(
+					`No team projects on this instance: builds run in a member's personal project, so n8n hides execution output from the agent${tag}`,
+				);
+			}
 
 			// Independent reads of one instance, so they run together.
 			const [preRunWorkflowIds, preRunDataTableIds, preRunFolderIds] = await Promise.all([
@@ -67,6 +73,7 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				createdCredentialIds,
 				workflowIdsToDelete,
 				buildUserPool,
+				teamBuildProjects,
 			};
 		}),
 	);
