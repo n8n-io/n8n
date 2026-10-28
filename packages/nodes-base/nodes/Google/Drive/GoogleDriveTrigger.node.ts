@@ -479,30 +479,66 @@ export class GoogleDriveTrigger implements INodeType {
 
 		let files;
 
+<<<<<<< HEAD
 		if (this.getMode() === 'manual') {
 			qs.pageSize = 1;
 			files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
 			files = files.files;
 		} else {
 			files = await googleApiRequestAllItems.call(this, 'files', 'GET', '/drive/v3/files', {}, qs);
+=======
+		// `files.list` cannot filter by ID, so read a single watched item directly.
+		let watchedItemId: string | undefined;
+		if (this.getMode() !== 'manual') {
+			if (triggerOn === 'specificFile') {
+				watchedItemId = extractId(
+					this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
+				);
+			} else if (triggerOn === 'specificFolder' && event === 'watchFolderUpdated') {
+				watchedItemId = extractId(
+					this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
+				);
+			}
 		}
 
-		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
-			const fileToWatch = extractId(
-				this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
-			);
-			files = files.filter((file: { id: string }) => file.id === fileToWatch);
-		}
+		try {
+			if (watchedItemId !== undefined) {
+				files = await getWatchedItemIfChanged.call(this, watchedItemId, {
+					isFolderEvent: !event.startsWith('file'),
+					fileType: options.fileType as string | undefined,
+					timeField: event.includes('Created') ? 'createdTime' : 'modifiedTime',
+					changedAfter: startDate,
+				});
+			} else if (this.getMode() === 'manual') {
+				qs.pageSize = 1;
+				files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+				files = files.files;
+			} else {
+				files = await googleApiRequestAllItems.call(
+					this,
+					'files',
+					'GET',
+					'/drive/v3/files',
+					{},
+					qs,
+				);
+			}
+		} catch (error) {
+			if (!(error instanceof NodeApiError)) {
+				throw error;
+			}
 
-		if (
-			triggerOn === 'specificFolder' &&
-			event === 'watchFolderUpdated' &&
-			this.getMode() !== 'manual'
-		) {
-			const folderToWatch = extractId(
-				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
-			);
-			files = files.filter((file: { id: string }) => file.id === folderToWatch);
+			const failure = driveFailureFromError(error, queryTargetsWatchedFolder);
+			if (failure) {
+				error.failure = failure;
+				// A 404 is only classified when the query filters on the watched folder.
+				if (error.httpCode === '404') {
+					error.message =
+						'The folder this node watches no longer exists. Please update it in the workflow.';
+				}
+			}
+			throw error;
+>>>>>>> a40aea4f (perf(Google Drive Trigger Node): Read watched item instead of listing changes (#42134))
 		}
 
 		webhookData.lastTimeChecked = endDate;
@@ -520,3 +556,121 @@ export class GoogleDriveTrigger implements INodeType {
 		return null;
 	}
 }
+<<<<<<< HEAD
+=======
+
+async function getWatchedItemIfChanged(
+	this: IPollFunctions,
+	itemId: string,
+	conditions: {
+		isFolderEvent: boolean;
+		fileType?: string;
+		timeField: 'createdTime' | 'modifiedTime';
+		changedAfter: string;
+	},
+): Promise<IDataObject[]> {
+	if (!/^[\w-]+$/.test(itemId)) return [];
+
+	let item: IDataObject;
+	try {
+		item = await googleApiRequest.call(
+			this,
+			'GET',
+			`/drive/v3/files/${itemId}`,
+			{},
+			{ supportsAllDrives: true, fields: '*' },
+		);
+	} catch (error) {
+		if (error instanceof NodeApiError && error.httpCode === '404') return [];
+		throw error;
+	}
+
+	const { isFolderEvent, fileType, timeField, changedAfter } = conditions;
+	const isFolder = item.mimeType === 'application/vnd.google-apps.folder';
+	const matches =
+		item.trashed !== true &&
+		isFolder === isFolderEvent &&
+		(!fileType || fileType === 'all' || item.mimeType === fileType) &&
+		Date.parse(item[timeField] as string) > Date.parse(changedAfter);
+
+	return matches ? [item] : [];
+}
+
+const DAILY_QUOTA_TIMEZONE = 'America/Los_Angeles';
+
+const RATE_LIMIT_REASONS = [
+	'rateLimitExceeded',
+	'userRateLimitExceeded',
+	'sharingRateLimitExceeded',
+];
+
+const NESTED_ERROR_KEYS = ['cause', 'errorResponse', 'error', 'errors', 'response', 'body', 'data'];
+
+function collectGoogleErrorReasons(
+	value: unknown,
+	reasons = new Set<string>(),
+	seen = new WeakSet<object>(),
+	depth = 0,
+): Set<string> {
+	if (depth > 6 || typeof value !== 'object' || value === null || seen.has(value)) {
+		return reasons;
+	}
+	seen.add(value);
+
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			collectGoogleErrorReasons(entry, reasons, seen, depth + 1);
+		}
+		return reasons;
+	}
+
+	const record = value as IDataObject;
+	if (typeof record.reason === 'string') {
+		reasons.add(record.reason);
+	}
+	for (const key of NESTED_ERROR_KEYS) {
+		collectGoogleErrorReasons(record[key], reasons, seen, depth + 1);
+	}
+
+	return reasons;
+}
+
+/**
+ * Why a failed Drive API call failed, or `null` for anything this node cannot
+ * classify with confidence.
+ */
+function driveFailureFromError(
+	error: NodeApiError,
+	queryTargetsWatchedFolder: boolean,
+): Failure | null {
+	if (error.httpCode === '401') {
+		return { cause: 'credential-invalid' };
+	}
+
+	if (error.httpCode === '429') {
+		return { cause: 'rate-limited' };
+	}
+
+	if (error.httpCode === '403') {
+		const reasons = collectGoogleErrorReasons(error);
+		if (RATE_LIMIT_REASONS.some((reason) => reasons.has(reason))) {
+			return { cause: 'rate-limited' };
+		}
+		if (reasons.has('dailyLimitExceeded')) {
+			return { cause: 'quota-exhausted', resetsAtEpochMs: nextDailyQuotaReset() };
+		}
+		return null;
+	}
+
+	if (error.httpCode === '404' && queryTargetsWatchedFolder) {
+		return { cause: 'configuration-invalid' };
+	}
+
+	return null;
+}
+
+/** Google Drive daily quotas reset at midnight Pacific Time. Unix epoch ms. */
+function nextDailyQuotaReset(): number {
+	return moment.tz(DAILY_QUOTA_TIMEZONE).add(1, 'day').startOf('day').valueOf();
+}
+>>>>>>> a40aea4f (perf(Google Drive Trigger Node): Read watched item instead of listing changes (#42134))
