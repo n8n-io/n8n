@@ -489,29 +489,6 @@ describe('V1StepExecutor', () => {
 			);
 		});
 
-		// Core's `executeWorkflow` asks to wait when the child went to waiting.
-		it('fails the step when a sub-workflow it ran is itself waiting', async () => {
-			const graph = graphWith('test.runsSubWorkflow');
-			const executor = new V1StepExecutor({
-				nodeTypes: testNodeTypes,
-				additionalDataFactory: async (context) => ({
-					...(await testAdditionalDataFactory(context)),
-					executeWorkflow: vi.fn().mockResolvedValue({
-						executionId: 'child-1',
-						data: [[]],
-						waitTill: new Date('2099-01-01T00:00:00.000Z'),
-					}),
-				}),
-				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
-			});
-
-			const execution = executor.execute(stepRequest(graph, 'n', input));
-
-			await expect(execution).rejects.toThrow(
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
-			);
-		});
-
 		// The v1 hook sets the status in the host's `ActiveExecutions`. A data-plane
 		// run is not registered there, so the call throws.
 		it('does not call the host execution status hook', async () => {
@@ -626,6 +603,163 @@ describe('V1StepExecutor', () => {
 			stepRequest(graph, 'n', items({ keep: 'me' })),
 		);
 		expect(result.outputs).toEqual([[{ json: { keep: 'me' } }]]);
+	});
+});
+
+describe('sub-workflows', () => {
+	const childGraph: WorkflowGraph = {
+		nodes: [
+			{ id: 'ct', name: 'When Executed by Another Workflow', type: 'trigger' },
+			{ id: 'x', name: 'X', type: 'v1-node' },
+		],
+		edges: [{ from: 'ct', to: 'x', outputIndex: 0, inputIndex: 0 }],
+	};
+	const resolved = {
+		workflowId: 'child',
+		graph: childGraph,
+		workflow: { id: 'child', name: 'Child' },
+		triggerOutputs: [[{ json: { a: 1 } }]],
+	};
+	const input = items({ a: 1 }, { a: 2 });
+	const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+	function executorWith(
+		graph: WorkflowGraph,
+		resolveSubWorkflow = vi.fn().mockResolvedValue(resolved),
+	) {
+		const executor = new V1StepExecutor({
+			nodeTypes: testNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			resolveSubWorkflow,
+		});
+		return { executor, resolveSubWorkflow };
+	}
+
+	it('turns an awaited executeWorkflow call into a child, resolved through the host', async () => {
+		const graph = graphWith('test.runsSubWorkflow');
+		const { executor, resolveSubWorkflow } = executorWith(graph);
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		expect(result.child).toMatchObject(resolved);
+		expect(result.child?.executionId).toMatch(UUID_V7);
+		expect(resolveSubWorkflow).toHaveBeenCalledExactlyOnceWith({
+			workflowId: 'child',
+			// The same id the child then runs under.
+			executionId: result.child?.executionId,
+			parent: {
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				mode: 'manual',
+				node: { id: 'n', name: 'Subject', type: 'test.runsSubWorkflow', typeVersion: 1 },
+			},
+			context: { userId: undefined, projectId: undefined },
+			items: [{ json: { a: 1 } }, { json: { a: 2 } }],
+		});
+	});
+
+	it('starts a fire-and-forget call as a detached child and keeps the node outputs', async () => {
+		const graph = graphWith('test.firesSubWorkflow');
+		const { executor } = executorWith(graph);
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		expect(result.child).toBeUndefined();
+		expect(result.detached).toHaveLength(1);
+		expect(result.detached?.[0]).toMatchObject(resolved);
+		// The node reports the child id, as it does on v1, with no data.
+		expect(result.outputs).toEqual([
+			[{ json: { childId: result.detached?.[0].executionId, data: [null] } }],
+		]);
+	});
+
+	it('answers executeWorkflow from the child result on a child resume, asking the host for nothing', async () => {
+		const graph = graphWith('test.echoesSubWorkflow');
+		const { executor, resolveSubWorkflow } = executorWith(graph);
+		const resume = {
+			kind: 'child' as const,
+			executionId: 'child-1',
+			status: 'completed' as const,
+			result: [
+				{ nodeId: 'x', iteration: 0, outputs: [[{ json: { from: 'x' } }]] },
+				{
+					nodeId: 'y',
+					iteration: 0,
+					outputs: [[{ json: { from: 'y' } }], [{ json: { second: true } }]],
+				},
+			],
+		};
+
+		const result = await executor.execute({ ...stepRequest(graph, 'n', input), resume });
+
+		// Terminal outputs concatenate per slot, in the order the child reported them.
+		expect(result.outputs).toEqual([
+			[{ json: { from: 'x' } }, { json: { from: 'y' } }],
+			[{ json: { second: true } }],
+		]);
+		expect(resolveSubWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('keeps only the last pass of each terminal node when the caller asks for the last run only', async () => {
+		const graph = graphWith('test.echoesSubWorkflow', { returnLastRunOnly: true });
+		const { executor } = executorWith(graph);
+		const resume = {
+			kind: 'child' as const,
+			executionId: 'child-1',
+			status: 'completed' as const,
+			result: [
+				{ nodeId: 'x', iteration: 0, outputs: [[{ json: { pass: 0 } }]] },
+				{ nodeId: 'x', iteration: 1, outputs: [[{ json: { pass: 1 } }]] },
+			],
+		};
+
+		const result = await executor.execute({ ...stepRequest(graph, 'n', input), resume });
+
+		expect(result.outputs).toEqual([[{ json: { pass: 1 } }]]);
+	});
+
+	it('fails the node with the child error on a failed child resume', async () => {
+		const graph = graphWith('test.echoesSubWorkflow');
+		const { executor } = executorWith(graph);
+		const resume = {
+			kind: 'child' as const,
+			executionId: 'child-1',
+			status: 'failed' as const,
+			error: { name: 'TypeError', message: 'child boom' },
+		};
+
+		const execution = executor.execute({ ...stepRequest(graph, 'n', input), resume });
+
+		await expect(execution).rejects.toThrow('child boom');
+	});
+
+	it('refuses an inline sub-workflow and asks the host for nothing', async () => {
+		const graph = graphWith('test.runsInlineSubWorkflow');
+		const { executor, resolveSubWorkflow } = executorWith(graph);
+
+		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'Engine v2 runs sub-workflows from the database only',
+		);
+		expect(resolveSubWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('refuses a second call in one run, so "once for each item" fails before any child starts', async () => {
+		const graph = graphWith('test.runsSubWorkflowPerItem');
+		const { executor, resolveSubWorkflow } = executorWith(graph);
+
+		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'Engine v2 runs one sub-workflow for each run of a node',
+		);
+		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses the call when the host resolves no sub-workflows', async () => {
+		const graph = graphWith('test.runsSubWorkflow');
+
+		await expect(testStepExecutor(graph).execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'This host cannot run sub-workflows',
+		);
 	});
 });
 

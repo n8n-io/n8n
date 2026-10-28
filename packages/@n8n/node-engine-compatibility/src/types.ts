@@ -1,5 +1,13 @@
-import type { StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	StepExecutionContext,
+	StepSlots,
+	TriggerOutputs,
+	WorkflowDocument,
+	WorkflowGraph,
+} from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
+
+import type { SubWorkflowCalls } from './sub-workflow-calls';
 import type {
 	INode,
 	INodeCredentials,
@@ -55,6 +63,37 @@ export interface AdditionalDataContext {
 	projectId?: string;
 }
 
+/**
+ * What the host needs to resolve a sub-workflow a node calls: which workflow,
+ * who calls it, and the items the child's trigger receives.
+ */
+export interface SubWorkflowResolveRequest {
+	workflowId: string;
+	/** The child execution's id, minted by the caller, so the trigger runs under it. */
+	executionId: string;
+	parent: {
+		executionId: string;
+		workflowId: string;
+		mode: WorkflowExecuteMode;
+		/** The calling node, named in a policy denial. */
+		node: { id: string; name: string; type: string; typeVersion: number };
+	};
+	context: { userId?: string; projectId?: string };
+	items: INodeExecutionData[];
+}
+
+/** The child as the engine starts it. */
+export interface SubWorkflowResolveResult {
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs: TriggerOutputs | null;
+}
+
+export type SubWorkflowResolver = (
+	request: SubWorkflowResolveRequest,
+) => Promise<SubWorkflowResolveResult>;
+
 export interface V1StepExecutorDeps {
 	nodeTypes: INodeTypes;
 	additionalDataFactory: (
@@ -67,6 +106,8 @@ export interface V1StepExecutorDeps {
 	 * Without it, the URLs carry a random token that the engine cannot verify.
 	 */
 	resumeToken?: (context: { executionId: string }) => string;
+	/** Absent in a host that runs no sub-workflows, where a call fails the node. */
+	resolveSubWorkflow?: SubWorkflowResolver;
 }
 
 export type ExecutableNodeType = INodeType & { execute: NonNullable<INodeType['execute']> };
@@ -82,6 +123,7 @@ export interface CreateExecuteContextParams {
 	itemsByConnection: INodeExecutionData[][];
 	stepContext: StepExecutionContext;
 	resumeToken?: string;
+	subWorkflowCalls: SubWorkflowCalls;
 }
 
 export interface RunNodeParams {

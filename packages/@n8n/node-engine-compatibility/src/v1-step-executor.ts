@@ -28,6 +28,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
@@ -57,8 +58,16 @@ function toStepResult(
 	context: DurableWaitExecuteContext,
 	nodeResult: INodeExecutionData[][],
 ): StepExecutionResult {
+	// The node ran to the end on an empty result; the child it asked for is
+	// what the step owes, and the node runs again once the child ends.
+	const { awaited, detached } = context.subWorkflowCalls;
+	if (awaited) return { child: awaited };
+
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill === undefined) {
+		const outputs = toStepOutputs(nodeResult);
+		return detached.length > 0 ? { outputs, detached } : { outputs };
+	}
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
 		return { wait: { resumeBinding: 'execution' } };
@@ -126,6 +135,12 @@ export class V1StepExecutor implements IStepExecutor {
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+			subWorkflowCalls: new SubWorkflowCalls(
+				node,
+				request.context,
+				this.deps.resolveSubWorkflow,
+				request.resume,
+			),
 		});
 
 		return await workflow.expression.withIsolate(async () => {

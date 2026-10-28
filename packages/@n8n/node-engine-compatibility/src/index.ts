@@ -13,6 +13,9 @@ export type {
 	AdditionalDataContext,
 	StepData,
 	StepDataLoader,
+	SubWorkflowResolveRequest,
+	SubWorkflowResolveResult,
+	SubWorkflowResolver,
 	V1StepExecutorDeps,
 } from './types';
 export { attachResponseHooks } from './v1-response-hooks';

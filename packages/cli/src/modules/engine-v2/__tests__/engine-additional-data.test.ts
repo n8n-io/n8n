@@ -158,12 +158,15 @@ describe('EngineAdditionalDataBuilder', () => {
 		});
 	});
 
+	it('reads no run data of another execution, so paired items fall back to index matching', async () => {
+		await expect(build().getRunExecutionData('child-1')).resolves.toBeUndefined();
+	});
+
 	describe('control plane capabilities', () => {
 		it.each([
 			['executeWorkflow', 'Sub-workflows'],
 			['executeAgent', 'Agents'],
 			['listAgents', 'Agents'],
-			['getRunExecutionData', 'Reading another execution'],
 			['getRuntimeCredential', 'Runtime credentials'],
 		] as const)('%s rejects and names the feature', async (method, feature) => {
 			const data = build() as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
