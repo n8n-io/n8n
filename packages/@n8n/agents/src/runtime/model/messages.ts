@@ -301,15 +301,20 @@ function toModelContentOutput(output: ContentToolResultOutput): ContentToolResul
 		value: output.value.map((part) => {
 			const candidate: unknown = part;
 			if (!isFileRefPart(candidate)) return part;
-			if (candidate.data === undefined) return { type: 'text', text: viewedFileText(candidate) };
+			// Keep provider options, the same as `toAiContent` does for user files.
+			const options = candidate.providerOptions && { providerOptions: candidate.providerOptions };
+			if (candidate.data === undefined) {
+				return { type: 'text', text: viewedFileText(candidate), ...options };
+			}
 			if (isTextMediaType(candidate.mediaType)) {
-				return { type: 'text', text: fileDataToText(candidate.data) };
+				return { type: 'text', text: fileDataToText(candidate.data), ...options };
 			}
 			return {
 				type: 'file',
 				data: { type: 'data', data: candidate.data },
 				mediaType: candidate.mediaType ?? 'application/octet-stream',
 				...(candidate.fileRef.fileName ? { filename: candidate.fileRef.fileName } : {}),
+				...options,
 			};
 		}),
 	};
