@@ -8,9 +8,9 @@ description: >-
   workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
   with filePath. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill.
-  Don't use this skill for explicit one-off tasks that can be done by a single
-  node execution: load one-off-operations and run the node with
-  execute_node. Once the user wants a workflow, load
+  Do a one-time request (no repeat or trigger words) now: do not ask if it should repeat, and do
+  not build or change a kept workflow. For one node, load one-off-operations and run
+  it with execute_node. Once the user wants a workflow, load
   it before you ask any question about that workflow. Do not load it to ask
   about a request that does not yet say what to build. Also load for a
   workflow's evaluations, model choices, credential setup, error workflows, and
