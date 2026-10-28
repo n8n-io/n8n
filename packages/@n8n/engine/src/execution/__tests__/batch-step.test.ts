@@ -80,7 +80,7 @@ describe('runBatchStep', () => {
 		expect(await runBatchStep(config, 1, reader)).toEqual([null, null]);
 	});
 
-	it('treats a dead arrival as empty, so a filtered body ends the loop', async () => {
+	it('treats a dead arrival as empty, so a filtered pass adds nothing', async () => {
 		const reader = makeReader([item(1), item(2)], [[item(9)], null]);
 
 		expect(await runBatchStep(config, 2, reader)).toEqual([[item(9)], null]);

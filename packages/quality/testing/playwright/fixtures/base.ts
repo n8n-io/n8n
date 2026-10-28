@@ -82,8 +82,8 @@ export const test = base.extend<
 	...quarantineFixtures,
 	...a11yFixtures,
 
-	// Rejects an unknown @engine:* tag anywhere; only an engine v2 stack skips or
-	// expects failure. See fixtures/engine-parity.ts for the tags.
+	// Rejects an unknown @engine:* tag anywhere, and skips or expects failure by
+	// bucket and stack. See fixtures/engine-parity.ts for the tags.
 	engineParity: [
 		async ({ n8nStackConfig }, use, testInfo) => {
 			const disposition = engineParityDisposition(testInfo.tags, n8nStackConfig.engine);

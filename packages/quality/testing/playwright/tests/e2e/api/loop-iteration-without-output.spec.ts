@@ -74,13 +74,33 @@ const runDataOf = (execution: { data: string }): IRunData =>
 const items = (runData: IRunData, nodeName: string, runIndex: number) =>
 	runData[nodeName][runIndex].data?.main[0]?.map((item) => item.json);
 
+/**
+ * The two engines answer this differently on purpose. The legacy engine only
+ * runs a node that received items, so the loop never gets its next pass. Engine
+ * v2 hands over the next pass regardless, since the pass that returned nothing
+ * is still a pass.
+ */
 test.describe(
 	'Loop iteration without output',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should end the loop when the body returns nothing, and not run the done output @engine:v2', async ({
+		test('should run the loop with one pass that returns nothing @engine:v2', async ({ api }) => {
+			const { id: workflowId } = await api.workflows.createWorkflow(workflow);
+
+			const { executionId } = await api.workflows.runManually(workflowId, 'Trigger');
+			const execution = await api.workflows.waitForExecutionById(executionId);
+			expect(execution.status).toBe('success');
+
+			const runData = runDataOf(execution);
+			// Pass one handed over n: 1, and the body returned it. Pass two handed
+			// over n: 2, and the filter dropped it.
+			expect(items(runData, 'Body', 0)).toEqual([{ n: 1, seen: true }]);
+			expect(items(runData, 'Filter', 1)).toEqual([]);
+		});
+
+		test('should end the loop on the legacy engine, and not run the done output @engine:v1-only', async ({
 			api,
 		}) => {
 			const { id: workflowId } = await api.workflows.createWorkflow(workflow);
@@ -90,15 +110,33 @@ test.describe(
 			expect(execution.status).toBe('success');
 
 			const runData = runDataOf(execution);
-			// Pass one handed over n: 1, and the body returned it. Pass two handed
-			// over n: 2, and the filter dropped it. Nothing returned to the loop, so
-			// there was no pass three: n: 3 was never handed over.
+			// Nothing returned to the loop, so there was no pass three: n: 3 was
+			// never handed over, and the loop never ran out of items.
 			expect(runData.Loop).toHaveLength(2);
-			expect(items(runData, 'Body', 0)).toEqual([{ n: 1, seen: true }]);
-			expect(items(runData, 'Filter', 1)).toEqual([]);
 			expect(runData.Body).toHaveLength(1);
-			// The loop never ran out of items, so its done output never fired.
 			expect(runData).not.toHaveProperty('Done');
+		});
+
+		test('should carry on with the next pass on engine v2, and run the done output @engine:v2-only', async ({
+			api,
+		}) => {
+			const { id: workflowId } = await api.workflows.createWorkflow(workflow);
+
+			const { executionId } = await api.workflows.runManually(workflowId, 'Trigger');
+			const execution = await api.workflows.waitForExecutionById(executionId);
+			expect(execution.status).toBe('success');
+
+			const runData = runDataOf(execution);
+			// Pass three handed over n: 3, and pass four found no items left, so the
+			// done output fired with what the body returned on passes one and three.
+			// The body has no step on pass two, which v1 run data shows as an empty run.
+			expect(runData.Loop).toHaveLength(4);
+			expect(items(runData, 'Body', 1)).toEqual([]);
+			expect(items(runData, 'Body', 2)).toEqual([{ n: 3, seen: true }]);
+			expect(items(runData, 'Done', 0)).toEqual([
+				{ n: 1, seen: true, done: true },
+				{ n: 3, seen: true, done: true },
+			]);
 		});
 	},
 );

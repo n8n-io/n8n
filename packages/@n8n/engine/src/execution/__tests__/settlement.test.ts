@@ -427,11 +427,23 @@ describe('decideSuccessors over loop iterations', () => {
 		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
 	});
 
-	it('skips the next iteration when the body returns nothing', () => {
+	it('advances the iteration when the body returns nothing', () => {
 		const steps = makeSteps(
 			at('B', 0, 'completed', [false, true]),
 			at('x', 0, 'completed', [false]),
 		);
+
+		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
+	});
+
+	it('advances the iteration when the body was skipped', () => {
+		const steps = makeSteps(at('B', 0, 'completed', [false, true]), at('x', 0, 'skipped'));
+
+		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
+	});
+
+	it('ends the loop when the body was cancelled', () => {
+		const steps = makeSteps(at('B', 0, 'completed', [false, true]), at('x', 0, 'cancelled'));
 
 		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [], toSeed: [], toSkip: [key('B', 1)] });
 	});

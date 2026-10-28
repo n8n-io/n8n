@@ -5,9 +5,10 @@ import type { IWorkflowSettings } from 'n8n-workflow';
 export const ENGINE_TAG_PREFIX = '@engine:';
 
 /**
- * Title tags that sort a spec into an engine v2 parity bucket. They only
- * matter under a stack that runs engine v2 (`engine-v2:e2e`); everywhere
- * else the spec runs as usual.
+ * Title tags that sort a spec into an engine v2 parity bucket. Under a stack
+ * that runs engine v2 (`engine-v2:e2e`) they pick the outcome the spec must
+ * reach. Everywhere else the spec runs as usual, except the one bucket that
+ * names engine v2 behaviour the legacy engine does not share.
  */
 export const ENGINE_TAGS = {
 	/** Must pass on both engines. Runs there. */
@@ -16,6 +17,8 @@ export const ENGINE_TAGS = {
 	unsupported: `${ENGINE_TAG_PREFIX}v1-only`,
 	/** Engine v2 will support this, but does not yet. Expected to fail there. */
 	pending: `${ENGINE_TAG_PREFIX}v2-pending`,
+	/** Engine v2 behaves differently here on purpose. Runs there only. */
+	divergent: `${ENGINE_TAG_PREFIX}v2-only`,
 } as const;
 
 /**
@@ -52,7 +55,11 @@ export function engineParityDisposition(
 ): EngineParityDisposition {
 	assertKnownTags(tags);
 
-	if (!engine) return { action: 'run' };
+	if (!engine) {
+		return tags.includes(ENGINE_TAGS.divergent)
+			? { action: 'skip', reason: 'The legacy engine behaves differently here' }
+			: { action: 'run' };
+	}
 
 	if (tags.includes(ENGINE_TAGS.unsupported)) {
 		return { action: 'skip', reason: 'Engine v2 will never support this test' };

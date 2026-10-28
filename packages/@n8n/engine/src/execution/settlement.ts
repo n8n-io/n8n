@@ -47,6 +47,11 @@ import type { StepSummary } from './step-store';
  *   the body into a further iteration, and on forever. The exclusion lives in
  *   `decideNodeFate`, so anything recomputing fates reaches the same answer,
  *   reconciliation included.
+ * - The return edge is live once its source completed or was skipped, dead
+ *   slot or not. A pass whose body dropped every item still asks for the next
+ *   pass, since the batch node derives each pass from the iteration number and
+ *   reads a dead arrival as nothing. Rule 2 as written would end the loop
+ *   there, with the items after that pass never handed over.
  */
 
 export interface SuccessorDecisions {
@@ -132,19 +137,15 @@ function decideNodeFate(
 	const incomingEdges = graph.edges.filter((edge) => edge.to === candidate.nodeId);
 
 	for (const edge of incomingEdges) {
-		const source = sourceRow(
-			edge,
-			classifyEdge(edge, loops),
-			candidate,
-			terminalIterations.get(edge.from),
-		);
+		const edgeClass = classifyEdge(edge, loops);
+		const source = sourceRow(edge, edgeClass, candidate, terminalIterations.get(edge.from));
 		if (source.kind === 'none') continue;
 		if (source.kind === 'pending') return 'undecidable';
 
 		applicable += 1;
 		const sourceStep = steps[stepKeyId(source.key)];
 		if (!sourceStep || !isSettledStatus(sourceStep.status)) return 'undecidable';
-		if (isLive(sourceStep, edge)) live = true;
+		if (isLive(sourceStep, edge, edgeClass)) live = true;
 	}
 
 	// No edge connects to this step at this iteration, so nothing produces it.
@@ -171,8 +172,15 @@ function isPastLoopEnd(
 	return batchStep !== undefined && isTerminalStep(batchStep);
 }
 
-/** Rule 2. A slot beyond the produced list reads undefined — dead, like null. */
-function isLive(source: StepSummary, edge: GraphEdge): boolean {
+/**
+ * Rule 2. A slot beyond the produced list reads undefined — dead, like null.
+ *
+ * The return edge of a loop is the exception: an empty pass asks for the next
+ * one. A failed or cancelled body still ends the loop.
+ */
+function isLive(source: StepSummary, edge: GraphEdge, edgeClass: EdgeClass): boolean {
+	if (edgeClass === 'back') return source.status === 'completed' || source.status === 'skipped';
+
 	return source.status === 'completed' && Boolean(source.filledOutputSlots[edge.outputIndex]);
 }
 

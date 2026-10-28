@@ -260,6 +260,7 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@engine:v2` | Must pass on engine v2 as well | Runs under the `engine-v2:e2e` project (see below) |
 | `@engine:v1-only` | Engine v2 will never support this | Skipped under `engine-v2:e2e`; tracking only |
 | `@engine:v2-pending` | Engine v2 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
+| `@engine:v2-only` | Engine v2 behaves differently here on purpose | Runs under `engine-v2:e2e` only; pair it with an `@engine:v1-only` test that asserts the legacy behaviour |
 
 ### Engine v2 parity
 
@@ -284,11 +285,14 @@ through `api.workflows` and run it through `api.workflows.runManually`, which
 fails the test when the run did not reach engine v2. A spec that starts the
 run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
 after the run, which checks the same thing. A tag the parity buckets do not
-know also fails the test, and names the three valid tags.
+know also fails the test, and names the valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
-`@engine:v2` once it passes on both engines; use the other two tags to track
-specs that engine v2 does not run yet:
+`@engine:v2` once it passes on both engines; use `@engine:v1-only` and
+`@engine:v2-pending` to track specs that engine v2 does not run yet. Where the
+two engines disagree on purpose, write one test per engine in the same spec:
+`@engine:v1-only` for the legacy answer and `@engine:v2-only` for the engine v2
+answer, so the divergence is visible by tag.
 
 ```bash
 pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-run-outcome.spec.ts
