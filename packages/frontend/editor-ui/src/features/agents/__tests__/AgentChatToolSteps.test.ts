@@ -974,4 +974,43 @@ describe('AgentChatToolSteps — output files', () => {
 			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
 		]);
 	});
+
+	it('renders the files of a tool output in a group of tool steps', () => {
+		const toolCalls: ToolCall[] = [
+			{
+				tool: 'search',
+				toolCallId: 'tc-search',
+				state: TOOL_CALL_STATE.DONE,
+				output: { status: 'success' },
+			},
+			{
+				tool: 'generate_image',
+				toolCallId: 'tc-image',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'success',
+					data: [{ binary: { data: 'aid-1' } }],
+					files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+				},
+			},
+		];
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls, projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		const lists = wrapper.findAll('[data-test-id="tool-output-files"]');
+		expect(lists).toHaveLength(1);
+		expect(JSON.parse(lists[0].text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
+	});
 });
