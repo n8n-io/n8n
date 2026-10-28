@@ -10,7 +10,7 @@ vi.mock('@n8n/agents/catalog', () => ({ fetchProviderCatalog: vi.fn() }));
 describe('workflow_builder_search_models tool', () => {
 	// INS-539: Keep external catalog results marked as untrusted.
 	it('declares catalog output as untrusted', () => {
-		expect(createSearchModelsTool().outputTrust).toBe('untrusted');
+		expect(createSearchModelsTool(vi.fn()).outputTrust).toBe('untrusted');
 	});
 
 	it('returns ten results by default and preserves the declared output contract', async () => {
@@ -33,11 +33,15 @@ describe('workflow_builder_search_models tool', () => {
 				),
 			},
 		});
-		const tool = createSearchModelsTool(new ModelCatalogService());
+		const modelFetch = vi.fn<typeof fetch>();
+		const tool = createSearchModelsTool(modelFetch, new ModelCatalogService());
 		const input = parseToolInput(tool, { provider: 'openai' });
 		expect(input.success).toBe(true);
 		if (!input.success) throw new Error('Expected valid tool input');
 		const result = searchModelsOutputSchema.parse(await executeTool(tool, input.data));
+		expect(fetchProviderCatalog).toHaveBeenCalledWith(
+			expect.objectContaining({ fetch: modelFetch }),
+		);
 		expect(tool.name).toBe('workflow_builder_search_models');
 		expect(result.models).toHaveLength(10);
 		expect(result.hasMore).toBe(true);
@@ -61,6 +65,6 @@ describe('workflow_builder_search_models tool', () => {
 		{ provider: 'openai', includePreview: true },
 		{ provider: 'openai', requirements: {} },
 	])('rejects invalid or unsupported inputs: %j', (input) => {
-		expect(parseToolInput(createSearchModelsTool(), input).success).toBe(false);
+		expect(parseToolInput(createSearchModelsTool(vi.fn()), input).success).toBe(false);
 	});
 });

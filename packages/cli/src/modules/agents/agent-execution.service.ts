@@ -24,6 +24,7 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import {
 	checkpointExecutionId,
@@ -381,6 +382,13 @@ export class AgentExecutionService {
 
 	getAbortSignal(executionId: string): AbortSignal {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
+	}
+
+	stopExecution(executionId: string): boolean {
+		const controller = this.executionControllers.get(executionId);
+		if (!controller) return false;
+		controller.abort(SESSION_STOPPED_REASON);
+		return true;
 	}
 
 	reportUsage(
@@ -987,6 +995,20 @@ export class AgentExecutionService {
 	 */
 	async findThreadById(threadId: string): Promise<AgentExecutionThread | null> {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+	}
+
+	async findAccessibleThreadById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.agentExecutionThreadRepository.findAccessibleById(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
 	}
 
 	async canUseDraftThread(

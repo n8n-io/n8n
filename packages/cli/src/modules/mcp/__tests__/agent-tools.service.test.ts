@@ -33,7 +33,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 
-import { SkillNameTakenError } from '@/modules/skills/skill-name-taken.error';
+import { SkillNameTakenError } from '@/modules/skills';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
@@ -1904,6 +1904,7 @@ describe('McpAgentToolsService', () => {
 
 	describe('discover_agent_assets', () => {
 		it('returns a provider summary for kind=models without a provider', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
 			const result = await callTool('discover_agent_assets', {
 				projectId: 'project-1',
 				kind: 'models',

@@ -7,6 +7,7 @@ import {
 	N8nDataTableServer,
 	N8nEmptyState,
 	N8nIconButton,
+	N8nLoading,
 	N8nSwitch,
 	N8nText,
 	N8nTimeAgo,
@@ -198,10 +199,14 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 		</h3>
 		<slot v-if="isPersonalTab && loading" name="loading" />
-		<p v-else-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{
 			i18n.baseText('selfHealing.config.retry')
 		}}</N8nButton>
+		<N8nLoading
+			v-else-if="loading && !configurations.length"
+			:class="$style.loadingLine"
+			data-test-id="self-healing-config-loading"
+		/>
 		<N8nEmptyState
 			v-else-if="!configurations.length && isPersonalTab"
 			:icon="{ type: 'icon', value: 'life-buoy' }"
@@ -219,6 +224,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 		>
 		<div v-else :class="$style.table">
 			<N8nDataTableServer
+				:loading="loading"
 				:items-per-page="configurations.length"
 				:headers="headers"
 				:items="configurations"
@@ -350,5 +356,15 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 .empty {
 	display: block;
 	margin-bottom: var(--spacing--sm);
+}
+
+.loadingLine {
+	max-width: 50%;
+	margin-bottom: var(--spacing--sm);
+
+	:global(.el-skeleton__p) {
+		display: block;
+		margin-top: 0;
+	}
 }
 </style>

@@ -187,11 +187,12 @@ it.each(['resolves', 'rejects'])(
 		}
 		await waitAllPromises();
 
-		expect(view.getByText('Loading configurations…')).toBeVisible();
+		expect(view.getByTestId('self-healing-config-loading')).toBeVisible();
 		expect(view.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
 		expect(showError).not.toHaveBeenCalled();
 		current.resolve(undefined);
 		expect(await view.findByRole('button', { name: 'Save changes' })).toBeDisabled();
+		expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
 	},
 );
 
@@ -465,6 +466,22 @@ describe('personal project', () => {
 			),
 		);
 	});
+
+	it.each([
+		['/projects/project/settings/self-healing/new', true],
+		['/projects/project/self-healing/new', false],
+	])(
+		'shows the reviewer skeleton only outside the personal tab (%s)',
+		async (path, showsReviewers) => {
+			const store = useSelfHealingStore();
+			vi.spyOn(store, 'load').mockReturnValue(new Promise(() => {}));
+			await router.push(path);
+			const view = render(RouterView, { global: { plugins: [router] } });
+
+			expect(view.getByTestId('self-healing-config-loading')).toBeVisible();
+			expect(!!view.queryByText('Reviewers')).toBe(showsReviewers);
+		},
+	);
 
 	it('reports a missing configuration without pointing to project settings', async () => {
 		await router.push('/projects/project/self-healing/1');

@@ -1,7 +1,7 @@
 import { ref, watch, type Ref } from 'vue';
 import type { PromotionBlocker, PromotionDirection } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { getPromotionPreview } from '../promotions.api';
 import { buildSelectionGraph, totalChangeCount } from '../promotionPreview.selection';
 

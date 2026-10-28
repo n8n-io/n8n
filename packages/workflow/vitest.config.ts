@@ -18,6 +18,7 @@ const ENGINE_TESTS = [
 	'test/expression-with-isolate.test.ts',
 	'test/ExpressionExtensions/*.test.ts',
 	'test/native-evaluation-fuzz.test.ts',
+	'test/native-evaluation-metrics.test.ts',
 	'test/native-evaluation-parity.test.ts',
 	'test/native-evaluation-verify.test.ts',
 	'test/webhook-description-fields.test.ts',

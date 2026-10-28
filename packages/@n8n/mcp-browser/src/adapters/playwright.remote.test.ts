@@ -1,5 +1,6 @@
 import { PlaywrightAdapter } from './playwright';
 import type { CDPRelayServer } from '../cdp-relay';
+import { UnsupportedOperationError } from '../errors';
 import { configureLogger } from '../logger';
 import type { ResolvedConfig } from '../types';
 
@@ -68,4 +69,39 @@ describe('PlaywrightAdapter remote mode', () => {
 			noDefaults: true,
 		});
 	});
+
+	it('rejects file uploads', async () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+
+		await expect(adapter.upload('page1', { ref: 'e1' }, ['/tmp/a.txt'])).rejects.toThrow(
+			UnsupportedOperationError,
+		);
+	});
+
+	it.each([
+		{ name: 'remote mode', adapterConfig: config, relay: fakeRelay(), registered: false },
+		{
+			name: 'an external relay',
+			adapterConfig: { ...config, mode: 'local' as const },
+			relay: fakeRelay(),
+			registered: false,
+		},
+		{
+			name: 'local mode',
+			adapterConfig: { ...config, mode: 'local' as const },
+			relay: undefined,
+			registered: true,
+		},
+	])(
+		'file chooser listener with $name: registered=$registered',
+		({ adapterConfig, relay, registered }) => {
+			const adapter = new PlaywrightAdapter(adapterConfig, { relay });
+			const page = { on: vi.fn(), url: () => 'https://example.com' };
+			(adapter as unknown as { trackPage(page: unknown): void }).trackPage(page);
+
+			const events = page.on.mock.calls.map(([event]) => event);
+			expect(events).toContain('console');
+			expect(events.includes('filechooser')).toBe(registered);
+		},
+	);
 });
