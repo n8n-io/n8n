@@ -975,6 +975,22 @@ describe('Typed RPC: items that structured clone rejects (e.g. vm2 proxies)', ()
 		expect(evaluate("String($('Code').first().json.re)")).toBe('/ab+/g');
 	});
 
+	it.each([
+		['a plain host Error', () => new TypeError('boom')],
+		[
+			'a host Error with a cause and extra properties',
+			() => Object.assign(new TypeError('boom', { cause: new Error('root') }), { code: 'E_X' }),
+		],
+	])('rebuilds %s inside items that structured clone rejects', (_, makeError) => {
+		const err = makeError();
+		const data = { $: () => ({ first: () => new Proxy({ json: { value: 'kept', err } }, {}) }) };
+		const evaluate = (expr: string) => evaluator.evaluate(`{{ ${expr} }}`, data, caller);
+
+		expect(evaluate("$('Code').first().json.value")).toBe('kept');
+		expect(evaluate("$('Code').first().json.err.message")).toBe('boom');
+		expect(evaluate("$('Code').first().json.err instanceof TypeError")).toBe(true);
+	});
+
 	it('quotes keys that are not identifiers in the error path', () => {
 		const json = { 'my field': { 'a.b': () => 1 } };
 		const data = { $: () => ({ first: () => new Proxy({ json }, {}) }) };

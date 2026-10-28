@@ -57,10 +57,7 @@ export function toTransferSafe(root: unknown): TransferSafeValue {
 		if (value instanceof Date) return new Date(value.getTime());
 		if (
 			!types.isProxy(value) &&
-			(ArrayBuffer.isView(value) ||
-				value instanceof ArrayBuffer ||
-				value instanceof RegExp ||
-				value instanceof Error)
+			(ArrayBuffer.isView(value) || value instanceof ArrayBuffer || value instanceof RegExp)
 		) {
 			return value;
 		}
