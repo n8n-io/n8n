@@ -19,6 +19,9 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.setup_credentials': 'Setting up credentials',
 				'instanceAi.tools.delete_credential': 'Deleting credential',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
+				'instanceAi.tools.setup_workflow': 'Setting up workflow',
+				'instanceAi.tools.workflow_builder_workflows': 'Workflows',
+				'instanceAi.tools.workflow_builder_workflows.get-version': 'Reading workflow version',
 				'instanceAi.tools.workflow_builder_nodes': 'Search nodes',
 				'instanceAi.tools.workflow_builder_executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
@@ -118,6 +121,16 @@ describe('getToolIcon', () => {
 		['workflow_builder_credentials', 'setup', 'Setting up credentials'],
 		['workflow_builder_credentials', 'delete', 'Deleting credential'],
 	])('labels a former %s call with action %s as the shared tool', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
+	});
+
+	test.each([
+		['workflow_builder_workflows', 'setup', 'Setting up workflow'],
+		['workflow_builder_workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'unknown', 'Workflows'],
+	])('labels a former %s call with action %s', (toolName, action, label) => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel(toolName, { action })).toBe(label);
 	});
