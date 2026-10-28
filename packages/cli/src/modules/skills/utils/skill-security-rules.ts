@@ -110,6 +110,8 @@ const HIDDEN_RANGES: Array<[number, number]> = [
 	[0xfeff, 0xfeff],
 	[0xffa0, 0xffa0],
 	[0xfff9, 0xfffb],
+	[0x1bca0, 0x1bca3], // shorthand format controls
+	[0x1d173, 0x1d17a], // musical symbol format controls
 	[0xe0000, 0xe007f], // Unicode tags
 	[0xe0100, 0xe01ef], // variation selectors supplement
 ];
@@ -135,7 +137,12 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	});
 }
 
-const URL_PATTERN = /\b(?:https?|wss?|ftp):\/\/[^\s<>"'`()[\]{}]+/gi;
+/**
+ * A link up to the first character that cannot be part of it. An IPv6 host sits in brackets,
+ * which the rest of a link cannot hold, so it has its own group after the optional user info.
+ */
+const URL_PATTERN =
+	/\b(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
 
 /**
  * A new domain can be a place where a model sends data, so an update with a domain that the
@@ -172,7 +179,8 @@ function domainsByFile(content: SkillContent): Map<string, string> {
 
 function domainOf(url: string): string | undefined {
 	try {
-		return new URL(url).hostname.toLowerCase() || undefined;
+		// A dot that ends a sentence can follow the host, as in "see https://example.com."
+		return new URL(url).hostname.toLowerCase().replace(/\.+$/, '') || undefined;
 	} catch {
 		return undefined;
 	}
@@ -197,13 +205,14 @@ const PERMISSION_KEYS = new Set([
 ]);
 
 /**
- * An update that adds, removes or changes a permission-like key needs review. At import
- * there is no previous version, so each key is only listed.
+ * An update that adds, removes or changes a permission-like key needs review. Each key is
+ * compared in its own spelling, so a second spelling of a key cannot hide a change to the
+ * first. At import there is no previous version, so each key is only listed.
  */
 export function findPermissionChanges({ content, previous }: SkillScanInput): SkillScanFinding[] {
 	const current = permissionKeys(content);
 	if (!previous) {
-		return [...current.values()].map(({ key }) => ({
+		return [...current.keys()].map((key) => ({
 			rule: 'permission_change',
 			severity: 'info',
 			file: SKILL_MD,
@@ -211,28 +220,32 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 		}));
 	}
 	const before = permissionKeys(previous);
-	return [...new Set([...before.keys(), ...current.keys()])].flatMap((normalized) => {
-		const was = before.get(normalized);
-		const is = current.get(normalized);
-		if (was && is && isDeepStrictEqual(was.value, is.value)) return [];
-		const detail = !was
-			? `The update adds the frontmatter key ${is?.key}.`
-			: !is
-				? `The update removes the frontmatter key ${was.key}.`
-				: `The update changes the frontmatter key ${is.key}.`;
+	return [...new Set([...before.keys(), ...current.keys()])].flatMap((key) => {
+		if (
+			before.has(key) &&
+			current.has(key) &&
+			isDeepStrictEqual(before.get(key), current.get(key))
+		) {
+			return [];
+		}
+		const detail = !before.has(key)
+			? `The update adds the frontmatter key ${key}.`
+			: !current.has(key)
+				? `The update removes the frontmatter key ${key}.`
+				: `The update changes the frontmatter key ${key}.`;
 		return [{ rule: 'permission_change', severity: 'needs_review', file: SKILL_MD, detail }];
 	});
 }
 
 /**
- * The permission-like keys of a skill, by their kebab-case spelling: `allowedTools`,
- * `allowed_tools` and `Allowed-Tools` all give `allowed-tools`.
+ * The permission-like keys of a skill and their values. A key counts in any spelling:
+ * `allowedTools`, `allowed_tools` and `Allowed-Tools` all are `allowed-tools`.
  */
-function permissionKeys(content: SkillContent): Map<string, { key: string; value: unknown }> {
+function permissionKeys(content: SkillContent): Map<string, unknown> {
 	return new Map(
-		Object.entries(content.frontmatter ?? {})
-			.map(([key, value]) => [kebabCase(key), { key, value }] as const)
-			.filter(([normalized]) => PERMISSION_KEYS.has(normalized)),
+		Object.entries(content.frontmatter ?? {}).filter(([key]) =>
+			PERMISSION_KEYS.has(kebabCase(key)),
+		),
 	);
 }
 
@@ -277,15 +290,20 @@ const SUSPICIOUS_PHRASES: Array<{ label: string; pattern: RegExp }> = [
 	},
 	{
 		label: 'an image link that carries data',
-		pattern: /!\[[^\]]*\]\(\s*https?:\/\/[^)\s]*(?:\{\{|\$\{|\{[a-z_]+\}|%7B)/i,
+		// Bounded windows, so a text full of "![" takes linear time, not quadratic.
+		pattern: /!\[[^\]]{0,500}\]\(\s*https?:\/\/[^)\s]{0,2048}(?:\{\{|\$\{|\{[a-z_]+\}|%7B)/i,
 	},
 ];
 
-/** A match of each phrase kind needs review, once for each file. */
+/**
+ * A match of each phrase kind needs review, once for each file. Markdown shows a line break
+ * inside a paragraph as a space, so the patterns read such lines as one line.
+ */
 export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFinding[] {
-	return textsByFile(content).flatMap(({ file, texts }) =>
-		SUSPICIOUS_PHRASES.flatMap(({ label, pattern }) => {
-			const match = texts.map((text) => pattern.exec(text)).find((found) => found !== null);
+	return textsByFile(content).flatMap(({ file, texts }) => {
+		const joined = texts.map(joinSoftBreaks);
+		return SUSPICIOUS_PHRASES.flatMap(({ label, pattern }) => {
+			const match = joined.map((text) => pattern.exec(text)).find((found) => found !== null);
 			if (!match) return [];
 			return [
 				{
@@ -295,8 +313,16 @@ export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFin
 					detail: `The text has ${label}: "${excerpt(match[0])}".`,
 				},
 			];
-		}),
-	);
+		});
+	});
+}
+
+/**
+ * Joins a line to the next one when the next one goes on with text. A list item, a heading,
+ * a quote and a blank line do not start with a letter, so they stay on their own line.
+ */
+function joinSoftBreaks(text: string): string {
+	return text.replace(/\n(?=[ \t]*\p{L})/gu, ' ');
 }
 
 function excerpt(text: string): string {
