@@ -136,7 +136,7 @@ export class StepReadyHandler {
 		if (run.kind === 'subExecution') {
 			const { subExecution } = run;
 			if (subExecution.awaited) {
-				await this.suspendOnSubExecution(event, step, execution, node, subExecution);
+				await this.handleAwaitedSubExecution(event, step, execution, node, subExecution);
 				return;
 			}
 			// A detached sub-execution starts while the step still runs, and then the
@@ -145,7 +145,7 @@ export class StepReadyHandler {
 			// execution can end while this step runs (a sibling fails, or a cancel),
 			// and then it owes no sub-execution: the outputs stand, and nothing starts
 			// under an ended parent.
-			const started = await this.startDetachedSubExecution(step, execution, subExecution);
+			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
 					? { kind: 'error', error: started.error }
@@ -201,7 +201,7 @@ export class StepReadyHandler {
 	 * that never started resumes nothing, so the step fails here, where the
 	 * reason is known, and the failure settles it like any other.
 	 */
-	private async suspendOnSubExecution(
+	private async handleAwaitedSubExecution(
 		event: StepReadyEvent,
 		step: StepRecord,
 		execution: ExecutionRecord,
@@ -234,7 +234,7 @@ export class StepReadyHandler {
 	 * the step is running and its own, so the link can only be refused because
 	 * the execution has ended, and an ended execution is owed no sub-execution.
 	 */
-	private async startDetachedSubExecution(
+	private async handleDetachedSubExecution(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		subExecution: SubExecutionDeclaration,
