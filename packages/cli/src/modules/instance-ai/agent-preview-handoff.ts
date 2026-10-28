@@ -1,11 +1,15 @@
 import type { InstanceAiAgentPreviewHandoffContext } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
+import type { Scope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 
 import {
 	AGENT_PREVIEW_CONTEXT_CLOSE_TAG,
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 } from './internal-messages';
-import type { AgentExecutionService } from '../agents/agent-execution.service';
+import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 export type AgentPreviewHandoffResult = {
 	block: string;
@@ -39,7 +43,12 @@ export async function resolveAgentPreviewHandoff(
 	options: {
 		projectId: string;
 		userId: string;
-		getThreadDetail: AgentExecutionService['getThreadDetail'];
+		getThreadDetail: (
+			threadId: string,
+			projectId: string,
+			agentId: string,
+			userId: string,
+		) => Promise<AgentSessionDetail | null>;
 	},
 ): Promise<AgentPreviewHandoffResult> {
 	const detail = await options.getThreadDetail(
@@ -103,4 +112,23 @@ export async function resolveAgentPreviewHandoff(
 		titleFallback,
 		target: { agentId: context.agentId, projectId: options.projectId },
 	};
+}
+
+export async function canAccessAgentPreviewHandoff(
+	user: User,
+	projectId: string,
+): Promise<boolean> {
+	const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
+	return await userHasScopes(user, requiredScopes, false, { projectId });
+}
+
+export async function assertAgentPreviewHandoffScopes(
+	user: User,
+	projectId: string,
+): Promise<void> {
+	if (!(await canAccessAgentPreviewHandoff(user, projectId))) {
+		throw new ForbiddenError(
+			'You do not have permission to load or edit agent previews in this project.',
+		);
+	}
 }

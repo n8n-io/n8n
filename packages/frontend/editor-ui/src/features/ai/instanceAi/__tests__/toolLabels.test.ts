@@ -13,9 +13,15 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.agent-context': 'Exploring agent context',
 				'instanceAi.tools.agent-context.config': 'Reading agent config',
 				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
+				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
-				'instanceAi.tools.agent_builder_list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.setup_credentials': 'Setting up credentials',
+				'instanceAi.tools.delete_credential': 'Deleting credential',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
+				'instanceAi.tools.setup_workflow': 'Setting up workflow',
+				'instanceAi.tools.workflow_builder_workflows': 'Workflows',
+				'instanceAi.tools.workflow_builder_workflows.get-version': 'Reading workflow version',
 				'instanceAi.tools.workflow_builder_nodes': 'Search nodes',
 				'instanceAi.tools.workflow_builder_executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
@@ -63,10 +69,6 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
-	test('returns circle-check for the complete checkpoint tool', () => {
-		expect(getToolIcon('workflow_builder_complete_checkpoint')).toBe('circle-check');
-	});
-
 	test('returns default icon for removed delegate tool', () => {
 		expect(getToolIcon('delegate')).toBe('wrench');
 	});
@@ -108,7 +110,29 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns key-round for credential tools', () => {
+		expect(getToolIcon('credentials')).toBe('key-round');
 		expect(getToolIcon('workflow_builder_credentials')).toBe('key-round');
+		expect(getToolIcon('setup_credentials')).toBe('key-round');
+	});
+
+	test.each([
+		['credentials', 'list', 'Inspecting credentials'],
+		['credentials', 'get', 'Inspecting credentials'],
+		['workflow_builder_credentials', 'setup', 'Setting up credentials'],
+		['workflow_builder_credentials', 'delete', 'Deleting credential'],
+	])('labels a former %s call with action %s as the shared tool', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
+	});
+
+	test.each([
+		['workflow_builder_workflows', 'setup', 'Setting up workflow'],
+		['workflow_builder_workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'unknown', 'Workflows'],
+	])('labels a former %s call with action %s', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
 	});
 
 	test('returns file-text for filesystem tools', () => {
@@ -147,12 +171,10 @@ describe('getToolIcon', () => {
 
 	test('keeps the wrench icon for prefixed builder tools without a dedicated mapping', () => {
 		expect(getToolIcon('workflow_builder_ask_user')).toBe('wrench');
-		expect(getToolIcon('workflow_builder_create_tasks')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_build_workflow')).toBe('workflow');
 	});
 
 	test('resolves legacy builder tool names to the current icon', () => {
-		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
 		expect(getToolIcon('data-tables')).toBe('table');
 		expect(getToolIcon('workflows')).toBe('workflow');
 		expect(getToolIcon('credentials')).toBe('key-round');

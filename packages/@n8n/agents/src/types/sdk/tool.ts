@@ -148,6 +148,13 @@ export interface BuiltTool {
 	 * never exposed to the model.
 	 */
 	readonly legacyNames?: readonly string[];
+	/**
+	 * Former tool names that this tool owns only for some values of the call's
+	 * `action` input, keyed by former name. Use it when one multi-action tool
+	 * became one tool for each action, so each persisted call resumes in the
+	 * tool that now owns its action. Never exposed to the model.
+	 */
+	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's

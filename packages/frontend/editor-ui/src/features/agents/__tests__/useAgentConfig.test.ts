@@ -27,6 +27,36 @@ describe('useAgentConfig', () => {
 		updateAgentConfigMock.mockReset();
 	});
 
+	it("uses the committed creation hash for the next edit and ignores another target's creation", async () => {
+		const state = useAgentConfig();
+		state.repoint('project-1', 'agent-1');
+		state.acceptCreation('project-1', 'agent-1', {
+			config,
+			configHash: 'created-hash',
+			adopted: false,
+		});
+		updateAgentConfigMock.mockResolvedValue({ config, configHash: 'edited-hash', versionId: 'v2' });
+
+		await state.updateConfig('project-1', 'agent-1', config);
+		expect(updateAgentConfigMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			config,
+			'created-hash',
+		);
+
+		state.repoint('project-1', 'agent-2');
+		expect(
+			state.acceptCreation('project-1', 'agent-1', {
+				config,
+				configHash: 'old-hash',
+				adopted: false,
+			}),
+		).toBe(true);
+		expect(state.configHash.value).toBeUndefined();
+	});
+
 	it('uses the latest server hash for consecutive config updates', async () => {
 		getAgentConfigMock.mockResolvedValue({ config, configHash: 'hash-0' });
 		updateAgentConfigMock

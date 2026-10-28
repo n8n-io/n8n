@@ -537,33 +537,35 @@ export async function getInputConnectionData(
 					});
 				}
 
-				let currentNodeRunIndex = 0;
-				if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
-					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
-				}
-
-				// The `subRun` entry is merged onto `runData[<name>][currentNodeRunIndex]` at the
-				// end of the execution, so it has to name a node that gets a record there. A
-				// top-level parent gets one appended right after this failure; a sub-node parent
-				// never does.
-				const subRunTarget = this instanceof SupplyDataContext ? undefined : parentNode.name;
-
-				// Display the error on the node which is causing it
+				// Display the error on the node which is causing it. The run goes after the runs
+				// this sub-node already recorded, not at the parent's run count.
+				const subNodeRunIndex = context.getNextRunIndex();
 				await context.addExecutionDataFunctions(
 					'input',
 					error,
 					connectionType,
-					subRunTarget,
-					currentNodeRunIndex,
+					undefined,
+					subNodeRunIndex,
 				);
 
 				await context.addExecutionDataFunctions(
 					'output',
 					error,
 					connectionType,
-					subRunTarget,
-					currentNodeRunIndex,
+					undefined,
+					subNodeRunIndex,
 				);
+
+				// The `subRun` entry is merged onto `runData[parent][parentRunCount]` at the end
+				// of the execution, so the parent must get a record there. A top-level parent gets
+				// one appended right after this failure; a sub-node parent never does.
+				if (!(this instanceof SupplyDataContext)) {
+					let parentRunCount = 0;
+					if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
+						parentRunCount = runExecutionData.resultData.runData[parentNode.name].length;
+					}
+					context.stageSubRun(parentNode.name, parentRunCount, subNodeRunIndex);
+				}
 
 				// Display on the calling node which node has the error
 				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {

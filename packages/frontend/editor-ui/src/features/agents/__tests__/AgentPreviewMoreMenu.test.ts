@@ -1,10 +1,12 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
+import type { PushMessage } from '@n8n/api-types';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { cleanup, render, screen, waitFor } from '@testing-library/vue';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentPreviewMoreMenu from '../components/AgentPreviewMoreMenu.vue';
 import type { AgentExecution, ThreadDetail } from '../composables/useAgentThreadsApi';
@@ -25,6 +27,26 @@ const { clipboardCopy, getThreadDetail, routerResolve, showError, showMessage } 
 		};
 	},
 );
+
+const pushListeners = new Set<(event: PushMessage) => void>();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		addEventListener: (listener: (event: PushMessage) => void) => {
+			pushListeners.add(listener);
+			return () => pushListeners.delete(listener);
+		},
+	}),
+}));
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz' }),
+}));
+
+const editorContext = { agent_id: 'agent-1', push_ref: 'session-xyz' };
 
 vi.mock('@n8n/composables/useClipboard', function mockUseClipboard() {
 	return {
@@ -132,7 +154,7 @@ const thread = {
 	updatedAt: '2026-08-26T16:32:00.000Z',
 } satisfies ThreadDetail['thread'];
 
-const slackExecution = mock<AgentExecution>({ source: 'slack' });
+const slackExecution = mock<AgentExecution>({ source: 'slack', duration: 0 });
 const defaultDetail: ThreadDetail = { thread, executions: [slackExecution] };
 
 type MenuProps = InstanceType<typeof AgentPreviewMoreMenu>['$props'];
@@ -212,6 +234,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			title: 'agents.builder.preview.more.linkCopied',
 			type: 'success',
 		});
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'copy-link' },
+		);
 	});
 
 	it('copies the supplied conversation markdown', async function copiesConversation() {
@@ -225,6 +251,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			title: 'agents.builder.preview.more.conversationCopied',
 			type: 'success',
 		});
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'copy-conversation' },
+		);
 	});
 
 	it('does not copy an empty conversation', async function skipsEmptyConversation() {
@@ -235,6 +265,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 		expect(clipboardCopy).not.toHaveBeenCalled();
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'copy-conversation' },
+		);
 	});
 
 	it.each([
@@ -250,6 +284,13 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 		expect(showError).toHaveBeenCalledExactlyOnceWith(error, title);
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: itemId },
+		);
+		expect(track.mock.invocationCallOrder[0]).toBeLessThan(
+			clipboardCopy.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('disables session-dependent copy actions without a session', function disablesCopy() {
@@ -257,6 +298,12 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 		expect(getMenuItem(wrapper, 'copy-link')).toMatchObject({ disabled: true });
 		expect(getMenuItem(wrapper, 'copy-conversation')).toMatchObject({ disabled: true });
+		for (const option of ['copy-link', 'copy-conversation', 'open-in-new-tab']) {
+			getDropdown(wrapper).vm.$emit('select', option);
+		}
+		expect(track).not.toHaveBeenCalled();
+		expect(clipboardCopy).not.toHaveBeenCalled();
+		expect(routerResolve).not.toHaveBeenCalled();
 	});
 
 	it('opens the active session in a new tab', function opensSession() {
@@ -273,6 +320,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 				query: { continueSessionId: 'thread-1' },
 			});
 			expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+				{ ...editorContext, option: 'open-in-new-tab' },
+			);
 		} finally {
 			open.mockRestore();
 		}
@@ -282,6 +333,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		const wrapper = mountMenu();
 		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
 		expect(wrapper.emitted('toggle-full-width')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'toggle-full-width' },
+		);
 	});
 
 	it.each([false, true])(
@@ -311,6 +366,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		});
 		getDropdown(wrapper).vm.$emit('select', 'delete-session');
 		expect(wrapper.emitted('delete-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'delete-session' },
+		);
 	});
 
 	it('omits and guards deletion for viewers', function blocksViewerDeletion() {
@@ -319,6 +378,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(getMenuItem(wrapper, 'delete-session')).toBeUndefined();
 		getDropdown(wrapper).vm.$emit('select', 'delete-session');
 		expect(wrapper.emitted('delete-session')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it.each([{ hasSession: false }, { effectiveSessionId: undefined }, { isDeletingSession: true }])(
@@ -329,6 +389,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 			expect(getMenuItem(wrapper, 'delete-session')).toMatchObject({ disabled: true });
 			getDropdown(wrapper).vm.$emit('select', 'delete-session');
 			expect(wrapper.emitted('delete-session')).toBeUndefined();
+			expect(track).not.toHaveBeenCalled();
 		},
 	);
 
@@ -339,6 +400,9 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 	])('hides export with %j', function hidesExport(overrides) {
 		const wrapper = mountMenu({ isLangSmithExportEnabled: true, ...overrides });
 		expect(getMenuItem(wrapper, 'export-session')).toBeUndefined();
+		getDropdown(wrapper).vm.$emit('select', 'export-session');
+		expect(wrapper.emitted('export-session')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('shows export with an icon and emits its event', function exportsSession() {
@@ -350,6 +414,10 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		});
 		getDropdown(wrapper).vm.$emit('select', 'export-session');
 		expect(wrapper.emitted('export-session')).toEqual([[]]);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+			{ ...editorContext, option: 'export-session' },
+		);
 	});
 
 	it('blocks another export while one is in progress', function blocksExport() {
@@ -358,12 +426,225 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		expect(getMenuItem(wrapper, 'export-session')).toMatchObject({ disabled: true });
 		getDropdown(wrapper).vm.$emit('select', 'export-session');
 		expect(wrapper.emitted('export-session')).toBeUndefined();
+		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('hides unavailable pricing and keeps the token count', async () => {
+		getThreadDetail.mockResolvedValueOnce({ thread: { ...thread, totalCost: 0 }, executions: [] });
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).toContain('125t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('hides token and price values before usage is known', async () => {
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0 },
+			executions: [],
+		});
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('0t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it.each([false, true])('hides unknown duration when usage is known: %s', async (usageKnown) => {
+		getThreadDetail.mockResolvedValueOnce({
+			thread: {
+				...thread,
+				totalPromptTokens: usageKnown ? 100 : 0,
+				totalCompletionTokens: usageKnown ? 25 : 0,
+				totalCost: usageKnown ? 0.125 : 0,
+				totalDuration: 0,
+			},
+			executions: [
+				mock<AgentExecution>({ id: 'live-1', source: null, status: 'running', duration: 0 }),
+			],
+		});
+		const wrapper = mountMenu();
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('0ms');
+		expect(wrapper.text()).not.toContain('•');
+		if (usageKnown) expect(wrapper.text()).toContain('125t ($0.1250)');
+		await wrapper.setProps({
+			usageUpdates: {
+				'live-1': {
+					sessionId: 'thread-1',
+					executionId: 'live-1',
+					complete: false,
+					duration: 2000,
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('2.0s');
+		expect(wrapper.text().includes('•')).toBe(usageKnown);
+	});
+
+	it('hides a partial session price when the live turn has a zero cost', async () => {
+		const wrapper = mountMenu();
+		await flushPromises();
+		await wrapper.setProps({
+			usageUpdates: {
+				'live-1': {
+					sessionId: 'thread-1',
+					executionId: 'live-1',
+					complete: false,
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0 },
+				},
+			},
+		});
+		expect(wrapper.text()).toContain('140t');
+		expect(wrapper.text()).not.toContain('$');
+	});
+
+	it('uses server duration without advancing during delayed completion', async () => {
+		vi.useFakeTimers();
+		try {
+			getThreadDetail.mockResolvedValue({
+				thread,
+				executions: [
+					mock<AgentExecution>({ id: 'live-1', source: null, status: 'running', duration: 0 }),
+				],
+			});
+			const wrapper = mountMenu();
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(wrapper.text()).toContain('1.5s');
+			function pushDuration(duration: number, complete = false) {
+				for (const listener of pushListeners)
+					listener({
+						type: 'agentExecutionUpdated',
+						data: {
+							projectId: 'project-1',
+							agentId: 'agent-1',
+							threadId: 'thread-1',
+							executionId: 'live-1',
+							duration,
+							complete,
+							...(complete
+								? {}
+								: {
+										usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+									}),
+						},
+					});
+			}
+			pushDuration(2000);
+			await flushPromises();
+			expect(wrapper.text()).toContain('155t ($0.1750)');
+			expect(wrapper.text()).toContain('3.5s');
+			await vi.advanceTimersByTimeAsync(2000);
+			expect(wrapper.text()).toContain('3.5s');
+			pushDuration(2300, true);
+			await flushPromises();
+			await wrapper.setProps({
+				usageUpdates: {
+					'live-1': { sessionId: 'thread-1', executionId: 'live-1', complete: true },
+				},
+			});
+			pushDuration(2200);
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(wrapper.text()).toContain('3.8s');
+			wrapper.unmount();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it.each([undefined, 'thread-2'])(
+		'ignores usage for an unselected session when the current session is %s',
+		async (effectiveSessionId) => {
+			getThreadDetail.mockImplementation(async (_projectId, _agentId, threadId) => ({
+				thread: { ...thread, id: threadId },
+				executions: [],
+			}));
+			const wrapper = mountMenu({ effectiveSessionId, hasSession: !!effectiveSessionId });
+			await flushPromises();
+			const update = {
+				type: 'agentExecutionUpdated',
+				data: {
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					executionId: 'live-1',
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+				},
+			} satisfies PushMessage;
+			for (const listener of pushListeners) listener(update);
+			await flushPromises();
+
+			await wrapper.setProps({ effectiveSessionId: 'thread-1', hasSession: true });
+			await flushPromises();
+			expect(wrapper.text()).toContain('125t ($0.1250)');
+
+			for (const listener of pushListeners) listener(update);
+			await flushPromises();
+			expect(wrapper.text()).toContain('140t ($0.1500)');
+		},
+	);
+
+	it('replaces turn snapshots and reconciles them with the saved result', async () => {
+		const wrapper = mountMenu();
+		await flushPromises();
+		const update = {
+			sessionId: 'thread-1',
+			executionId: 'live-1',
+			complete: false,
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+		};
+		await wrapper.setProps({ usageUpdates: { 'live-1': update } });
+		expect(wrapper.text()).toContain('140t ($0.1500)');
+		const next = {
+			...update,
+			usage: { promptTokens: 20, completionTokens: 10, totalTokens: 30, cost: 0.05 },
+		};
+		await wrapper.setProps({ usageUpdates: { 'live-1': next } });
+		expect(wrapper.text()).toContain('155t ($0.1750)');
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 120, totalCompletionTokens: 35, totalCost: 0.18 },
+			executions: [
+				mock<AgentExecution>({
+					id: 'live-1',
+					source: null,
+					status: 'success',
+					totalTokens: 30,
+					cost: 0.055,
+				}),
+			],
+		});
+		await wrapper.setProps({ usageUpdates: { 'live-1': { ...next, complete: true } } });
+		await flushPromises();
+		expect(wrapper.text()).toContain('155t ($0.1800)');
+	});
+
+	it('loads a new session when its first usage update arrives', async () => {
+		getThreadDetail.mockRejectedValueOnce({ httpStatusCode: 404 });
+		const wrapper = mountMenu();
+		await flushPromises();
+		getThreadDetail.mockResolvedValueOnce({
+			thread: { ...thread, totalPromptTokens: 0, totalCompletionTokens: 0, totalCost: 0 },
+			executions: [],
+		});
+		await wrapper.setProps({
+			usageUpdates: {
+				'execution-1': {
+					sessionId: 'thread-1',
+					executionId: 'execution-1',
+					complete: false,
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.025 },
+				},
+			},
+		});
+		await flushPromises();
+		expect(wrapper.text()).toContain('15t ($0.0250)');
 	});
 
 	it('loads current metadata when the menu opens', async function refreshesMetadata() {
 		const wrapper = mountMenu();
 		await flushPromises();
 		getThreadDetail.mockClear();
+		expect(track).not.toHaveBeenCalled();
 
 		getDropdown(wrapper).vm.$emit('update:modelValue', true);
 		await flushPromises();
@@ -377,6 +658,12 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		getDropdown(wrapper).vm.$emit('update:modelValue', false);
 		await flushPromises();
 		expect(getThreadDetail).toHaveBeenCalledTimes(1);
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		await flushPromises();
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL,
+			editorContext,
+		);
 	});
 
 	it.each([
@@ -472,6 +759,7 @@ describe('AgentPreviewMoreMenu with design system components', function describe
 		const view = render(AgentPreviewMoreMenu, {
 			props: { ...defaultProps, isDeletingSession: true },
 		});
+		expect(track).not.toHaveBeenCalled();
 
 		await user.click(screen.getByRole('button', { name: 'agents.builder.preview.more.label' }));
 		const fullWidthItem = await screen.findByRole('menuitemcheckbox', {
@@ -496,5 +784,12 @@ describe('AgentPreviewMoreMenu with design system components', function describe
 		await user.click(deleteItem);
 		expect(view.emitted('delete-session')).toBeUndefined();
 		expect(screen.getByRole('menu')).toBeVisible();
+		expect(track.mock.calls).toEqual([
+			[TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL, editorContext],
+			[
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_AN_OPTION_FROM_MORE_LIST,
+				{ ...editorContext, option: 'toggle-full-width' },
+			],
+		]);
 	});
 });

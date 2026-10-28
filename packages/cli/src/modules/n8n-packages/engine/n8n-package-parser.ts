@@ -1,3 +1,18 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	serializedDataTableSchema,
+	type SerializedFolder,
+	serializedFolderSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,6 +24,8 @@ import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
+import { toImportBlockedError } from './import-blocked.error';
+import { agentBodyIssues } from '../entities/agent/agent-body-issues';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
@@ -29,23 +46,6 @@ import {
 	serializedAgentMetadataSchema,
 	type SerializedAgent,
 } from '../spec/serialized/agent.schema';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../spec/serialized/credential.schema';
-import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
-import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
-import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
-import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../spec/serialized/variable.schema';
-import {
-	serializedWorkflowMetadataSchema,
-	type SerializedWorkflowMetadata,
-} from '../spec/serialized/workflow-metadata.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Parses the typed entities out of a `.n8np` package — the read-side counterpart
@@ -217,20 +217,11 @@ export class N8nPackageParser {
 	}
 
 	private assertAgentBodiesPresent(agent: SerializedAgent, path: string): void {
-		const references = {
-			skills: agent.config?.skills ?? [],
-			tools: agent.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],
-			tasks: agent.config?.tasks ?? [],
-		};
-		for (const collection of ['skills', 'tools', 'tasks'] as const) {
-			const missing = references[collection].find(
-				({ id }) => !Object.hasOwn(agent[collection], id),
+		const issues = agentBodyIssues({ ...agent, sourceAgentId: agent.id });
+		if (issues.length > 0) {
+			throw toImportBlockedError(
+				issues.map((issue) => ({ ...issue, path: `${path}#${issue.path}` })),
 			);
-			if (missing) {
-				throw new UserError(
-					`Package Agent at ${path} references ${collection} asset "${missing.id}" without a body.`,
-				);
-			}
 		}
 	}
 

@@ -30,7 +30,9 @@ const mockNode: INode = {
 	parameters: {},
 };
 
-const mockModels = [{ id: 'my-gpt4', name: 'my-gpt4-display' }];
+const mockModels: modelDiscovery.AzureDeploymentModel[] = [
+	{ id: 'my-gpt4', name: 'my-gpt4-display', modelFamily: 'openai' },
+];
 
 describe('LmChatAzureOpenAi -> searchModels', () => {
 	let ctx: ILoadOptionsFunctions;
@@ -238,8 +240,8 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 
 	it('filters results by the search term', async () => {
 		listAzureOpenAiModelsSpy.mockResolvedValue([
-			{ id: 'my-gpt4', name: 'my-gpt4-display' },
-			{ id: 'other-deployment', name: 'other-deployment-display' },
+			{ id: 'my-gpt4', name: 'my-gpt4-display', modelFamily: 'openai' },
+			{ id: 'other-deployment', name: 'other-deployment-display', modelFamily: 'openai' },
 		]);
 		ctx.getNodeParameter = vi
 			.fn()

@@ -1,5 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { splitModelId } from '@n8n/ai-utilities/agent-config';
+import {
+	isAzureFoundryAnthropicModel,
+	isOpenRouterAnthropicModel,
+	splitModelId,
+} from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -7,7 +11,7 @@ import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -30,6 +34,7 @@ import {
 	supportsSplitSystemMessages,
 } from '../model/model-factory';
 import { applyNativeToolDeferral, type NativeToolDeferral } from '../model/native-tool-deferral';
+import { applyOpenRouterPromptCache } from '../model/openrouter-prompt-cache';
 import {
 	applyRuntimeCacheBreakpoints,
 	isAnthropicToolDeferred,
@@ -113,11 +118,23 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
-			reasoning: this.config.reasoning,
+			reasoning: this.resolveReasoning(),
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
+	}
+
+	/**
+	 * A Foundry deployment name does not say which Claude model it serves, and the
+	 * Anthropic SDK picks the thinking shape from the model id. Without the served
+	 * model (a failed lookup) a wrong shape would fail the request, so Foundry
+	 * Claude then runs without reasoning.
+	 */
+	private resolveReasoning(): AgentRuntimeConfig['reasoning'] {
+		const servedModelUnknown = getCatalogModelId(this.config.model) === this.modelId;
+		if (isAzureFoundryAnthropicModel(this.modelId) && servedModelUnknown) return undefined;
+		return this.config.reasoning;
 	}
 
 	private buildOutputSpec(
@@ -177,12 +194,14 @@ export class RuntimeContextBuilder {
 		list,
 		tools,
 		instructionProviderOptions,
+		providerOptions,
 		hostVolatileInstructions,
 		activeSkills,
 	}: {
 		list: AgentMessageList;
 		tools: Awaited<ReturnType<RuntimeContextBuilder['buildToolLoopContext']>>;
 		instructionProviderOptions: ProviderOptions | undefined;
+		providerOptions?: ProviderOptions;
 		hostVolatileInstructions: string | undefined;
 		activeSkills: ActiveSkills | undefined;
 	}) {
@@ -199,14 +218,17 @@ export class RuntimeContextBuilder {
 			skillContent
 				? {
 						content: skillContent,
-						cacheOptions: (messages) =>
-							buildSkillInstructionCacheOptions(
+						cacheOptions: (messages) => {
+							if (isOpenRouterAnthropicModel(this.modelId)) return undefined;
+							return buildSkillInstructionCacheOptions(
 								instructionProviderOptions,
 								tools.aiTools,
 								messages,
-							),
+							);
+						},
 					}
 				: undefined,
+			splitModelId(this.modelId).provider,
 		);
 		const preparedMessages =
 			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??
@@ -220,7 +242,14 @@ export class RuntimeContextBuilder {
 			modelId: this.modelId,
 			staticToolCacheName: tools.staticToolCacheName,
 		});
-		return { system, ...cached };
+		const openRouterCache = applyOpenRouterPromptCache({
+			system,
+			messages: cached.messages,
+			providerOptions,
+			promptCaching: this.config.promptCaching,
+			modelId: this.modelId,
+		});
+		return { ...cached, ...openRouterCache };
 	}
 
 	/** Legacy loading changes the tool prefix. Native search keeps this prefix fixed. */
@@ -335,6 +364,7 @@ export class RuntimeContextBuilder {
 			scope: capture.scope,
 			persistence,
 			list,
+			guidance: capture.config.guidance,
 		});
 	}
 

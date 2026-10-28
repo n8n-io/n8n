@@ -17,6 +17,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import type {
+	CredentialUsageScope,
 	ListQueryDb,
 	SlimProject,
 	User,
@@ -57,7 +58,6 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -618,12 +618,23 @@ export class CredentialsService {
 		);
 	}
 
+	/** The usage scope of each credential in `ids` that exists. Does not check access. */
+	async findUsageScopes(ids: string[]): Promise<Map<string, CredentialUsageScope>> {
+		if (ids.length === 0) return new Map();
+		const [existingIds, nonProject] = await Promise.all([
+			this.credentialsRepository.findExistingIds(ids),
+			this.credentialsRepository.findNonProjectCredentialsByIds(ids),
+		]);
+		const instanceIds = new Set(nonProject.map(({ id }) => id));
+		return new Map(existingIds.map((id) => [id, instanceIds.has(id) ? 'instance' : 'project']));
+	}
+
 	/**
 	 * Returns credentials the user can use in this workflow or project: shared
-	 * with it directly, global, or — behind {@link isCredSharingEnabled} — owned
-	 * by the user's own personal project while the user also belongs to it (the
-	 * personal route). A credential shared with the project but not with the
-	 * requesting user, and not reachable via either of those routes, is excluded.
+	 * with it directly, global, or owned by the user's own personal project while
+	 * the user also belongs to it (the personal route). A credential shared with
+	 * the project but not with the requesting user, and not reachable via either
+	 * of those routes, is excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -633,11 +644,13 @@ export class CredentialsService {
 	 * member of. Agents set this because they do not support it yet. The
 	 * instance-wide shortcut for owners and admins in their personal project
 	 * stays in place.
+	 * @param options.excludeResolvable Skip credentials that need an end-user identity.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
+			excludeResolvable?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -655,16 +668,16 @@ export class CredentialsService {
 				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
-		const personalRouteCredentialIds =
-			isCredSharingEnabled() && !options.excludePersonalRoute
-				? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
-				: new Set<string>();
+		const personalRouteCredentialIds = options.excludePersonalRoute
+			? new Set<string>()
+			: await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options);
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project
 		const usableCredentials = allCredentials.filter(
 			(c) =>
-				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
+				(!options.excludeResolvable || !c.isResolvable) &&
+				(credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal),
 		);
 
 		if (usableCredentials.length > 0) {
@@ -714,7 +727,7 @@ export class CredentialsService {
 	 * The ids, among `candidateCredentials`, that the user can use here only
 	 * via the personal route: granted to the user's own personal project (owned
 	 * by it, or shared with it directly), where the user also belongs to the
-	 * workflow's/project's project(s). See {@link isCredSharingEnabled}.
+	 * workflow's/project's project(s).
 	 */
 	private async findPersonalRouteCredentialIds(
 		user: User,
@@ -1092,6 +1105,15 @@ export class CredentialsService {
 		}
 	}
 
+	/**
+	 * Decrypts the credentials data without redaction. Unlike `decrypt`, throws
+	 * `CredentialDataError` when the stored data is missing or unreadable, for a caller that
+	 * must not treat unreadable data as empty.
+	 */
+	async decryptOrFail(credential: CredentialsEntity): Promise<ICredentialDataDecryptedObject> {
+		return await createCredentialsFromCredentialsEntity(credential).getData();
+	}
+
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
@@ -1287,21 +1309,11 @@ export class CredentialsService {
 		await this.credentialDescriptions.stripIfDisabled(newCredential);
 
 		// Authorize first: a caller without access to the project must not learn its policy verdict.
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'credential:create',
-		]);
-		if (project === null) {
-			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
-				throw new NotFoundError('Project not found');
-			}
-			throw new ForbiddenError(
-				"You don't have the permissions to save the credential in this project.",
-			);
-		}
+		await this.assertCanCreateInProject(user, projectId);
 
 		// Gate the save on policy before persisting, so the author learns about a blocked type
 		// while setting the credential up rather than at run time. No stored credential: this one is new.
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, projectId, user);
 
 		const result = await this.credentialsRepository.runInTransaction(
 			{ policyCleared: cleared },
@@ -1313,7 +1325,7 @@ export class CredentialsService {
 				const newSharedCredential = this.sharedCredentialsRepository.create({
 					role: 'credential:owner',
 					credentials: savedCredential,
-					projectId: project.id,
+					projectId,
 				});
 
 				await transactionManager.save<SharedCredentials>(newSharedCredential);
@@ -1365,6 +1377,19 @@ export class CredentialsService {
 		);
 	}
 
+	async assertCanCreateInProject(user: User, projectId: string): Promise<void> {
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:create',
+		]);
+		if (project !== null) return;
+		if (!(await this.projectRepository.existsBy({ id: projectId }))) {
+			throw new NotFoundError('Project not found');
+		}
+		throw new ForbiddenError(
+			"You don't have the permissions to save the credential in this project.",
+		);
+	}
+
 	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
 	private async enforceCredentialCreate(type: string, projectId: string | null, user: User) {
 		return await this.policyEnforcementService.enforceCredentialSave(
@@ -1388,22 +1413,12 @@ export class CredentialsService {
 			await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
 				decryptedCredentialData,
 			);
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'credential:create',
-		]);
-		if (project === null) {
-			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
-				throw new NotFoundError('Project not found');
-			}
-			throw new ForbiddenError(
-				"You don't have the permissions to save the credential in this project.",
-			);
-		}
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
+		await this.assertCanCreateInProject(user, projectId);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, projectId, user);
 		const saved = await this.transactionRunner.run({ policyCleared: cleared }, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
 				newCredential,
-				project.id,
+				projectId,
 				externalSecretProviderIds,
 				ctx,
 			);
@@ -1526,6 +1541,11 @@ export class CredentialsService {
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
+	}
+
+	/** Whether n8n can run a connection test for this credential type at all. */
+	hasConnectionTest(credentialType: string): boolean {
+		return this.credentialsTester.getCredentialTestFunction(credentialType) !== undefined;
 	}
 
 	/**

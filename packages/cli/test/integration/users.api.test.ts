@@ -234,6 +234,16 @@ describe('GET /users', () => {
 				expect(_user.isOwner).toBe(false);
 			});
 
+			test('should filter users by a scope their global role holds', async () => {
+				const response = await ownerAgent
+					.get('/users')
+					.query('filter={ "scope": "nodeTypePolicy:manage" }')
+					.expect(200);
+
+				const emails = response.body.data.items.map((user: PublicUser) => user.email);
+				expect(emails.sort()).toEqual(['admin@n8n.io', 'owner@n8n.io']);
+			});
+
 			test('should filter users by mfaEnabled field', async () => {
 				const response = await ownerAgent
 					.get('/users')
@@ -1783,5 +1793,113 @@ describe('PATCH /users/:id/role', () => {
 				.send({ newRoleName: 'global:admin' })
 				.expect(403);
 		});
+	});
+});
+
+describe('GET /users account status', () => {
+	let owner: User;
+	let member: User;
+	let disabledIds: string[];
+
+	beforeAll(async () => {
+		// Earlier tests leave workflows, credentials and folders in projects.
+		// Delete them before the projects, so that the setup does not depend on
+		// cascading deletes.
+		await testDb.truncate([
+			'SharedWorkflow',
+			'SharedCredentials',
+			'WorkflowEntity',
+			'CredentialsEntity',
+			'Folder',
+			'ProjectRelation',
+			'Project',
+			'User',
+		]);
+
+		owner = await createOwner();
+		member = await createMember();
+		const others = await Promise.all(Array.from({ length: 8 }, async () => await createMember()));
+		disabledIds = others.slice(0, 2).map(({ id }) => id);
+		await Container.get(UserRepository).update(disabledIds, { disabled: true });
+	});
+
+	test('should return the deactivated users and the counts of every status', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ filter: JSON.stringify({ status: 'deactivated' }), includeStatusCounts: true })
+			.expect(200);
+
+		const { count, items, statusCounts } = response.body.data;
+		expect(count).toBe(2);
+		expect(items.map(({ id }: { id: string }) => id).sort()).toEqual([...disabledIds].sort());
+		expect(items.every(({ disabled }: { disabled: boolean }) => disabled)).toBe(true);
+		expect(statusCounts).toEqual({ all: 10, active: 8, deactivated: 2 });
+	});
+
+	// The tab counts follow every list filter except status, the role filter too.
+	test('should apply the role filter to the status counts', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({
+				filter: JSON.stringify({ scope: 'nodeTypePolicy:manage' }),
+				includeStatusCounts: true,
+			})
+			.expect(200);
+
+		const { count, items, statusCounts } = response.body.data;
+		expect(count).toBe(1);
+		expect(items.map(({ id }: { id: string }) => id)).toEqual([owner.id]);
+		expect(statusCounts).toEqual({ all: 1, active: 1, deactivated: 0 });
+	});
+
+	test('should return the active users with the active status filter', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ filter: JSON.stringify({ status: 'active' }) })
+			.expect(200);
+
+		const { count, items, statusCounts } = response.body.data;
+		expect(count).toBe(8);
+		expect(items.some(({ disabled }: { disabled: boolean }) => disabled)).toBe(false);
+		// Counts only on request, so the list response of other callers does not change.
+		expect(statusCounts).toBeUndefined();
+	});
+
+	test('should return the account status to owners and admins', async () => {
+		const response = await testServer.authAgentFor(owner).get('/users').expect(200);
+
+		const { items } = response.body.data;
+		for (const user of items) {
+			expect(typeof user.disabled).toBe('boolean');
+		}
+	});
+
+	test('should hide the account status from members, their own user included', async () => {
+		const response = await testServer.authAgentFor(member).get('/users').expect(200);
+
+		const { items, statusCounts } = response.body.data;
+		expect(statusCounts).toBeUndefined();
+		expect(items.some(({ id }: { id: string }) => id === member.id)).toBe(true);
+		for (const user of items) {
+			expect(user).not.toHaveProperty('disabled');
+		}
+	});
+
+	test.each([
+		['filters by status', { filter: JSON.stringify({ status: 'deactivated' }) }],
+		['asks for the status counts', { includeStatusCounts: true }],
+	])('should return 403 when a member %s', async (_, query) => {
+		await testServer.authAgentFor(member).get('/users').query(query).expect(403);
+	});
+
+	test('should return 400 for an unknown status', async () => {
+		await testServer
+			.authAgentFor(owner)
+			.get('/users')
+			.query({ filter: JSON.stringify({ status: 'pending' }) })
+			.expect(400);
 	});
 });

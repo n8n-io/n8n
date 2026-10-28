@@ -1,5 +1,5 @@
 import type { CredentialListItem } from '@n8n/agents';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +21,8 @@ function makeCtx(overrides?: { resumeData?: unknown; suspendPayload?: unknown })
 	};
 }
 
-function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentialService {
-	const credentialService = mock<InstanceAiCredentialService>();
+function makeCredentialService(creds: CredentialListItem[]): BuilderCredentialService {
+	const credentialService = mock<BuilderCredentialService>();
 	credentialService.list.mockImplementation(async (options) =>
 		options?.type ? creds.filter((c) => c.type === options.type) : creds,
 	);
@@ -37,7 +37,7 @@ function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentia
 const BASE_DEPS = {
 	agentId: 'agent-1',
 	projectId: 'project-1',
-	listChatIntegrationTypes: () => ['slack', 'telegram', 'linear'],
+	listChatIntegrationTypes: async () => ['slack', 'telegram', 'linear'],
 	track: vi.fn(),
 };
 

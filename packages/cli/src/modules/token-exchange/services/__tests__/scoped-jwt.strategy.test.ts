@@ -212,8 +212,8 @@ describe('ScopedJwtStrategy', () => {
 					return req;
 				},
 			],
-		])('returns null when %s', async (_name, makeReq) => {
-			expect(await strategy.authenticate(makeReq())).toBeNull();
+		])('abstains when %s', async (_name, makeReq) => {
+			expect(await strategy.authenticate(makeReq())).toEqual({ outcome: 'abstained' });
 		});
 
 		it('sets req.user to the acting principal and populates req.tokenGrant', async () => {
@@ -224,7 +224,7 @@ describe('ScopedJwtStrategy', () => {
 			const token = makeTokenExchangeJwt({ sub: 'subject-id', act: { sub: 'actor-id' } });
 			const req = makeBearerReq(token);
 
-			expect(await strategy.authenticate(req)).toBe(true);
+			expect(await strategy.authenticate(req)).toEqual({ outcome: 'authenticated' });
 			expect(req.user).toBe(actor);
 			expect(req.tokenGrant?.subject).toBe(subject);
 			expect(req.tokenGrant?.actor).toBe(actor);

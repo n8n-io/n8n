@@ -13,7 +13,7 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
 import { createParentWorkflowFixture, createSubWorkflowFixture } from '../shared/workflow-fixtures';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const SET = 'n8n-nodes-base.set';
 
@@ -57,7 +57,7 @@ afterEach(async () => {
 		'WorkflowEntity',
 		'SharedWorkflow',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 async function waitForFinalStatus(executionId: string, timeout = 20000) {

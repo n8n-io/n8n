@@ -36,7 +36,7 @@ import { AgentRunTracingService } from './agent-run-tracing.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from './agent-runtime-instrumentation';
+} from './evaluation/agent-evaluation.contracts';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -56,7 +56,7 @@ import { encodeIntegrationMessageContext } from './integrations/integration-mess
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { fromAgentDocument, toAgentDocument } from './json-config/agent-document';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
-import { modelStreamStallOptions } from './model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
@@ -111,6 +111,8 @@ interface WorkflowAgentStreamConsumption {
 	streamError: Error | undefined;
 	executionError: unknown;
 	executionStarted: boolean;
+	/** Run id of the agent runtime. Absent when the runtime never started. */
+	runId?: string;
 }
 
 interface WorkflowAgentStreamState extends WorkflowAgentStreamConsumption {
@@ -405,6 +407,7 @@ export class AgentWorkflowExecutionService {
 			bindExecutionInput(params.message, params.admission?.inputMessageIds ?? []),
 			options,
 		);
+		state.runId = resultStream.runId;
 		for await (const value of streamAgentChunks(resultStream.stream)) {
 			this.recordWorkflowChunk(value, params.outputSchema, recorder, state);
 			await streamAdapter.observe(value);
@@ -537,7 +540,7 @@ export class AgentWorkflowExecutionService {
 			agentExecutionId = admission.executionId;
 		}
 
-		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
+		const { structuredOutput, toolCalls, streamError, executionError, executionStarted, runId } =
 			await this.consumeWorkflowAgentStream({ ...params, admission }, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
@@ -547,6 +550,7 @@ export class AgentWorkflowExecutionService {
 				executionStarted,
 				executionError,
 				params: { ...recordingParams, record: messageRecord },
+				runId,
 			});
 		}
 

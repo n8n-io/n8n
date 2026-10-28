@@ -52,6 +52,18 @@ const ObservationalMemoryConfigSchema = z.object({
 	lockTtlMs: z.number().int().min(0).optional(),
 });
 
+export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;
+export const EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH = 100;
+
+const EpisodicMemoryGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
+
+const EpisodicMemoryGuidanceSchema = z.object({
+	include: EpisodicMemoryGuidanceTopicsSchema.optional(),
+	exclude: EpisodicMemoryGuidanceTopicsSchema.optional(),
+});
+
 const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(false),
@@ -62,6 +74,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+		guidance: EpisodicMemoryGuidanceSchema.optional(),
 	}),
 ]);
 
@@ -100,7 +113,7 @@ export const DEFAULT_AGENT_PERSONALISATION = {
 	},
 } as const;
 
-const AgentPersonalisationGradientSchema = z
+export const AgentPersonalisationGradientSchema = z
 	.object({
 		from: HexColorSchema,
 		to: HexColorSchema,
@@ -259,7 +272,7 @@ export const McpServerConfigSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Credential id from agent_builder_ask_credential. Required when authentication is not "none"',
+				'Credential id from setup_credentials(target: "agent"). Required when authentication is not "none"',
 			),
 		metadata: z
 			.object({
@@ -466,15 +479,6 @@ export const AgentJsonConfigBaseSchema = z.object({
 	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
-	/**
-	 * Azure OpenAI deployments are user-named in Azure and surfaced in the URL
-	 * path on both endpoint types. The catalog model id (e.g. `gpt-4o`) is not
-	 * the deployment id, so the agent flow must capture the user's deployment
-	 * name separately. Only meaningful for the `azure-openai` provider — on
-	 * classic it is required, on Foundry it is optional and overrides the model
-	 * id. An empty string is a deliberate clear of a previously stored value.
-	 */
-	modelDeploymentName: z.string().trim().optional(),
 	instructions: z.string(),
 	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
@@ -585,7 +589,7 @@ declare const storedSkillRefsBrand: unique symbol;
 
 /**
  * Opaque type of the legacy `skills` key in a stored config. Nothing reads
- * or writes this key: the skill refs live in the skills hub tables. The data
+ * or writes this key: the skill refs live in the skill tables. The data
  * migration removes the key from stored configs.
  */
 export interface OpaqueStoredSkillRefs {

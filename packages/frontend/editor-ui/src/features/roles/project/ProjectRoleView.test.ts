@@ -698,17 +698,33 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('App scopes', () => {
+		it('hides App scopes when the module is inactive', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('scope-checkbox-workflow:read')).toBeInTheDocument());
+
+			expect(queryByTestId('scope-checkbox-app:read')).not.toBeInTheDocument();
+			expect(queryByTestId('scope-checkbox-app:create')).not.toBeInTheDocument();
+		});
+
+		it('shows App scopes when the module is active', async () => {
+			settingsStore.isAppsEnabled = true;
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-app:read')).toBeInTheDocument());
+			expect(getByTestId('scope-checkbox-app:create')).toBeInTheDocument();
+		});
+	});
+
 	describe('Skill scopes', () => {
-		it('hides the Skills scopes while the skills hub is off', () => {
+		it('hides the Skills scopes while the agents module is inactive', () => {
 			const { queryByText } = renderComponent();
 
 			expect(queryByText('Skills')).not.toBeInTheDocument();
 		});
 
-		it('shows the Skills scopes while the skills hub is on', () => {
-			settingsStore.moduleSettings = {
-				agents: { skillsHubEnabled: true },
-			} as typeof settingsStore.moduleSettings;
+		it('shows the Skills scopes while the agents module is active', () => {
+			vi.mocked(settingsStore.isModuleActive).mockImplementation((name) => name === 'agents');
 			const { getByText } = renderComponent();
 
 			expect(getByText('Skills')).toBeInTheDocument();

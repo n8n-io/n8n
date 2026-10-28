@@ -4,6 +4,9 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAMES,
+	isFormerWorkflowsTool,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
@@ -164,32 +167,36 @@ const ARTIFACT_TOOLS = new Set<string>([
 	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
-	WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
-	WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
+	...WORKFLOW_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
 	SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
 ]);
-const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
-// Actions that read without changing anything. Their results still register a
-// tab (a small `get` returns the document itself), but the tab is fetched, not built.
-const WORKFLOW_READ_ACTIONS = new Set([
-	'list',
-	'node-usage',
-	'get',
-	'get-as-code',
-	'validate',
-	'list-versions',
+const WORKFLOW_MUTATING_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+]);
+// Tools that read without changing anything. Their results still register a
+// tab (a small `get_workflow` returns the document itself), but the tab is fetched, not built.
+const WORKFLOW_READ_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS,
+	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_NODE_USAGE,
+	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW,
+	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE,
+	WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
+	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
 ]);
 const DATA_TABLE_READ_ACTIONS = new Set(['schema', 'query']);
 
 /** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
 function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
+	if (WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)))
+		return 'fetched';
 	const action = optionalString(tc.args?.action);
 	if (!action) return 'built';
-	if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && WORKFLOW_READ_ACTIONS.has(action))
-		return 'fetched';
 	if (tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES && DATA_TABLE_READ_ACTIONS.has(action))
 		return 'fetched';
 	return 'built';
@@ -239,7 +246,12 @@ function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collect
 
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
-	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
+	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);
+	if (
+		!isFormerWorkflowsCall &&
+		!ARTIFACT_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action))
+	)
+		return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
@@ -255,7 +267,9 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// workflow_builder_build_workflow / build-workflow-with-agent / submit-workflow:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
-	if (typeof result.workflowId === 'string') {
+	// A failed build still names its target workflow and the unsaved name, so
+	// skip it to keep the existing entry as it was.
+	if (typeof result.workflowId === 'string' && result.success !== false) {
 		const existing = col.produced.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??
@@ -266,11 +280,10 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	if (
-		tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
+		(WORKFLOW_MUTATING_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)) ||
+			(isFormerWorkflowsCall && tc.args?.action === 'update')) &&
 		result.success === true &&
-		typeof tc.args?.workflowId === 'string' &&
-		typeof tc.args.action === 'string' &&
-		WORKFLOW_MUTATING_ACTIONS.has(tc.args.action)
+		typeof tc.args?.workflowId === 'string'
 	) {
 		const workflowId = tc.args.workflowId;
 		const existing = col.produced.get(workflowId);
@@ -282,9 +295,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// Historical workflows action=get-json events return the workflow document itself,
-	// not under a `workflow` key. Keep them available when replaying stored threads.
-	if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && Array.isArray(result.nodes)) {
+	// A small `get_workflow` result, and historical workflows action=get-json events, return
+	// the workflow document itself, not under a `workflow` key.
+	if (
+		(isFormerWorkflowsCall ||
+			WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action))) &&
+		Array.isArray(result.nodes)
+	) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
 	}

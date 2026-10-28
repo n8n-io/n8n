@@ -6,9 +6,11 @@ import type { User } from '@n8n/db';
 import {
 	createSandbox,
 	createWorkspace,
+	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
 	traceSandboxOperation,
 	withSandboxLifecycleTrace,
+	type BuilderTemplatesService,
 	type ServiceProxyConfig,
 	type InstanceAiContext,
 	type Logger,
@@ -171,6 +173,7 @@ export type InstanceAiSandboxServiceOptions = {
 	backgroundTasks: InstanceAiSandboxBackgroundTasks;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
+	getTemplatesService: () => BuilderTemplatesService;
 	resolveTracingConfig?: (
 		threadId: string,
 		userId?: string,
@@ -420,7 +423,19 @@ export class InstanceAiSandboxService {
 		entry: RuntimeSandboxEntry,
 		context: InstanceAiContext,
 	): Promise<void> {
-		if (entry.setupComplete) return;
+		if (entry.setupComplete) {
+			// The n8n sandbox service can remove a sandbox while this entry is cached
+			// (idle reaping, runner restart), and the provider recreates it empty. The
+			// marker inside the sandbox is the only reliable record of setup.
+			if (
+				entry.sandbox.provider !== 'n8n-sandbox' ||
+				(await isSandboxWorkspaceInitialized(entry.workspace))
+			) {
+				return;
+			}
+			entry.setupComplete = false;
+			entry.verifiedBundles.clear();
+		}
 
 		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context, {
 			verifiedBundles: entry.verifiedBundles,
@@ -450,6 +465,7 @@ export class InstanceAiSandboxService {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
+			templatesService: this.options.getTemplatesService(),
 		});
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;

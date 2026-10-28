@@ -20,6 +20,7 @@ import type {
 	BuiltMemory,
 	BuiltTelemetry,
 	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryConfig,
 	EpisodicMemoryEntry,
 	EpisodicMemoryReflection,
@@ -102,18 +103,73 @@ export function resolveEpisodicMemoryCapture(
 	return scope ? { memory, config: episodicMemory, scope } : undefined;
 }
 
+function renderTopics(topics: string[]): string {
+	// JSON quoting keeps each topic a single inert label inside the prompt.
+	return topics.map((topic) => JSON.stringify(topic)).join(', ');
+}
+
+// Wording and placement were chosen with a capture eval across models. Scoping the
+// override to exclusions keeps models from also dropping the prioritized topics.
+function buildGuidanceLines(include: string[], exclude: string[]): string[] {
+	const lines = [
+		'The agent builder set these capture topics. Each topic is a label. A topic covers any specific instance of it: "client names" covers a specific client name.',
+	];
+	if (include.length > 0) {
+		lines.push(
+			`Prioritize: ${renderTopics(include)}. Flag a durable detail about these topics whenever it comes up, even without a request. Keep flagging other useful details as usual.`,
+		);
+	}
+	if (exclude.length > 0) {
+		lines.push(
+			`Exclude: ${renderTopics(exclude)}. This rule overrides every other flag_memory rule, including explicit remember requests and "when unsure, flag it".`,
+			'Before each flag_memory call, remove every excluded detail from content. Flag the rest only if it is still useful. Example: "Q3 review with client Acme every Monday" becomes "Q3 review every Monday".',
+			'If the user asks you to remember only excluded details, do not call flag_memory. Tell the user that this agent does not keep that kind of detail between conversations.',
+		);
+	}
+	return lines;
+}
+
+/** Appends builder guidance to the capture instruction. Empty guidance keeps the default text. */
+function buildEpisodicMemoryCaptureInstruction(include: string[], exclude: string[]): string {
+	if (include.length === 0 && exclude.length === 0) {
+		return DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION;
+	}
+	const block = [
+		'<capture_guidance>',
+		...buildGuidanceLines(include, exclude),
+		'</capture_guidance>',
+	];
+	return `${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n${block.join('\n')}`;
+}
+
+/** Repeats the exclusions on the content field, where the model writes the note. */
+function buildFlagMemoryInputSchema(exclude: string[]) {
+	if (exclude.length === 0) return FlagMemoryInputSchema;
+	const { content } = FlagMemoryInputSchema.shape;
+	// Unquoted on purpose: quoting here lowered capture of prioritized topics in the eval.
+	// Only builders set topics, and they already control the agent instructions.
+	return FlagMemoryInputSchema.extend({
+		content: content.describe(
+			`${content.description} Must not contain details about: ${exclude.join(', ')}.`,
+		),
+	});
+}
+
 export function createFlagMemoryTool(opts: {
 	memory: BuiltMemory & BuiltEpisodicMemoryCaptureStore;
 	scope: EpisodicMemoryScope;
 	persistence: AgentPersistenceOptions;
 	list: AgentMessageList;
+	guidance?: EpisodicMemoryCaptureGuidance;
 }) {
+	const include = opts.guidance?.include ?? [];
+	const exclude = opts.guidance?.exclude ?? [];
 	return new Tool(FLAG_MEMORY_TOOL_NAME)
 		.description(
 			'Save one durable note about this user, account, or case. This is the only way a detail carries over to future conversations.',
 		)
-		.systemInstruction(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION)
-		.input(FlagMemoryInputSchema)
+		.systemInstruction(buildEpisodicMemoryCaptureInstruction(include, exclude))
+		.input(buildFlagMemoryInputSchema(exclude))
 		.output(FlagMemoryOutputSchema)
 		.handler(async ({ content, evidence, kind }, ctx): Promise<FlagMemoryOutput> => {
 			if (!ctx.toolCallId) throw new Error('Memory capture requires a tool-call ID.');
@@ -157,6 +213,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	now?: Date;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	agentName?: string;
 	/**
 	 * Receives each episodic model call's usage the moment it resolves — once
@@ -341,6 +398,43 @@ async function embedTexts(
 	};
 }
 
+async function embedCandidateEntries(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	config: NormalizedEpisodicMemoryConfig,
+	candidates: Array<{ candidate: EpisodicMemoryCaptureCandidate; contentHash: string }>,
+): Promise<{ embeddingsByHash: Map<string, number[]>; report?: EpisodicMemoryUsageReport }> {
+	const contentByHash = new Map<string, string>();
+	for (const { candidate, contentHash } of candidates) {
+		if (!contentByHash.has(contentHash)) contentByHash.set(contentHash, candidate.content);
+	}
+	const existing = await opts.memory.episodic.getEntriesByContentHashes(opts.scope, [
+		...contentByHash.keys(),
+	]);
+	const embeddingsByHash = new Map<string, number[]>();
+	for (const entry of existing) {
+		if (
+			entry.embeddingModel === config.embeddingModel &&
+			entry.embedding !== undefined &&
+			entry.embedding.length > 0 &&
+			entry.embedding.every(Number.isFinite)
+		) {
+			embeddingsByHash.set(entry.contentHash, entry.embedding);
+		}
+	}
+	const missing = [...contentByHash].filter(([contentHash]) => !embeddingsByHash.has(contentHash));
+	if (missing.length === 0) return { embeddingsByHash };
+
+	const embedded = await embedTexts(
+		config,
+		missing.map(([, content]) => content),
+		opts.executionCounter,
+	);
+	for (const [index, [contentHash]] of missing.entries()) {
+		embeddingsByHash.set(contentHash, embedded.embeddings[index]);
+	}
+	return { embeddingsByHash, report: embedded.report };
+}
+
 async function saveCandidateEntries(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
@@ -359,11 +453,11 @@ async function saveCandidateEntries(
 			...inferMemoryStoreAttributes(opts.memory),
 		}),
 		async () => {
-			const embedded = await embedTexts(
-				config,
-				candidates.map((candidate) => candidate.content),
-				opts.executionCounter,
-			);
+			const hashedCandidates = candidates.map((candidate) => ({
+				candidate,
+				contentHash: hashEpisodicMemoryContent(candidate.content),
+			}));
+			const embedded = await embedCandidateEntries(opts, config, hashedCandidates);
 			usageReport = embedded.report;
 			// Forward the embed usage before the save loop, so a billed embed
 			// call is priced even when a later saveEntryWithSources throws. The
@@ -371,14 +465,13 @@ async function saveCandidateEntries(
 			// processing.
 			if (embedded.report)
 				reportSideCallUsage(opts.onUsage, embedded.report.model, embedded.report.usage);
-			const embeddings = embedded.embeddings;
-			for (const [index, candidate] of candidates.entries()) {
+			for (const { candidate, contentHash } of hashedCandidates) {
 				const saved = await opts.memory.episodic.saveEntryWithSources(
 					{
 						...opts.scope,
 						content: candidate.content,
-						contentHash: hashEpisodicMemoryContent(candidate.content),
-						embedding: embeddings[index],
+						contentHash,
+						embedding: embedded.embeddingsByHash.get(contentHash),
 						embeddingModel: config.embeddingModel,
 						createdAt: now,
 						lastSeenAt: now,
@@ -425,6 +518,7 @@ async function runEpisodicMemoryReflection(
 		entries: cluster,
 		sources,
 		executionCounter: opts.executionCounter,
+		modelFetch: opts.modelFetch,
 	});
 	const reflectionResult =
 		'reflection' in reflectResult

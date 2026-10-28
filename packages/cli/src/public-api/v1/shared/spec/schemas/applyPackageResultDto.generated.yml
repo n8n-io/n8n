@@ -1,11 +1,7 @@
 oneOf:
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -52,15 +48,30 @@ oneOf:
               created:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+                description: Existing folders that Apply moved or renamed to match the branch.
               skipped:
                 type: integer
                 minimum: 0
+              moved:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply moved under another parent of their project. Included in `updated`.
+              renamed:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply gave the name on the branch. Included in `updated`.
               removed:
                 type: integer
                 minimum: 0
             required:
               - created
+              - updated
               - skipped
+              - moved
+              - renamed
               - removed
           workflows:
             type: object
@@ -74,6 +85,10 @@ oneOf:
               skipped:
                 type: integer
                 minimum: 0
+              moved:
+                type: integer
+                minimum: 0
+                description: Updated workflows that Apply also moved to another folder of their project. Included in `updated`.
               archived:
                 type: integer
                 minimum: 0
@@ -108,6 +123,7 @@ oneOf:
               - created
               - updated
               - skipped
+              - moved
               - archived
               - deleted
               - publishing
@@ -120,9 +136,13 @@ oneOf:
               stubbed:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
             required:
               - matched
               - stubbed
+              - updated
           dataTables:
             type: object
             properties:
@@ -261,19 +281,14 @@ oneOf:
             - scope
             - consumers
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
       - counts
       - warnings
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -1381,18 +1396,13 @@ oneOf:
           - conflicts
           - warnings
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
       - preflight
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -1411,8 +1421,7 @@ oneOf:
         enum:
           - source-changed
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
 type: object

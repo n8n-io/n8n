@@ -1,6 +1,7 @@
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
+import { isOutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import { isWorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
 import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
@@ -9,8 +10,8 @@ import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-stat
 
 export const INVALID_WORKFLOW_ID_GUIDANCE =
 	'Call workflow_builder_build_workflow again with the same filePath and omit workflowId to create a new workflow only if that value was never a real n8n workflow id (for example an SDK slug). ' +
-	'If you meant an existing workflow, confirm the id with workflow_builder_workflows() first — missing and inaccessible look the same. ' +
-	'workflowId must be a real n8n workflow id from a prior workflow_builder_build_workflow or workflow_builder_workflows() tool result — never the first argument of workflow(slug, name).';
+	'If you meant an existing workflow, confirm the id with list_workflows first — missing and inaccessible look the same. ' +
+	'workflowId must be a real n8n workflow id from a prior workflow_builder_build_workflow or list_workflows tool result — never the first argument of workflow(slug, name).';
 
 function getFailureText(error: unknown): string {
 	return getErrorMessage(error).toLowerCase();
@@ -57,7 +58,7 @@ export function createWorkflowModifiedExternallyRemediation(): RemediationMetada
 	return createCodeFixableRemediation({
 		reason: 'workflow_modified_externally',
 		guidance:
-			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call workflow_builder_workflows(action="get-as-code", workflowId): it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then call workflow_builder_build_workflow again with the same filePath. If get-as-code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, call get-as-code again, and re-apply the change before building.',
+			'The workflow was modified outside this conversation since your last save (canvas edit, setup, credential change, or version revert). Call get_workflow_as_code(workflowId): it regenerates the bound source file from the saved workflow. Re-apply your intended change in that file with workspace_str_replace_file, then call workflow_builder_build_workflow again with the same filePath. If get_workflow_as_code reports status "conflict", the file still holds your unbuilt edits on top of the old version: delete the file, call get_workflow_as_code again, and re-apply the change before building.',
 	});
 }
 
@@ -81,6 +82,16 @@ export function createSaveFailureRemediation(
 
 	if (isWorkflowEditorLockedError(error)) {
 		return createWorkflowLockedByEditorRemediation();
+	}
+
+	if (isOutsideThreadProjectError(error)) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_outside_thread_project',
+			guidance:
+				"The workflow is outside this conversation's project, so this conversation cannot change it. Stop editing and tell the user to start a conversation in the project that owns the workflow.",
+		});
 	}
 
 	const text = getFailureText(error);

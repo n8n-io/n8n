@@ -102,7 +102,6 @@ describe('ParameterOptions', () => {
 				parameter: DEFAULT_PARAMETER,
 				value: 'manual',
 				isReadOnly: false,
-				iconOrientation: 'horizontal',
 			},
 		});
 		expect(container.querySelector('[data-icon="ellipsis-12"]')).toBeInTheDocument();

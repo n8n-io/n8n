@@ -1,3 +1,4 @@
+import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -24,10 +25,6 @@ import type {
 import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
-import type {
-	SerializedDataTable,
-	SerializedDataTableColumn,
-} from '../../spec/serialized/data-table.schema';
 
 interface PlannedCreation {
 	table: SerializedDataTable;
@@ -122,10 +119,11 @@ export class DataTableImporter {
 			else if (matchedTargetTable) matchedCount++;
 		}
 
-		failures.push(...(await this.writeFailures(context, creations, updates, columnAlignments)));
-
-		await this.assertColumnIdsAvailable(
-			[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+		failures.push(
+			...(await this.writeFailures(context, creations, updates, columnAlignments)),
+			...(await this.columnIdConflicts(
+				[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+			)),
 		);
 
 		return {
@@ -203,7 +201,9 @@ export class DataTableImporter {
 	}
 
 	/** Column ids are globally unique, so a package column id must not belong to another table. */
-	private async assertColumnIdsAvailable(tables: SerializedDataTable[]): Promise<void> {
+	private async columnIdConflicts(
+		tables: SerializedDataTable[],
+	): Promise<DataTableResolutionFailure[]> {
 		const packageColumnsById = new Map<
 			string,
 			{ table: SerializedDataTable; column: SerializedDataTableColumn }
@@ -213,19 +213,23 @@ export class DataTableImporter {
 				if (column.id) packageColumnsById.set(column.id, { table, column });
 			}
 		}
-		if (packageColumnsById.size === 0) return;
+		if (packageColumnsById.size === 0) return [];
 
 		const existing = await this.dataTableService.findTableIdsByColumnIds([
 			...packageColumnsById.keys(),
 		]);
-		for (const { id, dataTableId } of existing) {
+		return existing.flatMap(({ id, dataTableId }): DataTableResolutionFailure[] => {
 			const packageColumn = packageColumnsById.get(id);
-			if (packageColumn && packageColumn.table.id !== dataTableId) {
-				throw new UserError(
-					`Data table "${packageColumn.table.name}": column "${packageColumn.column.name}" has id "${id}", but a column in another data table already uses this id.`,
-				);
-			}
-		}
+			if (!packageColumn || packageColumn.table.id === dataTableId) return [];
+			return [
+				{
+					kind: 'column-id-conflict',
+					sourceId: packageColumn.table.id,
+					name: packageColumn.table.name,
+					column: { id, name: packageColumn.column.name },
+				},
+			];
+		});
 	}
 
 	/** Guards that only apply to tables about to be written: permission, and name uniqueness inside the target project. */
@@ -377,4 +381,11 @@ async function hasProjectScope(
 	scope: 'dataTable:create' | 'dataTable:update',
 ): Promise<boolean> {
 	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
+}
+
+/** The error that an import throws for a column id conflict. */
+export function columnIdConflictError(failure: DataTableResolutionFailure): UserError {
+	return new UserError(
+		`Data table "${failure.name}": column "${failure.column?.name}" has id "${failure.column?.id}", but a column in another data table already uses this id.`,
+	);
 }

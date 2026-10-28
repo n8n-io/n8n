@@ -87,7 +87,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
-import { modelConfigToId } from '../utils/model';
+import { getCatalogModelId, modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
@@ -282,7 +282,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * Provide a proxy-aware `fetch` for the agent's model and catalog calls. When unset, model
 	 * construction falls back to the ambient HTTP_PROXY resolver.
 	 */
 	modelFetch(fetch: FetchFn): this {
@@ -531,8 +531,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/**
 	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
-	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
-	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
+	 * models, including Claude on OpenRouter and Vertex, get a `1h` instruction breakpoint.
+	 * OpenAI gets `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
 	 * Pass `{ anthropic: false }` / `{ openai: false }` to disable per provider,
 	 * or override individual fields (e.g. `{ anthropic: { ttl: '5m' } }`).
 	 *
@@ -1140,13 +1140,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
 		try {
-			const modelId =
-				typeof modelConfig === 'string'
-					? modelConfig
-					: 'id' in modelConfig && typeof modelConfig.id === 'string'
-						? modelConfig.id
-						: undefined;
-			modelCost = modelId ? await getModelCost(modelId) : undefined;
+			modelCost = await getModelCost(getCatalogModelId(modelConfig), this.modelFetchValue);
 		} catch {
 			modelCost = undefined;
 		}

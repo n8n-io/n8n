@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
+import { createAbortError } from '../../sdk/abort';
 
 import {
 	buildCheckpointOptions,
@@ -51,7 +52,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
@@ -71,7 +72,7 @@ import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap } from '../tools/tool-adapter';
+import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -89,7 +90,8 @@ const MAX_LOOP_ITERATIONS = 100;
 
 function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
 	return batch.results.some(
-		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+		({ toolName, input, toolEntry }) =>
+			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
 	);
 }
 
@@ -112,7 +114,7 @@ function resumedTurnEnds(
 			(c) =>
 				c.type === 'tool-call' &&
 				c.state === 'resolved' &&
-				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
 }
@@ -544,8 +546,11 @@ export class AgentRuntime {
 		// A skill dependency loads a deferred tool without a `load_tool` record, and
 		// skills restore only when the loop starts. Accept any registered deferred tool.
 		const tool =
-			buildToolMap(this.context.getCurrentTools(state.persistence)).get(toolCall.toolName) ??
-			this.deferredToolManager?.getTool(toolCall.toolName);
+			resolveToolForCall(
+				buildToolMap(this.context.getCurrentTools(state.persistence)),
+				toolCall.toolName,
+				toolCall.input,
+			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -740,7 +745,7 @@ export class AgentRuntime {
 	private assertNotAborted(abortScope: AgentAbortScope): void {
 		if (abortScope.isAborted) {
 			this.updateState({ status: 'cancelled' });
-			throw new Error('Agent run was aborted');
+			throw createAbortError('Agent run was aborted');
 		}
 	}
 
@@ -777,6 +782,7 @@ export class AgentRuntime {
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
+			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,
 			promptCaching: this.config.promptCaching,
@@ -1007,6 +1013,9 @@ export class AgentRuntime {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
+		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+			await sink.emitMessage?.(update);
+		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
@@ -1066,6 +1075,7 @@ export class AgentRuntime {
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
+			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
 			activeSkills: this.activeSkills,
 		});
@@ -1077,7 +1087,7 @@ export class AgentRuntime {
 			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
-			providerOptions: staticContext.providerOptions,
+			providerOptions: prompt.providerOptions,
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
@@ -1121,28 +1131,30 @@ export class AgentRuntime {
 			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
 			return turn;
 		};
+		const retryModel = async () => {
+			this.assertNotAborted(ctx.abortScope);
+			return await callModel();
+		};
 
 		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
 		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
-			this.recordTurnUsage(ctx, sink, state, turn);
-			this.assertNotAborted(ctx.abortScope);
-			turn = await callModel();
+			[, turn] = await Promise.all([this.recordTurnUsage(ctx, sink, state, turn), retryModel()]);
 		}
 		if (!turn) return undefined;
-		this.recordTurnUsage(ctx, sink, state, turn);
+		await this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}
 
-	private recordTurnUsage<T>(
+	private async recordTurnUsage<T>(
 		ctx: PreparedLoopContext,
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		turn: ModelTurnResult,
-	): void {
+	): Promise<void> {
 		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
-		sink.reportUsage(state.totalUsage);
+		await sink.reportUsage(state.totalUsage);
 	}
 
 	private async finishToolBatch<T>(
@@ -1425,7 +1437,10 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(this.modelIdString);
+			this.modelCost = await getModelCost(
+				getCatalogModelId(this.config.model),
+				this.config.modelFetch,
+			);
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}

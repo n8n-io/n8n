@@ -27,6 +27,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
+const confirm = vi.fn();
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirm }),
+}));
+
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
 	checkTeamsFileAccess: vi.fn(),
@@ -62,6 +67,7 @@ const managedRuntime = (overrides: Record<string, unknown> = {}) =>
 const viewProps = {
 	mode: 'edit' as const,
 	modelValue: 'cred-1',
+	savedCredentialId: 'cred-1',
 	integration: {
 		type: 'teams',
 		label: 'Microsoft Teams',
@@ -116,7 +122,14 @@ const Host = defineComponent({
 });
 
 const stubs = {
-	AgentIntegrationCredentialConnection: { template: '<div />' },
+	AgentIntegrationCredentialConnection: {
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template: `<div>
+			<span data-testid="credential">{{ modelValue }}</span>
+			<button data-testid="pick-credential" @click="$emit('update:modelValue', 'cred-2')" />
+		</div>`,
+	},
 	ActionDropdown: ActionDropdownTestStub,
 };
 
@@ -126,6 +139,42 @@ const renderHost = createComponentRenderer(Host, { global: { stubs } });
 const renderView = createComponentRenderer(AgentChannelTeamsEditView, { global: { stubs } });
 
 describe('AgentChannelTeamsEditView', () => {
+	describe('switching the credential', () => {
+		it('sets up again with the picked credential once the user confirms', async () => {
+			confirm.mockResolvedValue('confirm');
+			const { getByTestId, emitted } = renderView({ props: viewProps });
+
+			await fireEvent.click(getByTestId('pick-credential'));
+
+			await waitFor(() => expect(emitted().restart).toEqual([[{ credentialId: 'cred-2' }]]));
+			expect(getByTestId('credential')).toHaveTextContent('cred-1');
+		});
+
+		it('asks too when the saved credential arrives after the settings opened', async () => {
+			confirm.mockResolvedValue('confirm');
+			const { getByTestId, emitted, rerender } = renderView({
+				props: { ...viewProps, modelValue: '', savedCredentialId: '' },
+			});
+			await rerender({ ...viewProps, modelValue: 'cred-1', savedCredentialId: 'cred-1' });
+
+			await fireEvent.click(getByTestId('pick-credential'));
+
+			await waitFor(() => expect(emitted().restart).toEqual([[{ credentialId: 'cred-2' }]]));
+		});
+
+		it.each(['cancel', 'close'])('keeps the saved credential on %s', async (result) => {
+			confirm.mockResolvedValue(result);
+			const { getByTestId, emitted } = renderView({ props: viewProps });
+
+			await fireEvent.click(getByTestId('pick-credential'));
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalled();
+			expect(emitted()).not.toHaveProperty('restart');
+			expect(getByTestId('credential')).toHaveTextContent('cred-1');
+		});
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia({ stubActions: false });
@@ -237,23 +286,6 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(queryByTestId('teams-file-access')).toBeNull();
 			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
 			expect(fileAccessJustApproved.value).toBe(false);
-		});
-
-		it('checks a credential picked after the approval', async () => {
-			fileAccessJustApproved.value = true;
-
-			const { findByTestId, queryByTestId, rerender } = renderView({
-				props: { ...viewProps, savedSettings: { teamChannels: true } },
-				pinia: createTestingPinia(),
-			});
-			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
-
-			await rerender({ ...viewProps, modelValue: 'cred-2', savedSettings: { teamChannels: true } });
-			await flushPromises();
-
-			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-2');
-			expect(queryByTestId('teams-file-access-approved')).toBeNull();
-			expect(await findByTestId('teams-file-access')).toBeVisible();
 		});
 
 		it('keeps the approval for when the saved settings arrive late', async () => {

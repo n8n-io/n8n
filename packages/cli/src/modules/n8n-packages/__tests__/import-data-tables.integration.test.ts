@@ -1,3 +1,4 @@
+import type { SerializedDataTable } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -26,7 +27,6 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../spec/requirements.schema';
-import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
@@ -281,13 +281,13 @@ describe('workflow package import — with data tables', () => {
 				user: owner,
 				projectId: project.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			await importPackage({
 				user: owner,
 				projectId: project.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tablesInProject(project.id)).toHaveLength(1);
@@ -1024,7 +1024,15 @@ describe('workflow package import — with data tables', () => {
 					{ id: 'packagedate1', name: 'signed_up_at', type: 'date', index: 1 },
 				],
 			});
-			const { packageBuffer } = await buildDataTablePackage([packageTable]);
+			const { packageBuffer } = await buildDataTablePackage([packageTable], {
+				workflows: [
+					serializedWorkflowWithDataTable({
+						id: 'workflow0',
+						name: 'Workflow 0',
+						dataTableId: table.id,
+					}),
+				],
+			});
 
 			const result = await importWithOverwrite({ user: owner, packageBuffer });
 
@@ -1039,7 +1047,7 @@ describe('workflow package import — with data tables', () => {
 			const again = await importWithOverwrite({
 				user: owner,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(again.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });

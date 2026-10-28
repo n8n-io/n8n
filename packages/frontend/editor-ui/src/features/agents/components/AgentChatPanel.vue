@@ -74,6 +74,7 @@ import {
 } from '../utils/composer-attachments';
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 } from '../types';
@@ -109,7 +110,7 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
-		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel. */
+		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel; `'system'` talks to a system agent, such as the n8n Assistant. */
 		channel?: AgentChatChannel;
 		/**
 		 * The n8n Chat entry page: centers the empty state and the composer together until a
@@ -170,6 +171,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
@@ -264,6 +266,7 @@ const {
 		}
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+	onUsageUpdated: (update) => emit('usage-updated', update),
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
@@ -1597,6 +1600,8 @@ onBeforeUnmount(() => {
 					v-if="pendingApproval"
 					:key="pendingApproval.toolCallId"
 					:input="pendingApproval.input"
+					:agent-name="agentConfig?.name"
+					:tools="agentConfig?.tools"
 					@submit="
 						resume({
 							runId: pendingApproval.runId,
@@ -1617,6 +1622,8 @@ onBeforeUnmount(() => {
 					}}</N8nText>
 					<ApprovalCard
 						:input="backgroundApproval.input"
+						:agent-name="agentConfig?.name"
+						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>
@@ -1642,16 +1649,6 @@ onBeforeUnmount(() => {
 					@files-selected="handleFilesSelected"
 					@keydown="onChatInputKeydown"
 				>
-					<template v-if="currentPlan" #header>
-						<AgentChatPlan
-							v-if="currentPlan"
-							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
-							:plan="currentPlan"
-							:trace-route="
-								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-							"
-						/>
-					</template>
 					<template #above>
 						<ChatMessageQueue
 							v-if="displayedQueueRows.length"
@@ -1670,6 +1667,14 @@ onBeforeUnmount(() => {
 							@steer="steerQueuedMessage"
 							@edit="editQueuedMessage"
 							@remove="removeQueuedMessage"
+						/>
+						<AgentChatPlan
+							v-else-if="currentPlan"
+							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+							:plan="currentPlan"
+							:trace-route="
+								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+							"
 						/>
 					</template>
 					<template
@@ -1787,7 +1792,6 @@ onBeforeUnmount(() => {
 	--ai-activity-step--min-height: var(--height--xl);
 	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
 	--ai-activity-step--color: var(--text-color);
-	display: none;
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

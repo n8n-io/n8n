@@ -10,6 +10,14 @@ import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+/**
+ * A project on this instance. `name` is left out for a personal project, because its name holds
+ * the owner's email.
+ */
+export const promotionInstanceProjectSchema = z.object({
+	id: sourceId,
+	name: z.string().optional(),
+});
 // Report package values unchanged. The create API validates them when used.
 export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
 	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),
@@ -99,7 +107,7 @@ const credentialConflictSchema = z.object({
 	consumers: consumersSchema,
 });
 
-const dataTableChangeSchema = z.discriminatedUnion('kind', [
+export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
 	z.object({
 		kind: z.literal('add-column'),
 		column: z.string(),
@@ -178,7 +186,7 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		name: z.string(),
 		consumers: consumersSchema,
 		/** Every change that the import would make, destructive or not. */
-		changes: z.array(dataTableChangeSchema).min(1),
+		changes: z.array(promotionDataTableChangeSchema).min(1),
 	}),
 ]);
 
@@ -224,4 +232,5 @@ export type PromotionCredentialExpressionData = z.infer<
 	typeof promotionCredentialExpressionDataSchema
 >;
 export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
+export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;

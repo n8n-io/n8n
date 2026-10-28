@@ -51,6 +51,10 @@ export type PubSubCommandMap = {
 
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
+	'self-healing-failure': {
+		workflowId: string;
+		executionId: string;
+	};
 	'reload-agents-settings': never;
 
 	// #region Community packages
@@ -153,6 +157,15 @@ export type PubSubCommandMap = {
 		/** Older mains read only `productionN8nChat`, so senders set both. */
 		surface?: 'preview' | 'n8n-chat' | 'system';
 		productionN8nChat?: boolean;
+	};
+
+	'cancel-agent-chat-foreground': PubSubCommandMap['cancel-agent-chat-execution'];
+
+	'stop-agent-session': {
+		agentId: string;
+		threadId: string;
+		executionIds: string[];
+		queueIds?: string[];
 	};
 
 	'relay-agent-message-queue-update': {
@@ -431,6 +444,16 @@ export type PubSubCommandMap = {
 	'redaction-floor-changed': never;
 
 	// #endregion
+
+	// #region Policies
+
+	/**
+	 * Reload the type availability policy snapshot. Published after a policy write commits.
+	 * The writing process reloads its own snapshot, so this is not a self-send command.
+	 */
+	'reload-type-availability-policies': never;
+
+	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {
@@ -439,4 +462,10 @@ export type PubSubWorkerResponseMap = {
 	};
 };
 
-export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;
+/** Emitted on this process only, never published. */
+export type PubSubLocalEventMap = {
+	/** The subscriber is back on its channels. Commands sent while it was away are lost. */
+	'pubsub-reconnected': never;
+};
+
+export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap & PubSubLocalEventMap;

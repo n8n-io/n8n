@@ -5,14 +5,12 @@
 	"expectedToolInvocations": {
 		"allOfToolCalls": [
 			{
-				"toolName": "workflow_builder_workflows",
-				"args": { "action": "list" },
+				"toolName": "list_workflows",
 				"argsContainAny": ["folderPath"]
 			}
 		],
 		"noneOf": [
 			"workflow_builder_build_workflow",
-			"workflow_builder_create_tasks",
 			"spawn_sub_agent:workflow-builder"
 		]
 	},

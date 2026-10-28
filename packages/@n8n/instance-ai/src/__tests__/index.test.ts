@@ -60,11 +60,7 @@ vi.mock('../utils/stream-helpers', () => ({
 	asResumable: (agent: unknown) => agent,
 }));
 vi.mock('../storage', () => ({
-	iterationEntrySchema: { safeParse: () => ({ success: true }) },
-	formatPreviousAttempts: () => 'previous attempts',
-	ThreadIterationLogStorage: class ThreadIterationLogStorage {},
 	ThreadTaskStorage: class ThreadTaskStorage {},
-	PlannedTaskStorage: class PlannedTaskStorage {},
 	getThread: () => ({ id: 'thread-1' }),
 	TerminalOutcomeStorage: class TerminalOutcomeStorage {},
 	patchThread: () => ({ id: 'thread-1' }),
@@ -141,12 +137,6 @@ vi.mock('../workflow-loop', () => ({
 vi.mock('../workflow-loop/runtime', () => ({
 	WorkflowLoopRuntime: class WorkflowLoopRuntime {},
 }));
-vi.mock('../planned-tasks/planned-task-service', () => ({
-	PlannedTaskCoordinator: class PlannedTaskCoordinator {},
-}));
-vi.mock('../planned-tasks/planned-task-permissions', () => ({
-	PLANNED_TASK_PERMISSION_OVERRIDES: { checkpoint: { runWorkflow: 'always_allow' } },
-}));
 vi.mock('../parsers/structured-file-parser', () => ({
 	classifyAttachments: () => [{ index: 0, parseable: true, format: 'csv' }],
 	buildAttachmentManifest: () => '[ATTACHMENTS] parse-file [/ATTACHMENTS]',
@@ -215,12 +205,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		expect(call(entrypoint.loadInstanceAiSkills)).toBe('skills');
 
-		expect(call(entrypoint.formatPreviousAttempts)).toBe('previous attempts');
-		expect(construct(entrypoint.ThreadIterationLogStorage)).toBeInstanceOf(
-			entrypoint.ThreadIterationLogStorage,
-		);
 		expect(construct(entrypoint.ThreadTaskStorage)).toBeInstanceOf(entrypoint.ThreadTaskStorage);
-		expect(construct(entrypoint.PlannedTaskStorage)).toBeInstanceOf(entrypoint.PlannedTaskStorage);
 		expect(call(entrypoint.getThread)).toEqual({ id: 'thread-1' });
 		expect(construct(entrypoint.TerminalOutcomeStorage)).toBeInstanceOf(
 			entrypoint.TerminalOutcomeStorage,
@@ -229,7 +214,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.WorkflowLoopStorage)).toBeInstanceOf(
 			entrypoint.WorkflowLoopStorage,
 		);
-		expect(entrypoint.iterationEntrySchema.safeParse({}).success).toBe(true);
 
 		expect(call(entrypoint.truncateToTitle)).toBeUndefined();
 		expect(call(entrypoint.generateTitleForRun)).toBe('generated-title');
@@ -287,12 +271,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(entrypoint.verificationResultSchema.safeParse({}).success).toBe(true);
 		expect(construct(entrypoint.WorkflowLoopRuntime)).toBeInstanceOf(
 			entrypoint.WorkflowLoopRuntime,
-		);
-		expect(construct(entrypoint.PlannedTaskCoordinator)).toBeInstanceOf(
-			entrypoint.PlannedTaskCoordinator,
-		);
-		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint!.runWorkflow).toBe(
-			'always_allow',
 		);
 
 		const classified = entrypoint.classifyAttachments([]);

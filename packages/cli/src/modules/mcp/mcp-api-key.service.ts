@@ -1,5 +1,6 @@
 import { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { AuthMethod } from '@n8n/permissions';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -14,6 +15,11 @@ const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
 const API_KEY_LABEL = 'MCP Server API Key';
 const REDACT_API_KEY_MIN_HIDDEN_CHARS = 6;
+
+export type McpApiKeyResult = UserWithContext & {
+	/** Set on success, for the authentication log line. */
+	authMethod?: Extract<AuthMethod, 'api-key' | 'scoped-jwt'>;
+};
 
 /**
  * Service for managing MCP server API keys, including creation, retrieval, deletion, and authentication middleware.
@@ -63,29 +69,39 @@ export class McpServerApiKeyService {
 		return apiKey;
 	}
 
-	async verifyApiKey(apiKey: string): Promise<UserWithContext> {
+	/** `null`: no strategy knows the token, so the caller must send it down another path. */
+	async verifyApiKey(apiKey: string): Promise<McpApiKeyResult | null> {
 		try {
 			const tokenGrant = await this.authStrategyRegistry.buildContextFromToken(apiKey, {
 				audience: API_KEY_AUDIENCE,
 			});
 
-			if (tokenGrant) {
+			if (tokenGrant === null) return null;
+
+			if (tokenGrant === false) {
 				return {
-					user: tokenGrant.actor ?? tokenGrant.subject,
-					actor: tokenGrant.actor,
-					// Every non-OAuth bearer token the strategy chain admits is reported
-					// as `api_key`, token-exchange scoped JWTs included. The distinction
-					// between them is not surfaced to telemetry or log streaming.
-					caller: { authType: 'api_key' },
+					user: null,
+					context: {
+						reason: 'invalid_token',
+						auth_type: 'api_key',
+					},
 				};
 			}
 
 			return {
-				user: null,
-				context: {
-					reason: 'invalid_token',
-					auth_type: 'api_key',
+				user: tokenGrant.actor ?? tokenGrant.subject,
+				actor: tokenGrant.actor,
+				// Every non-OAuth bearer token the strategy chain admits is reported
+				// as `api_key`, token-exchange scoped JWTs included. The distinction
+				// between them is not surfaced to telemetry or log streaming.
+				caller: {
+					authType: 'api_key',
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					...(tokenGrant.apiKeyId ? { apiKeyId: tokenGrant.apiKeyId } : {}),
+					// EOF Experiment cleanup
 				},
+				// Only the API-key strategy sets `apiKeyId`; a token-exchange grant has none.
+				authMethod: tokenGrant.apiKeyId === undefined ? 'scoped-jwt' : 'api-key',
 			};
 		} catch (error) {
 			const errorForSure = ensureError(error);

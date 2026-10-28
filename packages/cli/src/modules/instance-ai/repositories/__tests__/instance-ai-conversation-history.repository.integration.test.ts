@@ -321,6 +321,25 @@ describe('InstanceAiConversationHistoryRepository', () => {
 
 	// The ownership check behind every `get-messages` read.
 	describe('findOwnedThread', () => {
+		it('keeps producer messages out of normal chat context, including for the actor', async () => {
+			const threadId = await createThread({
+				title: 'Slack investigation',
+				resourceId: `ia-self-healing:${USER_ID}`,
+			});
+			const scope = {
+				userId: USER_ID,
+				projectId: project.id,
+				excludeThreadId: currentThreadId,
+			};
+
+			expect(await search('Slack')).toEqual([]);
+			expect(await repository.listRecentProjectThreadsForUser({ ...scope, limit: 5 })).toEqual([]);
+			expect(await repository.countProjectThreadsForUser(scope)).toBe(0);
+			for (const userId of [USER_ID, OTHER_USER_ID]) {
+				expect(await repository.findOwnedThread(threadId, userId, project.id)).toBeNull();
+			}
+		});
+
 		it('returns the thread for its owner in its project', async () => {
 			const threadId = await createThread({ title: 'Mine' });
 

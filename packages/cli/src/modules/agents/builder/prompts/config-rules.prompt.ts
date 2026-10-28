@@ -1,5 +1,10 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
+import {
+	AgentJsonConfigBaseSchema,
+	AgentModelSchema,
+	EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS,
+	EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH,
+} from '@n8n/api-types';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 
@@ -9,6 +14,10 @@ const BuilderPromptMemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: z.string().trim().min(1),
 });
+
+const BuilderPromptGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
 
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
@@ -34,6 +43,12 @@ const BuilderPromptMemoryConfigSchema = z.object({
 				reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 				topK: z.number().int().min(1).max(100).optional(),
 				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+				guidance: z
+					.object({
+						include: BuilderPromptGuidanceTopicsSchema.optional(),
+						exclude: BuilderPromptGuidanceTopicsSchema.optional(),
+					})
+					.optional(),
 			}),
 		])
 		.optional(),
@@ -52,10 +67,12 @@ export function getConfigRulesSection(): string {
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- For OpenAI and Anthropic models, always include
-  \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
-  never be disabled, even if the user asks. Omit \`config.promptCaching\`
-  entirely for every other provider. For Anthropic only, you may set
+- For \`openai/\` and \`anthropic/\` models, and for Claude models on OpenRouter,
+  Google Vertex or Microsoft Foundry (\`azure-openai/anthropic/<deployment>\`),
+  always include \`config.promptCaching: { "enabled": true }\` — this is
+  mandatory and must never be disabled, even if the user asks. Omit
+  \`config.promptCaching\` entirely for other models, including other
+  Microsoft Foundry deployments. For Anthropic and routed Claude models, you may set
   \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
   \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
   sub-config.

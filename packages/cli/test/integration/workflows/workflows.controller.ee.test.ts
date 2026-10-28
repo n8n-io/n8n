@@ -913,15 +913,7 @@ describe('GET /workflows/:workflowId', () => {
 		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
 	});
 
-	describe('with N8N_ENV_FEAT_CRED_SHARING enabled', () => {
-		beforeEach(() => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
-		});
-
-		afterEach(() => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-		});
-
+	describe('usable credentials in the workflow payload', () => {
 		test('reports currentUserCanUse from the identity-based check', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -1280,17 +1272,6 @@ describe('PATCH /workflows/:workflowId', () => {
 			],
 			[
 				'team 1',
-				'the member',
-				async function creteWorkflow() {
-					const team = await createTeamProject('Team 1', member);
-					return await createWorkflow({}, team);
-				},
-				async function createCredential() {
-					return await saveCredential(randomCredentialPayload(), { user: member });
-				},
-			],
-			[
-				'team 1',
 				'team 2',
 				async function creteWorkflow() {
 					const team1 = await createTeamProject('Team 1', member);
@@ -1364,10 +1345,38 @@ describe('PATCH /workflows/:workflowId', () => {
 			},
 		);
 
-		describe('sub-workflow loaded from a URL or file', () => {
-			const UNINSPECTABLE_SOURCE_MESSAGE =
-				'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" or "Define Below" source instead.';
+		it('accepts a credential of the member in a team workflow the member belongs to', async () => {
+			const team = await createTeamProject('Team 1', member);
+			const workflow = await createWorkflow({}, team);
+			const credential = await saveCredential(randomCredentialPayload(), { user: member });
 
+			const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [
+					{
+						id: 'uuid-12345',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						credentials: { default: { id: credential.id, name: credential.name } },
+					},
+				],
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			const saved = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+			expect(saved.body.data.usedCredentials).toMatchObject([
+				{ id: credential.id, name: credential.name, currentUserCanUse: true },
+			]);
+		});
+
+		const UNINSPECTABLE_SOURCE_MESSAGE =
+			'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" source, or enter fixed JSON in the "Define Below" source.';
+
+		describe('sub-workflow loaded from a URL or file', () => {
 			const remoteSubworkflowNode = (workflowUrl = 'https://example.com/workflow.json') => ({
 				id: 'uuid-sub-1',
 				name: 'Sub',
@@ -1596,6 +1605,69 @@ describe('PATCH /workflows/:workflowId', () => {
 				expect(response.body.message).toBe(
 					"The version to restore is not in this workflow's history.",
 				);
+			});
+		});
+
+		describe('sub-workflow JSON that is not fixed text', () => {
+			const inlineSubworkflowNode = (workflowJson: string | string[], name = 'Sub') => ({
+				id: 'uuid-sub-inline',
+				name,
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0] as [number, number],
+				parameters: { source: 'parameter', workflowJson },
+			});
+
+			it('rejects a member adding a node whose workflow JSON is an expression', async () => {
+				const workflow = await createWorkflow({}, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [inlineSubworkflowNode('={{ $json.wf }}')],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member creating a workflow whose workflow JSON is an array', async () => {
+				const response = await authMemberAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [inlineSubworkflowNode([JSON.stringify({ nodes: [], connections: {} })])],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('lets a member rename a stored node whose workflow JSON is an expression', async () => {
+				const stored = inlineSubworkflowNode('={{ $json.wf }}');
+				const workflow = await createWorkflow({ nodes: [stored] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [inlineSubworkflowNode('={{ $json.wf }}', 'Renamed')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual([{ ...stored, name: 'Renamed' }]);
+			});
+
+			it('lets the owner create a node whose workflow JSON is an expression', async () => {
+				const response = await authOwnerAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [inlineSubworkflowNode('={{ $json.wf }}')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.workflowJson).toBe('={{ $json.wf }}');
 			});
 		});
 
@@ -2907,7 +2979,7 @@ describe('PUT /:workflowId/transfer', () => {
 		]);
 	});
 
-	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {
+	test('moves and unpublishes the workflow when its republish fails for an unknown reason', async () => {
 		//
 		// ARRANGE
 		//
@@ -2918,13 +2990,24 @@ describe('PUT /:workflowId/transfer', () => {
 		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
-		// ACT & ASSERT
+		// ACT
 		//
-		await testServer
+		const response = await testServer
 			.authAgentFor(member)
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ destinationProjectId: destinationProject.id })
-			.expect(500);
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body.data).toEqual({ error: { name: 'UnexpectedError', message: 'Oh no!' } });
+		const [sharing] = await getWorkflowSharing(workflow);
+		expect(sharing.projectId).toBe(destinationProject.id);
+		const workflowInDb = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: workflow.id,
+		});
+		expect(workflowInDb.activeVersionId).toBeNull();
 	});
 });
 
