@@ -729,7 +729,7 @@ export class N8nMemoryImpl
 			sources,
 			{},
 		);
-		return this.toEpisodicMemoryEntry(persisted);
+		return persisted ? this.toEpisodicMemoryEntry(persisted) : null;
 	}
 
 	private async searchEpisodicMemoryEntries(

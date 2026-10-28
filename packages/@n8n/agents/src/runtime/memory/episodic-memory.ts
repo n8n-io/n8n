@@ -191,7 +191,13 @@ export function createRecallMemoryTool(opts: {
 				createdAt: entry.createdAt,
 			})),
 		}))
+		.toTraceOutput(toRecallTraceOutput)
 		.build();
+}
+
+/** Hosts link recalled entries in traces by id; the model output drops ids. */
+function toRecallTraceOutput(output: RecallMemoryOutput): { entryIds: string[] } {
+	return { entryIds: output.entries.map((entry) => entry.id) };
 }
 
 export function rankEpisodicMemoryEntries(

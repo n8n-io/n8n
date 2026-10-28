@@ -10860,6 +10860,45 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(streamResult?.output).toEqual(modelOutput);
 	});
 
+	it('streams trace output to the host without sending it to the model', async () => {
+		const tool: BuiltTool = {
+			name: 'traced_result',
+			description: 'Return a traced result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ids: ['a'], text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => ({ ids: ['a'] }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-traced', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-traced', toolName: tool.name, input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-traced',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toEqual({ ids: ['a'] });
+	});
+
 	it('bounds an oversized transformed result while preserving raw output', async () => {
 		const rawOutput = {
 			value: `RAW_HEAD${'r '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}RAW_TAIL`,

@@ -448,6 +448,19 @@ export const deleteAgentMemoryEntry = async (
 	);
 };
 
+export const deleteAgentMemoryCapture = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	captureId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-captures/${captureId}`,
+	);
+};
+
 export const warmAgentKnowledgeSandbox = async (
 	context: IRestApiContext,
 	projectId: string,

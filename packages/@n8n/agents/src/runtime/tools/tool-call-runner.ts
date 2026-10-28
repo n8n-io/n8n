@@ -464,8 +464,10 @@ export class ToolCallRunner {
 		// or truncated copy stays protected while the guard's own envelope
 		// remains plain runtime text.
 		let modelResult: unknown;
+		let traceOutput: unknown;
 		try {
 			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
+			traceOutput = builtTool.toTraceOutput?.(toolResult);
 			if (builtTool.outputTrust === 'untrusted') {
 				modelResult = protectUntrustedToolResult(modelResult, builtTool);
 			}
@@ -514,6 +516,7 @@ export class ToolCallRunner {
 			modelOutput: guardedResult.wireOutput,
 			customMessage: guardedCustomMessage,
 			...(builtTool.mcpServerName !== undefined ? { mcpServerName: builtTool.mcpServerName } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 		};
 	}
 
