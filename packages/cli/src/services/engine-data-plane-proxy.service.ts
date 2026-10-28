@@ -5,7 +5,7 @@ import type {
 	FindLatestExecutionRequest,
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
@@ -83,12 +83,11 @@ export interface EngineDataPlaneProvider {
 	/**
 	 * Phase one of a resume request: the execution's snapshot with its steps,
 	 * and the one step that accepts the request, or `null` when none does. The
-	 * data plane verifies the token; this plane forwards it unread.
+	 * id is the one in the resume URL or the approval callback: an execution id
+	 * or a step id. The data plane reads which from the token and verifies it;
+	 * this plane forwards it unread.
 	 */
-	locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>>;
+	locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>>;
 
 	/** Phase two: ends the wait of one step with the output of the node's resume method. */
 	resolveStep(
@@ -157,13 +156,10 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	}
 
 	/** As `getExecution`: no provider, no v2 execution that could wait. */
-	async locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>> {
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
 		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
 
-		return await this.provider.locateResumeTarget(id, request);
+		return await this.provider.locateResume(request);
 	}
 
 	/** As `getExecution`: no provider, no v2 execution that could wait. */

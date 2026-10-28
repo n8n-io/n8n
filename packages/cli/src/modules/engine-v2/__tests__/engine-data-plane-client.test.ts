@@ -353,22 +353,22 @@ describe('EngineDataPlaneClient', () => {
 	});
 
 	describe('resume requests', () => {
-		it("posts `locateResumeTarget` to the execution's resume-target route", async () => {
+		it("posts `locateResume` to the engine's locate route", async () => {
 			const value = {
 				execution: { id: EXECUTION_ID },
 				target: { stepId: 'step-1', nodeId: 'wait' },
 			};
 			respondWith(200, value);
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
 				ok: true,
 				value,
 			});
 			expect(http.request).toHaveBeenCalledWith(
 				expect.objectContaining({
-					url: `/api/workflow-executions/${EXECUTION_ID}/resume-target`,
+					url: '/api/resume-requests/locate',
 					method: 'POST',
-					body: { token: 't' },
+					body: { id: EXECUTION_ID, token: 't' },
 					returnFullResponse: true,
 					ignoreHttpStatusErrors: true,
 					disableFollowRedirect: true,
@@ -399,7 +399,7 @@ describe('EngineDataPlaneClient', () => {
 		])("relays a %s refusal with the engine's reason", async (status, error) => {
 			respondWith(status, { error });
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
 				ok: false,
 				status,
 				error,
@@ -409,7 +409,7 @@ describe('EngineDataPlaneClient', () => {
 		it('relays a 300 without a reason as an engine error', async () => {
 			respondWith(300, {});
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
 				ok: false,
 				status: 300,
 				error: 'engine_error',
@@ -419,7 +419,7 @@ describe('EngineDataPlaneClient', () => {
 		it("throws on a 401 for this plane's own identity, which is a failure and not a refusal", async () => {
 			respondWith(401, { error: 'unauthenticated' });
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).rejects.toThrow(
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).rejects.toThrow(
 				'Engine responded with 401',
 			);
 		});
