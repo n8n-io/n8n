@@ -1,1 +1,0 @@
-export { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL } from '@n8n/agents';
