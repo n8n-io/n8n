@@ -68,7 +68,6 @@ export class StepReadyHandler {
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly subExecutionStarter: SubExecutionStarter,
-		/** The one cancel path, so a sub-execution of an ended parent ends the same way. */
 		private readonly cancelExecution: CancelExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},

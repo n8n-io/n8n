@@ -48,7 +48,6 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
-		/** The one cancel path, so the sub-executions of a failed parent end the same way. */
 		private readonly cancelExecution: CancelExecutionService,
 	) {}
 
