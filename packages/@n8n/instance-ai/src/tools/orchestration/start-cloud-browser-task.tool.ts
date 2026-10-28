@@ -49,7 +49,7 @@ export const cloudBrowserTaskInputSchema = z.object({
 					.trim()
 					.min(1)
 					.describe(
-						'The n8n credential type, for example "httpBasicAuth". Find it with workflow_builder_credentials(action="search-types").',
+						'The n8n credential type, for example "httpBasicAuth". Find it with search_credential_types.',
 					),
 				name: z
 					.string()
