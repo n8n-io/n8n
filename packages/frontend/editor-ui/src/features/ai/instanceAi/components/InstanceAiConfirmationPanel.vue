@@ -262,7 +262,7 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 	}
 	const targetApproval = item.toolCall.confirmation.targetApproval;
 	if (targetApproval) {
-		return i18n.baseText('agents.chat.approval.description', {
+		return i18n.baseText('ai.shared.toolApproval.description', {
 			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
 		});
 	}

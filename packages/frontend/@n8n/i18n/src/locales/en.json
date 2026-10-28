@@ -8904,6 +8904,8 @@
 	"agents.chat.approval.title": "Approval required",
 	"agents.chat.approval.description": "The agent wants to run the {toolName} tool.",
 	"agents.chat.approval.agentDescription": "{agentName} wants to use {toolName}",
+	"ai.shared.toolApproval.title": "Approval required",
+	"ai.shared.toolApproval.description": "The agent wants to run the {toolName} tool.",
 	"agents.chat.delegate.label": "Sub-agent · {name}",
 	"agents.chat.delegate.labelFallback": "Sub-agent",
 	"agents.chat.delegate.childSuspendUnsupported": "Sub-agent requested user input, which is not supported for delegated runs yet.",
