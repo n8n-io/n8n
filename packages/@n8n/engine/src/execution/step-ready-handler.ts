@@ -522,14 +522,6 @@ function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
  * step as failed, which a wait nothing can end would never do on its own.
  */
 function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration): void {
-	// The engine writes this one itself, once it has a sub-execution to start. From an
-	// executor it would wait for a sub-execution that nothing starts.
-	if ('subExecutionId' in wait) {
-		throw new UnexpectedError(
-			`step ${stepId} declares a wait on a sub-execution, which only a sub-execution declaration can start`,
-		);
-	}
-
 	if (!hasResumeCondition(wait)) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume binding`,

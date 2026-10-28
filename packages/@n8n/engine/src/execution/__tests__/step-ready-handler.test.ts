@@ -946,25 +946,6 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
-	it('fails the step when the executor declares a sub-execution wait instead of a sub-execution declaration', async () => {
-		// Only the engine suspends a step on a sub-execution, before it starts one. A
-		// declaration from outside would wait for a sub-execution that nothing starts.
-		const stepStore = makeStepStore();
-		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
-			v1StepExecutor: makeExecutor({
-				wait: { subExecutionId: 'exec-sub' },
-			}),
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.suspendStep).not.toHaveBeenCalled();
-		expect(stepStore.failStep).toHaveBeenCalledWith(
-			'step-a',
-			expect.objectContaining({ message: expect.stringContaining('sub-execution') as string }),
-		);
-	});
-
 	it.each([{}, { resumeBinding: null }, { resumeBinding: 'bogus' }])(
 		'fails the step when the declaration can never resume %#',
 		async (declaration) => {
