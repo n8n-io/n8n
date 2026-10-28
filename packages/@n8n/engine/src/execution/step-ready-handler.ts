@@ -1,5 +1,10 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
-import type { ExternalDependencies, IStepExecutor, StepExecutionResult } from '../dependencies';
+import type {
+	ExternalDependencies,
+	IStepExecutor,
+	SubExecutionDeclaration,
+	StepExecutionResult,
+} from '../dependencies';
 import {
 	deriveLoops,
 	isBatchStepConfig,
@@ -22,10 +27,11 @@ import {
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
-	type WaitDeclaration,
+	type ExecutorWaitDeclaration,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
+import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -52,6 +58,7 @@ export class StepReadyHandler {
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -102,8 +109,9 @@ export class StepReadyHandler {
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
-			| { kind: 'outputs'; outputs: StepSlots }
-			| { kind: 'wait'; wait: WaitDeclaration }
+			| { kind: 'outputs'; outputs: StepSlots; subExecution?: SubExecutionDeclaration }
+			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
+			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
@@ -114,11 +122,25 @@ export class StepReadyHandler {
 			} else {
 				result = { outputs: await this.runBatchNode(step, execution, node) };
 			}
-			run = result.wait
-				? { kind: 'wait', wait: result.wait }
-				: { kind: 'outputs', outputs: result.outputs };
+			if (result.wait) {
+				run = { kind: 'wait', wait: result.wait };
+			} else if (result.outputs) {
+				run = { kind: 'outputs', outputs: result.outputs, subExecution: result.subExecution };
+			} else {
+				run = { kind: 'subExecution', subExecution: result.subExecution };
+			}
 		} catch (error) {
 			run = { kind: 'error', error };
+		}
+
+		// Before the outcome is on the row, while the node's outcome is still ours
+		// to record: one that cannot start fails the step, as an awaited one does.
+		// The execution can end while this step runs (a sibling fails, or a
+		// cancel), and then it owes no sub-execution: the outputs stand, as they
+		// would for a step with none, and nothing starts under an ended parent.
+		if (run.kind === 'outputs' && run.subExecution) {
+			const started = await this.startDetachedSubExecution(step, execution, run.subExecution);
+			if (started.kind === 'error') run = { kind: 'error', error: started.error };
 		}
 
 		let recorded: boolean;
@@ -126,6 +148,13 @@ export class StepReadyHandler {
 			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
+		} else if (run.kind === 'subExecution') {
+			// Suspend before start, so the sub-execution cannot end before this step can
+			// be resumed. A crash between the two leaves a waiting step with no
+			// sub-execution row, which reconciliation (CAT-2938) fails.
+			recorded = await this.stepStore.suspendStep(event.stepId, {
+				subExecutionId: run.subExecution.executionId,
+			});
 		} else {
 			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
 		}
@@ -147,6 +176,27 @@ export class StepReadyHandler {
 			return;
 		}
 
+		if (run.kind === 'subExecution') {
+			await this.executionStore.refreshLiveStatus(execution.id);
+			const started = await this.startSubExecution(step, execution, run.subExecution);
+			// A sub-execution that never started resumes nothing, so the step fails here,
+			// where the reason is known. The failure settles it like any other.
+			if (started.kind === 'error') {
+				const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+				if (!failed) return;
+				this.lifecycleEventPublisher.publish({
+					type: 'step:failed',
+					...stepEventFields(step, node),
+				});
+				await this.orchestrationQueue.publish({
+					type: 'step:settled',
+					executionId: event.executionId,
+					stepId: event.stepId,
+				});
+			}
+			return;
+		}
+
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
@@ -160,6 +210,51 @@ export class StepReadyHandler {
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
+	}
+
+	/**
+	 * Starts a detached sub-execution. One that cannot start fails the step: the
+	 * node reported an id that will not run. A refused link is the one exception:
+	 * the step is running and its own, so the link can only be refused because
+	 * the execution has ended, and an ended execution is owed no sub-execution.
+	 */
+	private async startDetachedSubExecution(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		subExecution: SubExecutionDeclaration,
+	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (started.kind === 'error' && started.error instanceof InvalidParentLinkError) {
+			return { kind: 'parent-ended' };
+		}
+		return started;
+	}
+
+	/**
+	 * Starts the sub-execution a step asked for, linked to the step that asked. The
+	 * sub-execution inherits the mode and the caller context, and never the response
+	 * expectation: a sub-execution does not answer the parent's caller.
+	 */
+	private async startSubExecution(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		subExecution: SubExecutionDeclaration,
+	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
+		try {
+			await this.startExecution.start({
+				executionId: subExecution.executionId,
+				workflowId: subExecution.workflowId,
+				graph: subExecution.graph,
+				workflow: subExecution.workflow,
+				triggerOutputs: subExecution.triggerOutputs,
+				mode: execution.mode,
+				callerContext: execution.callerContext,
+				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
+			});
+			return { kind: 'started' };
+		} catch (error) {
+			return { kind: 'error', error };
+		}
 	}
 
 	private async runStep(
@@ -410,7 +505,15 @@ function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
  * Rejects a declaration that would strand the execution. Throwing records the
  * step as failed, which a wait nothing can end would never do on its own.
  */
-function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
+function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration): void {
+	// The engine writes this one itself, once it has a sub-execution to start. From an
+	// executor it would wait for a sub-execution that nothing starts.
+	if ('subExecutionId' in wait) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait on a sub-execution, which only a sub-execution declaration can start`,
+		);
+	}
+
 	if (!hasResumeCondition(wait)) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume binding`,

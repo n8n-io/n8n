@@ -1,5 +1,12 @@
-import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
-import type { GraphNode } from '../graph';
+import type {
+	CallerContext,
+	ExecutionMode,
+	StepSlots,
+	TriggerOutputs,
+	ExecutorWaitDeclaration,
+	WorkflowDocument,
+} from '../execution';
+import type { GraphNode, WorkflowGraph } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
@@ -56,23 +63,52 @@ export interface StepExecutionRequest {
 }
 
 /**
+ * A sub-execution the step asks for. The executor minted the id and had the
+ * workflow resolved; the engine starts it. One run of a step asks for at most
+ * one.
+ */
+export interface SubExecutionDeclaration {
+	executionId: string;
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs?: TriggerOutputs | null;
+	/**
+	 * Whether the step waits for it. An awaited one suspends the step until it
+	 * ends, and the step has no outputs yet. A detached one starts while the
+	 * step completes with its outputs, and nothing waits for it.
+	 */
+	awaited: boolean;
+}
+
+/**
  * What running a step produced: its output slots, or a declaration that it is
  * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration.
+ * a deadline would emit ride inside the declaration. An awaited sub-execution
+ * is a wait too: the step suspends until it ends. A detached one rides with
+ * the outputs instead: the step completes, and it runs on its own.
  *
- * The `?: never` members give both branches the same keys, so `result.wait`
+ * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
- * `'wait' in result`, and a value carrying both fields would type-check.
+ * `'wait' in result`, and a value carrying two fields would type-check.
  */
 export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
+			/** A sub-execution the step started without waiting for it. It ends with the parent. */
+			subExecution?: SubExecutionDeclaration & { awaited: false };
 			wait?: never;
 	  }
 	| {
-			wait: WaitDeclaration;
+			wait: ExecutorWaitDeclaration;
 			outputs?: never;
+			subExecution?: never;
+	  }
+	| {
+			subExecution: SubExecutionDeclaration & { awaited: true };
+			outputs?: never;
+			wait?: never;
 	  };
 
 /**
