@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { N8nLocale } from '../../types';
 
 export default {
@@ -39,6 +38,9 @@ export default {
 	'nds.inputNumber.decrease': 'Decrease',
 	'resizeWrapper.resize': 'Resize',
 	'resizeWrapper.drag': 'Drag',
+	'versionHistory.label': 'Versions',
+	'versionHistory.loading': 'Loading versions',
+	'versionHistory.compare': 'Compare',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
 	'formInput.validator.fieldRequired': 'This field is required',
