@@ -121,7 +121,21 @@ const WAIT_RESUME_SCHEMA = z.object({
 });
 
 /** Private state carried across the suspension; never shown to the model. */
-const WAIT_CONTINUATION_SCHEMA = z.object({ executionId: z.string() });
+const WAIT_CONTINUATION_SCHEMA = z.object({
+	executionId: z.string(),
+	/** Input files by binaryDataId, so an unchanged input file keeps its file ID on resume. */
+	inputFiles: z
+		.record(
+			z.string(),
+			z.object({
+				fileId: z.string(),
+				fileName: z.string(),
+				mimeType: z.string(),
+				sizeBytes: z.number(),
+			}),
+		)
+		.optional(),
+});
 
 type WaitSuspendPayload = z.infer<typeof WAIT_SUSPEND_SCHEMA>;
 type WaitToolContext = InterruptibleToolContext<
@@ -1192,6 +1206,7 @@ function assembleWorkflowTool(
 
 			if (pending.success) {
 				result = await extractResult(pending.data.executionId, allOutputs);
+				inputFiles = new Map(Object.entries(pending.data.inputFiles ?? {}));
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
@@ -1270,7 +1285,16 @@ function assembleWorkflowTool(
 					current ??= await loadCurrentWorkflow(context, reference);
 					ctx.abortSignal?.throwIfAborted();
 					return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
-						continuation: { executionId: result.executionId },
+						continuation: {
+							executionId: result.executionId,
+							// Spread copies are plain objects, which the JSON continuation accepts.
+							...(inputFiles &&
+								inputFiles.size > 0 && {
+									inputFiles: Object.fromEntries(
+										Array.from(inputFiles, ([id, file]) => [id, { ...file }]),
+									),
+								}),
+						},
 					});
 				},
 			);

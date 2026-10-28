@@ -1465,4 +1465,39 @@ describe('workflow tool → file input', () => {
 		expect(triggerItems[0].json).toEqual({ files: 'a.txt' });
 		expect(triggerItems[0].binary).toBeUndefined();
 	});
+
+	it('restores the input files on resume, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { Edit: [{ data: { main: [[{ json: {}, binary }]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: {}, binary: { data: 'aid-1' } }],
+			files: [],
+		});
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn();
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		const output = await tool.handler?.({}, {
+			persistence: { threadId: 't-1' },
+			continuation: { executionId: 'exec-1', inputFiles: { 'fs:x': inputFile } },
+		} as never);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(bridge.toBinary).not.toHaveBeenCalled();
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] } });
+	});
 });
