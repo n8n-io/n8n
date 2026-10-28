@@ -241,8 +241,10 @@ async function complete(
 	deps: FinishSetupToolDeps,
 ): Promise<FinishSetupToolResult> {
 	const result = await applyCollectedSetup(input, collected, deps);
-	// Only a successful config write tells which credentials are left; an error has its own step.
-	if (!deps.applySetupToConfig || result.configApplyErrors) return result;
+	// Only a write that saved something tells which credentials are left. A write that
+	// saved nothing has its own configApplyErrors step.
+	const savedNothing = result.configApplyErrors !== undefined && !result.appliedToConfig;
+	if (!deps.applySetupToConfig || savedNothing) return result;
 	const unapplied = unappliedCredentialSlots(input, collected, result.appliedToConfig);
 	if (unapplied.length > 0) result.unappliedCredentials = unapplied;
 	return result;

@@ -499,6 +499,10 @@ describe('agent_builder_finish_setup tool', () => {
 				makeCtx() as never,
 			);
 
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [{ credentialType: 'gmailOAuth2', id: 'g1', name: 'Gmail account' }],
+				values: [],
+			});
 			expect(result).toMatchObject({ completed: true });
 			expect(result).not.toHaveProperty('unappliedCredentials');
 			const view = tool.toModelOutput!(result) as { nextStep?: string };
@@ -525,6 +529,37 @@ describe('agent_builder_finish_setup tool', () => {
 			);
 
 			expect(result).toMatchObject({ unappliedCredentials: ['linear-mcp'] });
+		});
+
+		it('keeps the unapplied credentials when a config write saves only part', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: ['gmailOAuth2'],
+				paths: [],
+				errors: [{ path: '/tools/9', message: 'No such path' }],
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+					{ id: 'l1', name: 'Linear MCP', type: 'linearApi' },
+				]),
+				applySetupToConfig,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{ credentialType: 'gmailOAuth2', purpose: 'Read emails' },
+						{ credentialType: 'linearApi', credentialSlot: 'linear-mcp', purpose: 'Linear MCP' },
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(result).toMatchObject({
+				configApplyErrors: [{ path: '/tools/9', message: 'No such path' }],
+				unappliedCredentials: ['linear-mcp'],
+			});
 		});
 
 		it('writes both selected options and custom text for a multi-select answer', async () => {
