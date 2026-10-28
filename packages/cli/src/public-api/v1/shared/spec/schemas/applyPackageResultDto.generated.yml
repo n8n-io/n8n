@@ -1323,6 +1323,202 @@ oneOf:
                     - name
                     - consumers
                     - changes
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - workflow
+                    code:
+                      type: string
+                      enum:
+                        - workflow-id-conflict
+                        - lineage-conflict
+                        - policy-violation
+                        - missing-node-type
+                        - workflow-forbidden
+                    reason:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - data-table
+                    code:
+                      type: string
+                      enum:
+                        - data-table-conflict
+                    id:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    reason:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - reason
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - tag
+                    code:
+                      type: string
+                      enum:
+                        - tag-conflict
+                    id:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    reason:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - reason
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - project
+                    code:
+                      type: string
+                      enum:
+                        - project-conflict
+                        - check-not-run
+                        - import-blocked
+                        - project-not-on-branch
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    reason:
+                      type: string
+                  required:
+                    - kind
+                    - code
+                    - project
               type: object
           warnings:
             type: array

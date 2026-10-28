@@ -63,7 +63,14 @@ export class DataTableImporter {
 	): Promise<DataTableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) {
-			return { creations: [], updates: [], columnAlignments: [], failures: [], matchedCount: 0 };
+			return {
+				creations: [],
+				updates: [],
+				columnAlignments: [],
+				matched: [],
+				failures: [],
+				matchedCount: 0,
+			};
 		}
 
 		if (!this.moduleRegistry.isActive('data-table')) {
@@ -71,6 +78,7 @@ export class DataTableImporter {
 				creations: [],
 				updates: [],
 				columnAlignments: [],
+				matched: [],
 				failures: [{ kind: 'module-disabled' }],
 				matchedCount: 0,
 			};
@@ -88,8 +96,8 @@ export class DataTableImporter {
 		const creations: PlannedCreation[] = [];
 		const updates: PlannedUpdate[] = [];
 		const columnAlignments: PlannedAlignment[] = [];
+		const matched: string[] = [];
 		const failures: DataTableResolutionFailure[] = [];
-		let matchedCount = 0;
 
 		for (const requirement of requirements) {
 			const packageTable = packageTablesById.get(requirement.id);
@@ -114,9 +122,8 @@ export class DataTableImporter {
 				updates.push({ table: packageTable, operations: effect.operations, requirement });
 			} else if (effect.action === 'align-columns') {
 				columnAlignments.push({ table: packageTable, requirement });
-				matchedCount++;
 			} else if (effect.action === 'fail') failures.push(effect.failure);
-			else if (matchedTargetTable) matchedCount++;
+			else if (matchedTargetTable) matched.push(requirement.id);
 		}
 
 		failures.push(
@@ -130,8 +137,9 @@ export class DataTableImporter {
 			creations: creations.map(({ table }) => table),
 			updates: updates.map(({ table, operations }) => ({ table, operations })),
 			columnAlignments: columnAlignments.map(({ table }) => table),
+			matched,
 			failures,
-			matchedCount,
+			matchedCount: matched.length + columnAlignments.length,
 		};
 	}
 

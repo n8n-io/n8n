@@ -11,7 +11,7 @@ import {
 import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-export type AgentPreviewHandoffResult = {
+export type AgentTestHandoffResult = {
 	block: string;
 	/** Always non-empty — session title when set, otherwise `Session #N`. */
 	titleFallback: string;
@@ -23,7 +23,7 @@ const ESCAPED_AGENT_PREVIEW_CONTEXT_OPEN_TAG = '&lt;agent-preview-context&gt;';
 const ESCAPED_AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '&lt;/agent-preview-context&gt;';
 
 /** Neutralize delimiter tags in title-derived text placed inside the context block. */
-function escapeAgentPreviewContextDelimiters(value: string): string {
+function escapeAgentTestContextDelimiters(value: string): string {
 	return value
 		.replaceAll(AGENT_PREVIEW_CONTEXT_OPEN_TAG, ESCAPED_AGENT_PREVIEW_CONTEXT_OPEN_TAG)
 		.replaceAll(AGENT_PREVIEW_CONTEXT_CLOSE_TAG, ESCAPED_AGENT_PREVIEW_CONTEXT_CLOSE_TAG);
@@ -38,7 +38,7 @@ function escapeAgentPreviewContextDelimiters(value: string): string {
  * On success, callers must bind `target` before streaming so the builder tools
  * edit the shared agent. On throw, do not bind.
  */
-export async function resolveAgentPreviewHandoff(
+export async function resolveAgentTestHandoff(
 	context: InstanceAiAgentPreviewHandoffContext,
 	options: {
 		projectId: string;
@@ -50,7 +50,7 @@ export async function resolveAgentPreviewHandoff(
 			userId: string,
 		) => Promise<AgentSessionDetail | null>;
 	},
-): Promise<AgentPreviewHandoffResult> {
+): Promise<AgentTestHandoffResult> {
 	const detail = await options.getThreadDetail(
 		context.threadId,
 		options.projectId,
@@ -74,7 +74,7 @@ export async function resolveAgentPreviewHandoff(
 		trimmedTitle.length > 0
 			? `"${trimmedTitle}" (session #${detail.thread.sessionNumber})`
 			: `session #${detail.thread.sessionNumber}`;
-	const safeSessionLabel = escapeAgentPreviewContextDelimiters(sessionLabel);
+	const safeSessionLabel = escapeAgentTestContextDelimiters(sessionLabel);
 
 	const refJson = JSON.stringify({
 		source: context.source,
@@ -82,13 +82,13 @@ export async function resolveAgentPreviewHandoff(
 		threadId: context.threadId,
 		...(context.executionId ? { executionId: context.executionId } : {}),
 		...(context.agentName
-			? { agentName: escapeAgentPreviewContextDelimiters(context.agentName) }
+			? { agentName: escapeAgentTestContextDelimiters(context.agentName) }
 			: {}),
 		...(context.agentIcon
-			? { agentIcon: escapeAgentPreviewContextDelimiters(context.agentIcon) }
+			? { agentIcon: escapeAgentTestContextDelimiters(context.agentIcon) }
 			: {}),
 		...(context.sessionTitle
-			? { sessionTitle: escapeAgentPreviewContextDelimiters(context.sessionTitle) }
+			? { sessionTitle: escapeAgentTestContextDelimiters(context.sessionTitle) }
 			: {}),
 	});
 
@@ -114,19 +114,13 @@ export async function resolveAgentPreviewHandoff(
 	};
 }
 
-export async function canAccessAgentPreviewHandoff(
-	user: User,
-	projectId: string,
-): Promise<boolean> {
+export async function canAccessAgentTestHandoff(user: User, projectId: string): Promise<boolean> {
 	const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
 	return await userHasScopes(user, requiredScopes, false, { projectId });
 }
 
-export async function assertAgentPreviewHandoffScopes(
-	user: User,
-	projectId: string,
-): Promise<void> {
-	if (!(await canAccessAgentPreviewHandoff(user, projectId))) {
+export async function assertAgentTestHandoffScopes(user: User, projectId: string): Promise<void> {
+	if (!(await canAccessAgentTestHandoff(user, projectId))) {
 		throw new ForbiddenError(
 			'You do not have permission to load or edit agent previews in this project.',
 		);

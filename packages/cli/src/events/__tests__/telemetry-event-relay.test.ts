@@ -3787,6 +3787,29 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('tracks a `user-deleted` event without a user with the source', () => {
+			const event: RelayEventMap['user-deleted'] = {
+				user: null,
+				source: 'scim',
+				publicApi: false,
+				targetUserOldStatus: 'active',
+				migrationStrategy: 'delete_data',
+				targetUserId: 'user456',
+			};
+
+			eventService.emit('user-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted user', {
+				user_id: undefined,
+				source: 'scim',
+				public_api: false,
+				target_user_old_status: 'active',
+				migration_strategy: 'delete_data',
+				target_user_id: 'user456',
+				migration_user_id: undefined,
+			});
+		});
+
 		it('should track on `user-invited` event', () => {
 			const event: RelayEventMap['user-invited'] = {
 				user: {

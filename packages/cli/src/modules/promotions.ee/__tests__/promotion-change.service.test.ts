@@ -132,10 +132,6 @@ describe('PromotionChangeService preview permission', () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
-		mock(),
-		mock(),
-		mock(),
 	);
 	// The read scope passes the route decorator, but not the check for each direction.
 	const reader = { role: { slug: 'custom', scopes: [{ slug: 'promotions:read' }] } } as User;
