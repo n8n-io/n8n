@@ -64,7 +64,7 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
-import { buildAgentPreviewHref } from '../utils/agentPreviewUrl';
+import { buildAgentTestHref } from '../utils/agentTestUrl';
 import {
 	getAgent,
 	createAgent,
@@ -110,7 +110,7 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_MIN_PANEL_WIDTH,
@@ -163,9 +163,9 @@ import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
-import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentTestHeader from '../components/AgentTestHeader.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -247,7 +247,7 @@ const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 const route = useRoute();
@@ -437,7 +437,7 @@ if (!isArtifactMode.value) {
 		} else if (openParentAgentChatPreview) {
 			return openParentAgentChatPreview(targetAgentId, targetProjectId);
 		} else {
-			void router.push(buildAgentPreviewHref(targetProjectId, targetAgentId));
+			void router.push(buildAgentTestHref(targetProjectId, targetAgentId));
 		}
 		return true;
 	});
@@ -865,7 +865,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
 
-	const params: AgentPreviewHandoffParams = {
+	const params: AgentTestHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
@@ -1088,9 +1088,8 @@ function onSetupTaskPublishAgent() {
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-const previewChatPage =
-	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
-const previewDock = useTemplateRef<InstanceType<typeof AgentPreviewDock>>('previewDock');
+const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
+const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -3464,7 +3463,7 @@ useKeybindings({
 		]"
 		data-testid="agent-builder-layout"
 	>
-		<AgentPreviewHeader
+		<AgentTestHeader
 			v-if="isStandalonePreview"
 			:agent-id="agentId"
 			:agent-name="agent?.name ?? agentName"
@@ -3675,7 +3674,7 @@ useKeybindings({
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
-				<AgentPreviewChatPage
+				<AgentTestChatPage
 					v-if="isStandalonePreview"
 					ref="previewChatPage"
 					layout="page"
@@ -3808,7 +3807,7 @@ useKeybindings({
 						@resize="onPreviewDockResize"
 						@resizeend="isPreviewDockResizing = false"
 					>
-						<AgentPreviewDock
+						<AgentTestDock
 							ref="previewDock"
 							:inline="inlineTestChat"
 							:overlay="!!props.artifactPreviewChatTarget"
@@ -3866,7 +3865,7 @@ useKeybindings({
 									@update:model-value="setChatMode"
 								/>
 							</template>
-						</AgentPreviewDock>
+						</AgentTestDock>
 					</N8nResizeWrapper>
 				</Teleport>
 			</template>

@@ -22,8 +22,8 @@ import type {
 	AgentResource,
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
-import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
-import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
+import AgentTestChatPage from './AgentTestChatPage.vue';
+import AgentTestMoreMenu from './AgentTestMoreMenu.vue';
 import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
 
 interface SessionOption {
@@ -113,8 +113,7 @@ const {
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
-const previewChatPage =
-	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 const layout = computed<PreviewLayout>(() =>
 	!props.inline && !props.overlay && storedLayout.value === PreviewLayout.Fullpage
@@ -291,7 +290,7 @@ defineExpose({ clearBudgetStops });
 						/>
 					</KeyboardShortcutTooltip>
 
-					<AgentPreviewMoreMenu
+					<AgentTestMoreMenu
 						:project-id="props.projectId"
 						:agent-id="props.agentId"
 						:effective-session-id="props.effectiveSessionId"
@@ -327,7 +326,7 @@ defineExpose({ clearBudgetStops });
 				</div>
 			</header>
 
-			<AgentPreviewChatPage
+			<AgentTestChatPage
 				ref="previewChatPage"
 				:visible="props.isOpen"
 				:placeholder="props.placeholder"
@@ -360,7 +359,7 @@ defineExpose({ clearBudgetStops });
 				<template v-if="$slots['composer-footer']" #composer-footer>
 					<slot name="composer-footer" />
 				</template>
-			</AgentPreviewChatPage>
+			</AgentTestChatPage>
 		</div>
 	</aside>
 </template>

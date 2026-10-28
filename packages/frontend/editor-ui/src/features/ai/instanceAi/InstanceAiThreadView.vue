@@ -35,7 +35,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
-import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from './composables/useInstanceAiAgentTestHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
@@ -305,7 +305,7 @@ function consumeAgentReturnNodeId() {
 
 function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	preview.openAgentPreview(agentId, projectId);
-	isAgentPreviewDockOpen.value = true;
+	isAgentTestDockOpen.value = true;
 	return true;
 }
 
@@ -469,7 +469,7 @@ const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const isResizingPreview = ref(false);
 const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
-const isAgentPreviewDockOpen = ref(false);
+const isAgentTestDockOpen = ref(false);
 const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
 const MIN_SPLIT_PANEL_WIDTH = 400;
 const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
@@ -492,7 +492,7 @@ watch(
 	preview.activeTabId,
 	(activeTabId, previousActiveTabId) => {
 		if (activeTabId !== previousActiveTabId) {
-			isAgentPreviewDockOpen.value = false;
+			isAgentTestDockOpen.value = false;
 		}
 	},
 	{ flush: 'sync' },
@@ -530,12 +530,12 @@ const agentPreviewPanelStyle = computed(() =>
 
 function togglePreviewExpanded() {
 	isPreviewExpanded.value = !isPreviewExpanded.value;
-	if (isPreviewExpanded.value) isAgentPreviewDockOpen.value = false;
+	if (isPreviewExpanded.value) isAgentTestDockOpen.value = false;
 }
 
-function handleAgentPreviewDockOpenChange(open: boolean) {
-	const wasOpen = isAgentPreviewDockOpen.value;
-	isAgentPreviewDockOpen.value = open;
+function handleAgentTestDockOpenChange(open: boolean) {
+	const wasOpen = isAgentTestDockOpen.value;
+	isAgentTestDockOpen.value = open;
 	if (open) {
 		isPreviewExpanded.value = false;
 	} else if (wasOpen) {
@@ -570,7 +570,7 @@ watch(
 		}
 
 		if (!visible) {
-			isAgentPreviewDockOpen.value = false;
+			isAgentTestDockOpen.value = false;
 		} else {
 			isArtifactsPanelRevealed.value = false;
 		}
@@ -626,7 +626,7 @@ watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
-			isAgentPreviewDockOpen.value = false;
+			isAgentTestDockOpen.value = false;
 			suppressPanelTransitionsUntilStableRender();
 		}
 	},
@@ -694,7 +694,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
 }
 
-function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
+function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams) {
 	if (
 		params.agentId !== preview.activeAgentId.value ||
 		params.projectId !== preview.activeAgentProjectId.value
@@ -712,7 +712,7 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 
 	// The request now belongs to the assistant composer beside it, so leaving the
 	// preview chat open reads as two places to ask the same thing.
-	isAgentPreviewDockOpen.value = false;
+	isAgentTestDockOpen.value = false;
 
 	if (!conversationRef.value) return;
 	conversationRef.value.applyHandoff(
@@ -809,7 +809,7 @@ function handleNewThreadClick() {
 		:class="[
 			$style.threadArea,
 			{
-				agentPreviewDockOpen: isAgentPreviewDockOpen,
+				agentPreviewDockOpen: isAgentTestDockOpen,
 			},
 		]"
 		data-test-id="instance-ai-thread-area"
@@ -828,8 +828,8 @@ function handleNewThreadClick() {
 		>
 			<div
 				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
-				:inert="isAgentPreviewDockOpen || undefined"
-				:aria-hidden="isAgentPreviewDockOpen || undefined"
+				:inert="isAgentTestDockOpen || undefined"
+				:aria-hidden="isAgentTestDockOpen || undefined"
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
@@ -925,8 +925,8 @@ function handleNewThreadClick() {
 					{ [$style.contentAreaWithoutLayoutTransitions]: shouldSuppressContentLayoutTransitions },
 				]"
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
-				:inert="isAgentPreviewDockOpen || undefined"
-				:aria-hidden="isAgentPreviewDockOpen || undefined"
+				:inert="isAgentTestDockOpen || undefined"
+				:aria-hidden="isAgentTestDockOpen || undefined"
 				data-test-id="instance-ai-content-area"
 			>
 				<InstanceAiConversation
@@ -1089,10 +1089,10 @@ function handleNewThreadClick() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
-								:preview-open="isAgentPreviewDockOpen"
+								:preview-open="isAgentTestDockOpen"
 								:preview-chat-target="agentPreviewChatTarget"
 								:pending="preview.activeAgentPending.value"
-								@preview-open-change="handleAgentPreviewDockOpenChange"
+								@preview-open-change="handleAgentTestDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
 						</div>

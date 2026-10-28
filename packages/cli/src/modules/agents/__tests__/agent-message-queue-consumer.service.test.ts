@@ -13,7 +13,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import type { AgentMessageQueueService, ClaimedAgentMessage } from '../agent-message-queue.service';
-import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
+import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -32,7 +32,7 @@ describe('AgentMessageQueueConsumer', () => {
 	const queue = mock<AgentMessageQueueService>();
 	const repository = mock<AgentMessageQueueRepository>();
 	const executions = mock<AgentExecutionService>();
-	const streams = mock<AgentQueuedPreviewStreamService>();
+	const streams = mock<AgentQueuedTestStreamService>();
 	const testRuns = mock<AgentTestRunService>();
 	const users = mock<UserRepository>();
 	const chatExecutions = mock<AgentChatExecutionService>();

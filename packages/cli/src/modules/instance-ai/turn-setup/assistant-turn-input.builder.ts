@@ -45,10 +45,7 @@ import { nanoid } from 'nanoid';
 
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import type { AssistantTurnRuntime } from './assistant-turn-runtime';
-import {
-	assertAgentPreviewHandoffScopes,
-	resolveAgentPreviewHandoff,
-} from '../agent-preview-handoff';
+import { assertAgentTestHandoffScopes, resolveAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService } from '../agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
@@ -302,12 +299,12 @@ export class AssistantTurnInputBuilder {
 					`Assistant thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
 				);
 			}
-			await assertAgentPreviewHandoffScopes(user, projectId);
+			await assertAgentTestHandoffScopes(user, projectId);
 			const agents = getAgentContextService();
 			if (!agents) {
 				throw new UserError('Agent preview handoff is not available');
 			}
-			const resolved = await resolveAgentPreviewHandoff(handoffContext, {
+			const resolved = await resolveAgentTestHandoff(handoffContext, {
 				projectId,
 				userId: user.id,
 				getThreadDetail: async (threadId, projectId, agentId) =>

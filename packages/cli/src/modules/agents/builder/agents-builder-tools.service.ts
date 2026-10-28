@@ -74,7 +74,7 @@ import {
 } from '../agent-test-run.service';
 import { AgentsService } from '../agents.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { buildAgentTestPath } from './agent-builder-test-path';
 import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
@@ -865,7 +865,7 @@ export class AgentsBuilderToolsService {
 						};
 					}
 
-					const previewPath = buildAgentPreviewPath(projectId, agentId);
+					const previewPath = buildAgentTestPath(projectId, agentId);
 					try {
 						const { result, sessionNote } = await this.runDraftTest(
 							ctx,

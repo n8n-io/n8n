@@ -14,7 +14,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from '../constants';
-import type { AgentPreviewHandoffParams } from '../composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 
 const props = defineProps<{
@@ -29,7 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 // === Editing lock ===

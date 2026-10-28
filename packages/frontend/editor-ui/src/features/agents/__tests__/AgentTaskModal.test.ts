@@ -136,7 +136,7 @@ const stubs = {
 		template:
 			'<button v-bind="$attrs" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
-	AgentPreviewButton: {
+	AgentTestButton: {
 		props: ['isRunnable', 'testId', 'validationIssues', 'variant', 'disabledReason'],
 		emits: ['open-preview'],
 		template:
