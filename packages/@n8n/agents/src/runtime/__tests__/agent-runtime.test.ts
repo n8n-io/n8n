@@ -1782,6 +1782,32 @@ describe('AgentRuntime — guardrails', () => {
 		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 	}
 
+	it('reports skill context only when model-call guards allow delivery', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'test-skill',
+				name: 'test-skill',
+				description: 'Test',
+				instructions: 'Test instructions',
+			},
+		]);
+		const onContext = vi.fn();
+		source.onContext = onContext;
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			skillSource: source,
+		});
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		await runtime.generate('hi', { guardrails: guardrailsOption(hook) });
+		expect(onContext).not.toHaveBeenCalled();
+		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+		await runtime.generate('hi');
+		expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
+		await runtime.dispose();
+	});
+
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
 		const { runtime } = createRuntime();

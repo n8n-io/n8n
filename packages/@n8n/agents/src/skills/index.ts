@@ -25,6 +25,7 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillContextUsage,
 	RuntimeSkillState,
 	RuntimeSkillStateScope,
 	RuntimeSkillStateStore,
@@ -55,6 +56,8 @@ export {
 } from './prompt';
 export {
 	createSkillLoadTool,
+	findRuntimeSkillEntry,
+	isMainSkillFilePath,
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from './tools';

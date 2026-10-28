@@ -558,3 +558,76 @@ describe('active skills', () => {
 		]);
 	});
 });
+
+describe('active skill context observations', () => {
+	it('reports fresh carry-forward and refresh without a new load call', async () => {
+		const memory = new InMemoryMemory();
+		const current = createRuntimeSkillSource([
+			{ id: 'hub-test', name: 'test', description: 'test', instructions: 'version one' },
+		]);
+		current.shouldAppendSkillUpdates = () => true;
+		const onContext = vi.fn();
+		current.onContext = onContext;
+		const first = new ActiveSkills(current, 'assistant', memory.skillState);
+		await first.restore(new AgentMessageList(), scope);
+		await first.load('hub-test');
+		const next = new ActiveSkills(current, 'assistant', memory.skillState);
+		await next.restore(new AgentMessageList(), scope);
+		next.instructions();
+		next.takeUpdates();
+		next.reportContext();
+		expect(onContext).toHaveBeenLastCalledWith(
+			expect.arrayContaining([
+				expect.objectContaining({ skillId: 'hub-test', kind: 'carried' }),
+				expect.objectContaining({ skillId: 'hub-test', kind: 'restored' }),
+			]),
+		);
+		const changed = createRuntimeSkillSource([
+			{ id: 'hub-test', name: 'renamed', description: 'test', instructions: 'version two' },
+		]);
+		changed.shouldAppendSkillUpdates = () => true;
+		changed.onContext = onContext;
+		const edited = new ActiveSkills(changed, 'assistant', memory.skillState);
+		await edited.restore(new AgentMessageList(), scope);
+		expect(edited.instructions()).toBeUndefined();
+		edited.reportContext();
+		expect(onContext).toHaveBeenLastCalledWith([
+			{ skillId: 'hub-test', version: changed.registry.skills[0].hash, kind: 'refreshed' },
+		]);
+		expect(JSON.stringify(onContext.mock.calls)).not.toContain('version two');
+	});
+
+	it.each([true, false])(
+		'distinguishes retryable=%s from confirmed revocation',
+		async (retryable) => {
+			const memory = new InMemoryMemory();
+			await memory.skillState.save(
+				{ ...scope, agentName: 'assistant' },
+				{ skillIds: ['hub-test'], versions: { 'hub-test': 'v1' } },
+			);
+			const current = createRuntimeSkillSource([]);
+			current.shouldAppendSkillUpdates = () => true;
+			current.getLoadError = () => ({ message: 'Private error', retryable });
+			const onContext = vi.fn();
+			current.onContext = onContext;
+			const active = new ActiveSkills(current, 'assistant', memory.skillState);
+			await active.restore(new AgentMessageList(), scope);
+			active.instructions();
+			// Later reads must not change the already-applied eligibility decision.
+			current.getLoadError = () => ({ message: 'Later error', retryable: !retryable });
+			active.reportContext();
+			expect(onContext).toHaveBeenLastCalledWith([
+				{
+					skillId: 'hub-test',
+					version: retryable ? 'v1' : undefined,
+					kind: retryable ? 'unavailable' : 'revoked',
+				},
+			]);
+			const next = new ActiveSkills(current, 'assistant', memory.skillState);
+			await next.restore(new AgentMessageList(), scope);
+			next.instructions();
+			next.reportContext();
+			if (!retryable) expect(onContext).toHaveBeenLastCalledWith([]);
+		},
+	);
+});

@@ -5,6 +5,7 @@ import { findReferenceByPath, formatActiveSkill } from '../../skills/tools';
 import {
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillContent,
+	type RuntimeSkillContextUsage,
 	type RuntimeSkillSource,
 	type RuntimeSkillStateScope,
 	type RuntimeSkillStateStore,
@@ -47,6 +48,9 @@ export class ActiveSkills {
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
 	private pendingUpdates: CustomAgentMessage[] = [];
+	private contextUpdates: CustomAgentMessage[] = [];
+	private restoredIds = new Set<string>();
+	private unavailableIds = new Set<string>();
 
 	constructor(
 		private readonly source: RuntimeSkillSource,
@@ -57,6 +61,8 @@ export class ActiveSkills {
 	async restore(list: AgentMessageList, persistence?: AgentPersistenceOptions): Promise<void> {
 		this.loaded.clear();
 		this.pendingUpdates = [];
+		this.contextUpdates = [];
+		this.unavailableIds.clear();
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -77,11 +83,13 @@ export class ActiveSkills {
 			if (version === null) this.previousVersions[id] = null;
 		}
 		const versions = { ...this.previousVersions };
+		this.restoredIds = new Set(ids.filter((id) => versions[id] !== null));
 		const registered = new Set(this.source.registry.skills.map(({ id }) => id));
 		const retainedIds = new Set<string>();
 		for (const id of new Set(ids)) {
 			if (versions[id] === null) continue;
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
+			if (!skill && this.source.getLoadError?.(id)?.retryable) this.unavailableIds.add(id);
 			if (skill) this.loaded.set(id, skill);
 			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
 			const entry = this.source.registry.skills.find((candidate) => candidate.id === id);
@@ -124,6 +132,35 @@ export class ActiveSkills {
 			await this.persist();
 		}
 		return skill;
+	}
+
+	/** Report eligible context only after model-call guards accept the request. */
+	reportContext(): void {
+		if (!this.source.onContext) return;
+		const usage: RuntimeSkillContextUsage[] = [];
+		for (const skillId of this.restoredIds) {
+			const skill = this.loaded.get(skillId);
+			const version = this.list?.activeSkillVersions?.[skillId] ?? undefined;
+			const previous = this.previousVersions[skillId];
+			usage.push({
+				skillId,
+				version,
+				kind: skill
+					? previous !== undefined && previous !== version
+						? 'refreshed'
+						: 'carried'
+					: this.unavailableIds.has(skillId)
+						? 'unavailable'
+						: 'revoked',
+			});
+		}
+		for (const message of this.contextUpdates) {
+			if (isRuntimeSkillUpdate(message) && message.data.skillUpdate.change === 'restored') {
+				const { skillId, version } = message.data.skillUpdate;
+				usage.push({ skillId, version: version ?? undefined, kind: 'restored' });
+			}
+		}
+		this.source.onContext(usage);
 	}
 
 	/** Stream each new notice once. The message list owns its persisted copy. */
@@ -340,6 +377,7 @@ export class ActiveSkills {
 			};
 			list.addInput([update]);
 			this.pendingUpdates.push(update);
+			this.contextUpdates.push(update);
 		}
 	}
 
