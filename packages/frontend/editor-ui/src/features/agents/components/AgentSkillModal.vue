@@ -1233,13 +1233,18 @@ function onRemove() {
 				/>
 				<template v-else-if="comparison && comparedSkill">
 					<AgentSkillFileNav
+						:class="$style.fileColumn"
 						:skill="comparedSkill"
 						:selected-path="selectedPath"
 						:change-counts="diffCounts"
 						read-only
 						@select="selectedPath = $event"
 					/>
-					<SkillVersionDiff :sections="diffSections" :selected-path="selectedPath" />
+					<SkillVersionDiff
+						:class="$style.formColumn"
+						:sections="diffSections"
+						:selected-path="selectedPath"
+					/>
 				</template>
 				<template v-else>
 					<AgentSkillFileNav
@@ -1414,9 +1419,8 @@ function onRemove() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--md);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-radius: var(--radius);
+	padding: var(--spacing--2xs) var(--spacing--lg);
+	border-bottom: var(--border);
 	background-color: var(--color--background--light-2);
 }
 
