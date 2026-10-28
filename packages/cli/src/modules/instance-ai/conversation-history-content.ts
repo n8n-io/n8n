@@ -11,10 +11,10 @@ export const TOOL_CALL_PART_TYPES: readonly string[] = [
 	INVALID_TOOL_CALL_PART_TYPE,
 ];
 
-export const ASK_USER_TOOL_NAME = SHARED_BUILDER_TOOL_NAMES.ASK_USER;
+const ASK_USER_TOOL_NAME = SHARED_BUILDER_TOOL_NAMES.ASK_USER;
 
 // Rows stored before the rename carry the former tool name.
-export const LEGACY_ASK_USER_TOOL_NAMES: readonly string[] =
+const LEGACY_ASK_USER_TOOL_NAMES: readonly string[] =
 	getLegacyBuilderToolNames(ASK_USER_TOOL_NAME);
 
 export const ASK_USER_TOOL_NAMES: readonly string[] = [

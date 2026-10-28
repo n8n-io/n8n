@@ -2,8 +2,8 @@ import { buildBuilderSessionContext } from '../agent-builder-session-context';
 import { getBuilderRuntimeSkills } from '../skills';
 
 describe('builder guidance', () => {
-	it('puts the Preview link into the session context', async () => {
-		const context = await buildBuilderSessionContext('project-1', 'agent-1');
+	it('puts the Preview link into the session context', () => {
+		const context = buildBuilderSessionContext('project-1', 'agent-1');
 
 		expect(context).toContain('[Preview](/projects/project-1/agents/agent-1');
 		expect(context).not.toContain('Recommended LLM Models');

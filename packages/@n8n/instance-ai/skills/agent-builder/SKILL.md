@@ -468,8 +468,8 @@ Use this to resolve the target Agent's main `model` and `credential`.
 Rules:
 
 - When the user wants a model recommendation, prefer a provider the user
-  already has credentials or Gateway credits for. Use the model list that
-  `agent_builder_resolve_llm` returns for that provider. Call `search_models`
+  already has credentials or Gateway credits for. When
+  `agent_builder_resolve_llm` returns `availableModels`, pick from it. Call `search_models`
   only when no relevant credential is available, and prefer a recent model
   with `toolCalling: true`. Then resolve the pick with
   `agent_builder_resolve_llm`. Do not name current, best, latest, or fallback

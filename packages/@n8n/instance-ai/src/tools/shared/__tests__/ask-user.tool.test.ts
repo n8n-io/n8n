@@ -125,3 +125,37 @@ describe('createAskUserTool', () => {
 		});
 	});
 });
+
+describe('ask_user model output', () => {
+	const tool = createAskUserTool();
+	const modelView = (result: Record<string, unknown>) =>
+		tool.toModelOutput!(result) as Record<string, unknown>;
+
+	it('tells the model to assume defaults after a dismissal', () => {
+		const view = modelView({ answered: false });
+
+		expect(view.nextStep).toContain('default');
+		expect(view.nextStep).toContain('do not ask');
+	});
+
+	it('tells the model to assume defaults for skipped questions', () => {
+		const view = modelView({
+			answered: true,
+			answers: [
+				{ questionId: 'q1', selectedOptions: ['a'] },
+				{ questionId: 'q2', selectedOptions: [], skipped: true },
+			],
+		});
+
+		expect(view.nextStep).toContain('skipped');
+	});
+
+	it('adds no next step when every question is answered', () => {
+		const view = modelView({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['a'] }],
+		});
+
+		expect(view).not.toHaveProperty('nextStep');
+	});
+});

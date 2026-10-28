@@ -91,7 +91,6 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey(' ask_questions ')).toBe('instanceAi.tools.ask_user');
 
 		const translations: Partial<Record<BaseTextKey, string>> = {
-			'instanceAi.tools.agent_builder_ask_questions': 'Asking questions',
 			'instanceAi.tools.ask_user': 'Asking user',
 		};
 		const translator = { baseText: (key: BaseTextKey) => translations[key] ?? key };

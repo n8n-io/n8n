@@ -1,5 +1,6 @@
 import { Tool } from '@n8n/agents';
 import { getLegacyBuilderToolNames } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -80,6 +81,24 @@ function usableAnswers(resumeData: z.infer<typeof askUserResumeSchema>): Answer[
 	return resumeData.answers;
 }
 
+/** Tells the model what to do with unanswered questions, so the description stays short. */
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result)) return result;
+	if (result.answered === false) {
+		return {
+			...result,
+			nextStep:
+				'The user did not answer the questions. Assume a sensible default for each, and do not ask them again.',
+		};
+	}
+	const answers = Array.isArray(result.answers) ? result.answers : [];
+	if (!answers.some((answer) => isRecord(answer) && answer.skipped === true)) return result;
+	return {
+		...result,
+		nextStep: 'Assume a sensible default for each skipped question, and do not ask it again.',
+	};
+}
+
 export function createAskUserTool() {
 	return new Tool(ASK_USER_TOOL_ID)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_USER_TOOL_ID))
@@ -87,6 +106,7 @@ export function createAskUserTool() {
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
 				'Questions are single-select, multi-select, or free-text. ' +
 				'Batch every open question into one call instead of calling it again. ' +
+				'Results that need an action carry `nextStep`: follow it. ' +
 				'Before the first build, ask only about choices that change what you build, and do not ask for setup values ' +
 				'(recipients, accounts, resources, channels, credentials, timezone); leave them for setup. ' +
 				'When the request does not yet say what to build (no trigger, no steps, no named workflow or Agent), ' +
@@ -102,6 +122,7 @@ export function createAskUserTool() {
 				'NEVER re-present an answered, deferred, or skipped question. ' +
 				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		)
+		.toModelOutput(withNextStep)
 		.input(askUserInputSchema)
 		.output(
 			z.object({
