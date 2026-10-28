@@ -486,6 +486,11 @@ approval switch routes conversations to the configured destination. Show a fixed
 waiting message with no approval actions in the requester's conversation. The
 configured workflow or channel owns approver access.
 
+Disable the connected channel approval method when no supported channels are
+attached. Put the reason below the option label in smaller, muted text.
+Request expiry defaults to no expiry. Offer one hour, one day, and one week.
+Keep expiry local until Save, as the destination and approval policy do.
+
 In the session timeline, show pending background tool approvals below their
 job row. Use the shared approval card and disable automatic focus so rows do
 not take focus as the user scrolls. Keep each card disabled while its response

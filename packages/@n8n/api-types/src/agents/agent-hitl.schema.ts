@@ -12,6 +12,7 @@ const configurationBase = {
 	id: z.string().min(1),
 	name: z.string().trim().min(1),
 	disallowRequesterApproval: z.boolean().optional(),
+	expirySeconds: z.union([z.literal(3600), z.literal(86400), z.literal(604800)]).optional(),
 };
 export const AgentHitlConfigurationSchema = z
 	.discriminatedUnion('method', [

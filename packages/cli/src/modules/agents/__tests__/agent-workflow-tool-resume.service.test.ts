@@ -567,3 +567,15 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
 	});
 });
+
+describe('expired workflow approval continuation', () => {
+	it('resumes only while the original Agent is suspended', async () => {
+		const { service, checkpointStorage } = setup();
+		const resume = vi.spyOn(service, 'resume').mockResolvedValue();
+		await service.resumeIfSuspended(previewRun, 'canceled');
+		expect(resume).toHaveBeenCalledOnce();
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'not-found' });
+		await service.resumeIfSuspended(previewRun, 'canceled');
+		expect(resume).toHaveBeenCalledOnce();
+	});
+});

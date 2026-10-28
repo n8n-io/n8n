@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { APPROVAL_EXPIRED_ERROR } from '../approval/approval-expiry';
 import {
 	AgentBackgroundJob,
 	type AgentBackgroundJobKind,
@@ -33,6 +34,7 @@ export type NewWorkflowJob = NewAgentBackgroundJobBase & {
 	parentRunId?: string;
 	workflowId: string;
 	childExecutionId: string;
+	timeoutAt?: Date;
 };
 
 export type AgentBackgroundJobSettlement = {
@@ -307,6 +309,26 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	async findActivePastTimeout(now: Date): Promise<AgentBackgroundJob[]> {
 		return await this.find({
 			where: { status: In(['running', 'suspended']), timeoutAt: LessThan(now) },
+		});
+	}
+
+	async findUnconsumedApprovalsPastTimeout(now: Date): Promise<AgentBackgroundJob[]> {
+		return await this.find({
+			where: [
+				{
+					kind: 'approval',
+					status: 'running',
+					timeoutAt: LessThan(now),
+					notifiedAt: IsNull(),
+				},
+				{
+					kind: 'approval',
+					status: 'failed',
+					error: APPROVAL_EXPIRED_ERROR,
+					timeoutAt: LessThan(now),
+					notifiedAt: IsNull(),
+				},
+			],
 		});
 	}
 

@@ -13,6 +13,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from '../approval/approval-expiry';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentBackgroundJobRepository,
@@ -232,6 +233,9 @@ export class AgentBackgroundJobService {
 	): Promise<boolean> {
 		const job = await this.jobRepository.findRunningWorkflowJobByExecutionId(executionId);
 		if (!job) return false;
+		if (hasApprovalExpired(job)) {
+			return await this.settle(job.id, { status: 'failed', error: APPROVAL_EXPIRED_ERROR });
+		}
 		if (job.kind === 'approval' && settlement.status === 'completed' && runData) {
 			try {
 				const { collectAgentDecision } = await import('../approval/decision-result.js');
@@ -934,6 +938,15 @@ export class AgentBackgroundJobService {
 	 */
 	async reconcileWorkflowJobs(signal?: AbortSignal): Promise<void> {
 		if (signal?.aborted) return;
+		for (const job of await this.jobRepository.findUnconsumedApprovalsPastTimeout(new Date())) {
+			if (signal?.aborted) return;
+			try {
+				await this.expireApprovalJob(job);
+			} catch (error) {
+				this.logger.warn('Failed to expire an approval request', { jobId: job.id, error });
+			}
+		}
+		if (signal?.aborted) return;
 		const jobs = [
 			...(await this.jobRepository.findRunningJobs('workflow')),
 			...(await this.jobRepository.findRunningJobs('approval')),
@@ -951,6 +964,49 @@ export class AgentBackgroundJobService {
 
 		if (signal?.aborted) return;
 		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
+	}
+
+	/** Stop expired waits and use the existing workflow continuation path. */
+	async expireApprovalJob(
+		job: AgentBackgroundJob,
+		options: { resumeAgent?: boolean } = {},
+	): Promise<void> {
+		if (!hasApprovalExpired(job) || (job.status !== 'running' && job.status !== 'failed')) return;
+		await this.stopWorkflowJobExecution(job);
+		await this.settle(
+			job.id,
+			{ status: 'failed', error: APPROVAL_EXPIRED_ERROR },
+			{ status: 'running', timeoutAt: job.timeoutAt },
+		);
+		const settled = await this.jobRepository.findById(job.id);
+		if (settled?.status !== 'failed' || settled.error !== APPROVAL_EXPIRED_ERROR) return;
+		if (options.resumeAgent === false) return;
+		if (!job.childExecutionId) return;
+		const execution = await this.executionPersistence.findSingleExecution(job.childExecutionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		if (!execution) return;
+		const agentRun = execution.data.parentAgentRun;
+		if (
+			!agentRun ||
+			agentRun.agentId !== job.parentAgentId ||
+			agentRun.runId !== job.parentRunId ||
+			agentRun.threadId !== job.parentThreadId
+		)
+			return;
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active') {
+			await this.jobRepository.consumeApprovalJob(job.childExecutionId);
+			return;
+		}
+		const { AgentWorkflowToolResumeService } = await import(
+			'../agent-workflow-tool-resume.service.js'
+		);
+		await Container.get(AgentWorkflowToolResumeService).resumeIfSuspended(
+			agentRun,
+			execution.status,
+		);
 	}
 
 	/**
@@ -1081,6 +1137,7 @@ export class AgentBackgroundJobService {
 		const timedOut = await this.jobRepository.findActivePastTimeout(new Date());
 		for (const job of timedOut) {
 			if (signal?.aborted) return;
+			if (job.kind === 'approval') continue;
 			if (job.status !== 'running' && job.status !== 'suspended') continue;
 			if (job.status === 'suspended' && job.pauseRequestId && job.notifiedAt && job.timeoutAt) {
 				await this.releaseResumeReservations([job], job.timeoutAt);
@@ -1201,6 +1258,10 @@ export class AgentBackgroundJobService {
 	): Promise<boolean> {
 		const executionId = job.childExecutionId;
 		try {
+			if (hasApprovalExpired(job)) {
+				await this.expireApprovalJob(job);
+				return true;
+			}
 			if (executionStatus === undefined) {
 				return await this.settle(job.id, {
 					status: 'failed',

@@ -47,11 +47,12 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			template: '<div><slot /></div>',
 		}),
 		N8nOption: defineComponent({
-			props: ['value', 'label'],
+			props: ['value', 'label', 'disabled'],
 			setup() {
 				return { select: inject<(value: string) => void>('select') };
 			},
-			template: '<button type="button" @click="select?.(value)">{{ label }}</button>',
+			template:
+				'<button type="button" :disabled="disabled" @click="select?.(value)"><slot>{{ label }}</slot></button>',
 		}),
 	};
 });
@@ -223,5 +224,67 @@ it('defaults administrator approval off and saves the selected policy', async ()
 		?.trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ disallowRequesterApproval: true, workflowId: 'wf' }),
+	]);
+});
+
+it('disables channel approval with a separate explanation when no channels are attached', async () => {
+	mocks.channels.mockResolvedValue([]);
+	const wrapper = render();
+	await flushPromises();
+	const option = wrapper.get('[data-testid="agent-hitl-channel-method"]');
+	expect(option.attributes('disabled')).toBeDefined();
+	expect(option.findAll('span').map((span) => span.text())).toContain(
+		'No supported channels are attached to this Agent',
+	);
+	await option.trigger('click');
+	expect(wrapper.find('[data-testid="agent-hitl-channel"]').exists()).toBe(false);
+});
+
+it('keeps channel approval disabled until the available connections load', async () => {
+	const wrapper = render();
+	expect(
+		wrapper.get('[data-testid="agent-hitl-channel-method"]').attributes('disabled'),
+	).toBeDefined();
+	await flushPromises();
+	expect(
+		wrapper.get('[data-testid="agent-hitl-channel-method"]').attributes('disabled'),
+	).toBeUndefined();
+});
+
+it.each(['none', 3600, 86400, 604800] as const)('saves the request expiry %s', async (expiry) => {
+	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
+	await flushPromises();
+	const selector = wrapper.findComponent('[data-testid="agent-hitl-expiry"]');
+	expect(selector.props('modelValue')).toBe('none');
+	selector.vm.$emit('update:modelValue', expiry);
+	await wrapper.vm.$nextTick();
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Save')
+		?.trigger('click');
+	expect(wrapper.emitted('save')?.[0]).toEqual([
+		expect.objectContaining({ expirySeconds: expiry === 'none' ? undefined : expiry }),
+	]);
+});
+
+it('opens a saved expiry and allows requests with no expiry again', async () => {
+	const wrapper = render({
+		id: 'review',
+		name: 'Review',
+		method: 'workflow',
+		workflowId: 'wf',
+		expirySeconds: 86400,
+	});
+	await flushPromises();
+	const selector = wrapper.findComponent('[data-testid="agent-hitl-expiry"]');
+	expect(selector.props('modelValue')).toBe(86400);
+	selector.vm.$emit('update:modelValue', 'none');
+	await wrapper.vm.$nextTick();
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Save')
+		?.trigger('click');
+	expect(wrapper.emitted('save')?.[0]).toEqual([
+		expect.objectContaining({ expirySeconds: undefined }),
 	]);
 });

@@ -44,3 +44,23 @@ it('accepts the requester approval policy for both methods', () => {
 		).toBe(true);
 	}
 });
+
+it.each([undefined, 3600, 86400, 604800])(
+	'accepts request expiry %s for both methods',
+	(expirySeconds) => {
+		for (const configuration of [
+			{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' },
+			{ ...base, channel: 'telegram' },
+		]) {
+			expect(
+				AgentHitlConfigurationSchema.parse({ ...configuration, expirySeconds }).expirySeconds,
+			).toBe(expirySeconds);
+		}
+	},
+);
+
+it.each([0, -1, 60, '3600', null])('rejects unsupported expiry %s', (expirySeconds) => {
+	expect(
+		AgentHitlConfigurationSchema.safeParse({ ...base, channel: 'telegram', expirySeconds }).success,
+	).toBe(false);
+});

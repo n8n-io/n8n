@@ -29,7 +29,7 @@ const configuration: AgentJsonConfig = {
 	],
 };
 
-function setup() {
+function setup(agentConfiguration: AgentJsonConfig = configuration) {
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
 	const loader = mock<WorkflowToolWorkflowLoader>();
@@ -47,7 +47,7 @@ function setup() {
 	const wrapped = service.wrap(
 		tool,
 		{ type: 'configuration', configurationId: 'review' },
-		configuration,
+		agentConfiguration,
 		{
 			agentId: 'agent',
 			projectId: 'project',
@@ -81,82 +81,109 @@ describe('Agent decision workflow approval', () => {
 		Container.reset();
 	});
 
-	it.each([false, true])('dispatches a decision workflow with redaction=%s', async (redacted) => {
-		const { loader, jobs, jobService, executions, wrapped, handler, context } = setup();
-		Container.set(WorkflowRunner, mock<WorkflowRunner>());
-		const execute = vi.spyOn(workflowTools, 'executeWorkflow').mockResolvedValue({
-			executionId: 'child',
-			status: 'waiting',
-		});
-		loader.loadWorkflow.mockResolvedValue({
-			id: 'decision-workflow',
-			nodes: [{ name: 'Agent decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
-			settings: {},
-		} as WorkflowEntity);
-		jobs.findWorkflowJobByExecutionId.mockResolvedValue({
-			id: 'job',
-			status: 'running',
-		} as AgentBackgroundJob);
-		executions.findSingleExecution.mockResolvedValue({ status: 'waiting' } as IExecutionResponse);
-		const result = await wrapped.handler?.(
-			{ value: 'review me' },
-			{
-				...context,
-				continuation: undefined,
-				suspendPayload: undefined,
-				runId: 'run',
-				toolCallId: 'call',
-				persistence: {
-					threadId: 'thread',
-					resourceId: 'resource',
-					hostMetadata: {
-						...encodeAgentSandboxHostMetadata({
-							projectId: 'project',
-							principalHash: hashAgentSandboxPrincipal({
-								type: 'workflow-execution',
-								workflowId: 'caller',
-								executionId: 'parent',
+	it.each([
+		[false, undefined],
+		[true, 3600],
+		[false, 86400],
+		[false, 604800],
+	] as const)(
+		'dispatches a decision workflow with redaction=%s and expiry=%s',
+		async (redacted, expirySeconds) => {
+			const { loader, jobs, jobService, executions, wrapped, handler, context } = setup({
+				...configuration,
+				hitlConfigurations: configuration.hitlConfigurations?.map((entry) => ({
+					...entry,
+					expirySeconds,
+				})),
+			});
+			Container.set(WorkflowRunner, mock<WorkflowRunner>());
+			const execute = vi.spyOn(workflowTools, 'executeWorkflow').mockResolvedValue({
+				executionId: 'child',
+				status: 'waiting',
+			});
+			loader.loadWorkflow.mockResolvedValue({
+				id: 'decision-workflow',
+				nodes: [{ name: 'Agent decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+				settings: {},
+			} as WorkflowEntity);
+			jobs.findWorkflowJobByExecutionId.mockResolvedValue({
+				id: 'job',
+				status: 'running',
+			} as AgentBackgroundJob);
+			executions.findSingleExecution.mockResolvedValue({ status: 'waiting' } as IExecutionResponse);
+			const result = await wrapped.handler?.(
+				{ value: 'review me' },
+				{
+					...context,
+					continuation: undefined,
+					suspendPayload: undefined,
+					runId: 'run',
+					toolCallId: 'call',
+					persistence: {
+						threadId: 'thread',
+						resourceId: 'resource',
+						hostMetadata: {
+							...encodeAgentSandboxHostMetadata({
+								projectId: 'project',
+								principalHash: hashAgentSandboxPrincipal({
+									type: 'workflow-execution',
+									workflowId: 'caller',
+									executionId: 'parent',
+								}),
 							}),
-						}),
-						workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-						approvalArgumentsRedacted: redacted,
+							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
+							approvalArgumentsRedacted: redacted,
+						},
 					},
 				},
-			},
-		);
-		expect(result).toBe('waiting');
-		expect(handler).not.toHaveBeenCalled();
-		expect(loader.loadWorkflow).toHaveBeenCalledWith(
-			'project',
-			expect.objectContaining({ workflowId: 'workflow' }),
-			{ usePublishedVersion: false },
-		);
-		expect(execute).toHaveBeenCalledWith(
-			expect.objectContaining({
-				settings: expect.objectContaining({ saveDataSuccessExecution: 'all' }),
-			}),
-			expect.anything(),
-			expect.objectContaining({
-				requestId: 'run:call',
-				toolName: 'write',
-				...(redacted ? { argumentsRedacted: true } : { arguments: { value: 'review me' } }),
-			}),
-			expect.objectContaining({
-				agentRun: expect.objectContaining({
-					workflowCaller: { workflowId: 'caller', executionId: 'parent' },
+			);
+			expect(result).toBe('waiting');
+			expect(handler).not.toHaveBeenCalled();
+			expect(loader.loadWorkflow).toHaveBeenCalledWith(
+				'project',
+				expect.objectContaining({ workflowId: 'workflow' }),
+				{ usePublishedVersion: false },
+			);
+			expect(execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					settings: expect.objectContaining({ saveDataSuccessExecution: 'all' }),
 				}),
-			}),
-		);
-		if (redacted) expect(execute.mock.calls[0][2]).not.toHaveProperty('arguments');
-		expect(jobService.registerWorkflowJob).toHaveBeenCalledWith(
-			expect.objectContaining({
-				kind: 'approval',
-				parentRunId: 'run',
-				parentAgentId: 'agent',
-				executionId: 'child',
-			}),
-		);
-	});
+				expect.anything(),
+				expect.objectContaining({
+					requestId: 'run:call',
+					toolName: 'write',
+					...(redacted ? { argumentsRedacted: true } : { arguments: { value: 'review me' } }),
+				}),
+				expect.objectContaining({
+					agentRun: expect.objectContaining({
+						workflowCaller: { workflowId: 'caller', executionId: 'parent' },
+					}),
+				}),
+			);
+			if (redacted) expect(execute.mock.calls[0][2]).not.toHaveProperty('arguments');
+			const request = execute.mock.calls[0][2];
+			const registered = jobService.registerWorkflowJob.mock.calls[0][0];
+			if (expirySeconds) {
+				const expected = new Date(
+					new Date(request.requestedAt as string).getTime() + expirySeconds * 1000,
+				);
+				expect(registered.timeoutAt).toEqual(expected);
+				expect(request.expiresAt).toBe(expected.toISOString());
+			} else {
+				expect(registered).not.toHaveProperty('timeoutAt');
+				expect(request).not.toHaveProperty('expiresAt');
+			}
+
+			expect(jobService.registerWorkflowJob).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'approval',
+					parentRunId: 'run',
+					parentAgentId: 'agent',
+					executionId: 'child',
+				}),
+			);
+		},
+	);
 
 	it('dispatches a channel request through the same durable decision execution', async () => {
 		const { service, tool, jobs, executions, context, handler, loader } = setup();
@@ -511,5 +538,43 @@ describe('Agent decision workflow approval', () => {
 			wrapped.handler?.({}, { ...context, abortSignal: controller.signal }),
 		).rejects.toThrow('Caller cancelled');
 		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it.each(['running', 'completed'] as const)(
+		'rejects a %s approval after its saved deadline',
+		async (status) => {
+			const { jobs, jobService, wrapped, context, handler } = setup();
+			const timeoutAt = new Date(Date.now() - 1000);
+			const job = mock<AgentBackgroundJob>({
+				id: 'job',
+				kind: 'approval',
+				status,
+				timeoutAt,
+				settledAt: status === 'completed' ? new Date() : null,
+				result: '{"approved":true}',
+			});
+			jobs.findWorkflowJobByExecutionId.mockResolvedValue(job);
+			await expect(wrapped.handler?.({}, context)).rejects.toThrow('approval request expired');
+			if (status === 'running')
+				expect(jobService.expireApprovalJob).toHaveBeenCalledWith(job, { resumeAgent: false });
+			else expect(jobService.expireApprovalJob).not.toHaveBeenCalled();
+			expect(handler).not.toHaveBeenCalled();
+		},
+	);
+
+	it('accepts a decision completed before expiry even when the Agent resumes later', async () => {
+		const { jobs, wrapped, context, handler } = setup();
+		const timeoutAt = new Date(Date.now() - 1000);
+		jobs.findWorkflowJobByExecutionId.mockResolvedValue(
+			mock<AgentBackgroundJob>({
+				kind: 'approval',
+				status: 'completed',
+				timeoutAt,
+				settledAt: new Date(timeoutAt.getTime() - 1000),
+				result: '{"approved":true}',
+			}),
+		);
+		await wrapped.handler?.({}, context);
+		expect(handler).toHaveBeenCalledOnce();
 	});
 });

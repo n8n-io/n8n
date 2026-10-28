@@ -56,6 +56,9 @@ const name = ref(
 		i18n.baseText('agents.hitl.defaultName', { interpolate: { number: String(props.nextNumber) } }),
 );
 const disallowRequesterApproval = ref(props.configuration?.disallowRequesterApproval ?? false);
+const expirySeconds = ref<AgentHitlConfiguration['expirySeconds'] | 'none'>(
+	props.configuration?.expirySeconds ?? 'none',
+);
 const method = ref<'workflow' | 'channel'>(props.configuration?.method ?? 'workflow');
 const workflowId = ref(
 	props.configuration?.method === 'workflow' ? props.configuration.workflowId : '',
@@ -237,6 +240,7 @@ function save() {
 		id: props.configuration?.id ?? uuid(),
 		name: name.value.trim(),
 		disallowRequesterApproval: disallowRequesterApproval.value,
+		expirySeconds: expirySeconds.value === 'none' ? undefined : expirySeconds.value,
 	};
 	if (method.value === 'workflow')
 		emit('save', { ...base, method: 'workflow', workflowId: workflowId.value });
@@ -286,9 +290,26 @@ function save() {
 				/>
 			</AgentFormSettingRow>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.method')">
-				<N8nSelect v-model="method" :teleported="false" data-testid="agent-hitl-method">
+				<N8nSelect
+					v-model="method"
+					:teleported="false"
+					:popper-class="$style.methodOptions"
+					data-testid="agent-hitl-method"
+				>
 					<N8nOption value="workflow" :label="i18n.baseText('agents.hitl.workflowMethod')" />
-					<N8nOption value="channel" :label="i18n.baseText('agents.hitl.channelMethod')" />
+					<N8nOption
+						value="channel"
+						:label="i18n.baseText('agents.hitl.channelMethod')"
+						:disabled="!channels.length"
+						data-testid="agent-hitl-channel-method"
+					>
+						<div :class="$style.channelMethodLabel">
+							<span>{{ i18n.baseText('agents.hitl.channelMethod') }}</span>
+							<N8nText v-if="!loading && !channels.length" size="small" color="text-light">
+								{{ i18n.baseText('agents.hitl.noChannels') }}
+							</N8nText>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</N8nInputLabel>
 			<div v-show="method === 'workflow'" :class="$style.workflowPicker">
@@ -340,9 +361,6 @@ function save() {
 						/>
 					</N8nSelect>
 				</N8nInputLabel>
-				<N8nText v-if="!loading && !channels.length" color="text-light">{{
-					i18n.baseText('agents.hitl.noChannels')
-				}}</N8nText>
 				<N8nInputLabel
 					v-if="channel?.fields.some((field) => field.name === 'guild')"
 					:label="i18n.baseText('agents.hitl.server')"
@@ -404,7 +422,17 @@ function save() {
 			<N8nText v-if="submitted && !destinationValid" color="danger" role="alert">{{
 				i18n.baseText('agents.hitl.destinationRequired')
 			}}</N8nText>
-			<N8nText size="small" color="text-light">{{ i18n.baseText('agents.hitl.noExpiry') }}</N8nText>
+			<N8nInputLabel :label="i18n.baseText('agents.hitl.expiry')">
+				<N8nSelect v-model="expirySeconds" :teleported="false" data-testid="agent-hitl-expiry">
+					<N8nOption value="none" :label="i18n.baseText('agents.hitl.expiry.none')" />
+					<N8nOption :value="3600" :label="i18n.baseText('agents.hitl.expiry.hour')" />
+					<N8nOption :value="86400" :label="i18n.baseText('agents.hitl.expiry.day')" />
+					<N8nOption :value="604800" :label="i18n.baseText('agents.hitl.expiry.week')" />
+				</N8nSelect>
+			</N8nInputLabel>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('agents.hitl.expiryHelp')
+			}}</N8nText>
 		</div>
 		<template v-if="configuration" #footerLeft
 			><N8nButton
@@ -434,5 +462,18 @@ function save() {
 .workflowPicker > :last-child {
 	height: calc(var(--height--xl) * 8);
 	min-height: 0;
+}
+.methodOptions {
+	:global(.el-select-dropdown__item) {
+		height: auto;
+		padding-block: var(--spacing--2xs);
+		line-height: var(--line-height--md);
+	}
+}
+.channelMethodLabel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	white-space: normal;
 }
 </style>

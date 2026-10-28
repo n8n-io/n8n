@@ -32,8 +32,12 @@ Approval routing has four cases:
 There is no Agent-wide default destination. Settings lists configurations as
 editable pills with an adjacent add action.
 
-Requests have no expiry. Approval jobs retain the exact Agent checkpoint and
-decision execution until consumption. They do not send background mailbox turns.
+Requests have no expiry by default. A configuration can set `expirySeconds` to
+3600, 86400, or 604800. The job stores its deadline when the request starts.
+The existing job reconciliation stops expired decision executions and resumes the
+same Agent. Late decisions cannot run the protected tool. A decision completed
+before the deadline remains valid if the Agent resumes later. Approval jobs retain
+the exact Agent checkpoint and decision execution until consumption. They do not send background mailbox turns.
 The existing `AgentWorkflowToolResumeService` handles workflow completion and worker
 relay. The existing `WaitTracker` claims and restarts the waiting parent execution.
 No separate Agent continuation scheduler is added.

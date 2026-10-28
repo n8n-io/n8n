@@ -11,6 +11,7 @@ import {
 	type AgentIntegrationConfig,
 } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { Time } from '@n8n/constants';
 import { OperationalError, UserError, jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -27,6 +28,7 @@ import { executeWorkflow } from '../tools/workflow-tool-factory';
 import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 import { collectAgentDecision } from './decision-result';
 import { readWorkflowCaller } from './workflow-caller';
+import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from './approval-expiry';
 
 interface ApprovalRunIdentity {
 	agentId: string;
@@ -154,6 +156,12 @@ export class AgentDecisionWorkflowService {
 			if (configuration.method === 'workflow' && workflow.id === caller?.workflowId)
 				throw new UserError('A decision workflow cannot call itself');
 			const { WorkflowRunner } = await import('@/workflow-runner.js');
+			const requestedAt = new Date();
+			const timeoutAt = configuration.expirySeconds
+				? new Date(
+						requestedAt.getTime() + configuration.expirySeconds * Time.seconds.toMilliseconds,
+					)
+				: undefined;
 			const result = await executeWorkflow(
 				Object.assign(workflow, {
 					settings: {
@@ -179,7 +187,8 @@ export class AgentDecisionWorkflowService {
 					...(ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true
 						? { argumentsRedacted: true }
 						: { arguments: buildApprovalArgs(input) }),
-					requestedAt: new Date().toISOString(),
+					requestedAt: requestedAt.toISOString(),
+					...(timeoutAt ? { expiresAt: timeoutAt.toISOString() } : {}),
 				},
 				{
 					workflowRunner: Container.get(WorkflowRunner),
@@ -212,10 +221,15 @@ export class AgentDecisionWorkflowService {
 				title: configuration.name,
 				workflowId: workflow.id,
 				executionId,
+				...(timeoutAt ? { timeoutAt } : {}),
 			});
 		}
 
 		let job = await this.jobRepository.findWorkflowJobByExecutionId(executionId);
+		if (job && hasApprovalExpired(job)) {
+			if (job.status === 'running') await this.jobs.expireApprovalJob(job, { resumeAgent: false });
+			throw new OperationalError(APPROVAL_EXPIRED_ERROR);
+		}
 		if (job?.status === 'running') {
 			const execution = await this.executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -241,6 +255,10 @@ export class AgentDecisionWorkflowService {
 			job = await this.jobRepository.findWorkflowJobByExecutionId(executionId);
 		}
 		if (!job) throw new OperationalError('The approval job is unavailable');
+		if (hasApprovalExpired(job)) {
+			if (job.status === 'running') await this.jobs.expireApprovalJob(job, { resumeAgent: false });
+			throw new OperationalError(APPROVAL_EXPIRED_ERROR);
+		}
 		if (job.status === 'running') {
 			return await ctx.suspend(
 				{

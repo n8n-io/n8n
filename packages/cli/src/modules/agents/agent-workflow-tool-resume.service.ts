@@ -147,6 +147,12 @@ export class AgentWorkflowToolResumeService {
 		}
 	}
 
+	async resumeIfSuspended(agentRun: RelatedAgentRun, status: string): Promise<void> {
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
+		await this.resumeSafely(agentRun, status);
+	}
+
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
 		if (

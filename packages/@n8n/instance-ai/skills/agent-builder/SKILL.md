@@ -223,7 +223,10 @@ review steps and return one terminal item with `{ approved: boolean }`.
 Existing send-and-wait nodes can return this item directly. The optional
 `n8n-nodes-base.agentDecisionResponse` node builds the same result. Never use
 an unconditional approval as a human review step. A production run uses the
-published decision workflow. Requests have no expiry. Agent Settings configures
+published decision workflow. Requests have no expiry by default. Set
+`expirySeconds` to 3600, 86400, or 604800 for a one-hour, one-day, or one-week
+deadline. Omit it for no expiry. An expired request does not run the tool.
+Agent Settings configures
 approval destinations.
 
 After a successful build or config change that leaves the Agent ready to try,
