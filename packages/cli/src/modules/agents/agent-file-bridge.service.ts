@@ -1,4 +1,7 @@
-import type { AgentToolOutputFile } from '@n8n/api-types';
+import {
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+	type AgentToolOutputFile,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -95,10 +98,10 @@ export class AgentFileBridge {
 			// ponytail: loads the whole file into memory, the same as storeInbound. Copy by ID if tools return large files.
 			const data = await this.binaryDataService.getAsBuffer(binary);
 			const mimeType = await resolveInboundMimeType(binary.mimeType, data);
-			if (!hasExtension(fileName)) {
-				// Some nodes set no file name, or a fixed one such as "data". Use the file ID with an extension, so each file has a unique, usable name.
+			if (!hasExtension(fileName) || fileName.length > MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH) {
+				// Some nodes set no file name, a fixed one such as "data", or one too long for the column. Use the file ID, so each file has a unique, usable name.
 				const ext = binary.fileExtension ?? (extension(mimeType) || undefined);
-				if (ext) fileName = `${id}.${ext}`;
+				fileName = ext ? `${id}.${ext}` : id;
 			}
 			const attachment = await this.attachmentService.storeInbound({
 				...scope,

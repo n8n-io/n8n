@@ -152,15 +152,32 @@ describe('AgentFileBridge', () => {
 			expect(fileName).toBe('report.pdf');
 		});
 
-		it('keeps a name without an extension when no extension is known', async () => {
+		it('uses the file ID when no extension is known', async () => {
 			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('plain'));
 
-			const { fileName } = await storedName({
+			const { id, fileName } = await storedName({
 				fileName: 'README',
 				mimeType: 'application/x-unknown',
 			});
 
-			expect(fileName).toBe('README');
+			expect(fileName).toBe(id);
+		});
+
+		it('uses the file ID for an empty name when no extension is known', async () => {
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from('plain'));
+
+			const { id, fileName } = await storedName({
+				fileName: '',
+				mimeType: 'application/x-unknown',
+			});
+
+			expect(fileName).toBe(id);
+		});
+
+		it('replaces a name longer than the column with the file ID and an extension', async () => {
+			const { id, fileName } = await storedName({ fileName: `${'a'.repeat(296)}.png` });
+
+			expect(fileName).toBe(`${id}.png`);
 		});
 	});
 });
