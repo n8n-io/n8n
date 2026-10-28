@@ -4,8 +4,8 @@ import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n
 import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
+import type { WorkflowSetupApplyPayload, WorkflowSetupOutcome } from './workflowSetup.types';
 import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
-import type { ConfirmationSubmit } from '../confirmationTransport';
 
 const props = defineProps<{
 	requestId: string;
@@ -13,8 +13,18 @@ const props = defineProps<{
 	projectId?: string;
 	workflowId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
-	/** Sends the answer through the caller, such as the Assistant agent chat. Defaults to the thread. */
-	submit?: ConfirmationSubmit;
+	/** The thread that the telemetry reports. */
+	threadId: string;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId?: string;
+	/** How the parent settled the last answer. A new object for each answer. */
+	outcome?: WorkflowSetupOutcome;
+}>();
+
+// The parent sends the answer, and settles the card through `outcome`.
+const emit = defineEmits<{
+	apply: [payload: WorkflowSetupApplyPayload];
+	defer: [];
 }>();
 
 provide(ResourceLocatorDropdownTeleportedKey, true);
@@ -25,7 +35,11 @@ const ctx = provideWorkflowSetupContext({
 	projectId: toRef(props, 'projectId'),
 	workflowId: toRef(props, 'workflowId'),
 	credentialFlow: toRef(props, 'credentialFlow'),
-	submit: () => props.submit,
+	threadId: toRef(props, 'threadId'),
+	inputThreadId: toRef(props, 'inputThreadId'),
+	outcome: toRef(props, 'outcome'),
+	emitApply: (payload) => emit('apply', payload),
+	emitDefer: () => emit('defer'),
 });
 </script>
 

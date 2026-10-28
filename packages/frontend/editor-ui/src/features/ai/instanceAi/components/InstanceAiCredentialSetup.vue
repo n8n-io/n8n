@@ -14,6 +14,7 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiConfirmRequest,
 	type InstanceAiCredentialFlow,
 	type InstanceAiCredentialRequest,
 } from '@n8n/api-types';
@@ -25,11 +26,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import {
-	useConfirmationThreadId,
-	useConfirmationTransport,
-	type ConfirmationSubmit,
-} from '../confirmationTransport';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
 import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
@@ -38,22 +34,30 @@ import ConfirmationFooter from './ConfirmationFooter.vue';
 type CredentialSetupChoice = 'ai' | 'manual';
 
 const props = defineProps<{
-	requestId: string;
 	credentialRequests: InstanceAiCredentialRequest[];
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 	requireUserSelection?: boolean;
-	/** Sends the answer through the caller, such as the Assistant agent chat. Defaults to the thread. */
-	submit?: ConfirmationSubmit;
+	/** The thread that the telemetry reports. */
+	threadId: string;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId?: string;
+	/**
+	 * Raised by the parent when it could not send the answer. The card shows the
+	 * form again, with the user's selections, so the user can try again.
+	 */
+	failedAttempts?: number;
+}>();
+
+const emit = defineEmits<{
+	/** The user's answer and how it resolves the card. The parent sends it. */
+	decide: [body: InstanceAiConfirmRequest, resolution: 'approved' | 'deferred'];
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const transport = useConfirmationTransport(() => props.submit);
-const thread = transport.thread;
-const threadId = useConfirmationThreadId(thread);
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -84,6 +88,14 @@ const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
 
 const isSubmitted = ref(false);
 const isDeferred = ref(false);
+
+watch(
+	() => props.failedAttempts,
+	() => {
+		isSubmitted.value = false;
+		isDeferred.value = false;
+	},
+);
 
 const selections = ref<Record<string, string | null>>({});
 /** Credential types the user explicitly skipped via "Later" on their step, distinct from never-visited types. */
@@ -280,7 +292,7 @@ watch(
 		if (nowReady && !wasReady) {
 			if (requiresExplicitContinue.value) return;
 			await nextTick();
-			await handleContinue();
+			handleContinue();
 		}
 	},
 	{ immediate: true },
@@ -505,8 +517,6 @@ function onCredentialSelected(
 }
 
 function trackCredentialInput() {
-	const tc = thread?.findToolCallByRequestId(props.requestId);
-	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 	const skipped: Array<{ label: string; options: string[] }> = [];
 	for (const req of props.credentialRequests) {
@@ -518,8 +528,8 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: threadId(),
-		input_thread_id: inputThreadId,
+		thread_id: props.threadId,
+		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
 		provided_inputs: provided,
@@ -528,7 +538,7 @@ function trackCredentialInput() {
 	});
 }
 
-async function handleContinue() {
+function handleContinue() {
 	// Guards against a double submit when a per-step skip in handleLater and
 	// the allHandled/anySelected watcher both become ready from the same tick.
 	if (isSubmitted.value) return;
@@ -541,29 +551,14 @@ async function handleContinue() {
 	trackCredentialInput();
 
 	isSubmitted.value = true;
-
-	const success = await transport.confirm(
-		props.requestId,
-		{ kind: 'credentialSelection', credentials },
-		'approved',
-	);
-	if (!success) isSubmitted.value = false;
+	emit('decide', { kind: 'credentialSelection', credentials }, 'approved');
 }
 
 /** Whole-card deferral: every step is left unresolved and the card resolves as deferred. */
-async function deferWholeCard() {
+function deferWholeCard() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
-
-	const success = await transport.confirm(
-		props.requestId,
-		{ kind: 'approval', approved: false },
-		'deferred',
-	);
-	if (!success) {
-		isSubmitted.value = false;
-		isDeferred.value = false;
-	}
+	emit('decide', { kind: 'approval', approved: false }, 'deferred');
 }
 
 async function handleLater() {
@@ -575,7 +570,7 @@ async function handleLater() {
 		if (showSetupChoice.value) {
 			trackSetupChoiceClicked('skip');
 		}
-		await deferWholeCard();
+		deferWholeCard();
 		return;
 	}
 
@@ -611,12 +606,12 @@ async function handleLater() {
 			}
 			return;
 		}
-		await handleContinue();
+		handleContinue();
 		return;
 	}
 
 	trackCredentialInput();
-	await deferWholeCard();
+	deferWholeCard();
 }
 
 const browserConnectionState = computed(() =>
@@ -662,14 +657,9 @@ function handleSetupManually() {
 	openCreateCredential();
 }
 
-async function submitAutoSetup(credentialType: string, attemptId: string) {
+function submitAutoSetup(credentialType: string, attemptId: string) {
 	isSubmitted.value = true;
-	const success = await transport.confirm(
-		props.requestId,
-		{ kind: 'credentialAutoSetup', credentialType, attemptId },
-		'approved',
-	);
-	if (!success) isSubmitted.value = false;
+	emit('decide', { kind: 'credentialAutoSetup', credentialType, attemptId }, 'approved');
 }
 
 async function handleSetupAutomatically() {
@@ -680,7 +670,7 @@ async function handleSetupAutomatically() {
 	trackSetupChoiceClicked('ai', attemptId);
 
 	if (!(await ensureBrowserConnected('credential_setup'))) return;
-	await submitAutoSetup(credentialType, attemptId);
+	submitAutoSetup(credentialType, attemptId);
 }
 </script>
 
