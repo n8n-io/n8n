@@ -54,6 +54,9 @@ describe('AssistantAgentThreadView', () => {
 			'new-session': false,
 			channel: 'system',
 		});
+		expect(panelProps.current['interaction-extensions']).toEqual([
+			expect.objectContaining({ key: 'assistant_confirmation' }),
+		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
 

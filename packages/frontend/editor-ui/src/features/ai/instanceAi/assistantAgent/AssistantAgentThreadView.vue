@@ -15,6 +15,7 @@ import {
 	ASSISTANT_AGENT_ID,
 	consumePendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantConfirmationExtension } from './assistantConfirmation';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
@@ -62,6 +63,8 @@ function onMessageAccepted(): void {
 	pendingReferences = [];
 }
 
+const interactionExtensions = [assistantConfirmationExtension];
+
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 watch(panel, (current) => {
 	if (!current || !pendingMessage) return;
@@ -98,6 +101,7 @@ function onStreamingChange(streaming: boolean): void {
 			:connected-triggers="[]"
 			channel="system"
 			:client-context="clientContext"
+			:interaction-extensions="interactionExtensions"
 			@session-created="onSessionCreated"
 			@message-accepted="onMessageAccepted"
 			@update:streaming="onStreamingChange"
