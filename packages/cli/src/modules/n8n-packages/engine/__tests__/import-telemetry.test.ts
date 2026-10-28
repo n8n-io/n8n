@@ -102,6 +102,7 @@ const scope = (input: {
 			creations: new Array(dt.created),
 			updates: new Array(dt.updated ?? 0),
 			columnAlignments: [],
+			matched: [],
 			failures: [],
 			matchedCount: dt.matched,
 		},

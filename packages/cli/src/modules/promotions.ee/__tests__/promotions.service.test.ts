@@ -33,6 +33,7 @@ import type { PromotionRunRepository } from '../database/repositories/promotion-
 import type { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
+import { ApplyPreviewService } from '../apply-preview.service';
 import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
@@ -164,6 +165,16 @@ describe('PromotionsService', () => {
 			folderService,
 			n8nPackagesService,
 			bindingPreflight,
+			// Real, so that the move checks read the repository and folder mocks above.
+			new ApplyPreviewService(
+				n8nPackagesService,
+				inventoryReader,
+				mock(),
+				sharedWorkflowRepository,
+				projectRepository,
+				folderService,
+				mock(),
+			),
 			inventoryReader,
 			packageImportConfig,
 			runRepository,
