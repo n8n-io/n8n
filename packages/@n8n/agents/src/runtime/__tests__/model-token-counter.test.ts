@@ -16,14 +16,21 @@ describe('createModelTokenCounter', () => {
 		expect(await createModelTokenCounter('openai/gpt-5')('<|endoftext|>')).toBe(7);
 	});
 
-	// Encoding one long emoji pre-token is slow, so this case needs a longer timeout.
 	it('keeps surrogate pairs whole when splitting text without whitespace', async () => {
-		expect(await createModelTokenCounter('openai/gpt-5')('a' + '😀'.repeat(6000))).toBe(6001);
-	}, 30_000);
+		expect(await createModelTokenCounter('openai/gpt-5')('a' + '😀'.repeat(3_900))).toBe(3_901);
+	});
+
+	it('counts a long run without whitespace in small chunks', async () => {
+		// A single encode of this text takes about 15 s and returns 2,503 tokens.
+		const count = await createModelTokenCounter('openai/gpt-5')('start ' + 'x'.repeat(20_000));
+
+		expect(Math.abs(count - 2503) / 2503).toBeLessThan(0.01);
+	});
 
 	it('yields to the event loop while counting a large text', async () => {
 		const words = ['alpha', 'beta,', 'gamma\n', '"delta"', '{epsilon:', '42}', 'ζήτα'];
-		const text = Array.from({ length: 20_000 }, (_, index) => words[index % words.length]).join(
+		// Counting must take well over the yield interval, so the text is large.
+		const text = Array.from({ length: 60_000 }, (_, index) => words[index % words.length]).join(
 			' ',
 		);
 		const encoder = await getEncoding('o200k_base');
