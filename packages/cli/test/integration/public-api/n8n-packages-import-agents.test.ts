@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	ImportResultDto,
@@ -45,9 +46,12 @@ import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import {
+	DataTableColumnRepository,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import {
 	looseAgentsFixture,
 	projectAgentsFixture,
@@ -69,7 +73,11 @@ mockInstance(ActiveWorkflowManager);
 mockInstance(Telemetry);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 beforeAll(
-	async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents', 'data-table']),
+	async () =>
+		await testModules.loadModules(
+			['skills', 'n8n-packages', 'agents', 'data-table'],
+			packagedModules,
+		),
 );
 const server = setupTestServer({
 	endpointGroups: ['publicApi'],

@@ -108,7 +108,7 @@ export class ProjectService {
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
+		return import('@n8n/backend-module-data-table').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}

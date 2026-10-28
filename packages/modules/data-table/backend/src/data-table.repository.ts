@@ -43,7 +43,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	async findNamesInProject(
 		projectId: string,
 		names: string[],
-	): Promise<Pick<DataTable, 'id' | 'name'>[]> {
+	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
 		if (names.length === 0) return [];
 		return await this.find({ select: ['id', 'name'], where: { projectId, name: In(names) } });
 	}

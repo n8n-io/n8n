@@ -38,8 +38,7 @@ import { sampleDimensionTuples } from './case-generation/dimensions';
 import { isSupportedAgentProvider } from '@/credentials/credential-field-mapping';
 import { resolveCredentialAwareModelConfig } from '../agents/json-config/model-config';
 import { createAgentCredentialProvider } from '../agents/utils/agent-credential-provider';
-import { DataTableService } from '../data-table/data-table.service';
-import { DataTableNameConflictError } from '../data-table/errors/data-table-name-conflict.error';
+import { DataTableService, DataTableNameConflictError } from '@n8n/backend-module-data-table';
 
 const DEFAULT_CASE_COUNT = 6;
 const MAX_CASE_COUNT = 20;

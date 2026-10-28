@@ -35,8 +35,8 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import {
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingDataTables,

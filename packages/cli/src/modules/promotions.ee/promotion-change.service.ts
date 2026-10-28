@@ -37,7 +37,7 @@ import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/data-table-compat';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
 import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';

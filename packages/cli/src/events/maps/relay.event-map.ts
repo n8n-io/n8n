@@ -1,4 +1,4 @@
-import type { DataTableEventMap } from '@/modules/data-table/data-table-events';
+import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,

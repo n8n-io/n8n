@@ -1957,8 +1957,8 @@ import {
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
 } from '@n8n/backend-services';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
+
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	WorkflowEditorLockedError,

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Container } from '@n8n/di';
 
 import { DataTableSizeValidator } from '../data-table-size-validator.service';

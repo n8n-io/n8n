@@ -12,7 +12,7 @@ import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
+import type { DataTableDDLService } from '@n8n/backend-module-data-table';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowService } from '@/workflows/workflow.service';

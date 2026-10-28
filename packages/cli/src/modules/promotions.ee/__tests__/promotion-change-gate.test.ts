@@ -12,7 +12,7 @@ import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableService } from '@n8n/backend-module-data-table';
 import type { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
 import type { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';

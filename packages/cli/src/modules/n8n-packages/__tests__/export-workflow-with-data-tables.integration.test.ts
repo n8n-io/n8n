@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { EventService } from '@n8n/backend-services';
 import type { Project, User } from '@n8n/db';
 import {
@@ -12,8 +13,8 @@ import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
@@ -28,7 +29,7 @@ let service: N8nPackagesService;
 let dataTableService: DataTableService;
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'data-table']);
+	await testModules.loadModules(['n8n-packages', 'data-table'], packagedModules);
 	await testDb.init();
 	mockDataTableSizeValidator();
 	service = Container.get(N8nPackagesService);

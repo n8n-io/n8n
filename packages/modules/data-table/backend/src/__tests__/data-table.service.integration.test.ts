@@ -12,7 +12,7 @@ import type { DataTableRow } from 'n8n-workflow';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
-import { mockDataTableSizeValidator } from './test-helpers';
+import { mockDataTableSizeValidator } from '../testing';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
@@ -22,7 +22,9 @@ import { DataTableValidationError } from '../errors/data-table-validation.error'
 import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], {
+		'data-table': async () => await import('../data-table.module.js'),
+	});
 	await testDb.init();
 	mockDataTableSizeValidator();
 });
@@ -3368,7 +3370,7 @@ describe('dataTable', () => {
 			expect(result).toHaveLength(2);
 
 			// Check the before state (first item)
-			expect((result as any)[0]).toEqual(
+			expect((result as DataTableRow[])[0]).toEqual(
 				expect.objectContaining({
 					id: expect.any(Number),
 					name: 'Alice',
@@ -3380,7 +3382,7 @@ describe('dataTable', () => {
 			);
 
 			// Check the after state (second item)
-			expect((result as any)[1]).toEqual(
+			expect((result as DataTableRow[])[1]).toEqual(
 				expect.objectContaining({
 					id: expect.any(Number),
 					name: 'Alice',

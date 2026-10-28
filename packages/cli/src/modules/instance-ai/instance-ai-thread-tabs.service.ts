@@ -11,7 +11,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiChangedArtifact } from '@n8n/instance-ai';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/backend-module-data-table';
 
 import { InstanceAiThreadTabsRepository } from './repositories/instance-ai-thread-tabs.repository';
 

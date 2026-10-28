@@ -42,7 +42,9 @@ describe('DataTableService', () => {
 	let mockModuleRegistry: Mocked<ModuleRegistry>;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], {
+			'data-table': async () => await import('../data-table.module.js'),
+		});
 	});
 
 	beforeEach(() => {
@@ -469,7 +471,7 @@ describe('DataTableService', () => {
 
 		it('should query accessible projects using the correct role scope', async () => {
 			// Arrange
-			const mockRoles = [{ slug: 'project:member' }] as any[];
+			const mockRoles = ['project:member'];
 			mockRoleService.rolesWithScope.mockResolvedValue(mockRoles);
 			const regularUser = {
 				id: 'user-regular',
@@ -643,7 +645,7 @@ describe('DataTableService', () => {
 			// Mock insertRows transaction
 			Object.defineProperty(mockDataTableColumnRepository, 'manager', {
 				value: {
-					transaction: vi.fn(async (fn) => fn({} as any)),
+					transaction: vi.fn(async (fn) => fn({})),
 				},
 				writable: true,
 				configurable: true,
