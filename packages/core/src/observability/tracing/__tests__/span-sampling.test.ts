@@ -1,3 +1,5 @@
+import { ROOT_CONTEXT, context } from '@opentelemetry/api';
+import { suppressTracing } from '@opentelemetry/core';
 import type { SpanJSON, TracesSamplerSamplingContext, TransactionEvent } from '@sentry/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,7 +14,7 @@ const THRESHOLD_MS = 1000;
 
 /** Builds a minimal child SpanJSON with a duration of `durationMs`. */
 function span(overrides: Partial<SpanJSON> & { op?: string; durationMs?: number }): SpanJSON {
-	const { durationMs = 0, ...rest } = overrides;
+	const { durationMs = 0, status = 'ok', ...rest } = overrides;
 	const startTimestamp = 1000;
 	return {
 		span_id: 'span-id',
@@ -20,6 +22,7 @@ function span(overrides: Partial<SpanJSON> & { op?: string; durationMs?: number 
 		start_timestamp: startTimestamp,
 		timestamp: startTimestamp + durationMs / 1000,
 		data: {},
+		status,
 		...rest,
 	};
 }
@@ -56,6 +59,15 @@ describe('buildBeforeSendTransaction', () => {
 		expect(buildBeforeSendTransaction(THRESHOLD_MS)(event)).toBeNull();
 	});
 
+	it('drops Redis-rooted transactions, which Sentry v11 gives op db.query', () => {
+		const event = transaction({
+			op: 'db.query',
+			name: 'set n8n:cache:webhook:POST-path',
+			spans: [],
+		});
+		expect(buildBeforeSendTransaction(THRESHOLD_MS)(event)).toBeNull();
+	});
+
 	it('keeps a real request transaction that contains fast db child spans', () => {
 		const slowDb = span({ op: 'db', durationMs: THRESHOLD_MS, status: 'ok' });
 		const event = transaction({
@@ -68,23 +80,16 @@ describe('buildBeforeSendTransaction', () => {
 		expect(result?.spans).toEqual([slowDb]);
 	});
 
-	it.each(['middleware.express', 'router.express', 'request_handler.express'])(
-		'drops %s spans wholesale',
-		(op) => {
-			expect(filterSpans([span({ op, durationMs: 5000 })])).toEqual([]);
-		},
-	);
-
-	it.each(['db', 'http.client'])('drops fast, non-errored %s spans', (op) => {
+	it.each(['db', 'db.query', 'http.client'])('drops fast, non-errored %s spans', (op) => {
 		expect(filterSpans([span({ op, durationMs: THRESHOLD_MS - 1, status: 'ok' })])).toEqual([]);
 	});
 
-	it.each(['db', 'http.client'])('keeps slow %s spans', (op) => {
+	it.each(['db', 'db.query', 'http.client'])('keeps slow %s spans', (op) => {
 		const slow = span({ op, durationMs: THRESHOLD_MS, status: 'ok' });
 		expect(filterSpans([slow])).toEqual([slow]);
 	});
 
-	it.each(['db', 'http.client'])('keeps errored fast %s spans', (op) => {
+	it.each(['db', 'db.query', 'http.client'])('keeps errored fast %s spans', (op) => {
 		const errored = span({ op, durationMs: 1, status: 'internal_error' });
 		expect(filterSpans([errored])).toEqual([errored]);
 	});
@@ -107,7 +112,6 @@ describe('buildBeforeSendTransaction', () => {
 		const slowDb = span({ op: 'db', durationMs: 2000, status: 'ok' });
 		const httpServer = span({ op: 'http.server', durationMs: 50, status: 'ok' });
 		const result = filterSpans([
-			span({ op: 'middleware.express', durationMs: 40 }),
 			span({ op: 'db', durationMs: 2, status: 'ok' }),
 			slowDb,
 			httpServer,
@@ -118,7 +122,7 @@ describe('buildBeforeSendTransaction', () => {
 	it('reparents surviving children of dropped spans', () => {
 		const slowDb = span({
 			span_id: 'db-span',
-			parent_span_id: 'express-span',
+			parent_span_id: 'http-span',
 			op: 'db',
 			durationMs: 2000,
 			status: 'ok',
@@ -126,10 +130,10 @@ describe('buildBeforeSendTransaction', () => {
 
 		const result = filterSpans([
 			span({
-				span_id: 'express-span',
+				span_id: 'http-span',
 				parent_span_id: 'root-span',
-				op: 'middleware.express',
-				durationMs: 40,
+				op: 'http.client',
+				durationMs: 2,
 			}),
 			slowDb,
 		]);
@@ -206,7 +210,7 @@ describe('buildTracesSampler', () => {
 	const tracesSampler = buildTracesSampler(BASE_RATE);
 
 	function ctx(
-		attributes?: TracesSamplerSamplingContext['attributes'],
+		attributes: TracesSamplerSamplingContext['attributes'] = {},
 		inheritedRate?: number,
 	): TracesSamplerSamplingContext {
 		return {
@@ -237,7 +241,7 @@ describe('buildTracesSampler', () => {
 		expect(tracesSampler(ctx({ 'sentry.op': 'http.server' }, 1))).toBe(1);
 	});
 
-	it('returns the base rate when attributes are missing', () => {
+	it('returns the base rate when the op attribute is missing', () => {
 		expect(tracesSampler(ctx())).toBe(BASE_RATE);
 	});
 });
@@ -294,5 +298,11 @@ describe('shouldIgnoreOutgoingRequest', () => {
 		'telemetry.n8n.io/v1/batch',
 	])('keeps non-telemetry outbound call %s', (url) => {
 		expect(shouldIgnoreOutgoingRequest(url)).toBe(false);
+	});
+
+	it('ignores an outbound call that runs with OpenTelemetry tracing suppressed', () => {
+		vi.spyOn(context, 'active').mockReturnValueOnce(suppressTracing(ROOT_CONTEXT));
+
+		expect(shouldIgnoreOutgoingRequest('http://collector:4318/v1/traces')).toBe(true);
 	});
 });

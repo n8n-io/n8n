@@ -340,10 +340,10 @@ catalogs:
   # group has to move in lockstep — a caret would let the entries re-resolve to
   # different releases and pull two copies of @sentry/core into the tree.
   sentry:
-    '@sentry/core': 10.70.0
-    '@sentry/node': 10.70.0
-    '@sentry/node-native': 10.70.0
-    '@sentry/profiling-node': 10.70.0
+    '@sentry/core': 11.8.0
+    '@sentry/node': 11.8.0
+    '@sentry/node-native': 11.8.0
+    '@sentry/profiling-node': 11.8.0
   storybook:
     '@storybook/addon-a11y': ^10.5.10
     '@storybook/addon-docs': ^10.5.10
