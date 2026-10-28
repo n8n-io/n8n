@@ -7821,6 +7821,7 @@
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
 	"instanceAi.toolResult.dataTruncated": "Data truncated for display.",
 	"instanceAi.thread.new": "New chat",
+	"instanceAi.thread.loadError": "Couldn't open this chat. Try again.",
 	"instanceAi.sidebar.back": "Back",
 	"instanceAi.sidebar.threads": "Threads",
 	"instanceAi.sidebar.chatHistory": "Chat history",
