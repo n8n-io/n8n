@@ -40,6 +40,7 @@ export interface WhatsAppWebhookStatus {
  * it current.
  *
  * - `connected`: nothing to report.
+ * - `numberUnavailable`: Meta shows the number as disconnected, banned, deleted or moved. The agent cannot send or receive.
  * - `numberPending`: Meta has not activated the number. The agent cannot send or receive.
  * - `dailyLimit`: the number reached its daily limit. The agent can reply, but cannot start conversations.
  * - `nameInReviewBlocked`, `nameDeclinedBlocked`: a first display name is not approved. The agent cannot send.
@@ -49,6 +50,7 @@ export interface WhatsAppWebhookStatus {
  */
 export type WhatsAppMetaState =
 	| 'connected'
+	| 'numberUnavailable'
 	| 'numberPending'
 	| 'dailyLimit'
 	| 'nameInReviewBlocked'

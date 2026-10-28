@@ -33,6 +33,14 @@ const NOT_VERIFIED_VERIFICATION = new Set([
 	'expired',
 ]);
 
+/**
+ * Number statuses that mean the number cannot send. Meta does not publish the
+ * values of the phone number `status` field. This list follows the Graph API
+ * enum that client libraries such as RestFB carry. Other values, such as
+ * `FLAGGED` and `RATE_LIMITED`, show nothing until their meaning is known.
+ */
+const UNAVAILABLE_NUMBER_STATUSES = new Set(['BANNED', 'DISCONNECTED', 'DELETED', 'MIGRATED']);
+
 const isPending = (status?: string) => status === 'PENDING_REVIEW';
 const isDeclined = (status?: string) => status === 'DECLINED';
 
@@ -45,6 +53,7 @@ const isDeclined = (status?: string) => status === 'DECLINED';
 export function resolveWhatsAppMetaState(signals: WhatsAppMetaSignals): WhatsAppMetaState {
 	const { numberStatus, nameStatus, newNameStatus } = signals;
 
+	if (numberStatus && UNAVAILABLE_NUMBER_STATUSES.has(numberStatus)) return 'numberUnavailable';
 	if (numberStatus === 'PENDING') return 'numberPending';
 	if (isDeclined(nameStatus)) return 'nameDeclinedBlocked';
 	if (isPending(nameStatus)) return 'nameInReviewBlocked';

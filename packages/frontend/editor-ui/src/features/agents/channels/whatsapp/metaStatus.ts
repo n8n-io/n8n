@@ -25,6 +25,19 @@ const presentations: Record<
 	Exclude<WhatsAppMetaState, 'connected' | 'unknown'>,
 	WhatsAppMetaPresentation
 > = {
+	numberUnavailable: {
+		theme: 'danger',
+		titleKey: 'agents.channels.whatsapp.meta.numberUnavailable.title',
+		fallbackTitle: {
+			needs: 'number',
+			key: 'agents.channels.whatsapp.meta.numberUnavailable.titleNoNumber',
+		},
+		descriptionKey: 'agents.channels.whatsapp.meta.numberUnavailable.description',
+		action: {
+			labelKey: 'agents.channels.whatsapp.meta.action.openManager',
+			url: WHATSAPP_MANAGER_URL,
+		},
+	},
 	numberPending: {
 		theme: 'warning',
 		titleKey: 'agents.channels.whatsapp.meta.numberPending.title',

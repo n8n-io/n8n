@@ -96,7 +96,21 @@ describe('WhatsApp Meta callout wording', () => {
 		expect(getByTestId('whatsapp-meta-callout')).toHaveTextContent(title);
 	});
 
+	// Not in the design prototype. Review this wording with design.
+	it('words the numberUnavailable callout', () => {
+		const presentation = presentWhatsAppMetaState('numberUnavailable');
+
+		expect(i18n.baseText(presentation!.titleKey, { interpolate: { number: NUMBER } })).toBe(
+			`Your number ${NUMBER} can’t send messages`,
+		);
+		expect(i18n.baseText(presentation!.descriptionKey)).toBe(
+			'Meta shows this number as disconnected, banned, deleted or moved. The agent can’t send or receive messages. Check the number in WhatsApp Manager.',
+		);
+		expect(i18n.baseText(presentation!.action!.labelKey)).toBe('Open WhatsApp Manager ↗');
+	});
+
 	it.each([
+		['numberUnavailable', 'Your number can’t send messages'],
 		['numberPending', 'Your number is pending activation'],
 		['dailyLimit', 'Your number reached its daily message limit'],
 		['nameInReviewBlocked', 'Your display name is in review'],

@@ -8,7 +8,8 @@ describe('presentWhatsAppMetaState', () => {
 		expect(presentWhatsAppMetaState(state)).toBeNull();
 	});
 
-	it('uses the error theme only when a declined name blocks sending', () => {
+	it('uses the error theme when the state stops the agent from sending', () => {
+		expect(presentWhatsAppMetaState('numberUnavailable')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('nameDeclinedBlocked')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('nameDeclined')?.theme).toBe('warning');
 	});
@@ -16,6 +17,7 @@ describe('presentWhatsAppMetaState', () => {
 	it.each<[WhatsAppMetaState, string]>([
 		['nameDeclinedBlocked', 'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/'],
 		['nameDeclined', 'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/'],
+		['numberUnavailable', 'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/'],
 		['businessNotVerified', 'https://business.facebook.com/settings/security'],
 	])('links %s to the right place in Meta', (state, url) => {
 		expect(presentWhatsAppMetaState(state)?.action?.url).toBe(url);
@@ -40,6 +42,7 @@ describe('presentWhatsAppMetaState', () => {
 
 	describe('metaTitleKey', () => {
 		it.each<[WhatsAppMetaState, string]>([
+			['numberUnavailable', 'agents.channels.whatsapp.meta.numberUnavailable.titleNoNumber'],
 			['numberPending', 'agents.channels.whatsapp.meta.numberPending.titleNoNumber'],
 			['dailyLimit', 'agents.channels.whatsapp.meta.dailyLimit.titleNoNumber'],
 		])('drops the number from the %s headline when Meta gives none', (state, key) => {
