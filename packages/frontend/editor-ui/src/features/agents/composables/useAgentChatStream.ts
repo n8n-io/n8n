@@ -39,6 +39,7 @@ import {
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	createStoppedMessage,
 	findOpenInteractive,
 	findTailOpenInteractive,
 	findTailSteerableInteractive,
@@ -881,20 +882,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let changed = false;
 			for (const toolCall of message.toolCalls ?? []) {
 				if (toolCall.runId !== runId && !isToolCallInFlight(toolCall)) continue;
-				toolCall.state = TOOL_CALL_STATE.CANCELLED;
-				toolCall.canceled = true;
+				markToolCallCancelled(message, toolCall);
 				changed = true;
-
-				const interactive = getMessageInteractive(message, toolCall.toolCallId);
-				if (interactive) {
-					upsertMessageInteractive(message, {
-						...interactive,
-						resolvedAt: Date.now(),
-						cancelled: true,
-					});
-				}
 			}
 			if (changed) markMessageSuccessIfSettled(message);
+		}
+	}
+
+	function markToolCallCancelled(message: ChatMessage, toolCall: ToolCall): void {
+		toolCall.state = TOOL_CALL_STATE.CANCELLED;
+		toolCall.canceled = true;
+		const interactive = getMessageInteractive(message, toolCall.toolCallId);
+		if (interactive) {
+			upsertMessageInteractive(message, {
+				...interactive,
+				resolvedAt: Date.now(),
+				cancelled: true,
+			});
 		}
 	}
 
@@ -1285,6 +1289,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'finish': {
 				if (event.usage) notifyUsage(session, event.usage);
+				if (event.finishReason === 'cancelled' && session.executionId) {
+					settleOpenReasoning(session);
+					for (const message of session.minted) {
+						for (const toolCall of message.toolCalls ?? []) {
+							if (isToolCallInFlight(toolCall)) markToolCallCancelled(message, toolCall);
+						}
+						markMessageSuccessIfSettled(message);
+					}
+					const notice = createStoppedMessage(session.executionId);
+					if (!messages.value.some(({ id }) => id === notice.id)) messages.value.push(notice);
+				}
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);

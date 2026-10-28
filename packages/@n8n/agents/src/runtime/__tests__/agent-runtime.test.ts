@@ -1819,6 +1819,7 @@ describe('AgentRuntime — guardrails', () => {
 
 	it('prices a Foundry deployment by the model it serves', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const modelFetch = vi.fn<typeof fetch>();
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: {
@@ -1828,13 +1829,14 @@ describe('AgentRuntime — guardrails', () => {
 				endpointType: 'foundry',
 				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
 			},
+			modelFetch,
 			instructions: 'You are a test assistant.',
 			eventBus: new AgentEventBus(),
 		});
 
 		await runtime.generate('hi');
 
-		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1', modelFetch);
 	});
 
 	it('does not start the next model call after a turn spends the session cap', async () => {

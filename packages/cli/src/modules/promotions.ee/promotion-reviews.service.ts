@@ -5,6 +5,7 @@ import {
 	type PromotionPromoteWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BaseError } from '@n8n/errors';
@@ -45,6 +46,7 @@ export class PromotionReviewsService {
 		private readonly hostResolver: PromotionReviewHostResolver,
 		private readonly mergeRequests: GitLabMergeRequestClient,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
@@ -78,7 +80,12 @@ export class PromotionReviewsService {
 			this.logger.warn('Could not open the GitLab merge request', { error: mergeRequest.error });
 			return { warnings: [mergeRequestWarning(mergeRequest.error)] };
 		}
-		const { iid, project_id: projectId, web_url: webUrl } = mergeRequest.result;
+		const {
+			iid,
+			project_id: projectId,
+			web_url: webUrl,
+			has_conflicts: hasConflicts,
+		} = mergeRequest.result;
 
 		const reviewId = uuidv7();
 		const type = promotionReviewTypeSchema.parse('gitlab');
@@ -110,6 +117,13 @@ export class PromotionReviewsService {
 				],
 			};
 		}
+
+		this.eventService.emit('promotion-merge-request-opened', {
+			user: actor,
+			environmentId: input.environmentId,
+			reviewType: type,
+			hasConflicts,
+		});
 
 		return { review: { reviewId, ['number']: iid, webUrl }, warnings: [] };
 	}

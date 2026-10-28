@@ -136,7 +136,10 @@ function getOrchestratorDomainToolFactories(
 			() => loadNodesTool().createGetNodeParameterOptionsTool(context),
 		],
 		[DOMAIN_TOOL_IDS.EXECUTE_NODE, () => loadNodesTool().createExecuteNodeTool(context)],
-		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_MODELS,
+			() => loadSearchModelsTool().createSearchModelsTool(context.modelFetch ?? fetch),
+		],
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,

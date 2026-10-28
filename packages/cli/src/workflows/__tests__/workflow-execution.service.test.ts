@@ -651,6 +651,32 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
+		test('passes undefined pinData when the stored workflow has NULL pinData', async () => {
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({
+				nodes: [webhookNode, hackerNewsNode],
+				connections: createMainConnection(hackerNewsNode.name, webhookNode.name),
+				// The column is nullable, so the repository can return null.
+				pinData: null as unknown as IWorkflowBase['pinData'],
+			});
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
+				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+			};
+
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await workflowExecutionService.executeManually(workflowData, runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ runData: runPayload.runData, pinData: undefined }),
+			);
+			expect(workflowData.pinData).toBeUndefined();
+		});
+
 		test('throws ForbiddenError when the instance is in read-only (protected) mode', async () => {
 			const instanceWriteAccess = mock<InstanceWriteAccessService>();
 			instanceWriteAccess.isReadOnly.mockReturnValue(true);

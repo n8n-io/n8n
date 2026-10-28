@@ -103,6 +103,23 @@ Do not show a link from the standalone build chat to the full Assistant.
 Test links and task previews select Test. An accepted Fix with Assistant request selects Build.
 Keep Test selected if the Assistant refuses the request to preserve a draft.
 
+## Session controls
+
+Show `Stop session` for a running session, including a child session, when the
+user can access the session and execute the Agent.
+Put it in the session list menu and beside Close in the session detail header.
+Use a red, icon-only ghost control in the header. Match the Preview control's
+size. Disable the action while the request runs. Keep the session running until
+the server reports its final status. Then remove the stop icon and show
+`Session stopped` in the conversation. Keep the notice after a reload. Send the same
+notice to a user who talks to the Agent through a channel.
+Stop discards queued input, including steered messages, before it aborts the active
+execution. Clear the chat queue and close its waiting connections. Keep unsent
+composer drafts. Stop also cancels active background child jobs and clears suspensions for the
+stopped execution. Keep checkpoints from later executions.
+Wrap the header breadcrumbs and actions on narrow screens. Keep Stop and Close
+inside the available width.
+
 ## Preview history
 
 Show token usage after a model turn reports it. Hide the cost when pricing is
@@ -351,7 +368,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
-When the skills hub is on, `Add skill` starts with the `Skills` picker. The
+When the skills module is on, `Add skill` starts with the `Skills` picker. The
 picker shows only skills that the Agent can use: skills of its project, skills
 of this Agent only, and global skills. Group them in the tabs All, the project
 name, This agent, and Global. Do not

@@ -151,6 +151,7 @@ function toImportedAgentSummary({
 	agent,
 	status,
 	publishing,
+	channels,
 }: AgentImportOutcome): ImportedAgentSummary {
 	return {
 		sourceAgentId,
@@ -160,6 +161,7 @@ function toImportedAgentSummary({
 		activeVersionId: agent.activeVersionId ?? null,
 		status,
 		publishing,
+		channels,
 	};
 }
 
@@ -211,7 +213,7 @@ export function toVariableSummary(
 	result: VariableApplyResult,
 ): ImportVariableSummary {
 	return reconcileVariableSummary({
-		matched: plan.matched,
+		matched: plan.matched.map(({ name }) => name),
 		missing: plan.missing.map(({ name }) => name),
 		created: result.created,
 		stubbed: result.stubbed,
