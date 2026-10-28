@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { gzipSync } from 'node:zlib';
 
-import { decodeBody, formatLine, startSink, toRecords } from './telemetry-sink.mjs';
+import { decodeBody, formatLine, startSink, toRecords } from './sink.mjs';
 
 const receivedAt = '2026-10-23T10:17:08.000Z';
 

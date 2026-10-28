@@ -244,7 +244,7 @@ N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
 To see the telemetry events that your instance sends, start a local listener in
 one terminal and the backend in another. The listener shows one line for each
 event, from the backend and from the editor, and writes each event to
-`telemetry.ndjson`. Run `pnpm telemetry:sink --help` for its options.
+`.output/telemetry.ndjson`. Run `pnpm telemetry:sink --help` for its options.
 
 `pnpm dev:be:telemetry` loads `.env.local` and `.env` when they exist, like
 `dotenvx` in the examples above. It always points the diagnostics settings at the

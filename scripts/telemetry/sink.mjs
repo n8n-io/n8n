@@ -7,7 +7,7 @@
 //
 // Events carry user and agent ids, so it binds loopback only. Do not tunnel it.
 
-import { createWriteStream, realpathSync } from 'node:fs';
+import { createWriteStream, mkdirSync, realpathSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +16,7 @@ import { gunzipSync } from 'node:zlib';
 
 const HOST = '127.0.0.1';
 const DEFAULT_PORT = 9999;
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MAX_VALUE_LENGTH = 60;
 const EDITOR_PATHS = new Set(['/v1/track', '/v1/identify', '/v1/page']);
 
@@ -121,6 +121,7 @@ export async function startSink({
 	posthog = false,
 	log = console.log,
 }) {
+	mkdirSync(path.dirname(out), { recursive: true });
 	const file = createWriteStream(out, { flags: 'a' });
 	const filter = grep ? new RegExp(grep, 'i') : undefined;
 	let received = 0;
@@ -189,7 +190,7 @@ event, and writes each event as one JSON line to a file.
 
 Options:
   --port <port>    Port to listen on (default: ${DEFAULT_PORT})
-  --out <file>     File for the events (default: telemetry.ndjson in the repo root)
+  --out <file>     File for the events (default: .output/telemetry.ndjson in the repo root)
   --grep <regex>   Show and write only the events whose name matches (case-insensitive)
   --raw            Also show requests that carry no event, such as PostHog flag requests
   --posthog        Also show PostHog events on screen. Hidden by default, because most
@@ -197,7 +198,7 @@ Options:
   -h, --help       Show this help
 
 Start the backend with \`pnpm dev:be:telemetry\` to send its telemetry to the default port.
-Example: grep '"Agent run used knowledge"' telemetry.ndjson | tail -1 | jq .properties`;
+Example: grep '"Agent run used knowledge"' .output/telemetry.ndjson | tail -1 | jq .properties`;
 
 function parseOptions(args) {
 	// Accept `pnpm telemetry:sink -- --port 9998`, and `-help`, which parseArgs does not know.
@@ -208,7 +209,7 @@ function parseOptions(args) {
 		args: normalizedArgs,
 		options: {
 			port: { type: 'string', default: String(DEFAULT_PORT) },
-			out: { type: 'string', default: path.join(ROOT, 'telemetry.ndjson') },
+			out: { type: 'string', default: path.join(ROOT, '.output', 'telemetry.ndjson') },
 			grep: { type: 'string' },
 			raw: { type: 'boolean', default: false },
 			posthog: { type: 'boolean', default: false },
