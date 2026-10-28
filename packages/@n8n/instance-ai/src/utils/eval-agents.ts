@@ -269,17 +269,13 @@ function usageLogHooks(
 
 /**
  * Same switch as `InstanceAiConfig.modelRequestLabels`, read here so harness callers share it.
- * Reads the `_FILE` form and strips quotes as `@n8n/config` does.
+ * Parses as `@n8n/config` does: the env value as is, else the trimmed `_FILE` contents.
  */
 function requestLabelsEnabled(): boolean {
 	const name = 'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS';
 	const filePath = process.env[`${name}_FILE`];
-	const raw = process.env[name] ?? (filePath ? readFileSync(filePath, 'utf8') : '');
-	const value = raw
-		.trim()
-		.replace(/^(['"])(.*)\1$/, '$2')
-		.toLowerCase();
-	return value === 'true' || value === '1';
+	const value = process.env[name] ?? (filePath ? readFileSync(filePath, 'utf8').trim() : '');
+	return ['true', '1'].includes(value.toLowerCase());
 }
 
 export function createEvalAgent(

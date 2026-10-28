@@ -181,6 +181,18 @@ describe('eval agent model config', () => {
 		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
 	});
 
+	it.each(['true ', '"true"', 'yes'])(
+		'stays off for %j, which @n8n/config also reads as off',
+		(value) => {
+			process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+			process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = value;
+
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+
+			expect(mockAgentInstances[0]?.functionId).not.toHaveBeenCalled();
+		},
+	);
+
 	it('turns a helper name with spaces or slashes into a safe caller id', () => {
 		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
 		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = 'true';
