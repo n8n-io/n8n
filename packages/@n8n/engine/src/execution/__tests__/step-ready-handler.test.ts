@@ -12,11 +12,8 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import {
-	resolveInputReads,
-	StepReadyHandler,
-	type SubExecutionStarter,
-} from '../step-ready-handler';
+import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
+import type { StartExecutionService } from '../start-execution.service';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -54,10 +51,14 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
-/** Handler with a throwaway publisher, for the tests that ignore it. */
+/** The one method of the start service the handler calls; a stub stands in for the class. */
+type SubExecutionStarter = Pick<StartExecutionService, 'start'>;
+
 function makeSubExecutionStarter(): SubExecutionStarter {
 	return { start: vi.fn().mockResolvedValue({ executionId: 'exec-sub' }) };
 }
+
+/** Handler with a throwaway publisher, for the tests that ignore it. */
 
 function makeHandler(
 	executionStore: ExecutionStore,
@@ -76,7 +77,7 @@ function makeHandler(
 		dependencies,
 		lifecycleEventPublisher,
 		responseSender,
-		subExecutionStarter,
+		subExecutionStarter as StartExecutionService,
 		onStepSuspended,
 	);
 }

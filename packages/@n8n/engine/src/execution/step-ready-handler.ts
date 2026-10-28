@@ -31,18 +31,10 @@ import {
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import type { StartExecutionRequest, StartExecutionResult } from './start-execution.service';
+import type { StartExecutionService } from './start-execution.service';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
-
-/**
- * Starts the sub-executions a step asks for. `StartExecutionService` is the
- * one implementation; the seam keeps the handler's tests free of it.
- */
-export interface SubExecutionStarter {
-	start(request: StartExecutionRequest): Promise<StartExecutionResult>;
-}
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
@@ -66,7 +58,8 @@ export class StepReadyHandler {
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
-		private readonly subExecutionStarter: SubExecutionStarter,
+		/** The one start path, so a sub-execution is admitted and validated like any other. */
+		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -252,7 +245,7 @@ export class StepReadyHandler {
 		awaited: boolean,
 	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
 		try {
-			await this.subExecutionStarter.start({
+			await this.startExecution.start({
 				executionId: subExecution.executionId,
 				workflowId: subExecution.workflowId,
 				graph: subExecution.graph,
