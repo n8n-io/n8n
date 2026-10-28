@@ -223,7 +223,11 @@ describe('Test Snowflake, executeQuery - connection cleanup', () => {
 		});
 		executeFns.getCredentials.mockResolvedValue(snowflakeCredentials);
 
-		await expect(new Snowflake().execute.call(executeFns)).rejects.toThrow('has locked table');
+		await expect(new Snowflake().execute.call(executeFns)).rejects.toMatchObject({
+			name: 'NodeOperationError',
+			message: expect.stringContaining('has locked table'),
+			context: expect.objectContaining({ itemIndex: 0 }),
+		});
 
 		expect(mockDestroy).toHaveBeenCalled();
 	});
