@@ -1,6 +1,6 @@
 import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SourceType } from '@n8n/db';
+import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
@@ -233,7 +233,8 @@ export class AgentChatAttachmentService {
 			await this.binaryDataService.getMetadata(attachment.binaryDataId);
 			return true;
 		} catch (error) {
-			if (error instanceof FileNotFoundError) return false;
+			// Filesystem, S3 and Azure throw FileNotFoundError. Database mode throws EntityNotFoundError.
+			if (error instanceof FileNotFoundError || isEntityNotFoundError(error)) return false;
 			throw error;
 		}
 	}

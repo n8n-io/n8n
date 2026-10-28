@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { EntityNotFoundError } from '@n8n/typeorm';
 import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -413,8 +414,11 @@ describe('AgentChatAttachmentService', () => {
 			expect(binaryDataService.getMetadata).toHaveBeenCalledWith('filesystem-v2:abc');
 		});
 
-		it('returns false when the bytes are gone', async () => {
-			binaryDataService.getMetadata.mockRejectedValue(new FileNotFoundError('abc'));
+		it.each([
+			['filesystem, S3 or Azure', new FileNotFoundError('abc')],
+			['database', new EntityNotFoundError('BinaryDataFile', { fileId: 'abc' })],
+		])('returns false when the bytes are gone in %s mode', async (_mode, error) => {
+			binaryDataService.getMetadata.mockRejectedValue(error);
 
 			expect(await service.hasStoredData(attachment)).toBe(false);
 		});
