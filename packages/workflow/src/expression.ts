@@ -461,6 +461,12 @@ export class Expression {
 		});
 	}
 
+	/** Load the QuickJS WASM module, so a QuickJS evaluator created later starts without it. */
+	static async loadQuickJsWasm(): Promise<void> {
+		const runtime = await import('@n8n/expression-runtime');
+		await runtime.QuickJsBridge.loadWasm();
+	}
+
 	/**
 	 * Start a QuickJS evaluator for a shadow run, next to whatever engine is
 	 * active. It has its own bridge and caller, so it never changes what the main
