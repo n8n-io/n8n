@@ -296,6 +296,19 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	AGENT_WHATSAPP_WEBHOOK_VERIFIED: {
+		name: 'Agent WhatsApp webhook verified',
+		description:
+			'Meta completed the webhook handshake with an agent: its callback URL is reachable and the verify token matched. Shows how many WhatsApp setups get past the Meta webhook step. Meta repeats the handshake each time someone clicks Verify and save, so one agent can emit this more than once.',
+		properties: z.object({
+			agent_id: z.string(),
+			phase: z
+				.enum(['setup', 'connected'])
+				.describe(
+					'setup: the channel was not connected yet, so n8n answered without a credential; connected: the running channel answered, which is a re-verification',
+				),
+		}),
+	},
 	USER_RESPONDED_TO_AGENT_TOOL_APPROVAL: {
 		name: 'User responded to agent tool approval',
 		description:
@@ -374,6 +387,84 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.describe(
 					'Vector store searches that failed. Each one also counts in vector_store_search_count',
+				),
+			file_age_days_min: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the newest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_max: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the oldest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average age in full days of the knowledge files that read_file read successfully, with one decimal. Each file counts once, also when the run read it more than once. Absent when the run read no file.',
+				),
+			file_age_days_median: z
+				.number()
+				.optional()
+				.describe(
+					'Median age of the knowledge files that read_file read successfully. Each file counts once, and each age is in full days. With an even number of files, the median is the average of the two middle ages, so it can end in .5. Absent when the run read no file.',
+				),
+			file_age_days_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Ages in full days of the first 25 different knowledge files that read_file read successfully, in the order of their first read. Absent when the run read no file.',
+				),
+			file_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the finished search_text calls, failed ones included. Includes sandbox start and file copy. Absent when no call finished.',
+				),
+			file_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest finished search_text call. Absent when no call finished.',
+				),
+			file_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Finished search_text calls that worked and found nothing. Absent when no call finished.',
+				),
+			file_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed search_text calls, each name once. Absent when no call finished.',
+				),
+			vector_store_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the finished vector store searches, failed ones included. Absent when no search finished.',
+				),
+			vector_store_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest finished vector store search. Absent when no search finished.',
+				),
+			vector_store_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Finished vector store searches that worked and found nothing. Absent when no search finished.',
+				),
+			vector_store_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed vector store searches, each name once. Absent when no search finished.',
 				),
 		}),
 	},
@@ -463,7 +554,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_AGENT: {
 		name: 'User created agent',
 		description:
-			'A user persisted a new Agent from the editor, a template, or duplication. Emitted after the Agent and its initial configuration commit, regardless of its default model or setup readiness. Union the user, builder, and MCP creation events to count all new Agents. User clicked new agent joins through agent_id. User duplicated agent retains the source Agent context. Version 3 reports the committed insert instead of the first configuring update.',
+			'A user persisted a new Agent from the editor, a template, duplication, or a package import. Emitted after the Agent and its initial configuration commit, regardless of its default model or setup readiness. Package imports have no matching click event. Union the user, builder, and MCP creation events to count all new Agents. User clicked new agent joins through agent_id. User duplicated agent retains the source Agent context. Version 3 reports the committed insert instead of the first configuring update.',
 		properties: z.object({
 			...agentWrite,
 			event_version: z.literal('3'),
@@ -481,7 +572,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_MODIFIED_AGENT: {
 		name: 'User modified agent',
 		description:
-			'A user saved a tracked configuration or resource change to an existing Agent. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
+			'A user saved a tracked configuration or resource change to an existing Agent through the editor or a package import. Emitted after the change commits. Incomplete Agents also count. No-op and cosmetic-only saves emit nothing. Creation emits User created agent instead. The profile describes the saved configuration. Version 2 removes the configured-state gate and creation inference.',
 		properties: z.object({
 			...agentWrite,
 			...agentKnowledgeModification,
@@ -695,7 +786,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_REQUESTED_CREDENTIAL: {
 		name: 'Builder requested credential',
 		description:
-			'The Instance AI builder used the agent_builder_ask_credential (or agent_builder_ask_embedding_credential) tool and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
+			'The Agent builder requested credentials and suspended to show a credential picker card. Does not fire when the request auto-resolves without showing a card.',
 		properties: z.object({
 			...builderSessionIdentity,
 			credential_type: z.string(),
@@ -894,6 +985,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'suspension',
 					'hitl-response',
 					'background-task-signal',
+					'background-task',
 				])
 				.describe('Selected timeline item kind. Does not include item content.'),
 			push_ref: pushRef,
@@ -1122,6 +1214,47 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.optional()
 				.describe(
 					'Only when status is failed. request_failed: the request to n8n failed, so Microsoft was never asked',
+				),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CHECKED_WHATSAPP_CHANNEL_CREDENTIAL: {
+		name: 'User checked WhatsApp channel credential',
+		description:
+			'The WhatsApp channel setup checked the selected credential against Meta. Runs on its own whenever the selected credential changes, and when the user clicks Check again. Shows why credentials fail on the way to a connected channel.',
+		properties: z.object({
+			agent_id: z.string(),
+			trigger: z
+				.enum(['auto', 'recheck'])
+				.describe('auto: the selected credential changed; recheck: the user clicked Check again'),
+			status: z.enum(['ok', 'failed']),
+			reason: z
+				.enum([
+					'incomplete',
+					'temporary_token',
+					'mismatch',
+					'unreachable',
+					'not_found',
+					'request_failed',
+					'save_failed',
+				])
+				.optional()
+				.describe(
+					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
+				),
+			push_ref: pushRef,
+		}),
+	},
+	USER_CLICKED_WHATSAPP_CHANNEL_LINK: {
+		name: 'User clicked WhatsApp channel link',
+		description:
+			'The user clicked a link in the WhatsApp channel setup or settings that leaves n8n for Meta. Shows where people go to Meta, and whether they need to go back for something the setup could have told them.',
+		properties: z.object({
+			agent_id: z.string(),
+			target: z
+				.enum(['meta_dashboard', 'whatsapp_manager', 'meta_app'])
+				.describe(
+					'meta_dashboard: Open Meta App Dashboard in the setup; whatsapp_manager: Edit in WhatsApp Manager in the settings; meta_app: Find your Meta app in the settings',
 				),
 			push_ref: pushRef,
 		}),

@@ -1,3 +1,4 @@
+import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -79,6 +80,58 @@ describe('ApplyInstanceDialog', () => {
 			}),
 		);
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
+	});
+
+	it('says how many workflows and folders the apply moved and how many folders it renamed', async () => {
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				folders: { ...applied.counts.folders, updated: 2, moved: 2, renamed: 1 },
+				workflows: {
+					...applied.counts.workflows,
+					moved: 1,
+					publishing: { published: 3, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+				},
+			},
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringMatching(
+						/Moved within their projects: 1 updated workflow and 2 folders\. Renamed: 1 folder\.$/,
+					),
+				}),
+			),
+		);
+	});
+
+	it('says how many folders the apply renamed when it moved nothing', async () => {
+		api.applyPromotion.mockResolvedValue({
+			...applied,
+			counts: {
+				...applied.counts,
+				folders: { ...applied.counts.folders, updated: 1, renamed: 1 },
+			},
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.not.stringContaining('Moved within'),
+				}),
+			),
+		);
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ message: expect.stringMatching(/ Renamed: 1 folder\.$/) }),
+		);
 	});
 
 	it('reloads the project list after a successful apply', async () => {
@@ -231,6 +284,23 @@ describe('ApplyInstanceDialog', () => {
 		);
 		expect(mockShowMessage).not.toHaveBeenCalled();
 		expect(emitted('update:open')).toBeUndefined();
+	});
+
+	it('says that nothing was applied when the server refuses the apply with a 409', async () => {
+		const refusal = new ResponseError(
+			'Apply can\'t move workflows or folders between projects: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch.',
+			{ httpStatusCode: 409 },
+		);
+		api.applyPromotion.mockRejectedValueOnce(refusal);
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowError).toHaveBeenCalledWith(refusal, "Couldn't apply to the instance", {
+				message: 'Nothing was applied. Resolve the issue in the message, then try again.',
+			}),
+		);
 	});
 
 	it('reloads the project list when the apply fails', async () => {

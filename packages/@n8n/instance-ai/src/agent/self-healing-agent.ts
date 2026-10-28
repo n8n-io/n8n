@@ -13,9 +13,9 @@ import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registr
 import { createDataTablesTool } from '../tools/data-tables.tool';
 import { createExecutionsTool } from '../tools/executions.tool';
 import { createN8nDocsTool } from '../tools/n8n-docs.tool';
-import { createNodesTool } from '../tools/nodes.tool';
+import { createGetNodeTypesTool, createSearchNodesTool } from '../tools/nodes.tool';
 import { createResearchTool } from '../tools/research.tool';
-import { createWorkflowsTool } from '../tools/workflows.tool';
+import { createWorkflowTools } from '../tools/workflows.tool';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
@@ -48,9 +48,8 @@ function createSelfHealingTools(
 	abortSignal?: AbortSignal,
 ) {
 	return createToolRegistryFromTools([
-		createWorkflowsTool(context, {
+		...createWorkflowTools(context, {
 			allowedActions: ['get', 'get-as-code'],
-			descriptionPrefix: 'Read workflows',
 			sourceGuidance: SOURCE_GUIDANCE,
 		}),
 		createExecutionsTool(context, {
@@ -61,10 +60,8 @@ function createSelfHealingTools(
 			allowedActions: ['list', 'schema', 'query'],
 			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
 		}),
-		createNodesTool(context, {
-			allowedActions: ['list', 'search', 'describe', 'type-definition', 'suggested'],
-			description: 'Read node metadata. Use type-definition before changing node parameters.',
-		}),
+		createSearchNodesTool(context),
+		createGetNodeTypesTool(context),
 		createN8nDocsTool(context),
 		createResearchTool(context),
 		new Tool('verify_candidate')

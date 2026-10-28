@@ -153,6 +153,7 @@ export class AgentsCredentialProvider
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
 			projectId: this.projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 	}
 
@@ -168,7 +169,7 @@ export class AgentsCredentialProvider
 
 		const addCreds = (creds: CredentialsEntity[]) => {
 			for (const cred of creds) {
-				if (!allCredsSet.has(cred.id)) {
+				if (!cred.isResolvable && !allCredsSet.has(cred.id)) {
 					allCredsSet.add(cred.id);
 					allCreds.push(cred);
 				}

@@ -4,6 +4,66 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it('explains Agent blockers and retains their structured details', () => {
+		const details = {
+			issues: [
+				{
+					type: 'agent-conflict',
+					kind: 'task-id',
+					sourceAgentId: 'agent',
+					sourceTaskId: 'task',
+					projectId: 'project',
+					targetIds: ['first', 'second'],
+				},
+				{
+					type: 'agent-invalid',
+					sourceAgentId: 'agent',
+					path: 'config.model',
+					message: 'Invalid model',
+				},
+				{
+					type: 'agent-dependency-unresolved',
+					sourceAgentId: 'agent',
+					projectId: 'project',
+					dependencyType: 'workflow',
+					referenceId: 'tool',
+					path: 'config.workflows[0]',
+					reason: 'inaccessible',
+				},
+				{
+					type: 'agent-policy-violation',
+					sourceAgentId: 'agent',
+					name: 'Reviewer',
+					violations: [{ message: 'Model is not allowed' }],
+				},
+				{
+					type: 'credential-unresolved',
+					kind: 'missing',
+					sourceId: 'credential',
+					usedBy: [
+						{ kind: 'agent', id: 'agent' },
+						{ kind: 'workflow', id: 'workflow' },
+					],
+				},
+				{ type: 'future-issue', reason: 'Retain this detail' },
+			],
+		};
+		const error = toPackagesError(new ApiError(422, 'Import blocked', undefined, details));
+		expect(error).toBeInstanceOf(ApiError);
+		if (!(error instanceof ApiError)) throw new Error('Expected an API error');
+		expect(error.details).toBe(details);
+		expect(error.hint).toContain(
+			'Agent agent, task task conflicts in project project (task-id; targets: first, second)',
+		);
+		expect(error.hint).toContain('Agent agent at config.model: Invalid model');
+		expect(error.hint).toContain('workflow tool is inaccessible at config.workflows[0]');
+		expect(error.hint).toContain(
+			'Agent "Reviewer" (agent) refused by policy: Model is not allowed',
+		);
+		expect(error.hint).toContain('used by agent agent, workflow workflow');
+		expect(error.hint).toContain('{"type":"future-issue","reason":"Retain this detail"}');
+	});
+
 	it('explains a conflict between import and deletion', () => {
 		const result = toPackagesError(
 			new ApiError(409, 'Import blocked', undefined, {

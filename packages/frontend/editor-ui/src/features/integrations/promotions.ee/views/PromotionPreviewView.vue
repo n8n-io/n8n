@@ -40,8 +40,7 @@ import {
 	indexBlockers,
 	isBlocking,
 	listBlockers,
-	locationBlocker,
-	locationConflicts,
+	crossProjectMoveBlockers,
 	toOperationRequest,
 	scopeCheck,
 	touchesDestructiveChange,
@@ -86,15 +85,9 @@ const promoteEnvironment = computed(() =>
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
 );
-// Apply cannot move a workflow or a folder to another folder. The check does not report this,
-// but the preview shows it. A moved folder stops the whole apply, so it blocks every selection.
-const locations = computed(() =>
-	props.direction === 'apply' && graph.value ? locationConflicts(graph.value) : [],
-);
-const folderConflicts = computed(() => locations.value.filter(({ type }) => type === 'folder'));
 const blockerList = computed(() => [
 	...(scopedCheck.value ? listBlockers(scopedCheck.value) : []),
-	...locations.value.map(locationBlocker),
+	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));
 const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
@@ -197,13 +190,20 @@ const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
 const submitBlockedReason = computed(() => {
-	if (folderConflicts.value.length > 0) {
+	// A folder that moved to another project stops the whole apply, so it blocks every selection.
+	const movedFolders = scopedCheck.value?.movedFolders ?? [];
+	if (movedFolders.length > 0) {
 		return i18n.baseText('promotions.preview.submit.folderMoved', {
-			adjustToNumber: folderConflicts.value.length,
-			interpolate: { folders: folderConflicts.value.map(({ name }) => `"${name}"`).join(', ') },
+			adjustToNumber: movedFolders.length,
+			interpolate: { folders: movedFolders.map(({ name }) => `"${name}"`).join(', ') },
 		});
 	}
-	return hasSelectedBlocked.value ? i18n.baseText('promotions.preview.submit.blocked') : undefined;
+	if (!hasSelectedBlocked.value) return undefined;
+	return i18n.baseText(
+		props.direction === 'promote'
+			? 'promotions.preview.submit.blockedPromote'
+			: 'promotions.preview.submit.blocked',
+	);
 });
 const canSubmit = computed(
 	() =>
@@ -271,6 +271,11 @@ const tabs = computed(() => [
 			]
 		: []),
 ]);
+
+// Promote has no Blockers tab, so the tree's blocker icon only opens it on Apply.
+function showBlockers() {
+	if (showBlockersTab.value) activeTab.value = 'blockers';
+}
 
 async function inspectFromBlockers(key: string) {
 	activeTab.value = 'changes';
@@ -441,7 +446,7 @@ const treeResizer = useResizablePanel({
 						:locked="operation.isBusy.value"
 						:direction="direction"
 						:blockers="blockers"
-						@show-blockers="activeTab = 'blockers'"
+						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
 						@select-all="selection.selectAll"
@@ -501,7 +506,6 @@ const treeResizer = useResizablePanel({
 				v-show="activeTab === 'blockers'"
 				:class="$style.blockers"
 				:check="scopedCheck"
-				:locations="locations"
 				:busy="operation.isBusy.value"
 				@refresh="refresh"
 				@inspect="inspectFromBlockers"

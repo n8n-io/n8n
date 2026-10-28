@@ -14,6 +14,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { PromotionBindingConflict, PromotionBindingConsumer } from '@n8n/api-types';
 import { usePromotionBindings } from '../composables/usePromotionBindings';
+import { usePromotionPreviewLabels } from '../composables/usePromotionPreviewLabels';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { moveDetail } = usePromotionPreviewLabels();
 const title = useTemplateRef<HTMLElement>('title');
 const bindings = usePromotionBindings();
 const {
@@ -168,6 +170,37 @@ function destinationScope(binding: MissingPromotionBinding) {
 		: binding.scope.project.name;
 }
 
+type HardConflict = (typeof hardConflicts.value)[number];
+
+function conflictTitle(conflict: HardConflict) {
+	if (conflict.code === 'moved') return conflict.name;
+	if (conflict.kind === 'project') return conflict.project.name;
+	if (conflict.kind === 'workflow') {
+		return conflict.consumers
+			.flatMap(({ workflows }) => workflows.map(({ name }) => name))
+			.join(', ');
+	}
+	if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+		// An import-wide issue, such as a disabled module, names no table or tag.
+		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+		return (
+			conflict.name ?? conflict.id ?? i18n.baseText(`promotions.preview.blockers.type.${type}`)
+		);
+	}
+	return conflict.name;
+}
+
+function conflictDetail(conflict: HardConflict) {
+	if (conflict.code === 'moved') return moveDetail(conflict.kind, conflict);
+	return i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`);
+}
+
+function conflictUsers(conflict: HardConflict) {
+	if (conflict.code === 'moved') return '';
+	if (conflict.kind !== 'project') return consumerNames(conflict.consumers);
+	return 'workflows' in conflict ? conflict.workflows.map(({ name }) => name).join(', ') : '';
+}
+
 function consumerNames(consumers: PromotionBindingConsumer[]) {
 	return consumers
 		.map((consumer) =>
@@ -269,10 +302,9 @@ async function continueApply() {
 					<section v-if="hardConflicts.length" :class="$style.notices">
 						<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
 						<N8nCallout v-for="(item, index) in hardConflicts" :key="index" theme="warning">
-							<strong>{{ item.kind === 'project' ? item.project.name : item.name }}</strong>
-							<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
-							<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
-							<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
+							<strong>{{ conflictTitle(item) }}</strong>
+							<p>{{ conflictDetail(item) }}</p>
+							<p>{{ conflictUsers(item) }}</p>
 						</N8nCallout>
 					</section>
 					<p v-if="mode === 'blocked'">

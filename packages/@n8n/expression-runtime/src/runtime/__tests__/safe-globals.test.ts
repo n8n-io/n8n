@@ -14,6 +14,34 @@ describe('__sanitize', () => {
 		expect(__sanitize('0')).toBe('0');
 	});
 
+	it('throws for every name in the transform-time denylist', () => {
+		// These names are rejected for static and literal keys at transform time;
+		// keys built at runtime must be rejected here as well.
+		const deniedNames = [
+			'caller',
+			'callee',
+			'arguments',
+			'getPrototypeOf',
+			'setPrototypeOf',
+			'getOwnPropertyDescriptor',
+			'getOwnPropertyDescriptors',
+			'defineProperty',
+			'defineProperties',
+			'mainModule',
+			'binding',
+			'_linkedBinding',
+			'_load',
+			'prepareStackTrace',
+			'getBuiltinModule',
+			'dlopen',
+			'execve',
+			'loadEnvFile',
+		];
+		for (const name of deniedNames) {
+			expect(() => __sanitize(name)).toThrow(ExpressionError);
+		}
+	});
+
 	it('coerces object values via toString before the denylist check', () => {
 		// JavaScript invokes `toString` when an object is used as a property key,
 		// so the denylist check must operate on the coerced string, not the raw value.
@@ -22,6 +50,9 @@ describe('__sanitize', () => {
 
 		const coercingToProto = { toString: () => '__proto__' };
 		expect(() => __sanitize(coercingToProto)).toThrow(ExpressionError);
+
+		const coercingToCaller = { toString: () => 'caller' };
+		expect(() => __sanitize(coercingToCaller)).toThrow(ExpressionError);
 
 		// `Symbol.toPrimitive` overrides `toString`; that path must also coerce.
 		const coercingViaSymbolToPrimitive = {

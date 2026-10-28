@@ -30,6 +30,7 @@ type AgentPackageKeyHandling = {
 	activeVersionId: 'exclude';
 	activeVersion: 'exclude';
 	revision: 'exclude';
+	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
 };
 

@@ -118,6 +118,7 @@ erDiagram
   varchar_36_ agentId FK
   TEXT binaryDataId
   datetime_3_ createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
@@ -158,6 +159,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope
@@ -255,6 +257,7 @@ erDiagram
   boolean enabled
   varchar enabledById FK
   INTEGER id
+  BOOLEAN includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt
@@ -314,6 +317,7 @@ erDiagram
 "skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

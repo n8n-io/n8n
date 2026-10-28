@@ -1,10 +1,11 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type {
-	AgentPersistedMessageContentPart,
-	AgentSseEvent,
-	AgentSseMessage,
-	AgentTokenUsage,
-	ToolSuspendedPayload,
+import {
+	AGENT_CHAT_ERROR_CODES,
+	type AgentPersistedMessageContentPart,
+	type AgentSseEvent,
+	type AgentSseMessage,
+	type AgentTokenUsage,
+	type ToolSuspendedPayload,
 } from '@n8n/api-types';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
@@ -77,8 +78,9 @@ export function initSseStream(res: FlushableResponse) {
 
 /** The stable client `errorCode` of a known error class, if it has one. */
 export function chatErrorCode(error: unknown): string | undefined {
-	if (error instanceof AgentTurnAlreadyRunningError) return 'turn_already_running';
-	if (error instanceof AgentN8nChatUnavailableError) return 'agent_unavailable';
+	if (error instanceof AgentTurnAlreadyRunningError)
+		return AGENT_CHAT_ERROR_CODES.turnAlreadyRunning;
+	if (error instanceof AgentN8nChatUnavailableError) return AGENT_CHAT_ERROR_CODES.agentUnavailable;
 	if (error instanceof AgentFormattedTurnError) return error.errorCode;
 	return undefined;
 }

@@ -14,8 +14,7 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
-import { SkillService } from '@/modules/skills/skill.service';
-import { AgentSkillUsageService } from '../agent-skill-usage.service';
+import { SkillRuntimeService, SkillService } from '@/modules/skills';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -1039,7 +1038,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 		it('runs the embedded skills and never calls the skill service', async () => {
 			const skillService = mockInstance(SkillService);
-			const agentSkillUsage = mockInstance(AgentSkillUsageService);
+			const skillRuntime = mockInstance(SkillRuntimeService);
 			const { service, reconstructionService, skillRefs } = makeService();
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(
 				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
@@ -1072,9 +1071,9 @@ describe('AgentWorkflowExecutionService', () => {
 				skillRefs.readDraft,
 				skillRefs.readVersion,
 				skillRefs.skillsForRefs,
-				skillService.resolveForAgentDraft,
-				agentSkillUsage.checkRefs,
-				skillService.create,
+				skillRuntime.resolveForAgentDraft,
+				skillRefs.checkRefs,
+				skillService.createTrusted,
 			]) {
 				expect(read).not.toHaveBeenCalled();
 			}

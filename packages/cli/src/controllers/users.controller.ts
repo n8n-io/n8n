@@ -10,6 +10,7 @@ import type { PublicUser } from '@n8n/db';
 import {
 	User,
 	UserRepository,
+	PersonRepository,
 	AuthenticatedRequest,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -35,10 +36,17 @@ import { UserRequest } from '@/requests';
 import { JwtService, RoleService, UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 
+/**
+ * The details a caller without `user:create` sees for its own user. The
+ * account status stays hidden, as for every other user.
+ */
+const ownUserDetailSchema = userDetailSchema.omit({ disabled: true });
+
 @RestController('/users')
 export class UsersController {
 	constructor(
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
@@ -71,8 +79,9 @@ export class UsersController {
 
 		const usersSeesAllDetails = hasGlobalScope(currentUser, 'user:create');
 		return publicUsers.map((user) => {
-			return usersSeesAllDetails || user.id === currentUser.id
-				? userDetailSchema.parse(user)
+			if (usersSeesAllDetails) return userDetailSchema.parse(user);
+			return user.id === currentUser.id
+				? ownUserDetailSchema.parse(user)
 				: userBaseSchema.parse(user);
 		});
 	}
@@ -86,12 +95,23 @@ export class UsersController {
 	) {
 		await this.userService.assertGetUsersAccess(req.user, listQueryOptions.filter?.projectId);
 
+		// The account status of a user is visible only to callers that can
+		// create users, so only they can filter or count by it.
+		const { filter, includeStatusCounts } = listQueryOptions;
+		const usesAccountStatus = filter?.status !== undefined || includeStatusCounts === true;
+		if (usesAccountStatus && !hasGlobalScope(req.user, 'user:create')) {
+			throw new ForbiddenError('You cannot filter or count users by status');
+		}
+
 		const scope = listQueryOptions.filter?.scope;
 		const roleSlugs = scope ? await this.roleService.rolesWithScope('global', scope) : undefined;
 		const userQuery = this.userRepository.buildUserQuery(listQueryOptions, roleSlugs);
-		const response = await userQuery.getManyAndCount();
-
-		const [users, count] = response;
+		const [[users, count], statusCounts] = await Promise.all([
+			userQuery.getManyAndCount(),
+			includeStatusCounts
+				? this.userRepository.countUsersListStatuses(filter, roleSlugs)
+				: undefined,
+		]);
 
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
@@ -114,28 +134,26 @@ export class UsersController {
 		return usersListSchema.parse({
 			count,
 			items: this.removeSupplementaryFields(publicUsers, listQueryOptions, req.user),
+			statusCounts,
 		});
 	}
 
 	@Get('/:id/password-reset-link')
 	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: req.params.id },
-			relations: ['role'],
-		});
-		if (!user) {
+		const person = await this.personRepository.findByIdWithRole(req.params.id);
+		if (!person) {
 			throw new NotFoundError('User not found');
 		}
 
 		if (
 			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			user.role.slug === GLOBAL_OWNER_ROLE.slug
+			person.role.slug === GLOBAL_OWNER_ROLE.slug
 		) {
 			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
-		const link = this.authService.generatePasswordResetUrl(user);
+		const link = this.authService.generatePasswordResetUrl(person);
 		return { link };
 	}
 
@@ -145,9 +163,9 @@ export class UsersController {
 		const inviterId = req.user.id;
 		const inviteeId = req.params.id;
 
-		const targetUser = await this.userRepository.findOne({ where: { id: inviteeId } });
+		const targetPerson = await this.personRepository.findById(inviteeId);
 
-		if (!targetUser) {
+		if (!targetPerson) {
 			throw new NotFoundError('User to generate invite link for not found');
 		}
 

@@ -71,7 +71,7 @@ function makeRegistryServer(
 }
 
 describe('InstanceAiMcpRegistryService', () => {
-	const user = { id: 'user-1' } as User;
+	const user = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
 	const credential = {
 		id: 'cred-1',
 		name: 'MCP OAuth2',
@@ -267,13 +267,13 @@ describe('InstanceAiMcpRegistryService', () => {
 			}),
 		);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-			'credential:read',
+			'credential:connect',
 		]);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-2', user, [
-			'credential:read',
+			'credential:connect',
 		]);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-3', user, [
-			'credential:read',
+			'credential:connect',
 		]);
 	});
 
@@ -621,7 +621,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				credential.id,
 				user,
-				['credential:read'],
+				['credential:connect'],
 			);
 			expect(mcpClientConstructorMock).toHaveBeenCalledWith([
 				expect.objectContaining({
@@ -1224,6 +1224,117 @@ describe('InstanceAiMcpRegistryService', () => {
 			await expect(
 				service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' }),
 			).rejects.toBeInstanceOf(BadRequestError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credential use access', () => {
+		const readOnlyCredential = { ...credential, isGlobal: false, isResolvable: false };
+
+		/** Simulates a user who can read the credential but does not hold `credential:connect`. */
+		function grantReadOnly(
+			credentialsFinderService: ReturnType<typeof createService>['credentialsFinderService'],
+			readable: CredentialsEntity,
+		) {
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) => (scopes.includes('credential:connect') ? null : readable),
+			);
+		}
+
+		function makeConnection(): InstanceAiMcpRegistryConnection {
+			return {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: credential.id,
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+			} as InstanceAiMcpRegistryConnection;
+		}
+
+		it('refuses to create a connection with a credential the user can only read', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			grantReadOnly(credentialsFinderService, readOnlyCredential as CredentialsEntity);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: credential.id }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses to swap to a credential the user can only read', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			grantReadOnly(credentialsFinderService, readOnlyCredential as CredentialsEntity);
+
+			await expect(
+				service.updateConnection(user, 'conn-1', { credentialId: credential.id }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('does not decrypt the credential of an existing connection the user can only read', async () => {
+			const {
+				service,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+				connectionRepository,
+			} = createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			connectionRepository.findBy.mockResolvedValue([makeConnection()]);
+			grantReadOnly(credentialsFinderService, readOnlyCredential as CredentialsEntity);
+
+			await expect(service.listConnectionTools(user, 'conn-1')).resolves.toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'authentication',
+			});
+			await expect(service.getRegistryMcpServers(user)).resolves.toEqual([]);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+		});
+
+		it('allows a static global credential with read access', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			grantReadOnly(credentialsFinderService, {
+				...readOnlyCredential,
+				isGlobal: true,
+			} as CredentialsEntity);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: credential.id,
+			});
+
+			expect(result.connection.credentialId).toBe(credential.id);
+		});
+
+		it('refuses a global end-user credential with read access only', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			grantReadOnly(credentialsFinderService, {
+				...readOnlyCredential,
+				isGlobal: true,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: credential.id }),
+			).rejects.toBeInstanceOf(NotFoundError);
 			expect(connectionRepository.save).not.toHaveBeenCalled();
 		});
 	});

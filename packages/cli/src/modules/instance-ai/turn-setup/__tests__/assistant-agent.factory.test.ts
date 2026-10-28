@@ -35,12 +35,14 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			runId: string,
 			memoryModelId?: ModelConfig,
 			observerThresholdTokens?: number,
+			generateTitle?: boolean,
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
 				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 			};
+			titleGeneration?: { model?: ModelConfig; sync?: boolean };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
@@ -91,6 +93,28 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(
 			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').observationalMemory.model,
 		).toBeUndefined();
+	});
+
+	it('generates titles only when the caller asks for it, on the memory model, before the run ends', () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').titleGeneration,
+		).toBeUndefined();
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', undefined, undefined, true)
+				.titleGeneration,
+		).toEqual({ sync: true });
+		expect(
+			service.createAgentMemoryOptions(
+				user,
+				'thread-1',
+				'run-1',
+				'anthropic/claude-haiku-4-5',
+				undefined,
+				true,
+			).titleGeneration,
+		).toEqual({ model: 'anthropic/claude-haiku-4-5', sync: true });
 	});
 
 	it('uses the per-thread override when an eval set one', () => {

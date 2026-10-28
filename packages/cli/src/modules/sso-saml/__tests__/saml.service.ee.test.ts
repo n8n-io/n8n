@@ -3,8 +3,14 @@ import type { SamlPreferences } from '@n8n/api-types';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
-import type { AuthIdentityRepository, UserRepository, Settings, User } from '@n8n/db';
+import { Person, ServiceAccount, SettingsRepository } from '@n8n/db';
+import type {
+	AuthIdentity,
+	AuthIdentityRepository,
+	PersonRepository,
+	Settings,
+	User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -163,7 +169,7 @@ describe('SamlService', () => {
 	let settingsRepository: SettingsRepository;
 	let instanceSettings: InstanceSettings;
 	let globalConfig: GlobalConfig;
-	let userRepository: UserRepository;
+	let personRepository: PersonRepository;
 	let authIdentityRepository: MockProxy<AuthIdentityRepository>;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
@@ -214,7 +220,7 @@ describe('SamlService', () => {
 			isMultiMain: true,
 		});
 		provisioningService = mock<ProvisioningService>();
-		userRepository = mock<UserRepository>();
+		personRepository = mock<PersonRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
 		authIdentityRepository.findByProviderIdWithUser.mockResolvedValue(null);
 		globalConfig = mock<GlobalConfig>({
@@ -245,7 +251,7 @@ describe('SamlService', () => {
 			logger,
 			urlService,
 			validator,
-			userRepository,
+			personRepository,
 			settingsRepository,
 			instanceSettings,
 			provisioningService,
@@ -483,8 +489,30 @@ describe('SamlService', () => {
 				'global:unknown',
 			);
 			// Denied before any account lookup, creation, or provisioning
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByEmailWithAuthIdentities).not.toHaveBeenCalled();
 			expect(createUserSpy).not.toHaveBeenCalled();
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+		});
+
+		it('rejects a service account linked to the SAML identity', async () => {
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: {
+					email: 'foo@bar.com',
+					firstName: '',
+					lastName: '',
+					userPrincipalName: 'foo@bar.com',
+				},
+				raw: {},
+			});
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue(
+				mock<AuthIdentity>({
+					user: Object.assign(new ServiceAccount(), { id: 'sa-1', email: 'foo@bar.com' }),
+				}),
+			);
+
+			await expect(samlService.handleSamlLogin(mock<express.Request>(), 'post')).rejects.toThrow(
+				ForbiddenError,
+			);
 			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
 		});
 
@@ -507,13 +535,13 @@ describe('SamlService', () => {
 				lastName: '',
 				userPrincipalName: 'foo@bar.com',
 			};
-			const mockUser = {
+			const mockUser = Object.assign(new Person(), {
 				id: '123',
 				email: samlAttributes.email,
 				authIdentities: [
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
-			} as any;
+			});
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
@@ -528,7 +556,7 @@ describe('SamlService', () => {
 				samlAttributes.userPrincipalName,
 				'saml',
 			);
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByEmailWithAuthIdentities).not.toHaveBeenCalled();
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
@@ -538,7 +566,11 @@ describe('SamlService', () => {
 		});
 
 		describe('identity hit whose user has another email', () => {
-			const identityUser = { id: '123', email: 'foo@bar.com', authIdentities: [] } as any;
+			const identityUser = Object.assign(new Person(), {
+				id: '123',
+				email: 'foo@bar.com',
+				authIdentities: [],
+			});
 			let updateUserSpy: MockInstance<typeof samlHelpers.updateUserFromSamlAttributes>;
 
 			const loginWithEmail = async (email: string) => {
@@ -560,7 +592,7 @@ describe('SamlService', () => {
 				const loginResult = await loginWithEmail('Other@bar.com');
 
 				expect(loginResult.authenticatedUser).toBe(identityUser);
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByEmailWithAuthIdentities).not.toHaveBeenCalled();
 				expect(updateUserSpy).not.toHaveBeenCalled();
 				expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
 					identityUser,
@@ -611,7 +643,7 @@ describe('SamlService', () => {
 			};
 
 			beforeEach(() => {
-				vi.mocked(userRepository.findOne).mockResolvedValue(existingUser);
+				vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(existingUser);
 				updateUserSpy = vi
 					.spyOn(samlHelpers, 'updateUserFromSamlAttributes')
 					.mockResolvedValue(existingUser);
@@ -665,7 +697,7 @@ describe('SamlService', () => {
 
 			it('does not link a user that already has another SAML identity when verification is required', async () => {
 				setEmailVerifiedRequired();
-				vi.mocked(userRepository.findOne).mockResolvedValue({
+				vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue({
 					...existingUser,
 					authIdentities: [{ providerType: 'saml', providerId: 'another-upn' }],
 				} as any);
@@ -677,7 +709,7 @@ describe('SamlService', () => {
 
 			it('still creates a new user when verification is required and no user has the email', async () => {
 				setEmailVerifiedRequired();
-				vi.mocked(userRepository.findOne).mockResolvedValue(null);
+				vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
 				vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 				const newUser = { id: '456', firstName: 'Foo', lastName: 'Bar' } as any;
 				createUserSpy.mockResolvedValue(newUser);
@@ -705,7 +737,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
+			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(mockUser);
 			vi.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -730,7 +762,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(null);
+			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -758,7 +790,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(null);
+			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
 			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
@@ -787,7 +819,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(null);
+			vi.mocked(personRepository.findByEmailWithAuthIdentities).mockResolvedValue(null);
 			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
@@ -810,18 +842,20 @@ describe('SamlService', () => {
 				n8nInstanceRole: 'global:admin',
 				n8nProjectRoles: ['rgjhURvl0rnEQL3v:viewer', 'ussa2R6P7aDtuRaZ:viewer'],
 			};
-			const mockUser = {
+			const mockUser = Object.assign(new Person(), {
 				id: '123',
 				email: samlAttributes.email,
 				authIdentities: [
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
-			} as any;
+			});
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({ user: mockUser } as any);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
+				user: mockUser,
+			} as any);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -843,13 +877,13 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 			const rawAttributes = { email: 'foo@bar.com', department: 'engineering', role: 'admin' };
-			const mockUser = {
+			const mockUser = Object.assign(new Person(), {
 				id: '123',
 				email: samlAttributes.email,
 				authIdentities: [
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
-			} as any;
+			});
 
 			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(true);
 			provisioningService.provisionExpressionMappedRolesForUser = vi
@@ -859,7 +893,9 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: rawAttributes,
 			});
-			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({ user: mockUser } as any);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
+				user: mockUser,
+			} as any);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -879,20 +915,22 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 				n8nInstanceRole: 'global:admin',
 			};
-			const mockUser = {
+			const mockUser = Object.assign(new Person(), {
 				id: '123',
 				email: samlAttributes.email,
 				authIdentities: [
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
-			} as any;
+			});
 
 			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(false);
 			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({ user: mockUser } as any);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
+				user: mockUser,
+			} as any);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 

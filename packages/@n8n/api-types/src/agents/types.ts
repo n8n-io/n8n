@@ -159,6 +159,11 @@ export interface AgentIntegrationStatusEntry {
 	errorMessage?: string;
 }
 
+export interface AgentIntegrationDraftEntry {
+	type: string;
+	settings?: AgentIntegrationSettings;
+}
+
 export interface AgentIntegrationStatusResponse {
 	/**
 	 * Rollup across `integrations`, for callers that only need one word:
@@ -166,6 +171,8 @@ export interface AgentIntegrationStatusResponse {
 	 */
 	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
+	/** Channels saved without a credential. Setup forms start from their settings. */
+	drafts: AgentIntegrationDraftEntry[];
 	n8nChat: { draftEnabled: boolean; publishedEnabled: boolean };
 }
 
@@ -213,6 +220,21 @@ export interface AgentSkill {
 	instructions: string;
 	allowedTools?: string[];
 	references?: AgentSkillReference[];
+}
+
+/**
+ * The versions of one attached skill, as the agent builder shows them. Numbers are
+ * `skill_version.version`.
+ */
+export interface AgentSkillVersionInfo {
+	/** The version the draft runs: the pinned one, else the latest. */
+	draft: number;
+	/** The version the published agent runs. Null when the published agent does not use the skill. */
+	published: number | null;
+	/** The newest saved version of the skill. */
+	latest: number;
+	/** True when the draft ref is pinned to a version. */
+	pinned: boolean;
 }
 
 export interface AgentConfigResponse {
@@ -348,6 +370,23 @@ export interface AgentVersionListItemDto {
 	updatedAt: string;
 	author: string;
 	isActive: boolean;
+	name?: string | null;
+	description?: string | null;
+	isCurrent?: boolean;
+	lastPublished?: Pick<AgentPublishHistoryItemDto, 'author' | 'createdAt' | 'isLegacy'>;
+}
+
+export interface AgentPublishHistoryItemDto {
+	id: number;
+	versionId: string | null;
+	name: string | null;
+	description: string | null;
+	event: 'activated' | 'deactivated';
+	author: string;
+	createdAt: string;
+	endedAt: string | null;
+	isActive: boolean;
+	isLegacy: boolean;
 }
 
 /**
@@ -626,13 +665,19 @@ export interface SystemAgentThreadSummary {
 	projectId: string;
 }
 
-/** The user's own threads with one system agent, newest first. */
+/** One page of the user's own threads with one system agent, newest first. */
 export interface SystemAgentThreadsResponse {
 	data: SystemAgentThreadSummary[];
+	/** Pass as `cursor` to read the next page. `null` on the last page. */
+	nextCursor: string | null;
 }
 
 export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
+}
+
+export interface AgentSessionStopResponse {
+	cancelRequested: boolean;
 }
 
 /**

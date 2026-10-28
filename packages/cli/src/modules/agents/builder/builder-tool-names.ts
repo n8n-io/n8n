@@ -8,8 +8,7 @@ import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
  * rename a tool, add the former name to `LEGACY_BUILDER_TOOL_NAMES` there so
  * persisted checkpoints still resolve.
  *
- * The interactive tools (`ASK_CREDENTIAL_TOOL_NAME`,
- * `ASK_EMBEDDING_CREDENTIAL_TOOL_NAME`, `ASK_QUESTIONS_TOOL_NAME`,
+ * The interactive tools (`ASK_CREDENTIAL_TOOL_NAME`, `ASK_QUESTIONS_TOOL_NAME`,
  * `CONFIGURE_CHANNEL_TOOL_NAME`) are NOT listed here — they live in
  * `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
  * alongside the suspend/resume schemas they share with instance AI's FE cards.
@@ -31,7 +30,6 @@ export const BUILDER_TOOLS = {
 	VERIFY_MCP_SERVER: AGENT_BUILDER_TOOL_NAMES.VERIFY_MCP_SERVER,
 	SEARCH_NODES: AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES,
 	GET_NODE_TYPES: AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
-	LIST_CREDENTIALS: AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];

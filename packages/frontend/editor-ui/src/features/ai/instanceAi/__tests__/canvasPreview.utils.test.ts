@@ -1269,7 +1269,7 @@ describe('isAgentEditingWorkflow', () => {
 			status: 'active',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'workflow_builder_credentials',
+					toolName: 'credentials',
 					args: { action: 'setup' },
 					result: { announced: true, preBuild: true, workflowId: 'wf-1' },
 				}),

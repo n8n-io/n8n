@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
+import type { QueryValues, SortRule, WhereClause } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 import {
 	prepareQueryAndReplacements,
@@ -111,15 +111,15 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		);
 	});
 
-	it('should handle escaped double quotes correctly', () => {
+	it('should not treat a double quote inside a single-quoted string as closing it', () => {
 		const preparedQuery = prepareQueryAndReplacements(
-			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			"INSERT INTO test_table(content) VALUES('Don\"t replace $1 here')",
 			2.5,
 			['should_not_appear', 123],
 		);
 		expect(preparedQuery).toBeDefined();
 		expect(preparedQuery.query).toEqual(
-			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			"INSERT INTO test_table(content) VALUES('Don\"t replace $1 here')",
 		);
 	});
 
@@ -166,6 +166,18 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 				['123', 'John'], // Correct number of values
 			);
 		}).not.toThrow();
+	});
+
+	it('should throw a clear error for a null identifier value, both legacy and current versions', () => {
+		const valuesWithNull = [null, 1] as unknown as QueryValues;
+
+		expect(() =>
+			prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.5, valuesWithNull),
+		).toThrow('Parameter $1 has no value to use as an identifier');
+
+		expect(() =>
+			prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.4, valuesWithNull),
+		).toThrow('Parameter $1 has no value to use as an identifier');
 	});
 });
 

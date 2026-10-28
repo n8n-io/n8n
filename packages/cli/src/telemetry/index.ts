@@ -566,6 +566,11 @@ export class Telemetry {
 		}
 	}
 
+	/** Sends the queued events now, instead of at the next flush interval. */
+	async flushQueue(): Promise<void> {
+		await this.rudderStack?.flush();
+	}
+
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);

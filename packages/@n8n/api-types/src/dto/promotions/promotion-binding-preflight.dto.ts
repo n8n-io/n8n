@@ -10,6 +10,14 @@ import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+/**
+ * A project on this instance. `name` is left out for a personal project, because its name holds
+ * the owner's email.
+ */
+export const promotionInstanceProjectSchema = z.object({
+	id: sourceId,
+	name: z.string().optional(),
+});
 // Report package values unchanged. The create API validates them when used.
 export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
 	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),
@@ -134,6 +142,20 @@ export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
+const crossProjectMoveSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on the branch. */
+	project: promotionBindingProjectSchema,
+	/**
+	 * False when the branch project does not exist on this instance yet. Then the item can only move
+	 * back on the source instance.
+	 */
+	projectExists: z.boolean(),
+	/** The project that holds the item on this instance. */
+	instanceProject: promotionInstanceProjectSchema,
+});
+
 /**
  * Continue can confirm a `destructive-change` or `project-deletion` conflict.
  * The other conflicts need a package or target correction before creation can proceed.
@@ -180,6 +202,47 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		/** Every change that the import would make, destructive or not. */
 		changes: z.array(promotionDataTableChangeSchema).min(1),
 	}),
+	/** The import refuses these workflows. `reason` holds the import detail, for logs and support. */
+	z.object({
+		kind: z.literal('workflow'),
+		code: z.enum([
+			'workflow-id-conflict',
+			'lineage-conflict',
+			'policy-violation',
+			'missing-node-type',
+			'workflow-forbidden',
+		]),
+		reason: z.string().optional(),
+		consumers: consumersSchema,
+	}),
+	z.object({
+		kind: z.literal('data-table'),
+		code: z.literal('data-table-conflict'),
+		id: sourceId.optional(),
+		name: z.string().optional(),
+		reason: z.string(),
+		consumers: consumersSchema,
+	}),
+	z.object({
+		kind: z.literal('tag'),
+		code: z.literal('tag-conflict'),
+		id: sourceId.optional(),
+		name: z.string().optional(),
+		reason: z.string(),
+		consumers: consumersSchema,
+	}),
+	/** Stops every workflow of the project. */
+	z.object({
+		kind: z.literal('project'),
+		code: z.enum(['project-conflict', 'check-not-run', 'import-blocked', 'project-not-on-branch']),
+		project: promotionBindingProjectSchema,
+		reason: z.string().optional(),
+	}),
+	/** Apply cannot move a workflow or folder between projects. The fields name both projects. */
+	crossProjectMoveSchema.extend({
+		kind: z.enum(['workflow', 'folder']),
+		code: z.literal('moved'),
+	}),
 ]);
 
 export const promotionBindingWarningSchema = z.object({
@@ -213,6 +276,18 @@ export const promotionBindingPreflightResultSchema = z.object({
 	warnings: z.array(promotionBindingWarningSchema),
 });
 
+/** What stops the Apply of a project, read from the import plan. */
+export const promotionApplyCheckSchema = z.object({
+	preflight: promotionBindingPreflightResultSchema,
+	/**
+	 * Workflows that the branch holds in one project and this instance holds in another, where one of
+	 * the two is this project. Apply cannot move them between projects.
+	 */
+	movedWorkflows: z.array(crossProjectMoveSchema),
+	/** Folders that the branch and this instance hold in different projects, as for workflows. */
+	movedFolders: z.array(crossProjectMoveSchema),
+});
+
 export class PromotionBindingPreflightResultDto extends Z.class(
 	promotionBindingPreflightResultSchema.shape,
 ) {}
@@ -226,3 +301,4 @@ export type PromotionCredentialExpressionData = z.infer<
 export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
 export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;
+export type PromotionApplyCheck = z.infer<typeof promotionApplyCheckSchema>;
