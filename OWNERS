@@ -225,6 +225,7 @@ packages/frontend/editor-ui/src/features/credentials/quickConnect/ @n8n-io/nodes
 packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.api.ts @n8n-io/nodes
 packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.store.ts @n8n-io/nodes
 packages/frontend/editor-ui/src/features/agents/channels/ @n8n-io/nodes
+packages/modules/apps/                                  @n8n-io/nodes
 
 # AI
 
@@ -387,6 +388,7 @@ packages/modules/type-availability-policies/            @n8n-io/governance-and-o
 packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
 packages/modules/otel/                                  @n8n-io/governance-and-observability
 packages/cli/src/modules/otel/                          @n8n-io/governance-and-observability
+packages/cli/src/observability/                         @n8n-io/governance-and-observability
 packages/cli/src/public-api/v1/controllers/otel.public.controller.ts @n8n-io/governance-and-observability
 packages/cli/src/public-api/v1/shared/otel.mapper.ts @n8n-io/governance-and-observability
 packages/cli/src/public-api/v1/controllers/node-type-policies.public.controller.ts @n8n-io/governance-and-observability

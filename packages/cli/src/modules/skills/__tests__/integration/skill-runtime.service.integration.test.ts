@@ -106,7 +106,7 @@ describe('SkillRuntimeService agent reads', () => {
 		// Version ids are UUIDs on Postgres, so an unknown one must be a UUID too.
 		const unknown = randomUUID();
 		const versions = await runtime.resolveVersions([voice.v2, unknown]);
-		const numbers = await runtime.findVersionNumbers([voice.v1, voice.v2, unknown]);
+		const refs = await runtime.findVersionRefs([voice.v1, voice.v2, unknown]);
 
 		expect([...versions]).toEqual([
 			[
@@ -122,6 +122,9 @@ describe('SkillRuntimeService agent reads', () => {
 				},
 			],
 		]);
-		expect(Object.fromEntries(numbers)).toEqual({ [voice.v1]: 1, [voice.v2]: 2 });
+		expect(Object.fromEntries(refs)).toEqual({
+			[voice.v1]: { skillId: voice.id, version: 1 },
+			[voice.v2]: { skillId: voice.id, version: 2 },
+		});
 	});
 });

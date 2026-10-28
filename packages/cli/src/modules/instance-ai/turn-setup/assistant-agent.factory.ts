@@ -25,7 +25,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
-import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
+import { canAccessAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
@@ -203,7 +203,7 @@ export class AssistantAgentFactory {
 			context.agentPreviewSession = undefined;
 			return;
 		}
-		if (!(await canAccessAgentPreviewHandoff(user, projectId))) {
+		if (!(await canAccessAgentTestHandoff(user, projectId))) {
 			context.agentPreviewSession = undefined;
 			return;
 		}

@@ -33,6 +33,8 @@ import { createProjectVariable, createVariable } from '@test-integration/db/vari
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
+import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { PackageImportConfig } from '../n8n-packages.config';
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { PackageVariableRequirement } from '../spec/requirements.schema';
 import { importPackageRequest } from './fixtures/import-request';
@@ -586,7 +588,20 @@ describe('project shell import', () => {
 			],
 		});
 
-		await expect(importProjects(owner, packageBuffer)).rejects.toBeInstanceOf(ForbiddenError);
+		const error = await importProjects(owner, packageBuffer).catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(ForbiddenError);
+		expect((error as ForbiddenError).message).toBe(
+			'Cannot import project "brie": its id belongs to a non-team project on this instance.',
+		);
+
+		const plan = await Container.get(N8nPackagesService).planPackage(
+			importPackageRequest({ user: owner, packageBuffer, conflictPolicy: 'new-version' }),
+			new TarPackageReader(packageBuffer, Container.get(PackageImportConfig)),
+			'check',
+		);
+		expect(plan.issues).toEqual([
+			{ type: 'project-conflict', kind: 'not-team', sourceProjectId: personal.id, name: 'brie' },
+		]);
 	});
 
 	it('recreates the project folder tree and places nested workflows into the project scope', async () => {
