@@ -1,4 +1,8 @@
-import { SHARED_BUILDER_TOOL_NAMES, updateCredentialDescriptionSchema } from '@n8n/api-types';
+import {
+	SHARED_BUILDER_TOOL_NAMES,
+	updateCredentialDescriptionSchema,
+	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { z } from 'zod';
 
@@ -16,8 +20,7 @@ export const createUpdateCredentialDescriptionTool = (
 ): ToolDefinition<typeof updateCredentialDescriptionSchema.shape> => ({
 	name: SHARED_BUILDER_TOOL_NAMES.UPDATE_CREDENTIAL_DESCRIPTION,
 	config: {
-		description:
-			'Update the description of an existing credential. The credential name, type, and secret data stay unchanged.',
+		description: UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 		inputSchema: updateCredentialDescriptionSchema.shape,
 		outputSchema: { success: z.boolean(), error: z.string().optional() },
 		annotations: {

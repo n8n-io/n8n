@@ -903,13 +903,14 @@ describe('credentialService.get — credential ownership revalidation', () => {
 // ---------------------------------------------------------------------------
 
 describe('bound project write guard', () => {
-	it('rejects description edits on a protected instance', async () => {
+	it('allows description edits on a protected instance', async () => {
 		instanceWriteAccess.isReadOnly.mockReturnValue(true);
+		sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
+			id: 'bound-project',
+		} as never);
 		const ctx = service.createContext(user, { projectId: 'bound-project' });
-		await expect(ctx.credentialService.updateDescription('cred-1', 'Reporting')).rejects.toThrow(
-			'protected instance',
-		);
-		expect(credentialsService.updateDescription).not.toHaveBeenCalled();
+		await ctx.credentialService.updateDescription('cred-1', 'Reporting');
+		expect(credentialsService.updateDescription).toHaveBeenCalledWith(user, 'cred-1', 'Reporting');
 	});
 
 	type Context = ReturnType<typeof service.createContext>;

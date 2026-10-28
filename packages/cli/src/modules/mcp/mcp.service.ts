@@ -1,6 +1,7 @@
 import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
 import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
+	SHARED_BUILDER_TOOL_NAMES,
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
@@ -402,10 +403,14 @@ export class McpService {
 						tool.name === 'execute_workflow' &&
 						isRecord(handlerArgs[0]) &&
 						handlerArgs[0].executionMode === 'production';
+					// Source control protection permits credential edits on deployed instances.
+					const isCredentialDescriptionUpdate =
+						tool.name === SHARED_BUILDER_TOOL_NAMES.UPDATE_CREDENTIAL_DESCRIPTION;
 					const isBlocked =
 						this.instanceWriteAccess.isReadOnly() &&
 						tool.config.annotations?.readOnlyHint !== true &&
-						!isProductionExecution;
+						!isProductionExecution &&
+						!isCredentialDescriptionUpdate;
 					const result: ToolHandlerResult = isBlocked
 						? {
 								isError: true,

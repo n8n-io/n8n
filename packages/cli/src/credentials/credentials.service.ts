@@ -1150,7 +1150,7 @@ export class CredentialsService {
 			...cloneDeep(credential),
 			description: normalizedDescription,
 		};
-		const baseline = { ...cloneDeep(hookPayload), description: undefined };
+		const baseline = { ...credential, description: undefined };
 		await this.externalHooks.run('credentials.update', [hookPayload]);
 		if (!isEqual({ ...hookPayload, description: undefined }, baseline)) {
 			throw new BadRequestError(

@@ -585,6 +585,27 @@ describe('CredentialsService', () => {
 			expect(credential.data).toBe('encrypted-value');
 		});
 
+		it('rejects nested hook changes while preserving the original credential', async () => {
+			credential.shared = [
+				{
+					role: 'credential:owner',
+					project: { id: 'project-1' },
+				} as SharedCredentials,
+			];
+			externalHooks.run.mockImplementation(async (_name, parameters) => {
+				const [payload] = parameters as [ICredentialsDb];
+				const project = payload.shared?.[0]?.project;
+				if (project) project.id = 'changed';
+			});
+
+			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow(
+				'Credential update hooks can only change the description',
+			);
+			expect(credential.shared[0].project.id).toBe('project-1');
+			expect(credentialsRepository.updateDescription).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('does not emit a success event when the row disappeared', async () => {
 			credentialsRepository.updateDescription.mockResolvedValue(false);
 			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow(

@@ -6,6 +6,7 @@ import { getCredentialDescriptionPreview } from '@n8n/ai-utilities/credential-de
 import {
 	getLegacyBuilderToolNames,
 	updateCredentialDescriptionSchema,
+	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 	AI_GATEWAY_MANAGED_TAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialSetupHint,
@@ -1092,9 +1093,7 @@ export function createUpdateCredentialDescriptionTool(context: InstanceAiContext
 	// Sanitization makes nullable fields optional, but updates require an explicit description.
 	const inputSchema = sanitizeInputSchema(updateCredentialDescriptionSchema).required();
 	return new Tool(DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION)
-		.description(
-			'Update the description of an existing credential. The credential name, type, and secret data stay unchanged.',
-		)
+		.description(UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION)
 		.input(inputSchema)
 		.output(z.object({ success: z.literal(true) }))
 		.handler(async (input) => {

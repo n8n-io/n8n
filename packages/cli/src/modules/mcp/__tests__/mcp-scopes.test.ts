@@ -300,7 +300,6 @@ describe('McpService scope enforcement', () => {
 				'move_workflows_to_folder',
 				'create_folder',
 				'update_folder',
-				'update_credential_description',
 				'create_data_table',
 				'rename_data_table',
 				'add_data_table_column',
@@ -312,7 +311,12 @@ describe('McpService scope enforcement', () => {
 				'undo_user_preference',
 			]);
 			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
-			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
+			for (const name of [
+				'execute_workflow',
+				'test_workflow',
+				'search_workflows',
+				'update_credential_description',
+			]) {
 				expect(registeredTools.has(name), name).toBe(true);
 			}
 

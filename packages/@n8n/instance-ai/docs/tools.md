@@ -843,14 +843,16 @@ response never contains credential secret data.
 
 ### `update_credential_description`
 
-Set or replace an existing credential description. Pass `credentialId` and `description`.
+Set or replace an existing credential description only when the user explicitly requests it.
+Describe its purpose and intended use from known context. Keep it concise and exclude secrets.
+Pass `credentialId` and `description`.
 The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
 Returns `{ success: true }`.
 
 The tool is available when credential descriptions are enabled. The user must have
 `credential:update` permission, and the credential must belong to the conversation's project.
-Managed credentials and protected instances cannot be edited. The operation keeps credential
-secrets, names, and types unchanged.
+Managed credentials cannot be edited. Description updates remain available on protected instances.
+The operation keeps credential secrets, names, and types unchanged.
 
 ### `delete_credential`
 

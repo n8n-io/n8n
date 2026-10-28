@@ -2332,6 +2332,14 @@ describe('credential tools', () => {
 });
 
 describe('update credential description tool', () => {
+	it('keeps request, content, and clearing guidance in the built tool description', () => {
+		const description = getDescription(createUpdateCredentialDescriptionTool(createMockContext()));
+		expect(description).toContain('only when the user explicitly requests a description change');
+		expect(description).toContain('purpose and intended use from known context');
+		expect(description).toContain('concise and exclude secrets');
+		expect(description).toContain('A blank string clears it');
+	});
+
 	it('advertises an explicit description and rejects missing or null input', () => {
 		const tool = createUpdateCredentialDescriptionTool(createMockContext());
 		expect(inputJsonSchema(tool).required).toContain('description');

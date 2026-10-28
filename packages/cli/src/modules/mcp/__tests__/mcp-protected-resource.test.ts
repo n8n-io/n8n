@@ -169,15 +169,16 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('checks the instance flags without a user argument', async () => {
+		it('checks each instance flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledWith(
-				INSTANCE_ACTIVITY_CONTEXT_FLAG,
-			);
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledWith(
-				CREDENTIAL_DESCRIPTIONS_FLAG,
-			);
+			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
+				expect(
+					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
+						([requested]) => requested === flag,
+					),
+				).toEqual([[flag]]);
+			}
 		});
 
 		it('should drop tools this instance does not expose', async () => {
