@@ -3,8 +3,6 @@ import {
 	droppedLifecycleState,
 	estimateObservationTokens,
 	normalizeObservationLogReflection,
-	hashEpisodicMemoryContent,
-	normalizeFlatReflectionActions,
 	rankEpisodicMemoryEntries,
 	supersededLifecycleState,
 	uniqueStrings,
@@ -21,6 +19,7 @@ import {
 	type EpisodicMemoryReflectionResult,
 	type EpisodicMemoryScope,
 	type EpisodicMemorySearchOptions,
+	type EpisodicMemoryStatus,
 	type EpisodicMemoryTaskLockHandle,
 	type MemoryDescriptor,
 	type NewEpisodicMemoryCaptureCandidate,
@@ -45,10 +44,7 @@ import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull, Like } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
-
-import { isUniqueConstraintError } from '@/response-helper';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
@@ -160,8 +156,9 @@ export class N8nMemoryImpl
 			await this.getEpisodicMemoryEntriesByContentHashes(scope, contentHashes),
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
-		searchEntries: async (scope, query, opts) =>
-			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		// Ranking uses the query embedding in `opts`, not the query text.
+		searchEntries: async (scope, _query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
@@ -173,6 +170,10 @@ export class N8nMemoryImpl
 			await this.completeEpisodicMemoryCaptureCandidates(ids),
 		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
+		findSimilarEntries: async (scope, embeddings, opts) =>
+			await this.findSimilarEpisodicMemoryEntries(scope, embeddings, opts),
+		addEntrySources: async (entryId, sources, lastSeenAt) =>
+			await this.addEpisodicMemoryEntrySources(entryId, sources, lastSeenAt),
 		taskLock: {
 			acquire: async (scope, opts) => await this.acquireEpisodicMemoryTaskLock(scope, opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
@@ -729,19 +730,42 @@ export class N8nMemoryImpl
 			sources,
 			{},
 		);
-		return this.toEpisodicMemoryEntry(persisted);
+		return persisted ? this.toEpisodicMemoryEntry(persisted) : null;
 	}
 
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
-		const statuses = opts?.includeStatuses ?? ['active'];
-		// Reflection must not pull entries from other scopes into a shared thread.
+		// Lifecycle changes must not pull entries from other scopes into a shared thread.
 		const resourceIds = opts?.writeScopeOnly
 			? episodicWriteScopeIds(scope)
 			: episodicReadScopeIds(scope);
+		const entries = await this.loadNewestEpisodicMemoryEntries(
+			resourceIds,
+			opts?.includeStatuses ?? ['active'],
+		);
+		return rankEpisodicMemoryEntries(entries, opts);
+	}
+
+	private async findSimilarEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		embeddings: number[][],
+		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
+	): Promise<RetrievedEpisodicMemoryEntry[][]> {
+		const entries = await this.loadNewestEpisodicMemoryEntries(episodicWriteScopeIds(scope), [
+			'active',
+		]);
+		return embeddings.map((queryEmbedding) =>
+			rankEpisodicMemoryEntries(entries, { ...opts, queryEmbedding }),
+		);
+	}
+
+	/** The same fact told in two threads is one memory to the reader. */
+	private async loadNewestEpisodicMemoryEntries(
+		resourceIds: string[],
+		statuses: EpisodicMemoryStatus[],
+	): Promise<EpisodicMemoryEntry[]> {
 		if (resourceIds.length === 0) return [];
 		const entities = await this.memoryEntryRepository.find({
 			where: {
@@ -750,18 +774,28 @@ export class N8nMemoryImpl
 				status: In(statuses),
 			},
 		});
-		// The same fact told in two threads is one memory to the reader.
 		const newestByContent = new Map<string, AgentMemoryEntryEntity>();
 		for (const entity of entities) {
 			const key = `${entity.status}\n${entity.contentHash}`;
 			const seen = newestByContent.get(key);
 			if (!seen || entity.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entity);
 		}
-		return rankEpisodicMemoryEntries(
-			[...newestByContent.values()].map((entity) => this.toEpisodicMemoryEntry(entity)),
-			query,
-			opts,
+		return [...newestByContent.values()].map((entity) => this.toEpisodicMemoryEntry(entity));
+	}
+
+	private async addEpisodicMemoryEntrySources(
+		entryId: string,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+		lastSeenAt: Date,
+	): Promise<EpisodicMemoryEntry | null> {
+		const entry = await this.memoryEntryRepository.addSources(
+			this.agentId,
+			entryId,
+			sources,
+			lastSeenAt,
+			{},
 		);
+		return entry ? this.toEpisodicMemoryEntry(entry) : null;
 	}
 
 	private async getEpisodicMemoryEntrySources(
@@ -802,178 +836,16 @@ export class N8nMemoryImpl
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult> {
 		// Recall spans several scopes; lifecycle changes stay inside the one being written.
-		const resourceId = episodicWriteScopeId(scope);
-		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
-			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
-			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
-			const actionIds = uniqueStrings([
-				...reflection.drop,
-				...reflection.merge.flatMap((merge) => merge.supersedes),
-			]);
-			if (actionIds.length === 0) return { droppedIds: [], supersededIds: [], inserted: [] };
-
-			const activeEntries = await entryRepo.find({
-				where: {
-					agentId: this.agentId,
-					resourceId,
-					id: In(actionIds),
-					status: 'active',
-				},
-			});
-			const activeIds = new Set(activeEntries.map((entry) => entry.id));
-			const normalized = normalizeFlatReflectionActions({
-				activeIds,
-				drop: reflection.drop,
-				merge: reflection.merge,
-				normalizeMerge: (entry, supersedes) => ({ ...entry, supersedes }),
-			});
-
-			const now = new Date();
-			const replacementHashes = uniqueStrings(
-				normalized.merge.map(
-					(item) => item.entry.contentHash ?? hashEpisodicMemoryContent(item.entry.content),
-				),
-			);
-			const existingReplacements = replacementHashes.length
-				? await entryRepo.find({
-						where: {
-							agentId: this.agentId,
-							resourceId,
-							contentHash: In(replacementHashes),
-						},
-					})
-				: [];
-			const existingByHash = new Map(
-				existingReplacements.map((entry) => [entry.contentHash, entry]),
-			);
-			const replacements: AgentMemoryEntryEntity[] = [];
-			for (const item of normalized.merge) {
-				const contentHash = item.entry.contentHash ?? hashEpisodicMemoryContent(item.entry.content);
-				const existing = existingByHash.get(contentHash);
-				const update: QueryDeepPartialEntity<AgentMemoryEntryEntity> = {
-					...activeLifecycleState(),
-					lastSeenAt: item.entry.lastSeenAt ?? now,
-					updatedAt: now,
-				};
-				if (item.entry.embedding !== undefined) update.embedding = item.entry.embedding;
-				if (item.entry.embeddingModel !== undefined) {
-					update.embeddingModel = item.entry.embeddingModel;
-				}
-				if (item.entry.metadata !== undefined) update.metadata = item.entry.metadata;
-
-				if (existing) {
-					await entryRepo.update({ agentId: this.agentId, resourceId, id: existing.id }, update);
-					replacements.push({
-						...existing,
-						...update,
-					} as AgentMemoryEntryEntity);
-					continue;
-				}
-
-				const entity = entryRepo.create({
-					agentId: this.agentId,
-					resourceId,
-					content: item.entry.content,
-					contentHash,
-					...activeLifecycleState(),
-					embeddingModel: item.entry.embeddingModel ?? null,
-					embedding: item.entry.embedding ?? null,
-					metadata: item.entry.metadata ?? null,
-					createdAt: item.entry.createdAt ?? now,
-					lastSeenAt: item.entry.lastSeenAt ?? now,
-				});
-				try {
-					const [persisted] = await entryRepo.save([entity]);
-					if (persisted) {
-						existingByHash.set(contentHash, persisted);
-						replacements.push(persisted);
-					}
-				} catch (error) {
-					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-					const persisted = await entryRepo.findOneBy({
-						agentId: this.agentId,
-						resourceId,
-						contentHash,
-					});
-					if (!persisted) throw error;
-					await entryRepo.update({ agentId: this.agentId, resourceId, id: persisted.id }, update);
-					existingByHash.set(contentHash, persisted);
-					replacements.push({
-						...persisted,
-						...update,
-					} as AgentMemoryEntryEntity);
-				}
-			}
-			const replacementIds = new Set(replacements.map((entry) => entry.id));
-			const effectiveDrop = normalized.drop.filter((id) => !replacementIds.has(id));
-
-			if (effectiveDrop.length > 0) {
-				await entryRepo.update(
-					{
-						agentId: this.agentId,
-						resourceId,
-						id: In(effectiveDrop),
-						status: 'active',
-					},
-					droppedLifecycleState(),
-				);
-			}
-
-			const supersededIds: string[] = [];
-			for (const [index, item] of normalized.merge.entries()) {
-				const replacement = replacements[index];
-				if (!replacement) continue;
-				const sourceRows = await sourceRepo.find({
-					where: { agentId: this.agentId, memoryEntryId: In(item.supersedes) },
-					order: { createdAt: 'ASC', id: 'ASC' },
-				});
-				const existingReplacementSources = await sourceRepo.find({
-					where: { agentId: this.agentId, memoryEntryId: replacement.id },
-				});
-				const existingKeys = new Set(
-					existingReplacementSources.map(
-						(source) => `${source.observationId ?? source.candidateId}\n${source.evidenceHash}`,
-					),
-				);
-				const copiedSources = sourceRows.flatMap((source) => {
-					const key = `${source.observationId ?? source.candidateId}\n${source.evidenceHash}`;
-					if (existingKeys.has(key)) return [];
-					existingKeys.add(key);
-					return [
-						sourceRepo.create({
-							agentId: this.agentId,
-							memoryEntryId: replacement.id,
-							observationId: source.observationId,
-							candidateId: source.candidateId,
-							threadId: source.threadId,
-							evidenceHash: source.evidenceHash,
-							evidenceText: source.evidenceText,
-							createdAt: now,
-						}),
-					];
-				});
-				if (copiedSources.length > 0) await sourceRepo.save(copiedSources);
-				const itemSupersededIds = item.supersedes.filter((id) => id !== replacement.id);
-				if (itemSupersededIds.length > 0) {
-					await entryRepo.update(
-						{
-							agentId: this.agentId,
-							resourceId,
-							id: In(itemSupersededIds),
-							status: 'active',
-						},
-						supersededLifecycleState(replacement.id),
-					);
-					supersededIds.push(...itemSupersededIds);
-				}
-			}
-
-			return {
-				droppedIds: effectiveDrop,
-				supersededIds,
-				inserted: replacements.map((entry) => this.toEpisodicMemoryEntry(entry)),
-			};
-		});
+		const applied = await this.memoryEntryRepository.applyReflection(
+			this.agentId,
+			episodicWriteScopeId(scope),
+			reflection,
+			{},
+		);
+		return {
+			...applied,
+			inserted: applied.inserted.map((entry) => this.toEpisodicMemoryEntry(entry)),
+		};
 	}
 
 	// ── Descriptor ───────────────────────────────────────────────────────

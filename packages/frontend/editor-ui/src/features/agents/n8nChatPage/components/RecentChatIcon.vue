@@ -16,7 +16,11 @@ const assistantIconSize = computed(() => Math.round(props.size * 0.75));
 </script>
 
 <template>
-	<N8nIcon v-if="item?.kind === 'assistant'" icon="n8n-assistant" :size="assistantIconSize" />
+	<N8nIcon
+		v-if="item?.kind === 'assistant' || item?.kind === 'assistant-agent'"
+		icon="n8n-assistant"
+		:size="assistantIconSize"
+	/>
 	<AgentPersonalisationIcon
 		v-else-if="item?.kind === 'agent'"
 		:personalisation="item.thread.agent.personalisation"

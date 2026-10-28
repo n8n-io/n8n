@@ -105,8 +105,12 @@ vi.mock('../components/InstanceAiQuestions.vue', () => ({
 
 vi.mock('../components/DomainAccessApproval.vue', () => ({
 	default: {
-		template: '<div />',
-		props: ['requestId', 'url', 'host', 'query', 'severity'],
+		props: ['url', 'host', 'query', 'severity'],
+		emits: ['decide'],
+		template: `<div>
+			<button data-test-id="domain-access-allow-once" @click="$emit('decide', { kind: 'domainAccessApprove', domainAccessAction: 'allow_once' })" />
+			<button data-test-id="domain-access-deny" @click="$emit('decide', { kind: 'domainAccessDeny' })" />
+		</div>`,
 	},
 }));
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
@@ -964,6 +968,45 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					],
 				}),
 			);
+		});
+	});
+
+	describe('domain access confirmation', () => {
+		it('sends the decision of the domain access card through the thread', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-domain',
+				severity: 'info',
+				message: 'Fetch https://example.com/a',
+				domainAccess: { url: 'https://example.com/a', host: 'example.com' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('domain-access-allow-once'));
+
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-domain', 'approved');
+			expect(confirmAction).toHaveBeenCalledWith('req-domain', {
+				kind: 'domainAccessApprove',
+				domainAccessAction: 'allow_once',
+			});
+		});
+
+		it('resolves a denied web search as denied', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-search',
+				severity: 'info',
+				message: 'Search the web',
+				webSearch: { query: 'n8n release notes' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('domain-access-deny'));
+
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-search', 'denied');
+			expect(confirmAction).toHaveBeenCalledWith('req-search', { kind: 'domainAccessDeny' });
 		});
 	});
 

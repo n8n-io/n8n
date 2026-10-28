@@ -120,6 +120,23 @@ vi.mock('../composables/useAgentsN8nChatFlag', () => ({
 	useAgentsN8nChatFlag: () => n8nChatFlag,
 }));
 
+const { whatsAppMetaStatus, useWhatsAppMetaStatusSpy, refreshWhatsAppMetaStatusSpy } = vi.hoisted(
+	() => ({
+		whatsAppMetaStatus: {
+			value: null as { state: string; displayName?: string; displayPhoneNumber?: string } | null,
+		},
+		useWhatsAppMetaStatusSpy: vi.fn(),
+		refreshWhatsAppMetaStatusSpy: vi.fn(),
+	}),
+);
+
+vi.mock('../channels/whatsapp/useWhatsAppMetaStatus', () => ({
+	useWhatsAppMetaStatus: (...args: unknown[]) => {
+		useWhatsAppMetaStatusSpy(...args);
+		return { status: whatsAppMetaStatus, refresh: refreshWhatsAppMetaStatusSpy };
+	},
+}));
+
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
@@ -175,6 +192,7 @@ describe('AgentTriggersSection', () => {
 		n8nChatFlag.value = false;
 		catalogItems.value = [];
 		routeQuery.value = {};
+		whatsAppMetaStatus.value = null;
 	});
 
 	it('opens the Teams settings when Microsoft returns from the file access consent', async () => {
@@ -591,6 +609,141 @@ describe('AgentTriggersSection', () => {
 					.find('[data-testid="agent-channel-modal-stub"]')
 					.attributes('data-saved-description'),
 			).toBe('Handles support tickets');
+		});
+	});
+
+	describe('WhatsApp chip and Meta review status', () => {
+		function mountWhatsApp() {
+			catalogItems.value = [{ type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' }];
+			configured.value = { whatsapp: true };
+			connectedCredentials.value = { whatsapp: 'cred-1' };
+			return mountSection(undefined, true, { connectedTriggers: ['whatsapp'] });
+		}
+
+		const chip = (wrapper: ReturnType<typeof mountSection>) =>
+			wrapper.findComponent({ name: 'AgentChipButton' });
+
+		it.each([null, { state: 'connected' }, { state: 'unknown' }])(
+			'shows no icon for %j',
+			async (status) => {
+				whatsAppMetaStatus.value = status;
+
+				const wrapper = mountWhatsApp();
+				await flushPromises();
+
+				expect(chip(wrapper).props('warning')).toBe(false);
+				expect(chip(wrapper).props('invalid')).toBe(false);
+				expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(false);
+				expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+			},
+		);
+
+		it.each([
+			['numberPending', 'agents.channels.whatsapp.meta.numberPending.title'],
+			['dailyLimit', 'agents.channels.whatsapp.meta.dailyLimit.title'],
+			['nameInReviewBlocked', 'agents.channels.whatsapp.meta.nameInReview.title'],
+			['nameInReview', 'agents.channels.whatsapp.meta.nameInReview.title'],
+			['nameDeclined', 'agents.channels.whatsapp.meta.nameDeclined.title'],
+			['businessNotVerified', 'agents.channels.whatsapp.meta.businessNotVerified.title'],
+			['businessInReview', 'agents.channels.whatsapp.meta.businessInReview.title'],
+		])('shows the amber warning with the headline for %s', async (state, headline) => {
+			whatsAppMetaStatus.value = {
+				state,
+				displayName: 'Acme Support',
+				displayPhoneNumber: '+1 555-184-1090',
+			};
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('warning')).toBe(true);
+			expect(chip(wrapper).props('warningReasons')).toEqual([headline]);
+			expect(chip(wrapper).props('invalid')).toBe(false);
+			const icon = wrapper.get('[data-testid="agent-chip-warning-icon"]');
+			expect(icon.attributes('icon')).toBe('triangle-alert');
+		});
+
+		it('shows the red cross with the headline when a declined name blocks sending', async () => {
+			whatsAppMetaStatus.value = { state: 'nameDeclinedBlocked', displayName: 'Acme Support' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('invalid')).toBe(true);
+			expect(chip(wrapper).props('invalidIcon')).toBe('circle-x');
+			expect(chip(wrapper).props('invalidReasons')).toEqual([
+				'agents.channels.whatsapp.meta.nameDeclined.title',
+			]);
+			expect(chip(wrapper).props('warning')).toBe(false);
+			const icon = wrapper.get('[data-testid="agent-chip-invalid-icon"]');
+			expect(icon.attributes('icon')).toBe('circle-x');
+		});
+
+		it('words the tooltip without a gap when Meta gives no number or name', async () => {
+			whatsAppMetaStatus.value = { state: 'dailyLimit' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('warningReasons')).toEqual([
+				'agents.channels.whatsapp.meta.dailyLimit.titleNoNumber',
+			]);
+		});
+
+		it('keeps the triangle for other errors on the chip', async () => {
+			whatsAppMetaStatus.value = { state: 'dailyLimit' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('invalidIcon')).toBeUndefined();
+		});
+
+		it('reads the status once, for the connected credential, without polling', async () => {
+			mountWhatsApp();
+			await flushPromises();
+
+			const [project, agent, credential, options] = useWhatsAppMetaStatusSpy.mock.calls.at(-1)!;
+			expect([project.value, agent.value, credential.value]).toEqual([
+				'project-id',
+				'agent-id',
+				'cred-1',
+			]);
+			expect(options).toEqual({ poll: false });
+		});
+
+		it('does not ask for a status when WhatsApp is not connected', async () => {
+			catalogItems.value = [{ type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' }];
+			connectedCredentials.value = { whatsapp: 'cred-1' };
+
+			mountSection(undefined, true, { connectedTriggers: [] });
+			await flushPromises();
+
+			const credential = useWhatsAppMetaStatusSpy.mock.calls.at(-1)![2];
+			expect(credential.value).toBeUndefined();
+		});
+
+		it('reads the status again when the channel modal closes', async () => {
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+			await chip(wrapper).trigger('click');
+			await flushPromises();
+			expect(refreshWhatsAppMetaStatusSpy).not.toHaveBeenCalled();
+
+			wrapper.findComponent({ name: 'AgentChannelModal' }).vm.$emit('update:open', false);
+			await flushPromises();
+
+			expect(refreshWhatsAppMetaStatusSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not read the status again just because the modal opened', async () => {
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			await chip(wrapper).trigger('click');
+			await flushPromises();
+
+			expect(refreshWhatsAppMetaStatusSpy).not.toHaveBeenCalled();
 		});
 	});
 });

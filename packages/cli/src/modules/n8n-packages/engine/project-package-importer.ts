@@ -65,6 +65,7 @@ import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 /** Everything an import will do, read before its first write. */
 export interface PackageImportPlan {
@@ -94,14 +95,16 @@ export class ProjectPackageImporter {
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		const plan = await this.planImport(request, reader, manifest, importSource, 'enforce');
+		const refusal = plan.projectPlan.conflicts.map(projectRefusalError).find((error) => error);
+		if (refusal) throw refusal;
 		if (plan.issues.length > 0) throw toImportBlockedError(plan.issues);
 		return await this.applyPlan(plan);
 	}
 
 	/**
 	 * Plans every project of the import and collects the issues that block it. Writes no data.
-	 * In `enforce` mode, policy checks write audit events and refusals that the import reports as
-	 * an error throw.
+	 * In `enforce` mode, policy checks write audit events. A refused project is an issue in both
+	 * modes, so Apply can report it with the other blockers.
 	 */
 	async planImport(
 		request: ResolvedImportRequest,
@@ -126,10 +129,6 @@ export class ProjectPackageImporter {
 			projects,
 			request.projectConflictPolicy,
 		);
-		if (mode === 'enforce') {
-			const refusal = projectPlan.conflicts.map(projectRefusalError).find((error) => error);
-			if (refusal) throw refusal;
-		}
 		// A refused project decides the whole import, so report it before reading any project's
 		// contents — planning work that is certain to be discarded only delays the same failure.
 		if (projectPlan.conflicts.length > 0) {
@@ -157,6 +156,11 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
+		// Read once: Agents in any project can reference an instance skill.
+		const packageSkills =
+			!request.selection && manifest.agents?.length
+				? await this.packageParser.getSkills(reader)
+				: [];
 		// Projects match by id, so a package project id is also its destination project id.
 		const updateScope = credentialUpdateScope(selectedProjects.map(({ id }) => id));
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
@@ -177,7 +181,12 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
-				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
+				{
+					bundledVariables,
+					packageCredentials,
+					packageSkills,
+					credentialUpdateScope: updateScope,
+				},
 				importSource,
 			);
 			inputs.push(input);
@@ -333,6 +342,7 @@ export class ProjectPackageImporter {
 		importWide: {
 			bundledVariables: Map<string, SerializedVariable> | undefined;
 			packageCredentials: Map<string, SerializedCredential> | undefined;
+			packageSkills: SerializedSkill[];
 			credentialUpdateScope: CredentialUpdateScope;
 		},
 		importSource: PackageImportSource,
@@ -409,6 +419,7 @@ export class ProjectPackageImporter {
 			folders,
 			workflows,
 			agents,
+			skills: importWide.packageSkills,
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,

@@ -30,7 +30,9 @@ import {
 	type PersistedAgentOutcome,
 } from './agent-import.types';
 import type { ImportEntityProperties } from '../../n8n-packages.types';
+import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import { decideImportConflictAction } from '../import-conflict-policy';
+import { SkillImporter } from '../skill/skill-importer';
 import { derivePublishedState } from '../workflow/workflow-published-state';
 import { decidePublishingAction } from '../workflow/workflow-publishing-policy';
 
@@ -44,12 +46,14 @@ export class AgentImporter {
 		private readonly policyService: AgentPolicyService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly skillImporter: SkillImporter,
 		private readonly urlService: UrlService,
 	) {}
 
 	async plan(
 		context: AgentImportMatchContext,
 		agents: PreparedAgent[],
+		skills: SerializedSkill[],
 		options: ImportEntityProperties,
 	): Promise<AgentImportPlan> {
 		const plan: AgentImportPlan = {
@@ -86,6 +90,14 @@ export class AgentImporter {
 		const active = plan.items.filter(({ action }) => action !== 'skip');
 		if (active.length > 0) await this.settingsService.assertEnabled();
 		for (const item of active) plan.issues.push(...agentBodyIssues(item));
+		const skillPlan = await this.skillImporter.plan(
+			context,
+			plan.items,
+			skills,
+			options.conflictPolicy,
+		);
+		plan.skills = skillPlan.plan;
+		plan.issues.push(...skillPlan.issues);
 		return plan;
 	}
 
@@ -141,6 +153,8 @@ export class AgentImporter {
 			{ ...context, projectPendingCreation: false },
 			requiredAgentScopes(plan),
 		);
+		if (plan.skills) await this.skillImporter.applyShared(context.user, plan.skills);
+		const raisedRevisions = plan.skills?.raisedRevisions ?? new Map<string, number>();
 		for (const item of plan.items) {
 			if (item.action === 'skip') {
 				outcomes.push({
@@ -156,6 +170,9 @@ export class AgentImporter {
 					availableInMCP: item.availableInMCP,
 				},
 				plannedDestinations: plan.plannedDestinations,
+				writeSkills: plan.skills
+					? this.skillImporter.writerFor(context.user, plan.skills, item.sourceAgentId)
+					: undefined,
 			};
 			let agent: ProjectAgent;
 			if (item.action === 'create') {
@@ -174,7 +191,9 @@ export class AgentImporter {
 					context.user,
 					{
 						...options,
-						expectedRevision: item.existing.revision,
+						// The shared skill writes of this package raised the revision of the Agents that follow them.
+						expectedRevision:
+							item.existing.revision + (raisedRevisions.get(item.sourceAgentId) ?? 0),
 					},
 				);
 			}
@@ -284,7 +303,6 @@ function completeDefinition(item: PreparedAgent): CompleteAgentDefinition {
 	return {
 		name: item.name,
 		config: item.config,
-		skills: item.skills,
 		tools: item.tools,
 		tasks: new Map(Object.entries(item.tasks)),
 	};

@@ -68,6 +68,17 @@ export function reconstructError(data: ErrorSentinel): Error {
 	return error;
 }
 
+/** Workflow data for one `execute()` call. */
+export interface DataHolder {
+	/** The bridge clears this when the call ends. */
+	data?: WorkflowData;
+}
+
+export function heldData(holder: DataHolder): WorkflowData {
+	if (!holder.data) throw new Error('Host callback called after its expression finished');
+	return holder.data;
+}
+
 /**
  * Navigate the data object by path and return metadata or a primitive value.
  *

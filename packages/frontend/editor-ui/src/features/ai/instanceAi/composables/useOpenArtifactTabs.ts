@@ -21,6 +21,7 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	skill: 'book-open',
 };
 
 type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;

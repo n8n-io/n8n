@@ -32,7 +32,7 @@ function prepare(config: AgentJsonConfig | null): PreparedAgentExport {
 			source,
 			{
 				schema: config,
-				skills: source.skills,
+				skills: {},
 				tools: source.tools,
 				tasks: new Map(Object.entries(source.tasks)),
 			},

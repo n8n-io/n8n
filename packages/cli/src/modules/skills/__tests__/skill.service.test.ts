@@ -255,6 +255,41 @@ describe('SkillService', () => {
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			['the skill left the checked scope', { checkedTarget: { projectId: null, agentId: null } }],
+			['a newer version exists', { baseVersionId: 'skill_a-v1' }],
+		])('refuses a save when %s', async (_case, guard) => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+
+			await expect(
+				service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new', ...guard }, user.id),
+			).rejects.toThrow(ConflictError);
+			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
+		it('replaces the frontmatter when the update sets it', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2, { frontmatter: { license: 'MIT' } }));
+
+			await service.saveTrusted(
+				'skill_a',
+				{
+					baseSkillHash,
+					frontmatter: { license: 'Apache-2.0' },
+					baseVersionId: 'skill_a-v2',
+					checkedTarget: { projectId: PROJECT, agentId: null },
+				},
+				user.id,
+			);
+
+			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+				'skill_a',
+				3,
+				expect.objectContaining({ frontmatter: { license: 'Apache-2.0' } }),
+				user.id,
+				TX_CTX,
+			);
+		});
+
 		it('does not check the name when the save keeps it', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
