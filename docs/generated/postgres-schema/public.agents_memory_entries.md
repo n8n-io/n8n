@@ -8,7 +8,7 @@
 | content | text |  | false |  |  |  |
 | contentHash | varchar(64) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| embedding | json |  | true |  |  | Embedding vector for episodic recall |
+| embedding | bytea |  | true |  |  | Embedding vector for episodic recall, as float32 bytes |
 | embeddingModel | varchar(128) |  | true |  |  | Embedding model used to produce embedding |
 | id | varchar(36) |  | false | [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
 | lastSeenAt | timestamp(3) with time zone |  | false |  |  | Last time equivalent content was observed; updatedAt tracks row mutation time |
@@ -62,7 +62,7 @@ erDiagram
   text content
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  json embedding
+  bytea embedding
   varchar_128_ embeddingModel
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt

@@ -1,6 +1,8 @@
 import type { EpisodicMemoryStatus, JSONObject } from '@n8n/agents';
-import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
+import { BinaryColumn, DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
+
+import { float32VectorTransformer } from '../utils/float32-vector';
 
 @Entity({ name: 'agents_memory_entries' })
 @Index(['agentId', 'resourceId', 'status', 'createdAt', 'id'])
@@ -29,8 +31,8 @@ export class AgentMemoryEntryEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	embeddingModel: string | null;
 
-	@JsonColumn({ nullable: true })
-	embedding: number[] | null;
+	@BinaryColumn({ nullable: true, transformer: float32VectorTransformer })
+	embedding: Float32Array | null;
 
 	@JsonColumn({ nullable: true })
 	metadata: JSONObject | null;

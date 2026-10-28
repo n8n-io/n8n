@@ -275,7 +275,7 @@ export async function runEpisodicMemoryCandidateProcessor(
 interface CapturedFact {
 	candidate: EpisodicMemoryCaptureCandidate;
 	contentHash: string;
-	embedding: number[] | undefined;
+	embedding: Float32Array | undefined;
 }
 
 type ConsolidatedFact = EpisodicMemoryConsolidation['facts'][number];
@@ -288,7 +288,7 @@ type FactWrite =
 			fact: CapturedFact;
 			supersedes: string[];
 			content: string;
-			embedding?: number[];
+			embedding?: Float32Array;
 	  };
 
 interface EvidenceSource {
@@ -397,7 +397,7 @@ async function embedCandidateEntries(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
 	candidates: Array<{ candidate: EpisodicMemoryCaptureCandidate; contentHash: string }>,
-): Promise<{ embeddingsByHash: Map<string, number[]>; report?: EpisodicMemoryUsageReport }> {
+): Promise<{ embeddingsByHash: Map<string, Float32Array>; report?: EpisodicMemoryUsageReport }> {
 	const contentByHash = new Map<string, string>();
 	for (const { candidate, contentHash } of candidates) {
 		if (!contentByHash.has(contentHash)) contentByHash.set(contentHash, candidate.content);
@@ -405,7 +405,7 @@ async function embedCandidateEntries(
 	const existing = await opts.memory.episodic.getEntriesByContentHashes(opts.scope, [
 		...contentByHash.keys(),
 	]);
-	const embeddingsByHash = new Map<string, number[]>();
+	const embeddingsByHash = new Map<string, Float32Array>();
 	for (const entry of existing) {
 		if (
 			entry.embeddingModel === config.embeddingModel &&
@@ -425,7 +425,7 @@ async function embedCandidateEntries(
 		opts.executionCounter,
 	);
 	for (const [index, [contentHash]] of missing.entries()) {
-		embeddingsByHash.set(contentHash, embedded.embeddings[index]);
+		embeddingsByHash.set(contentHash, Float32Array.from(embedded.embeddings[index]));
 	}
 	return { embeddingsByHash, report: embedded.report };
 }
@@ -642,7 +642,9 @@ async function embedMergedContents(
 		opts.executionCounter,
 	);
 	recordUsage(opts, usageReports, embedded.report);
-	for (const [index, update] of updates.entries()) update.embedding = embedded.embeddings[index];
+	for (const [index, update] of updates.entries()) {
+		update.embedding = Float32Array.from(embedded.embeddings[index]);
+	}
 }
 
 /**
@@ -685,7 +687,7 @@ function toNewEntry(
 	scope: EpisodicMemoryScope,
 	config: NormalizedEpisodicMemoryConfig,
 	content: string,
-	embedding: number[] | undefined,
+	embedding: Float32Array | undefined,
 	now: Date,
 ): NewEpisodicMemoryEntry {
 	return {
