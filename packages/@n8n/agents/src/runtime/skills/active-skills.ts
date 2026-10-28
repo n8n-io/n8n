@@ -107,6 +107,11 @@ export class ActiveSkills {
 			Object.keys(stored.versions ?? {}).length === Object.keys(versions).length &&
 			Object.entries(versions).every(([id, version]) => stored.versions?.[id] === version);
 		if (!storeIsCurrent && (ids.length > 0 || stored !== undefined)) await this.persist();
+		// Revocations remain applied even if cancellation prevents the next model call.
+		const revocations: RuntimeSkillContextUsage[] = [...this.restoredIds]
+			.filter((id) => !retainedIds.has(id))
+			.map((skillId) => ({ skillId, kind: 'revoked' }));
+		if (revocations.length > 0) this.source.onContext?.(revocations);
 	}
 
 	async load(
@@ -140,6 +145,7 @@ export class ActiveSkills {
 		const usage: RuntimeSkillContextUsage[] = [];
 		for (const skillId of this.restoredIds) {
 			const skill = this.loaded.get(skillId);
+			if (!skill && !this.unavailableIds.has(skillId)) continue;
 			const version = this.list?.activeSkillVersions?.[skillId] ?? undefined;
 			const previous = this.previousVersions[skillId];
 			usage.push({
@@ -149,9 +155,7 @@ export class ActiveSkills {
 					? previous !== undefined && previous !== version
 						? 'refreshed'
 						: 'carried'
-					: this.unavailableIds.has(skillId)
-						? 'unavailable'
-						: 'revoked',
+					: 'unavailable',
 			});
 		}
 		for (const message of this.contextUpdates) {

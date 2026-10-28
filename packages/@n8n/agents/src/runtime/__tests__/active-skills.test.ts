@@ -560,6 +560,25 @@ describe('active skills', () => {
 });
 
 describe('active skill context observations', () => {
+	it('reports revocation only after the changed selections are saved', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save(
+			{ ...scope, agentName: 'assistant' },
+			{ skillIds: ['hub-test'], versions: { 'hub-test': 'v1' } },
+		);
+		vi.spyOn(memory.skillState, 'save').mockRejectedValueOnce(new Error('Save failed'));
+		const current = createRuntimeSkillSource([]);
+		const onContext = vi.fn();
+		current.onContext = onContext;
+		const active = new ActiveSkills(current, 'assistant', memory.skillState);
+		await expect(active.restore(new AgentMessageList(), scope)).rejects.toThrow('Save failed');
+		expect(onContext).not.toHaveBeenCalled();
+
+		const retried = new ActiveSkills(current, 'assistant', memory.skillState);
+		await retried.restore(new AgentMessageList(), scope);
+		expect(onContext).toHaveBeenCalledExactlyOnceWith([{ skillId: 'hub-test', kind: 'revoked' }]);
+	});
+
 	it('reports fresh carry-forward and refresh without a new load call', async () => {
 		const memory = new InMemoryMemory();
 		const current = createRuntimeSkillSource([
@@ -612,17 +631,20 @@ describe('active skill context observations', () => {
 			current.onContext = onContext;
 			const active = new ActiveSkills(current, 'assistant', memory.skillState);
 			await active.restore(new AgentMessageList(), scope);
+			if (retryable) expect(onContext).not.toHaveBeenCalled();
+			else {
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([
+					{ skillId: 'hub-test', kind: 'revoked' },
+				]);
+				onContext.mockClear();
+			}
 			active.instructions();
 			// Later reads must not change the already-applied eligibility decision.
 			current.getLoadError = () => ({ message: 'Later error', retryable: !retryable });
 			active.reportContext();
-			expect(onContext).toHaveBeenLastCalledWith([
-				{
-					skillId: 'hub-test',
-					version: retryable ? 'v1' : undefined,
-					kind: retryable ? 'unavailable' : 'revoked',
-				},
-			]);
+			expect(onContext).toHaveBeenCalledExactlyOnceWith(
+				retryable ? [{ skillId: 'hub-test', version: 'v1', kind: 'unavailable' }] : [],
+			);
 			const next = new ActiveSkills(current, 'assistant', memory.skillState);
 			await next.restore(new AgentMessageList(), scope);
 			next.instructions();

@@ -192,7 +192,7 @@ export interface RuntimeSkillLoadError {
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
-	/** Observe current skill delivery when the runtime prepares a model call. */
+	/** Observe applied revocations and skill context prepared for model calls. */
 	onContext?: (skills: RuntimeSkillContextUsage[]) => void;
 	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
 	shouldAppendSkillUpdates?: (skillId: string) => boolean;

@@ -19,6 +19,10 @@ retain the counters and operation IDs across process restart and resume. SSE
 history replay does not enter the collector. A resume does not count a skill
 first loaded in that run as carry-forward.
 
+Revocations are recorded after the runtime saves the updated active selections.
+They remain measurable if cancellation prevents the next model call. Delivery
+metrics wait until the runtime prepares an allowed model call.
+
 ## Meanings
 
 | Property suffix | Meaning |
