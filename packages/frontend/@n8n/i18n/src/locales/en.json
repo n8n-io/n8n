@@ -1,7 +1,10 @@
 {
 	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
-	"experiments.mcpDiscovery.cta.connectToN8n": "Connect to n8n",
-	"experiments.mcpDiscovery.cta.build": "Build with Claude",
+	"experiments.mcpDiscovery.cta.build": "Build in Claude",
+	"experiments.mcpDiscovery.footer.prefix": "Prefer Claude?",
+	"experiments.mcpDiscovery.footer.build": "Build your workflow in Claude",
+	"experiments.mcpDiscovery.sidebar.title": "Build workflows in Claude",
+	"experiments.mcpDiscovery.sidebar.description": "Describe it in Claude, it appears in n8n.",
 	"agentSessions.timeline.mocks.scenario.label": "Sample scenario",
 	"agentSessions.timeline.mocks.scenario.simple": "Simple",
 	"agentSessions.timeline.mocks.scenario.fanout": "Fanout",

@@ -634,6 +634,13 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
 	};
 });
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const showClaudeBeforeSuggestions = computed(
+	() =>
+		!showWorkflowPreviewsAboveAssistant.value &&
+		emptyStatePromptSuggestionProps.value.suggestionsComponent === TaxonomyPromptSuggestions,
+);
+// EOF Experiment cleanup
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	// Variant A keeps the default empty-state title.
 	if (isAgentsN8nChatVariantA.value) {
@@ -1098,6 +1105,11 @@ async function handleWorkflowPreviewExampleUse(
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>
+						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+						<template v-if="showClaudeBeforeSuggestions" #before-suggestions>
+							<ClaudeEntryPoint :class="$style.claudeBeforeSuggestions" placement="footer" />
+						</template>
+						<!-- EOF Experiment cleanup -->
 						<template v-if="canSelectProject" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
@@ -1105,7 +1117,7 @@ async function handleWorkflowPreviewExampleUse(
 						</template>
 					</InstanceAiInput>
 					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
-					<ClaudeEntryPoint placement="footer" />
+					<ClaudeEntryPoint v-if="!showClaudeBeforeSuggestions" placement="footer" />
 					<!-- EOF Experiment cleanup -->
 				</div>
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
@@ -1190,6 +1202,12 @@ async function handleWorkflowPreviewExampleUse(
 	flex-direction: column;
 	gap: var(--spacing--xs);
 }
+
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+.centeredInput .claudeBeforeSuggestions {
+	margin-top: var(--spacing--lg);
+}
+// EOF Experiment cleanup
 
 // Experiment cleanup (124_workflow_previews_above_assistant)
 .workflowPreviewsLayout {

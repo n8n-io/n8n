@@ -274,8 +274,10 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UsersListStatusCounts,
 	type UserProject,
 	usersListSchema,
+	usersListStatusCountsSchema,
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
