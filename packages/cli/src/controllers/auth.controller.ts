@@ -149,7 +149,8 @@ export class AuthController {
 			);
 		}
 
-		const { inviterId, inviteeId } = payload;
+		const { inviterId, inviteeId } = this.userService.getInvitationIdsFromToken(payload.token);
+
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {

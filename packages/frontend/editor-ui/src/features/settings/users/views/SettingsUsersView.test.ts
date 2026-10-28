@@ -16,6 +16,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
+import type { PermissionTypeOptions } from '@/app/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
 
@@ -106,7 +107,6 @@ const mockUsersList: UsersList = {
 			isOwner: false,
 			isPending: true,
 			settings: {},
-			inviteAcceptUrl: 'https://example.com/invite/123',
 		},
 	],
 	count: 3,
@@ -147,6 +147,9 @@ describe('SettingsUsersView', () => {
 		usersStore.updateOtherUserSettings = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateGlobalRole = vi.fn().mockResolvedValue(undefined);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		usersStore.generateInviteLink = vi
+			.fn()
+			.mockResolvedValue({ link: 'https://example.com/signup?token=generated-token' });
 
 		settingsStore.isSmtpSetup = true;
 		settingsStore.isMFAEnforced = false;
@@ -158,7 +161,7 @@ describe('SettingsUsersView', () => {
 	});
 
 	afterEach(() => {
-		vi.clearAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should turn enforcing mfa on', async () => {
@@ -463,19 +466,58 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle copy invite link action', async () => {
+		it('should handle generate invite link action', async () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
 			renderComponent();
 
-			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
 
-			expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/invite/123');
+			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
 			await waitFor(() => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith(
+					'https://example.com/signup?token=generated-token',
+				);
 				expect(mockToast.showToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: expect.any(String),
 					message: expect.any(String),
 				});
 			});
+
+			spy.mockRestore();
+		});
+
+		it('should handle generate invite link error', async () => {
+			usersStore.generateInviteLink = vi
+				.fn()
+				.mockRejectedValue(new Error('Failed to generate link'));
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+
+			spy.mockRestore();
 		});
 
 		it('should handle copy password reset link action', async () => {
@@ -543,17 +585,42 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle copy invite link with missing inviteAcceptUrl', async () => {
-			// Remove invite URL from user
-			usersStore.usersList.state.items[2].inviteAcceptUrl = undefined;
+		it('should show generate invite link action', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
 
 			renderComponent();
 
-			emitters.settingsUsersTable.emit('action', { action: 'copyInviteLink', userId: '3' });
+			const actionsList = screen.getByTestId('actions-for-3');
+			expect(actionsList).toBeInTheDocument();
+			expect(screen.getByTestId('action-generateInviteLink-3')).toBeInTheDocument();
 
-			// Should not call clipboard.copy or show toast
-			expect(mockClipboard.copy).not.toHaveBeenCalled();
-			expect(mockToast.showToast).not.toHaveBeenCalled();
+			spy.mockRestore();
+		});
+
+		it('should hide generate invite link action when user has already accepted invite', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			usersStore.usersList.state.items[2].firstName = 'John';
+
+			renderComponent();
+
+			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
+
+			spy.mockRestore();
 		});
 
 		it('should handle copy password reset link error', async () => {

@@ -65,8 +65,7 @@ const FORM_CONFIG: IFormBoxConfig = {
 
 const loading = ref(false);
 const inviter = ref<null | { firstName: string; lastName: string }>(null);
-const inviterId = ref<string | null>(null);
-const inviteeId = ref<string | null>(null);
+const token = ref<string | undefined>(undefined);
 
 const inviteMessage = computed(() => {
 	if (!inviter.value) {
@@ -79,19 +78,17 @@ const inviteMessage = computed(() => {
 });
 
 onMounted(async () => {
-	const inviterIdParam = getQueryParameter('inviterId');
-	const inviteeIdParam = getQueryParameter('inviteeId');
+	const tokenParam = getQueryParameter('token');
+
 	try {
-		if (!inviterIdParam || !inviteeIdParam) {
+		if (!tokenParam) {
 			throw new Error(i18n.baseText('auth.signup.missingTokenError'));
 		}
 
-		inviterId.value = inviterIdParam;
-		inviteeId.value = inviteeIdParam;
+		token.value = tokenParam;
 
 		const invite = await usersStore.validateSignupToken({
-			inviteeId: inviteeId.value,
-			inviterId: inviterId.value,
+			token: token.value,
 		});
 		inviter.value = invite.inviter as { firstName: string; lastName: string };
 	} catch (e) {
@@ -101,7 +98,7 @@ onMounted(async () => {
 });
 
 async function onSubmit(values: { [key: string]: string | boolean }) {
-	if (!inviterId.value || !inviteeId.value) {
+	if (!token.value) {
 		toast.showError(
 			new Error(i18n.baseText('auth.signup.tokenValidationError')),
 			i18n.baseText('auth.signup.setupYourAccountError'),
@@ -113,11 +110,9 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 		loading.value = true;
 		await usersStore.acceptInvitation({
 			...values,
-			inviterId: inviterId.value,
-			inviteeId: inviteeId.value,
+			token: token.value,
 		} as {
-			inviteeId: string;
-			inviterId: string;
+			token: string;
 			firstName: string;
 			lastName: string;
 			password: string;
@@ -136,7 +131,7 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 	loading.value = false;
 }
 
-function getQueryParameter(key: 'inviterId' | 'inviteeId'): string | null {
+function getQueryParameter(key: 'token'): string | null {
 	return !route.query[key] || typeof route.query[key] !== 'string' ? null : route.query[key];
 }
 </script>

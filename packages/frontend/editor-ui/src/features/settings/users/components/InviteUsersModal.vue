@@ -200,7 +200,15 @@ async function onSubmit() {
 
 		if (successfulUrlInvites.length) {
 			if (successfulUrlInvites.length === 1) {
-				void clipboard.copy(successfulUrlInvites[0].user.inviteAcceptUrl);
+				try {
+					const { link } = await usersStore.generateInviteLink({
+						id: successfulUrlInvites[0].user.id,
+					});
+					void clipboard.copy(link);
+				} catch (error) {
+					showError(error, i18n.baseText('settings.users.inviteLinkError'));
+					return;
+				}
 			}
 
 			showMessage({
@@ -273,10 +281,17 @@ function onSubmitClick() {
 	formBus.emit('submit');
 }
 
-function onCopyInviteLink(user: IUser) {
-	if (user.inviteAcceptUrl && showInviteUrls.value) {
-		void clipboard.copy(user.inviteAcceptUrl);
+async function onCopyInviteLink(user: IUser) {
+	if (!showInviteUrls.value) {
+		return;
+	}
+
+	try {
+		const url = await usersStore.generateInviteLink({ id: user.id });
+		void clipboard.copy(url.link);
 		showCopyInviteLinkToast([]);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.inviteLinkError'));
 	}
 }
 
@@ -324,13 +339,12 @@ function getEmail(email: string): string {
 					<template #actions="{ user }">
 						<N8nTooltip>
 							<template #content>
-								{{ i18n.baseText('settings.users.inviteLink.copy') }}
+								{{ i18n.baseText('settings.users.actions.generateInviteLink') }}
 							</template>
 							<N8nIconButton
 								icon="link"
 								type="tertiary"
-								data-test-id="copy-invite-link-button"
-								:data-invite-link="user.inviteAcceptUrl"
+								data-test-id="generate-invite-link-button"
 								@click="onCopyInviteLink(user)"
 							></N8nIconButton>
 						</N8nTooltip>
