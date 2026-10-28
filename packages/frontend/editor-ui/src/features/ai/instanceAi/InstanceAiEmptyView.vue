@@ -825,7 +825,13 @@ async function handleSubmit(
 	}
 
 	if (settingsStore.isAssistantAgentEnabled) {
-		await startAssistantAgentThread(message, attachments, restoreDraft, acceptDraft);
+		await startAssistantAgentThread(
+			selectedProject.value,
+			message,
+			attachments,
+			restoreDraft,
+			acceptDraft,
+		);
 		return;
 	}
 
@@ -913,13 +919,12 @@ async function handleSubmit(
  * sends the first message, so this view only hands it over and navigates.
  */
 async function startAssistantAgentThread(
+	projectId: string,
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	acceptDraft: () => void,
 ) {
-	const projectId = selectedProject.value;
-	if (!projectId) return;
 	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
 	const fileAttachments: InstanceAiFileAttachment[] = [];
 	for (const attachment of attachments ?? []) {
