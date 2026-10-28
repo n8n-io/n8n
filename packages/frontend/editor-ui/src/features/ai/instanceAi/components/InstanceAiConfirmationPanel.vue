@@ -12,13 +12,23 @@ import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import {
+	approvalInputs,
+	continueInputs,
+	getConfirmationType,
+	questionsInputs,
+	skippedTextInputs,
+	testListenerInputs,
+	textInputs,
+	trackInputCompleted as trackSharedInputCompleted,
+	type ConfirmationInputs,
+} from '../confirmationTelemetry';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -50,48 +60,19 @@ const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
 
-function getConfirmationType(conf: InstanceAiConfirmation): string {
-	if (conf.testListener) return 'test-listener';
-	if (conf.credentialDestination) return 'credential-destination';
-	if (conf.inputType) return conf.inputType;
-	if (conf.setupRequests?.length) return 'setup';
-	if (conf.credentialRequests?.length) return 'credential-setup';
-	if (conf.channelConfig) return 'channel-config';
-	return 'approval';
-}
-
-function trackInputCompleted(
-	conf: InstanceAiConfirmation,
-	providedInputs: Array<{
-		label: string;
-		question?: string;
-		input_type?: string;
-		options: string[];
-		option_chosen: string | string[];
-	}>,
-	skippedInputs: Array<{
-		label: string;
-		question?: string;
-		input_type?: string;
-		options: string[];
-	}>,
-	extra?: Record<string, unknown>,
-): void {
-	const eventProps = {
-		thread_id: thread.id,
-		input_thread_id: conf.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		action_source: thread.resolveActionSource(),
-		type: getConfirmationType(conf),
-		provided_inputs: providedInputs,
-		skipped_inputs: skippedInputs,
-		...extra,
-	};
-	// The inputs carry free text — what the user typed into a question card, and
-	// the agent's own description of the action it wants to take. This event
-	// reaches RudderStack *and* PostHog from the browser, so the backend
-	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
-	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
+function trackInputCompleted(conf: InstanceAiConfirmation, inputs: ConfirmationInputs): void {
+	trackSharedInputCompleted(
+		telemetry,
+		{
+			threadId: thread.id,
+			inputThreadId: conf.inputThreadId,
+			instanceId: rootStore.instanceId,
+			actionSource: thread.resolveActionSource(),
+			type: getConfirmationType(conf),
+			runtime: 'instance-ai',
+		},
+		inputs,
+	);
 }
 
 interface StandaloneChunk {
@@ -260,19 +241,9 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 			: { kind: 'approval', approved };
 		const ok = await thread.confirmAction(conf.requestId, payload);
 		if (!ok) return;
-		const alwaysAllowAvailable = canAlwaysAllow(item);
 		trackInputCompleted(
 			conf,
-			[
-				{
-					label: conf.message,
-					options: alwaysAllowAvailable
-						? ['approve', 'deny', 'approve_always']
-						: ['approve', 'deny'],
-					option_chosen: approved ? 'approve' : 'deny',
-				},
-			],
-			[],
+			approvalInputs(conf.message, approved ? 'approve' : 'deny', canAlwaysAllow(item)),
 		);
 		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
 	} finally {
@@ -297,17 +268,7 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 		});
 		if (!ok) return;
 		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
-		trackInputCompleted(
-			conf,
-			[
-				{
-					label: conf.message,
-					options: ['approve', 'deny', 'approve_always'],
-					option_chosen: 'approve_always',
-				},
-			],
-			[],
-		);
+		trackInputCompleted(conf, approvalInputs(conf.message, 'approve_always', true));
 		thread.resolveConfirmation(conf.requestId, 'approved');
 	} finally {
 		inFlightConfirmations.delete(conf.requestId);
@@ -317,29 +278,13 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 function handleTextSubmit(conf: InstanceAiConfirmation) {
 	const value = (textInputValues.value[conf.requestId] ?? '').trim();
 	if (!value) return;
-	trackInputCompleted(
-		conf,
-		[
-			{
-				label: conf.message,
-				question: conf.message,
-				input_type: 'text',
-				options: [],
-				option_chosen: value,
-			},
-		],
-		[],
-	);
+	trackInputCompleted(conf, textInputs(conf.message, value));
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true, userInput: value });
 }
 
 function handleTextSkip(conf: InstanceAiConfirmation) {
-	trackInputCompleted(
-		conf,
-		[],
-		[{ label: conf.message, question: conf.message, input_type: 'text', options: [] }],
-	);
+	trackInputCompleted(conf, skippedTextInputs(conf.message));
 	thread.resolveConfirmation(conf.requestId, 'deferred');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
@@ -363,17 +308,7 @@ async function settleTestListener(
 		if (!ok) return;
 		// A push event settles the card without a user choice, so it records no input.
 		if (!outcome.fromPush) {
-			trackInputCompleted(
-				conf,
-				[
-					{
-						label: conf.message,
-						options: ['sent', 'cancel'],
-						option_chosen: approved ? 'sent' : 'cancel',
-					},
-				],
-				[],
-			);
+			trackInputCompleted(conf, testListenerInputs(conf.message, approved));
 		}
 		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
 	} finally {
@@ -415,53 +350,13 @@ function handleDomainDecision(conf: InstanceAiConfirmation, body: InstanceAiConf
 
 function handleContinue(conf: InstanceAiConfirmation) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
-	trackInputCompleted(
-		conf,
-		[{ label: conf.message, options: ['continue'], option_chosen: 'continue' }],
-		[],
-	);
+	trackInputCompleted(conf, continueInputs(conf.message));
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
-	const questionsById = new Map((conf.questions ?? []).map((q) => [q.id, q]));
-	const provided: Array<{
-		label: string;
-		question: string;
-		input_type: string;
-		options: string[];
-		option_chosen: string | string[];
-	}> = [];
-	const skipped: Array<{ label: string; question: string; input_type: string; options: string[] }> =
-		[];
-	for (const answer of answers) {
-		const questionDef = questionsById.get(answer.questionId);
-		const allOptions = questionDef?.options ?? [];
-		const inputType = questionDef?.type ?? 'text';
-
-		if (answer.skipped) {
-			skipped.push({
-				label: answer.questionId,
-				question: answer.question,
-				input_type: inputType,
-				options: allOptions,
-			});
-		} else {
-			const isMulti = inputType === 'multi';
-			const chosen: string | string[] = isMulti
-				? [...answer.selectedOptions, ...(answer.customText ? [answer.customText] : [])]
-				: answer.customText || answer.selectedOptions[0] || '';
-			provided.push({
-				label: answer.questionId,
-				question: answer.question,
-				input_type: inputType,
-				options: allOptions,
-				option_chosen: chosen,
-			});
-		}
-	}
-	trackInputCompleted(conf, provided, skipped, { num_tasks: answers.length });
+	trackInputCompleted(conf, questionsInputs(conf.questions ?? [], answers));
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }

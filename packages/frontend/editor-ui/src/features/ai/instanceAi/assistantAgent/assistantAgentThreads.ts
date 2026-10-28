@@ -1,5 +1,6 @@
 import type { InstanceAiAttachment, ProviderAttachmentCapabilities } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import type { InjectionKey } from 'vue';
 
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
@@ -10,6 +11,9 @@ export const ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES: ProviderAttachmentCapabili
 	pdf: true,
 	audio: false,
 };
+
+/** The id of the open Assistant agent thread, for cards that report it in telemetry. */
+export const ASSISTANT_AGENT_THREAD_ID: InjectionKey<string> = Symbol('assistantAgentThreadId');
 
 /**
  * Which runtime runs a thread at `/assistant/:threadId`: the current Assistant
