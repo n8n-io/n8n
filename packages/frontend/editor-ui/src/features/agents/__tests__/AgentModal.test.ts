@@ -129,6 +129,29 @@ describe('AgentModal', () => {
 		expect(hiddenFooter.find('footer').exists()).toBe(false);
 	});
 
+	it('renders a title suffix and a custom Cancel label', () => {
+		const wrapper = mountModal(
+			{ cancelLabel: 'Close' },
+			{
+				titleSuffix: '<button data-test-id="title-menu">More</button>',
+				footerActions: '<button>Save</button>',
+			},
+		);
+
+		expect(wrapper.find('[data-test-id="title-menu"]').exists()).toBe(true);
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Close');
+		wrapper.unmount();
+	});
+
+	it('names the cancel button Cancel by default', () => {
+		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
+
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain(
+			'Cancel',
+		);
+		wrapper.unmount();
+	});
+
 	it('preserves inferred footer visibility through the multi-step shell', () => {
 		const wrapper = mount(AgentModalMultiStep, {
 			props: {
