@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_99a98c56568638::t_1f4aabf04fb58b 691
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMcpConnect.test.ts
+  s_99a98c56568638::t_d8eec03db8a92d 164
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_99a98c56568638::t_0ca7a806595dd7 30,106,166-167
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMcpConnect.vue
+  s_99a98c56568638::t_0ca7a806595dd7 7,58-69
+packages/@n8n/telemetry/src/index.ts
+  s_99a98c56568638::t_5d6d9a8048cc71 11-12
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_99a98c56568638::t_1f4aabf04fb58b 893
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_99a98c56568638::t_5d6d9a8048cc71 45-53,548
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_99a98c56568638::t_0ca7a806595dd7 72
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_99a98c56568638::t_cc29ca7efa9aca 487
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationTelemetry.ts
+  s_99a98c56568638::t_4974f72979f6c9 1-5,7,39,50,107-118,172,182
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_99a98c56568638::t_1f4aabf04fb58b 63
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_99a98c56568638::t_047695fb599324 124
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_99a98c56568638::t_d8eec03db8a92d 345,461-469,473-477,479-485,489-491
+  s_99a98c56568638::t_18ab6f73469f90 470-472,486-488
+  s_99a98c56568638::t_a781d4fd60b493 478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a7d95fc7863fd2d51b38e81c85bb51895c3248bf",
+  "prompts": {},
+  "sessions": {
+    "s_99a98c56568638": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9cec355-63f4-4ec3-939f-444ee38974fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
