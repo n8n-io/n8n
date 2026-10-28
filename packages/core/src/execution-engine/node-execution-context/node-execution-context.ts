@@ -38,6 +38,8 @@ import {
 
 import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import type { HitlCallbackDecision } from '@/utils/hitl-callback-reference';
+import { buildHitlCallbackReference } from '@/utils/hitl-callback-reference';
 import {
 	buildResumeUrlSuffix,
 	generateUrlSignature,
@@ -302,6 +304,24 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
 
 		return baseURL.toString();
+	}
+
+	getApprovalCallbackReference(decision: HitlCallbackDecision) {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support approval callbacks yet');
+		}
+
+		const { executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new UnexpectedError('Execution id is missing');
+		}
+
+		return buildHitlCallbackReference(
+			executionId,
+			decision,
+			this.instanceSettings.hmacSignatureSecret,
+		);
 	}
 
 	getTimezone() {
