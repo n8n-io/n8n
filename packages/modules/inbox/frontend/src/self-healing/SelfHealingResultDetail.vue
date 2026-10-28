@@ -49,6 +49,12 @@ const router = useRouter();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
+const permissions = capabilityRegistry.tryUse(capabilities.projectPermissions);
+const canChat = computed(
+	() =>
+		!!chat?.available.value &&
+		!!permissions?.scopesFor(props.selection.projectId).includes('project:read'),
+);
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
 
@@ -130,7 +136,7 @@ async function startChat(request: Omit<ChatRetry, 'reason'>) {
 
 async function retryChat() {
 	const retry = chatRetry.value;
-	if (!retry || !chat?.available.value || !store.isSelected(retry.target)) return;
+	if (!retry || !canChat.value || !store.isSelected(retry.target)) return;
 	if (!store.beginAction(retry.target, 'chat')) return;
 
 	try {
@@ -161,7 +167,7 @@ async function onAction(action: SelfHealingResultAction) {
 		(publishAccess.value !== 'allowed' || before.outcome !== 'fix_ready')
 	)
 		return;
-	if (action === 'chat' && !chat?.available.value) return;
+	if (action === 'chat' && !canChat.value) return;
 
 	const target = { ...props.selection };
 	if (!store.beginAction(target, action)) return;
@@ -276,7 +282,7 @@ async function onAction(action: SelfHealingResultAction) {
 				:tab="tab"
 				:pending-action="pendingAction"
 				:publish-access="publishAccess"
-				:can-chat="chat?.available.value ?? false"
+				:can-chat="canChat"
 				@update:tab="emit('update:tab', $event)"
 				@action="onAction"
 			>
@@ -298,7 +304,7 @@ async function onAction(action: SelfHealingResultAction) {
 						<template #trailingContent>
 							<N8nButton
 								variant="ghost"
-								:disabled="!chat?.available.value"
+								:disabled="!canChat"
 								:loading="pendingAction === 'chat'"
 								data-test-id="self-healing-chat-retry-button"
 								@click="retryChat()"

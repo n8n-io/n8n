@@ -2,7 +2,11 @@ import type {
 	SelfHealingResultActionResponse,
 	SelfHealingResultDetail as ResultDetail,
 } from '@n8n/api-types';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import {
+	capabilities,
+	capabilityRegistry,
+	type ProjectPermissions,
+} from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -29,6 +33,7 @@ vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, show
 
 const onItemChange = vi.fn();
 const chatAvailable = ref(true);
+const projectScopes = ref<ReturnType<ProjectPermissions['scopesFor']>>(['project:read']);
 let selectedId: string | null;
 const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	props: {
@@ -40,8 +45,8 @@ const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	global: {
 		stubs: {
 			SelfHealingResultContent: {
-				props: ['detail', 'pendingAction', 'publishAccess'],
-				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess">
+				props: ['detail', 'pendingAction', 'publishAccess', 'canChat'],
+				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess" :data-can-chat="canChat">
 <span>{{ detail.report }}</span>
 <button v-for="action in ['editor', 'approve-and-publish', 'dismiss', 'chat']" :key="action" :data-test-id="action" @click="$emit('action', action)" />
 <slot name="notice" />
@@ -86,6 +91,11 @@ beforeEach(() => {
 		available: computed(() => chatAvailable.value),
 		start: startChat,
 	}));
+	projectScopes.value = ['project:read'];
+	capabilityRegistry.provide(capabilities.projectPermissions, {
+		scopesFor: () => projectScopes.value,
+		isReadOnly: () => false,
+	});
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result());
 	vi.mocked(api.fetchResultWorkflow).mockResolvedValue({
 		name: 'Daily report',
@@ -470,6 +480,23 @@ it('does not request chat when the shell is unavailable', async () => {
 	view.getByTestId('chat').click();
 	await waitAllPromises();
 	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+});
+
+it('offers chat only while the user can read the result project', async () => {
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'needs_you' }));
+	projectScopes.value = [];
+	const view = renderComponent();
+	await waitAllPromises();
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-can-chat', 'false');
+
+	view.getByTestId('chat').click();
+	await waitAllPromises();
+	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	expect(startChat).not.toHaveBeenCalled();
+
+	projectScopes.value = ['project:read'];
+	await waitAllPromises();
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-can-chat', 'true');
 });
 
 it('retains applied state and opens the editor when publication returns an error', async () => {
