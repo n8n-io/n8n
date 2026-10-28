@@ -1121,9 +1121,11 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
-		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
+		// One flag decision for the whole update. The hook can add the field, so filter again after it.
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
-		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 
 		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
@@ -1176,7 +1178,7 @@ export class CredentialsService {
 		}
 
 		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
-		if (result) await this.credentialDescriptions.stripIfDisabled(result);
+		if (result && !descriptionsEnabled) this.credentialDescriptions.strip(result);
 		const enriched: (CredentialsEntity & CredentialConnectionStatus) | null = result;
 		if (enriched && options?.user) {
 			await this.populateConnectedByMe([enriched], options.user);
