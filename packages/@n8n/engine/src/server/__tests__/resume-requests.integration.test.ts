@@ -7,7 +7,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import { mintResumeToken } from '../../auth/resume-token';
+import {
+	mintApprovalCallback,
+	mintResumeToken,
+	mintStepBoundResumeToken,
+} from '../../auth/resume-token';
 import { createDataSource, createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { ExecutionNotFoundError, type WaitDeclaration } from '../../execution';
@@ -33,6 +37,15 @@ const graph: WorkflowGraph = {
 };
 
 const acceptsRequest: WaitDeclaration = { resumeBinding: 'execution' };
+const stepBound: WaitDeclaration = { resumeBinding: 'step' };
+const stepTokens = [
+	[
+		'a step-bound token',
+		(stepId: string) =>
+			mintStepBoundResumeToken(resumeSecret, stepId, `/webhook-waiting/${stepId}/wait-a`),
+	],
+	['an approval callback', (stepId: string) => mintApprovalCallback(resumeSecret, stepId, 'a')],
+] as const;
 const deadlineOnly: WaitDeclaration = {
 	resumeAt: '2099-01-01T00:00:00.000Z',
 	outputsAtDeadline: [],
@@ -247,6 +260,29 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 			executionId,
 			stepId: stepIds['wait-a'],
 		});
+	});
+
+	it.each(stepTokens)('ends a step-bound wait with %s', async (_, mint) => {
+		const { executionId, stepIds, stepStore } = await seed({ 'wait-a': stepBound });
+		const stepId = stepIds['wait-a'];
+
+		await resolve(stepId, { token: mint(stepId), outputs }).expect(200, { executionId, stepId });
+
+		expect((await stepStore.loadStep(stepId)).resumeCause).toEqual({ kind: 'request', outputs });
+	});
+
+	it.each(stepTokens)('refuses %s at an execution-bound wait with 409', async (_, mint) => {
+		const { stepIds } = await seed({ 'wait-a': acceptsRequest });
+
+		await resolve(stepIds['wait-a'], { token: mint(stepIds['wait-a']), outputs }).expect(409, {
+			error: 'not_waiting',
+		});
+	});
+
+	it('refuses an execution-bound token at a step-bound wait with 409', async () => {
+		const { stepIds, token } = await seed({ 'wait-a': stepBound });
+
+		await resolve(stepIds['wait-a'], { token, outputs }).expect(409, { error: 'not_waiting' });
 	});
 
 	it('requires the identity token', async () => {

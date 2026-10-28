@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { mintResumeToken } from '../../auth/resume-token';
+import {
+	mintApprovalCallback,
+	mintResumeToken,
+	mintStepBoundResumeToken,
+} from '../../auth/resume-token';
 import type { StepMessage, WorkQueue } from '../../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
@@ -22,6 +26,20 @@ const accepting = (id: string): StepRecord => ({
 	outputs: null,
 	waitDeclaration: { resumeBinding: 'execution' },
 	resumeCause: null,
+});
+
+const stepId = '0199a1b2-0000-7000-8000-0000000000aa';
+const otherStepId = '0199a1b2-0000-7000-8000-0000000000bb';
+const binding = `/webhook-waiting/${stepId}/node?approved=true`;
+const stepTokens = [
+	['a step-bound token', mintStepBoundResumeToken(secret, stepId, binding)],
+	['an approval callback', mintApprovalCallback(secret, stepId, 'a')],
+] as const;
+
+const stepBound = (overrides: Partial<StepRecord> = {}): StepRecord => ({
+	...accepting(stepId),
+	waitDeclaration: { resumeBinding: 'step' },
+	...overrides,
 });
 
 const deadlineOnly: StepRecord = {
@@ -249,6 +267,32 @@ describe('ResumeRequestService.resolve', () => {
 
 		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('not_waiting'));
 		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it.each(stepTokens)('ends a step-bound wait with %s', async (_, stepToken) => {
+		const { service, stepStore } = setup({ step: stepBound() });
+
+		await service.resolve(stepId, stepToken, outputs);
+
+		expect(stepStore.resumeStep).toHaveBeenCalledWith(stepId, { kind: 'request', outputs });
+	});
+
+	it.each(stepTokens)('refuses %s for another step', async (_, stepToken) => {
+		const { service, stepStore } = setup({ step: stepBound({ id: otherStepId }) });
+
+		await expect(service.resolve(otherStepId, stepToken, outputs)).rejects.toEqual(
+			rejection('invalid_token'),
+		);
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+	});
+
+	it.each(stepTokens)('refuses %s at an execution-bound wait', async (_, stepToken) => {
+		const { service, stepStore } = setup({ step: accepting(stepId) });
+
+		await expect(service.resolve(stepId, stepToken, outputs)).rejects.toEqual(
+			rejection('not_waiting'),
+		);
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
 	});
 
 	it('refuses a step that does not exist as it refuses a bad token', async () => {

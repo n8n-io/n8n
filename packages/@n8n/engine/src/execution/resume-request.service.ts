@@ -1,9 +1,14 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { verifyResumeToken } from '../auth/resume-token';
+import { verifyResumeToken, type ResumeTokenClaims } from '../auth/resume-token';
 import type { StepMessage, WorkQueue } from '../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
-import { isLiveExecutionStatus, type ExecutionStatus, type StepSlots } from './execution.types';
+import {
+	isLiveExecutionStatus,
+	type ExecutionStatus,
+	type ResumeBinding,
+	type StepSlots,
+} from './execution.types';
 import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 
 export type ResumeRejection = 'invalid_token' | 'not_found' | 'not_waiting' | 'ambiguous';
@@ -39,9 +44,24 @@ const DEFAULT_RESUME_HOLD: ResumeHold = { attempts: 10, delayMs: 100 };
  */
 const isLive = (status: ExecutionStatus) => status === 'queued' || isLiveExecutionStatus(status);
 
-/** A waiting step that an execution-bound token can resume, the only kind this service verifies. */
-const acceptsRequest = ({ status, waitDeclaration }: StepRecord) =>
-	status === 'waiting' && waitDeclaration?.resumeBinding === 'execution';
+/** A step that waits for a request bound to `binding`. */
+const waitsFor =
+	(binding: ResumeBinding) =>
+	({ status, waitDeclaration }: StepRecord) =>
+		status === 'waiting' && waitDeclaration?.resumeBinding === binding;
+
+/** The waits that each kind of token can end (token record, decision 4). */
+const BINDING_OF_KIND: Record<ResumeTokenClaims['kind'], ResumeBinding> = {
+	'execution-bound': 'execution',
+	'step-bound': 'step',
+	'approval-callback': 'step',
+};
+
+/** An execution-bound token names the execution of the step. The other kinds name the step. */
+const namesStep = (claims: ResumeTokenClaims, step: StepRecord) =>
+	claims.kind === 'execution-bound'
+		? claims.executionId === step.executionId
+		: claims.stepId === step.id;
 
 /**
  * Accepts resume requests (ADR-20260902-steps-declare-waits, decision 5).
@@ -99,16 +119,18 @@ export class ResumeRequestService {
 	 * worker that claims it emits the outputs. A second wait does not refuse
 	 * the request: `locate` chose the step while it was the only one.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, or `not_waiting` when the
-	 * step does not wait for a request (any more) or its execution ended.
+	 * @throws {ResumeRejectedError} `invalid_token` when the token names
+	 * neither the step nor its execution, or `not_waiting` when the step does
+	 * not wait (any more) for a request of the token's kind, or its execution
+	 * ended.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
 		const step = await this.loadStep(stepId);
 		const claims = verifyResumeToken(this.secret, token);
-		if (claims?.kind !== 'execution-bound' || claims.executionId !== step.executionId) {
-			throw new ResumeRejectedError('invalid_token');
+		if (!claims || !namesStep(claims, step)) throw new ResumeRejectedError('invalid_token');
+		if (!waitsFor(BINDING_OF_KIND[claims.kind])(step)) {
+			throw new ResumeRejectedError('not_waiting');
 		}
-		if (!acceptsRequest(step)) throw new ResumeRejectedError('not_waiting');
 		if (!isLive(await this.loadStatus(step.executionId))) {
 			throw new ResumeRejectedError('not_waiting');
 		}
@@ -128,7 +150,7 @@ export class ResumeRequestService {
 	}
 
 	private async loadExecutionBoundWaits(executionId: string): Promise<StepRecord[]> {
-		return (await this.stepStore.loadWaitingSteps(executionId)).filter(acceptsRequest);
+		return (await this.stepStore.loadWaitingSteps(executionId)).filter(waitsFor('execution'));
 	}
 
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {
