@@ -21,6 +21,7 @@ import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { SeededSteps, TriggerOutputs } from '../execution.types';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
@@ -844,7 +845,7 @@ describe('step execution (integration)', () => {
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
 			{ start: vi.fn() },
-			{ cancelSubExecutions: vi.fn() },
+			{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 		);
 
 		const executionId = generateId();

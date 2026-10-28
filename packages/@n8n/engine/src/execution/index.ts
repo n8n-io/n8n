@@ -42,7 +42,7 @@ export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
-export type { SubExecutionCanceller, SubExecutionStarter } from './step-ready-handler';
+export type { SubExecutionStarter } from './step-ready-handler';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,

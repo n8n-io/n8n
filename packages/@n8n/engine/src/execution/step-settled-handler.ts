@@ -9,6 +9,7 @@ import {
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
+import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
@@ -24,7 +25,6 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { SubExecutionCanceller } from './step-ready-handler';
 import type { StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
@@ -48,7 +48,8 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
-		private readonly subExecutionCanceller: SubExecutionCanceller,
+		/** The one cancel path, so the sub-executions of a failed parent end the same way. */
+		private readonly cancelExecution: CancelExecutionService,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -117,7 +118,7 @@ export class StepSettledHandler {
 	 * it, and a parent step that waits for it fails with the error.
 	 */
 	private async endedAsFailed(execution: ExecutionRecord, step: StepRecord): Promise<void> {
-		await this.subExecutionCanceller.cancelSubExecutions(execution.id);
+		await this.cancelExecution.cancelSubExecutions(execution.id);
 		await this.resumeAwaitingParent(execution, {
 			status: 'failed',
 			error: await this.failureOf(execution, step),

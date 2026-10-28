@@ -4,9 +4,9 @@ import type { StoredWorkflowGraph, WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepSlots, type StepStatus } from '../execution.types';
-import type { SubExecutionCanceller } from '../step-ready-handler';
 import { StepSettledHandler } from '../step-settled-handler';
 import type { NewStepRecord, StepRecord, StepStore, StepSummary } from '../step-store';
 
@@ -152,6 +152,9 @@ function makeResponseSender() {
 	return { send: vi.fn() } as unknown as ExecutionResponseSender;
 }
 
+/** The one method of the cancel service the handler calls; a stub stands in for the class. */
+type SubExecutionCanceller = Pick<CancelExecutionService, 'cancelSubExecutions'>;
+
 function makeHandler(
 	stepStore: StepStore,
 	{
@@ -171,7 +174,7 @@ function makeHandler(
 			orchestrationQueue,
 			lifecycleEventPublisher,
 			responseSender,
-			subExecutionCanceller,
+			subExecutionCanceller as CancelExecutionService,
 		),
 		executionStore,
 		stepQueue,

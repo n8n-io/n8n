@@ -15,9 +15,9 @@ import {
 import {
 	resolveInputReads,
 	StepReadyHandler,
-	type SubExecutionCanceller,
 	type SubExecutionStarter,
 } from '../step-ready-handler';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -60,6 +60,9 @@ function makeSubExecutionStarter(): SubExecutionStarter {
 	return { start: vi.fn().mockResolvedValue({ executionId: 'exec-sub' }) };
 }
 
+/** The one method of the cancel service the handler calls; a stub stands in for the class. */
+type SubExecutionCanceller = Pick<CancelExecutionService, 'cancelSubExecutions'>;
+
 function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,
@@ -79,7 +82,7 @@ function makeHandler(
 		lifecycleEventPublisher,
 		responseSender,
 		subExecutionStarter,
-		subExecutionCanceller,
+		subExecutionCanceller as CancelExecutionService,
 		onStepSuspended,
 	);
 }

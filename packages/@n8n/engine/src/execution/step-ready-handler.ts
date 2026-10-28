@@ -29,6 +29,7 @@ import {
 	type StepSlots,
 	type WaitDeclaration,
 } from './execution.types';
+import type { CancelExecutionService } from './cancel-execution.service';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import type { StartExecutionRequest, StartExecutionResult } from './start-execution.service';
@@ -42,11 +43,6 @@ import { validateStepContext } from './validate-step-context';
  */
 export interface SubExecutionStarter {
 	start(request: StartExecutionRequest): Promise<StartExecutionResult>;
-}
-
-/** Cancels the sub-executions of an execution. `CancelExecutionService` implements it. */
-export interface SubExecutionCanceller {
-	cancelSubExecutions(parentExecutionId: string): Promise<void>;
 }
 
 /**
@@ -72,7 +68,8 @@ export class StepReadyHandler {
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly subExecutionStarter: SubExecutionStarter,
-		private readonly subExecutionCanceller: SubExecutionCanceller,
+		/** The one cancel path, so a sub-execution of an ended parent ends the same way. */
+		private readonly cancelExecution: CancelExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -281,7 +278,7 @@ export class StepReadyHandler {
 		// ended parent is cancelled here instead of running on.
 		const parent = await this.executionStore.loadExecution(execution.id);
 		if (!isLiveExecutionStatus(parent.status)) {
-			await this.subExecutionCanceller.cancelSubExecutions(execution.id);
+			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 		return { kind: 'started' };
 	}
