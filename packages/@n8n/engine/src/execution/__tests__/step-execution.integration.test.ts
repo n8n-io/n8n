@@ -651,6 +651,7 @@ describe('step execution (integration)', () => {
 							graph: subWorkflowGraph,
 							workflow: { id: 'wf-sub' },
 							triggerOutputs: [[{ json: { in: 1 } }]],
+							awaited: true,
 						},
 					};
 				}
@@ -736,6 +737,7 @@ describe('step execution (integration)', () => {
 						graph: subWorkflowGraph,
 						workflow: { id: 'wf-sub' },
 						triggerOutputs: [[{ json: { in: 1 } }]],
+						awaited: true,
 					},
 				};
 			},
