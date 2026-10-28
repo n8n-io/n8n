@@ -54,6 +54,8 @@ export function casesFromExportedFiles(
 
 	for (const [filename, raw] of Object.entries(files)) {
 		const fileSlug = filename.replace(/\.json$/i, '');
+		// Name selection first: a case the run leaves out is neither loaded nor reported.
+		if (!nameSelected(fileSlug, opts)) continue;
 		const removed = isRecord(raw)
 			? Object.entries(REMOVED_SEED_KEYS).filter(([key]) => raw[key] !== undefined)
 			: [];
@@ -82,31 +84,22 @@ export function casesFromExportedFiles(
 		opts.logger?.warn(`${report}\nSkipping ${String(errors.length)} case(s); running the rest.`);
 	}
 
-	return applyCaseSelection(cases, opts);
+	return selectTier(cases, opts.tier);
 }
 
-/** Mirror the disk loader's `--filter` / `--exclude` / `--tier` semantics. */
-function applyCaseSelection(
-	cases: WorkflowTestCaseWithFile[],
-	opts: { filter?: string; exclude?: string; tier?: string },
-): WorkflowTestCaseWithFile[] {
-	let selected = cases;
-
+/** Mirror the disk loader's `--filter` / `--exclude` semantics on a file slug. */
+function nameSelected(fileSlug: string, opts: { filter?: string; exclude?: string }): boolean {
+	const slug = fileSlug.toLowerCase();
 	const includeTokens = parseSubstringList(opts.filter);
-	if (includeTokens.length > 0) {
-		selected = selected.filter(({ fileSlug }) =>
-			includeTokens.some((t) => fileSlug.toLowerCase().includes(t)),
-		);
-	}
+	if (includeTokens.length > 0 && !includeTokens.some((t) => slug.includes(t))) return false;
+	return !parseSubstringList(opts.exclude).some((t) => slug.includes(t));
+}
 
-	const excludeTokens = parseSubstringList(opts.exclude);
-	if (excludeTokens.length > 0) {
-		selected = selected.filter(
-			({ fileSlug }) => !excludeTokens.some((t) => fileSlug.toLowerCase().includes(t)),
-		);
-	}
-
-	const tier = opts.tier;
+/** Mirror the disk loader's `--tier` semantics via the `datasets` field. */
+function selectTier(
+	selected: WorkflowTestCaseWithFile[],
+	tier: string | undefined,
+): WorkflowTestCaseWithFile[] {
 	if (!tier) return selected;
 
 	const matched = selected.filter(({ testCase }) => testCase.datasets.includes(tier));
