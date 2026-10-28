@@ -16,7 +16,7 @@ import {
 } from './__test__/data';
 import type { useChatStore } from './chat.store';
 import * as chatApi from './chat.api';
-import ChatView from './ChatView.vue';
+import ChatHubView from './ChatHubView.vue';
 
 // Mock external stores and modules
 vi.mock('@n8n/stores/users.store', () => ({
@@ -129,9 +129,9 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-const renderComponent = createComponentRenderer(ChatView);
+const renderComponent = createComponentRenderer(ChatHubView);
 
-describe('ChatView', () => {
+describe('ChatHubView', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let chatStore: ReturnType<typeof useChatStore>;
 
@@ -511,7 +511,7 @@ describe('ChatView', () => {
 		// `agentId` goes to NULL (`FK_chat_hub_sessions_agentId`, ON DELETE SET NULL).
 		// `unflattenModel` then has nothing to rebuild a model from, `selectedModel` is null
 		// and `messagingState` becomes 'missingAgent'. This is the path that reaches the
-		// `selectModel.existing` callout — ChatPrompt.test.ts covers the prop, nothing
+		// `selectModel.existing` callout — ChatHubPrompt.test.ts covers the prop, nothing
 		// covered the path (N8N-155).
 		it('asks the user to reselect a model when the agent of the conversation was deleted', async () => {
 			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(

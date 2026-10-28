@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
+import ChatHubAgentAvatar from '@/features/ai/chatHub/components/ChatHubAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
@@ -46,7 +46,7 @@ function handleSelectMenu(action: MenuAction) {
 
 <template>
 	<RouterLink :to="getAgentRoute(agent.model)" :class="$style.card" data-test-id="chat-agent-card">
-		<ChatAgentAvatar :agent="agent" size="lg" />
+		<ChatHubAgentAvatar :agent="agent" size="lg" />
 
 		<div :class="$style.content">
 			<N8nText tag="h3" size="medium" bold :class="$style.title">

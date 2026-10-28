@@ -1,13 +1,13 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import ChatGreetings from './ChatGreetings.vue';
+import ChatHubGreetings from './ChatHubGreetings.vue';
 import type { ChatModelDto } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 
-const renderComponent = createComponentRenderer(ChatGreetings, {
+const renderComponent = createComponentRenderer(ChatHubGreetings, {
 	global: {
 		stubs: {
-			ChatAgentAvatar: { template: '<div data-test-id="agent-avatar" />' },
+			ChatHubAgentAvatar: { template: '<div data-test-id="agent-avatar" />' },
 		},
 	},
 });
@@ -30,7 +30,7 @@ const createAgent = (overrides: Partial<ChatModelDto> = {}): ChatModelDto => ({
 	...overrides,
 });
 
-describe('ChatGreetings', () => {
+describe('ChatHubGreetings', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {

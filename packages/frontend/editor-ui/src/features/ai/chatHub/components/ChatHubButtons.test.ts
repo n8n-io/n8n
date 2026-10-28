@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/vue';
-import ChatButtons from './ChatButtons.vue';
+import ChatHubButtons from './ChatHubButtons.vue';
 import type { ChatHubMessageButton } from '@n8n/api-types';
 
-describe('ChatButtons', () => {
+describe('ChatHubButtons', () => {
 	const mockButtons: ChatHubMessageButton[] = [
 		{ text: 'Approve', link: 'https://example.com/approve', type: 'primary' },
 		{ text: 'Reject', link: 'https://example.com/reject', type: 'secondary' },
@@ -22,7 +22,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should render all buttons when isDisabled is false', () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -34,7 +34,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should have enabled buttons when isDisabled is false', () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -49,7 +49,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should have disabled buttons when isDisabled is true', () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: true,
@@ -64,7 +64,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should make fetch request when button is clicked', async () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -77,7 +77,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should show only clicked button after successful click', async () => {
-		const { getByText, queryByText } = render(ChatButtons, {
+		const { getByText, queryByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -93,7 +93,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should disable clicked button after successful click', async () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -109,7 +109,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should not make fetch request when button is already clicked', async () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -126,7 +126,7 @@ describe('ChatButtons', () => {
 	});
 
 	it('should not make fetch request when isDisabled is true', async () => {
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: true,
@@ -142,7 +142,7 @@ describe('ChatButtons', () => {
 	it('should not hide buttons when fetch fails', async () => {
 		fetchMock.mockResolvedValue({ ok: false });
 
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -163,7 +163,7 @@ describe('ChatButtons', () => {
 			{ text: 'Continue', link: 'https://example.com/continue', type: 'primary' },
 		];
 
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: singleButton,
 				isDisabled: false,
@@ -181,7 +181,7 @@ describe('ChatButtons', () => {
 		});
 		fetchMock.mockReturnValueOnce(firstFetchPromise);
 
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,
@@ -217,7 +217,7 @@ describe('ChatButtons', () => {
 		});
 		fetchMock.mockReturnValueOnce(firstFetchPromise);
 
-		const { getByText } = render(ChatButtons, {
+		const { getByText } = render(ChatHubButtons, {
 			props: {
 				buttons: mockButtons,
 				isDisabled: false,

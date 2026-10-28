@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
-import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
+import ChatHubAgentAvatar from '@/features/ai/chatHub/components/ChatHubAgentAvatar.vue';
+import ChatHubTypingIndicator from '@/features/ai/chatHub/components/ChatHubTypingIndicator.vue';
 import type {
 	AgentIconOrEmoji,
 	ChatMessageContentChunk,
@@ -11,7 +11,7 @@ import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system'
 import { useElementSize, useSpeechSynthesis } from '@vueuse/core';
 import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import type { ChatMessage } from '../chat.types';
-import ChatMessageActions from './ChatMessageActions.vue';
+import ChatHubMessageActions from './ChatHubMessageActions.vue';
 import {
 	unflattenModel,
 	splitMarkdownIntoChunks,
@@ -23,7 +23,7 @@ import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
-import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import ChatHubMarkdownChunk from '@/features/ai/chatHub/components/ChatHubMarkdownChunk.vue';
 
 interface MergedAttachment {
 	isNew: boolean;
@@ -302,7 +302,7 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<ChatAgentAvatar v-else :agent="agent" size="md" tooltip />
+			<ChatHubAgentAvatar v-else :agent="agent" size="md" tooltip />
 		</div>
 		<div :class="$style.content">
 			<input
@@ -383,7 +383,7 @@ onBeforeMount(() => {
 						{{ text }}
 					</div>
 					<div v-else :class="$style.markdownContent">
-						<ChatMarkdownChunk
+						<ChatHubMarkdownChunk
 							v-for="(chunk, index) in messageChunks"
 							:key="index"
 							:source="chunk"
@@ -392,8 +392,8 @@ onBeforeMount(() => {
 						/>
 					</div>
 				</div>
-				<ChatTypingIndicator v-if="shouldShowTypingIndicator" :class="$style.typingIndicator" />
-				<ChatMessageActions
+				<ChatHubTypingIndicator v-if="shouldShowTypingIndicator" :class="$style.typingIndicator" />
+				<ChatHubMessageActions
 					v-else
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
@@ -416,7 +416,7 @@ onBeforeMount(() => {
 }
 
 .markdownContent {
-	// ChatMarkdownChunk uses `inherit` for these properties so each consumer
+	// ChatHubMarkdownChunk uses `inherit` for these properties so each consumer
 	// can control sizing. Set the values that were previously hardcoded in the
 	// chunk component to preserve ChatHub's appearance.
 	color: var(--color--text--shade-1);

@@ -76,8 +76,8 @@ vi.mock('@/app/stores/posthog.store', () => ({
 const renderComponent = createComponentRenderer(SettingsChatHubView, {
 	global: {
 		stubs: {
-			ChatProvidersTable: { template: '<div data-test-id="chat-providers-table" />' },
-			ChatSemanticSearchSettings: true,
+			ChatHubProvidersTable: { template: '<div data-test-id="chat-providers-table" />' },
+			ChatHubSemanticSearchSettings: true,
 		},
 	},
 });

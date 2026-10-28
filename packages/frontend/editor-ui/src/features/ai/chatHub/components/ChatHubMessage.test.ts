@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import ChatMessage from './ChatMessage.vue';
+import ChatHubMessage from './ChatHubMessage.vue';
 import type { ChatMessage as ChatMessageType } from '../chat.types';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createMockMessage } from '../__test__/data';
 
-const renderComponent = createComponentRenderer(ChatMessage);
+const renderComponent = createComponentRenderer(ChatHubMessage);
 
-describe('ChatMessage', () => {
+describe('ChatHubMessage', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {

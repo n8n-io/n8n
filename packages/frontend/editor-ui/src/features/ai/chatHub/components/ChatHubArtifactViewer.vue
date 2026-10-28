@@ -4,7 +4,7 @@ import { N8nIconButton, N8nSelect2, N8nTooltip } from '@n8n/design-system';
 import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import ChatMarkdownChunk from './ChatMarkdownChunk.vue';
+import ChatHubMarkdownChunk from './ChatHubMarkdownChunk.vue';
 
 const i18n = useI18n();
 
@@ -85,7 +85,7 @@ const markdownContent = computed(() => ({
 					:title="selectedArtifact?.title"
 				/>
 
-				<ChatMarkdownChunk
+				<ChatHubMarkdownChunk
 					v-else-if="markdownContent"
 					ref="markdownChunk"
 					:class="isMarkdown ? $style.markdown : ''"
@@ -158,7 +158,7 @@ const markdownContent = computed(() => ({
 .content {
 	flex: 1;
 	overflow-x: hidden;
-	// ChatMarkdownChunk uses `inherit` — set the values previously hardcoded
+	// ChatHubMarkdownChunk uses `inherit` — set the values previously hardcoded
 	// in the chunk so the artifact viewer preserves existing appearance.
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--md);

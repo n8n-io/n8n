@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
-import ChatSidebar from './ChatSidebar.vue';
+import ChatHubSidebar from './ChatHubSidebar.vue';
 
 const handleSettingsItemSelectMock = vi.hoisted(() => vi.fn());
 
@@ -31,9 +31,9 @@ vi.mock('@/app/composables/useSidebarLayout', () => ({
 	}),
 }));
 
-describe('ChatSidebar', () => {
+describe('ChatHubSidebar', () => {
 	it('delegates settings item selections', () => {
-		const renderComponent = createComponentRenderer(ChatSidebar, {
+		const renderComponent = createComponentRenderer(ChatHubSidebar, {
 			pinia: createTestingPinia(),
 			global: {
 				stubs: {
@@ -44,7 +44,7 @@ describe('ChatSidebar', () => {
 						template: '<div><slot /></div>',
 					},
 					MainSidebarHeader: true,
-					ChatSidebarContent: true,
+					ChatHubSidebarContent: true,
 					BottomMenu: {
 						emits: ['select'],
 						template:

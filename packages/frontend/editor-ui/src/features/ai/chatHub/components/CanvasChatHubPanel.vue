@@ -20,10 +20,10 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useChatSession } from '../composables/useChatSession';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
-import ChatMessage from './ChatMessage.vue';
-import ChatPrompt from './ChatPrompt.vue';
-import ChatGreetings from './ChatGreetings.vue';
-import ChatAgentAvatar from './ChatAgentAvatar.vue';
+import ChatHubMessage from './ChatHubMessage.vue';
+import ChatHubPrompt from './ChatHubPrompt.vue';
+import ChatHubGreetings from './ChatHubGreetings.vue';
+import ChatHubAgentAvatar from './ChatHubAgentAvatar.vue';
 import CanvasChatSessionDropdown from './CanvasChatSessionDropdown.vue';
 import type { ChatMessage as ChatMessageType } from '../chat.types';
 
@@ -289,7 +289,7 @@ defineExpose({
 
 		<div v-if="!props.floating" :class="$style.header">
 			<div :class="$style.headerTitle">
-				<ChatAgentAvatar :agent="workflowAgent" size="sm" />
+				<ChatHubAgentAvatar :agent="workflowAgent" size="sm" />
 				<N8nText size="medium" :bold="true" :class="$style.headerTitleText">
 					{{ agentDisplayName }}
 				</N8nText>
@@ -364,11 +364,11 @@ defineExpose({
 				:class="{ [$style.scrollable]: true, [$style.isNewSession]: isNewSession }"
 			>
 				<div v-if="isNewSession" :class="$style.greetingsWrapper">
-					<ChatGreetings :selected-agent="workflowAgent" @select-prompt="handleSelectPrompt" />
+					<ChatHubGreetings :selected-agent="workflowAgent" @select-prompt="handleSelectPrompt" />
 				</div>
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
-					<ChatMessage
+					<ChatHubMessage
 						v-for="message in chatMessages"
 						:key="message.id"
 						:message="message"
@@ -396,7 +396,7 @@ defineExpose({
 						@click="scrollToBottom(true)"
 					/>
 
-					<ChatPrompt
+					<ChatHubPrompt
 						ref="inputRef"
 						:class="$style.prompt"
 						:selected-model="workflowAgent"

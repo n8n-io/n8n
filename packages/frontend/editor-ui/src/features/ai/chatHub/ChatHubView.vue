@@ -11,10 +11,10 @@ import {
 	isLlmProvider,
 	unflattenModel,
 } from '@/features/ai/chatHub/chat.utils';
-import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
-import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
-import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
-import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
+import ChatHubConversationHeader from '@/features/ai/chatHub/components/ChatHubConversationHeader.vue';
+import ChatHubMessage from '@/features/ai/chatHub/components/ChatHubMessage.vue';
+import ChatHubPrompt from '@/features/ai/chatHub/components/ChatHubPrompt.vue';
+import ChatHubStarter from '@/features/ai/chatHub/components/ChatHubStarter.vue';
 import {
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
@@ -39,12 +39,12 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
+import ChatHubLayout from '@/features/ai/chatHub/components/ChatHubLayout.vue';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
-	type ChatMessage as ChatMessageType,
+	type ChatHubMessage as ChatMessageType,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
@@ -52,9 +52,9 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import ChatGreetings from './components/ChatGreetings.vue';
+import ChatHubGreetings from './components/ChatHubGreetings.vue';
 import { useChatSession } from './composables/useChatSession';
-import ChatArtifactViewer from './components/ChatArtifactViewer.vue';
+import ChatHubArtifactViewer from './components/ChatHubArtifactViewer.vue';
 import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue';
 import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
@@ -665,7 +665,7 @@ function onFilesDropped(files: File[]) {
 </script>
 
 <template>
-	<ChatLayout
+	<ChatHubLayout
 		v-if="showWelcomeScreen !== undefined"
 		ref="chatLayout"
 		:class="{
@@ -705,7 +705,7 @@ function onFilesDropped(files: File[]) {
 			@resizeend="artifacts.handleViewerResizeEnd"
 		>
 			<div :class="$style.mainContent">
-				<ChatConversationHeader
+				<ChatHubConversationHeader
 					v-if="!showWelcomeScreen"
 					ref="headerRef"
 					:selected-model="selectedModel"
@@ -734,7 +734,7 @@ function onFilesDropped(files: File[]) {
 					:class="$style.scrollArea"
 				>
 					<div ref="scrollable" :class="$style.scrollable">
-						<ChatGreetings
+						<ChatHubGreetings
 							v-if="isNewSession"
 							:class="{ [$style.greetingsCentered]: !isAgentModel }"
 							:selected-agent="selectedModel"
@@ -743,7 +743,7 @@ function onFilesDropped(files: File[]) {
 						/>
 
 						<div v-else role="log" aria-live="polite" :class="$style.messageList">
-							<ChatMessage
+							<ChatHubMessage
 								v-for="(message, index) in chatMessages"
 								:key="message.id"
 								ref="messages"
@@ -784,7 +784,7 @@ function onFilesDropped(files: File[]) {
 								@click="scrollToBottom(true)"
 							/>
 
-							<ChatPrompt
+							<ChatHubPrompt
 								ref="inputRef"
 								:selected-model="selectedModel"
 								:checked-tool-ids="canSelectTools ? checkedToolIds : []"
@@ -808,7 +808,7 @@ function onFilesDropped(files: File[]) {
 					</div>
 				</N8nScrollArea>
 
-				<ChatStarter
+				<ChatHubStarter
 					v-if="isNewSession"
 					:show-welcome-screen="showWelcomeScreen"
 					@start-new-chat="
@@ -829,7 +829,7 @@ function onFilesDropped(files: File[]) {
 			@authorize="dynamicCreds.authorize"
 			@revoke="dynamicCreds.revoke"
 		/>
-		<ChatArtifactViewer
+		<ChatHubArtifactViewer
 			v-if="artifacts.isViewerVisible.value"
 			:key="sessionId"
 			:class="$style.artifactViewer"
@@ -839,7 +839,7 @@ function onFilesDropped(files: File[]) {
 			@select-artifact="artifacts.handleSelect"
 			@download="artifacts.handleDownload"
 		/>
-	</ChatLayout>
+	</ChatHubLayout>
 </template>
 
 <style lang="scss" module>
