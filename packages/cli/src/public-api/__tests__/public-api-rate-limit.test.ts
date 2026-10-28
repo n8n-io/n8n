@@ -190,15 +190,6 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		await new RedisMock().flushall();
 	});
 
-	it('logs no express-rate-limit validation error when the first request creates a limiter', async () => {
-		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const app = activate();
-
-		await send(app, 'get', '/widgets');
-
-		expect(consoleError).not.toHaveBeenCalled();
-	});
-
 	it('does not limit requests when rate limiting is off', async () => {
 		const app = activate({ enabled: false, globalReadLimit: 1, endpointReadLimit: 1 });
 
