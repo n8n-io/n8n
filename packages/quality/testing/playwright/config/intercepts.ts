@@ -179,12 +179,12 @@ const isWorkflowCreate = (url: URL) => url.pathname.endsWith('/rest/workflows');
 const isWorkflowUpdate = (url: URL) => /\/rest\/workflows\/[^/]+$/.test(url.pathname);
 
 /**
- * The editor has no engine setting to send (CAT-4109), so a workflow it saves
- * runs on the legacy engine under a stack that routes to engine v2. Merging
- * the stack's settings into the create and update bodies gives a UI-built
- * workflow what `api.workflows` gives an API-built one. An update without
- * `settings` keeps the stored ones, so it is left alone: sending the stack's
- * keys on their own would replace the editor's execution order.
+ * The editor's default settings carry no `engineType`, so a workflow saved
+ * from the canvas runs on the legacy engine. This merge gives it what
+ * `api.workflows` gives an API-built one. A value the editor sends is a choice
+ * the user made in the settings dialog, so it wins. An update without
+ * `settings` keeps the stored ones, so it passes untouched: the stack's keys
+ * alone would replace the editor's execution order.
  */
 async function routeWorkflowSettings(
 	target: BrowserContext,
@@ -205,7 +205,7 @@ async function routeWorkflowSettings(
 			}
 
 			await route.continue({
-				postData: JSON.stringify({ ...body, settings: { ...body.settings, ...workflowSettings } }),
+				postData: JSON.stringify({ ...body, settings: { ...workflowSettings, ...body.settings } }),
 			});
 		},
 	);

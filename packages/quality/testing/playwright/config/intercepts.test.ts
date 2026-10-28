@@ -78,15 +78,16 @@ describe('setupDefaultInterceptors workflow settings', () => {
 		});
 	});
 
-	test('lets the stack settings win over the settings the editor sends', async () => {
+	// A value the editor sends is a choice the user made in the settings dialog.
+	test('keeps an engine type the editor sends', async () => {
 		const { context, dispatch } = fakeContext();
 		await setupDefaultInterceptors(context, stack);
 
-		const continueWith = await dispatch('POST', 'http://localhost:5678/rest/workflows', {
+		const continueWith = await dispatch('PATCH', 'http://localhost:5678/rest/workflows/abc', {
 			settings: { engineType: 'v1' },
 		});
 
-		expect(continuedBody(continueWith!)).toEqual({ settings: { engineType: 'v2' } });
+		expect(continuedBody(continueWith!)).toEqual({ settings: { engineType: 'v1' } });
 	});
 
 	// A PATCH without `settings` keeps the stored settings. Sending only the
