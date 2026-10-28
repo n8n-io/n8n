@@ -63,8 +63,6 @@ const props = withDefaults(
 		noResultsMessage?: string;
 		/** Render only the modal body when an owning feature supplies the dialog shell. */
 		embedded?: boolean;
-		/** Size an embedded picker to its rows, with a scroll limit for long lists. */
-		fitContent?: boolean;
 		showConnectActions?: boolean;
 		/** Show matches from all categories under category headings while searching. */
 		groupSearchResults?: boolean;
@@ -87,7 +85,6 @@ const props = withDefaults(
 		emptyMessage: undefined,
 		noResultsMessage: undefined,
 		embedded: false,
-		fitContent: false,
 		showConnectActions: false,
 		groupSearchResults: false,
 		persistentScrollbar: false,
@@ -413,7 +410,7 @@ function handleOpenChange(value: boolean) {
 	<component
 		:is="containerComponent"
 		v-bind="containerProps"
-		:class="[props.embedded && $style.embedded, props.fitContent && $style.fitContent]"
+		:class="props.embedded && $style.embedded"
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
@@ -616,30 +613,6 @@ function handleOpenChange(value: boolean) {
 	.scroller {
 		padding-inline: 0;
 		padding-block-end: var(--spacing--md);
-	}
-}
-
-.embedded.fitContent {
-	height: auto;
-
-	.body {
-		height: auto;
-		max-height: none;
-	}
-
-	.listWrapper {
-		flex: 0 1 auto;
-	}
-
-	.scroller {
-		height: auto;
-		max-height: calc(var(--height--xl) * 8);
-		padding-block-end: 0;
-	}
-
-	.empty {
-		min-height: 0;
-		padding: var(--spacing--md);
 	}
 }
 

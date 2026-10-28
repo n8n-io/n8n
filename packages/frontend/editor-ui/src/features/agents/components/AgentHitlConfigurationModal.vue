@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router';
 import { v4 as uuid } from 'uuid';
 import {
 	N8nButton,
+	N8nCombobox2,
+	N8nIcon,
+	type ComboboxItem,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -24,16 +27,13 @@ import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type {
-	ToolConnectionItem,
-	WorkflowConnectionItem,
-} from '@/features/shared/toolsConnection/types';
 import { getAgentHitlChannels, getAgentHitlChannelOptions } from '../composables/useAgentApi';
 import type { AgentHitlContext } from './agent-hitl.types';
 import AgentModal from './modals/AgentModal.vue';
 import AgentFormSettingRow from './AgentFormSettingRow.vue';
 import AgentHitlDestinationPicker from './AgentHitlDestinationPicker.vue';
+import AgentHitlToolsSelect from './AgentHitlToolsSelect.vue';
+import { hitlConfigurationToolKeys } from '../utils/hitlConfiguration';
 
 const props = defineProps<{
 	projectId: string;
@@ -42,7 +42,7 @@ const props = defineProps<{
 	nextNumber: number;
 }>();
 const emit = defineEmits<{
-	save: [configuration: AgentHitlConfiguration];
+	save: [configuration: AgentHitlConfiguration, toolKeys?: string[]];
 	close: [];
 	remove: [];
 }>();
@@ -115,16 +115,40 @@ const saveDisabledReason = computed(() => {
 		);
 	return '';
 });
-const workflowItems = computed<WorkflowConnectionItem[]>(() =>
-	workflows.value.map((workflow) => ({
-		id: workflow.id,
-		workflowId: workflow.id,
-		kind: 'workflow',
-		title: workflow.name,
-		status: workflow.id === workflowId.value ? 'connected' : 'none',
-		iconSource: { type: 'icon', name: 'workflow' },
-	})),
+const workflowSelectOpen = ref(false);
+const selectedToolKeys = ref(
+	hitlConfigurationToolKeys(props.context.getConfig(), props.configuration?.id),
 );
+const toolSelectionChanged = ref(false);
+const workflowItems = computed<ComboboxItem[]>(() => [
+	{
+		value: '__create_hitl_workflow__',
+		label: i18n.baseText('generic.create.workflow'),
+		icon: 'plus',
+		onSelect: (event: Event) => {
+			event.preventDefault();
+			workflowSelectOpen.value = false;
+			void createWorkflow();
+		},
+	},
+	{ type: 'separator' },
+	...workflows.value.map((workflow) => ({
+		value: workflow.id,
+		label: workflow.name,
+		icon: 'workflow' as const,
+	})),
+]);
+function updateWorkflow(value: unknown) {
+	workflowId.value = typeof value === 'string' ? value : '';
+}
+function updateTools(value: string[]) {
+	selectedToolKeys.value = value;
+	toolSelectionChanged.value = true;
+}
+function saveConfiguration(configuration: AgentHitlConfiguration) {
+	if (toolSelectionChanged.value) emit('save', configuration, selectedToolKeys.value);
+	else emit('save', configuration);
+}
 const recipientKinds = computed(
 	() => channel.value?.fields.find((field) => field.name === 'recipient')?.kinds ?? [],
 );
@@ -219,9 +243,6 @@ async function createWorkflow() {
 		creating.value = false;
 	}
 }
-function selectWorkflow(item: ToolConnectionItem) {
-	if (item.kind === 'workflow') workflowId.value = item.workflowId;
-}
 async function loadOptions(field: 'guild' | 'channel' | 'user', query: string, cursor?: string) {
 	if (!channel.value || !props.context.agentId) return { options: [] };
 	return await getAgentHitlChannelOptions(
@@ -247,14 +268,14 @@ function save() {
 		expirySeconds: expirySeconds.value === 'none' ? undefined : expirySeconds.value,
 	};
 	if (method.value === 'workflow')
-		emit('save', { ...base, method: 'workflow', workflowId: workflowId.value });
+		saveConfiguration({ ...base, method: 'workflow', workflowId: workflowId.value });
 	else if (channel.value) {
 		const destination =
 			channel.value.channel === 'telegram'
 				? { id: telegramId.value, name: telegramId.value }
 				: recipient.value;
 		if (!destination) return;
-		emit('save', {
+		saveConfiguration({
 			...base,
 			method: 'channel',
 			channel: channel.value.channel,
@@ -302,36 +323,21 @@ function save() {
 					</N8nOption>
 				</N8nSelect>
 			</N8nInputLabel>
-			<div v-show="method === 'workflow'" :class="$style.workflowPicker">
-				<N8nText color="text-light" size="small">{{
-					i18n.baseText('agents.hitl.workflowHelp')
-				}}</N8nText>
-				<ToolsConnectionModal
-					:open="method === 'workflow'"
+			<N8nInputLabel v-if="method === 'workflow'" :label="i18n.baseText('agents.hitl.workflow')">
+				<N8nCombobox2
+					:model-value="workflowId || undefined"
+					v-model:open="workflowSelectOpen"
 					:items="workflowItems"
-					:categories="['workflows']"
-					embedded
-					fit-content
-					show-connect-actions
-					persistent-scrollbar
-					:loading="loading"
-					:create-action="{
-						category: 'workflows',
-						label: i18n.baseText('generic.create.workflow'),
-						description: i18n.baseText('agents.hitl.createWorkflowDescription'),
-						testId: 'agent-hitl-create-workflow',
-					}"
-					:create-action-loading="creating"
-					:search-placeholder="i18n.baseText('agents.tools.workflow.search.placeholder')"
-					:empty-message="i18n.baseText('agents.hitl.noWorkflows')"
-					:no-results-message="i18n.baseText('agents.tools.workflow.empty.noResults')"
-					:connect-label="() => i18n.baseText('agents.hitl.selectWorkflow')"
-					:connected-label="() => i18n.baseText('agents.hitl.selected')"
-					@create="createWorkflow"
-					@connect="selectWorkflow"
-					@open-detail="selectWorkflow"
+					:loading="loading || creating"
+					:disabled="creating"
+					:teleported="false"
+					:aria-label="i18n.baseText('agents.hitl.workflow')"
+					:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
+					:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
+					data-testid="agent-hitl-workflow"
+					@update:model-value="updateWorkflow"
 				/>
-			</div>
+			</N8nInputLabel>
 			<template v-if="method === 'channel'">
 				<N8nInputLabel :label="i18n.baseText('agents.hitl.channel')">
 					<N8nSelect
@@ -410,6 +416,14 @@ function save() {
 					>{{ i18n.baseText('agents.hitl.discordUserHelp') }}</N8nText
 				>
 			</template>
+			<N8nInputLabel :label="i18n.baseText('agents.hitl.tools')">
+				<AgentHitlToolsSelect
+					:model-value="selectedToolKeys"
+					:config="context.getConfig()"
+					:get-custom-tool-name="context.getCustomToolName"
+					@update:model-value="updateTools"
+				/>
+			</N8nInputLabel>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.expiry')">
 				<N8nSelect v-model="expirySeconds" :teleported="false" data-testid="agent-hitl-expiry">
 					<N8nOption value="none" :label="i18n.baseText('agents.hitl.expiry.none')" />
@@ -434,13 +448,12 @@ function save() {
 				/>
 			</AgentFormSettingRow>
 		</div>
-		<template v-if="configuration" #footerLeft
-			><N8nButton
-				type="tertiary"
-				icon="trash-2"
-				:label="i18n.baseText('generic.remove')"
-				@click="emit('remove')"
-		/></template>
+		<template v-if="configuration" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-hitl-remove" @click="emit('remove')">
+				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.tools.remove') }}
+			</N8nButton>
+		</template>
 		<template #footerActions>
 			<N8nTooltip as-child :disabled="!saveDisabledReason" :teleported="false">
 				<template #content>{{ saveDisabledReason }}</template>
@@ -473,12 +486,6 @@ function save() {
 	> button:disabled {
 		pointer-events: none;
 	}
-}
-.workflowPicker {
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	gap: var(--spacing--sm);
 }
 .methodOptions {
 	:global(.el-select-dropdown__item) {

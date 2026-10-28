@@ -25,6 +25,7 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
 import type {
@@ -159,16 +160,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return {
 			agentId: targetAgentId,
 			getConfig: () => (agentId.value === targetAgentId ? localConfig.value : null),
-			saveConfiguration: (configuration: AgentHitlConfiguration) => {
+			getCustomToolName: (id: string) => agent.value?.tools[id]?.descriptor.name,
+			saveConfiguration: (configuration: AgentHitlConfiguration, toolKeys?: string[]) => {
 				if (agentId.value !== targetAgentId) return;
-				scheduleConfigUpdate({
-					hitlConfigurations: [
-						...(localConfig.value?.hitlConfigurations ?? []).filter(
-							(entry) => entry.id !== configuration.id,
-						),
-						configuration,
-					],
-				});
+				scheduleConfigUpdate(hitlConfigurationUpdates(localConfig.value, configuration, toolKeys));
 			},
 		};
 	}
@@ -182,8 +177,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
 				mode,
-				tools: localConfig.value?.tools ?? [],
-				mcpServers: localConfig.value?.mcpServers ?? [],
+				get tools() {
+					return localConfig.value?.tools ?? [];
+				},
+				get mcpServers() {
+					return localConfig.value?.mcpServers ?? [];
+				},
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,

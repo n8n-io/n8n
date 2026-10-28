@@ -29,8 +29,8 @@ function select(value: string) {
 		value === 'default' ? undefined : { type: 'configuration', configurationId: value },
 	);
 }
-function save(configuration: AgentHitlConfiguration) {
-	props.context.saveConfiguration(configuration);
+function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
+	props.context.saveConfiguration(configuration, toolKeys);
 	emit('update:modelValue', { type: 'configuration', configurationId: configuration.id });
 	creating.value = false;
 }

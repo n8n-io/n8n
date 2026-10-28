@@ -83,3 +83,26 @@ it('keeps configuration actions disabled under the edit lock', async () => {
 	wrapper.getComponent(AgentItemContextMenu).vm.$emit('remove');
 	expect(wrapper.emitted('update:config')).toBeUndefined();
 });
+
+it('saves a configuration and its selected tools in one config update', async () => {
+	const wrapper = render();
+	await wrapper.setProps({ config: { ...config, tools: [{ type: 'custom', id: 'send' }] } });
+	await wrapper.get('[data-testid="agent-hitl-configuration"]').trigger('click');
+	wrapper
+		.getComponent(AgentHitlConfigurationModal)
+		.vm.$emit('save', configuration, ['tool:custom:send']);
+	expect(wrapper.emitted('update:config')?.[0]).toEqual([
+		{
+			hitlConfigurations: [configuration],
+			tools: [
+				{
+					type: 'custom',
+					id: 'send',
+					requireApproval: true,
+					approvalRoute: { type: 'configuration', configurationId: 'review' },
+				},
+			],
+			mcpServers: undefined,
+		},
+	]);
+});

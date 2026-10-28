@@ -142,6 +142,35 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		expect(modalData.approvalContext?.getConfig()).toBe(localConfig.value);
 	});
 
+	it('saves HITL tool attachments and keeps the open picker on the current tool config', () => {
+		const { uiStore, actions, localConfig, scheduleConfigUpdate } = setup({
+			agentId: ref('saved-agent'),
+		});
+		localConfig.value = makeConfig({ tools: [{ type: 'custom', id: 'send' }] });
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		const configuration = {
+			id: 'review',
+			name: 'Review',
+			method: 'workflow',
+			workflowId: 'wf',
+		} as const;
+		modalData.approvalContext?.saveConfiguration(configuration, ['tool:custom:send']);
+		const tools = [
+			{
+				type: 'custom',
+				id: 'send',
+				requireApproval: true,
+				approvalRoute: { type: 'configuration', configurationId: 'review' },
+			},
+		] as const;
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({ hitlConfigurations: [configuration], tools }),
+		);
+		localConfig.value = makeConfig({ tools: [...tools] });
+		expect(modalData.tools).toEqual(tools);
+	});
+
 	it('forwards the host approval capability into the tools modal data', () => {
 		const { uiStore, actions } = setup({ supportsToolApproval: false });
 

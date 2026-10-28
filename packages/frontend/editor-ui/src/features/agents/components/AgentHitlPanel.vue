@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
+import type { CustomToolEntry } from '../types';
+import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
 import AgentPanel from './AgentPanel.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentChipButton from './AgentChipButton.vue';
@@ -13,20 +15,16 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	disabled: boolean;
+	customTools?: Record<string, CustomToolEntry>;
 }>();
 const emit = defineEmits<{ 'update:config': [updates: Partial<AgentJsonConfig>] }>();
 const i18n = useI18n();
 const editing = ref<AgentHitlConfiguration>();
 const modalOpen = ref(false);
 const configurations = computed(() => props.config?.hitlConfigurations ?? []);
-function save(configuration: AgentHitlConfiguration) {
+function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 	if (props.disabled) return;
-	emit('update:config', {
-		hitlConfigurations: [
-			...configurations.value.filter((entry) => entry.id !== configuration.id),
-			configuration,
-		],
-	});
+	emit('update:config', hitlConfigurationUpdates(props.config, configuration, toolKeys));
 	modalOpen.value = false;
 }
 const context = {
@@ -34,6 +32,7 @@ const context = {
 		return props.agentId;
 	},
 	getConfig: () => props.config,
+	getCustomToolName: (id: string) => props.customTools?.[id]?.descriptor.name,
 	saveConfiguration: save,
 };
 watch(

@@ -420,6 +420,7 @@ defineExpose({ onSetupTaskAction });
 							v-if="!agentUnsaved"
 							:agent-id="agentId"
 							:config="localConfig"
+							:custom-tools="agent?.tools"
 							:project-id="projectId"
 							:disabled="childrenDisabled"
 							@update:config="emit('update:config', $event)"

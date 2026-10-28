@@ -492,6 +492,10 @@ Request expiry defaults to no expiry. Offer one hour, one day, and one week.
 Keep expiry local until Save, as the destination and approval policy do.
 Keep Save disabled until the HITL configuration is complete. Explain the missing
 name, workflow selection, or channel configuration in a tooltip on hover and focus.
+Use a searchable select for the decision workflow. Put Create workflow in its menu.
+Show attached tools in a multiple select with the same icon and name pills as Build.
+Keep attachment edits local until Save. Selecting a tool enables approval and sets
+its destination. Removing a selection restores its default approval behavior.
 
 In the session timeline, show pending background tool approvals below their
 job row. Use the shared approval card and disable automatic focus so rows do

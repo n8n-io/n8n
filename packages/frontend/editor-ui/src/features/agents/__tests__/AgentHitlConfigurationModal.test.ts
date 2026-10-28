@@ -1,9 +1,9 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { N8nSwitch2, N8nTooltip } from '@n8n/design-system';
+import { N8nSwitch2, N8nTooltip, N8nCombobox2 } from '@n8n/design-system';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
-import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import AgentHitlToolsSelect from '../components/AgentHitlToolsSelect.vue';
 import AgentHitlDestinationPicker from '../components/AgentHitlDestinationPicker.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -25,6 +25,9 @@ vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: mock
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentHitlChannels: mocks.channels,
 	getAgentHitlChannelOptions: mocks.options,
+}));
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({ getNodeType: () => null }),
 }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/workflow/new' }) }),
@@ -61,12 +64,12 @@ const config: AgentJsonConfig = {
 	model: 'anthropic/test',
 	instructions: 'Help',
 };
-function render(configuration?: AgentHitlConfiguration) {
+function render(configuration?: AgentHitlConfiguration, agentConfig = config) {
 	return mount(AgentHitlConfigurationModal, {
 		props: {
 			projectId: 'project',
 			nextNumber: 8,
-			context: { agentId: 'agent', getConfig: () => config, saveConfiguration: vi.fn() },
+			context: { agentId: 'agent', getConfig: () => agentConfig, saveConfiguration: vi.fn() },
 			configuration,
 		},
 		global: {
@@ -74,7 +77,7 @@ function render(configuration?: AgentHitlConfiguration) {
 				AgentModal: {
 					props: ['title'],
 					template:
-						'<div><input data-testid="title" :value="title" @input="$emit(\'update:title\', $event.target.value)" /><slot /><slot name="footerActions" /></div>',
+						'<div><input data-testid="title" :value="title" @input="$emit(\'update:title\', $event.target.value)" /><slot /><slot name="footerLeft" /><slot name="footerActions" /></div>',
 				},
 				AgentHitlDestinationPicker: true,
 			},
@@ -110,18 +113,23 @@ beforeEach(() => {
 	vi.spyOn(window, 'open').mockImplementation(mocks.open);
 });
 afterEach(() => vi.restoreAllMocks());
-it('reuses the searchable workflow picker and keeps create in its list', async () => {
+it('searches workflows in a select and offers workflow creation', async () => {
 	const wrapper = render();
 	await flushPromises();
-	expect(wrapper.findComponent(ToolsConnectionModal).exists()).toBe(true);
-	expect(wrapper.find('[data-test-id="agent-hitl-create-workflow"]').exists()).toBe(true);
-	const search = wrapper.find('input[placeholder="Search workflows"]');
-	expect(search.exists()).toBe(true);
-	await search.setValue('expenses');
-	await vi.waitFor(() => {
-		expect(wrapper.text()).toContain('Review expenses');
-		expect(wrapper.text()).not.toContain('Confirm deployment');
-	});
+	const input = wrapper.get('[data-testid="agent-hitl-workflow"] input');
+	await input.trigger('focus');
+	await flushPromises();
+	expect(wrapper.find('[role="option"]').exists()).toBe(true);
+	expect(wrapper.text()).toContain('Create workflow');
+	await input.setValue('expenses');
+	await flushPromises();
+	expect(wrapper.text()).toContain('Review expenses');
+	expect(
+		wrapper
+			.findAll('[role="option"]')
+			.filter((option) => option.isVisible())
+			.map((option) => option.text()),
+	).not.toContain('Confirm deployment');
 });
 it('explains the disabled Save on focus until a workflow is selected', async () => {
 	const wrapper = render();
@@ -134,8 +142,8 @@ it('explains the disabled Save on focus until a workflow is selected', async () 
 	const trigger = wrapper.get('[data-testid="agent-hitl-save-trigger"]');
 	expect(trigger.attributes('tabindex')).toBe('0');
 	expect(await saveHint(wrapper)).toBe('Select a workflow');
-	const picker = wrapper.getComponent(ToolsConnectionModal);
-	picker.vm.$emit('connect', picker.props('items')[0]);
+	const picker = wrapper.getComponent(N8nCombobox2);
+	picker.vm.$emit('update:modelValue', 'review');
 	await wrapper.vm.$nextTick();
 	expect(save.attributes('disabled')).toBeUndefined();
 	expect(trigger.attributes('tabindex')).toBeUndefined();
@@ -166,7 +174,11 @@ it('names a new workflow from the Agent and the next available number', async ()
 		{ name: 'Support Agent HITL workflow 1' },
 		{ name: 'Support Agent HITL workflow 3' },
 	]);
-	await wrapper.find('[data-test-id="agent-hitl-create-workflow"]').trigger('click');
+	const create = wrapper
+		.getComponent(N8nCombobox2)
+		.props('items')
+		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
+	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
 	await flushPromises();
 	expect(mocks.create).toHaveBeenCalledWith(
 		expect.objectContaining({
@@ -396,4 +408,42 @@ it('opens a saved expiry and allows requests with no expiry again', async () => 
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ expirySeconds: undefined }),
 	]);
+});
+
+it('keeps tool attachment changes local until Save', async () => {
+	const configuration: AgentHitlConfiguration = {
+		id: 'review',
+		name: 'Review',
+		method: 'workflow',
+		workflowId: 'wf',
+	};
+	const wrapper = render(configuration, {
+		...config,
+		tools: [
+			{
+				type: 'workflow',
+				workflow: 'Write',
+				requireApproval: true,
+				approvalRoute: { type: 'configuration', configurationId: 'review' },
+			},
+		],
+	});
+	await flushPromises();
+	const tools = wrapper.getComponent(AgentHitlToolsSelect);
+	expect(tools.props('modelValue')).toEqual(['tool:workflow:Write']);
+	tools.vm.$emit('update:modelValue', []);
+	await wrapper.vm.$nextTick();
+	expect(wrapper.emitted('save')).toBeUndefined();
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
+	expect(wrapper.emitted('save')?.[0]).toEqual([expect.objectContaining({ id: 'review' }), []]);
+});
+
+it('uses the tool modal Remove action', async () => {
+	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
+	await flushPromises();
+	const remove = wrapper.get('[data-testid="agent-hitl-remove"]');
+	expect(remove.text()).toBe('Remove');
+	expect(remove.find('[data-icon="trash-2"]').exists()).toBe(true);
+	await remove.trigger('click');
+	expect(wrapper.emitted('remove')).toHaveLength(1);
 });

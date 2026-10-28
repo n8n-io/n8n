@@ -34,6 +34,8 @@
 	"agents.hitl.defaultName": "HITL Settings {number}",
 	"agents.hitl.workflowHelp": "Add review steps between the trigger and response. Return one item with approved set to true or false. A send-and-wait approval node can return the decision directly.",
 	"agents.hitl.workflow": "Decision workflow",
+	"agents.hitl.tools": "Applies to tools",
+	"agents.hitl.toolsPlaceholder": "Select tools",
 	"agents.hitl.createWorkflow": "Create decision workflow",
 	"agents.hitl.expiry": "Request expiry",
 	"agents.hitl.expiry.none": "No expiry",
