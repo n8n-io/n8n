@@ -22,6 +22,7 @@ import {
 
 type PlanDocumentInput = { data: unknown; formatVersion: number };
 type PlanWrite = { threadId: string; planId: string; expectedRevision: number };
+
 export type AgentPlanSnapshot = Omit<AgentPlanRecord, 'data'> & {
 	data: AgentPlanDocument;
 	readiness: AgentPlanReadiness;
@@ -42,6 +43,7 @@ export class AgentPlanService {
 	) {
 		return await this.write(input.threadId, ctx, async (ctx) => {
 			const data = prepareAgentPlan(input.data, input.formatVersion, null, new Date());
+
 			return await this.resolve(
 				await this.repository.createActivePlan({ ...input, data: storeAgentPlan(data) }, ctx),
 				ctx,
@@ -51,22 +53,26 @@ export class AgentPlanService {
 
 	async findActivePlan(threadId: string, ctx: OperationContext): Promise<AgentPlanSnapshot | null> {
 		const plan = await this.repository.findActivePlan(threadId, ctx);
+
 		return plan ? await this.resolve(plan, ctx) : null;
 	}
 
 	async findLatestPlan(threadId: string, ctx: OperationContext): Promise<AgentPlanSnapshot | null> {
 		const plan = await this.repository.findLatestPlan(threadId, ctx);
+
 		return plan ? await this.resolve(plan, ctx) : null;
 	}
 
 	async findPlan(threadId: string, planId: string, ctx: OperationContext) {
 		const plan = await this.repository.findPlan(threadId, planId, ctx);
+
 		return plan ? await this.resolve(plan, ctx) : null;
 	}
 
 	async findRevision(threadId: string, planId: string, revision: number, ctx: OperationContext) {
 		// History contains definitions and manual state, not historical job states.
 		const plan = await this.repository.findRevision(threadId, planId, revision, ctx);
+
 		return plan ? { ...plan, data: parseStoredAgentPlan(plan.data, plan.formatVersion) } : null;
 	}
 
@@ -96,6 +102,7 @@ export class AgentPlanService {
 				current.data,
 				new Date(),
 			);
+
 			return await this.resolve(
 				await this.repository.replacePlan({ ...input, data: storeAgentPlan(data) }, ctx),
 				ctx,
@@ -106,6 +113,7 @@ export class AgentPlanService {
 	async closePlan(input: PlanWrite, ctx: OperationContext) {
 		return await this.write(input.threadId, ctx, async (ctx) => {
 			await this.loadForWrite(input, ctx);
+
 			return await this.resolve(await this.repository.closePlan(input, ctx), ctx);
 		});
 	}
@@ -117,16 +125,21 @@ export class AgentPlanService {
 	) {
 		const { result, thread } = await this.txRunner.run(ctx, async (ctx) => {
 			const thread = await this.threads.lockById(threadId, ctx);
+
 			return { result: await action(ctx), thread };
 		});
+
 		if (thread) this.updates.notifyBackgroundJobsUpdated(thread.agentId, threadId);
+
 		return result;
 	}
 
 	private async loadForWrite(input: PlanWrite, ctx: OperationContext) {
 		const current = await this.repository.findPlan(input.threadId, input.planId, ctx);
+
 		if (!current || current.closedAt !== null || current.revision !== input.expectedRevision)
 			throw new AgentPlanWriteConflictError();
+
 		return await this.resolve(current, ctx);
 	}
 
@@ -138,6 +151,7 @@ export class AgentPlanService {
 			parseStoredAgentPlan(record.data, record.formatVersion),
 			await this.repository.jobStatesForPlan(record.id, ctx),
 		);
+
 		return {
 			...record,
 			data,

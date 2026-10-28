@@ -51,6 +51,7 @@ const write = { threadId: record.threadId, planId: record.id, expectedRevision: 
 
 beforeEach(() => {
 	vi.resetAllMocks();
+
 	tx.run.mockImplementation(async (ctx, callback) => await callback(ctx));
 	repository.jobStatesForPlan.mockResolvedValue([]);
 	repository.findPlan.mockResolvedValue(record);
@@ -65,6 +66,7 @@ beforeEach(() => {
 describe('AgentPlanService', () => {
 	it('creates a typed plan with derived readiness and passes the transaction context', async () => {
 		const input = { id: record.id, threadId: record.threadId, formatVersion: 2, data };
+
 		expect(await service.createActivePlan(input, ctx)).toMatchObject({
 			data,
 			readiness: { ready: [data.items[0].id], blocked: [] },
@@ -93,6 +95,7 @@ describe('AgentPlanService', () => {
 	it('reads a scoped revision before validating and replacing the full document', async () => {
 		const proposed = { ...data, items: [{ ...data.items[0], status: 'done' }] };
 		const next = await service.replacePlan({ ...write, formatVersion: 2, data: proposed }, ctx);
+
 		expect(repository.findPlan).toHaveBeenCalledWith(record.threadId, record.id, ctx);
 		expect(repository.replacePlan).toHaveBeenCalledWith(
 			{
@@ -126,6 +129,7 @@ describe('AgentPlanService', () => {
 		['stale', { ...record, revision: 2 }],
 	] as const)('rejects %s targets before replacing or closing', async (_label, current) => {
 		repository.findPlan.mockResolvedValue(current);
+
 		await expect(service.replacePlan({ ...write, formatVersion: 2, data }, ctx)).rejects.toThrow(
 			AgentPlanWriteConflictError,
 		);
@@ -137,6 +141,7 @@ describe('AgentPlanService', () => {
 	it('propagates a conflict after validation without retrying', async () => {
 		const conflict = new AgentPlanWriteConflictError();
 		repository.replacePlan.mockRejectedValue(conflict);
+
 		await expect(service.replacePlan({ ...write, formatVersion: 2, data }, ctx)).rejects.toBe(
 			conflict,
 		);
@@ -162,6 +167,7 @@ describe('AgentPlanService', () => {
 		repository.findActivePlan.mockResolvedValue(record);
 		repository.findRevision.mockResolvedValue(revision);
 		const expected = { data, readiness: { ready: [data.items[0].id], blocked: [] } };
+
 		expect(await service.findActivePlan(record.threadId, ctx)).toMatchObject(expected);
 		expect(await service.findPlan(record.threadId, record.id, ctx)).toMatchObject(expected);
 		expect(await service.findRevision(record.threadId, record.id, 1, ctx)).toMatchObject({
@@ -186,6 +192,7 @@ describe('AgentPlanService', () => {
 		{ ...record, data: { ...data, extra: true } },
 	])('rejects unsupported stored documents on reads and closure', async (unsupported) => {
 		repository.findPlan.mockResolvedValue(unsupported);
+
 		await expect(service.findPlan(record.threadId, record.id, ctx)).rejects.toThrow(
 			AgentPlanValidationError,
 		);
@@ -199,6 +206,7 @@ describe('AgentPlanService', () => {
 			nextCursor: 1,
 		};
 		repository.listHistory.mockResolvedValue(history);
+
 		expect(
 			await service.listHistory(record.threadId, record.id, { afterRevision: 0, limit: 1 }, ctx),
 		).toBe(history);

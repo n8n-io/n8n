@@ -57,6 +57,7 @@ const taskDefinition = agentPlanTaskSchema.omit({
 	endedAt: true,
 	jobId: true,
 });
+
 const storedTaskSchema = z.union([
 	taskDefinition.extend({ jobId: idSchema }).strict(),
 	taskDefinition
@@ -67,12 +68,15 @@ const storedTaskSchema = z.union([
 		})
 		.strict(),
 ]);
+
 const storedGroupSchema = agentPlanGroupSchema
 	.omit({ status: true, startedAt: true, endedAt: true, tasks: true })
 	.extend({ tasks: z.array(storedTaskSchema) });
+
 export const storedAgentPlanSchema = agentPlanDocumentSchema.extend({
 	items: z.array(z.union([storedTaskSchema, storedGroupSchema])),
 });
+
 export type StoredAgentPlanDocument = z.infer<typeof storedAgentPlanSchema>;
 
 export function parseStoredAgentPlan(
@@ -82,8 +86,11 @@ export function parseStoredAgentPlan(
 	if (formatVersion !== AGENT_PLAN_FORMAT_VERSION) {
 		throw new AgentPlanValidationError(`Unsupported plan format version: ${formatVersion}`);
 	}
+
 	const result = storedAgentPlanSchema.safeParse(data);
+
 	if (!result.success) throw new AgentPlanValidationError(result.error.message);
+
 	return result.data;
 }
 
@@ -91,11 +98,14 @@ export function parseStoredAgentPlan(
 export function storeAgentPlan(document: AgentPlanDocument): StoredAgentPlanDocument {
 	const storeTask = ({ status, startedAt, endedAt, jobId, ...task }: AgentPlanTask) =>
 		jobId ? { ...task, jobId } : { ...task, status, startedAt, endedAt };
+
 	return storedAgentPlanSchema.parse({
 		...document,
 		items: document.items.map((item) => {
 			if (item.kind === 'task') return storeTask(item);
+
 			const { status, startedAt, endedAt, ...group } = item;
+
 			return { ...group, tasks: group.tasks.map(storeTask) };
 		}),
 	});

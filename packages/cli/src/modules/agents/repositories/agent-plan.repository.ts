@@ -51,12 +51,15 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		ctx: OperationContext,
 	): Promise<AgentPlanRecord> {
 		if (!isUuid(input.id)) throw new UserError('The plan ID must be a UUID');
+
 		this.validateVersion(input.formatVersion);
 		const data = this.serializeData(input.data);
 
 		return await this.runInTransaction(ctx, async (manager, tx) => {
 			await this.threadRepository.lockById(input.threadId, tx);
+
 			const now = new Date();
+
 			try {
 				await manager
 					.createQueryBuilder()
@@ -76,6 +79,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 					.execute();
 			} catch (error) {
 				if (isUniqueConstraintError(error)) throw new AgentPlanWriteConflictError();
+
 				throw error;
 			}
 
@@ -182,6 +186,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 
 		return await this.runInTransaction(ctx, async (manager, tx) => {
 			await this.threadRepository.lockById(input.threadId, tx);
+
 			const now = new Date();
 			const query = manager
 				.createQueryBuilder()
@@ -203,12 +208,15 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 			if (document) query.setParameter('planData', document.data);
 
 			const result = await query.execute();
+
 			if (result.affected !== 1) throw new AgentPlanWriteConflictError();
+
 			const plan = await manager.findOneByOrFail(AgentPlan, {
 				id: input.planId,
 				threadId: input.threadId,
 			});
 			await this.insertSnapshot(manager, plan);
+
 			return plan;
 		});
 	}
@@ -240,6 +248,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		if (!isRecord(data)) throw new UserError('The plan document must be a JSON object');
 		return JSON.stringify(data);
 	}
+
 	async jobStatesForPlan(planId: string, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).find(AgentBackgroundJob, {
 			where: { planId },

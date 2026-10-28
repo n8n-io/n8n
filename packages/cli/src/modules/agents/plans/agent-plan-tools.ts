@@ -75,10 +75,13 @@ type AgentPlanDocumentInput = z.infer<typeof documentInput>;
 
 function withoutTiming<Item extends AgentPlanItem>(item: Item) {
 	const { startedAt, endedAt, ...visible } = item;
+
 	if ('jobId' in visible) {
 		const { jobId, ...definition } = visible;
+
 		return definition;
 	}
+
 	return visible;
 }
 
@@ -94,24 +97,29 @@ function mergeDocumentUpdate(
 	);
 
 	const removed = new Set(removeItemIds);
+
 	if (removed.size !== removeItemIds.length) {
 		throw new AgentPlanValidationError('Removal IDs must be unique.');
 	}
 
 	for (const id of removeItemIds) {
 		const item = existing.get(id);
+
 		if (!item) throw new AgentPlanValidationError(`Unknown removal ID: ${id}`);
+
 		if (item.kind === 'group') {
 			for (const task of item.tasks) removed.add(task.id);
 		}
 	}
 
 	const updated = new Set<string>();
+
 	const mergeItems = (
 		items: AgentPlanItem[],
 		changes: Array<z.infer<typeof itemUpdate>>,
 	): unknown[] => {
 		const merged = new Map<string, unknown>();
+
 		for (const item of items) {
 			if (removed.has(item.id)) continue;
 
@@ -127,6 +135,7 @@ function mergeDocumentUpdate(
 			if (updated.has(change.id)) {
 				throw new AgentPlanValidationError(`Duplicate update ID: ${change.id}`);
 			}
+
 			updated.add(change.id);
 
 			if (removed.has(change.id)) {
@@ -134,6 +143,7 @@ function mergeDocumentUpdate(
 			}
 
 			const current = items.find((item) => item.id === change.id);
+
 			if (!current && !change.id.startsWith('new:')) {
 				throw new AgentPlanValidationError(`Unknown item ID at this level: ${change.id}`);
 			}
@@ -143,10 +153,14 @@ function mergeDocumentUpdate(
 					'Group statuses come from their tasks. Omit the group status.',
 				);
 			}
+
 			const { tasks, ...fields } = change;
 			const item = { ...(current ? withoutTiming(current) : {}), ...fields };
+
 			if (item.resultSummary === null) delete item.resultSummary;
+
 			if (item.fallbackFor === null) delete item.fallbackFor;
+
 			merged.set(
 				change.id,
 				tasks !== undefined || item.kind === 'group'
@@ -208,8 +222,11 @@ function prepareDocument(
 
 	const resolveId = (id: string): string => {
 		if (!id.startsWith('new:')) return id;
+
 		const resolved = aliases.get(id);
+
 		if (!resolved) throw new AgentPlanValidationError(`Unknown temporary ID: ${id}`);
+
 		return resolved;
 	};
 
@@ -223,8 +240,10 @@ function prepareDocument(
 
 	const restoreJob = (id: string) => {
 		const item = existing.get(id);
+
 		return item?.kind === 'task' && item.jobId ? { jobId: item.jobId } : {};
 	};
+
 	const restoreTask = (task: z.infer<typeof taskInput>) => ({
 		...restoreItem(task),
 		kind: task.kind,
@@ -244,6 +263,7 @@ function prepareDocument(
 
 function presentTask(task: AgentPlanTask) {
 	const { startedAt, endedAt, ...visible } = task;
+
 	return visible;
 }
 

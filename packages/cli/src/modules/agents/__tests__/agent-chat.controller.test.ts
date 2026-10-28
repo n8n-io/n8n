@@ -96,6 +96,7 @@ function makeController() {
 	const messageQueue = mock<AgentMessageQueueService>();
 	messageQueue.enqueue.mockImplementation(async (_input, onInserted) => {
 		onInserted?.('queue-1');
+
 		return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
 	});
 	const previewStreams = new AgentQueuedTestStreamService(
@@ -1803,6 +1804,7 @@ describe('AgentChatController current plan', () => {
 		const { controller, agentsService, plans, agentExecutionService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
 		plans.findLatestPlan.mockResolvedValue(null);
+
 		expect(await controller.getPlan(request as never)).toBeNull();
 		expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
 		expect(agentExecutionService.canUseDraftThread).toHaveBeenCalledWith(
@@ -1812,20 +1814,26 @@ describe('AgentChatController current plan', () => {
 			'user',
 			{ previewChat: true, sessionMode: 'existing' },
 		);
+
 		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
 		plans.findLatestPlan.mockClear();
+
 		await expect(controller.getPlan(request as never)).rejects.toThrow('Session not found');
 		expect(plans.findLatestPlan).not.toHaveBeenCalled();
 	});
+
 	it('checks published chat and thread access before reading its plan', async () => {
 		const { controller, agentsService, plans, agentExecutionService } = makeController();
 		agentsService.isN8nChatPublished.mockResolvedValue(true);
 		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
 		plans.findLatestPlan.mockResolvedValue(null);
+
 		expect(await controller.getProductionPlan(request as never)).toBeNull();
 		expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+
 		plans.findLatestPlan.mockClear();
 		agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
 		await expect(controller.getProductionPlan(request as never)).rejects.toThrow(
 			'Session not found',
 		);

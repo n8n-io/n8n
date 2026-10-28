@@ -799,6 +799,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
+
 		if (
 			!(await this.agentsService.findById(agentId, projectId)) ||
 			!(await this.agentExecutionService.canUseDraftThread(
@@ -810,6 +811,7 @@ export class AgentChatController {
 			))
 		)
 			throw new NotFoundError('Session not found');
+
 		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled)
 			throw new BadRequestError('Background tasks are not enabled');
 	}
@@ -820,8 +822,10 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
+
 		await this.requireProductionChat(agentId, projectId);
 		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+
 		return presentPlan(await this.plans.findLatestPlan(threadId, {}));
 	}
 
@@ -831,6 +835,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		await this.requireTaskThread(req);
+
 		return presentPlan(await this.plans.findLatestPlan(req.params.threadId, {}));
 	}
 

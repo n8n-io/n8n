@@ -23,6 +23,7 @@ const task = (
 	endedAt: null,
 	...overrides,
 });
+
 const plan = (...tasks: AgentPlanTask[]): AgentPlanDocument => ({
 	title: 'Plan',
 	description: '',
@@ -40,6 +41,7 @@ const plan = (...tasks: AgentPlanTask[]): AgentPlanDocument => ({
 		},
 	],
 });
+
 const job = (
 	status: PlanJobState['status'],
 	overrides: Partial<PlanJobState> = {},
@@ -63,12 +65,14 @@ it.each([
 ] as const)('maps job %s to task %s', (source, expected) => {
 	expect(jobTaskStatus(job(source))).toBe(expected);
 });
+
 it('keeps a resume reservation stopped until the job resumes', () => {
 	expect(
 		jobTaskStatus(job('suspended', { pauseRequestId: randomUUID(), notifiedAt: new Date() })),
 	).toBe('paused');
 	expect(jobTaskStatus(job('running'))).toBe('in_progress');
 });
+
 it.each([
 	[['done', 'cancelled', 'failed', 'pending', 'paused', 'in_progress'], 'in_progress'],
 	[['done', 'cancelled', 'failed', 'pending', 'paused'], 'paused'],
@@ -82,35 +86,45 @@ it.each([
 		expected,
 	);
 });
+
 it('uses successful fallback work instead of the failed original', () => {
 	const first = task('failed');
 	const fallback = task('done', { fallbackFor: first.id });
+
 	expect(derivePlanGroups(plan(first, fallback)).items[0].status).toBe('done');
 });
+
 it('stores only manual lifecycle and job ownership', () => {
 	const owned = task('in_progress', { jobId: randomUUID() });
 	const manual = task('done');
 	const stored = storeAgentPlan(plan(owned, manual));
+
 	expect(stored.items[0]).not.toHaveProperty('status');
+
 	if (stored.items[0].kind !== 'group') throw new Error('Expected group');
+
 	expect(stored.items[0].tasks[0]).not.toHaveProperty('status');
 	expect(stored.items[0].tasks[0]).not.toHaveProperty('startedAt');
 	expect(stored.items[0].tasks[1]).toMatchObject({ status: 'done', startedAt: null });
 });
+
 it('uses the owning job and ignores nested job outcomes', () => {
 	const owner = job('running');
 	const nested = job('failed');
 	const document = storeAgentPlan(plan(task('pending', { jobId: owner.id })));
+
 	expect(resolveAgentPlan(document, [owner, nested]).items[0].status).toBe('in_progress');
 	expect(
 		resolveAgentPlan(document, [{ ...owner, status: 'completed' }, nested]).items[0].status,
 	).toBe('done');
 });
+
 it('uses current job state for dependency readiness', () => {
 	const owner = job('running');
 	const first = task('pending', { jobId: owner.id });
 	const second = task('pending', { dependsOn: [first.id] });
 	const document = storeAgentPlan(plan(first, second));
+
 	expect(getAgentPlanReadiness(resolveAgentPlan(document, [owner])).blocked).toContainEqual({
 		id: second.id,
 		blockedBy: [first.id],
@@ -122,19 +136,23 @@ it('uses current job state for dependency readiness', () => {
 
 it('keeps failed work in the group when its fallback is cancelled', () => {
 	const original = task('failed');
+
 	expect(
 		derivePlanGroups(plan(original, task('cancelled', { fallbackFor: original.id }))).items[0]
 			.status,
 	).toBe('failed');
 });
+
 it('uses the successful last fallback in a replacement chain', () => {
 	const original = task('failed');
 	const replacement = task('cancelled', { fallbackFor: original.id });
+
 	expect(
 		derivePlanGroups(plan(original, replacement, task('done', { fallbackFor: replacement.id })))
 			.items[0].status,
 	).toBe('done');
 });
+
 it('keeps running jobs active while a Stop request is pending', () => {
 	expect(
 		jobTaskStatus(job('running', { pauseRequestId: randomUUID(), notifiedAt: new Date() })),
