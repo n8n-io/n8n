@@ -6,6 +6,7 @@ import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepSlots, type StepStatus } from '../execution.types';
+import type { SubExecutionCanceller } from '../step-ready-handler';
 import { StepSettledHandler } from '../step-settled-handler';
 import type { NewStepRecord, StepRecord, StepStore, StepSummary } from '../step-store';
 
@@ -73,6 +74,7 @@ function makeExecutionStore(
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		...storeOverrides,
 	};
 }
@@ -158,6 +160,7 @@ function makeHandler(
 		orchestrationQueue = makeOrchestrationQueue(),
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 		responseSender = makeResponseSender(),
+		subExecutionCanceller = { cancelSubExecutions: vi.fn() } as SubExecutionCanceller,
 	} = {},
 ) {
 	return {
@@ -168,12 +171,14 @@ function makeHandler(
 			orchestrationQueue,
 			lifecycleEventPublisher,
 			responseSender,
+			subExecutionCanceller,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
 		lifecycleEventPublisher,
 		responseSender,
+		subExecutionCanceller,
 	};
 }
 
@@ -705,15 +710,16 @@ describe('StepSettledHandler sub-executions', () => {
 		);
 	});
 
-	it('resumes the awaiting parent with the error the moment a step fails', async () => {
+	it('cancels the sub-executions and resumes the awaiting parent with the error the moment a step fails', async () => {
 		const error = { name: 'TypeError', message: 'boom' };
 		const stepStore = makeStepStore({ status: 'failed', error });
-		const { handler, stepQueue } = makeHandler(stepStore, {
+		const { handler, stepQueue, subExecutionCanceller } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ parent }),
 		});
 
 		await handler.handle(event);
 
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
@@ -744,12 +750,13 @@ describe('StepSettledHandler sub-executions', () => {
 					]),
 			},
 		);
-		const { handler } = makeHandler(stepStore, {
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ parent }),
 		});
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
@@ -758,9 +765,9 @@ describe('StepSettledHandler sub-executions', () => {
 		});
 	});
 
-	it('resumes no parent on a redelivered failure event', async () => {
+	it('cancels no sub-executions and resumes no parent on a redelivered failure event', async () => {
 		const stepStore = makeStepStore({ status: 'failed', error: { name: 'Error', message: 'x' } });
-		const { handler } = makeHandler(stepStore, {
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore(
 				{ parent },
 				{ finishExecution: vi.fn().mockResolvedValue(null) },
@@ -769,6 +776,7 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle(event);
 
+		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
 		expect(stepStore.resumeStep).not.toHaveBeenCalled();
 	});
 

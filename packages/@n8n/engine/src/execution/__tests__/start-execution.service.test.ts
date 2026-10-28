@@ -37,6 +37,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 }

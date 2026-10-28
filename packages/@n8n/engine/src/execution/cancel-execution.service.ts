@@ -13,9 +13,10 @@ export interface CancelExecutionResult {
 }
 
 /**
- * Ends an execution on request. No more steps will be planned. A sub-execution
- * cancelled on its own resumes the step that waits for it, so that step fails
- * instead of waiting for ever.
+ * Ends an execution on request. No more steps will be planned, and every
+ * sub-execution that has not ended is cancelled with it, whether or not a step waits
+ * for it. A sub-execution cancelled on its own resumes the step that waits for it, so
+ * that step fails instead of waiting for ever.
  * TODO(CAT-4757): interrupt already-running steps through their executor.
  */
 export class CancelExecutionService {
@@ -52,6 +53,7 @@ export class CancelExecutionService {
 					lastStep: null,
 				});
 			}
+			await this.cancelSubExecutions(executionId);
 			await this.resumeAwaitingParent(execution);
 		}
 
@@ -59,9 +61,21 @@ export class CancelExecutionService {
 	}
 
 	/**
+	 * Cancels every sub-execution of the execution that has not ended, and through each
+	 * of them their own sub-executions. The nesting depth bounds the recursion.
+	 */
+	async cancelSubExecutions(parentExecutionId: string): Promise<void> {
+		for (const subExecutionId of await this.executionStore.loadLiveSubExecutionIds(
+			parentExecutionId,
+		)) {
+			await this.cancel(subExecutionId);
+		}
+	}
+
+	/**
 	 * A parent step that waits for this execution is resumed with the
-	 * cancellation, so it fails rather than waits for ever. When the parent
-	 * ended first, its step is cancelled already and the resume is a no-op.
+	 * cancellation, so it fails rather than waits for ever. When the parent was
+	 * cancelled first, its step is cancelled already and the resume is a no-op.
 	 */
 	private async resumeAwaitingParent(execution: ExecutionRecord): Promise<void> {
 		const { parent } = execution;
