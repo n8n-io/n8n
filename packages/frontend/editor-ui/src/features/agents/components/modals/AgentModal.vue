@@ -485,6 +485,9 @@ function onOpenAutoFocus(event: Event) {
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
 	padding: 0;
+	/* The base body moves up over the header to give room for a focus ring. A flush body has
+	   no inset to use, so a strip at its top would cover the header divider. */
+	margin-block-start: 0;
 	/* Full-width strips reach the edge, so no space is kept for a scrollbar. */
 	scrollbar-gutter: auto;
 }
