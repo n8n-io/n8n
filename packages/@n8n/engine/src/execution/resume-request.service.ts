@@ -74,7 +74,8 @@ export class ResumeRequestService {
 	 * when a live execution has two execution-bound waits.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
-		if (!verifyResumeToken(this.secret, token, executionId)) {
+		const claims = verifyResumeToken(this.secret, token);
+		if (claims?.kind !== 'execution-bound' || claims.executionId !== executionId) {
 			throw new ResumeRejectedError('invalid_token');
 		}
 
@@ -103,7 +104,8 @@ export class ResumeRequestService {
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
 		const step = await this.loadStep(stepId);
-		if (!verifyResumeToken(this.secret, token, step.executionId)) {
+		const claims = verifyResumeToken(this.secret, token);
+		if (claims?.kind !== 'execution-bound' || claims.executionId !== step.executionId) {
 			throw new ResumeRejectedError('invalid_token');
 		}
 		if (!acceptsRequest(step)) throw new ResumeRejectedError('not_waiting');
