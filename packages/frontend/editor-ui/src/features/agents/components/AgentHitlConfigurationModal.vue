@@ -275,7 +275,6 @@ function save() {
 		v-model:title="name"
 		editable-title
 		:busy="creating"
-		stable-height
 		stacked
 		@update:open="emit('close')"
 	>
@@ -312,6 +311,7 @@ function save() {
 					:items="workflowItems"
 					:categories="['workflows']"
 					embedded
+					fit-content
 					show-connect-actions
 					persistent-scrollbar
 					:loading="loading"
@@ -479,10 +479,6 @@ function save() {
 	flex-direction: column;
 	min-height: 0;
 	gap: var(--spacing--sm);
-}
-.workflowPicker > :last-child {
-	height: calc(var(--height--xl) * 8);
-	min-height: 0;
 }
 .methodOptions {
 	:global(.el-select-dropdown__item) {
