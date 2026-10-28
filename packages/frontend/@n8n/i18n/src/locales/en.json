@@ -6454,6 +6454,8 @@
 	"settings.ldap.form.searchTimeout.infoText": "The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server",
 	"settings.ldap.form.enforceEmailUniqueness.label": "Enforce Email Uniqueness",
 	"settings.ldap.form.enforceEmailUniqueness.tooltip": "Prevents login if multiple LDAP accounts use the same email, blocking account linking attacks.",
+	"settings.ldap.form.linkExistingAccountsByEmail.label": "Link existing accounts by LDAP email",
+	"settings.ldap.form.linkExistingAccountsByEmail.tooltip": "Turn off if this directory does not verify email addresses. LDAP users whose email matches an existing n8n account won't be linked; login is blocked and synchronization skips them.",
 	"settings.ldap.section.synchronization.title": "Synchronization",
 	"settings.security": "Policies",
 	"settings.security.description": "Manage security policies for this instance.",

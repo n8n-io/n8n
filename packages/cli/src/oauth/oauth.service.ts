@@ -580,17 +580,17 @@ export class OauthService {
 			}
 		}
 
-		// Dynamic credentials: skip user-ownership check since the credential may be shared,
-		// but validate userId when both the state and the caller carry an n8n user identity
-		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
-		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
-		// the state has no userId and the check is skipped.
+		// Dynamic credentials: the credential may be shared, so there is no per-user
+		// ownership check. But a userId in the state means an n8n user started the flow
+		// (editor connect, chat-hub, or a user-bound short link), and the callback must
+		// run as that same user. This stops a completion from another browser binding the
+		// provider tokens to the initiator. The legitimate surfaces all carry that
+		// session, so a sessionless completion is the attack. The static-callback skip
+		// flag does not relax this: a dynamic flow that cannot carry the session uses
+		// N8N_OAUTH_BROWSER_BINDING instead. Externally started flows (external-subject
+		// resolvers) carry no userId and keep the unauthenticated path.
 		if (decryptedState.origin === 'dynamic-credential') {
-			if (
-				req.user?.id !== undefined &&
-				decryptedState.userId !== undefined &&
-				decryptedState.userId !== req.user.id
-			) {
+			if (decryptedState.userId !== undefined && decryptedState.userId !== req.user?.id) {
 				throw new AuthError('Unauthorized');
 			}
 			return [
