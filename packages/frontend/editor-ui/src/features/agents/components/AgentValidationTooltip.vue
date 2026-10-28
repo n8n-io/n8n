@@ -2,7 +2,8 @@
 import type { AgentCapabilityKind, AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
+import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
 
 import {
 	getAgentValidationIssueInterpolation,
@@ -20,6 +21,7 @@ const props = withDefaults(
 	{ issues: () => [] },
 );
 
+const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
 const MAX_VISIBLE_DETAILS = 5;
 
 const i18n = useI18n();
@@ -48,13 +50,12 @@ const CORE_PATH_KEYS: Record<string, BaseTextKey> = {
 
 const PREVIEW_PATH_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	'agent.instructions.missing_required':
-		'agents.builder.preview.issue.agent.instructions.missingRequired' as BaseTextKey,
-	'agent.model.missing_required':
-		'agents.builder.preview.issue.agent.model.missingRequired' as BaseTextKey,
+		'agents.builder.preview.issue.agent.instructions.missingRequired',
+	'agent.model.missing_required': 'agents.builder.preview.issue.agent.model.missingRequired',
+	'agent.credential.missing_credential':
+		'agents.builder.preview.issue.agent.credential.missingCredential',
 	'agent.model.invalid_value':
 		'agents.builder.preview.issue.agent.model.invalidValue' as BaseTextKey,
-	'agent.credential.missing_credential':
-		'agents.builder.preview.issue.agent.credential.missingCredential' as BaseTextKey,
 	'agent.credential.invalid_credential':
 		'agents.builder.preview.issue.agent.credential.invalidCredential' as BaseTextKey,
 	'agent.credential.incompatible_credential':
@@ -186,7 +187,16 @@ function issueMessage(issue: AgentConfigValidationIssue): string {
 	return `${capabilityLabel(issue)}: ${message}`;
 }
 
+function isMissingCoreField(issue: AgentConfigValidationIssue): boolean {
+	return (
+		issue.capability.kind === 'agent' &&
+		Boolean(CORE_PATH_KEYS[issue.path]) &&
+		(issue.code === 'missing_required' || issue.code === 'missing_credential')
+	);
+}
+
 function previewIssueMessage(issue: AgentConfigValidationIssue): string {
+	if (standaloneBuilder && isMissingCoreField(issue)) return capabilityLabel(issue);
 	return actionIssueMessage(
 		issue,
 		PREVIEW_REASON_SPECIFIC_KEYS,
@@ -240,6 +250,15 @@ const details = computed(() => {
 });
 
 const visibleDetails = computed(() => details.value.slice(0, MAX_VISIBLE_DETAILS));
+const missingFields = computed(
+	() => new Set(props.issues.filter(isMissingCoreField).map(capabilityLabel)),
+);
+const visibleMissingFields = computed(() =>
+	visibleDetails.value.filter((detail) => missingFields.value.has(detail)),
+);
+const visibleOtherIssues = computed(() =>
+	visibleDetails.value.filter((detail) => !missingFields.value.has(detail)),
+);
 const hiddenDetailsCount = computed(() => Math.max(details.value.length - MAX_VISIBLE_DETAILS, 0));
 const overflowLabel = computed(() =>
 	hiddenDetailsCount.value > 0
@@ -255,7 +274,22 @@ const overflowLabel = computed(() =>
 		<template #content>
 			<div v-if="details.length > 0" :class="$style.content">
 				<div :class="$style.heading">{{ props.fallback }}</div>
-				<div :class="$style.previewDetails">
+				<template v-if="isPreview && standaloneBuilder">
+					<template v-if="visibleMissingFields.length > 0">
+						<div>{{ i18n.baseText('agents.validationTooltip.add') }}</div>
+						<ul :class="$style.issueList">
+							<li v-for="field in visibleMissingFields" :key="field">{{ field }}</li>
+						</ul>
+					</template>
+					<template v-if="visibleOtherIssues.length > 0">
+						<div>{{ i18n.baseText('agents.validationTooltip.fix') }}</div>
+						<ul :class="$style.issueList">
+							<li v-for="detail in visibleOtherIssues" :key="detail">{{ detail }}</li>
+						</ul>
+					</template>
+					<div v-if="hiddenDetailsCount > 0">{{ overflowLabel }}</div>
+				</template>
+				<div v-else :class="$style.previewDetails">
 					<div v-for="detail in visibleDetails" :key="detail">{{ detail }}</div>
 					<div v-if="hiddenDetailsCount > 0">{{ overflowLabel }}</div>
 				</div>
@@ -281,6 +315,15 @@ const overflowLabel = computed(() =>
 
 .heading {
 	font-weight: var(--font-weight--bold);
+}
+
+.issueList {
+	margin: 0;
+	padding-inline-start: var(--spacing--md);
+	list-style: disc;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .previewDetails {

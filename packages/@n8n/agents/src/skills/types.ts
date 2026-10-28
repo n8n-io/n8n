@@ -49,9 +49,19 @@ export interface RuntimeSkillInterfaceContract {
 	brandColor?: string;
 }
 
+export const RUNTIME_SKILL_LIFETIMES = ['thread', 'turn'] as const;
+
+/**
+ * How long a loaded skill stays active. `thread` (the default) keeps it for the
+ * rest of the conversation. `turn` keeps it until the next user turn starts, for
+ * skills that guide one decision and are dead weight in context afterwards.
+ */
+export type RuntimeSkillLifetime = (typeof RUNTIME_SKILL_LIFETIMES)[number];
+
 export interface RuntimeSkillPolicyContract {
 	allowImplicitInvocation?: boolean;
 	product?: string;
+	lifetime?: RuntimeSkillLifetime;
 }
 
 export interface RuntimeSkillMcpServerDependency {

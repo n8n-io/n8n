@@ -148,34 +148,6 @@ describe('Agent thread repository queries for system agents', () => {
 		});
 	});
 
-	describe('findOwnedByAgent', () => {
-		it("returns the owner's top-level private sessions with the agent, newest first", async () => {
-			const older = await createThread({}, '2024-01-01T00:00:00.000Z');
-			const newer = await createThread({}, '2024-02-01T00:00:00.000Z');
-			await createThread({ parentThreadId: newer.id });
-			await createThread({ ownerId: otherUserId });
-			await createThread({ accessScope: 'project', ownerId: null });
-			await createThread({ agentId: otherAgentId });
-
-			expect(ids(await threadRepo.findOwnedByAgent(agentId, ownerId))).toEqual([
-				newer.id,
-				older.id,
-			]);
-		});
-
-		it('applies the limit and orders sessions with the same updatedAt by id', async () => {
-			const created = [];
-			for (let index = 0; index < 3; index++) {
-				created.push(await createThread({}, '2024-01-01T00:00:00.000Z'));
-			}
-			const expected = ids(created).sort().reverse();
-
-			expect(ids(await threadRepo.findOwnedByAgent(agentId, ownerId, { limit: 2 }))).toEqual(
-				expected.slice(0, 2),
-			);
-		});
-	});
-
 	describe('findOwnedById', () => {
 		it('returns a top-level private session only for its owner and agent', async () => {
 			const thread = await createThread();
@@ -243,6 +215,7 @@ describe('Agent thread repository queries for system agents', () => {
 						agentId,
 						projectId,
 						threadId,
+						createdByThreadId: threadId,
 						binaryDataId: 'filesystem-v2:file',
 						fileName: 'file.txt',
 						mimeType: 'text/plain',

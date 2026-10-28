@@ -10,6 +10,7 @@ import {
 import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillReferencePathSchema,
+	hasSkillInstructions,
 	skillNameKey,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
@@ -282,7 +283,11 @@ function prepareSkill(
 	entry: RuntimeSkillRegistryEntry,
 	content: AssistantSkillContent,
 ): LoadedHubSkill | RuntimeSkillLoadError {
-	if (!content.name.trim() || !content.description.trim() || !content.instructions.trim()) {
+	if (
+		!content.name.trim() ||
+		!content.description.trim() ||
+		!hasSkillInstructions(content.instructions)
+	) {
 		return { message: 'This Hub skill has invalid instructions or metadata.', retryable: false };
 	}
 	const paths = content.files.map(({ path }) => path);

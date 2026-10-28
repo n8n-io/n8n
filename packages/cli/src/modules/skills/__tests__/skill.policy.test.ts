@@ -137,7 +137,13 @@ describe('losingAgentsMessage', () => {
 
 describe('blocksDelete and deleteRefusalMessage', () => {
 	const unused: SkillUsedBy = { drafts: [], pins: [], hiddenAgents: 0 };
-	const draft = { agentId: 'agent-1', agentName: 'Support', projectId: 'P' };
+	const draft = {
+		agentId: 'agent-1',
+		agentName: 'Support',
+		projectId: 'P',
+		version: 1,
+		pinned: false,
+	};
 	const pin = (version: number | null, agentName = 'Support') => ({
 		agentId: 'agent-1',
 		agentName,

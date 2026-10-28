@@ -57,6 +57,7 @@ import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-suppo
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
 import { createSkill, toSkillContent } from '@/modules/skills/testing';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -115,7 +116,6 @@ beforeEach(async () => {
 	for (const [index, entry] of fixture.manifest.agents.entries()) {
 		const {
 			config,
-			skills,
 			tasks: taskDefinitions,
 			...definition
 		} = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
@@ -133,19 +133,17 @@ beforeEach(async () => {
 				subAgents: { agents: [{ agentId: fixture.manifest.agents[1 - index].id }] },
 			}),
 		});
-		for (const [id, skill] of Object.entries(skills)) {
-			await createSkill({
-				id,
-				agentId: agent.id,
-				source: 'agent',
-				createdById: owner.id,
-				content: toSkillContent(skill),
-			});
-		}
-		await Container.get(AgentSkillRepository).replaceDependencies(
-			agent.id,
-			Object.keys(skills).map((skillId) => ({ skillId })),
-		);
+		const skill = serializedSkillSchema.parse(fixture.files[`skills/${entry.id}_skill/skill.json`]);
+		await createSkill({
+			id: skill.id,
+			agentId: agent.id,
+			source: 'agent',
+			createdById: owner.id,
+			content: toSkillContent(skill.skill, skill.frontmatter),
+		});
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [
+			{ skillId: skill.id },
+		]);
 		await tasks.save(
 			Object.entries(taskDefinitions).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
 		);

@@ -19,12 +19,15 @@ export {
 } from './utils/skill-names';
 export { getSkillHash } from './utils/skill-hash';
 export {
-	toSkillUpdate,
+	isSameSkillTarget,
+	skillContentHashOf,
+	skillScopeOf,
 	withTrimmedName,
 	type AssistantSkillContent,
 	type AssistantSkillContext,
 	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
+	type LatestSkill,
 	type McpSkillContent,
 	type SkillMoveOptions,
 	type SkillRef,

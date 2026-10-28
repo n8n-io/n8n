@@ -55,7 +55,10 @@ export class FakeSkillUsage extends SkillUsage {
 			return { agentId: key, agentName: name, projectId: project };
 		};
 		return {
-			drafts: drafted.filter(isVisible).map(row),
+			drafts: drafted.filter(isVisible).flatMap((agentKey) => {
+				const runtime = this.draftVersion(agentKey, skillId);
+				return runtime ? [{ ...row(agentKey), ...runtime }] : [];
+			}),
 			pins: published.filter(isVisible).map((agentKey) => ({
 				...row(agentKey),
 				version: this.activePin(agentKey, skillId) ?? null,
@@ -152,6 +155,14 @@ export class FakeSkillUsage extends SkillUsage {
 	private activePin(agentKey: string, skillId: string): number | undefined {
 		const active = this.world.publishes.filter((publish) => publish.agent === agentKey).at(-1);
 		return active?.pins.find((pin) => pin.skill === skillId)?.version;
+	}
+
+	/** The version the draft runs: the pinned one, else the latest. None without a saved version. */
+	private draftVersion(agentKey: string, skillId: string) {
+		const ref = this.draftsOf(skillId).find((candidate) => candidate.agent === agentKey);
+		const latest = this.world.skills.find((skill) => skill.key === skillId)?.versions.length ?? 0;
+		if (ref?.version !== undefined) return { version: ref.version, pinned: true };
+		return latest > 0 ? { version: latest, pinned: false } : undefined;
 	}
 
 	/** The name of a pinned version, or of the latest version. */

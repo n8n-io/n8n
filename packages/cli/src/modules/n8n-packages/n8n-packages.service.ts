@@ -11,7 +11,7 @@ import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
-import { ProjectPackageImporter } from './engine/project-package-importer';
+import { ProjectPackageImporter, type PackageImportPlan } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { AgentSelectionExporter } from './entities/agent/agent-selection.exporter';
 import { CredentialExporter } from './entities/credential/credential.exporter';
@@ -64,6 +64,7 @@ import {
 	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportPackageSelectionRequest,
+	type ImportPlanMode,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -394,6 +395,7 @@ export class N8nPackagesService {
 			sourceN8nVersion: N8N_VERSION,
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
+			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
@@ -622,6 +624,52 @@ export class N8nPackagesService {
 		return { status: 'empty', result: emptyImportResult(manifest) };
 	}
 
+	/**
+	 * Plans a project package import. Like the directory import, it uses the Git pull source and
+	 * emits no telemetry. Write the plan with {@link applyPackagePlan}. In `check` mode, refusals
+	 * become issues and policy checks write no audit events.
+	 */
+	async planPackage(
+		request: ImportRequest & PromotionLayoutProperties,
+		reader: PackageReader,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
+		const manifest = await this.readImportManifest(reader);
+		if (!isProjectPackage(manifest) && hasContentWithoutProjects(manifest)) {
+			throw new BadRequestError('Directory packages must contain projects');
+		}
+		return await this.projectPackageImporter.planImport(
+			this.resolveProjectPackageRequest(request),
+			reader,
+			manifest,
+			'git-pull',
+			mode,
+		);
+	}
+
+	/** Plans a selection import like {@link planPackage}. */
+	async planPackageSelection(
+		request: ImportSelectionRequest,
+		reader: PackageReader,
+		selection: ImportSelection,
+		mode: ImportPlanMode,
+	): Promise<PackageImportPlan> {
+		const manifest = await this.readImportManifest(reader);
+		return await this.projectPackageImporter.planImport(
+			this.resolveSelectionRequest(request, manifest, selection),
+			reader,
+			manifest,
+			'git-pull',
+			mode,
+		);
+	}
+
+	/** Writes a plan from {@link planPackage} or {@link planPackageSelection} that has no issues. */
+	async applyPackagePlan(plan: PackageImportPlan): Promise<ImportResult> {
+		const { result } = await this.projectPackageImporter.applyPlan(plan);
+		return result;
+	}
+
 	/** The caller must validate that the manifest describes a project package. */
 	private async dispatchSelectionImport(
 		request: ImportSelectionRequest,
@@ -630,6 +678,21 @@ export class N8nPackagesService {
 		selection: ImportSelection,
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome & { resolvedRequest: ResolvedImportRequest }> {
+		const resolvedRequest = this.resolveSelectionRequest(request, manifest, selection);
+		const outcome = await this.projectPackageImporter.import(
+			resolvedRequest,
+			reader,
+			manifest,
+			importSource,
+		);
+		return { ...outcome, resolvedRequest };
+	}
+
+	private resolveSelectionRequest(
+		request: ImportSelectionRequest,
+		manifest: PackageManifest,
+		selection: ImportSelection,
+	): ResolvedImportRequest {
 		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
 		if (!packageProjectIds.has(selection.selectedProjectId)) {
 			throw new BadRequestError(
@@ -637,7 +700,7 @@ export class N8nPackagesService {
 			);
 		}
 
-		const resolvedRequest: ResolvedImportRequest = {
+		return {
 			user: request.user,
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
@@ -651,16 +714,11 @@ export class N8nPackagesService {
 			credentialConflictPolicy:
 				request.credentialConflictPolicy ?? CredentialConflictPolicy.KeepExisting,
 			layoutConflictPolicy: request.layoutConflictPolicy ?? LayoutConflictPolicy.Fail,
+			...(request.credentialPersonalRoute !== undefined
+				? { credentialPersonalRoute: request.credentialPersonalRoute }
+				: {}),
 			selection,
 		};
-
-		const outcome = await this.projectPackageImporter.import(
-			resolvedRequest,
-			reader,
-			manifest,
-			importSource,
-		);
-		return { ...outcome, resolvedRequest };
 	}
 
 	private async dispatchImport(
@@ -670,15 +728,8 @@ export class N8nPackagesService {
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		if (isProjectPackage(manifest)) {
-			if (request.variableParentPolicy !== undefined) {
-				throw new BadRequestError(
-					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
-				);
-			}
-			const rejection = folderPolicyRejection(request, 'project');
-			if (rejection) throw new BadRequestError(rejection);
 			return await this.projectPackageImporter.import(
-				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				this.resolveProjectPackageRequest(request),
 				reader,
 				manifest,
 				importSource,
@@ -692,6 +743,19 @@ export class N8nPackagesService {
 			reader,
 			manifest,
 		);
+	}
+
+	private resolveProjectPackageRequest(
+		request: ImportRequest & PromotionLayoutProperties,
+	): ResolvedImportRequest {
+		if (request.variableParentPolicy !== undefined) {
+			throw new BadRequestError(
+				'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
+			);
+		}
+		const rejection = folderPolicyRejection(request, 'project');
+		if (rejection) throw new BadRequestError(rejection);
+		return { ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') };
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {

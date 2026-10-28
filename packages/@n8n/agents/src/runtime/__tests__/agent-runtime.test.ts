@@ -1325,6 +1325,46 @@ describe('AgentRuntime — execution counters', () => {
 		expect(resumed.finishReason).not.toBe('error');
 	});
 
+	it('resumes a suspended call of a split tool in the tool that owns its action', async () => {
+		const resumedBy: string[] = [];
+		const makeActionTool = (name: string, handlerLabel: string): BuiltTool => ({
+			...makeInterruptibleTool(),
+			name,
+			inputSchema: z.object({ question: z.string(), action: z.string().optional() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				resumedBy.push(handlerLabel);
+				return { approved: true };
+			},
+		});
+		const splitTool = makeActionTool('approve', 'delete handler');
+		const otherTool = makeActionTool('other', 'publish handler');
+		const { runtime } = createRuntimeWithTools([splitTool, otherTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: 'approve',
+					args: { question: 'continue?', action: 'publish' },
+				},
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(splitTool, { name: 'delete_item', legacyActions: { approve: ['delete'] } });
+		Object.assign(otherTool, { name: 'publish_item', legacyActions: { approve: ['publish'] } });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumedBy).toEqual(['publish handler']);
+	});
+
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
 		const suspendPayload = { question: 'approve?', marker: 'xyz' };
 		let observedCtx: InterruptibleToolContext | undefined;
@@ -8495,7 +8535,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			memory.episodic.searchEntries(
 				{ resourceId: 'resource-1', threadId: 'thread-1' },
 				'Remember',
-				{ topK: 10 },
+				{ queryEmbedding: [1, 1], topK: 10 },
 			),
 		).resolves.toHaveLength(2);
 	});
@@ -8833,7 +8873,6 @@ describe('AgentRuntime — observation log jobs', () => {
 				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
 					content: 'Remember this detail.',
 					evidence: 'Please remember this.',
-					kind: 'explicit_remember',
 				}),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
@@ -10818,6 +10857,99 @@ describe('AgentRuntime — oversized tool results', () => {
 		) as (StreamChunk & { type: 'tool-result' }) | undefined;
 
 		expect(streamResult?.output).toEqual(modelOutput);
+	});
+
+	it('streams trace output to the host without sending it to the model', async () => {
+		const tool: BuiltTool = {
+			name: 'traced_result',
+			description: 'Return a traced result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ids: ['a'], text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => ({ ids: ['a'] }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-traced', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-traced', toolName: tool.name, input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-traced',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toEqual({ ids: ['a'] });
+
+		const modelMessages = streamText.mock.calls[1][0].messages as Array<{
+			role: string;
+			content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+		}>;
+		const modelToolResult = modelMessages
+			.find((message) => message.role === 'tool')
+			?.content.find((part) => part.type === 'tool-result');
+		expect(modelToolResult?.output?.value).toEqual({ text: 'visible' });
+		expect(JSON.stringify(modelMessages)).not.toContain('"ids"');
+	});
+
+	it('keeps the tool call successful when the trace output hook throws', async () => {
+		const tool: BuiltTool = {
+			name: 'trace_failure',
+			description: 'Return a result with a failing trace hook',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => {
+				throw new Error('trace failed');
+			},
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-trace-fail', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-trace-fail', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-trace-fail',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.isError).toBeFalsy();
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toBeUndefined();
 	});
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {

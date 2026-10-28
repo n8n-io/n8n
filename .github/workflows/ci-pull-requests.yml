@@ -144,6 +144,7 @@ jobs:
               scripts/codespace-preview/**
               scripts/licenses/**
               scripts/mutation-health/**
+              scripts/telemetry/**
               cubic.yaml
               .agents/review-rules/**
             e2e-performance:

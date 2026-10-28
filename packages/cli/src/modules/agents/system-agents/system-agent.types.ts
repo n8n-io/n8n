@@ -95,8 +95,6 @@ export type SystemAgentTurn<TLease = unknown> =
 	| SystemAgentStartTurn<TLease>
 	| SystemAgentResumeTurn<TLease>;
 
-export type SystemAgentTurnStatus = AgentTurnStatus;
-
 /**
  * The outcome that the runtime stores for the turn. A turn that failed
  * before it had an execution record has no `executionId`.
