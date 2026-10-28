@@ -124,11 +124,13 @@ import {
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
+	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
 	discardPendingAssistantAgentMessage,
 	rememberAssistantAgentThread,
 	stashPendingAssistantAgentMessage,
 } from './assistantAgent/assistantAgentThreads';
-import { base64ToFile } from '@/app/utils/fileUtils';
+import { base64ToFile, resolveFileMimeType } from '@/app/utils/fileUtils';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -918,9 +920,27 @@ async function startAssistantAgentThread(
 ) {
 	const projectId = selectedProject.value;
 	if (!projectId) return;
-	const fileAttachments = (attachments ?? []).filter(
-		(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
-	);
+	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
+	const fileAttachments: InstanceAiFileAttachment[] = [];
+	for (const attachment of attachments ?? []) {
+		if (attachment.type !== 'file') continue;
+		const mimeType = resolveFileMimeType(attachment.fileName, attachment.mimeType);
+		if (isFileAcceptedByAccept(attachment.fileName, mimeType, acceptString)) {
+			fileAttachments.push(attachment);
+			continue;
+		}
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: attachment.fileName },
+			}),
+		});
+	}
+	// The thread view cannot send references without text or a file, so keep the draft.
+	if (!message.trim() && fileAttachments.length === 0) {
+		restoreDraftAfterFailedSubmit(restoreDraft);
+		return;
+	}
 	const pendingMessage = {
 		threadId: uuidv4(),
 		text: message,

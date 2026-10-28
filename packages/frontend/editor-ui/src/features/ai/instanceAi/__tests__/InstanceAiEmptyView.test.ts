@@ -44,6 +44,7 @@ const {
 	replaceMock,
 	pushMock,
 	showErrorMock,
+	showMessageMock,
 	telemetryTrack,
 } = vi.hoisted(() => ({
 	experimentMocks: {
@@ -119,6 +120,7 @@ const {
 	replaceMock: vi.fn(),
 	pushMock: vi.fn(),
 	showErrorMock: vi.fn(),
+	showMessageMock: vi.fn(),
 	telemetryTrack: vi.fn(),
 }));
 
@@ -293,7 +295,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -597,6 +599,14 @@ const InstanceAiInputStub = defineComponent({
 				h(
 					'button',
 					{
+						'data-test-id': 'instance-ai-input-stub-submit-empty',
+						onClick: () => submit(''),
+					},
+					'submit empty',
+				),
+				h(
+					'button',
+					{
 						'data-test-id': 'instance-ai-input-stub-attach-file',
 						onClick: () =>
 							stagedFileAttachments.value.push({
@@ -607,6 +617,33 @@ const InstanceAiInputStub = defineComponent({
 							}),
 					},
 					'attach',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-image',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'file',
+								data: btoa('image content'),
+								mimeType: 'image/png',
+								fileName: 'screenshot.png',
+							}),
+					},
+					'attach image',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-workflow',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'workflow',
+								id: 'workflow-1',
+								name: 'My workflow',
+							}),
+					},
+					'attach workflow',
 				),
 				h(
 					'button',
@@ -1575,7 +1612,7 @@ describe('InstanceAiEmptyView', () => {
 			pushMock.mockResolvedValue(undefined);
 			const { getByTestId } = renderView();
 
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-image'));
 			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 			await flushPromises();
 
@@ -1595,7 +1632,7 @@ describe('InstanceAiEmptyView', () => {
 
 			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
 			expect(pendingMessage?.text).toBe('hello');
-			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['context.txt']);
+			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
 			expect(pendingMessage?.references).toEqual([]);
 		});
 
@@ -1608,6 +1645,50 @@ describe('InstanceAiEmptyView', () => {
 
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
 			expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+		});
+
+		it('keeps the draft when the message has only references', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-workflow'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit-empty'));
+			await flushPromises();
+
+			expect(pushMock).not.toHaveBeenCalled();
+			expect(acceptDraftMock).not.toHaveBeenCalled();
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+		});
+
+		it('keeps the draft and reports the file when the message has only an unsupported file', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit-empty'));
+			await flushPromises();
+
+			expect(pushMock).not.toHaveBeenCalled();
+			expect(acceptDraftMock).not.toHaveBeenCalled();
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+			);
+		});
+
+		it('sends the text without an unsupported file and reports the file', async () => {
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalled();
+			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
+			expect(pendingMessage?.text).toBe('hello');
+			expect(pendingMessage?.files).toEqual([]);
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+			);
 		});
 	});
 

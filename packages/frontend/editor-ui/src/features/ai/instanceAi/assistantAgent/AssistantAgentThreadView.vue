@@ -10,7 +10,11 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { countAttachedNodes } from '../utils/buildNodesAttachment';
-import { ASSISTANT_AGENT_ID, consumePendingAssistantAgentMessage } from './assistantAgentThreads';
+import {
+	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ID,
+	consumePendingAssistantAgentMessage,
+} from './assistantAgentThreads';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -75,7 +79,7 @@ function onSessionCreated(): void {
 			:continue-session-id="props.threadId"
 			:new-session="isNewSession"
 			:agent-config="agentConfig"
-			:attachment-capabilities="{ image: true, pdf: true, audio: false }"
+			:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
 			agent-status="production"
 			:connected-triggers="[]"
 			channel="system"

@@ -1,8 +1,15 @@
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, ProviderAttachmentCapabilities } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
+
+/** The file types that the Assistant agent thread view accepts. */
+export const ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES: ProviderAttachmentCapabilities = {
+	image: true,
+	pdf: true,
+	audio: false,
+};
 
 /**
  * Which runtime runs a thread at `/assistant/:threadId`: the current Assistant
