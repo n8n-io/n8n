@@ -18,7 +18,15 @@ const isPublished = computed(() => props.app.publishedVersionId !== null);
 </script>
 
 <template>
-	<N8nCard :class="$style.card" data-test-id="app-card" @click="emit('select', app)">
+	<N8nCard
+		:class="$style.card"
+		role="button"
+		tabindex="0"
+		data-test-id="app-card"
+		@click="emit('select', app)"
+		@keydown.enter.self.prevent="emit('select', app)"
+		@keydown.space.self.prevent="emit('select', app)"
+	>
 		<template #prepend>
 			<N8nIcon icon="layout-template" size="large" />
 		</template>

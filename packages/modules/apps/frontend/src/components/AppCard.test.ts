@@ -55,6 +55,15 @@ describe('AppCard', () => {
 		expect(emitted('select')).toEqual([[app]]);
 	});
 
+	it.each(['{Enter}', ' '])('emits select when the user presses %s on the card', async (key) => {
+		const { getByTestId, emitted } = renderComponent({ props: { app } });
+
+		getByTestId('app-card').focus();
+		await userEvent.keyboard(key);
+
+		expect(emitted('select')).toEqual([[app]]);
+	});
+
 	it('passes a delete on and does not select the app', async () => {
 		const { getByTestId, emitted } = renderComponent({ props: { app } });
 

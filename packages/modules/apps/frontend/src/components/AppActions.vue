@@ -3,6 +3,7 @@ import type { AppResponse } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nActionToggle, useMessage } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 
@@ -39,6 +40,10 @@ async function onAction(action: string) {
 		await deleteApp(rootStore.restApiContext, props.app.projectId, props.app.id);
 		emit('deleted', props.app.id);
 	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+			emit('deleted', props.app.id);
+			return;
+		}
 		toast.showError(error, i18n.baseText('apps.delete.error'));
 	}
 }

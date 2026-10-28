@@ -87,6 +87,19 @@ describe('AppView', () => {
 		expect(getByTestId('app-header')).toHaveTextContent('App app-2');
 	});
 
+	it('does not show the previous app while the next app loads', async () => {
+		vi.mocked(getApp)
+			.mockResolvedValueOnce(app('app-1'))
+			.mockReturnValueOnce(new Promise(() => {}));
+		const { findByTestId, getByTestId, rerender } = renderComponent();
+		await findByTestId('app-view-preview');
+
+		await rerender({ projectId: 'project-1', appId: 'app-2' });
+
+		expect(getByTestId('app-header')).toHaveTextContent('');
+		expect(getByTestId('app-view-loading')).toBeInTheDocument();
+	});
+
 	it('emits deleted when the app is deleted', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
 		const { findByTestId, getByTestId, emitted } = renderComponent();

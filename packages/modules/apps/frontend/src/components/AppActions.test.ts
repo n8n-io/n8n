@@ -2,6 +2,7 @@ import type { AppResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { Scope } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
@@ -98,5 +99,17 @@ describe('AppActions', () => {
 
 		await waitFor(() => expect(showError).toHaveBeenCalled());
 		expect(emitted('deleted')).toBeUndefined();
+	});
+
+	it('treats an app that no longer exists as deleted', async () => {
+		providePermissions(['app:delete']);
+		confirm.mockResolvedValue('confirm');
+		vi.mocked(deleteApp).mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+		const { getByRole, emitted } = renderComponent({ props: { app } });
+
+		await userEvent.click(getByRole('button', { name: 'Delete' }));
+
+		await waitFor(() => expect(emitted('deleted')).toEqual([['app-1']]));
+		expect(showError).not.toHaveBeenCalled();
 	});
 });

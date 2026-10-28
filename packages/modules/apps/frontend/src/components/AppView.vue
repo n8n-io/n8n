@@ -27,6 +27,7 @@ const activeTab = ref<AppViewTab>('preview');
 
 async function loadApp() {
 	const isLatest = latestFetch.next();
+	app.value = null;
 	loading.value = true;
 	try {
 		const result = await getApp(rootStore.restApiContext, props.projectId, props.appId);
