@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import { ref } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
@@ -241,6 +241,34 @@ describe('components/N8nRadioGroup', () => {
 
 			expect(radioLabel).not.toContainElement(field);
 			expect(radio).toHaveAccessibleName('Wipe everything');
+		});
+
+		it('should show the label when the label slot is added later', async () => {
+			const showLabel = ref(false);
+			const Parent = defineComponent({
+				setup() {
+					return () =>
+						h(RadioGroup, { modelValue: 'option-a' }, () =>
+							h(
+								RadioGroupItem,
+								{ value: 'option-a' },
+								showLabel.value
+									? {
+											label: () => h('span', { 'data-test-id': 'custom-label' }, 'Custom'),
+										}
+									: {},
+							),
+						);
+				},
+			});
+
+			const wrapper = render(Parent);
+			expect(wrapper.container.querySelector('label')).not.toBeInTheDocument();
+
+			showLabel.value = true;
+			await nextTick();
+
+			expect(wrapper.getByTestId('custom-label')).toBeInTheDocument();
 		});
 
 		it('should render label slot with scoped props', () => {

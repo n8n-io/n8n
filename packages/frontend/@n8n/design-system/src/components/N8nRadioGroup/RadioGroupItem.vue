@@ -20,7 +20,10 @@ const uuid = computed(() => props.id ?? generatedId);
 const groupContext = injectRadioGroupRootContext(null);
 const arrowKeyPressed = inject(radioGroupArrowKeyPressedKey, null);
 const isVertical = computed(() => (groupContext?.orientation.value ?? 'vertical') === 'vertical');
-const hasLabel = computed(() => Boolean(props.label || props.description || slots.label));
+
+function hasLabel() {
+	return Boolean(props.label || props.description || slots.label);
+}
 
 // Completes arrow-key selection when a parent stops keydown propagation — see RadioGroup.vue.
 function onItemFocusIn(event: FocusEvent) {
@@ -44,9 +47,9 @@ function onItemFocusIn(event: FocusEvent) {
 		>
 			<RadioGroupIndicator :class="$style.dot" />
 		</RekaRadioGroupItem>
-		<div v-if="hasLabel || slots.content" :class="$style.body">
+		<div v-if="hasLabel() || slots.content" :class="$style.body">
 			<Label
-				v-if="hasLabel"
+				v-if="hasLabel()"
 				:for="uuid"
 				:class="$style.content"
 				:data-disabled="disabled ? '' : undefined"
