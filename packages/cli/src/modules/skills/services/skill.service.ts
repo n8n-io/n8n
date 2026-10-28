@@ -51,7 +51,7 @@ import {
 	type SkillTarget,
 	type SkillUpdate,
 } from '../utils/skill-content';
-import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
+import { skillContentHash } from '../utils/skill-content-hash';
 import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
@@ -279,6 +279,7 @@ export class SkillService {
 		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, ...update } = payload;
+		const changes = toSkillUpdate(update, update.baseSkillHash);
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })
 			: undefined;
@@ -291,7 +292,7 @@ export class SkillService {
 		if (!moves && availableToAssistant === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.saveTrusted(
 				skillId,
-				toSkillUpdate(update, update.baseSkillHash),
+				changes,
 				user.id,
 			);
 			if (saved.created) {
@@ -316,12 +317,7 @@ export class SkillService {
 			if (availableToAssistant !== undefined) {
 				await this.setAssistantAvailability(skillId, availableToAssistant, target ?? skill, ctx);
 			}
-			return await this.saveTrusted(
-				skillId,
-				toSkillUpdate(update, update.baseSkillHash),
-				user.id,
-				ctx,
-			);
+			return await this.saveTrusted(skillId, changes, user.id, ctx);
 		});
 		// `saveTrusted` leaves the refresh to the caller when it joins a transaction.
 		await this.refreshFollowingAgents(followingAgentIds);
@@ -424,7 +420,8 @@ export class SkillService {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
 			const latest = (await this.skillRepository.findLatestSaved([skillId], txCtx)).get(skillId);
 			if (!latest) throw new NotFoundError('Skill not found');
-			const current = toAgentSkill(latest);
+			const stored = rowContent(latest);
+			const current = contentToAgentSkill(stored);
 			const { baseSkillHash, baseContentHash, ...changes } = update;
 			const startsFromLatest =
 				baseContentHash !== undefined
@@ -437,16 +434,10 @@ export class SkillService {
 			}
 			// Only a new name is trimmed, so a save never renames a skill it did not rename.
 			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
-			const merged = { ...rowContent(latest), ...changes };
-			const content: SkillContent = {
-				...merged,
-				frontmatter:
-					merged.frontmatter && Object.keys(merged.frontmatter).length > 0
-						? { ...merged.frontmatter }
-						: null,
-			};
+			const merged = { ...stored, ...changes };
+			const skill = contentToAgentSkill(merged);
+			const content = toSkillContent(skill, merged.frontmatter);
 			assertHasInstructions(content);
-			const skill = contentToAgentSkill(content);
 			if (skillContentHash(content) === latest.version.contentHash) {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };

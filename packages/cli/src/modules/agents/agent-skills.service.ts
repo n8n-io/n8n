@@ -309,12 +309,7 @@ export class AgentSkillsService {
 			return await this.skillService.saveTrusted(
 				skillId,
 				toSkillUpdate(
-					{
-						name: updated.name,
-						description: updated.description,
-						instructions: updated.instructions,
-						references: updated.references ?? [],
-					},
+					{ ...updated, references: updated.references ?? [] },
 					getAgentSkillHash(existing),
 				),
 				context.user.id,

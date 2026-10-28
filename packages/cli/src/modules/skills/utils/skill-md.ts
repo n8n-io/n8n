@@ -1,3 +1,4 @@
+import { agentSkillReferencePathSchema } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
@@ -113,12 +114,7 @@ function normalizePath(path: string): string {
 	return path.replaceAll('\\', '/').replace(/^(\.\/)+/, '');
 }
 
-/** The rule of `agentSkillReferenceSchema`: a markdown file under `references/`. */
+/** A markdown file under `references/`, by the rule of `agentSkillReferencePathSchema`. */
 function isReferencePath(path: string): boolean {
-	const segments = path.split('/');
-	return (
-		segments[0] === 'references' &&
-		/\.(md|markdown)$/.test(path) &&
-		segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-	);
+	return agentSkillReferencePathSchema.safeParse(path).success;
 }
