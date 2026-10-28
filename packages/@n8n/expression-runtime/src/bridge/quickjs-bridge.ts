@@ -13,10 +13,12 @@ import {
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
+import type { DataHolder } from './host-functions';
 import {
 	dispatchHostCall,
 	getArrayElement,
 	getValueAtPath,
+	heldData,
 	isErrorSentinel,
 	reconstructError,
 	serializeError,
@@ -1145,7 +1147,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create per-execute callback function handles, closure-scoped to `data`.
+	 * Create per-execute callback function handles.
 	 *
 	 * The handles are passed as arguments into the per-call wrapper function
 	 * (see execute()) instead of being set as VM globals: `execute()` can
@@ -1157,44 +1159,63 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Callers must dispose the returned handles when the call completes.
 	 */
 	private createCallbackHandles(
-		data: WorkflowData,
+		holder: DataHolder,
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
+		const handles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
-		const getValueFn = vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			try {
-				const result = getValueAtPath(data, pathArr);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
+		try {
+			handles.push(
+				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					try {
+						const result = getValueAtPath(heldData(holder), pathArr);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					const index = vm.dump(indexHandle) as number;
+					try {
+						const result = getArrayElement(heldData(holder), pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__callHostImpl', (msgHandle) => {
+					const rawMsg = vm.dump(msgHandle);
+					try {
+						const result = dispatchHostCall(rawMsg, heldData(holder));
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+		} catch (error) {
+			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
+			for (const handle of handles) {
+				try {
+					handle.dispose();
+				} catch {
+					// Throw the build error, not a dispose error.
+				}
 			}
-		});
+			throw error;
+		}
 
-		const getArrayFn = vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			const index = vm.dump(indexHandle) as number;
-			try {
-				const result = getArrayElement(data, pathArr, index);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
-			const rawMsg = vm.dump(msgHandle);
-			try {
-				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		return [getValueFn, getArrayFn, callHostFn];
+		return handles;
 	}
 
 	/**
@@ -1267,7 +1288,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (timeout <= 0) throw this.timeoutError(true);
 		}
 
-		const callbackHandles = this.createCallbackHandles(data);
+		// QuickJS frees a host function only when the guest function is collected,
+		// and its cycle collector runs late. So the callbacks read the data from a
+		// holder that `finally` clears, else a finished call's data stays in memory.
+		const holder: DataHolder = { data };
+		const callbackHandles = this.createCallbackHandles(holder);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1376,6 +1401,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
+			holder.data = undefined;
 			this.deadlines.pop();
 			if (!this.broken) {
 				for (const handle of callbackHandles) {

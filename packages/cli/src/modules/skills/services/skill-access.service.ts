@@ -134,7 +134,7 @@ export class SkillAccessService {
 				if (payload.projectId || payload.agentId) {
 					throw new UserError('An instance skill has no project and no agent.');
 				}
-				if (!hasGlobalScope(user, 'skill:create')) {
+				if (!(await this.canCreate(user, null))) {
 					throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
 				}
 				return { projectId: null, agentId: null };
@@ -163,8 +163,17 @@ export class SkillAccessService {
 		}
 	}
 
+	/**
+	 * Whether the user may create a skill in the project, or an instance skill when
+	 * `projectId` is null. Each caller decides what a skill of one agent needs.
+	 */
+	async canCreate(user: User, projectId: string | null): Promise<boolean> {
+		if (projectId === null) return hasGlobalScope(user, 'skill:create');
+		return await userHasScopes(user, ['projectSkill:create'], false, { projectId });
+	}
+
 	private async assertCanCreateIn(user: User, projectId: string): Promise<void> {
-		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
+		if (!(await this.canCreate(user, projectId))) {
 			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}
 	}
