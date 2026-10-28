@@ -10,7 +10,8 @@ import { SkillUsageProxy } from './skill-usage-proxy.service';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
 
-export type SkillTelemetrySource = SkillSource;
+/** Package imports report no skill telemetry. */
+export type SkillTelemetrySource = Exclude<SkillSource, 'import'>;
 
 /** `manual` and `upload` come from the skill modal. `ai` is text an assistant wrote. */
 export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai';

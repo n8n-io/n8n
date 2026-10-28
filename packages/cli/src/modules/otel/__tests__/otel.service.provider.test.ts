@@ -142,6 +142,7 @@ describe('OtelService on the startup OTel setup', () => {
 			mock<TracingSourcesConfig>({
 				daytonaTracingEnabled: false,
 				microsoftAgent365TracingEnabled: false,
+				microsoftAgent365ExportEnabled: false,
 			}),
 		);
 		otelSdk.start();

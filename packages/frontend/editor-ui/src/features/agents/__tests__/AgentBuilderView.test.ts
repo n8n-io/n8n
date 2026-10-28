@@ -6304,7 +6304,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			],
 		};
 		// Skills drop allowed tools: the edit keeps everything else.
-		const editedSkill = { ...updatedSkill, allowedTools: ['load_workflow'] };
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -6332,9 +6331,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof editedSkill }) => void;
+			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
 		};
-		modalData.onConfirm({ id: 'summarize_notes', skill: editedSkill });
+		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
 		await nextTick();
 
 		expect(
@@ -6360,58 +6359,58 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('omits allowed tools before saving a skill when none are attached', async () => {
-		const skill = {
-			name: 'summarize_notes',
-			description: 'Use when summarizing notes',
-			instructions: 'Read the notes and produce a concise summary.',
-			allowedTools: ['missing_tool'],
-		};
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-			skills: [{ type: 'skill', id: 'summarize_notes' }],
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValueOnce(
-			makeAgentResponse({
-				skills: {
-					summarize_notes: skill,
-				},
-				skillHashes: { summarize_notes: 'skill-hash-1' },
-			}),
-		);
-		updateAgentSkillMock.mockResolvedValueOnce({
-			id: 'summarize_notes',
-			skill: {
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			skillHash: 'skill-hash-2',
-			versionId: 'v2',
-		});
+	it.each([
+		{ pinned: false, expected: { draft: 3, published: 1, latest: 3, pinned: false } },
+		{ pinned: true, expected: { draft: 1, published: 1, latest: 3, pinned: true } },
+	])(
+		'counts the new skill version after a save that changed it (pinned: $pinned)',
+		async ({ pinned, expected }) => {
+			const skill = {
+				name: 'summarize_notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Read the notes and produce a concise summary.',
+			};
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				skills: [{ type: 'skill', id: 'summarize_notes' }],
+			};
+			mockConfig.value = withDefaultLlm(intendedConfig);
+			getAgentMock.mockResolvedValueOnce(
+				makeAgentResponse({
+					skills: { summarize_notes: skill },
+					skillHashes: { summarize_notes: 'skill-hash-1' },
+					skillVersions: {
+						summarize_notes: { draft: pinned ? 1 : 2, published: 1, latest: 2, pinned },
+					},
+				}),
+			);
+			const editedSkill = { ...skill, instructions: 'Summarize in one line.' };
+			updateAgentSkillMock.mockResolvedValueOnce({
+				id: 'summarize_notes',
+				skill: editedSkill,
+				skillHash: 'skill-hash-2',
+				versionId: 'v2',
+			});
 
-		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
-		await nextTick();
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
-		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			const wrapper = await renderView();
+			wrapper
+				.findComponent({ name: 'AgentSkillsSection' })
+				.vm.$emit('open-skill', 'summarize_notes');
+			await nextTick();
+			openModalWithDataMock.mock.calls[0][0].data.onConfirm({
+				id: 'summarize_notes',
+				skill: editedSkill,
+			});
+			await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			await nextTick();
 
-		expect(updateAgentSkillMock).toHaveBeenCalledWith(
-			expect.anything(),
-			'p1',
-			'a1',
-			'summarize_notes',
-			{
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			'skill-hash-1',
-			undefined,
-		);
-	});
+			expect(
+				(wrapper.vm as unknown as { agent: { skillVersions: Record<string, unknown> } }).agent
+					.skillVersions.summarize_notes,
+			).toEqual(expected);
+		},
+	);
 
 	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {
 		// A promise that we control — lets us capture the intermediate loading state.

@@ -143,6 +143,21 @@ describe('AgentModal', () => {
 		wrapper.unmount();
 	});
 
+	it('renders a side panel beside the body only when one is given', () => {
+		const withPanel = mountModal(
+			{},
+			{ default: '<p>Form</p>', sidePanel: '<p data-test-id="versions">Versions</p>' },
+		);
+		expect(
+			withPanel.find('[data-testid="agent-modal-side-panel"] [data-test-id="versions"]').exists(),
+		).toBe(true);
+		withPanel.unmount();
+
+		const withoutPanel = mountModal({}, { default: '<p>Form</p>' });
+		expect(withoutPanel.find('[data-testid="agent-modal-side-panel"]').exists()).toBe(false);
+		withoutPanel.unmount();
+	});
+
 	it('names the cancel button Cancel by default', () => {
 		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
 

@@ -9,7 +9,7 @@ import {
 	N8nTooltip,
 	N8nUserInfo,
 } from '@n8n/design-system';
-import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { IconName, TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -20,12 +20,13 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'download' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
 	value: SkillAction;
 	label: string;
+	icon: IconName;
 	disabled?: boolean;
 	tooltip?: string;
 	destructive?: boolean;
@@ -42,6 +43,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	open: [skill: SkillListItem];
+	timeline: [skill: SkillListItem];
+	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -54,6 +57,7 @@ const { deleteBlockedReason } = useSkillDeleteRule();
 const usersStore = useUsersStore();
 
 function actionsFor(skill: SkillListItem): SkillActionItem[] {
+	const deleteBlocked = deleteBlockedReason(skill);
 	return [
 		{
 			value: 'edit',
@@ -63,16 +67,31 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 					? 'settings.context.skills.actions.edit'
 					: 'settings.context.skills.actions.view',
 			),
+			icon: skill.canEdit ? 'pencil' : 'eye',
+		},
+		{
+			value: 'timeline',
+			label: i18n.baseText('settings.context.skills.actions.timeline'),
+			icon: 'history',
+		},
+		{
+			value: 'compare',
+			label: i18n.baseText('settings.context.skills.actions.compare'),
+			icon: 'file-diff',
+			// A skill with one version has nothing to compare.
+			disabled: skill.latestVersion < 2,
 		},
 		{
 			value: 'download',
 			label: i18n.baseText('settings.context.skills.actions.download'),
+			icon: 'download',
 		},
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
-			disabled: deleteBlockedReason(skill) !== undefined,
-			tooltip: deleteBlockedReason(skill),
+			icon: 'trash-2',
+			disabled: deleteBlocked !== undefined,
+			tooltip: deleteBlocked,
 			destructive: true,
 		},
 	];
@@ -80,6 +99,8 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
+	else if (action === 'timeline') emit('timeline', skill);
+	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
 	else emit('delete', skill);
 }

@@ -1,6 +1,16 @@
-import type { InstanceAiThreadSummary, AgentN8nChatThreadSummary } from '@n8n/api-types';
+import type {
+	InstanceAiThreadSummary,
+	AgentN8nChatThreadSummary,
+	SystemAgentThreadSummary,
+} from '@n8n/api-types';
 
-import { mergeRecentChats, mergeChatHistoryPages, type RecentChatItem } from './mergeRecentChats';
+import {
+	chatItemRoute,
+	mergeRecentChats,
+	mergeChatHistoryPages,
+	type RecentChatItem,
+} from './mergeRecentChats';
+import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 
 const assistantThread = (id: string, updatedAt: string): InstanceAiThreadSummary => ({
 	id,
@@ -16,7 +26,47 @@ const agentThread = (id: string, updatedAt: string): AgentN8nChatThreadSummary =
 	agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
 });
 
+const assistantAgentThread = (id: string, updatedAt: string): SystemAgentThreadSummary => ({
+	id,
+	title: `Assistant agent ${id}`,
+	updatedAt,
+	projectId: 'project-1',
+});
+
 describe('mergeRecentChats', () => {
+	it('merges Assistant agent threads as a third source, Assistant threads first on equal times', () => {
+		const assistant = [assistantThread('a1', '2026-01-02T00:00:00.000Z')];
+		const assistantAgent = [
+			assistantAgentThread('aa1', '2026-01-03T00:00:00.000Z'),
+			assistantAgentThread('aa2', '2026-01-02T00:00:00.000Z'),
+		];
+		const agent = [agentThread('g1', '2026-01-02T00:00:00.000Z')];
+
+		const result = mergeRecentChats(assistant, agent, {
+			limit: 5,
+			assistantAgentThreads: assistantAgent,
+		});
+
+		expect(result.map((item) => `${item.kind}:${item.thread.id}`)).toEqual([
+			'assistant-agent:aa1',
+			'assistant:a1',
+			'assistant-agent:aa2',
+			'agent:g1',
+		]);
+	});
+
+	it('opens an Assistant agent thread at the Assistant thread route', () => {
+		const item: RecentChatItem = {
+			kind: 'assistant-agent',
+			thread: assistantAgentThread('aa1', '2026-01-03T00:00:00.000Z'),
+		};
+
+		expect(chatItemRoute(item)).toEqual({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'aa1' },
+		});
+	});
+
 	it('interleaves both sources by updatedAt, newest first', () => {
 		const assistant = [assistantThread('a1', '2026-01-03T00:00:00.000Z')];
 		const agent = [
@@ -73,10 +123,11 @@ describe('mergeRecentChats', () => {
 });
 
 describe('mergeChatHistoryPages', () => {
-	const item = (kind: RecentChatItem['kind'], id: string, updatedAt: string): RecentChatItem =>
-		kind === 'assistant'
-			? { kind, thread: assistantThread(id, updatedAt) }
-			: { kind, thread: agentThread(id, updatedAt) };
+	const item = (kind: RecentChatItem['kind'], id: string, updatedAt: string): RecentChatItem => {
+		if (kind === 'assistant') return { kind, thread: assistantThread(id, updatedAt) };
+		if (kind === 'assistant-agent') return { kind, thread: assistantAgentThread(id, updatedAt) };
+		return { kind, thread: agentThread(id, updatedAt) };
+	};
 
 	it('merges and sorts every loaded item when no source has more pages', () => {
 		const result = mergeChatHistoryPages([
