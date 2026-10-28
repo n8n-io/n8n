@@ -33,7 +33,7 @@ describe('AgentMemoryTraceService', () => {
 			)
 		).id;
 		memory = Container.get(N8nMemory).getImplementation(agentId);
-	});
+	}, 60_000);
 
 	afterAll(async () => {
 		await testDb.terminate();
