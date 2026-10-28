@@ -1,4 +1,5 @@
-import type { PolicyViolation } from '@n8n/decorators';
+import { POLICY_VIOLATION_KIND, POLICY_VIOLATION_SUBJECT_TYPE } from '@n8n/api-types';
+import type { PolicyDecision, PolicyViolation } from '@n8n/decorators';
 
 import type { ComposedTypeVerdict } from './type-availability-policy.service';
 
@@ -10,14 +11,14 @@ export type TypeViolationSubject = {
 };
 
 export const NODE_TYPE_SUBJECT: TypeViolationSubject = {
-	kind: 'node-type-unavailable',
-	subjectType: 'nodeType',
+	kind: POLICY_VIOLATION_KIND.nodeTypeUnavailable,
+	subjectType: POLICY_VIOLATION_SUBJECT_TYPE.nodeType,
 	label: 'Node type',
 };
 
 export const CREDENTIAL_TYPE_SUBJECT: TypeViolationSubject = {
-	kind: 'credential-type-unavailable',
-	subjectType: 'credentialType',
+	kind: POLICY_VIOLATION_KIND.credentialTypeUnavailable,
+	subjectType: POLICY_VIOLATION_SUBJECT_TYPE.credentialType,
 	label: 'Credential type',
 };
 
@@ -43,4 +44,21 @@ export function toTypeViolation(
 		// With no project there is nowhere to opt in, whatever the instance delegated.
 		optInAvailable: projectId !== null && verdict.optInAvailable,
 	};
+}
+
+/**
+ * The denied node types of a decision, by type name. A violation names the type, never the node
+ * that holds it, so a caller attributes it by matching the types its own entry runs as.
+ */
+export function deniedNodeTypes(decision: PolicyDecision): Map<string, PolicyViolation> {
+	const denied = new Map<string, PolicyViolation>();
+
+	for (const violation of decision.violations) {
+		if (violation.kind !== NODE_TYPE_SUBJECT.kind) continue;
+		if (violation.subjectType !== NODE_TYPE_SUBJECT.subjectType) continue;
+		if (!violation.subject) continue;
+		if (!denied.has(violation.subject)) denied.set(violation.subject, violation);
+	}
+
+	return denied;
 }

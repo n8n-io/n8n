@@ -12,12 +12,15 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { PARENT_TASK_CANCELLED_REASON } from '../background/sub-agent-background-state';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 
 const context = {
 	projectId: 'project-1',
@@ -59,6 +62,11 @@ const checkpoint = mock<SerializableAgentState>({
 	},
 });
 
+/** Makes the agent of the test thread a system agent. */
+function registerSystemAgent(systemAgents: SystemAgentRegistry) {
+	systemAgents.register(mock<SystemAgentProvider>({ agentId: 'agent-1', name: 'System agent' }));
+}
+
 function makeService(isMultiMain = true) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
@@ -67,6 +75,7 @@ function makeService(isMultiMain = true) {
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
 	const steering = mock<AgentMessageSteeringService>();
 	const backgroundJobs = mock<AgentBackgroundJobService>();
+	const systemAgents = new SystemAgentRegistry();
 	const service = new AgentChatExecutionService(
 		Container.get(LockService),
 		repository,
@@ -77,6 +86,7 @@ function makeService(isMultiMain = true) {
 		updates,
 		steering,
 		backgroundJobs,
+		systemAgents,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
 	repository.findOneBy.mockImplementation(async (where) =>
@@ -90,6 +100,7 @@ function makeService(isMultiMain = true) {
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
 	return {
 		service,
+		systemAgents,
 		repository,
 		executionService,
 		checkpointStorage,
@@ -101,6 +112,101 @@ function makeService(isMultiMain = true) {
 }
 
 beforeEach(() => Container.reset());
+
+describe('session stop cleanup', () => {
+	it('aborts the registered chat and cancels its background jobs', async () => {
+		const { service, backgroundJobs } = makeService(false);
+		const controller = new AbortController();
+		service.register(context, controller);
+
+		service.stopSessionExecutions(context.agentId, context.threadId, [context.executionId]);
+		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		expect(controller.signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(backgroundJobs.cancelForSession).toHaveBeenCalledExactlyOnceWith(
+			context.agentId,
+			context.threadId,
+		);
+	});
+
+	it('signals local work without querying shared state', () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		const controller = new AbortController();
+		service.register(context, controller);
+
+		service.stopSessionExecutions(context.agentId, context.threadId, [context.executionId]);
+
+		expect(controller.signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(backgroundJobs.requestCancelForSession).toHaveBeenCalledExactlyOnceWith(
+			context.agentId,
+			context.threadId,
+		);
+		expect(repository.findLatestByThreadId).not.toHaveBeenCalled();
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+
+	it('clears a late suspension without repeating background cleanup', async () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({ ...running, hitlStatus: 'suspended', status: 'cancelled' }),
+		);
+
+		await service.cancelSessionSuspension(context.agentId, context.threadId, context.executionId);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledExactlyOnceWith(
+			'run-1',
+			checkpoint,
+			context.agentId,
+		);
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+
+	it('removes a suspension recorded by a selected execution', async () => {
+		const { service, repository, checkpointStorage, updates } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({
+				...running,
+				hitlStatus: 'suspended',
+				status: 'cancelled',
+			}),
+		);
+
+		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledExactlyOnceWith(
+			'run-1',
+			checkpoint,
+			context.agentId,
+		);
+		expect(checkpointStorage.delete).toHaveBeenCalledExactlyOnceWith('run-1', context.agentId);
+		expect(updates.notify).toHaveBeenCalledWith({
+			projectId: context.projectId,
+			agentId: context.agentId,
+			threadId: context.threadId,
+			executionId: context.executionId,
+		});
+	});
+
+	it('retains the checkpoint and background jobs of a later execution', async () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({
+				...running,
+				id: 'new-execution',
+				hitlStatus: 'suspended',
+			}),
+		);
+
+		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		await service.cancelSessionSuspension(context.agentId, context.threadId, context.executionId);
+
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+});
 
 it('closes steering admission before signaling Stop', async () => {
 	const { service, steering } = makeService();
@@ -232,6 +338,7 @@ it.each(['foreground', 'all'] as const)(
 	async (scope) => {
 		const mainA = makeService();
 		const mainB = makeService();
+		for (const main of [mainA, mainB]) registerSystemAgent(main.systemAgents);
 		const controller = new AbortController();
 		const system = { ...context, surface: 'system' as const };
 		mainA.service.register(system, controller);
@@ -273,10 +380,27 @@ it.each(['foreground', 'all'] as const)(
 );
 
 it('does not let the Preview surface stop a system-agent turn', async () => {
-	const { service, repository } = makeService(false);
+	const { service, repository, systemAgents } = makeService(false);
+	registerSystemAgent(systemAgents);
 	repository.findOneBy.mockResolvedValue({ ...running, source: 'system_chat' });
 
 	await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+});
+
+it('does not let the Preview surface stop a system-agent turn with a Preview source', async () => {
+	const { service, systemAgents } = makeService(false);
+	registerSystemAgent(systemAgents);
+
+	await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+});
+
+it('does not let the system surface stop a turn of a project agent', async () => {
+	const { service, repository } = makeService(false);
+	repository.findOneBy.mockResolvedValue({ ...running, source: 'system_chat' });
+
+	await expect(service.requestCancel({ ...context, surface: 'system' })).rejects.toThrow(
+		'Execution not found',
+	);
 });
 
 describe.each(['foreground', 'all'] as const)('%s Stop during startup', (scope) => {
@@ -453,6 +577,33 @@ it('requires the production source before cancelling a suspended run', async () 
 		context.userId,
 		'existing',
 	);
+});
+
+describe('cancel access for a task thread', () => {
+	const taskThread = mock<AgentExecutionThread>({
+		id: context.threadId,
+		projectId: context.projectId,
+		agentId: context.agentId,
+		accessScope: 'user',
+		ownerId: context.userId,
+		parentThreadId: null,
+		taskId: 'task-1',
+	});
+
+	it('refuses it on the Preview surface, like the Preview continue rule', async () => {
+		const { service, executionService } = makeService(false);
+		executionService.findThreadById.mockResolvedValue(taskThread);
+
+		await expect(service.requestCancel(context)).rejects.toThrow('Execution not found');
+	});
+
+	it('keeps the own cancel rule of n8n Chat, which does not check the task', async () => {
+		const { service, executionService, repository } = makeService(false);
+		executionService.findThreadById.mockResolvedValue(taskThread);
+		repository.findOneBy.mockResolvedValue({ ...running, source: 'n8n_chat_production' });
+
+		await expect(service.requestCancel({ ...context, surface: 'n8n-chat' })).resolves.toBe(true);
+	});
 });
 
 it('rejects preview and foreign executions on the production cancel route', async () => {

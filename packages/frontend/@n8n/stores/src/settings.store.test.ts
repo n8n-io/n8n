@@ -246,6 +246,24 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isEnterprisePlan', () => {
+		it.each([
+			{ planName: 'Enterprise', expected: true },
+			{ planName: 'Business', expected: false },
+			{ planName: undefined, expected: false },
+		])('returns $expected for plan $planName', async ({ planName, expected }) => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				license: { planName } as FrontendSettings['license'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isEnterprisePlan).toBe(expected);
+		});
+	});
+
 	describe('isCrdtCollaborationEnabled', () => {
 		it('should return true when collaboration.crdt is local', async () => {
 			getSettings.mockResolvedValueOnce({

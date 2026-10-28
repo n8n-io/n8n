@@ -17,8 +17,10 @@ export const expectationResultSchema = z.object({
 			// making every verdict come back empty. The integer check lives in the range
 			// guard below instead, where a bad index just drops out and triggers a retry.
 			index: z.number(),
-			pass: z.boolean(),
+			// `reason` before `pass`: the model writes keys in schema order, and a verdict
+			// written first can disagree with the reason that follows it.
 			reason: z.string(),
+			pass: z.boolean(),
 		}),
 	),
 });

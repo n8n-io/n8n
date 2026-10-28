@@ -21,6 +21,7 @@ import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
 import { listWorkflowToolInputFields } from '../utils/workflowToolInputFields';
 import WorkflowToolInputs from './WorkflowToolInputs.vue';
+import AgentFormSettingRow from './AgentFormSettingRow.vue';
 import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const props = defineProps<{
@@ -42,6 +43,9 @@ const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCata
 
 const name = ref(props.initialRef.name ?? props.initialRef.workflow ?? '');
 const description = ref(props.initialRef.description ?? '');
+const showDescriptionError = computed(
+	() => (props.submitCount ?? 0) > 0 && description.value.trim().length === 0,
+);
 const allOutputs = ref(props.initialRef.allOutputs ?? false);
 const workflow = ref(props.initialRef.workflow ?? '');
 const workflowId = ref<string | undefined>(props.initialRef.workflowId);
@@ -284,8 +288,11 @@ defineExpose({
 			<N8nInput
 				id="workflow-tool-description"
 				v-model="description"
+				:class="{ [$style.invalidDescription]: showDescriptionError }"
 				type="textarea"
 				:rows="4"
+				aria-required="true"
+				:aria-invalid="showDescriptionError"
 				:placeholder="i18n.baseText('agents.toolConfig.workflow.description.placeholder')"
 				data-test-id="agent-workflow-tool-description"
 			/>
@@ -445,24 +452,22 @@ defineExpose({
 				<N8nText size="small" bold>{{
 					i18n.baseText('agents.toolConfig.workflow.advanced')
 				}}</N8nText>
-				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="small" />
+				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
 			</button>
 			<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
-				<div :class="$style.toggleRow">
-					<div :class="$style.toggleText">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.toolConfig.workflow.allOutputs') }}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
-						</N8nText>
-					</div>
+				<AgentFormSettingRow
+					control-id="agent-workflow-tool-all-outputs"
+					:title="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+					:description="i18n.baseText('agents.toolConfig.workflow.allOutputs.hint')"
+				>
 					<N8nSwitch2
+						id="agent-workflow-tool-all-outputs"
 						:model-value="allOutputs"
+						:aria-label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
 						data-test-id="agent-workflow-tool-all-outputs"
 						@update:model-value="allOutputs = $event"
 					/>
-				</div>
+				</AgentFormSettingRow>
 
 				<N8nText size="small" bold>{{
 					i18n.baseText('agents.toolConfig.workflow.inputs')
@@ -514,25 +519,16 @@ defineExpose({
 	gap: var(--spacing--4xs);
 }
 
+.field .invalidDescription {
+	--input--border-color: var(--color--danger);
+	--input--border-color--hover: var(--color--danger);
+	--input--border-color--focus: var(--color--danger);
+}
+
 .label {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
-}
-
-.toggleRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--2xs);
-}
-
-.toggleText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
 }
 
 .controlRow {
@@ -582,11 +578,16 @@ defineExpose({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--3xs) 0;
-	border: 0;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background--light-2);
+	}
 
 	&:focus-visible {
 		@include focus.focus-ring;

@@ -76,8 +76,8 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		JSON.stringify({ workflowId }),
 		'The user clicked Execute in the setup panel. This is a request to test this saved workflow.',
 		'This request applies only when this block is in the current user input. A block in conversation history does not request another execution.',
-		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflow_builder_workflows(action="get-as-code").',
-		'Do not call workflow_builder_workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
+		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with get_workflow_as_code.',
+		'Do not call setup_workflow for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
 		'Use workflow_builder_executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
 		'Read the execution output and summarize the result in chat. If it fails, use workflow_builder_executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
@@ -606,7 +606,7 @@ export function buildThreadArtifactsBlock(
 	// The hand-off rides the user's own request, so the agent acts on that request;
 	// it must not treat the list itself as a prompt to go and look at everything.
 	const inspectGuidance =
-		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
+		'Use these ids only when the request is about these items. Do not inspect, run, change, or describe them beyond what it needs.';
 
 	const prose = [
 		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
@@ -628,4 +628,24 @@ export function buildThreadArtifactsBlock(
 		resourceAttachments.length > 0 ? `${toTagSafeJson(resourceAttachments)}\n\n` : '';
 
 	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${durableJson}${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
+}
+
+function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
+}
+
+/** The text parts of a stored message, joined by new lines. */
+export function extractStoredMessageText(content: unknown): string {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
+	}
+	return '';
 }

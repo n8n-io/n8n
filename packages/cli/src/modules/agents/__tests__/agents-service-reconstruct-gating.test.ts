@@ -19,6 +19,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { AgentsConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -29,6 +30,9 @@ import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentPlanService } from '../agent-plan.service';
@@ -36,6 +40,7 @@ import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -52,7 +57,7 @@ import { ChatIntegrationContextQueryExecutor } from '../integrations/integration
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -108,6 +113,7 @@ function makeReconstructionService(
 		agentFileRepository?: AgentFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
 		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -143,6 +149,8 @@ function makeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
+		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -317,7 +325,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 
 describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
-	const reconstructWithWorkspace = async (service: AgentRuntimeReconstructionService) =>
+	const reconstructWithWorkspace = async (
+		service: AgentRuntimeReconstructionService,
+		abortSignal?: AbortSignal,
+	) =>
 		await service.reconstructFromAgentEntity(
 			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
@@ -327,6 +338,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			undefined,
 			'manual',
 			principalHash,
+			{ abortSignal },
 		);
 
 	beforeEach(() => {
@@ -386,6 +398,79 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
 	});
+
+	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const workspace = new Workspace({});
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace,
+			handle: mock<AgentSandboxRuntime>(),
+		});
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentFileRepository,
+			agentWorkspaceService,
+			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
+		});
+
+		await reconstructWithWorkspace(service);
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		// The file repository is never asked while knowledge is off.
+		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		for (const toolName of ['find_file', 'search_text', 'read_file']) {
+			expect(getInjectedToolNames()).not.toContain(toolName);
+		}
+	});
+
+	it.each(['runtime', 'workspace'])(
+		'cancels stalled %s construction and closes the runtime without later setup',
+		async (stage) => {
+			const started = createDeferredPromise();
+			const construction = createDeferredPromise<agents.Agent>();
+			const acquisition =
+				createDeferredPromise<Awaited<ReturnType<AgentWorkspaceService['getAgentWorkspace']>>>();
+			const agentFileRepository = mock<AgentFileRepository>();
+			const agentWorkspaceService = mock<AgentWorkspaceService>();
+			agentWorkspaceService.getAgentWorkspace.mockImplementationOnce(async () => {
+				started.resolve();
+				return await acquisition.promise;
+			});
+			buildFromJsonMock.mockImplementationOnce(async () => {
+				if (stage === 'runtime') {
+					started.resolve();
+					return await construction.promise;
+				}
+				return builtAgent;
+			});
+			builtAgent.close.mockRejectedValueOnce(new Error('teardown failed'));
+			const service = makeReconstructionService({
+				agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
+				agentWorkspaceService,
+				agentFileRepository,
+			});
+			const controller = new AbortController();
+			const reason = new Error('setup cancelled');
+			const building = reconstructWithWorkspace(service, controller.signal);
+			const rejected = expect(building).rejects.toBe(reason);
+			await started.promise;
+			controller.abort(reason);
+			await rejected;
+			construction.resolve(builtAgent);
+			acquisition.resolve({ workspace: new Workspace({}), handle: mock<AgentSandboxRuntime>() });
+			await vi.waitFor(() => expect(builtAgent.close).toHaveBeenCalledTimes(1));
+
+			expect(builtAgent.workspace).not.toHaveBeenCalled();
+			expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+			expect(builtAgent.fileStore).not.toHaveBeenCalled();
+		},
+		1_000,
+	);
 
 	it('does not attach a workspace to inline runtimes', async () => {
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({

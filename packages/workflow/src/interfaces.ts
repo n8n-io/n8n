@@ -641,7 +641,7 @@ export interface IHttpRequestOptions {
 	abortSignal?: GenericAbortSignal;
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -700,7 +700,7 @@ export interface IRequestOptions {
 
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -1111,6 +1111,14 @@ export interface RequestHelperFunctions {
 	 * @param {UseDefaultSsrfPolicy} [useDefaultSsrfPolicy='safe'] how the instance policy applies to the returned filter
 	 */
 	getSecureEgressFilter(useDefaultSsrfPolicy?: UseDefaultSsrfPolicy): NodeEgressFilter;
+	/**
+	 * W3C trace context (`traceparent`, plus `tracestate` when set) for the node that
+	 * runs now, for clients that build their own HTTP transport. `httpRequest` and
+	 * `request` add these headers themselves. Empty when there is nothing to send, so
+	 * callers can use it unguarded. Call it for each request: one open transport
+	 * serves many spans.
+	 */
+	getTraceHeaders(): Record<string, string>;
 }
 
 export type SSHCredentials = {
@@ -1189,6 +1197,12 @@ export interface SchedulingFunctions {
 }
 
 export type NodeTypeAndVersion = {
+	/**
+	 * Stable canvas node ID. Unlike `name`, it survives a rename.
+	 * Optional so that existing callers that build this type by hand keep compiling;
+	 * the execution engine always sets it.
+	 */
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion: number;
@@ -2928,6 +2942,12 @@ export interface INodeTypeBaseDescription {
 	deprecated?: true;
 
 	/**
+	 * The node type to suggest as the replacement for this deprecated node.
+	 * The editor's deprecation notice and the error for a refused save name it.
+	 */
+	replacedByNodeType?: string;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
@@ -4161,6 +4181,13 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	/**
+	 * Whether this workflow, when it runs as a sub-workflow, makes the calling
+	 * execution redact the channels this workflow redacts itself. The caller keeps a
+	 * copy of its output. Redaction that it received from its own sub-workflows
+	 * always passes to the caller. When the setting is not set, it is on.
+	 */
+	redactCallerExecutions?: boolean;
 	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
@@ -4600,7 +4627,6 @@ export interface IUserSettings {
 	instanceAi?: {
 		credentialId?: string | null;
 		modelName?: string;
-		localGatewayDisabled?: boolean;
 	};
 	mcpJsonNudge?: {
 		impressions: number;
@@ -4686,4 +4712,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

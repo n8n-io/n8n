@@ -5,9 +5,14 @@ import { NodeApiError } from 'n8n-workflow';
 import { makePermissionErrorLegible, sanitizeApiMessage } from '../actions/helpers';
 import { OPENAPI_DISABLED_NOTICE, OPENAPI_PATH } from '../actions/lakebase/openApiDocument';
 
+// Keyed on 503 with no PostgREST code: that is the only shape this setting produces
+const DATA_API_DISABLED_HINT =
+	'Enable the Data API on the branch in Databricks (App Backend > Data API). A retry does not help until it is on.';
+
 /**
  * Keyed on the code the Data API returns, never on its prose, because the wording
  * changes between versions. A Map so a key like `constructor` cannot match by accident.
+ * When the map has no entry, the `hint` field of the body is the fallback.
  */
 export const LAKEBASE_ERROR_HINTS = new Map<string, string>([
 	[
@@ -70,17 +75,24 @@ export function makeLakebaseErrorLegible(error: unknown, options: IHttpRequestOp
 	}
 
 	const code = typeof body.code === 'string' ? body.code : undefined;
-	if (!code) return;
+	const apiMessage = typeof body.message === 'string' && body.message ? body.message : undefined;
 
-	const hint =
-		code === 'PGRST205' && OPENAPI_PATH.test(options.url)
+	const knownHint = code
+		? code === 'PGRST205' && OPENAPI_PATH.test(options.url)
 			? OPENAPI_DISABLED_NOTICE
-			: LAKEBASE_ERROR_HINTS.get(code);
-	if (!hint) return;
+			: LAKEBASE_ERROR_HINTS.get(code)
+		: error.httpCode === '503'
+			? DATA_API_DISABLED_HINT
+			: undefined;
+	// Postgres text (`RAISE ... USING HINT`), so it is sanitized like the message
+	const bodyHint =
+		typeof body.hint === 'string' && body.hint ? sanitizeApiMessage(body.hint) : undefined;
+	const hint = knownHint ?? bodyHint;
+	if (!apiMessage && !hint) return;
 
-	const apiMessage = typeof body.message === 'string' ? body.message : undefined;
 	if (apiMessage) error.message = sanitizeApiMessage(apiMessage);
 
-	// A description equal to the message is dropped, which would lose the fix
-	if (hint !== error.message) error.description = hint;
+	// NodeApiError copies the body message into the description, so a promoted
+	// message without a hint must clear it or the user reads the same text twice
+	error.description = hint !== error.message ? hint : undefined;
 }

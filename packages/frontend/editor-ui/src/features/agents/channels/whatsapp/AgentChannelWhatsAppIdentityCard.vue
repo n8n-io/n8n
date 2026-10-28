@@ -28,7 +28,7 @@ const props = withDefaults(
 	},
 );
 
-const emit = defineEmits<{ connect: [] }>();
+const emit = defineEmits<{ connect: []; openManager: [] }>();
 
 const i18n = useI18n();
 
@@ -59,7 +59,10 @@ const subtitle = computed(() => {
 
 <template>
 	<div
-		:class="[$style.identity, { [$style.identityReady]: ready }]"
+		:class="[
+			$style.identity,
+			{ [$style.identityReady]: ready, [$style.locked]: showConnect && !ready },
+		]"
 		data-testid="whatsapp-identity"
 	>
 		<img
@@ -92,6 +95,7 @@ const subtitle = computed(() => {
 			variant="outline"
 			size="medium"
 			data-testid="whatsapp-manager-link"
+			@click="emit('openManager')"
 		>
 			{{ i18n.baseText('agents.channels.whatsapp.settings.editInManager') }}
 			<N8nIcon icon="arrow-up-right" size="small" />
@@ -125,6 +129,10 @@ const subtitle = computed(() => {
 .identityReady {
 	background: light-dark(var(--color--neutral-50), var(--color--white-alpha-50));
 	border-color: light-dark(var(--border-color--subtle), var(--border-color));
+}
+
+.locked {
+	opacity: 0.45;
 }
 
 .avatar {

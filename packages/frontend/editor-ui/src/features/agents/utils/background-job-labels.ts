@@ -9,6 +9,23 @@ export const BACKGROUND_JOB_STATUS_LABEL_KEYS = {
 
 export function backgroundJobTimelineLabelKey(key: string): BaseTextKey | undefined {
 	switch (key) {
+		case 'background-task':
+			return 'agentSessions.timeline.backgroundTask';
+		case 'background-task-current-completed':
+			return 'agentSessions.timeline.taskCompleted';
+		case 'background-task-current-failed':
+			return 'agentSessions.timeline.taskFailed';
+		case 'background-task-current-cancelled':
+			return 'agentSessions.timeline.taskCancelled';
+		case 'background-task-current-running':
+		case 'background-task-running':
+			return 'agentSessions.timeline.taskRunning';
+		case 'background-task-current-suspended':
+		case 'background-task-suspended':
+			return 'agentSessions.timeline.taskSuspended';
+		case 'background-task-current-paused':
+		case 'background-task-paused':
+			return 'agentSessions.timeline.taskPaused';
 		case 'background-task-signal':
 			return 'agents.chat.backgroundTasks.resultsReceived';
 		case 'background-task-completed':

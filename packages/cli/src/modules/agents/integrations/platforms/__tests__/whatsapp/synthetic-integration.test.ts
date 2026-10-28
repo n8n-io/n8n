@@ -30,6 +30,7 @@ import {
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
 import { WhatsAppCredentialCheckService } from '../../whatsapp/whatsapp-credential-check.service';
+import type { WhatsAppSetupTelemetryService } from '../../whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
@@ -1172,8 +1173,10 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 
 		it('records the handshake when the token matches', async () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
 			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
 				webhookVerification,
+				setupTelemetry,
 			});
 
 			try {
@@ -1182,6 +1185,10 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				expect(response.status).toBe(200);
 				expect(await response.text()).toBe('12345');
 				expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+				expect(setupTelemetry.webhookVerified).toHaveBeenCalledExactlyOnceWith(
+					'agent-1',
+					'connected',
+				);
 			} finally {
 				await ctx.shutdown();
 			}
@@ -1189,8 +1196,10 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 
 		it('does not record a rejected handshake', async () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
 			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
 				webhookVerification,
+				setupTelemetry,
 			});
 
 			try {
@@ -1198,6 +1207,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 
 				expect(response.status).toBe(403);
 				expect(webhookVerification.markVerified).not.toHaveBeenCalled();
+				expect(setupTelemetry.webhookVerified).not.toHaveBeenCalled();
 			} finally {
 				await ctx.shutdown();
 			}
@@ -1212,7 +1222,8 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 
 		it("answers Meta's handshake with the raw challenge when the token matches", () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
-			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification, setupTelemetry);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -1228,11 +1239,13 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 
 			expect(result).toEqual({ status: 200, body: '12345', raw: true });
 			expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+			expect(setupTelemetry.webhookVerified).toHaveBeenCalledExactlyOnceWith('agent-1', 'setup');
 		});
 
 		it('rejects the handshake when the verify token does not match', () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
-			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification, setupTelemetry);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',

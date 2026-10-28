@@ -306,6 +306,12 @@ for (const backend of ['memory', 'redis'] as const) {
 		});
 
 		describe('setHash', () => {
+			test('should not create a cache entry for an empty hash', async () => {
+				await cacheService.setHash('emptyHash', {});
+
+				await expect(cacheService.getHash('emptyHash')).resolves.toBeUndefined();
+			});
+
 			test('should set a hash if non-existing', async () => {
 				await cacheService.setHash('keyW', { field: 'value' });
 

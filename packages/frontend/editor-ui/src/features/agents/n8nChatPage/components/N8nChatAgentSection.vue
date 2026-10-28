@@ -14,7 +14,7 @@ const PAGE_SIZE = 6;
 
 const i18n = useI18n();
 
-const { agents, count, isLoading, loadFailed } = useN8nChatAgents({
+const { agents, count, isLoading, loadFailed, retry } = useN8nChatAgents({
 	query: '',
 	page: 1,
 	pageSize: PAGE_SIZE,
@@ -45,7 +45,12 @@ const showSection = computed(
 			</RouterLink>
 		</div>
 
-		<N8nChatAgentGrid :agents="agents" :loading="isLoading" source="card" />
+		<N8nChatAgentGrid
+			:agents="agents"
+			:loading="isLoading"
+			source="card"
+			@agent-made-available="retry"
+		/>
 	</div>
 </template>
 

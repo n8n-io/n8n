@@ -162,6 +162,11 @@ describe('MigrationRuleDetail', () => {
 		vi.clearAllMocks();
 	});
 
+	const openFilters = async () => {
+		await userEvent.click(await screen.findByTestId('migration-rule-filters'));
+		return await screen.findByTestId('migration-rule-filters-content');
+	};
+
 	describe('initial rendering', () => {
 		it('should set the document title', () => {
 			document.title = '';
@@ -727,7 +732,9 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 			expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
 			expect(screen.queryByText('Test Workflow 3')).not.toBeInTheDocument();
-			expect(screen.getByTestId('migration-rule-quick-filter-open')).toHaveAttribute(
+			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('2');
+			const content = await openFilters();
+			expect(within(content).getByTestId('migration-rule-quick-filter-open')).toHaveAttribute(
 				'aria-pressed',
 				'true',
 			);
@@ -1097,6 +1104,7 @@ describe('MigrationRuleDetail', () => {
 		it.each([
 			{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
 			{ impact: 'executionsFail', label: 'Executions will fail' },
+			{ impact: 'executionsMightFail', label: 'Executions might fail' },
 			{ impact: 'behaviorChanges', label: 'Behavior changes' },
 			{ impact: 'capabilityRemoved', label: 'Capability removed' },
 		] as const)('should display $impact impact correctly', async ({ impact, label }) => {
@@ -1350,38 +1358,67 @@ describe('MigrationRuleDetail', () => {
 				.map((row) => row.textContent ?? '')
 				.map((text) => /Test Workflow \d/.exec(text)?.[0]);
 
+		it('should show the quick filters inside the filters popover', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
+			expect(screen.queryByTestId('migration-rule-quick-filter-open')).not.toBeInTheDocument();
+
+			const content = await openFilters();
+			expect(within(content).getByTestId('migration-rule-quick-filter-open')).toBeVisible();
+		});
+
 		it('should show the count of each finding state and of unassigned workflows', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
 
-			await waitFor(() => {
-				expect(screen.getByTestId('migration-rule-quick-filter-open')).toHaveTextContent('Open 2');
-			});
-			expect(screen.getByTestId('migration-rule-quick-filter-wont-fix')).toHaveTextContent(
+			const content = await openFilters();
+			expect(within(content).getByTestId('migration-rule-quick-filter-open')).toHaveTextContent(
+				'Open 2',
+			);
+			expect(within(content).getByTestId('migration-rule-quick-filter-wont-fix')).toHaveTextContent(
 				"Won't fix 1",
 			);
-			expect(screen.getByTestId('migration-rule-quick-filter-unassigned')).toHaveTextContent(
-				'Unassigned 2',
-			);
+			expect(
+				within(content).getByTestId('migration-rule-quick-filter-unassigned'),
+			).toHaveTextContent('Unassigned 2');
 		});
 
 		it('should filter by finding state and clear the filter on a second click', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(rowNames()).toHaveLength(3));
 
-			const wontFix = screen.getByTestId('migration-rule-quick-filter-wont-fix');
+			const content = await openFilters();
+			const wontFix = within(content).getByTestId('migration-rule-quick-filter-wont-fix');
 			await userEvent.click(wontFix);
 			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 3']));
 			expect(wontFix).toHaveAttribute('aria-pressed', 'true');
+			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
 
 			await userEvent.click(wontFix);
 			await waitFor(() => expect(rowNames()).toHaveLength(3));
+			expect(screen.queryByTestId('migration-rule-filters-count')).not.toBeInTheDocument();
+		});
+
+		it('should set the state filter from a quick filter', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(rowNames()).toHaveLength(3));
+
+			const content = await openFilters();
+			await userEvent.click(within(content).getByTestId('migration-rule-quick-filter-open'));
+
+			const stateFilter = within(content).getByTestId('migration-rule-filter-state');
+			await waitFor(() => {
+				expect(within(stateFilter).getByRole('radio', { name: 'Open' })).toBeChecked();
+			});
+			expect(rowNames()).toEqual(['Test Workflow 1', 'Test Workflow 2']);
 		});
 
 		it('should filter the workflows without an owner', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(rowNames()).toHaveLength(3));
 
-			await userEvent.click(screen.getByTestId('migration-rule-quick-filter-unassigned'));
+			const content = await openFilters();
+			await userEvent.click(within(content).getByTestId('migration-rule-quick-filter-unassigned'));
 			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 2', 'Test Workflow 3']));
 		});
 
@@ -1389,37 +1426,43 @@ describe('MigrationRuleDetail', () => {
 			mockedStore(useUsersStore).currentUserId = 'user-1';
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(rowNames()).toHaveLength(3));
-			expect(screen.getByTestId('migration-rule-quick-filter-mine')).toHaveTextContent(
-				'Assigned to me 1',
-			);
 
-			await userEvent.click(screen.getByTestId('migration-rule-quick-filter-mine'));
+			const content = await openFilters();
+			const mine = within(content).getByTestId('migration-rule-quick-filter-mine');
+			expect(mine).toHaveTextContent('Assigned to me 1');
+
+			await userEvent.click(mine);
 			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 1']));
 		});
 	});
 
-	describe('sort menu', () => {
-		it('should show the current sort and sort by the picked field', async () => {
+	describe('sort select', () => {
+		const pickSort = async (label: string) => {
+			await userEvent.click(screen.getByTestId('migration-rule-sort'));
+			const items = await screen.findAllByTestId('migration-rule-sort-item');
+			const item = items.find((candidate) => candidate.textContent?.includes(label));
+			if (!item) throw new Error(`No sort option "${label}"`);
+			await userEvent.click(item);
+		};
+
+		const sortInput = () => within(screen.getByTestId('migration-rule-sort')).getByRole('combobox');
+
+		it('should show the current sort and sort by the picked option', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() =>
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1'),
+			);
+			expect(sortInput()).toHaveValue('Sort by most runs');
 
-			const trigger = await screen.findByTestId('migration-rule-sort-trigger');
-			expect(trigger).toHaveTextContent('Sort: Executions ↓');
-
-			await userEvent.click(trigger);
-			await userEvent.click(await screen.findByRole('menuitem', { name: /Name/ }));
-
+			await pickSort('Sort by name (Z-A)');
 			await waitFor(() => {
-				expect(trigger).toHaveTextContent('Sort: Name ↑');
-				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
+				expect(sortInput()).toHaveValue('Sort by name (Z-A)');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 2');
 			});
 
-			// Picking the same field again flips the direction.
-			await userEvent.click(trigger);
-			await userEvent.click(await screen.findByRole('menuitem', { name: /Name/ }));
-
+			await pickSort('Sort by name (A-Z)');
 			await waitFor(() => {
-				expect(trigger).toHaveTextContent('Sort: Name ↓');
-				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 2');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 			});
 		});
 
@@ -1438,24 +1481,25 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 2'),
 			);
 
-			const trigger = await screen.findByTestId('migration-rule-sort-trigger');
-			await userEvent.click(trigger);
-			await userEvent.click(await screen.findByRole('menuitem', { name: /Last run/ }));
+			await pickSort('Sort by last run');
 
 			await waitFor(() => {
-				expect(trigger).toHaveTextContent('Sort: Last run ↓');
 				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 				expect(screen.getAllByRole('row')[2].textContent).toContain('Test Workflow 2');
 			});
 		});
+
+		it('should clear the select when a column header sets a sort that no option has', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(sortInput()).toHaveValue('Sort by most runs'));
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+
+			await waitFor(() => expect(sortInput()).toHaveValue(''));
+		});
 	});
 
 	describe('filters popover', () => {
-		const openFilters = async () => {
-			await userEvent.click(await screen.findByTestId('migration-rule-filters'));
-			return await screen.findByTestId('migration-rule-filters-content');
-		};
-
 		it('should filter workflows by publish state and show the number of active filters', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(screen.getByText('Test Workflow 2')).toBeInTheDocument());
@@ -1468,7 +1512,87 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 				expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
 			});
-			expect(screen.getByTestId('migration-rule-filters')).toHaveTextContent('Filters (1)');
+			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
+		});
+
+		describe('project filter', () => {
+			const projectWorkflows = [
+				{
+					...mockWorkflowWithIssue,
+					id: 'wf-1',
+					name: 'Billing sync',
+					homeProjectId: 'p-2',
+					homeProjectName: 'Sales',
+					homeProjectType: 'team' as const,
+				},
+				{
+					...mockWorkflowWithIssue,
+					id: 'wf-2',
+					name: 'Lead import',
+					homeProjectId: 'p-1',
+					homeProjectName: 'Finance',
+					homeProjectType: 'team' as const,
+				},
+				{
+					...mockWorkflowWithIssue,
+					id: 'wf-3',
+					name: 'My draft',
+					homeProjectId: 'p-3',
+					homeProjectName: 'Ada Lovelace <ada@example.com>',
+					homeProjectType: 'personal' as const,
+				},
+			];
+
+			const projectOptions = async (content: HTMLElement) => {
+				await userEvent.click(within(content).getByTestId('migration-rule-filter-project'));
+				return await screen.findAllByTestId('migration-rule-filter-project-item');
+			};
+
+			it('should list Personal first and the team projects by name', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('My draft')).toBeInTheDocument());
+
+				const options = await projectOptions(await openFilters());
+				expect(options.map((option) => option.textContent?.trim())).toEqual([
+					'Personal',
+					'Finance',
+					'Sales',
+				]);
+			});
+
+			it('should not list Personal when no workflow is in a personal project', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows.slice(0, 2) }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('Lead import')).toBeInTheDocument());
+
+				const options = await projectOptions(await openFilters());
+				expect(options.map((option) => option.textContent?.trim())).toEqual(['Finance', 'Sales']);
+			});
+
+			it('should show only the workflows of the picked project', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('My draft')).toBeInTheDocument());
+
+				const options = await projectOptions(await openFilters());
+				const finance = options.find((option) => option.textContent?.includes('Finance'));
+				if (!finance) throw new Error('No Finance option');
+				await userEvent.click(finance);
+
+				await waitFor(() => {
+					expect(screen.getByText('Lead import')).toBeInTheDocument();
+					expect(screen.queryByText('Billing sync')).not.toBeInTheDocument();
+					expect(screen.queryByText('My draft')).not.toBeInTheDocument();
+				});
+				expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
+			});
 		});
 
 		it('should filter workflows by executions and clear every filter', async () => {
@@ -1488,7 +1612,7 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
-				expect(screen.getByTestId('migration-rule-filters')).toHaveTextContent(/^Filters$/);
+				expect(screen.queryByTestId('migration-rule-filters-count')).not.toBeInTheDocument();
 			});
 		});
 	});

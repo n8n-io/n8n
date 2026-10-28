@@ -8,7 +8,11 @@ description: >-
 recommended_tools:
   - workflow_builder_ask_user
   - workflow_builder_verify_built_workflow
-  - workflow_builder_workflows
+  - get_workflow
+  - get_workflow_as_code
+  - setup_workflow
+  - validate_workflow
+  - publish_workflow
   - workflow_builder_build_workflow
   - workflow_builder_executions
 ---
@@ -57,7 +61,7 @@ setup returns `announced: true`, or the current user input contains
   Execute. A block in conversation history does not request another execution.
   Use the workflow ID in the current block. Inspect its current
   `<workflow-setup-state>` and read the saved workflow with
-  `workflow_builder_workflows(action="get-as-code")`. Do not call `workflow_builder_workflows(action="setup")`
+  `get_workflow_as_code`. Do not call `setup_workflow`
   for this precheck. It announces setup and ends the turn. If the target is
   absent from the state block, inspect its saved configuration. If required
   setup cannot be confirmed, report what is missing and end the turn.
@@ -84,7 +88,7 @@ flow. Its result is not a panel announcement unless it has `announced: true`.
 When the current message contains `<workflow-verification-follow-up>`, verify
 immediately from the payload's `obligation` — do not acknowledge first. If the
 obligation is `ready_to_verify` or `verifying`, call `workflow_builder_verify_built_workflow`. Do
-**not** call `workflow_builder_workflows(action="setup")` in this turn and do **not** declare the
+**not** call `setup_workflow` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
 verification. For a multi-trigger outcome, verify every trigger that does not
@@ -93,7 +97,7 @@ yet have a recorded successful verification. Make all of these calls in this tur
 ## Setup follow-up
 
 When the current message contains `<workflow-setup-required>`, your first action
-is to call `workflow_builder_workflows(action="setup")` with the `workflowId` from the payload. Do
+is to call `setup_workflow` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
 the n8n Assistant panel is the user-visible surface. If the result has
 `announced: true`, use the persistent panel instructions above and end the turn.
@@ -113,7 +117,7 @@ input was used.
 Pick in this order:
 
 1. **A dedicated credential type** (`slackApi`, `notionApi`, …) whenever one
-   exists — search with `workflow_builder_credentials(action="search-types")`.
+   exists — search with `search_credential_types`.
 2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
    without a dedicated type whose auth is expressible as header/query/body
    values — which covers API keys and bearer tokens (`Authorization: Bearer
@@ -129,7 +133,7 @@ Pick in this order:
 ### Credential recipes for Simplified Custom Auth
 
 When the workflow authenticates a service through Simplified Custom Auth,
-include `credentialHints` in the same `workflow_builder_workflows(action="setup")` call so the
+include `credentialHints` in the same `setup_workflow` call so the
 setup card pre-fills the credential and the user only pastes their secret —
 instead of facing an empty JSON template they'd have to decode from the
 provider's docs. Before composing the hints, load the
@@ -223,7 +227,7 @@ Instead, in your normal message:
 
 Only once the user asks for a specific credential — "connect Slack now", "let's
 do the Slack setup", or picking it out of an offer you made — call
-`workflow_builder_workflows(action="setup", reopenSkipped: ["slackApi"])`, naming just what they
+`setup_workflow(reopenSkipped: ["slackApi"])`, naming just what they
 asked for so the rest stays skipped. A generic "yes" to an unrelated question is
 not an ask.
 
@@ -258,7 +262,7 @@ publish-readiness evidence. If the user explicitly asks to publish before a
 live execution succeeds, warn that the live path remains untested, then follow
 the requested publish flow.
 
-`workflow_builder_workflows(action="publish")` enforces this. While the latest verification left
+`publish_workflow` enforces this. While the latest verification left
 nodes unreached or simulated, the call is refused and returns
 `verificationDisclosure` — the coverage facts, generated from the run. Relay
 those facts to the user and offer a live end-to-end test. Publish only if they
@@ -353,7 +357,7 @@ For a repair on a published workflow:
 - `workflow_builder_verify_built_workflow` returns `claim.liveState`. `live-stale` means the
   published version is older than the draft you just verified. The result also
   carries `liveStateNote`. Relay it.
-- Without a claim, call `workflow_builder_workflows(action="get", workflowId)` and compare
+- Without a claim, call `get_workflow(workflowId)` and compare
   `versionId` (the draft) with `activeVersionId` (the published version). They
   differ while the fix is not live. A null `activeVersionId` means the workflow
   is not published at all.
@@ -368,7 +372,7 @@ For a repair on a published workflow:
    `setupRequirement`, and `postBuildFlow` from the tool output. If the output
    is missing a `workflowId`, explain that the build did not submit.
    - Before treating a saved workflow as done, inspect the persisted workflow
-     with `workflow_builder_workflows(action="get-as-code", workflowId)` or read the bound
+     with `get_workflow_as_code(workflowId)` or read the bound
      workspace source file, and compare the actual graph to the user's requested
      outcome. Build/save success only means a workflow was saved; it does not
      prove the saved workflow is good.
@@ -389,10 +393,10 @@ For a repair on a published workflow:
 - If `verificationReadiness.status === "needs_setup"` and the persistent setup
   panel is enabled, first try `workflow_builder_verify_built_workflow` when verification has not
   run. It can verify simulated paths or report that a simulation plan is
-  unavailable. Then announce setup with `workflow_builder_workflows(action="setup")`. Do not use
+  unavailable. Then announce setup with `setup_workflow`. Do not use
   a live execution to work around a blocker.
 - If `verificationReadiness.status === "needs_setup"` and the persistent setup
-  panel is disabled, call `workflow_builder_workflows(action="setup")` with the workflow ID.
+  panel is disabled, call `setup_workflow` with the workflow ID.
   The user configures the workflow through the inline setup card.
 - If `verificationReadiness.status === "not_verifiable"`, do not infer
   lower-level verification conditions; use the readiness guidance to give a
@@ -440,17 +444,17 @@ For a repair on a published workflow:
      State that limitation even if the run succeeded and no parameter warnings
      were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and
-   setup has not already run for this build, call `workflow_builder_workflows(action="setup")`
+   setup has not already run for this build, call `setup_workflow`
    with the workflowId.
-4. When `workflow_builder_workflows(action="setup")` returns `announced: true`, summarize the
+4. When `setup_workflow` returns `announced: true`, summarize the
    panel state and end the turn. The live-test follow-up waits for a later user
    turn or Execute request. When the tool opens the inline setup card, the card is the
    user-visible surface. Do not tell the user to open the editor, use the canvas,
    or click a Setup button; the user does not need to navigate anywhere.
-5. When `workflow_builder_workflows(action="setup")` returns `deferred: true`, or reports
+5. When `setup_workflow` returns `deferred: true`, or reports
    `skippedByUser`, or applies only part of the card, respect the user's
-   decision — do not retry with `workflow_builder_credentials(action="setup")`, another
-   `workflow_builder_workflows(action="setup")` call, or any other setup tool. `partial: true`
+   decision — do not retry with `setup_credentials`, another
+   `setup_workflow` call, or any other setup tool. `partial: true`
    with `nodesStillNeedingSetup` is not permission to re-open the card in the
    same turn: report what remains as described in
    [Credentials the user skipped](#credentials-the-user-skipped).
@@ -472,7 +476,7 @@ For a repair on a published workflow:
 8. If testing has not already been offered or completed, ask whether the user
    wants to test the workflow. Skip this if `workflow_builder_verify_built_workflow` already
    proved it works end-to-end with full coverage.
-9. Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks to
+9. Only call `publish_workflow` when the user explicitly asks to
    publish. Never publish automatically or proactively offer publishing before
    the publish-readiness requirement above is met. A repair of a workflow that
    is already published is the exception — follow
@@ -505,8 +509,8 @@ Skip this follow-up when:
 
 - The workflow you just built is itself an error workflow or starts with an
   Error Trigger.
-- The build is a supporting workflow, repair, small edit, planned-task
-  subtask, or workflow-level settings patch.
+- The build is a supporting workflow, repair, small edit, or workflow-level
+  settings patch.
 - The user already asked for an error workflow in the original request, already
   declined one, or the target workflow already has the desired error workflow
   set.
@@ -520,13 +524,13 @@ If the user says yes:
 3. The error workflow must be published before it can be assigned. If the user
    has not already asked you to publish and attach it, ask whether to publish it
    and set it as the error workflow for the named target workflow. When the user
-   agrees, call `workflow_builder_workflows(action="publish")` for the error workflow and let the
+   agrees, call `publish_workflow` for the error workflow and let the
    HITL approval card handle confirmation.
 4. After publish succeeds, set the original workflow's workflow-level
    `settings.errorWorkflow` to the **error workflow's workflowId**. Do not use
    the published `activeVersionId`, workflow name, a placeholder, or a local SDK
    id. If you have the original source file, edit it; otherwise call
-   `workflow_builder_workflows(action="get-as-code", workflowId)` for the original workflow,
+   `get_workflow_as_code(workflowId)` for the original workflow,
    write the returned code to a `.workflow.ts` file, add
    `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, and call
    `workflow_builder_build_workflow` for the original workflow. The workflow edit approval card
@@ -640,7 +644,7 @@ Without a claim, do not tell the user a workflow is "fixed", "verified",
 `workflow_builder_executions(action="run")` or an inspected user-run execution that exercised the
 path being claimed. Do not call a workflow "ready to use" or "ready to publish"
 unless a passing execution met the publish-readiness requirement above. A
-successful `workflow_builder_build_workflow`/save, a static `workflow_builder_workflows(action="validate")`, or
+successful `workflow_builder_build_workflow`/save, a static `validate_workflow`, or
 your own narration are NOT execution evidence. For a produced artifact (a file,
 generated document, or Code-node output), read the real output before calling it
 complete; do not infer correctness from the fact that a node ran. The same
@@ -658,7 +662,7 @@ unverified success claim.
 
 ## Credentials before build
 
-Call `workflow_builder_credentials(action="list")` first to know what's available. Build the
+Call `list_credentials` first to know what's available. Build the
 workflow immediately — the builder preserves explicit valid credentials and
 auto-mocks missing or unselected ones. Do not ask whether to build now and set up
 credentials later; building first and routing setup after verification is the
@@ -676,7 +680,7 @@ credential is being used. Route credential setup only when the build outcome
 reports mocked credentials or `setupRequirement.status === "required"`.
 
 **Ask once when a service has multiple credentials of the same type.** If
-`workflow_builder_credentials(action="list")` shows more than one entry of the type a requested
+`list_credentials` shows more than one entry of the type a requested
 integration needs (e.g. two `openAiApi` accounts, three Google Calendar
 accounts), use `workflow_builder_ask_user` with a single-select to let the user pick one before
 building, and use the chosen credential name in the workflow code. Exception: the
@@ -687,8 +691,8 @@ single candidate, auto-apply and do not ask.
 new credential of a type, never pick an existing one for them and never ask them
 to choose among existing ones — not even when exactly one exists (the build would
 otherwise attach it silently and skip setup entirely). Pass the credential type in
-`preferNewCredentials` on both `workflow_builder_build_workflow` and `workflow_builder_workflows(action="setup")`
-(or `preferNew: true` on the `workflow_builder_credentials(action="setup")` entry). Setup then
+`preferNewCredentials` on both `workflow_builder_build_workflow` and `setup_workflow`
+(or `preferNew: true` on the `setup_credentials` entry). Setup then
 opens on credential creation while still listing the existing credentials, so the
 user can change their mind — say so in one short sentence rather than
 re-litigating the choice. If they had skipped that card earlier, pass
@@ -696,12 +700,12 @@ re-litigating the choice. If they had skipped that card earlier, pass
 `reopenSkipped` decides whether the card comes back at all.
 
 **Ask which auth type to use when a service supports more than one.**
-`workflow_builder_credentials(action="setup")` opens a picker locked to a single `credentialType`
+`setup_credentials` opens a picker locked to a single `credentialType`
 — the user cannot switch auth types from there. So when
-`workflow_builder_credentials(action="search-types")` returns more than one auth option for a
+`search_credential_types` returns more than one auth option for a
 service (e.g. `notionApi` and `notionOAuth2Api`, or `slackApi` and
 `slackOAuth2Api`), use `workflow_builder_ask_user` with a single-select to let the user pick the
-auth type before calling `workflow_builder_credentials(action="setup")`. List OAuth2 first and
+auth type before calling `setup_credentials`. List OAuth2 first and
 present it as the recommended option. Exception: the user has clearly indicated
 an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching
 `credentialType` and use it directly without asking.

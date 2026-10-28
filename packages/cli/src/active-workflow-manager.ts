@@ -561,21 +561,6 @@ export class ActiveWorkflowManager {
 			return added;
 		}
 
-		if (this.instanceSettings.isMultiMain && shouldPublish) {
-			if (!dbWorkflow?.activeVersionId) {
-				throw new UnexpectedError('Active version ID not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-
-			void this.publisher.publishCommand({
-				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
-			});
-
-			return added;
-		}
-
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode);
@@ -611,6 +596,21 @@ export class ActiveWorkflowManager {
 				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
 				actor,
 			);
+
+			// This check answers the caller. The leader checks again as `system` before it
+			// registers, so a check that depends on the actor can still refuse there.
+			if (this.instanceSettings.isMultiMain && shouldPublish) {
+				void this.publisher.publishCommand({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: {
+						workflowId,
+						activeVersionId: dbWorkflow.activeVersion.versionId,
+						activationMode,
+					},
+				});
+
+				return added;
+			}
 
 			workflow = new Workflow({
 				id: dbWorkflow.id,

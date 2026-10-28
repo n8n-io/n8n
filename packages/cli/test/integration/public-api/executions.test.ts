@@ -10,8 +10,9 @@ import {
 } from '@n8n/backend-test-utils';
 import { type ExecutionEntity, type IExecutionResponse, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
 import { InstanceSettings } from 'n8n-core';
-import { type ExecutionStatus } from 'n8n-workflow';
+import { type ExecutionStatus, type IRun } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -22,6 +23,7 @@ import { ConflictError } from '@n8n/errors';
 import { ExecutionService } from '@/executions/execution.service';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { Telemetry } from '@/telemetry';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import {
 	createAnnotationTags,
@@ -31,6 +33,7 @@ import {
 	createManyExecutions,
 	createSuccessfulExecution,
 } from '../shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -87,13 +90,6 @@ afterEach(async () => {
 	await workflowRunner?.removeAll();
 });
 
-const testWithAPIKey =
-	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-		const response = await authOwnerAgent[method](url);
-		expect(response.statusCode).toBe(401);
-	};
-
 function createTraceparent() {
 	const traceId = randomBytes(16).toString('hex');
 	const spanId = randomBytes(8).toString('hex');
@@ -101,9 +97,17 @@ function createTraceparent() {
 }
 
 describe('GET /executions/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/executions/1', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/executions/1');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/executions/1');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -330,9 +334,17 @@ describe('GET /executions/:id', () => {
 });
 
 describe('DELETE /executions/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('delete', '/executions/1', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().delete('/executions/1');
 
-	test('should fail due to invalid API Key', testWithAPIKey('delete', '/executions/1', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').delete('/executions/1');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -438,12 +450,19 @@ describe('POST /executions/:id/retry', () => {
 		storedAt: 'db',
 	};
 
-	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/executions/1/retry');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/executions/1/retry');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -508,6 +527,79 @@ describe('POST /executions/:id/retry', () => {
 		});
 
 		executionServiceSpy.mockRestore();
+	});
+
+	describe('with a custom project role', () => {
+		const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
+
+		/**
+		 * A failed execution that a retry can continue. The retry run itself is mocked,
+		 * so the test exercises the access check and the response, not the engine.
+		 */
+		const retryAs = async (scopes: string[]) => {
+			testServer.license.enable('feat:sharing');
+			const member = await createMemberWithApiKey();
+			const teamProject = await createTeamProject();
+			const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+			await linkUserToProject(member, teamProject, role.slug);
+			const workflow = await createWorkflow({}, teamProject);
+			const execution = await createExecution(
+				{
+					finished: false,
+					status: 'error',
+					data: stringify({
+						resultData: { runData: { Canary: [] } },
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+					}),
+				},
+				workflow,
+			);
+
+			const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+			const outcome = vi
+				.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				.mockResolvedValue({
+					data: { resultData: { runData: {} } },
+					mode: 'retry',
+					startedAt: new Date(),
+					finished: true,
+					status: 'success',
+					waitTill: null,
+				} as unknown as IRun);
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post(`/executions/${execution.id}/retry`);
+
+			run.mockRestore();
+			outcome.mockRestore();
+			return response;
+		};
+
+		test('should retry without the execution data when the role has no execution:read', async () => {
+			const response = await retryAs(baseScopes);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ id: '999', status: 'success' });
+			expect(response.body).not.toHaveProperty('data');
+			expect(response.body).not.toHaveProperty('workflowData');
+			expect(response.body).not.toHaveProperty('customData');
+		});
+
+		test('should retry with the execution data when the role has execution:read', async () => {
+			const response = await retryAs([...baseScopes, 'execution:read']);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ id: '999', status: 'success' });
+			expect(response.body).toHaveProperty('data');
+			expect(response.body).toHaveProperty('workflowData');
+		});
 	});
 
 	test('should return 404 when execution is not found', async () => {
@@ -628,9 +720,17 @@ describe('POST /executions/:id/retry', () => {
 });
 
 describe('GET /executions', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/executions', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/executions');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/executions');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should paginate two executions', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -1253,9 +1353,17 @@ describe('GET /executions', () => {
 });
 
 describe('GET /executions/:id/tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/executions/1/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/executions/1/tags');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions/1/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/executions/1/tags');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 for non-existent execution', async () => {
 		const response = await authOwnerAgent.get('/executions/999/tags');
@@ -1312,9 +1420,17 @@ describe('GET /executions/:id/tags', () => {
 });
 
 describe('PUT /executions/:id/tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/executions/1/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/executions/1/tags');
 
-	test('should fail due to invalid API Key', testWithAPIKey('put', '/executions/1/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/executions/1/tags');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 404 for non-existent execution', async () => {
 		const response = await authOwnerAgent.put('/executions/999/tags').send([]);
@@ -1436,12 +1552,17 @@ describe('PUT /executions/:id/tags', () => {
 });
 
 describe('POST /executions/:id/stop', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/stop', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/executions/1/stop');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/executions/1/stop', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/executions/1/stop');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test.each(['abc', '1.5', '-1', '0', '000'])(
 		'should reject an execution id that cannot exist with 400: %s',
@@ -1613,9 +1734,17 @@ describe('POST /executions/:id/stop', () => {
 });
 
 describe('POST /executions/stop', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/stop', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/executions/stop');
 
-	test('should fail due to invalid API Key', testWithAPIKey('post', '/executions/stop', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/executions/stop');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 400 when status is not provided', async () => {
 		const response = await authUser1Agent.post('/executions/stop').send({});

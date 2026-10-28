@@ -9,19 +9,22 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { SkillFile } from '@/modules/agents/entities/skill-file.entity';
-import { SkillVersion } from '@/modules/agents/entities/skill-version.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { withoutLegacySkillRefs } from '@/modules/agents/json-config/agent-document';
-import { toSkillContent } from '@/modules/agents/skills/skill.service';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import { fromAgentDocument } from '@/modules/agents/json-config/agent-document';
+import {
+	createSkill,
+	createSkillVersion,
+	readSkillTables,
+	toSkillContent,
+} from '@/modules/skills/testing';
 import type { NodeTypes } from '@/node-types';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';
@@ -37,7 +40,6 @@ import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
 const limits = new PackageImportConfig();
@@ -48,20 +50,17 @@ let agentRepository: AgentRepository;
 let historyRepository: AgentHistoryRepository;
 let taskRepository: AgentTaskRepository;
 let taskSnapshotRepository: AgentTaskSnapshotRepository;
-let skillRepository: SkillRepository;
 let directory: string;
 
 async function readSourceRecords() {
-	const { manager } = skillRepository;
+	const { manager } = agentRepository;
 	return await Promise.all([
 		agentRepository.find({ order: { id: 'ASC' } }),
 		historyRepository.find({ order: { versionId: 'ASC' } }),
 		taskRepository.find({ order: { id: 'ASC' } }),
 		taskSnapshotRepository.find({ order: { versionId: 'ASC', taskId: 'ASC' } }),
-		// The skills hub rows of the agents, so an export that changes them fails too.
-		skillRepository.find({ order: { id: 'ASC' } }),
-		manager.find(SkillVersion, { order: { id: 'ASC' } }),
-		manager.find(SkillFile, { order: { skillVersionId: 'ASC', path: 'ASC' } }),
+		// The skill rows of the agents, so an export that changes them fails too.
+		readSkillTables(),
 		manager.find(AgentSkillDependency, { order: { agentId: 'ASC', skillId: 'ASC' } }),
 		manager.find(AgentVersionSkillDependency, {
 			order: { agentVersionId: 'ASC', skillId: 'ASC' },
@@ -70,12 +69,11 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
-	setSkillsHubFlag(true);
-	await testModules.loadModules(['agents']);
+	await testModules.loadModules(['skills', 'agents']);
 	await testDb.init();
+	registerSkillUsage();
 	agentRepository = Container.get(AgentRepository);
 	historyRepository = Container.get(AgentHistoryRepository);
-	skillRepository = Container.get(SkillRepository);
 	taskRepository = Container.get(AgentTaskRepository);
 	taskSnapshotRepository = Container.get(AgentTaskSnapshotRepository);
 	exporter = Container.get(AgentExporter);
@@ -83,10 +81,10 @@ beforeAll(async () => {
 	const fixture = looseAgentsFixture();
 	for (const entry of fixture.manifest.agents) {
 		const draft = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
-		// A skill of a saved agent is a skills hub skill: it has its own id, no
+		// A skill of a saved agent is a skill of the skills module: it has its own id, no
 		// `enabled` flag on the ref, and no `allowedTools`.
 		const skillId = `${draft.id}_skill`;
-		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];
+		const { allowedTools: _dropped, ...draftSkill } = draft.skills[skillId];
 		draft.skills = { [skillId]: draftSkill };
 		draft.config = {
 			...AgentJsonConfigSchema.parse(draft.config),
@@ -100,18 +98,12 @@ beforeAll(async () => {
 		};
 		published.skills[skillId].instructions = 'Published skill';
 		// v1 is the published text, v2 the text the draft follows.
-		await skillRepository.createSkill(
-			{
-				id: skillId,
-				target: { projectId: project.id, agentId: null },
-				source: 'ui',
-				createdById: null,
-			},
-			toSkillContent(published.skills[skillId]),
-		);
-		const publishedSkillVersionId = (await skillRepository.findLatestSaved([skillId])).get(skillId)!
-			.version.id;
-		await skillRepository.insertSavedVersion(skillId, 2, toSkillContent(draftSkill), null);
+		const { versionId: publishedSkillVersionId } = await createSkill({
+			id: skillId,
+			projectId: project.id,
+			content: toSkillContent(published.skills[skillId]),
+		});
+		await createSkillVersion(skillId, toSkillContent(draftSkill));
 		published.tools.shared_tool.code = 'throw new Error("Published tool must not run");';
 		published.tasks[`${entry.id}_task`] = {
 			name: 'Published schedule',
@@ -123,7 +115,7 @@ beforeAll(async () => {
 			id: draft.id,
 			name: draft.name,
 			projectId: project.id,
-			schema: draft.config && withoutLegacySkillRefs(storedAgentConfig(draft.config)),
+			schema: draft.config && fromAgentDocument(draft.config).config,
 			tools: draft.tools,
 			availableInMCP: draft.availableInMCP,
 			integrations: [{ type: 'slack', credentialId: 'current-slack' }],
@@ -132,17 +124,21 @@ beforeAll(async () => {
 			revision: 0,
 		});
 		await taskRepository.save(
-			Object.entries(draft.tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
+			Object.entries(draft.tasks).map(([id, task]) => ({
+				id,
+				agentId: agent.id,
+				...task,
+			})),
 		);
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,
 			agentId: agent.id,
-			schema: withoutLegacySkillRefs(storedAgentConfig(published.config)),
+			schema: fromAgentDocument(published.config).config,
 			tools: published.tools,
 			publishedBy: 'Package test',
 		});
-		await skillRepository.replaceDependencies(agent.id, [{ skillId }]);
-		await skillRepository.insertPins([
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
+		await Container.get(AgentSkillRepository).insertPins([
 			{ agentVersionId: history.versionId, skillId, skillVersionId: publishedSkillVersionId },
 		]);
 		await taskSnapshotRepository.saveForVersion(
@@ -153,10 +149,11 @@ beforeAll(async () => {
 				...task,
 			})),
 		);
-		await agentRepository.setActiveVersionFenced(agent.id, agent.revision, {
-			activeVersionId: history.versionId,
-			versionId: agent.versionId!,
-		});
+		await agentRepository.setActiveVersionFenced(
+			agent.id,
+			agent.publicationRevision,
+			history.versionId,
+		);
 		sources.push({ agent: (await agentRepository.findById(agent.id))!, draft, published });
 	}
 });

@@ -6,7 +6,12 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
-import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } from 'n8n-core';
+import {
+	CUSTOM_NODES_PACKAGE_NAME,
+	CustomDirectoryLoader,
+	DirectoryLoader,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -204,6 +209,46 @@ describe('LoadNodesAndCredentials', () => {
 			);
 			expect(result).toBe('dist/nodes/Test/Test.node.js');
 		});
+	});
+
+	describe('recognizesNode and getNode', () => {
+		let instance: LoadNodesAndCredentials;
+		const loadedNode = { sourcePath: 'Test.node.js', type: mock<INodeType>() };
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.loaders.package1 = mock<DirectoryLoader>({
+				known: {
+					nodes: { testNode: { className: 'TestNode', sourcePath: 'Test.node.js' } },
+					credentials: {},
+				},
+				getNode: vi.fn((nodeType: string) => {
+					if (nodeType === 'testNode') return loadedNode;
+					throw new UnrecognizedNodeTypeError('package1', nodeType);
+				}),
+			});
+		});
+
+		it('should resolve a node type made of a package name and a node name', () => {
+			expect(instance.recognizesNode('package1.testNode')).toBe(true);
+			expect(instance.getNode('package1.testNode')).toBe(loadedNode);
+		});
+
+		it.each(['package1', 'package1.', 'package1.unknownNode', 'unknownPackage.testNode'])(
+			'should not resolve the unknown node type %s',
+			(type) => {
+				expect(instance.recognizesNode(type)).toBe(false);
+				expect(() => instance.getNode(type)).toThrow(UnrecognizedNodeTypeError);
+			},
+		);
+
+		it.each(['package1.testNode.v2', 'package1.testNode.Tool', 'package1.testNode.'])(
+			'should treat every segment after the package name as the node name in %s',
+			(type) => {
+				expect(instance.recognizesNode(type)).toBe(false);
+				expect(() => instance.getNode(type)).toThrow(UnrecognizedNodeTypeError);
+			},
+		);
 	});
 
 	describe('resolveSchema', () => {
@@ -1092,6 +1137,78 @@ describe('LoadNodesAndCredentials', () => {
 				expect(instance.isKnownNode('testPackage.TestNode')).toBe(true);
 				expect(instance.types.nodes).toHaveLength(1);
 			});
+		});
+	});
+
+	describe('credential domain restriction fields', () => {
+		const createCredentialLoader = (credentialType: ICredentialType) =>
+			mock<NodeLoader>({
+				packageName: 'test-package',
+				known: {
+					nodes: {},
+					credentials: {
+						[credentialType.name]: { className: 'TestApi', sourcePath: 'TestApi.credentials.js' },
+					},
+				},
+				types: { nodes: [], credentials: [] },
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				getCredential: vi.fn().mockReturnValue({
+					type: credentialType,
+					sourcePath: 'TestApi.credentials.js',
+				}),
+			});
+
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+		});
+
+		it('should not load credential classes when post-processing loaders', async () => {
+			const loader = createCredentialLoader({
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+				authenticate: { type: 'generic', properties: {} },
+			});
+			instance.loaders = { 'test-package': loader };
+
+			await instance.postProcessLoaders();
+
+			expect(loader.getCredential).not.toHaveBeenCalled();
+		});
+
+		it('should add domain restriction fields when a credential is accessed', () => {
+			instance.loaders = {
+				'test-package': createCredentialLoader({
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+					authenticate: { type: 'generic', properties: {} },
+				}),
+			};
+
+			const names = instance.getCredential('testApi').type.properties.map(({ name }) => name);
+
+			expect(names).toContain('apiKey');
+			expect(names).toContain('allowedHttpRequestDomains');
+		});
+
+		it('should add domain restriction fields only once across repeated access', () => {
+			instance.loaders = {
+				'test-package': createCredentialLoader({
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [],
+					authenticate: { type: 'generic', properties: {} },
+				}),
+			};
+
+			instance.getCredential('testApi');
+			const { properties } = instance.getCredential('testApi').type;
+
+			expect(properties.filter(({ name }) => name === 'allowedHttpRequestDomains')).toHaveLength(1);
 		});
 	});
 

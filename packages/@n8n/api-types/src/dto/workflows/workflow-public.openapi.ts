@@ -49,6 +49,12 @@ export const workflowSettingsFieldDocs = {
 			'workflow responses for reference, but any value sent when creating or updating a ' +
 			'workflow is ignored.',
 	},
+	engineType: {
+		example: 'v1',
+		description:
+			'The execution engine that runs this workflow. It is included in workflow responses ' +
+			'for reference, but any value sent when creating or updating a workflow is ignored.',
+	},
 	callerPolicy: {
 		example: 'workflowsFromSameOwner',
 		description:
@@ -83,6 +89,15 @@ export const workflowSettingsFieldDocs = {
 			'- `non-manual`: Redact production (non-manually triggered) executions only.\n' +
 			'- `manual-only`: Redact manually triggered executions only.\n' +
 			'- `all`: Redact all executions, manual and production.',
+	},
+	redactCallerExecutions: {
+		example: true,
+		description:
+			'Controls whether a workflow that calls this workflow as a sub-workflow has its ' +
+			'executions redacted on the same channels as this workflow. The calling execution ' +
+			'keeps a copy of the output of this workflow. Defaults to true. Turn it off only when ' +
+			'the output of this workflow is not sensitive. Redaction that this workflow received ' +
+			'from its own sub-workflows always passes to the caller.',
 	},
 	availableInMCP: {
 		example: false,
@@ -190,8 +205,6 @@ export const nodesOpenApi: ZodOpenAPIMetadata = {
 					},
 				},
 			},
-			createdAt: { type: 'string', format: 'date-time' },
-			updatedAt: { type: 'string', format: 'date-time' },
 		},
 	},
 };
@@ -242,6 +255,7 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 			enum: ['separate', 'combined'],
 			...workflowSettingsFieldDocs.binaryMode,
 		},
+		engineType: { type: 'string', nullable: true, ...workflowSettingsFieldDocs.engineType },
 		callerPolicy: {
 			type: 'string',
 			enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'],
@@ -261,6 +275,10 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 			type: 'string',
 			enum: ['none', 'non-manual', 'manual-only', 'all'],
 			...workflowSettingsFieldDocs.redactionPolicy,
+		},
+		redactCallerExecutions: {
+			type: 'boolean',
+			...workflowSettingsFieldDocs.redactCallerExecutions,
 		},
 		availableInMCP: { type: 'boolean', ...workflowSettingsFieldDocs.availableInMCP },
 		customTelemetryTags: {

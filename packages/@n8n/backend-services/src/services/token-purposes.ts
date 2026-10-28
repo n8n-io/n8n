@@ -24,12 +24,10 @@ export const TOKEN_PURPOSES = {
 	teamsArmTemplate: 'n8n:teams-arm-template',
 	publicApiKey: 'public-api',
 	mcpApiKey: 'mcp-server-api',
-	scimApiKey: 'scim-api',
 } as const satisfies Record<string, string> & {
-	// Keep these three in step with the persisted `api_key.audience` values.
+	// Keep these two in step with the persisted `api_key.audience` values.
 	publicApiKey: ApiKeyAudience;
 	mcpApiKey: ApiKeyAudience;
-	scimApiKey: ApiKeyAudience;
 };
 
 export type TokenPurpose = keyof typeof TOKEN_PURPOSES;
@@ -38,9 +36,10 @@ export type TokenPurpose = keyof typeof TOKEN_PURPOSES;
  * Known overlap: `mcp-server-api` is also the MCP protected resource's
  * pre-RFC-8707 audience (`LEGACY_MCP_AUDIENCE` in `mcp-protected-resource.ts`),
  * so the audience alone does not tell an MCP API key from an OAuth access token
- * minted for that resource. What separates them is the signed `meta.isOAuth`
- * claim the MCP middleware routes on, and the row each kind must have — in
- * `api_key` for one, `oauth_access_token` for the other.
+ * minted for that resource. What separates them is the `iss` claim the MCP
+ * middleware routes on — `n8n` for an API key, an http(s) URL for an access
+ * token — and the row each kind must have — in `api_key` for one,
+ * `oauth_access_token` for the other.
  *
  * Giving API keys an audience of their own would invalidate every key in the
  * field: they are persisted, handed to clients, and minted without an expiry,
@@ -53,7 +52,6 @@ export type TokenPurpose = keyof typeof TOKEN_PURPOSES;
 export const API_KEY_PURPOSES = {
 	'public-api': 'publicApiKey',
 	'mcp-server-api': 'mcpApiKey',
-	'scim-api': 'scimApiKey',
 } as const satisfies Record<ApiKeyAudience, TokenPurpose>;
 
 const isNonEmptyString = (value: unknown): value is string =>

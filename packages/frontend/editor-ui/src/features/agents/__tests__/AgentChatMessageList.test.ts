@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
@@ -74,8 +75,10 @@ vi.mock('@n8n/design-system', () => ({
 
 vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
 	default: {
+		name: 'AgentMarkdownChunk',
 		template: '<div data-testid="markdown-chunk">{{ source }}</div>',
-		props: ['source'],
+		props: ['source', 'canOpenBuild'],
+		emits: ['open-build'],
 	},
 }));
 
@@ -220,6 +223,29 @@ describe('AgentChatMessageList', () => {
 		expect(callouts[0].find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
 		expect(callouts[1].find('[data-testid="agent-chat-retry"]').exists()).toBe(true);
 		wrapper.unmount();
+	});
+
+	it('renders nothing for host events without a host renderer', () => {
+		const user: ChatMessage = { id: 'u1', role: 'user', content: 'Hi', status: 'success' };
+		const reply: ChatMessage = { id: 'a1', role: 'assistant', content: 'Done', status: 'success' };
+		const hostEvents = [{ id: 'h1', name: 'test.unknown', payload: { n: 1 } }];
+		const render = (messages: ChatMessage[]) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle' },
+			});
+			const html = wrapper.html();
+			wrapper.unmount();
+			return html;
+		};
+
+		expect(render([user, { ...reply, hostEvents }])).toBe(render([user, reply]));
+		expect(
+			render([
+				user,
+				{ id: 'a2', role: 'assistant', content: '', status: 'success', hostEvents },
+				reply,
+			]),
+		).toBe(render([user, reply]));
 	});
 
 	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
@@ -407,6 +433,39 @@ describe('AgentChatMessageList', () => {
 			content: 'Please update your instructions to always answer in German',
 			status: 'success',
 		} satisfies ChatMessage;
+
+		it.each([true, false])('handles an Agent-authored Build link (edit: %s)', async (edit) => {
+			const wrapper = mount(AgentChatMessageList, {
+				global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
+				props: {
+					messages: [
+						changeRequest,
+						{
+							id: 'reply-1',
+							role: 'assistant',
+							content: '[Open Build](#agent-build)',
+							status: 'success',
+						},
+						{ id: 'user-2', role: 'user', content: 'A later request', status: 'success' },
+					],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+			const markdown = wrapper.getComponent({ name: 'AgentMarkdownChunk' });
+			expect(markdown.props('canOpenBuild')).toBe(true);
+			markdown.vm.$emit('open-build', edit);
+			if (edit)
+				expect(wrapper.emitted('sendToAssistant')).toEqual([
+					[{ changeRequest: changeRequest.content }],
+				]);
+			else expect(wrapper.emitted('openBuild')).toEqual([[]]);
+			await wrapper.setProps({ canSendToAssistant: false });
+			markdown.vm.$emit('open-build', edit);
+			expect(wrapper.emitted(edit ? 'sendToAssistant' : 'openBuild')).toHaveLength(1);
+		});
 
 		it('offers the assistant hand-off for a change request in the preview', async () => {
 			const wrapper = mount(AgentChatMessageList, {

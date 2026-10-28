@@ -38,7 +38,7 @@ describe('honorsIdempotencyKey', () => {
 	it.each([
 		'/api/v1/workflows/abc/activate',
 		'/api/v1/workflows/abc/deactivate',
-		'/api/v1/promotions/connections/c1/promote/disconnect',
+		'/api/v1/promotions/environments/e1/disconnect',
 		'/api/v1/workflows/abc/publish',
 		'/api/v1/workflows/abc/unpublish',
 		'/api/v1/workflows/abc/archive',

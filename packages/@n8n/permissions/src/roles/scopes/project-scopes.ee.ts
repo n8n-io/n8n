@@ -7,9 +7,15 @@ import type { Scope } from '../../types.ee';
  */
 
 export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
+	'app:create',
+	'app:read',
+	'app:update',
+	'app:delete',
+	'app:list',
 	'agent:create',
 	'agent:read',
 	'agent:export',
+	'agent:import',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
@@ -86,9 +92,15 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
+	'app:create',
+	'app:read',
+	'app:update',
+	'app:delete',
+	'app:list',
 	'agent:create',
 	'agent:read',
 	'agent:export',
+	'agent:import',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
@@ -152,9 +164,15 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
+	'app:create',
+	'app:read',
+	'app:update',
+	'app:delete',
+	'app:list',
 	'agent:create',
 	'agent:read',
 	'agent:export',
+	'agent:import',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
@@ -216,6 +234,8 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
+	'app:read',
+	'app:list',
 	'agent:read',
 	'agent:export',
 	'agent:list',

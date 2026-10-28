@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
@@ -72,7 +73,7 @@ export async function execute(
 			let queryReplacement = options.queryReplacement || [];
 
 			if (typeof queryReplacement === 'string') {
-				queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+				queryReplacement = resolveQueryReplacementSegments.call(this, i, queryReplacement);
 			}
 
 			if (Array.isArray(queryReplacement)) {

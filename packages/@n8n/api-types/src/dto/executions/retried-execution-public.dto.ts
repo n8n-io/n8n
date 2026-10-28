@@ -30,11 +30,13 @@ export const retriedExecutionPublicSchema = z.object({
 	retryOf: executionPublicSchema.shape.retryOf,
 	status: executionPublicSchema.shape.status,
 	waitTill: executionPublicSchema.shape.waitTill.optional(),
-	data: objectGuardSchema<Record<string, unknown>>().openapi(retriedExecutionDataOpenApi),
-	workflowData: objectGuardSchema<Record<string, unknown>>().openapi(
-		retriedExecutionWorkflowDataOpenApi,
-	),
-	customData: z.record(z.string()).openapi(retriedExecutionCustomDataOpenApi),
+	data: objectGuardSchema<Record<string, unknown>>()
+		.optional()
+		.openapi(retriedExecutionDataOpenApi),
+	workflowData: objectGuardSchema<Record<string, unknown>>()
+		.optional()
+		.openapi(retriedExecutionWorkflowDataOpenApi),
+	customData: z.record(z.string()).optional().openapi(retriedExecutionCustomDataOpenApi),
 	annotation: executionAnnotationPublicSchema.optional().openapi(retriedExecutionAnnotationOpenApi),
 	storedAt: executionPublicSchema.shape.storedAt,
 });

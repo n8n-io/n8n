@@ -76,6 +76,10 @@ export class EngineV2ManualRunPlanner {
 		const workflow = this.toWorkflow(data);
 		const pinData = data.pinData ?? {};
 		const destination = this.resolveDestination(workflow, data.destinationNode);
+		// v1 asserts the same: run data without a destination is a caller error, not a full run.
+		if (data.runData !== undefined && destination === undefined) {
+			throw new UserError('A run from existing data needs a destination node');
+		}
 		const root = this.resolveRoot(workflow, data, destination);
 
 		// Disabled nodes go first, so a disabled node never cuts the subgraph short.
@@ -215,7 +219,7 @@ export class EngineV2ManualRunPlanner {
 		pinData: IPinData,
 	): INodeExecutionData[][] | undefined {
 		const pinned = pinData[node.name];
-		return pinned ? [pinned] : this.lastRunOutputs(node, runData[node.name]);
+		return pinned ? [withPairedItems(pinned)] : this.lastRunOutputs(node, runData[node.name]);
 	}
 
 	private lastRunOutputs(
@@ -263,6 +267,17 @@ function nodesOnCycles(graph: DirectedGraph): Set<INode> {
 		if (connection.from === connection.to) onCycle.add(connection.from);
 	}
 	return onCycle;
+}
+
+/**
+ * Pinned data carries no lineage, and the node never runs to be given one. v1
+ * pairs its items with the inputs of the same index after the pinned "run";
+ * the same pairing is set here, since the step is recorded without running.
+ */
+function withPairedItems(items: INodeExecutionData[]): INodeExecutionData[] {
+	return items.map((item, index) =>
+		item.pairedItem === undefined ? { ...item, pairedItem: { item: index } } : item,
+	);
 }
 
 function toConnections(graph: DirectedGraph): IConnections {

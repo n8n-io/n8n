@@ -1,10 +1,11 @@
-import type { GenerateResult } from '@n8n/agents';
+import type { Agent as RuntimeAgent, GenerateResult } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -573,6 +574,8 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			'generate',
 			expect.objectContaining({ runId: 'run-1', toolCallId: 'tc-1' }),
 		);
+		expect(generate.mock.calls[0][1].abortSignal).toBe(buildRuntime.mock.calls[0][1]);
+		expect(approve.mock.calls[0][1].abortSignal).toBe(buildRuntime.mock.calls[0][1]);
 		expect(result.success).toBe(true);
 		// Pre-suspension segment calls are preserved alongside the approved one.
 		expect(result.toolCalls.find((call) => call.tool === 'Danger_Tool')).toMatchObject({
@@ -580,46 +583,69 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		});
 	});
 
-	it('maps a thrown run failure into an error result and still closes the runtime', async () => {
-		const close = vi.fn().mockResolvedValue(undefined);
-		buildRuntime.mockResolvedValue({
-			generate: vi.fn().mockRejectedValue(new Error('aborted')),
-			close,
-		});
+	it.each(['construction', 'generation'])(
+		'maps a thrown %s failure into an error result and closes an acquired runtime',
+		async (stage) => {
+			const close = vi.fn().mockResolvedValue(undefined);
+			const error = new Error('failed');
+			if (stage === 'construction') buildRuntime.mockRejectedValueOnce(error);
+			else {
+				buildRuntime.mockResolvedValue({
+					generate: vi.fn().mockRejectedValue(error),
+					close,
+				});
+			}
 
-		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+			const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
-		expect(result.success).toBe(false);
-		expect(result.errors[0]).toMatch(/Agent run failed: aborted/);
-		expect(close).toHaveBeenCalledTimes(1);
-	});
+			expect(result.success).toBe(false);
+			const prefix =
+				stage === 'construction' ? 'Failed to build agent runtime' : 'Agent run failed';
+			expect(result.errors).toEqual([`${prefix}: failed`]);
+			expect(close).toHaveBeenCalledTimes(stage === 'construction' ? 0 : 1);
+		},
+	);
 
 	// Killed for TIME, not by the builder. The harness classifies this off the wording
 	// ("exceeded its …s eval budget", `isServerBudgetStop`) and routes it to the timeout
 	// path; reported as a plain `Agent run failed:` it scored as a builder verdict —
 	// exactly the misattribution the budget plumbing exists to prevent.
-	it('reports a budget abort in the words the harness classifies as a timeout', async () => {
-		buildRuntime.mockResolvedValue({
-			generate: vi.fn().mockImplementation(async (_message, opts: { abortSignal: AbortSignal }) => {
+	it.each(['construction', 'generation'])(
+		'reports a %s budget abort as a timeout and closes runtimes that finish late',
+		async (stage) => {
+			const construction = createDeferredPromise<RuntimeAgent>();
+			const runtime = mock<RuntimeAgent>();
+			const generate = runtime.generate.mockImplementation(async (_message, opts) => {
 				// What AbortSignal.timeout does once the budget elapses.
 				await new Promise((resolve) => setTimeout(resolve, 5));
 				throw Object.assign(new Error('The operation was aborted due to timeout'), {
 					name: 'TimeoutError',
-					signalAborted: opts.abortSignal.aborted,
+					signalAborted: opts?.abortSignal?.aborted,
 				});
-			}),
-			close: vi.fn().mockResolvedValue(undefined),
-		});
+			});
+			const close = runtime.close.mockRejectedValue(new Error('teardown failed'));
+			if (stage === 'construction') buildRuntime.mockReturnValueOnce(construction.promise);
+			else buildRuntime.mockResolvedValue(runtime);
 
-		const result = await buildService().executeWithLlmMock('agent-1', user, {
-			...request,
-			timeoutMs: 1,
-		});
+			const result = await buildService().executeWithLlmMock('agent-1', user, {
+				...request,
+				timeoutMs: 1,
+			});
 
-		expect(result.success).toBe(false);
-		expect(result.errors[0]).toMatch(/exceeded its \d+s eval budget/);
-		expect(result.errors[0]).not.toMatch(/Agent run failed/);
-	});
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toMatch(/exceeded its \d+s eval budget/);
+			expect(result.errors[0]).not.toMatch(/Agent run failed/);
+			if (stage === 'construction') {
+				construction.resolve(runtime);
+				await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+				expect(generate).not.toHaveBeenCalled();
+			}
+			expect(logger.warn).toHaveBeenCalledWith('[EvalAgentMock] Agent runtime teardown failed', {
+				error: 'teardown failed',
+			});
+		},
+		1_000,
+	);
 
 	it('flips success off when the run finishes with a model error', async () => {
 		buildRuntime.mockResolvedValue({

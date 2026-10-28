@@ -22,6 +22,7 @@ export interface AgentEvaluationPreparation {
 	skippedFeatures: AgentEvaluationSkippedFeature[];
 	buildRuntime(
 		instrumentation: Omit<AgentRuntimeInstrumentation, 'transformDelegatedAgentConfig'>,
+		abortSignal?: AbortSignal,
 	): Promise<Agent>;
 }
 

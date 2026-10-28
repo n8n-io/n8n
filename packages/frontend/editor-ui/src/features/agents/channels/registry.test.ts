@@ -24,24 +24,19 @@ describe('agent channel platform registry', () => {
 	it('narrows registered platform keys', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
-		// Registered for its stepper. The channel itself stays hidden from the
-		// catalog through `internal` on the backend, which is a separate switch.
 		expect(isRegisteredAgentChannelPlatform('teams')).toBe(true);
 	});
 
-	it('derives Slack list metadata from its local runtime state', () => {
+	it.each([true, false])('uses Connect for Slack when managed setup is %s', (available) => {
 		const platform = getAgentChannelPlatform('slack');
 		const runtime = {
 			loading: ref(false),
 			load: async () => {},
-			setup: ref({ managedSetupAvailable: true, managerCredentials: [] }),
+			setup: ref({ managedSetupAvailable: available, managerCredentials: [] }),
 		};
 		const action = platform.getConnectAction({ text }, runtime);
 
-		expect(action).toEqual({
-			label: 'agents.channels.slack.managed.addToSlack',
-			icon: 'slack',
-		});
+		expect(action).toEqual({ label: 'generic.connect' });
 	});
 
 	it('confirms removal only for managed Slack credentials on published agents', () => {

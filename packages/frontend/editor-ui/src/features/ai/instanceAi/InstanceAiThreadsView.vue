@@ -186,7 +186,7 @@ async function handleAgentThreadAction(action: string, thread: AgentN8nChatThrea
 							<template #activator>
 								<N8nIconButton
 									variant="ghost"
-									icon="ellipsis-vertical"
+									icon="ellipsis"
 									:aria-label="i18n.baseText('instanceAi.threads.actions')"
 								/>
 							</template>
@@ -201,7 +201,7 @@ async function handleAgentThreadAction(action: string, thread: AgentN8nChatThrea
 							<template #activator>
 								<N8nIconButton
 									variant="ghost"
-									icon="ellipsis-vertical"
+									icon="ellipsis"
 									:aria-label="i18n.baseText('instanceAi.threads.actions')"
 								/>
 							</template>

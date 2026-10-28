@@ -1,3 +1,4 @@
+import { InvalidRequestError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
 import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
 import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
@@ -13,9 +14,10 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { AuthenticationService } from '@n8n/inbound-auth';
+import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
+import { z } from 'zod/v4';
 
 import { UrlService } from '@n8n/backend-services';
 import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
@@ -31,6 +33,16 @@ const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
 const urlService = Container.get(UrlService);
+
+/**
+ * Surfaces that authenticate through the inbound-auth pipeline advertise the trusted sources
+ * accepted there. A trigger resource joins through `getAcceptedSourceIds()` instead, which also
+ * narrows the advertised issuers to the source its node selected.
+ */
+const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
+	'public-api',
+	'instance-mcp',
+]);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -57,6 +69,36 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 		return;
 	}
 	next();
+};
+
+/**
+ * Mirrors the SDK's `RequestAuthorizationParamsSchema`, which it does not
+ * export: the authorization request parameters it checks after it has
+ * resolved the client.
+ */
+const authorizationRequestParamsSchema = z.object({
+	response_type: z.literal('code'),
+	code_challenge: z.string(),
+	code_challenge_method: z.literal('S256'),
+	scope: z.string().optional(),
+	state: z.string().optional(),
+	resource: z.url().optional(),
+});
+
+/**
+ * Validates the authorization request parameters before the SDK handler runs,
+ * so that every invalid request gets a direct error response.
+ */
+const authorizationRequestValidator: RequestHandler = (req, res, next) => {
+	const result = authorizationRequestParamsSchema.safeParse(
+		req.method === 'POST' ? req.body : req.query,
+	);
+	if (result.success) {
+		next();
+		return;
+	}
+	res.setHeader('Cache-Control', 'no-store');
+	res.status(400).json(new InvalidRequestError(result.error.message).toResponseObject());
 };
 
 /**
@@ -144,7 +186,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [rfc9207IssuerParam],
+		middlewares: [authorizationRequestValidator, rfc9207IssuerParam],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,
@@ -340,8 +382,11 @@ export class OAuthController {
 	private async buildProtectedResourceMetadata(
 		resource: ProtectedResource,
 	): Promise<Record<string, unknown>> {
+		// A trigger narrows the surface to the source its node selected, so it advertises that
+		// source's issuer only. Resources outside the pipeline keep this instance.
+		const acceptedSourceIds = resource.getAcceptedSourceIds?.();
 		const authorizationServers =
-			resource.surface === 'public-api'
+			PIPELINE_SURFACES.has(resource.surface) || acceptedSourceIds !== undefined
 				? (
 						await this.authenticationService.advertise({
 							surface: resource.surface,
@@ -349,6 +394,7 @@ export class OAuthController {
 								url: resource.getResourceUrl(),
 								acceptedAudiences: resource.getAudiences(),
 							},
+							...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
 						})
 					).authorizationServers
 				: [this.urlService.getInstanceBaseUrl()];

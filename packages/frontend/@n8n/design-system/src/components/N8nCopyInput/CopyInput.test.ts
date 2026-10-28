@@ -1,8 +1,11 @@
 import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { fireEvent, render } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 
 import N8nCopyInput from './CopyInput.vue';
+import N8nButton from '../N8nButton';
+import N8nInput from '../N8nInput';
 
 const writeText = vi.fn<(text: string) => Promise<void>>();
 
@@ -150,6 +153,33 @@ describe('N8nCopyInput', () => {
 			expect(writeText).not.toHaveBeenCalled();
 			expect(emitted('copy')).toEqual([['secret-token']]);
 		});
+	});
+
+	describe('appended controls with real tooltips', () => {
+		it.each(['mini', 'small', 'medium', 'large', 'xlarge'] as const)(
+			'keeps the copy button as a direct appended control at size %s',
+			(size) => {
+				const wrapper = mount(N8nCopyInput, {
+					props: { value: 'secret-token', label: 'API key', size },
+					slots: { actions: '<button data-test-id="action">Action</button>' },
+				});
+
+				try {
+					const input = wrapper.getComponent(N8nInput);
+					const button = wrapper.getComponent(N8nButton);
+					const action = wrapper.get('[data-test-id="action"]');
+
+					expect(input.props('size')).toBe(size);
+					expect(button.props('size')).toBe(size);
+					expect(button.element.tagName).toBe('BUTTON');
+					expect(button.element.parentElement).toBe(action.element.parentElement);
+					expect(button.element.previousElementSibling).toBe(action.element);
+					expect(button.element.parentElement?.lastElementChild).toBe(button.element);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
 	});
 
 	describe('field interaction', () => {

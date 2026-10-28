@@ -205,11 +205,19 @@ export class WorkflowRunner {
 								if (isManualExecution && !saveSettings.manual) {
 									await this.executionRepository.softDelete(executionId);
 								} else if (!isManualExecution && !saveSettings.success) {
-									await this.executionPersistence.deleteInFlightExecution({
-										workflowId: fullExecutionData.workflowId,
-										executionId,
-										storedAt: fullExecutionData.storedAt,
-									});
+									await this.executionPersistence.deleteInFlightExecution(
+										{
+											workflowId: fullExecutionData.workflowId,
+											executionId,
+											storedAt: fullExecutionData.storedAt,
+										},
+										{
+											status: fullExecutionData.status,
+											// oxlint-disable-next-line typescript/no-deprecated
+											finished: fullExecutionData.finished,
+											stoppedAt: fullExecutionData.stoppedAt,
+										},
+									);
 								}
 							} catch (pruneError) {
 								this.logger.warn('Could not prune a recovered false-positive success', {
@@ -364,11 +372,14 @@ export class WorkflowRunner {
 		// the worker will establish context once it populates the stack.
 		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
 		if (data.executionData?.executionData) {
-			// Deliberately lightweight: no pinData, no staticData loading,
-			// no additionalData. establishExecutionContext only needs the
+			// Deliberately lightweight: no pinData, no staticData, no
+			// additionalData. establishExecutionContext only needs the
 			// workflow's settings (for redactionPolicy) and node lookups.
 			// runMainProcess() builds its own fully-configured Workflow for
 			// actual execution.
+			// Do not pass data.workflowData.staticData here: on a webhook run it
+			// is the object the webhook has just written to, and wrapping it in
+			// another Workflow resets its change flag, so the write is never saved.
 			const contextWorkflow = new Workflow({
 				id: data.workflowData.id,
 				name: data.workflowData.name,
@@ -376,7 +387,6 @@ export class WorkflowRunner {
 				connections: data.workflowData.connections,
 				active: data.workflowData.activeVersionId !== null,
 				nodeTypes: this.nodeTypes,
-				staticData: data.workflowData.staticData,
 				settings: data.workflowData.settings ?? {},
 			});
 			try {

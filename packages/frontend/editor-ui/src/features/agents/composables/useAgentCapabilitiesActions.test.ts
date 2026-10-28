@@ -3,10 +3,14 @@ import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
+import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+
 import {
 	useAgentCapabilitiesActions,
 	type AgentCapabilitiesTelemetry,
+	type UseAgentCapabilitiesActionsDeps,
 } from './useAgentCapabilitiesActions';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
@@ -15,7 +19,15 @@ import type {
 	AgentSkill,
 } from '../types';
 
-const { openModalWithData } = vi.hoisted(() => ({ openModalWithData: vi.fn() }));
+const { openModalWithData, getSkillDetail } = vi.hoisted(() => ({
+	openModalWithData: vi.fn(),
+	getSkillDetail: vi.fn(),
+}));
+
+vi.mock('./useAgentApi', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./useAgentApi')>()),
+	getSkillDetail,
+}));
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData }),
@@ -49,29 +61,54 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 function makeActions(
 	overrides: Partial<AgentJsonConfig> = {},
 	telemetry?: AgentCapabilitiesTelemetry,
+	deps: Partial<UseAgentCapabilitiesActionsDeps> = {},
+	validationIssues = ref<AgentConfigValidationIssue[]>([]),
 ) {
 	const scheduleConfigUpdate = vi.fn();
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
 	const agentId = ref('agent-1');
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig(overrides));
+	const connectedTriggers = ref<string[]>([]);
 	const actions = useAgentCapabilitiesActions({
 		localConfig,
 		agent,
 		projectId: computed(() => 'proj-1'),
 		agentId: computed(() => agentId.value),
-		connectedTriggers: ref<string[]>([]),
+		connectedTriggers,
 		scheduleConfigUpdate,
 		scheduleSkillSave,
 		telemetry,
+		validationIssues,
+		...deps,
 	});
-	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
+	return {
+		actions,
+		scheduleConfigUpdate,
+		scheduleSkillSave,
+		agent,
+		agentId,
+		localConfig,
+		connectedTriggers,
+	};
 }
 
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
+	});
+
+	it('stores the remaining triggers and tracks a removed trigger', () => {
+		const trackTriggerRemoved = vi.fn();
+		const { actions, connectedTriggers } = makeActions({}, { trackTriggerRemoved });
+		connectedTriggers.value = ['n8n_chat', 'slack'];
+		const payload = { triggerType: 'n8n_chat', triggers: ['slack'] };
+
+		actions.onTriggerRemoved(payload);
+
+		expect(connectedTriggers.value).toEqual(['slack']);
+		expect(trackTriggerRemoved).toHaveBeenCalledExactlyOnceWith(payload);
 	});
 
 	it('forwards the selected picker mode to the tools modal', () => {
@@ -117,6 +154,39 @@ describe('useAgentCapabilitiesActions', () => {
 		modalData.data.onConfirm({ tools });
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools });
+	});
+
+	it("gives the tool modal a live read of that tool's validation issues", () => {
+		const issue = (index: number): AgentConfigValidationIssue => ({
+			code: 'restricted_node_type',
+			reason: 'restricted_by_inline_tool',
+			path: `tools.${index}.node.nodeType`,
+			capability: { kind: 'tool', index, toolType: 'node' },
+			restriction: { nodeType: 'n8n-nodes-base.mySql' },
+		});
+		const validationIssues = ref<AgentConfigValidationIssue[]>([]);
+		const { actions } = makeActions(
+			{
+				tools: [
+					{ type: 'node', name: 'first' } as AgentJsonToolConfig,
+					{ type: 'node', name: 'second' } as AgentJsonToolConfig,
+				],
+			},
+			undefined,
+			{},
+			validationIssues,
+		);
+		actions.onOpenToolFromList(1);
+
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: { validationIssues: () => AgentConfigValidationIssue[] };
+		};
+		expect(modalData.data.validationIssues()).toEqual([]);
+
+		// The builder validates again after the modal opened.
+		validationIssues.value = [issue(0), issue(1)];
+
+		expect(modalData.data.validationIssues()).toEqual([issue(1)]);
 	});
 
 	it('offers no skill activation toggle', () => {
@@ -357,5 +427,80 @@ describe('useAgentCapabilitiesActions', () => {
 		modalData.data.onRemove?.();
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });
+	});
+
+	describe('library skills', () => {
+		const skill: AgentSkill = { name: 'Tone', description: 'Voice', instructions: 'Be brief.' };
+		const detail = { id: 'skill-1', skill, skillHash: 'hash-1' } as SkillDetail;
+
+		async function attach(deps: Partial<UseAgentCapabilitiesActionsDeps>) {
+			const made = makeActions({}, undefined, deps);
+			made.agent.value = { id: 'agent-1' } as unknown as AgentResource;
+			getSkillDetail.mockResolvedValue(detail);
+			await made.actions.onOpenAddSkillModal();
+			const modalData = openModalWithData.mock.calls[0][0] as {
+				data: { onAttach: (item: SkillListItem) => Promise<void> };
+			};
+			return { ...made, onAttach: modalData.data.onAttach };
+		}
+
+		it('attaches a skill to an agent that has no skills yet', async () => {
+			const { agent, scheduleConfigUpdate, onAttach } = await attach({});
+
+			await onAttach({ id: 'skill-1' } as SkillListItem);
+
+			expect(agent.value?.skills).toEqual({ 'skill-1': skill });
+			expect(agent.value?.skillHashes).toEqual({ 'skill-1': 'hash-1' });
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [{ type: 'skill', id: 'skill-1' }],
+			});
+		});
+
+		it('takes back an attach that the save refuses', async () => {
+			const flushConfigSave = vi.fn().mockRejectedValue(new Error('refused'));
+			const { agent, scheduleConfigUpdate, onAttach } = await attach({ flushConfigSave });
+
+			await onAttach({ id: 'skill-1' } as SkillListItem);
+
+			expect(agent.value?.skills).toEqual({});
+			expect(agent.value?.skillHashes).toEqual({});
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ skills: [] });
+		});
+
+		it('keeps the agent it switched to when a refused attach comes back late', async () => {
+			const { agent, agentId, scheduleConfigUpdate, onAttach } = await attach({
+				flushConfigSave: async () => {
+					agentId.value = 'agent-2';
+					throw new Error('refused');
+				},
+			});
+
+			await onAttach({ id: 'skill-1' } as SkillListItem);
+
+			expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+			expect(agent.value?.skills).toEqual({ 'skill-1': skill });
+		});
+
+		it('uses the latest version of a skill on an agent without skill maps', async () => {
+			const { actions, agent, scheduleConfigUpdate } = makeActions({
+				skills: [{ type: 'skill', id: 'skill-1', versionId: 'v1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = { id: 'agent-1' } as unknown as AgentResource;
+			getSkillDetail.mockResolvedValue(detail);
+
+			actions.onOpenSkillFromList('skill-1');
+			const modalData = openModalWithData.mock.calls[0][0] as {
+				data: { onUseLatestVersion: (skillId: string) => void };
+			};
+			modalData.data.onUseLatestVersion('skill-1');
+			await vi.waitFor(() => expect(scheduleConfigUpdate).toHaveBeenCalled());
+
+			expect(agent.value?.skills).toEqual({ 'skill-1': skill });
+			expect(agent.value?.skillHashes).toEqual({ 'skill-1': 'hash-1' });
+			expect(agent.value?.outdatedSkillIds).toEqual([]);
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [{ type: 'skill', id: 'skill-1' }],
+			});
+		});
 	});
 });

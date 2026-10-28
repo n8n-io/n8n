@@ -47,6 +47,7 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
+	N8nNewBadge,
 	N8nNotice,
 	N8nOption,
 	N8nSelect,
@@ -767,7 +768,12 @@ onMounted(() => {
 															</div>
 														</template>
 													</N8nHoverCard>
-													<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
+													<N8nNewBadge
+														v-if="row.file.status === 'created'"
+														:text="getStatusText(row.file.status)"
+														size="xsmall"
+													/>
+													<N8nBadge v-else :variant="getStatusTheme(row.file.status)" size="xsmall">
 														{{ getStatusText(row.file.status) }}
 													</N8nBadge>
 													<template v-if="isWorkflowDiffsEnabled">

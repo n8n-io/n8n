@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { TimelineItem } from '../session-timeline.types';
+import SessionTimelineRow from '../components/SessionTimelineRow.vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/wf/1' }) }),
@@ -34,13 +35,9 @@ vi.mock('../utils/toolDisplayName', () => ({
 const STUBS = {
 	N8nTooltip: { template: '<span><slot /></span>' },
 	N8nIcon: {
-		props: ['icon', 'size'],
+		props: ['icon', 'size', 'color'],
 		template:
-			'<span :data-icon="icon" :data-testid="icon ? `icon-${icon}` : undefined"><slot /></span>',
-	},
-	N8nBadge: {
-		props: ['theme', 'size'],
-		template: '<span data-test-id="timeline-tool-error-badge"><slot /></span>',
+			'<span :data-icon="icon" :data-color="color" :data-testid="icon ? `icon-${icon}` : undefined"><slot /></span>',
 	},
 	SessionTimelinePill: {
 		props: ['kind'],
@@ -63,7 +60,6 @@ function item(partial: Partial<TimelineItem>): TimelineItem {
 }
 
 async function renderComponent(it: TimelineItem) {
-	const { default: SessionTimelineRow } = await import('../components/SessionTimelineRow.vue');
 	return mount(SessionTimelineRow, {
 		props: { item: it, selected: false },
 		global: { stubs: STUBS },
@@ -101,7 +97,7 @@ describe('SessionTimelineRow', () => {
 				toolOutput: { success: false, error: 'boom' },
 			}),
 		);
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(true);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(true);
 	}, 30_000);
 
 	it('renders the failure icon for a workflow soft-failure (success true, status error)', async () => {
@@ -112,24 +108,24 @@ describe('SessionTimelineRow', () => {
 				toolOutput: { status: 'error', error: 'node X failed' },
 			}),
 		);
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(true);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(true);
 	});
 
 	it('does not render the failure icon for a successful tool call', async () => {
 		const wrapper = await renderComponent(
 			item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } }),
 		);
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(false);
 	});
 
 	it('does not render the failure icon for an in-flight tool call', async () => {
 		const wrapper = await renderComponent(item({ kind: 'tool', toolSuccess: undefined }));
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(false);
 	});
 
 	it('does not render the failure icon for non-tool kinds', async () => {
 		const wrapper = await renderComponent(item({ kind: 'user', toolSuccess: false }));
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(false);
 	});
 });
 
@@ -142,6 +138,6 @@ it('shows task titles and translated statuses in a signal row', async () => {
 			},
 		}),
 	);
-	expect(wrapper.text()).toContain('Check invoices — Failed');
+	expect(wrapper.text()).toContain('Check invoices • Failed');
 	expect(wrapper.find('[data-kind="background-task-signal"]').exists()).toBe(true);
 });

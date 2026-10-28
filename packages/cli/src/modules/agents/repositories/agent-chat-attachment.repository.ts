@@ -17,12 +17,30 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 		return await this.findOneBy({ id, projectId: scope.projectId, threadId: scope.threadId });
 	}
 
+	async findByIdsInThread(
+		ids: string[],
+		scope: { projectId: string; threadId: string },
+	): Promise<AgentChatAttachment[]> {
+		return await this.findBy({ id: In(ids), projectId: scope.projectId, threadId: scope.threadId });
+	}
+
 	/** Scoped lookup for downloads: authorization checked at the agent/project level. */
 	async findByIdForAgent(
 		id: string,
 		scope: { agentId: string; projectId: string },
 	): Promise<AgentChatAttachment | null> {
 		return await this.findOneBy({ id, agentId: scope.agentId, projectId: scope.projectId });
+	}
+
+	/**
+	 * An attachment that a system chat stored for one memory resource. The
+	 * caller checks access to its thread.
+	 */
+	async findByIdForSystemAgent(
+		id: string,
+		scope: { agentId: string; resourceId: string; source: string },
+	): Promise<AgentChatAttachment | null> {
+		return await this.findOneBy({ id, ...scope });
 	}
 
 	/**

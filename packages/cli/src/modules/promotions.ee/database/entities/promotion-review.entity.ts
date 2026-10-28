@@ -13,7 +13,7 @@ import {
 } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-import { PromotionConnection } from './promotion-connection.entity';
+import { PromotionEnvironment } from './promotion-environment.entity';
 import { PromotionRun } from './promotion-run.entity';
 
 /**
@@ -23,7 +23,7 @@ import { PromotionRun } from './promotion-run.entity';
  */
 @Entity('promotion_review')
 @Index(['state', 'createdAt'])
-@Index(['connectionId', 'remoteReviewId'], {
+@Index(['environmentId', 'remoteReviewId'], {
 	unique: true,
 	where: '"remoteReviewId" IS NOT NULL',
 })
@@ -37,8 +37,8 @@ export class PromotionReview extends WithCreatedAt {
 	}
 
 	@Index()
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	connectionId: string | null;
+	@Column({ type: 'uuid', nullable: true })
+	environmentId: string | null;
 
 	/** Where the review lives. The application checks the value. */
 	@Column({ type: 'varchar', length: 16 })
@@ -62,16 +62,21 @@ export class PromotionReview extends WithCreatedAt {
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 
-	/** The one n8n user who approved in n8n. NULL until then. Not copied from the host. */
+	/**
+	 * The n8n user who claimed the approval. It names the approver only on a merged review.
+	 * On other states it is a claim in progress, or one that a stopped request left.
+	 * Not copied from the host.
+	 */
 	@Column({ type: 'uuid', nullable: true })
 	approvedById: string | null;
 
+	/** When the approval was claimed. On an open review, an old claim is stale. */
 	@DateTimeColumn({ nullable: true })
 	approvedAt: Date | null;
 
-	@ManyToOne(() => PromotionConnection, { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({ name: 'connectionId' })
-	connection: Relation<PromotionConnection> | null;
+	@ManyToOne(() => PromotionEnvironment, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'environmentId' })
+	environment: Relation<PromotionEnvironment> | null;
 
 	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'createdById' })

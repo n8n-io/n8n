@@ -2,6 +2,7 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'approvalCard.awaitingApproval': 'Awaiting approval',
 	'approvalCard.alwaysAllow': 'Always allow',
 	'approvalCard.alwaysAllowSuffix': 'during this session',
 	'approvalCard.allowOnce': 'Allow once',
@@ -22,6 +23,7 @@ export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
 	'generic.close': 'Close',
+	'dialog.close': 'Close dialog',
 	'generic.moreInfo': 'More info',
 	'generic.delete': 'Delete',
 	'menuItem.new': 'New',
@@ -53,12 +55,14 @@ export default {
 	'sticky.markdownHint':
 		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
-	'datatable.pageSize': 'Page size',
+	'tabs.scrollLeft': 'Show previous tabs',
+	'tabs.scrollRight': 'Show next tabs',
 	'pagination.previousPage': 'Previous page',
 	'pagination.nextPage': 'Next page',
 	'pagination.total': 'Total {total}',
 	'pagination.pageSize': 'Page size',
 	'pagination.pageSizeOption': '{size}/page',
+	'pagination.all': 'All',
 	'pagination.goTo': 'Go to',
 	'pagination.goToPage': 'Go to page',
 	'selectedItemsInfo.selectedOne': '{count} row selected',
@@ -78,6 +82,9 @@ export default {
 	'codeBlock.expand': 'Expand code',
 	'codeBlock.collapse': 'Collapse code',
 	'previewBadge.preview': 'Preview',
+	'enterpriseReadinessBadge.limited': 'Limited enterprise support',
+	'enterpriseReadinessBadge.tooltip':
+		"Some enterprise capabilities don't cover this feature yet. See docs for details.",
 	'settingsPageHeader.docsLeadingText': 'Learn more in the ',
 	'settingsPageHeader.docsLabel': 'documentation',
 	'spinner.loading': 'Loading…',

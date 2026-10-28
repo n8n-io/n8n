@@ -1,4 +1,5 @@
 import {
+	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
@@ -45,7 +46,7 @@ import {
 	threadBelongsTo,
 } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, toChatErrorEvent } from './agent-sse-stream';
+import type { FlushableResponse } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
@@ -56,7 +57,11 @@ import {
 	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { withOpenSuspensions } from './utils/messages-envelope';
+import {
+	ownCheckpoint,
+	threadMessagesResponse,
+	withOpenSuspensions,
+} from './utils/messages-envelope';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -173,10 +178,8 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const delivery = this.chatRelay.createChatStream(res);
-		const { send, onChunk, onExecutionStarted } = delivery;
-		let executionId: string | undefined;
-		try {
+		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
+			let executionId: string | undefined;
 			const stream = this.agentExecutionOrchestratorService.resumeForChat({
 				agentId,
 				projectId: req.params.projectId,
@@ -203,11 +206,7 @@ export class AgentChatController {
 			if (!suspended && !failed) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			delivery.close();
-		}
+		});
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -248,7 +247,7 @@ export class AgentChatController {
 				send({
 					type: 'error',
 					message: 'This agent is not ready to run yet.',
-					errorCode: 'agent_misconfigured',
+					errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured,
 					missing: prepared.missing,
 				});
 				return undefined;
@@ -289,9 +288,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const delivery = this.chatRelay.createChatStream(res);
-		const { send, onChunk, onExecutionStarted } = delivery;
-		try {
+		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
 				agentId,
 				projectId,
@@ -311,11 +308,7 @@ export class AgentChatController {
 					...(result.executionId ? { executionId: result.executionId } : {}),
 				});
 			}
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			delivery.close();
-		}
+		});
 	}
 
 	@Delete('/:agentId/chat/:threadId/executions/:executionId')
@@ -425,16 +418,10 @@ export class AgentChatController {
 		});
 		if (!history) throw new NotFoundError('Session not found');
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
-		return {
-			...withOpenSuspensions(
-				history.messages,
-				checkpoint?.persistence?.resourceId === productionChatMemoryResourceId(req.user.id)
-					? checkpoint
-					: null,
-				{ appendInactiveCheckpointMessages: false },
-			),
-			activeExecutionId: history.activeExecutionId,
-		};
+		return threadMessagesResponse(
+			history,
+			ownCheckpoint(checkpoint, productionChatMemoryResourceId(req.user.id)),
+		);
 	}
 
 	// Same reasoning as `getProductionChatMessages`: the attachment's `resourceId`
@@ -884,16 +871,8 @@ export class AgentChatController {
 		) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		if (!history) {
-			if (checkpoint) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
-		return {
-			...withOpenSuspensions(history.messages, checkpoint, {
-				appendInactiveCheckpointMessages: false,
-			}),
-			activeExecutionId: history.activeExecutionId,
-		};
+		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
+		return threadMessagesResponse(history, checkpoint);
 	}
 
 	@Get('/:agentId/chat/messages')
@@ -921,9 +900,7 @@ export class AgentChatController {
 		);
 		return withOpenSuspensions(
 			messagesToDto(messages),
-			checkpoint?.persistence?.resourceId === draftChatMemoryResourceId(req.user.id)
-				? checkpoint
-				: null,
+			ownCheckpoint(checkpoint, draftChatMemoryResourceId(req.user.id)),
 		);
 	}
 

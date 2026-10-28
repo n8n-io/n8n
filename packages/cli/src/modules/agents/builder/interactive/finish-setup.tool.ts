@@ -282,8 +282,11 @@ function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolD
 }
 
 /** Throws for any requested channel whose type isn't a known chat integration. */
-function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
-	const availableChannelTypes = deps.listChatIntegrationTypes();
+async function validateChannelTypes(
+	input: FinishSetupInput,
+	deps: FinishSetupToolDeps,
+): Promise<void> {
+	const availableChannelTypes = await deps.listChatIntegrationTypes();
 	for (const channel of input.channels ?? []) {
 		if (!availableChannelTypes.includes(channel.integrationType)) {
 			const availableMessage = availableChannelTypes.length
@@ -300,7 +303,7 @@ function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps
 
 /**
  * Validate input, then auto-resolve every credential slot using the same
- * rules as agent_builder_ask_credential (matching channel credential first, then a single
+ * rules as credentials setup for an Agent (matching channel credential first, then a single
  * existing credential of the type). Slots that cannot be auto-resolved
  * become a phase. Phase order is fixed: questions, then credentials, then
  * one channel phase per requested channel — channels always run last after
@@ -311,7 +314,7 @@ async function computeInitialPlan(
 	deps: FinishSetupToolDeps,
 ): Promise<{ phases: PhaseDescriptor[]; collected: Collected }> {
 	validateCredentialTypes(input, deps);
-	validateChannelTypes(input, deps);
+	await validateChannelTypes(input, deps);
 
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];

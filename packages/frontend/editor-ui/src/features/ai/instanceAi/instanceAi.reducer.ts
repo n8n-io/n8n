@@ -337,6 +337,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'setup-items':
 		// Apply context events during live runs as well as history replay.
 		case 'instance-context':
+		case 'skill-update':
 		case 'preference-card':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
@@ -378,7 +379,6 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 
 		// `preferences-applied` names the saved preferences the turn carried. The thread
 		// runtime keeps the latest payload for the plus menu. It changes no run state.
-		case 'filesystem-request':
 		case 'thread-title-updated':
 		case 'preferences-applied':
 			return state.activeRunId;

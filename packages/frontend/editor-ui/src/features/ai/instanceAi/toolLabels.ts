@@ -6,6 +6,8 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAMES,
+	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
@@ -24,6 +26,14 @@ const SKILL_TOOLS = new Set<string>([
 	'read_skill',
 	AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
 	'load_skill',
+	'skills',
+]);
+const CREDENTIAL_TOOL_NAMES = new Set<string>([
+	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_CREDENTIAL_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
+	SHARED_BUILDER_TOOL_NAMES.TEST_CREDENTIAL,
+	SHARED_BUILDER_TOOL_NAMES.DELETE_CREDENTIAL,
 ]);
 const WORKFLOW_BUILDER_PREFIX_PATTERN = /^workflow_builder_/;
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
@@ -132,9 +142,10 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 	}
 }
 
+const REMOVED_WORKFLOWS_TOOL_LABEL_NAME = 'workflow_builder_workflows';
+
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT) return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
@@ -143,16 +154,20 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (toolName === 'conversation-history') return 'message-square';
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
-		toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS ||
+		WORKFLOW_TOOL_NAMES.includes(toolName) ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS ||
+		toolName === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE ||
 		toolName === 'templates' ||
 		toolName === AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES ||
 		toolName === AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS) return 'key-round';
+	if (CREDENTIAL_TOOL_NAMES.has(toolName)) return 'key-round';
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
 		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
@@ -181,7 +196,7 @@ export function useToolLabel() {
 	const i18n = useI18n();
 
 	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
-		const toolName = resolveBuilderToolName(rawToolName);
+		const toolName = resolveBuilderToolName(rawToolName, args?.action);
 		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
@@ -223,13 +238,17 @@ export function useToolLabel() {
 			return i18n.baseText('instanceAi.tools.workspace_execute_command.skill');
 		}
 
+		// Stored calls of removed workflows actions keep the former tool's labels.
+		const labelToolName = isFormerWorkflowsTool(toolName)
+			? REMOVED_WORKFLOWS_TOOL_LABEL_NAME
+			: toolName;
 		const action = typeof args?.action === 'string' ? args.action : undefined;
 		if (action) {
-			const actionKey = `instanceAi.tools.${toolName}.${action}` as BaseTextKey;
+			const actionKey = `instanceAi.tools.${labelToolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);
 			if (actionTranslated !== actionKey) return actionTranslated;
 		}
-		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
+		const key = `instanceAi.tools.${labelToolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
 		return translated === key
 			? formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName

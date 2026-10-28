@@ -273,6 +273,7 @@ export interface ReadKnowledgeRangeResult {
 }
 
 export interface ReadKnowledgeResult extends AgentKnowledgeFileIdentity {
+	createdAt: string;
 	ranges: ReadKnowledgeRangeResult[];
 	truncated: boolean;
 }

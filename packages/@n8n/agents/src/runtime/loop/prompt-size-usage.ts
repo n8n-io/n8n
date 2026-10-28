@@ -54,6 +54,12 @@ export function withPromptSizeBreakdown(usage: TokenUsage | undefined): TokenUsa
 	};
 }
 
+/** Sum two counts. Undefined only when neither side reported the count. */
+function sumReported(a: number | undefined, b: number | undefined): number | undefined {
+	if (a === undefined && b === undefined) return undefined;
+	return (a ?? 0) + (b ?? 0);
+}
+
 /** Sum the token counts of two usage values. */
 export function mergeTokenCounts(current: TokenCounts, next: TokenCounts): TokenCounts {
 	const merged: TokenCounts = {
@@ -62,23 +68,30 @@ export function mergeTokenCounts(current: TokenCounts, next: TokenCounts): Token
 		totalTokens: current.totalTokens + next.totalTokens,
 	};
 
-	const noCache =
-		(current.inputTokenDetails?.noCache ?? 0) + (next.inputTokenDetails?.noCache ?? 0);
-	const cacheRead =
-		(current.inputTokenDetails?.cacheRead ?? 0) + (next.inputTokenDetails?.cacheRead ?? 0);
-	const cacheWrite =
-		(current.inputTokenDetails?.cacheWrite ?? 0) + (next.inputTokenDetails?.cacheWrite ?? 0);
-	if (noCache > 0 || cacheRead > 0 || cacheWrite > 0) {
+	// A detail is kept when either side reported it, so a reported zero stays
+	// zero and a detail that no call reported stays absent.
+	const noCache = sumReported(current.inputTokenDetails?.noCache, next.inputTokenDetails?.noCache);
+	const cacheRead = sumReported(
+		current.inputTokenDetails?.cacheRead,
+		next.inputTokenDetails?.cacheRead,
+	);
+	const cacheWrite = sumReported(
+		current.inputTokenDetails?.cacheWrite,
+		next.inputTokenDetails?.cacheWrite,
+	);
+	if (noCache !== undefined || cacheRead !== undefined || cacheWrite !== undefined) {
 		merged.inputTokenDetails = {
-			...(noCache > 0 && { noCache }),
-			...(cacheRead > 0 && { cacheRead }),
-			...(cacheWrite > 0 && { cacheWrite }),
+			...(noCache !== undefined && { noCache }),
+			...(cacheRead !== undefined && { cacheRead }),
+			...(cacheWrite !== undefined && { cacheWrite }),
 		};
 	}
 
-	const reasoning =
-		(current.outputTokenDetails?.reasoning ?? 0) + (next.outputTokenDetails?.reasoning ?? 0);
-	if (reasoning > 0) {
+	const reasoning = sumReported(
+		current.outputTokenDetails?.reasoning,
+		next.outputTokenDetails?.reasoning,
+	);
+	if (reasoning !== undefined) {
 		merged.outputTokenDetails = { reasoning };
 	}
 

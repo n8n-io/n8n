@@ -34,6 +34,24 @@ export const importPackageRequestFieldDocs = {
 			'a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
+	credentialConflictPolicy: {
+		description:
+			'What to do when a credential reference matches an existing credential and the package ' +
+			'has different values for it. `keep-existing` (default) never changes a matched ' +
+			'credential. `overwrite` writes the package name and the expression values from the ' +
+			'package to a matched credential that a project of the import owns. It keeps all other ' +
+			'stored values: secrets, other fields, the OAuth connection, and array fields. It never ' +
+			'changes a global credential that a different project owns, or a managed, end-user ' +
+			'(resolvable) or instance-level credential. The import lists the source ids of changed ' +
+			'credentials under `credentials.updated`. An API key needs the `credential:update` scope ' +
+			'when the import changes a credential. `fail` rejects the import with a 409 ' +
+			'(`credential-conflict`) when `overwrite` would change a matched credential. Every policy ' +
+			'leaves a matched credential alone when the package values are the same as the stored ' +
+			'values. `overwrite` and `fail` compare stored values, so they need the ' +
+			'`credential:update` permission on each matched credential that a project of the import ' +
+			'owns, also when it would not change. Without it, the import is rejected with ' +
+			'`credential-update-forbidden`.',
+	},
 	bindings: {
 		type: 'string',
 		default: '{}',
@@ -44,43 +62,42 @@ export const importPackageRequestFieldDocs = {
 			'the target instance. These explicit bindings are validated on type and applied before ' +
 			'`credentialMatchingMode` resolution runs.',
 	},
-	workflowConflictPolicy: {
+	conflictPolicy: {
 		description:
-			'`new-version` updates matching workflows and creates a new version; the archived state ' +
-			'follows the package, so a matching workflow is archived or unarchived to match it. ' +
-			'`fail` rejects the import when any matching workflow exists, and `skip` leaves matching ' +
-			'workflows unchanged. Archived workflows in the target project match like any other. An ' +
-			'archive state change also needs the `workflow:delete` scope.',
+			'Applies to both Agents and workflows. `new-version` replaces matched definitions. ' +
+			'`fail` rejects the import when a match exists. `skip` leaves matched definitions unchanged. ' +
+			'All policies create entities that have no match. Matched workflows also follow the package ' +
+			'archive state under `new-version`; this change needs `workflow:delete`. ' +
+			'This required field replaces `workflowConflictPolicy`. The old field is rejected.',
 	},
-	workflowPublishingPolicy: {
+	publishingPolicy: {
 		description:
-			'Controls whether imported workflows are published after content is written. ' +
-			'`preserve-published-state` (default) keeps new workflows inactive, and republishes an ' +
-			'updated workflow only when it was already published and the package carries the ' +
-			'version the source publishes — so drafts are never published. `match-source` publishes ' +
-			'the version the package carries when the source publishes it, and unpublishes when the ' +
-			'source publishes nothing; when the source publishes a version the package does not carry, ' +
-			'the target keeps its published version. `publish-all` publishes every imported workflow. ' +
-			'`unpublish-all` leaves new workflows inactive and unpublishes updated workflows that ' +
-			'were published.',
+			'Controls publication of imported Agents and workflows after definitions are saved. ' +
+			'`preserve-published-state` (default) keeps new entities unpublished. It republishes an ' +
+			'updated entity only if it was published and the package contains the version published ' +
+			'at the source. `match-source` publishes the imported definition when the source publishes ' +
+			'it. It unpublishes the destination when the source has no published version. Both policies ' +
+			'leave publication unchanged when the source publishes a version absent from the package. ' +
+			'`publish-all` requests publication of imported entities. `unpublish-all` leaves new ' +
+			'entities unpublished and unpublishes updated entities. Skipped entities remain unchanged. ' +
+			'Archived workflows remain unpublished. Publication failures do not undo saved definitions. ' +
+			'Only the Agent revision saved by the import can be published or unpublished. ' +
+			'This field replaces `workflowPublishingPolicy` and `agentPublishingPolicy`. The old fields are rejected.',
 	},
-	workflowIdPolicy: {
+	idPolicy: {
 		description:
-			'Controls the id each newly created workflow receives. `source` (default) reuses the ' +
-			"package's own workflow id on the target instance, which best fits promotion use cases " +
-			'where the same workflow moves between environments. `new` mints a fresh id and records ' +
-			'the package id as `sourceWorkflowId`, so the same package can be imported repeatedly ' +
-			'without id collisions — best suited to marketplace imports. Workflows matched to an ' +
-			'existing workflow in the target project (status `updated` or `skipped`) always keep that ' +
-			"workflow's current id, regardless of policy.",
+			'Controls IDs for newly created Agents and workflows. Only `source` is supported. ' +
+			'It uses the package ID. An ID already used by an unmatched Agent or workflow, in any project, ' +
+			'blocks the import. ' +
+			'Matched entities keep their destination ID. Agent and workflow identity maps remain separate. ' +
+			'This field replaces `workflowIdPolicy` and `agentIdPolicy`. The old fields are rejected.',
 	},
 	missingNodeTypeMode: {
 		description:
-			'What to do when a workflow in the package uses a node type — or a version of a node ' +
-			'type — this instance does not have. `fail` (default) rejects the import before anything ' +
-			'is written, listing every missing `(nodeType, typeVersion)` pair and the workflows that ' +
-			'use it. `import-anyway` imports the package; workflows containing missing node types are ' +
-			'never published by this import, regardless of `workflowPublishingPolicy`.',
+			'Controls missing node types and versions in workflow nodes and Agent node tools. ' +
+			'`fail` (default) rejects the import before writes. The issues identify the affected ' +
+			'consumers. `import-anyway` saves the definitions but blocks their publication. ' +
+			'This applies to both Agents and workflows.',
 	},
 	projectConflictPolicy: {
 		description:
@@ -251,19 +268,18 @@ export const importPackageSelectionRequestFieldDocs = {
 			'is a no-op unless it is also a selected destination. Must not contain a selected ' +
 			"workflow's destination id. Needs the `workflow:delete` scope.",
 	},
-	workflowConflictPolicy: {
+	conflictPolicy: {
 		description:
 			'What happens when a selected workflow matches an existing workflow by source id in the ' +
 			'target project. `new-version` (default) updates it and creates a new version; `fail` ' +
 			'rejects the import when any matching workflow exists; `skip` leaves matching workflows ' +
 			'unchanged. An archive state change also needs the `workflow:delete` scope.',
 	},
-	workflowIdPolicy: {
+	idPolicy: {
 		description:
-			'Controls the id each newly created workflow receives. `source` (default) reuses the ' +
-			"package's own workflow id on the target instance; `new` mints a fresh id and records " +
-			'the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep ' +
-			"that workflow's current id, regardless of policy.",
+			'Controls IDs for newly created workflows. Only `source` is supported. It uses the package ID. ' +
+			'An ID already used by an unmatched workflow, in any project, blocks the import. ' +
+			'Matched workflows keep their destination ID.',
 	},
 	overwriteDeletionPolicy: {
 		description:

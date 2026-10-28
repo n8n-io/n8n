@@ -37,7 +37,7 @@ function makeCredentialService(creds: CredentialListItem[]): BuilderCredentialSe
 const BASE_DEPS = {
 	agentId: 'agent-1',
 	projectId: 'project-1',
-	listChatIntegrationTypes: () => ['slack', 'telegram', 'linear'],
+	listChatIntegrationTypes: async () => ['slack', 'telegram', 'linear'],
 	track: vi.fn(),
 };
 

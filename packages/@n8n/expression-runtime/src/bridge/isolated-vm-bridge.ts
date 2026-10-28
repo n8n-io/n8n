@@ -111,6 +111,16 @@ function loadRuntimeBundle(): string {
 	);
 }
 
+/** Workflow data for one `execute()` call, cleared when the call ends. */
+interface DataHolder {
+	data?: WorkflowData;
+}
+
+function heldData(holder: DataHolder): WorkflowData {
+	if (!holder.data) throw new Error('Host callback called after its expression finished');
+	return holder.data;
+}
+
 /**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
  *
@@ -303,13 +313,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * for navigation and guard semantics); errors are caught and returned
 	 * as sentinels instead of crossing the isolate boundary.
 	 *
-	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetValueAtPathRef(data: WorkflowData): ivm.Callback {
+	private createGetValueAtPathRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				return getValueAtPath(data, pathArr);
+				return getValueAtPath(heldData(holder), pathArr);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -323,13 +332,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * for navigation and guard semantics); errors are caught and returned
 	 * as sentinels instead of crossing the isolate boundary.
 	 *
-	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetArrayElementRef(data: WorkflowData): ivm.Callback {
+	private createGetArrayElementRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				return getArrayElement(data, pathArr, index);
+				return getArrayElement(heldData(holder), pathArr, index);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -350,13 +358,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
 	 * non-cloneable values.
 	 *
-	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createCallHostRef(data: WorkflowData): ivm.Callback {
+	private createCallHostRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return dispatchHostCall(rawMsg, data);
+				return dispatchHostCall(rawMsg, heldData(holder));
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -407,11 +414,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Host callbacks are ivm.Callback instances: inside the isolate they
 		// arrive as plain functions with structured-clone marshaling, so the
-		// runtime invokes them directly. Callbacks are GC-managed; there is no
-		// release() to call in `finally`.
-		const getValueAtPath = this.createGetValueAtPathRef(data);
-		const getArrayElement = this.createGetArrayElementRef(data);
-		const callHost = this.createCallHostRef(data);
+		// runtime invokes them directly. isolated-vm frees a callback only at the
+		// next isolated-vm call in the process, even after the isolate is disposed.
+		// So the callbacks read the data from a holder that `finally` clears.
+		const holder: DataHolder = { data };
+		const getValueAtPath = this.createGetValueAtPathRef(holder);
+		const getArrayElement = this.createGetArrayElementRef(holder);
+		const callHost = this.createCallHostRef(holder);
 
 		try {
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
@@ -492,6 +501,8 @@ try {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+		} finally {
+			holder.data = undefined;
 		}
 	}
 

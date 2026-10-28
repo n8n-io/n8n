@@ -146,10 +146,9 @@ hides every credential-only node, as before.
 
 ### What the second kind costs
 
-The cache is keyed per kind, so the two kinds share nothing. A cold decision on a project with
-both scopes configured and attached costs 12 queries where one kind cost 6, and a warm one
-costs none — pinned in `node-type-policy.store-reads.test.ts`. The decision service runs the
-checks together, so the second kind costs queries rather than latency.
+The snapshot holds both kinds, so the second kind costs no query at decision time. A snapshot
+reload reads every scope of every kind in 4 queries, up to 10,000 scopes — pinned in
+`node-type-policy.store-reads.test.ts`.
 
 ## What a violation looks like
 
@@ -186,6 +185,26 @@ them on the execution's error. Today that error is the whole story a user gets: 
 does not yet read `GET /projects/:projectId/available-types`, so a denied node looks normal
 until the save is refused. That endpoint exists for the builder to gray the node out up front,
 and wiring it is a separate piece of work.
+
+## Previewing a sub-workflow's start
+
+`GET /workflows/:workflowId/sub-workflows/:subWorkflowId/policy-check` tells the builder of a
+parent workflow which violations a call to the sub-workflow would hit. It runs
+`evaluateWorkflowStart` against the sub-workflow's own project, as the execution path does. It
+judges the draft, which manual runs execute, and the published version, which production runs
+execute. `published` is `null` when the sub-workflow has no published version.
+
+- **Gate:** `workflow:update` on the parent. The caller does not need access to the
+  sub-workflow, because a parent can call a sub-workflow its builder cannot open.
+- **Disclosure:** the sub-workflow's caller policy is checked first. A missing sub-workflow
+  and a refused call both return 404, so neither the policy nor the existence of the
+  sub-workflow can be probed. `projectName` is present only for a team project that the user
+  can read.
+- **Failed checks:** when a check fails to run, the endpoint returns 500. The real start fails
+  closed, so the preview must not report "no violations".
+- **Limits:** the endpoint reads the parent's project for the caller policy, but not the parent
+  workflow's nodes. Inline sub-workflows (`source=parameter`) are out of scope: they run under
+  the parent's project, and their node types are not read (see Known limits).
 
 ## The store
 
@@ -233,38 +252,40 @@ can ever provide it.
 ### Reading it on the execution path
 
 `workflowStart` runs for every execution and every sub-execution, under a 250 ms deadline it
-fails closed on — so a slow database fails runs rather than slowing them. Evaluation therefore
-reads each scope through a `CacheService` entry keyed
-`type-availability-policy:scope:{kind}:{projectId ?? 'instance'}`, and a warm decision costs no
-queries at all. The instance entry is one row shared by every project.
+fails closed on. Any I/O on that path can miss the deadline, even when the store is healthy: a
+worker whose event loop stalls fires the deadline timer before it handles a reply that has
+already arrived.
 
-Every write drops the entries it changed, after its transaction commits. Invalidation is what
-keeps the cache fresh; the 10-minute TTL is only a backstop — see "Cache staleness" under
-"Known limits" for what is left for it to heal.
+So each process holds every configured scope in memory, in
+`TypeAvailabilityPolicySnapshot`. A decision reads that map and does no I/O. It resolves before
+any timer can fire. A project with no scope row reads as allow-all, which is correct only
+because the snapshot holds every row.
 
-In front of that entry, each process shares its own read of a scope. It holds the promise
-rather than the value, and registers it before the read starts, which buys two things on two
-different time scales:
+The database stays the source of truth. Three things keep the snapshot fresh:
 
-- **Callers that arrive while the read is running share it.** A burst of decisions on a cold
-  entry costs one database read rather than one for each. Nothing survives from before here —
-  the first caller registers its promise before any I/O, so the rest find it. The window is
-  that one read.
-- **Callers that arrive after it finished share it too, until 1 second after it began.** The
-  window runs from the start of the read, not from its result, so a slow read leaves less of
-  it. A warm decision then costs no round trip and no parse of every rule. That parse is what
-  makes a decision on Redis grow more expensive as an admin writes more rules.
+- **The process that wrote reloads after its transaction commits.** The response waits for
+  that reload, so the editor sees its own change at once.
+- **The other processes reload on the `reload-type-availability-policies` pubsub command.** The
+  writer publishes it after the commit. The subscriber debounces it for 300 ms, as it does every
+  command not in `IMMEDIATE_COMMANDS`, so a burst of writes costs one reload. Outside queue mode
+  there is one process and no command.
+- **A poll catches a command that was lost.** Redis pubsub does not redeliver. Every 30 seconds,
+  each process reads `COUNT(*)`, `SUM(version)` and `MAX(createdAt)` of the scope table. A delete
+  lowers the count, an update bumps a version, and an insert sets the newest `createdAt`. So a
+  different result means a missed change, and the process reloads.
+  A process also reloads when its pubsub subscriber reconnects.
 
-The 1 second must stay longer than one read, or the first of those leaks: a caller arriving
-late in a slow read would find the entry expired and start a second read.
+A reload reads every scope of every kind in 4 queries. Above 10,000 scopes or attached policies,
+each further batch of 10,000 IDs adds one query. Reloads run one at a time, so an older reload can
+never overwrite a newer one.
 
-A cache call is also bounded at 50 ms and falls through to the database. ioredis queues
-commands while it is disconnected rather than rejecting them, so without the bound a lost Redis
-would hang the read and spend the whole 250 ms budget instead of failing over.
+The module loads the snapshot in `init()`, before the process takes work. If that first load
+fails, the process still boots: decisions read the database directly, under the same deadline,
+and the poll retries the load.
 
-The admin reads (`getEffectivePolicy`, behind the `GET` routes) stay uncached on purpose: the
-`version` they report is what the editor sends back as `expectedVersion`, so a stale read there
-would surface as a write conflict.
+The admin reads (`getEffectivePolicy`, behind the `GET` routes) read the database on purpose:
+the `version` they report is what the editor sends back as `expectedVersion`, so a stale read
+there would surface as a write conflict.
 
 ## The write seal
 
@@ -286,28 +307,12 @@ through a sealed repository method, and the lint rule that guards that has no al
   asking — an OAuth authorize or revoke, the agents adapter, a log-streaming destination. There
   is no node type to evaluate there, and the credential's type is deliberately not a stand-in,
   so the decryption goes through.
-- **A policy change applies at once, plus up to 1 second.** The write drops the shared entry,
-  which reaches every process, because every deployment with more than one process reading
-  policy shares one Redis cache — unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
-  mode. What is left is each process's 1-second shared read, so that is the staleness window a
-  builder or an execution can see.
-
-  A read that hit the database before the write committed can put its old snapshot back after
-  the delete. Two rules stop it. On the process that wrote, a counter of invalidations makes
-  that read skip its write-back. And any read that took longer than a second skips it as well,
-  whichever process it ran on — because the invalidated keys are also dropped a second time one
-  second later, so a read that finished inside that second cannot outlive both deletes. A read
-  that skips the write-back still answers its own caller; only the rest of the cluster waits
-  for the next read.
-
-  `CacheService` has no compare-and-set, so a slow read pays for this by not populating the
-  cache at all. Pubsub invalidation would remove the need, and is the step that would also let
-  that 1 second grow and the TTL go away.
-
-- **The 10-minute TTL heals only what invalidation cannot reach.** Three cases, all
-  operator-level: that forced memory backend, where each process keeps its own copy and no
-  delete reaches it; a `deleteMany` that failed after its write committed, which is logged and
-  not retried; and a row edited outside the service, by a migration or manual SQL.
+- **A policy change reaches other processes after the pubsub command, or within 30
+  seconds.** The command normally takes effect about 300 ms after the last write. If a process
+  misses it, the fingerprint poll finds the change on its next run.
+- **A row edited outside the service is picked up by the poll only.** A migration or manual
+  SQL publishes no command. The poll sees the change if it moves a version, the row count or
+  the newest `createdAt`.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.
@@ -335,9 +340,13 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
+| `type-availability-policy-snapshot.ts`            | Holds every scope in memory for decisions, and keeps it fresh                   |
+| `effective-policy.ts`                             | The composed policy of one scope, and its allow-all default                     |
 | `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
 | `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
 | `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
+| `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |
+| `sub-workflow-policy-check.service.ts`            | Caller policy, draft and published evaluation, and project name disclosure      |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |

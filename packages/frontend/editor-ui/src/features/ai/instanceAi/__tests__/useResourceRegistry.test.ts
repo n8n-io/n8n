@@ -274,6 +274,41 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('wf-a')?.id).toBe('wf-a');
 			expect(producedArtifacts.get('wf-b')?.id).toBe('wf-b');
 		});
+
+		test('a failed build does not rename a workflow an earlier build saved', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-saved',
+								toolName: 'workflow_builder_build_workflow',
+								result: { success: true, workflowId: 'wf-1', workflowName: 'Orders Sync' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-failed',
+								toolName: 'workflow_builder_build_workflow',
+								args: { name: 'Orders Sync v2' },
+								result: {
+									success: false,
+									workflowId: 'wf-1',
+									workflowName: 'Orders Sync v2',
+									errors: ['Workflow save failed: no permission'],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Orders Sync');
+			expect(linkableResourceNameIndex.get('orders sync')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.has('orders sync v2')).toBe(false);
+		});
 	});
 
 	describe('producedArtifacts — message attachments', () => {
@@ -1649,6 +1684,36 @@ describe('useResourceRegistry', () => {
 				'wf-read': 'fetched',
 				'wf-version': 'fetched',
 				'wf-edited': 'built',
+			});
+		});
+
+		test('classifies the split workflow tools as fetched or built', async () => {
+			const { messages, producedArtifactOrigins } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'get_workflow',
+								args: { workflowId: 'wf-read' },
+								result: { id: 'wf-read', name: 'Orders', nodes: [], connections: {} },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-restore',
+								toolName: 'restore_workflow_version',
+								args: { workflowId: 'wf-restored', versionId: 'v1' },
+								result: { success: true, workflowName: 'Invoices' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
+				'wf-read': 'fetched',
+				'wf-restored': 'built',
 			});
 		});
 

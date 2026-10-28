@@ -69,6 +69,21 @@ describe('EngineDataPlaneProxyService', () => {
 		expect(provider.searchExecutions).toHaveBeenCalledWith({ workflowIds: ['wf'], limit: 20 });
 	});
 
+	it('reports no latest execution without a provider', async () => {
+		await expect(proxy.findLatestExecution({ workflowIds: ['wf'] })).resolves.toBeUndefined();
+	});
+
+	it('forwards a latest-execution read to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		const snapshot = mock<ExecutionSnapshot>({ id: executionId });
+		provider.findLatestExecution.mockResolvedValue(snapshot);
+		proxy.registerProvider(provider);
+
+		const filter = { workflowIds: ['wf'], status: ['completed' as const] };
+		await expect(proxy.findLatestExecution(filter)).resolves.toBe(snapshot);
+		expect(provider.findLatestExecution).toHaveBeenCalledWith(filter);
+	});
+
 	it('delegates a read to the registered provider', async () => {
 		const provider = mock<EngineDataPlaneProvider>();
 		const snapshot = mock<ExecutionSnapshot>({ id: executionId });

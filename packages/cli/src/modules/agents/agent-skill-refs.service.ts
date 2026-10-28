@@ -2,35 +2,27 @@ import type {
 	AgentJsonSkillConfig,
 	AgentSkill,
 	AgentSkillAvailability,
-	StoredAgentConfig,
+	SkillSource,
 } from '@n8n/api-types';
-import type { OperationContext, User } from '@n8n/db';
+import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
+import { ConflictError } from '@n8n/errors';
+import { UnexpectedError, UserError } from 'n8n-workflow';
+
+import {
+	findIntroducedNameClashes,
+	type SkillMoveOptions,
+	type SkillRef,
+	SkillRuntimeService,
+	SkillService,
+	type SkillTarget,
+} from '@/modules/skills';
 
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
-import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent-document';
-import { AgentRepository } from './repositories/agent.repository';
-import { SkillRepository } from './repositories/skill.repository';
-import {
-	SkillService,
-	toAgentSkill,
-	type SkillMoveOptions,
-	type SkillRef,
-} from './skills/skill.service';
-import { SkillsHubRollout } from './skills/skills-hub-rollout';
+import type { AgentSkillRefs } from './json-config/agent-document';
+import { AgentSkillRepository } from './repositories/agent-skill.repository';
 import { getAgentSkillHash } from './utils/agent-config-hash';
-import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
-import { generateAgentResourceId } from './utils/agent-resource-id';
-
-/** The `agent_history` skill columns of one publish, and the hub versions to pin. */
-export type PublishSnapshot = {
-	schema: StoredAgentConfig | null;
-	skills: Record<string, AgentSkill> | null;
-	/** Hub skill version id for each skill ref, in draft order. Empty with the hub off. */
-	pins: Map<string, string>;
-};
 
 /** Skill refs and the skill bodies they resolve to, keyed by skill id. */
 export interface AgentSkillsSnapshot {
@@ -43,35 +35,26 @@ export interface AgentSkillsSnapshot {
  * version, and for the skill bodies they resolve to. All other code reads and
  * writes skill refs through this service.
  *
- * With the skills hub on (`N8N_AGENTS_SKILLS_HUB_ENABLED`), the refs of a draft are the
- * `agent_skill_dependency` rows and the refs of a published version are the
- * `agent_version_skill_dependency` pins, in attach order. The skill bodies come
- * from the skills hub.
- *
- * With the skills hub off, the refs are the `skills` key of the stored `schema`
- * and the bodies are the `skills` column, as before the skills hub. A ref with
- * `enabled: false` is hidden. Its body stays in the `skills` column.
+ * The refs of a draft are the `agent_skill_dependency` rows. The refs of a
+ * published version are the `agent_version_skill_dependency` pins, in attach
+ * order. The skill bodies come from the skills module.
  */
 @Service()
 export class AgentSkillRefsService {
 	constructor(
-		private readonly skillRepository: SkillRepository,
+		private readonly agentSkillRepository: AgentSkillRepository,
 		private readonly skillService: SkillService,
-		private readonly agentRepository: AgentRepository,
-		private readonly rollout: SkillsHubRollout,
+		private readonly skillRuntime: SkillRuntimeService,
+		private readonly txRunner: TransactionRunner,
 	) {}
-
-	get usesSkillsHub(): boolean {
-		return this.rollout.isEnabled;
-	}
 
 	/** Skill refs of the agent draft, in attach order. A pinned ref has `versionId`. */
 	async refsForDraft(
-		agent: Pick<Agent, 'id' | 'schema'>,
+		agent: Pick<Agent, 'id'>,
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
-		if (!this.usesSkillsHub) return readLegacyRefs(agent.schema);
-		const rows = (await this.skillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
+		const rows =
+			(await this.agentSkillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
 		return toSkillRefs(
 			rows.map(({ skillId, versionId }) => ({ id: skillId, ...(versionId ? { versionId } : {}) })),
 		);
@@ -82,38 +65,38 @@ export class AgentSkillRefsService {
 	 * publish. Every ref of a version is pinned, so the refs carry no `versionId`.
 	 */
 	async refsForVersion(
-		version: Pick<AgentHistory, 'versionId' | 'schema' | 'skills'>,
+		version: Pick<AgentHistory, 'versionId'>,
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
-		if (!this.usesSkillsHub) return readLegacyRefs(version.schema);
-		const skillIds = await this.skillRepository.findPinnedSkillIds(version.versionId, ctx);
+		const skillIds = await this.agentSkillRepository.findPinnedSkillIds(version.versionId, ctx);
 		return toSkillRefs(skillIds.map((id) => ({ id })));
 	}
 
 	/** The refs of the agent draft and the skill bodies the draft runs. */
-	async readDraft(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
-		ctx: OperationContext,
-	): Promise<AgentSkillsSnapshot> {
+	async readDraft(agent: Pick<Agent, 'id'>, ctx: OperationContext): Promise<AgentSkillsSnapshot> {
 		const skillRefs = await this.refsForDraft(agent, ctx);
-		return { skillRefs, skills: await this.skillsForRefs(agent, skillRefs, ctx) };
+		return { skillRefs, skills: await this.skillsForRefs(skillRefs, ctx) };
 	}
 
 	/** The refs of one published agent version and the pinned skill bodies. */
 	async readVersion(
-		version: Pick<AgentHistory, 'versionId' | 'schema' | 'skills'>,
+		version: Pick<AgentHistory, 'versionId'>,
 		ctx: OperationContext,
 	): Promise<AgentSkillsSnapshot> {
-		if (!this.usesSkillsHub) {
-			const skillRefs = readLegacyRefs(version.schema);
-			return { skillRefs, skills: pickBodies(version.skills ?? {}, skillRefs) };
-		}
-		const pinned = await this.skillRepository.findPinned(version.versionId, ctx);
-		const skillRefs = toSkillRefs([...pinned.keys()].map((id) => ({ id })));
-		const skills = Object.fromEntries(
-			[...pinned].map(([skillId, row]) => [skillId, toAgentSkill(row)]),
+		const pins = await this.agentSkillRepository.findPins(version.versionId, ctx);
+		const versions = await this.skillRuntime.resolveVersions(
+			pins.map((pin) => pin.skillVersionId),
+			ctx,
 		);
-		return { skillRefs, skills };
+		// Keep pin order. Object key order would move numeric ids to the front.
+		const resolved = pins.flatMap((pin): Array<[string, AgentSkill]> => {
+			const pinnedVersion = versions.get(pin.skillVersionId);
+			return pinnedVersion ? [[pin.skillId, pinnedVersion.skill]] : [];
+		});
+		return {
+			skillRefs: toSkillRefs(resolved.map(([id]) => ({ id }))),
+			skills: Object.fromEntries(resolved),
+		};
 	}
 
 	/**
@@ -121,13 +104,11 @@ export class AgentSkillRefsService {
 	 * version of a ref with `versionId`, else the latest saved version.
 	 */
 	async skillsForRefs(
-		agent: Pick<Agent, 'skills'>,
 		skillRefs: AgentSkillRefs,
 		ctx: OperationContext,
 	): Promise<Record<string, AgentSkill>> {
 		if (!skillRefs?.length) return {};
-		if (!this.usesSkillsHub) return pickBodies(agent.skills ?? {}, skillRefs);
-		return await this.skillService.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
+		return await this.skillRuntime.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
 	}
 
 	async findOutdatedSkillIds(
@@ -135,10 +116,8 @@ export class AgentSkillRefsService {
 		skills: Record<string, AgentSkill>,
 		ctx: OperationContext,
 	): Promise<string[]> {
-		if (!this.usesSkillsHub) return [];
 		const pinnedSkillIds = skillRefs.flatMap((ref) => (ref.versionId ? [ref.id] : []));
 		const latestSkills = await this.skillsForRefs(
-			{ skills: {} },
 			pinnedSkillIds.map((id) => ({ type: 'skill', id })),
 			ctx,
 		);
@@ -159,17 +138,11 @@ export class AgentSkillRefsService {
 	 * to validate and report the refs that are saved, not the submitted ones.
 	 */
 	async effectiveDraftRefs(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
+		agent: Pick<Agent, 'id' | 'projectId'>,
 		refs: AgentJsonSkillConfig[],
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
-		if (!this.usesSkillsHub) {
-			const existingIds = new Set(readLegacyRefs(agent.schema).map((ref) => ref.id));
-			return refs.filter(
-				(ref) => existingIds.has(ref.id) || Object.hasOwn(agent.skills ?? {}, ref.id),
-			);
-		}
-		const checked = await this.skillService.checkRefs(
+		const checked = await this.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs),
 			ctx,
@@ -184,23 +157,14 @@ export class AgentSkillRefsService {
 	 * keeps its pin only when the draft already has that pin.
 	 */
 	async replaceDraftRefs(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
 		refs: AgentSkillRefs,
 		ctx: OperationContext,
 	): Promise<void> {
 		if (!agent.schema && refs?.length) {
 			throw new UnexpectedError('Cannot set skill refs on an agent without a config');
 		}
-		if (!this.usesSkillsHub) {
-			if (!agent.schema) return;
-			const existingIds = new Set(readLegacyRefs(agent.schema).map((ref) => ref.id));
-			const kept = (refs ?? []).filter(
-				(ref) => existingIds.has(ref.id) || Object.hasOwn(agent.skills ?? {}, ref.id),
-			);
-			await this.writeLegacyDraft(agent, agent.schema, kept, agent.skills ?? {}, ctx);
-			return;
-		}
-		const checked = await this.skillService.checkRefs(
+		const checked = await this.checkRefs(
 			{ id: agent.id, projectId: agent.projectId },
 			toServiceRefs(refs ?? []),
 			ctx,
@@ -214,27 +178,18 @@ export class AgentSkillRefsService {
 	 * skill row and needs no skill permission.
 	 */
 	async restoreDraftRefs(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
-		version: Pick<AgentHistory, 'versionId' | 'skills'>,
+		agent: Pick<Agent, 'id'>,
+		version: Pick<AgentHistory, 'versionId'>,
 		refs: AgentSkillRefs,
 		ctx: OperationContext,
 	): Promise<void> {
-		if (!this.usesSkillsHub) {
-			if (!agent.schema) return;
-			await this.writeLegacyDraft(
-				agent,
-				agent.schema,
-				refs ?? [],
-				deepCopy(version.skills ?? {}),
-				ctx,
-			);
-			return;
-		}
-		const restored = await this.skillService.restoreFromVersion(
-			version.versionId,
-			toServiceRefs(refs ?? []),
-			ctx,
-		);
+		// A ref with no pin follows the latest version.
+		const pins = await this.agentSkillRepository.findPins(version.versionId, ctx);
+		const pinned = new Map(pins.map((pin) => [pin.skillId, pin.skillVersionId]));
+		const restored = toServiceRefs(refs ?? []).map(({ versionId: _dropped, ...ref }) => {
+			const versionId = pinned.get(ref.id);
+			return versionId ? { ...ref, versionId } : ref;
+		});
 		await this.writeDependencies(agent.id, restored, ctx);
 	}
 
@@ -243,7 +198,7 @@ export class AgentSkillRefsService {
 	 * version of the skill. A save of the skill from this agent calls it.
 	 */
 	async unpinDraftRef(
-		agent: Pick<Agent, 'id' | 'schema'>,
+		agent: Pick<Agent, 'id'>,
 		skillId: string,
 		ctx: OperationContext,
 	): Promise<void> {
@@ -256,9 +211,9 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * Create with a config (duplicate, import, eval seeding). A ref to a hub
+	 * Create with a config (duplicate, import, eval seeding). A ref to a
 	 * skill stays a ref. A ref to an agent skill of another agent in the same
-	 * project gets a copy. A ref with a body but no hub skill gets a new agent
+	 * project gets a copy. A ref with a body but no stored skill gets a new agent
 	 * skill. Both new skills belong to this agent only, so deleting the agent
 	 * deletes them. A new skill gets a new id, and the ref points to it. A ref
 	 * with neither is dropped, and so is a ref with only a body when no user
@@ -267,30 +222,20 @@ export class AgentSkillRefsService {
 	 * that the draft now has.
 	 */
 	async createDraftRefs(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
 		refs: AgentSkillRefs,
 		bodies: Record<string, AgentSkill>,
 		creator: User | null,
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
 		if (!refs?.length) return [];
-		if (!this.usesSkillsHub) {
-			if (!agent.schema) return [];
-			const kept = refs.filter((ref) => Object.hasOwn(bodies, ref.id));
-			await this.writeLegacyDraft(agent, agent.schema, kept, pickBodies(bodies, kept), ctx);
-			return readLegacyRefs(agent.schema);
-		}
-		const found = new Map(
-			(
-				await this.skillRepository.findByIds(
-					refs.map((ref) => ref.id),
-					ctx,
-				)
-			).map((skill) => [skill.id, skill]),
+		const found = await this.skillRuntime.findTargets(
+			refs.map((ref) => ref.id),
+			ctx,
 		);
 		// Copy only the agent skills of agents in this project (a duplicate). Any other
 		// agent skill stays a plain ref, so `checkRefs` refuses it without reading its body.
-		const otherAgents = await this.skillRepository.findAgents(
+		const otherAgents = await this.agentSkillRepository.findAgents(
 			[...found.values()].flatMap((skill) =>
 				skill.agentId && skill.agentId !== agent.id ? [skill.agentId] : [],
 			),
@@ -303,7 +248,7 @@ export class AgentSkillRefsService {
 		});
 		const otherAgentBodies =
 			otherAgentSkillIds.length > 0
-				? await this.skillService.resolveForAgentDraft(
+				? await this.skillRuntime.resolveForAgentDraft(
 						otherAgentSkillIds.map((id) => ({ id })),
 						ctx,
 					)
@@ -320,10 +265,10 @@ export class AgentSkillRefsService {
 			const body = Object.hasOwn(source, ref.id) ? source[ref.id] : undefined;
 			// The new skill belongs to this agent only, so creating the agent is enough.
 			if (!body || creator === null) continue;
-			const id = await this.skillService.create(
+			const id = await this.skillService.createTrusted(
 				{
-					// An inline body or a copy becomes a skill of this agent only, as the startup
-					// copy does. It takes its project from the agent, and goes with the agent.
+					// An inline body or a copy becomes a skill of this agent only, as the data
+					// migration does. It takes its project from the agent, and goes with the agent.
 					target: { projectId: null, agentId: agent.id },
 					skill: body,
 					source: 'agent',
@@ -337,32 +282,70 @@ export class AgentSkillRefsService {
 		return toSkillRefs(next);
 	}
 
+	async importDraftSkills(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
+		refs: AgentSkillRefs,
+		bodies: Record<string, AgentSkill>,
+		creatorId: string,
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		const imported: AgentJsonSkillConfig[] = [];
+		const ids = (refs ?? []).map(({ id }) => id);
+		await this.skillRuntime.lockForEdit(ids, ctx);
+		const existing = await this.skillRuntime.findTargets(ids, ctx);
+		// Detach old refs to prevent partial Agent snapshots during skill saves.
+		await this.writeDependencies(agent.id, [], ctx);
+		for (const ref of refs ?? []) {
+			const target = existing.get(ref.id);
+			if (target) {
+				if (target.agentId !== agent.id || target.projectId !== null) {
+					throw new ConflictError('Imported skill ID belongs to another agent or scope');
+				}
+				const current = await this.skillsForRefs([{ type: 'skill', id: ref.id }], ctx);
+				await this.skillService.saveTrusted(
+					ref.id,
+					{
+						...bodies[ref.id],
+						references: bodies[ref.id].references ?? [],
+						baseSkillHash: getAgentSkillHash(current[ref.id]),
+					},
+					creatorId,
+					ctx,
+				);
+			} else {
+				await this.skillService.createTrusted(
+					{
+						id: ref.id,
+						target: { projectId: null, agentId: agent.id },
+						skill: bodies[ref.id],
+						source: 'agent',
+						createdById: creatorId,
+					},
+					ctx,
+				);
+			}
+			imported.push({ type: 'skill', id: ref.id });
+		}
+		await this.replaceDraftRefs(agent, imported, ctx);
+		return imported;
+	}
+
 	async createSkills(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
+		agent: Pick<Agent, 'id' | 'projectId'>,
 		skills: AgentSkill[],
 		creatorId: string,
 		availableTo: AgentSkillAvailability,
+		source: SkillSource,
 		ctx: OperationContext,
 	): Promise<string[]> {
-		if (!this.usesSkillsHub) {
-			const bodies = { ...(agent.skills ?? {}) };
-			const ids = skills.map((skill) => {
-				const id = generateAgentResourceId('skill', Object.keys(bodies));
-				bodies[id] = skill;
-				return id;
-			});
-			agent.skills = bodies;
-			await this.agentRepository.updateDraftSkills(agent, ctx);
-			return ids;
-		}
 		const ids: string[] = [];
 		for (const skill of skills) {
 			ids.push(
-				await this.skillService.create(
+				await this.skillService.createTrusted(
 					{
 						target: targetFor(agent, availableTo),
 						skill,
-						source: 'agent',
+						source,
 						createdById: creatorId,
 						checkNameTaken: true,
 					},
@@ -374,74 +357,62 @@ export class AgentSkillRefsService {
 	}
 
 	/**
-	 * What a publish writes to `agent_history`. Both settings write the legacy columns in
-	 * full: the skill refs in `schema.skills` and their bodies in `skills`. With the skills
-	 * hub on, the bodies are the versions the draft runs, so a published agent keeps
-	 * running after the flag is turned off. `pins` are the hub versions to pin once the
-	 * `agent_history` row exists (see `pinVersion`); empty with the hub off. Call it in
-	 * the publish transaction: it takes the publish lock on the skills.
+	 * The skill version id of each draft ref, keyed by skill id, in draft order. Pin
+	 * the versions once the `agent_history` row exists (see `pinVersion`). Call it in
+	 * the transaction that saves the draft.
 	 */
 	async versionSnapshot(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'schema'>,
 		ctx: OperationContext,
-	): Promise<PublishSnapshot> {
-		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
-		if (!this.usesSkillsHub) {
-			const skillRefs = readLegacyRefs(agent.schema);
-			const skills = pickBodies(agent.skills ?? {}, skillRefs);
-			const missing = getMissingSkillIds(skillRefs, skills);
-			if (missing.length > 0) {
-				throw new UserError(
-					`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`,
-				);
-			}
-			return { schema: agent.schema, skills: deepCopy(skills), pins: new Map() };
-		}
+	): Promise<Map<string, string>> {
+		if (!agent.schema) return new Map();
 		const refs = await this.refsForDraft(agent, ctx);
-		if (refs.length === 0) {
-			return {
-				schema: {
-					...withoutLegacySkillRefs(agent.schema),
-					skills: [],
-				} as unknown as StoredAgentConfig,
-				skills: {},
-				pins: new Map(),
-			};
-		}
-		const { skills, versionByRef } = await this.skillService.snapshotForPublish(
-			toServiceRefs(refs),
-			ctx,
-		);
+		if (refs.length === 0) return new Map();
+		const versionByRef = await this.skillRuntime.snapshotForSave(toServiceRefs(refs), ctx);
 		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
+			throw new UserError(`Cannot save agent with missing skills: ${missing.join(', ')}`);
 		}
-		const schema = {
-			...withoutLegacySkillRefs(agent.schema),
-			skills: refs.map(({ id }) => ({ type: 'skill', id })),
-		} as unknown as StoredAgentConfig;
-		return { schema, skills, pins: versionByRef };
+		return versionByRef;
 	}
 
-	/**
-	 * Publish: pin each draft ref to the saved version it runs now. Call it in
-	 * the publish transaction, after the `agent_history` row exists.
-	 */
-	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
+	/** Pin the resolved skills after the history row exists, in the same transaction. */
 	async pinVersion(
 		agentVersionId: string,
-		snapshot: PublishSnapshot,
+		pins: Map<string, string>,
 		ctx: OperationContext,
 	): Promise<void> {
-		if (snapshot.pins.size === 0) return;
-		await this.skillService.pinForPublish(agentVersionId, snapshot.pins, ctx);
+		if (pins.size === 0) return;
+		// The pins keep the order of `pins`, which is the order of the draft refs.
+		await this.agentSkillRepository.insertPins(
+			[...pins].map(([skillId, skillVersionId]) => ({ agentVersionId, skillId, skillVersionId })),
+			ctx,
+		);
+	}
+
+	async assertVersionAccess(
+		agent: Pick<Agent, 'id' | 'projectId'>,
+		version: AgentHistory,
+		ctx: OperationContext,
+	): Promise<void> {
+		const ids = (await this.refsForVersion(version, ctx)).map(({ id }) => id);
+		if (ids.length === 0) return;
+		await this.skillRuntime.lockForPublish(ids, ctx);
+		const targets = await this.skillRuntime.findTargets(ids, ctx);
+		const accessible = (id: string) => {
+			const skill = targets.get(id);
+			return skill !== undefined && this.isAttachable(skill, agent);
+		};
+		if (!ids.every(accessible)) {
+			throw new UserError('A saved skill is no longer available to this agent');
+		}
 	}
 
 	async availabilityOf(
 		skillId: string,
 		ctx: OperationContext,
 	): Promise<AgentSkillAvailability | undefined> {
-		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
+		const skill = (await this.skillRuntime.findTargets([skillId], ctx)).get(skillId);
 		if (!skill) return undefined;
 		if (skill.agentId) return 'agent';
 		return skill.projectId ? 'project' : 'instance';
@@ -454,7 +425,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 		options: SkillMoveOptions = {},
 	): Promise<void> {
-		await this.skillService.changeTarget(
+		await this.skillService.moveTrusted(
 			skillId,
 			targetFor(agent, availableTo),
 			agent.id,
@@ -463,20 +434,67 @@ export class AgentSkillRefsService {
 		);
 	}
 
-	private async writeLegacyDraft(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
-		schema: StoredAgentConfig,
-		refs: AgentJsonSkillConfig[],
-		skills: Record<string, AgentSkill>,
-		ctx: OperationContext,
-	): Promise<void> {
-		const { skills: _previous, ...rest } = schema;
-		agent.schema = {
-			...rest,
-			skills: refs.map(({ id }) => ({ type: 'skill', id })),
-		} as unknown as StoredAgentConfig;
-		agent.skills = skills;
-		await this.agentRepository.updateDraftSkills(agent, ctx);
+	/** An agent can attach instance skills, the skills of its own project and its own agent skills. */
+	isAttachable(skill: SkillTarget, agent: { id: string; projectId: string | null }): boolean {
+		if (skill.agentId !== null) return skill.agentId === agent.id;
+		return skill.projectId === null || skill.projectId === agent.projectId;
+	}
+
+	/**
+	 * The check an agent config save runs on the skill refs it gets. The agent's current
+	 * refs come from its dependency rows. Unknown ids are dropped unless already
+	 * attached. A ref keeps a pin only when the agent already had it. A new ref
+	 * must be attachable and must not clash by name.
+	 */
+	async checkRefs(
+		agent: { id: string; projectId: string | null },
+		refs: SkillRef[],
+		ctx: OperationContext = {},
+	): Promise<SkillRef[]> {
+		const current =
+			(await this.agentSkillRepository.findDependencies([agent.id], ctx)).get(agent.id) ?? [];
+		const existingIds = new Set(current.map((ref) => ref.skillId));
+		const existingPins = new Map(current.map((ref) => [ref.skillId, ref.versionId]));
+		const found = await this.skillRuntime.findTargets(
+			refs.map((ref) => ref.id),
+			ctx,
+		);
+		const kept = refs
+			.filter((ref) => existingIds.has(ref.id) || found.has(ref.id))
+			.map(({ versionId, ...ref }) =>
+				versionId !== undefined && existingPins.get(ref.id) === versionId
+					? { ...ref, versionId }
+					: ref,
+			);
+		const newIds = [...new Set(kept.map((ref) => ref.id))].filter(
+			(id) => !existingIds.has(id) && found.has(id),
+		);
+		if (newIds.length === 0) return kept;
+		// Shared lock until the attach commits, so `moveTrusted` cannot narrow a skill in between.
+		if (ctx.trx) await this.skillRuntime.lockForAttach(newIds, ctx);
+
+		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
+		const newRefs = newIds.map((id) => ({ id }));
+		const nameOf = await this.skillRuntime.runtimeNames([...keptExisting, ...newRefs], ctx);
+		for (const id of newIds) {
+			const skill = found.get(id);
+			if (skill && !this.isAttachable(skill, agent)) {
+				throw new UserError(
+					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
+				);
+			}
+		}
+		// A kept ref runs its pinned version, so compare the name of that version.
+		const clashes = findIntroducedNameClashes(
+			keptExisting.flatMap((ref) => nameOf(ref) ?? []),
+			newRefs.flatMap((ref) => nameOf(ref) ?? []),
+		);
+		if (clashes.length > 0) {
+			throw new UserError(
+				`This agent already has a skill with a name like "${clashes.join('", "')}". Rename one of them, or detach the other skill first.`,
+			);
+		}
+		return kept;
 	}
 
 	private async writeDependencies(
@@ -484,11 +502,20 @@ export class AgentSkillRefsService {
 		refs: SkillRef[],
 		ctx: OperationContext,
 	): Promise<void> {
-		await this.skillRepository.replaceDependencies(
-			agentId,
-			refs.map((ref) => ({ skillId: ref.id, versionId: ref.versionId ?? null })),
-			ctx,
-		);
+		// Refs to skills that are gone are dropped, in one transaction with the write.
+		await this.txRunner.run(ctx, async (txCtx) => {
+			const known = await this.skillRuntime.findTargets(
+				refs.map((ref) => ref.id),
+				txCtx,
+			);
+			await this.agentSkillRepository.replaceDependencies(
+				agentId,
+				refs.flatMap((ref) =>
+					known.has(ref.id) ? [{ skillId: ref.id, versionId: ref.versionId ?? null }] : [],
+				),
+				txCtx,
+			);
+		});
 	}
 }
 
@@ -497,25 +524,6 @@ function targetFor(agent: Pick<Agent, 'id' | 'projectId'>, availableTo: AgentSki
 		projectId: availableTo === 'project' ? agent.projectId : null,
 		agentId: availableTo === 'agent' ? agent.id : null,
 	};
-}
-
-function readLegacyRefs(schema: StoredAgentConfig | null): AgentJsonSkillConfig[] {
-	const value: unknown = schema?.skills;
-	if (!Array.isArray(value)) return [];
-	return value.flatMap((ref: { id?: unknown; enabled?: unknown }) =>
-		typeof ref?.id === 'string' && ref.enabled !== false
-			? [{ type: 'skill' as const, id: ref.id }]
-			: [],
-	);
-}
-
-function pickBodies(
-	bodies: Record<string, AgentSkill>,
-	refs: AgentJsonSkillConfig[],
-): Record<string, AgentSkill> {
-	return Object.fromEntries(
-		refs.flatMap((ref) => (Object.hasOwn(bodies, ref.id) ? [[ref.id, bodies[ref.id]]] : [])),
-	);
 }
 
 function toServiceRefs(refs: AgentJsonSkillConfig[]): SkillRef[] {

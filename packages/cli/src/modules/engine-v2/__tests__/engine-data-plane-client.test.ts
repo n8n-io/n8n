@@ -262,6 +262,38 @@ describe('EngineDataPlaneClient', () => {
 		});
 	});
 
+	describe('findLatestExecution', () => {
+		const filter = { workflowIds: ['wf-1'], status: ['completed' as const] };
+
+		it('posts the filter and returns the newest execution with its steps', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.findLatestExecution(filter)).resolves.toEqual(snapshot);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/workflow-executions/search/latest',
+					method: 'POST',
+					body: filter,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('returns undefined when no execution matches', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.findLatestExecution(filter)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.findLatestExecution(filter)).rejects.toThrow(OperationalError);
+		});
+	});
+
 	describe('cancelExecution', () => {
 		it('reports a cancelled execution', async () => {
 			respondWith(200, {

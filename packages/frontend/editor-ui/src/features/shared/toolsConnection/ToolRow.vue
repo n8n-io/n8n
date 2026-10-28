@@ -1,14 +1,6 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { computed, inject, nextTick, ref, watch } from 'vue';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
@@ -32,7 +24,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
-	disconnect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -65,6 +56,8 @@ const shouldShowCredentialPicker = computed(() => {
 	if (!credentialAdapter || !props.item.credentials?.length) return false;
 	if (props.item.status === 'connecting') return false;
 	if (hasToolConnection(props.item.status)) return true;
+	// Gateway credits need no stored credential, so the picker offers them to every user.
+	if (props.item.credentials?.some(({ aiGateway }) => aiGateway)) return true;
 
 	return Boolean(
 		props.item.credentials?.some(
@@ -142,6 +135,32 @@ function handleRowClick() {
 	emit('open-detail', props.item);
 }
 
+const mainActionRef = ref<HTMLElement | null>(null);
+/** Set when "Add" had focus, so focus can move once the button is gone. */
+let refocusAfterAdd = false;
+
+function handleSkillAdd(event: MouseEvent) {
+	refocusAfterAdd =
+		event.currentTarget instanceof HTMLElement &&
+		event.currentTarget.contains(document.activeElement);
+	emit('connect', props.item);
+}
+
+/**
+ * "Added" is static text, so the focused "Add" button leaves the page when the
+ * skill is added. Move focus to the row's own button (it opens the skill) so
+ * keyboard users stay on the same row instead of falling back to the page.
+ */
+watch(
+	() => props.item.kind === 'skill' && props.item.attached,
+	async (attached) => {
+		if (!attached || !refocusAfterAdd) return;
+		refocusAfterAdd = false;
+		await nextTick();
+		mainActionRef.value?.focus();
+	},
+);
+
 function handleConnect() {
 	emit('connect', props.item);
 	if (props.item.credentials?.length) {
@@ -167,6 +186,7 @@ function handleConnect() {
 	>
 		<component
 			:is="isRowNavigable ? 'button' : 'div'"
+			ref="mainActionRef"
 			:type="isRowNavigable ? 'button' : undefined"
 			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
 			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
@@ -239,7 +259,7 @@ function handleConnect() {
 			<RestrictedNodePopover
 				v-if="restriction"
 				:node-type-name="item.title"
-				:scope="restriction.scope"
+				:restriction="restriction"
 				:anchor="rowRef"
 				:side-offset="48"
 			/>
@@ -255,18 +275,24 @@ function handleConnect() {
 				</span>
 				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
-			<N8nSwitch2
-				v-else-if="item.kind === 'skill'"
-				:model-value="item.attached"
-				:disabled="item.attaching"
-				:label="
-					i18n.baseText(
-						item.attached ? 'tools.connection.action.attached' : 'tools.connection.action.detached',
-					)
-				"
+			<N8nButton
+				v-else-if="item.kind === 'skill' && !item.attached"
+				variant="outline"
+				size="small"
+				:aria-label="connectAriaLabel"
 				data-test-id="tools-connection-row-attach"
-				@update:model-value="$event ? emit('connect', item) : emit('disconnect', item)"
-			/>
+				@click="handleSkillAdd"
+			>
+				{{ connectLabel ?? i18n.baseText('generic.add') }}
+			</N8nButton>
+			<span
+				v-else-if="item.kind === 'skill'"
+				:class="$style.statusMarker"
+				data-test-id="tools-connection-row-added"
+			>
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
+			</span>
 			<N8nButton
 				v-else-if="item.kind === 'service'"
 				variant="outline"
@@ -374,6 +400,11 @@ function handleConnect() {
 	&:hover {
 		background: var(--color--background--light-1);
 	}
+}
+
+.row--skill {
+	// Skill rows have no icon. Start the text on the same edge as the search icon.
+	padding-inline-start: var(--spacing--xs);
 }
 
 .rowDisabled {

@@ -50,6 +50,7 @@ export interface RunObservationLogReflectorOpts {
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	/**
 	 * Receives the reflector model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
@@ -201,6 +202,7 @@ export async function runObservationLogReflector(
 		tokenBudget: reflectorThresholdTokens,
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
+		modelFetch: opts.modelFetch,
 	});
 	const output = typeof reflectResult === 'string' ? reflectResult : reflectResult.text;
 	const reflectUsage = typeof reflectResult === 'string' ? undefined : reflectResult.usage;

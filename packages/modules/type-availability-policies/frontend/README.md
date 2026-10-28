@@ -39,13 +39,27 @@ shell reads restriction through these and never through the store directly.
 
 Tests stub the store through `mockRestrictedNodeTypes` and `mockRestrictedCredentialTypes` from the module's `__tests__/mocks`.
 
-`ContactInstanceAdminModal` lists the instance owners with a mail link. The surfaces below render it
+`ContactAdminModal` lists the admins who can lift the restriction, with a mail link: the project
+admins when a project admin can lift it, otherwise the instance owners. The surfaces below render it
 as a sibling of their own content, so a popover that closes never unmounts the open dialog.
 `RestrictedNodePopover` is the explanation for a row in a list: the lock trigger, the hover-opened
 popover and the dialog. The caller passes the row element and whether the row is keyboard-active.
 `RestrictedNodePanel` is the builder-facing explanation of a blocked node in the NDV, with the
 contact and replace actions. The shell renders the popover and the panel where a restricted node
 appears; the module owns their copy and behaviour.
+
+`useSubWorkflowRestriction({ parentWorkflowId, node, enabled })` tells whether the sub-workflow
+an Execute Workflow node calls uses a blocked node type. It reads
+`/workflows/:workflowId/sub-workflows/:subWorkflowId/policy-check`, which judges the
+sub-workflow against its own project. The store caches one answer for each parent and
+sub-workflow pair, and callers that render the same call share one request. A 404 or 403 is
+cached as a refused call. Any other failure stays out of the cache, so the next fetch retries
+it, and `checkFailed` reports it. Only a stored
+sub-workflow selected by id is checked: inline and URL sources, and expressions, are skipped.
+`RestrictedSubWorkflowCallout` is the NDV explanation. It refetches on open, offers a retry
+when the check failed, and names the
+sub-workflow's project only when the server returned its name. The shell passes `enabled`, which
+must require `workflow:update` on the parent, because the endpoint refuses other users.
 
 `getPolicyViolations(error)` reads the structured violations off a refused save, publish or run,
 and `PolicyViolationList` groups them by scope and lists each blocked node or credential type,

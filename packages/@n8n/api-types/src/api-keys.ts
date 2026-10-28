@@ -56,4 +56,4 @@ export type ApiKeyList = {
 	owners: ApiKeyOwnerSummary[];
 };
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

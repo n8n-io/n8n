@@ -281,6 +281,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await this.initMemoryGuard();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initDataDeduplicationService();
@@ -309,6 +310,34 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initMemoryGuard() {
+		const { enabled } = this.globalConfig.memoryGuard;
+		if (enabled && this.globalConfig.executions.mode === 'regular') {
+			await this.startMemoryGuard();
+			return;
+		}
+
+		if (enabled) this.logger.warn('Memory guard supports only regular mode, so it stays off');
+		const { removeMemoryGuardJournal } = await import('@/memory-guard/memory-guard-journal.js');
+		removeMemoryGuardJournal();
+	}
+
+	private async startMemoryGuard() {
+		// Importing the tracker registers its lifecycle handlers. Resolve it now, so
+		// that a wiring error stops startup instead of the first execution.
+		const { RunDataTracker } = await import('@/memory-guard/run-data-tracker.js');
+		Container.get(RunDataTracker);
+		if (this.globalConfig.endpoints.metrics.enable) {
+			const { PrometheusMemoryGuardMetricsService } = await import(
+				'@/metrics/prometheus/memory-guard-metrics.service.js'
+			);
+			Container.get(PrometheusMemoryGuardMetricsService).init();
+		}
+		const { MemoryGuardService } = await import('@/memory-guard/memory-guard.service.js');
+		Container.get(MemoryGuardService).init();
+		this.logger.debug('Memory guard init complete');
 	}
 
 	private async initInstanceSettingsLoader(): Promise<void> {

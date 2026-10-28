@@ -29,7 +29,7 @@ describe('N8nActionToggle', () => {
 		expect(getByText('Duplicate')).toBeInTheDocument();
 		expect(getByText('Delete')).toBeInTheDocument();
 	});
-	it('defaults icon to horizontal orientation and is ellipsis', function () {
+	it('renders the horizontal ellipsis icon', function () {
 		const { getByRole } = render(ActionToggle, {
 			props: {
 				actions: [{ label: 'Duplicate', value: 'duplicate' }],
@@ -37,6 +37,48 @@ describe('N8nActionToggle', () => {
 		});
 
 		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis-12');
+	});
+	it('renders the icon at the default size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '12px');
+	});
+	it('renders the icon at the given iconSize', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+				iconSize: 'medium',
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '14px');
+	});
+	it('renders the button at the default size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		const button = getByRole('button');
+		expect(button.className).toMatch(/small/);
+		expect(button.className).not.toMatch(/xsmall/);
+	});
+	it('renders the button at the given size and keeps the icon size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+				size: 'xsmall',
+			},
+		});
+
+		const button = getByRole('button');
+		expect(button.className).toMatch(/xsmall/);
+		expect(button.querySelector('svg')).toHaveAttribute('width', '12px');
 	});
 	it('should have bottom-end as default placement', async function () {
 		const { container, getByRole } = render(ActionToggle, {

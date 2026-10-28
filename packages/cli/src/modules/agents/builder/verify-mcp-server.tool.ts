@@ -107,7 +107,7 @@ const verifyMcpServerInputSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Credential id returned by agent_builder_ask_credential. Required when authentication is not "none"',
+			'Credential id returned by setup_credentials(target: "agent"). Required when authentication is not "none"',
 		),
 	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
@@ -137,7 +137,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no ' +
 				'agent-context/agent_builder_patch_config follow-up. Treat the returned config as the current state and use ' +
 				'its configHash as baseConfigHash for your next config write. ' +
-				'Call this after agent_builder_ask_credential when authentication is not "none".',
+				'Call this after setup_credentials(target: "agent") when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {

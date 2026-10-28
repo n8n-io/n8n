@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 
 interface EnqueueCandidateInput {
 	agentId: string;
@@ -15,6 +16,8 @@ interface EnqueueCandidateInput {
 	evidenceText: string;
 	kind: EpisodicMemoryCaptureKind;
 }
+
+export type CandidateSourceMessage = Pick<AgentMessageEntity, 'author' | 'origin'>;
 
 @Service()
 export class AgentMemoryEntryCandidateRepository extends Repository<AgentMemoryEntryCandidateEntity> {
@@ -53,6 +56,31 @@ export class AgentMemoryEntryCandidateRepository extends Repository<AgentMemoryE
 			order: { createdAt: 'ASC', id: 'ASC' },
 			take: limit,
 		});
+	}
+
+	/** Resolves each candidate to the message it quoted. Candidates without a stored message are left out. */
+	async findSourceMessages(
+		agentId: string,
+		candidateIds: string[],
+	): Promise<Map<string, CandidateSourceMessage>> {
+		const sourceMessages = new Map<string, CandidateSourceMessage>();
+		if (candidateIds.length === 0) return sourceMessages;
+		const candidates = await this.find({
+			select: { id: true, sourceMessageId: true },
+			where: { agentId, id: In(candidateIds) },
+		});
+		const messageIds = candidates.flatMap(({ sourceMessageId }) => sourceMessageId ?? []);
+		if (messageIds.length === 0) return sourceMessages;
+		const messages = await this.manager.find(AgentMessageEntity, {
+			select: ['id', 'author', 'origin'],
+			where: { id: In(messageIds) },
+		});
+		const messagesById = new Map(messages.map((message) => [message.id, message]));
+		for (const { id, sourceMessageId } of candidates) {
+			const message = sourceMessageId ? messagesById.get(sourceMessageId) : undefined;
+			if (message) sourceMessages.set(id, { author: message.author, origin: message.origin });
+		}
+		return sourceMessages;
 	}
 
 	async markCandidatesCompleted(agentId: string, ids: string[]): Promise<void> {

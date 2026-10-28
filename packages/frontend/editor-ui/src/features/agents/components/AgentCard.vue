@@ -164,6 +164,7 @@ async function onAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: props.agent.name },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});

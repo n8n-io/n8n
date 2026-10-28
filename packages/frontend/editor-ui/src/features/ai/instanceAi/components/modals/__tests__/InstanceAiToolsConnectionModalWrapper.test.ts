@@ -14,7 +14,6 @@ import type {
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
-const featureFlags = vi.hoisted(() => ({ computerUse: false }));
 const confirmRemoveMock = vi.hoisted(() => vi.fn());
 const discoverMcpConnectionMock = vi.hoisted(() => vi.fn());
 const baseTextMock = vi.hoisted(() => vi.fn((key: string) => key));
@@ -30,16 +29,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	i18n: { baseText: baseTextMock },
-}));
-
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.computerUse;
-			},
-		},
-	}),
 }));
 
 const {
@@ -121,40 +110,33 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		isMcpAvailable: true,
-		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
-		isGatewayConnected: false,
-		isBrowserUseConnected: false,
+		browserConnected: false,
 	}),
 }));
 
-const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(
-	() => ({
-		browserTelemetryMock: {
-			trackModalOpened: vi.fn(),
-		},
-		computerTelemetryMock: {
-			trackModalOpened: vi.fn(),
-		},
-		telemetryMock: {
-			trackFirstCredentialConnectionStart: vi.fn(),
-			trackCredentialDropdownOpened: vi.fn(),
-			trackExistingCredentialSelected: vi.fn(),
-			trackNewCredentialConnectionStart: vi.fn(),
-			trackToolPermissionsUpdated: vi.fn(),
-		},
-		uiStoreMock: {
-			modalsById: {
-				instanceAiToolsConnection: { open: true, data: {} },
-			} as Record<string, { open: boolean; data?: Record<string, unknown> }>,
-			closeModal: vi.fn(),
-			setModalData: vi.fn(),
-			openNewCredential: vi.fn(),
-			openExistingCredential: vi.fn(),
-			appliedTheme: 'light',
-		},
-	}),
-);
+const { browserTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(() => ({
+	browserTelemetryMock: {
+		trackModalOpened: vi.fn(),
+	},
+	telemetryMock: {
+		trackFirstCredentialConnectionStart: vi.fn(),
+		trackCredentialDropdownOpened: vi.fn(),
+		trackExistingCredentialSelected: vi.fn(),
+		trackNewCredentialConnectionStart: vi.fn(),
+		trackToolPermissionsUpdated: vi.fn(),
+	},
+	uiStoreMock: {
+		modalsById: {
+			instanceAiToolsConnection: { open: true, data: {} },
+		} as Record<string, { open: boolean; data?: Record<string, unknown> }>,
+		closeModal: vi.fn(),
+		setModalData: vi.fn(),
+		openNewCredential: vi.fn(),
+		openExistingCredential: vi.fn(),
+		appliedTheme: 'light',
+	},
+}));
 
 uiStoreMock.modalsById = reactive(uiStoreMock.modalsById);
 
@@ -166,20 +148,19 @@ vi.mock('../../../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => browserTelemetryMock,
 }));
 
-vi.mock('../../../instanceAiComputerUse.telemetry', () => ({
-	useInstanceAiComputerUseTelemetry: () => computerTelemetryMock,
-}));
-
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStoreMock,
 }));
 
+const credentialsStoreMock = vi.hoisted(() => ({
+	allCredentials: [] as Array<{ id: string }>,
+	fetchAllCredentials: vi.fn(),
+	fetchCredentialTypes: vi.fn(),
+	getCredentialsByType: vi.fn(),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
-	useCredentialsStore: () => ({
-		fetchAllCredentials: vi.fn().mockResolvedValue([]),
-		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
-		getCredentialsByType: vi.fn().mockReturnValue([]),
-	}),
+	useCredentialsStore: () => credentialsStoreMock,
 }));
 
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
@@ -236,6 +217,7 @@ const ToolsConnectionModalStub = defineComponent({
 		'items',
 		'categories',
 		'showSuggestionFooter',
+		'loading',
 	],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
@@ -335,7 +317,6 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 describe('InstanceAiToolsConnectionModalWrapper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.computerUse = false;
 		modalListeners = {};
 		modalProps = {};
 		mcpStoreMock.connections = [];
@@ -375,6 +356,46 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		} satisfies McpRegistryDiscoveryResponse);
 		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
+		credentialsStoreMock.allCredentials = [];
+		credentialsStoreMock.fetchAllCredentials.mockResolvedValue([]);
+		credentialsStoreMock.fetchCredentialTypes.mockResolvedValue(undefined);
+		credentialsStoreMock.getCredentialsByType.mockReturnValue([]);
+	});
+
+	it('shows the loading screen until the first credentials fetch resolves', async () => {
+		let resolveFetch: (value: []) => void = () => {};
+		credentialsStoreMock.fetchAllCredentials.mockReturnValue(
+			new Promise((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		renderComponent();
+
+		expect(modalProps.loading).toBe(true);
+
+		resolveFetch([]);
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('stops loading when the first credentials fetch fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		credentialsStoreMock.fetchAllCredentials.mockRejectedValue(new Error('Network error'));
+		renderComponent();
+
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('refreshes loaded credentials without the loading screen', () => {
+		credentialsStoreMock.allCredentials = [{ id: 'cred-1' }];
+		credentialsStoreMock.fetchAllCredentials.mockReturnValue(new Promise(() => {}));
+		renderComponent();
+
+		expect(credentialsStoreMock.fetchAllCredentials).toHaveBeenCalledTimes(1);
+		expect(modalProps.loading).toBe(false);
 	});
 
 	it('configures the suggestion footer copy', () => {
@@ -836,20 +857,15 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('tracks opening built-in connection details', () => {
-		featureFlags.computerUse = true;
 		renderComponent();
 		const serviceItems = (modalProps.items as ServiceConnectionItem[]).filter(
 			(item) => item.kind === 'service',
 		);
 		const browserItem = serviceItems.find((item) => item.serviceId === 'browser-use');
-		const computerItem = serviceItems.find((item) => item.serviceId === 'computer-use');
 
 		expect(browserItem).toBeDefined();
-		expect(computerItem).toBeDefined();
 		emitModalEvent('onUpdate:detailItem', browserItem);
-		emitModalEvent('onUpdate:detailItem', computerItem);
 
 		expect(browserTelemetryMock.trackModalOpened).toHaveBeenCalledWith('tools_modal');
-		expect(computerTelemetryMock.trackModalOpened).toHaveBeenCalledWith(false, 'tools_modal');
 	});
 });

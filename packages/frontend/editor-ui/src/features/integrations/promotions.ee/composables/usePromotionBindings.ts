@@ -5,10 +5,9 @@ import type {
 	ContinueApplyPackageDto,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
+import { continueApplyPromotion } from '../promotionsSettings.api';
 import type {
 	BlockedApplyResult,
-	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -88,8 +87,7 @@ export function usePromotionBindings() {
 	const error = shallowRef<PromotionBindingsError | null>(null);
 	let session = 0;
 	let expectedSource: ContinueApplyPackageDto['expectedSource'] | undefined;
-	let connectionId: string | undefined;
-	let continueTarget: ContinueTarget | undefined;
+	let environmentId: string | undefined;
 
 	function statusOf(key: string, projectId: string): BindingStatus {
 		if (missingKeys.value.has(key)) return 'missing';
@@ -126,6 +124,15 @@ export function usePromotionBindings() {
 		}
 		return Array.from(projects.values());
 	});
+
+	/** One row for each missing binding of the session. A created binding stays as resolved. */
+	const rows = computed(() =>
+		Array.from(knownBindings.value, ([key, binding]) => ({
+			key,
+			binding,
+			status: statusOf(key, binding.consumers[0].project.id),
+		})),
+	);
 
 	const destructiveChanges = computed(
 		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
@@ -173,12 +180,11 @@ export function usePromotionBindings() {
 		);
 	}
 
-	function start(result: BlockedApplyResult, target: ContinueTarget) {
+	function start(result: BlockedApplyResult) {
 		session++;
 		originalResult.value = result;
-		connectionId = result.connectionId;
-		continueTarget = target;
-		expectedSource = { configId: result.configId, ...result.git };
+		environmentId = result.environmentId;
+		expectedSource = { environmentId: result.environmentId, ...result.git };
 		knownBindings.value = new Map();
 		createdBindings.value = new Map();
 		isSubmitting.value = false;
@@ -226,28 +232,17 @@ export function usePromotionBindings() {
 		}
 	}
 
-	async function continueApply() {
-		if (!canContinue.value || !connectionId || !expectedSource || !continueTarget) return;
+	async function continueInstanceApply() {
+		if (!canContinue.value || !environmentId || !expectedSource) return;
 		const currentSession = session;
 		isSubmitting.value = true;
 		error.value = null;
 		try {
 			const confirmDestructiveChanges = needsConfirmation.value || undefined;
-			const result =
-				continueTarget.kind === 'selection'
-					? await continueApplyProjectSelection(
-							rootStore.publicApiContext,
-							continueTarget.projectId,
-							{
-								workflowIds: continueTarget.workflowIds,
-								expectedSource: { ...expectedSource },
-								confirmDestructiveChanges,
-							},
-						)
-					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
-							expectedSource: { ...expectedSource },
-							confirmDestructiveChanges,
-						});
+			const result = await continueApplyPromotion(rootStore.publicApiContext, environmentId, {
+				expectedSource: { ...expectedSource },
+				confirmDestructiveChanges,
+			});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
 			if (result.status === 'source-changed') sourceChanged.value = true;
@@ -265,6 +260,7 @@ export function usePromotionBindings() {
 		originalResult,
 		preflight,
 		groups,
+		rows,
 		destructiveChanges,
 		projectDeletions,
 		needsConfirmation,
@@ -279,8 +275,9 @@ export function usePromotionBindings() {
 		error,
 		canContinue,
 		start,
+		reconcile,
 		end,
 		createBinding,
-		continueApply,
+		continueInstanceApply,
 	};
 }

@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
 import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import { createExecutionsTool } from '../executions.tool';
@@ -564,25 +565,6 @@ describe('executions tool', () => {
 				expect(suspendFn).toHaveBeenCalled();
 			});
 
-			it('admin requireRunWorkflowApproval overrides the session grant', async () => {
-				const context = createMockContext({
-					permissions: {},
-					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
-					requireRunWorkflowApproval: true,
-				});
-
-				const suspendFn = vi.fn();
-				const tool = createExecutionsTool(context);
-				await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-1' },
-					createAgentCtx({ suspend: suspendFn }) as never,
-				);
-
-				expect(suspendFn).toHaveBeenCalled();
-				expect(context.executionService.run).not.toHaveBeenCalled();
-			});
-
 			it('persists a grant when resumed with scope=session', async () => {
 				const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
 				const context = createMockContext({ permissions: {}, grantSessionToolApproval });
@@ -655,194 +637,7 @@ describe('executions tool', () => {
 			});
 		});
 
-		describe('allowedRunWorkflowIds scope', () => {
-			it('runs without HITL when always_allow + workflow id is in the allow-list', async () => {
-				const context = createMockContext({
-					permissions: { runWorkflow: 'always_allow' },
-					allowedRunWorkflowIds: new Set(['wf-1']),
-				});
-				(context.executionService.run as Mock).mockResolvedValue({
-					executionId: 'exec-1',
-					status: 'success',
-				});
-				const suspendFn = vi.fn();
-
-				const tool = createExecutionsTool(context);
-				await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-1' },
-					createAgentCtx({ suspend: suspendFn }) as never,
-				);
-
-				expect(suspendFn).not.toHaveBeenCalled();
-				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
-					timeout: undefined,
-				});
-			});
-
-			it('still requires HITL approval when always_allow is set but workflow id is NOT in the allow-list', async () => {
-				const context = createMockContext({
-					permissions: { runWorkflow: 'always_allow' },
-					allowedRunWorkflowIds: new Set(['wf-other']),
-				});
-				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Off-scope WF' });
-				const suspendFn = vi.fn();
-
-				const tool = createExecutionsTool(context);
-				const result = await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-1' },
-					createAgentCtx({ suspend: suspendFn }) as never,
-				);
-
-				expect(suspendFn).toHaveBeenCalled();
-				expect(context.executionService.run).not.toHaveBeenCalled();
-				expect(result).toBeUndefined();
-			});
-
-			it('runs without HITL when always_allow + workflow name is in the allow-list', async () => {
-				const context = createMockContext({
-					permissions: { runWorkflow: 'always_allow' },
-					allowedRunWorkflowIds: new Set(['wf-recorded']),
-					allowedRunWorkflowNames: new Set(['Replay Created WF']),
-				});
-				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Replay Created WF' });
-				(context.executionService.run as Mock).mockResolvedValue({
-					executionId: 'exec-1',
-					status: 'success',
-				});
-				const suspendFn = vi.fn();
-
-				const tool = createExecutionsTool(context);
-				await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-replayed' },
-					createAgentCtx({ suspend: suspendFn }) as never,
-				);
-
-				expect(suspendFn).not.toHaveBeenCalled();
-				expect(context.executionService.run).toHaveBeenCalledWith('wf-replayed', undefined, {
-					timeout: undefined,
-				});
-			});
-
-			it('matches workflow-name allow-list case-insensitively', async () => {
-				const context = createMockContext({
-					permissions: { runWorkflow: 'always_allow' },
-					allowedRunWorkflowIds: new Set(['wf-recorded']),
-					allowedRunWorkflowNames: new Set(['full execution test']),
-				});
-				(context.workflowService.get as Mock).mockResolvedValue({
-					name: 'Full Execution Test',
-				});
-				(context.executionService.run as Mock).mockResolvedValue({
-					executionId: 'exec-1',
-					status: 'success',
-				});
-				const suspendFn = vi.fn();
-
-				const tool = createExecutionsTool(context);
-				await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-replayed' },
-					createAgentCtx({ suspend: suspendFn }) as never,
-				);
-
-				expect(suspendFn).not.toHaveBeenCalled();
-				expect(context.executionService.run).toHaveBeenCalledWith('wf-replayed', undefined, {
-					timeout: undefined,
-				});
-			});
-
-			it('runs the current replay workflow by name when the recorded workflow id no longer resolves', async () => {
-				const originalE2ETests = process.env.E2E_TESTS;
-				process.env.E2E_TESTS = 'true';
-
-				try {
-					const context = createMockContext({
-						permissions: { runWorkflow: 'always_allow' },
-						allowedRunWorkflowIds: new Set(['wf-recorded']),
-						allowedRunWorkflowNames: new Set(['Replay Created WF']),
-					});
-					(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
-					(context.workflowService.list as Mock).mockResolvedValue({
-						workflows: [{ id: 'wf-current', name: 'Replay Created WF' }],
-						total: 1,
-						totalInScope: 1,
-					});
-					(context.executionService.run as Mock).mockResolvedValue({
-						executionId: 'exec-1',
-						status: 'success',
-					});
-					const suspendFn = vi.fn();
-
-					const tool = createExecutionsTool(context);
-					await executeTool(
-						tool,
-						{ action: 'run' as const, workflowId: 'wf-recorded' },
-						createAgentCtx({ suspend: suspendFn }) as never,
-					);
-
-					expect(context.workflowService.list).toHaveBeenCalledWith({
-						query: 'Replay Created WF',
-						limit: 10,
-					});
-					expect(suspendFn).not.toHaveBeenCalled();
-					expect(context.executionService.run).toHaveBeenCalledWith('wf-current', undefined, {
-						timeout: undefined,
-					});
-				} finally {
-					if (originalE2ETests === undefined) {
-						delete process.env.E2E_TESTS;
-					} else {
-						process.env.E2E_TESTS = originalE2ETests;
-					}
-				}
-			});
-
-			it('still requires HITL when neither workflow id nor name is in the allow-list', async () => {
-				const context = createMockContext({
-					permissions: { runWorkflow: 'always_allow' },
-					allowedRunWorkflowIds: new Set(['wf-recorded']),
-					allowedRunWorkflowNames: new Set(['Allowed WF']),
-				});
-				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Other WF' });
-				const suspendFn = vi.fn();
-
-				const tool = createExecutionsTool(context);
-				const result = await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-replayed' },
-					createAgentCtx({ suspend: suspendFn }) as never,
-				);
-
-				expect(suspendFn).toHaveBeenCalled();
-				expect(context.executionService.run).not.toHaveBeenCalled();
-				expect(result).toBeUndefined();
-			});
-
-			it('requires HITL when a checkpoint run represents an explicit user-requested execution', async () => {
-				const context = createMockContext({
-					permissions: { runWorkflow: 'always_allow' },
-					allowedRunWorkflowIds: new Set(['wf-1']),
-					requireRunWorkflowApproval: true,
-				});
-				const agentCtx = createAgentCtx();
-
-				const tool = createExecutionsTool(context);
-				const result = await executeTool(
-					tool,
-					{ action: 'run' as const, workflowId: 'wf-1' },
-					agentCtx as never,
-				);
-
-				expect(agentCtx.suspend).toHaveBeenCalled();
-				expect(context.executionService.run).not.toHaveBeenCalled();
-				expect(result).toBeUndefined();
-			});
-		});
-
-		describe('aiCreatedWorkflowIds scope (no explicit allow-list)', () => {
+		describe('aiCreatedWorkflowIds scope', () => {
 			it('runs without HITL when always_allow + workflow was created by the agent', async () => {
 				const context = createMockContext({
 					permissions: { runWorkflow: 'always_allow' },
@@ -910,6 +705,25 @@ describe('executions tool', () => {
 	// ── debug ───────────────────────────────────────────────────────────────
 
 	// ── run-step ────────────────────────────────────────────────────────────
+
+	it.each([
+		{ action: 'run' as const, workflowId: 'wf-1' },
+		{ action: 'run-step' as const, workflowId: 'wf-1', nodeName: 'Send Slack message' },
+	])('rejects $action outside the thread project before asking for approval', async (input) => {
+		const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+		const suspendFn = vi.fn();
+		const context = createMockContext({ permissions: {}, assertInThreadProject });
+
+		const tool = createExecutionsTool(context);
+		await expect(
+			executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never),
+		).rejects.toThrow(OutsideThreadProjectError);
+
+		expect(assertInThreadProject).toHaveBeenCalledWith({ kind: 'workflow', id: 'wf-1' });
+		expect(suspendFn).not.toHaveBeenCalled();
+		expect(context.executionService.run).not.toHaveBeenCalled();
+		expect(context.executionService.runStep).not.toHaveBeenCalled();
+	});
 
 	describe('run-step action', () => {
 		const stepInput = {
@@ -1091,11 +905,11 @@ describe('executions tool', () => {
 			expect(context.executionService.runStep).toHaveBeenCalled();
 		});
 
-		it('skips the prompt for a pre-authorized workflow under always_allow', async () => {
+		it('skips the prompt for an agent-created workflow under always_allow', async () => {
 			const suspendFn = vi.fn();
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
-				allowedRunWorkflowIds: new Set(['wf-1']),
+				aiCreatedWorkflowIds: new Set(['wf-1']),
 			});
 
 			const tool = createExecutionsTool(context);
@@ -1105,33 +919,17 @@ describe('executions tool', () => {
 			expect(context.executionService.runStep).toHaveBeenCalled();
 		});
 
-		it('prompts for a workflow outside the pre-authorized list', async () => {
+		it('prompts for a workflow the agent did not create', async () => {
 			const suspendFn = vi.fn();
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
-				allowedRunWorkflowIds: new Set(['wf-other']),
+				aiCreatedWorkflowIds: new Set(['wf-other']),
 			});
 
 			const tool = createExecutionsTool(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).toHaveBeenCalled();
-		});
-
-		it('lets the admin approval requirement override every grant', async () => {
-			const suspendFn = vi.fn();
-			const context = createMockContext({
-				permissions: { runWorkflow: 'always_allow' },
-				allowedRunWorkflowIds: new Set(['wf-1']),
-				sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Send Slack message']),
-				requireRunWorkflowApproval: true,
-			});
-
-			const tool = createExecutionsTool(context);
-			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
-
-			expect(suspendFn).toHaveBeenCalled();
-			expect(context.executionService.runStep).not.toHaveBeenCalled();
 		});
 	});
 

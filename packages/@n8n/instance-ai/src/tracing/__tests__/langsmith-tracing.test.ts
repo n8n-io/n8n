@@ -451,7 +451,13 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
-			metadata: { n8n_version: '2.19.0' },
+			metadata: {
+				n8n_version: '2.19.0',
+				self_healing: true,
+				self_healing_workflow_id: 'workflow-1',
+				self_healing_execution_id: 'execution-1',
+				self_healing_project_id: 'project-1',
+			},
 			browserExtension: { connectionState: 'connected', version: '0.0.7' },
 		});
 
@@ -495,6 +501,13 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(typeof telemetry.metadata?.agents_version).toBe('string');
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
+		const rootSpan = agentsMock.getSpans().find((span) => span.id === tracing?.rootRun.otelSpanId);
+		expect(rootSpan?.attributes).toMatchObject({
+			'langsmith.metadata.self_healing': true,
+			'langsmith.metadata.self_healing_workflow_id': 'workflow-1',
+			'langsmith.metadata.self_healing_execution_id': 'execution-1',
+			'langsmith.metadata.self_healing_project_id': 'project-1',
+		});
 
 		await telemetry.provider?.shutdown();
 	});
@@ -1054,7 +1067,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-call',
 								toolCallId: 'toolu-1',
-								toolName: 'workflow_builder_credentials',
+								toolName: 'credentials',
 								input: { action: 'list', name: 'Slack account' },
 								providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 							},
@@ -1066,7 +1079,7 @@ describe('createInstanceAiTraceContext', () => {
 							{
 								type: 'tool-result',
 								toolCallId: 'toolu-1',
-								toolName: 'workflow_builder_credentials',
+								toolName: 'credentials',
 								output: {
 									ok: true,
 									items: [{ name: 'Slack account', apiKey: 'sk-secret' }],
@@ -1078,7 +1091,7 @@ describe('createInstanceAiTraceContext', () => {
 				'ai.prompt.tools': [
 					JSON.stringify({
 						type: 'function',
-						name: 'workflow_builder_credentials',
+						name: 'credentials',
 						description: 'List credentials',
 						input_schema: {
 							type: 'object',
@@ -1107,7 +1120,7 @@ describe('createInstanceAiTraceContext', () => {
 					id: 'toolu-1',
 					type: 'function',
 					function: {
-						name: 'workflow_builder_credentials',
+						name: 'credentials',
 						arguments: JSON.stringify({ action: 'list', name: 'Slack account' }),
 					},
 				},
@@ -1116,7 +1129,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(prompt.input[2]).toEqual({
 			role: 'tool',
 			tool_call_id: 'toolu-1',
-			name: 'workflow_builder_credentials',
+			name: 'credentials',
 			content: JSON.stringify({
 				ok: true,
 				items: [{ name: 'Slack account', apiKey: '[redacted]' }],
@@ -1886,8 +1899,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		const suspendPayload = {
 			requestId: 'request-1',
-			inputType: 'plan-review',
-			message: 'Review the plan',
+			inputType: 'questions',
+			message: 'Answer the questions',
 		};
 		const interruptibleTool: BuiltTool = {
 			name: 'plan-tool',

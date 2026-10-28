@@ -10,6 +10,7 @@ import {
 	FORM_NODE_TYPE,
 	type INode,
 	type INodes,
+	type IWebhookData,
 	type IWorkflowBase,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
@@ -29,6 +30,7 @@ import { ConflictError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
@@ -54,7 +56,27 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly endpointsConfig: EndpointsConfig,
 	) {}
 
-	// TODO: implement `getWebhookMethods` for CORS support
+	async getWebhookMethods(executionId: string) {
+		const execution = await this.getExecution(executionId);
+		if (!execution) return [];
+
+		const lastNodeExecuted = execution.data.resultData?.lastNodeExecuted;
+		if (!lastNodeExecuted) return [];
+
+		const workflow = this.createWorkflow(execution.workflowData);
+		const workflowStartNode = workflow.getNode(lastNodeExecuted);
+		if (!workflowStartNode) return [];
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+		});
+		return await withExpressionIsolate(workflow, async () =>
+			this.webhookService
+				.getNodeWebhooks(workflow, workflowStartNode, additionalData)
+				.filter((webhook) => this.isOwnRestartWebhook(webhook))
+				.map((webhook) => webhook.httpMethod),
+		);
+	}
 
 	async findAccessControlOptions() {
 		// waiting webhooks do not support cors configuration options
@@ -79,6 +101,14 @@ export class WaitingWebhooks implements IWebhookManager {
 				(node) =>
 					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
 			)
+		);
+	}
+
+	/** Form restart webhooks resume through `form-waiting`, all other restart webhooks through `webhook-waiting`. */
+	private isOwnRestartWebhook(webhook: IWebhookData): boolean {
+		return (
+			webhook.webhookDescription.restartWebhook === true &&
+			(webhook.webhookDescription.nodeType === 'form') === this.includeForms
 		);
 	}
 
@@ -410,8 +440,7 @@ export class WaitingWebhooks implements IWebhookManager {
 					(webhook) =>
 						webhook.httpMethod === req.method &&
 						webhook.path === (suffix ?? '') &&
-						webhook.webhookDescription.restartWebhook === true &&
-						(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
+						this.isOwnRestartWebhook(webhook),
 				);
 
 			if (webhookData === undefined) {

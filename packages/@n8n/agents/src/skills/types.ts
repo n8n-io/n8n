@@ -17,8 +17,9 @@ export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
 
 export interface RuntimeSkillLinkedFile {
 	path: string;
-	bytes: number;
-	sha256: string;
+	/** Content metadata can be absent until a deferred file is read. */
+	bytes?: number;
+	sha256?: string;
 }
 
 export type RuntimeSkillLinkedFileGroup =
@@ -181,8 +182,16 @@ export type RuntimeSkillFileLoader = (
 	filePath: string,
 ) => Promise<RuntimeSkillFileContent | null>;
 
+export interface RuntimeSkillLoadError {
+	message: string;
+	/** Preserve an active selection when content is temporarily unavailable. */
+	retryable: boolean;
+}
+
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
+	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
@@ -192,6 +201,7 @@ export interface RuntimeSkillSource {
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
+	getLoadError?: (skillId: string) => RuntimeSkillLoadError | undefined;
 }
 
 export interface RuntimeSkillStateScope {
@@ -200,10 +210,16 @@ export interface RuntimeSkillStateScope {
 	agentName: string;
 }
 
-/** Stores active IDs separately from conversation text that memory can compact. */
+export interface RuntimeSkillState {
+	skillIds: string[];
+	/** Last loaded versions. Null keeps a revocation effective after compaction. */
+	versions?: Record<string, string | null>;
+}
+
+/** Stores active selections separately from conversation text that memory can compact. */
 export interface RuntimeSkillStateStore {
-	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
-	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+	load(scope: RuntimeSkillStateScope): Promise<RuntimeSkillState | undefined>;
+	save(scope: RuntimeSkillStateScope, state: RuntimeSkillState): Promise<void>;
 }
 
 export interface RuntimeSkillValidationError {

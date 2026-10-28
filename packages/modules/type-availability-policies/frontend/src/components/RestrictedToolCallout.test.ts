@@ -5,16 +5,13 @@ import { setActivePinia } from 'pinia';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import RestrictedToolCallout from './RestrictedToolCallout.vue';
+import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
 
 const renderComponent = createComponentRenderer(RestrictedToolCallout, {
 	props: { nodeTypeName: 'Slack' },
 	global: {
 		stubs: {
-			ContactInstanceAdminModal: {
-				props: ['open', 'nodeTypeName'],
-				template:
-					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
-			},
+			ContactAdminModal: contactAdminModalStub,
 		},
 	},
 });
@@ -25,7 +22,7 @@ describe('RestrictedToolCallout', () => {
 	});
 
 	it('names the tool and the blocking scope', () => {
-		const { getByTestId } = renderComponent({ props: { scope: 'instance' } });
+		const { getByTestId } = renderComponent({ props: { restriction: { scope: 'instance' } } });
 
 		expect(getByTestId('restricted-tool-callout')).toHaveTextContent(
 			"Slack is restricted on this instance. The agent can't use it.",
@@ -43,9 +40,29 @@ describe('RestrictedToolCallout', () => {
 	it('opens the contact-admin dialog for this tool', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
-		expect(queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();
+		expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
 
-		expect(getByTestId('contact-instance-admin-modal')).toHaveTextContent('Slack');
+		expect(getByTestId('contact-admin-modal')).toHaveTextContent('Slack');
+	});
+
+	it('sends a project restriction to the project admins', async () => {
+		mockPolicyProject({ type: 'team' });
+		const { getByTestId } = renderComponent({ props: { restriction: { scope: 'project' } } });
+
+		expect(getByTestId('restricted-tool-contact-admin')).toHaveTextContent('Contact project admin');
+		await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
+		expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-audience', 'project');
+	});
+
+	it('says a project admin can allow a delegated tool', () => {
+		mockPolicyProject({ type: 'team' });
+		const { getByTestId } = renderComponent({
+			props: { restriction: { scope: 'instance', optInAvailable: true } },
+		});
+
+		expect(getByTestId('restricted-tool-callout')).toHaveTextContent(
+			"Slack needs approval in this project. The agent can't use it until a project admin allows it.",
+		);
 	});
 });

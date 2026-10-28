@@ -235,13 +235,16 @@ const createIdpSource = async (
 };
 
 const bindIdpSubject = async (sourceId: string, userId: string) => {
-	await Container.get(TrustedSourceIdentityRepository).insertIfAbsent({
-		sourceId,
-		subject: IDP_SUBJECT,
-		userId,
-		provenance: 'admin',
-		status: 'active',
-	});
+	await Container.get(TrustedSourceIdentityRepository).insertIfAbsent(
+		{
+			sourceId,
+			subject: IDP_SUBJECT,
+			userId,
+			provenance: 'admin',
+			status: 'active',
+		},
+		{},
+	);
 };
 
 /** An access token as the external issuer would mint it for the trigger. */

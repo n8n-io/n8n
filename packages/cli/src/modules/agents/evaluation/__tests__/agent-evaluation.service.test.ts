@@ -1,6 +1,7 @@
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -245,5 +246,49 @@ describe('AgentEvaluationService', () => {
 			await expect(result.preparation.buildRuntime({})).rejects.toThrow();
 			expect(reconstruction.reconstructFromAgentEntity).not.toHaveBeenCalled();
 		},
+	);
+
+	it.each(['access', 'skills', 'reconstruction'])(
+		'cancels stalled %s setup without starting later work',
+		async (stage) => {
+			const { service, settings, skillRefs, reconstruction } = setup();
+			const { preparation } = await service.prepare(user, 'proj-1', 'agent-1');
+			if (!preparation) throw new Error('Expected evaluation preparation');
+			const blocked = createDeferredPromise();
+			const runtime = mock<RuntimeAgent>();
+			if (stage === 'access') {
+				settings.getEnabled.mockReturnValueOnce(blocked.promise.then(() => true));
+			} else if (stage === 'skills') {
+				skillRefs.skillsForRefs.mockReturnValueOnce(blocked.promise.then(() => ({})));
+			} else {
+				reconstruction.reconstructFromAgentEntity.mockReturnValueOnce(
+					blocked.promise.then(() => ({
+						agent: runtime,
+						toolRegistry: new Map(),
+						mcpServerAttributions: new Map(),
+					})),
+				);
+			}
+			const controller = new AbortController();
+			const reason = new Error('setup cancelled');
+			const building = preparation.buildRuntime({}, controller.signal);
+			const rejected = expect(building).rejects.toBe(reason);
+			await new Promise((resolve) => setImmediate(resolve));
+			controller.abort(reason);
+			await rejected;
+			blocked.resolve();
+			await new Promise((resolve) => setImmediate(resolve));
+
+			if (stage === 'reconstruction') {
+				expect(reconstruction.reconstructFromAgentEntity.mock.calls[0][8]).toEqual({
+					abortSignal: controller.signal,
+				});
+				expect(runtime.close).toHaveBeenCalledTimes(1);
+			} else {
+				expect(reconstruction.reconstructFromAgentEntity).not.toHaveBeenCalled();
+			}
+			if (stage === 'access') expect(skillRefs.skillsForRefs).not.toHaveBeenCalled();
+		},
+		1_000,
 	);
 });

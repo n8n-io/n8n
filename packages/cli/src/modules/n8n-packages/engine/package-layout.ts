@@ -1,7 +1,7 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
-import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
 import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
@@ -16,8 +16,6 @@ import type {
 	PackageCredentialRequirement,
 	PackageVariableRequirement,
 } from '../spec/requirements.schema';
-import type { SerializedCredential } from '../spec/serialized/credential.schema';
-import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 export function foldersInScope(
 	entries: ManifestEntry[] | undefined,
@@ -35,13 +33,6 @@ export function workflowsInScope(
 			entry.target.startsWith(`${basePrefix}workflows/`) ||
 			entry.target.startsWith(`${basePrefix}folders/`),
 	);
-}
-
-export function needsBundledCredentialData(
-	request: ImportCredentialProperties,
-	hasRequirements: boolean,
-): boolean {
-	return hasRequirements && credentialMissingModeUsesPackageData(request.credentialMissingMode);
 }
 
 /**

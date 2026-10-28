@@ -224,6 +224,24 @@ describe('BreakingChangeMigrationService', () => {
 		expect(workflowValidationService.validateForActivation).not.toHaveBeenCalled();
 	});
 
+	it('deduplicates identical notes emitted by several migrated nodes', async () => {
+		const first = createNode('A', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		const second = createNode('B', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(buildWorkflow([first, second]));
+		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+		vi.spyOn(migrationRegistry, 'get').mockReturnValue({
+			ruleId: RULE_ID,
+			migrate: () => ({
+				node: { type: 'n8n-nodes-base.code', typeVersion: 2, parameters: {} },
+				notes: ['behavior changed', 'review output'],
+			}),
+		});
+
+		const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
+
+		expect(result.notes).toEqual(['behavior changed', 'review output']);
+	});
+
 	it('is not republishable when the migrated version was not the published one', async () => {
 		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
 		// A draft (v2) sits ahead of the published version (v1).
