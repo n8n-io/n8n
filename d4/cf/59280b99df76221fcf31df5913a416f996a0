@@ -1,0 +1,27 @@
+packages/cli/src/modules/skills/skill.service.ts
+  s_127a9acd7ce7b7::t_edc6df24b2d190 3-4,123-125
+packages/@n8n/api-types/src/agents/agent-skill.schema.ts
+  s_127a9acd7ce7b7::t_edc6df24b2d190 70-76,87-88
+packages/cli/src/modules/instance-ai/instance-ai-hub-skills.ts
+  s_127a9acd7ce7b7::t_66a7f8345d1122 13
+  s_127a9acd7ce7b7::t_edc6df24b2d190 268-272
+packages/@n8n/api-types/src/agents/__tests__/agent-skill.dto.test.ts
+  s_127a9acd7ce7b7::t_4249ee4b0fc7ea 8,125-131
+  s_127a9acd7ce7b7::t_fa24e5a7f1228c 132-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4cf59280b99df76221fcf31df5913a416f996a0",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

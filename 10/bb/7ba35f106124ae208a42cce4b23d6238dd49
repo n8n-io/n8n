@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_a9406db86844b8::t_2dc3234f2be252 321,326
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_a9406db86844b8::t_2dc3234f2be252 69,71-73,81-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10bb7ba35f106124ae208a42cce4b23d6238dd49",
+  "prompts": {},
+  "sessions": {
+    "s_a9406db86844b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2315531e-83c9-4c88-9ccc-a293d57e6ef3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

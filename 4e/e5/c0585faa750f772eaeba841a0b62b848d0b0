@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_957eecb2e18fbf::t_b07607e3d52a6f 317,340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ee5c0585faa750f772eaeba841a0b62b848d0b0",
+  "prompts": {},
+  "sessions": {
+    "s_957eecb2e18fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a69e75d-aa11-4e29-af26-3cdcee83f150",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

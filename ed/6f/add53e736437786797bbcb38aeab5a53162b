@@ -1,0 +1,25 @@
+packages/cli/test/integration/public-api/users.test.ts
+  s_cceebc2f7c0a9f::t_65d2dab3539c2f 5-6,8,11,13,430-476
+  s_cceebc2f7c0a9f::t_c30030951bb6af 477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed6fadd53e736437786797bbcb38aeab5a53162b",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cceebc2f7c0a9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d5190d7-d692-4bb0-8404-c93baeb40abc",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

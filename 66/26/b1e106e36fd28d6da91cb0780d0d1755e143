@@ -1,0 +1,97 @@
+packages/frontend/editor-ui/src/experiments/agentBuilder/README.md
+  s_482f48320b007f::t_75274559c090ca 3,21,35
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentValidationTooltip.test.ts
+  s_482f48320b007f::t_06bc8343e866e1 1,36
+  s_482f48320b007f::t_9cfabdb258a107 50-58,62-65
+  s_482f48320b007f::t_255a4b1a32d9ad 59-61
+packages/cli/src/modules/agents/builder/agent-builder-session-context.ts
+  s_482f48320b007f::t_06bc8343e866e1 7,17
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_482f48320b007f::t_c8e6db1aeb059f 367-376
+  s_482f48320b007f::t_255a4b1a32d9ad 55-77
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_482f48320b007f::t_06bc8343e866e1 172,180
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_482f48320b007f::t_06bc8343e866e1 1,439
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_482f48320b007f::t_06bc8343e866e1 26
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_482f48320b007f::t_06bc8343e866e1 84
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_482f48320b007f::t_06bc8343e866e1 58-61,394,733,882
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_482f48320b007f::t_06bc8343e866e1 5-6,24,54,199,277
+  s_482f48320b007f::t_c8e6db1aeb059f 52-53,55-56
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_1647926261b273 102-103
+  s_482f48320b007f::t_75274559c090ca 66-67,75,96-97
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_c8e6db1aeb059f 55,91-135,180-191,194-229,234-263
+  s_482f48320b007f::t_75274559c090ca 85,178-179
+  s_482f48320b007f::t_1647926261b273 84,88
+  s_482f48320b007f::t_df804949555421 83
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_9f75bbc07d04dc 7046-7063,7067-7068
+  s_482f48320b007f::t_c8e6db1aeb059f 7064-7066
+  s_482f48320b007f::t_255a4b1a32d9ad 2408-2412,2414-2435,2437,2446
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.ts
+  s_482f48320b007f::t_9f75bbc07d04dc 30
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_482f48320b007f::t_06bc8343e866e1 69,189,192-193,318,687-688
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_482f48320b007f::t_b302dacee62fb5 1,590,593,608-616
+  s_482f48320b007f::t_49290531c9c31a 617
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.test.ts
+  s_482f48320b007f::t_9f75bbc07d04dc 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_482f48320b007f::t_01bcdf3bd6eabe 221,911
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_482f48320b007f::t_01bcdf3bd6eabe 129
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_482f48320b007f::t_06bc8343e866e1 2,28,328-329,417,426
+  s_482f48320b007f::t_c8e6db1aeb059f 323-327
+  s_482f48320b007f::t_1647926261b273 403-404
+  s_482f48320b007f::t_c8a946ce5ce14f 427
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_482f48320b007f::t_06bc8343e866e1 9573-9575,9577-9578,9585-9586,9590-9593,9595-9596
+  s_482f48320b007f::t_9cfabdb258a107 836-837,9576
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_482f48320b007f::t_01bcdf3bd6eabe 308,367,507,518,563,912,919,1023,1105
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_482f48320b007f::t_c8e6db1aeb059f 96-101
+  s_482f48320b007f::t_06bc8343e866e1 1,41,57,76
+  s_482f48320b007f::t_9cfabdb258a107 17-35
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_482f48320b007f::t_01bcdf3bd6eabe 3,136
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_06bc8343e866e1 151,372
+  s_482f48320b007f::t_6f5ccf34519d9e 3458-3461
+  s_482f48320b007f::t_c8e6db1aeb059f 431,1436-1437
+  s_482f48320b007f::t_5b4dde9aecb3d1 1445-1449,1455,1457
+  s_482f48320b007f::t_9cfabdb258a107 3885,3888-3891
+  s_482f48320b007f::t_9f75bbc07d04dc 382,430,432-441,520,1138,1153,3693,3780,3782-3798,3800-3841,3843-3858
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_482f48320b007f::t_06bc8343e866e1 14-16,107
+  s_482f48320b007f::t_b302dacee62fb5 2
+packages/frontend/editor-ui/src/features/agents/components/agentBuilderInjectionKeys.ts
+  s_482f48320b007f::t_06bc8343e866e1 13-15
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_482f48320b007f::t_06bc8343e866e1 7,36,44
+  s_482f48320b007f::t_c8e6db1aeb059f 72-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6626b1e106e36fd28d6da91cb0780d0d1755e143",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

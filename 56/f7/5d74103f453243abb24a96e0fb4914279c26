@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56f75d74103f453243abb24a96e0fb4914279c26",
+  "prompts": {},
+  "sessions": {
+    "s_ab80bf3dba8421": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "622abbc5-a35f-4cfa-a072-d511338d74e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

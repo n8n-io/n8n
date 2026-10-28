@@ -1,0 +1,69 @@
+packages/cli/src/modules/agents/integrations/resolve-imported-channels.ts
+  s_952e2dc69e6ab3::t_b2f8d41b2ef5e0 24-28,36-38,48-49
+  s_952e2dc69e6ab3::t_5d0f5a5533d4bc 47
+  s_952e2dc69e6ab3::t_db6baefa122f10 1-23,29-35,39-46,50-53
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_952e2dc69e6ab3::t_caaa8c692f1670 228-229
+  s_952e2dc69e6ab3::t_fdfae73708b114 1-2,15-18,47,181,187-190,242-248,275-282
+  s_952e2dc69e6ab3::t_d3b068f429e407 99-103,274
+  s_952e2dc69e6ab3::t_236462a21d9f14 283-284
+  s_952e2dc69e6ab3::t_25ef453ead4810 249-250
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_952e2dc69e6ab3::t_e69dfda8880640 2,568
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_952e2dc69e6ab3::t_f10b4f561a41e0 336-339
+  s_952e2dc69e6ab3::t_325618a1633464 273-281,314-324
+packages/@n8n/api-types/src/dto/index.ts
+  s_952e2dc69e6ab3::t_9b01fb784d8ec7 561
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_952e2dc69e6ab3::t_755e5b081c78cb 14-20,26,35,43,86-112,129-133
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_952e2dc69e6ab3::t_8bafb700159dcc 744-745
+  s_952e2dc69e6ab3::t_667dcfd680af1b 4,18,696-699,725,729-743
+  s_952e2dc69e6ab3::t_08465b551eaa2c 726-728
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_952e2dc69e6ab3::t_b67d04405d9e57 136,147-164,168-169
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_952e2dc69e6ab3::t_e69dfda8880640 1,32,40
+  s_952e2dc69e6ab3::t_64ce3676ba271d 5,15
+packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
+  s_952e2dc69e6ab3::t_9322dedf4e2907 37-38
+packages/cli/src/modules/n8n-packages/entities/publishing.ts
+  s_952e2dc69e6ab3::t_e69dfda8880640 13-14
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_952e2dc69e6ab3::t_d7a9d5b16cebc5 19-28,104-113
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_952e2dc69e6ab3::t_2ca0d9c4e1068a 788,793-794,796-804,806-808,811,815-817
+  s_952e2dc69e6ab3::t_36c6164ae7afbf 418-426
+  s_952e2dc69e6ab3::t_1626b1776818a8 395-408
+  s_952e2dc69e6ab3::t_08465b551eaa2c 819
+  s_952e2dc69e6ab3::t_469127bcf0ad1c 752-787,789-792,795,805,809-810,812-814,818,820-879
+packages/cli/src/modules/agents/integrations/__tests__/resolve-imported-channels.test.ts
+  s_952e2dc69e6ab3::t_b3340201a6bca8 1-79
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_952e2dc69e6ab3::t_d3b068f429e407 305
+  s_952e2dc69e6ab3::t_322c1813cd3fc3 306
+packages/@n8n/cli/docs/commands/package.md
+  s_952e2dc69e6ab3::t_072fe692f3bd63 132,136-149
+  s_952e2dc69e6ab3::t_3af10fb9167b67 150
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_952e2dc69e6ab3::t_e69dfda8880640 155,165
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_952e2dc69e6ab3::t_8a5689e92b4aa0 53,63,71,76-118,127,185,195,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "842c97f12df35cd6e9faf669571f49c9164bddfb",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

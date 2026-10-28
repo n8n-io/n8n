@@ -1,0 +1,59 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_7c16e26086f170::t_ef321559bfde1e 66-73,81,99,140
+  s_7c16e26086f170::t_a13b699f90b22b 126,142
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_7c16e26086f170::t_79d4ea6d5efb18 280
+  s_7c16e26086f170::t_5e376738a7ac5b 458,461
+  s_7c16e26086f170::t_95402383186e26 275-277,279,281-284
+  s_7c16e26086f170::t_09fbffbec049f6 453-454,459-460
+  s_7c16e26086f170::t_3b6ab908ced2e0 455
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_7c16e26086f170::t_5e376738a7ac5b 1145,1180-1181
+  s_7c16e26086f170::t_6ee4dd1ed3fa0f 1141,1160-1161,1184-1186
+  s_7c16e26086f170::t_7f9a6576885805 1246-1256
+  s_7c16e26086f170::t_fa35f25d3b470a 1191-1245,1257-1258
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_7c16e26086f170::t_ef321559bfde1e 121
+  s_7c16e26086f170::t_d43cbda4a8c9c3 120
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_7c16e26086f170::t_ef321559bfde1e 105
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_7c16e26086f170::t_926bd1f677a415 110-112
+  s_7c16e26086f170::t_3b6ab908ced2e0 67-73
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_7c16e26086f170::t_1b3d58473e9e19 251-254
+  s_7c16e26086f170::t_e9182edd8f1899 255-256
+  s_7c16e26086f170::t_45731ea4c2991a 246-250,257-259,261-266,276-277,283,630-631,640-641
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_7c16e26086f170::t_f18347ee84fdaf 274
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_7c16e26086f170::t_e74f66fd1d8d79 131-132
+  s_7c16e26086f170::t_772c104f5f3757 130
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7c16e26086f170::t_f18347ee84fdaf 10170,10176
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_7c16e26086f170::t_ef321559bfde1e 62,102
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_7c16e26086f170::t_f18347ee84fdaf 223
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_7c16e26086f170::t_e74f66fd1d8d79 183-185
+  s_7c16e26086f170::t_772c104f5f3757 181-182
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_7c16e26086f170::t_4b468e8fa43014 1504
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee1d47364a99c50629095ac43a9715a035de54da",
+  "prompts": {},
+  "sessions": {
+    "s_7c16e26086f170": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a273770a-1293-4914-86bd-77cc57f68f4c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

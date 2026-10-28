@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/utils/toolDisplayName.ts
+  s_7a7c82f60ee13e::t_56dc36bcfe7fa2 14,17-18,95
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7a7c82f60ee13e::t_56dc36bcfe7fa2 8888
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_7a7c82f60ee13e::t_56dc36bcfe7fa2 5,39-43
+  s_7a7c82f60ee13e::t_89a8f0fec2e40f 44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5b2108e2d6c2369c9ed599d036d2c1124c9ed17",
+  "prompts": {},
+  "sessions": {
+    "s_7a7c82f60ee13e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17a3556c-41bd-47d5-aa75-907aea9099e4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
