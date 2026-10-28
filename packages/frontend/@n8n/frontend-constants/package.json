@@ -1,11 +1,7 @@
 {
   "name": "@n8n/frontend-constants",
   "type": "module",
-<<<<<<< HEAD
   "version": "1.0.0",
-=======
-  "version": "0.12.0",
->>>>>>> 3afe470c7fcae4b55d5749a44943e938abf72d97
   "files": [
     "dist"
   ],

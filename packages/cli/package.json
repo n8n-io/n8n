@@ -1,11 +1,7 @@
 {
   "name": "n8n",
-<<<<<<< HEAD
   "version": "3.0.0",
   "private": true,
-=======
-  "version": "2.46.0",
->>>>>>> 3afe470c7fcae4b55d5749a44943e938abf72d97
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
