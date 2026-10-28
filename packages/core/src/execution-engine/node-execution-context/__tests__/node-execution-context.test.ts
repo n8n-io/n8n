@@ -14,6 +14,10 @@ import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } f
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
+import {
+	parseHitlCallbackReference,
+	verifyHitlCallbackReference,
+} from '@/utils/hitl-callback-reference';
 import { validateUrlSignature } from '@/utils/signature-helpers';
 
 import { NodeExecutionContext } from '../node-execution-context';
@@ -697,6 +701,36 @@ describe('NodeExecutionContext', () => {
 					validateUrlSignature(signature, normalisedUrl, instanceSettings.hmacSignatureSecret),
 				).toBe(false);
 			});
+		});
+	});
+
+	describe('getApprovalCallbackReference', () => {
+		beforeEach(() => {
+			testContext = new TestContext(
+				workflow,
+				node,
+				mock<IWorkflowExecuteAdditionalData>({ executionId: '123' }),
+				mode,
+			);
+		});
+
+		it('names the execution and the decision, signed with the instance secret', () => {
+			const parsed = parseHitlCallbackReference(testContext.getApprovalCallbackReference('d'));
+
+			expect(parsed).toMatchObject({ executionId: '123', decision: 'd' });
+			expect(verifyHitlCallbackReference(parsed!, instanceSettings.hmacSignatureSecret)).toBe(true);
+		});
+
+		it('rejects approval callbacks in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => testContext.getApprovalCallbackReference('a')).toThrow(
+					'Engine v2 does not support approval callbacks yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
 		});
 	});
 
