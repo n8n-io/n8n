@@ -64,7 +64,7 @@ export class AgentTaskCancellationService {
 										threadId,
 										planId,
 										requestedAt: new Date().toISOString(),
-										generation: await this.threads.captureGeneration(threadId, ctx),
+										generation: await this.threads.captureStopTargets(threadId, ctx),
 										failures: [],
 										pause: { id: uuidv7() },
 									},

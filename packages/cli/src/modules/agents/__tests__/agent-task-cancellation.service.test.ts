@@ -45,7 +45,7 @@ function setup() {
 			result: 'Saved result',
 		}),
 	];
-	repository.captureGeneration.mockResolvedValue({ executionIds: [], jobIds: [], threadIds: [] });
+	repository.captureStopTargets.mockResolvedValue({ executionIds: [], jobIds: [], threadIds: [] });
 	repository.findTaskStop.mockImplementation(async () => saved);
 	repository.saveStop.mockImplementation(async (value) => (saved = value));
 	repository.targetedJobs.mockImplementation(async () => work);
@@ -117,7 +117,7 @@ it('saves a stop between tasks and requests an acknowledgement without changing 
 
 it('interrupts the current response through runtime coordination after saving the boundary', async () => {
 	const { service, repository, executions, chat } = setup();
-	repository.captureGeneration.mockResolvedValue({
+	repository.captureStopTargets.mockResolvedValue({
 		executionIds: ['response'],
 		jobIds: [],
 		threadIds: [],
@@ -156,7 +156,7 @@ it('reuses the stop boundary without discarding the queue again', async () => {
 	expect((await repository.findTaskStop('thread'))!.pause!.id).toBe(firstId);
 	expect(second.requestedAt).toBe(first.requestedAt);
 	expect(messages.enqueueStopReport).toHaveBeenCalledOnce();
-	expect(repository.captureGeneration).toHaveBeenCalledOnce();
+	expect(repository.captureStopTargets).toHaveBeenCalledOnce();
 	expect(queue.discardPending).toHaveBeenCalledOnce();
 });
 
@@ -212,7 +212,7 @@ it('keeps a failed stop retryable and reconciles work that has since finished', 
 
 it('keeps a failed foreground checkpoint stop retryable', async () => {
 	const { service, repository, executions, chat } = setup();
-	repository.captureGeneration.mockResolvedValue({
+	repository.captureStopTargets.mockResolvedValue({
 		executionIds: ['response'],
 		jobIds: [],
 		threadIds: [],
@@ -255,7 +255,7 @@ it('stops side effects when the cancellation lease is lost', async () => {
 });
 it('offers Retry when a suspended response cannot be canceled', async () => {
 	const { service, repository, executions, chat } = setup();
-	repository.captureGeneration.mockResolvedValue({
+	repository.captureStopTargets.mockResolvedValue({
 		executionIds: ['response'],
 		jobIds: [],
 		threadIds: [],
