@@ -23,6 +23,7 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 	WorkflowHistoryRepository,
+	WorkflowDependencyRepository,
 } from '@n8n/db';
 import {
 	FolderRepository,
@@ -51,6 +52,7 @@ import { SourceControlContextFactory } from '@/modules/source-control.ee/source-
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -60,6 +62,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createVariable } from '@test-integration/db/variables';
+import { retryUntil } from '@test-integration/retry-until';
 
 import {
 	createCredentials,
@@ -2195,6 +2198,72 @@ describe('SourceControlImportService', () => {
 				// Verify workflow was not created in database
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
+			});
+		});
+
+		describe('workflow dependency index', () => {
+			const nodeWithCredential = (credentialId: string) => ({
+				id: 'bq-node',
+				name: 'Google BigQuery',
+				type: 'n8n-nodes-base.googleBigQuery',
+				typeVersion: 2,
+				position: [250, 300] as [number, number],
+				parameters: {},
+				credentials: { googleApi: { id: credentialId, name: `Credential ${credentialId}` } },
+			});
+
+			// CONTEXT-399: a pull rewrites the workflow nodes, but the dependency index is
+			// never updated, so the old credential keeps listing the workflow as a user.
+			it('should update the draft dependency index when a pull changes the credential', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowIndexService = Container.get(WorkflowIndexService);
+				const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+				const oldCredentialId = 'old-credential-x';
+				const newCredentialId = 'new-credential-y';
+
+				const draftCredentialKeys = async (workflowId: string) => {
+					const deps = await workflowDependencyRepository.find({ where: { workflowId } });
+					return deps
+						.filter((d) => d.dependencyType === 'credentialId' && d.publishedVersionId === null)
+						.map((d) => d.dependencyKey)
+						.sort();
+				};
+
+				// 1. The local workflow uses credential X and is indexed.
+				const localWorkflow = await createWorkflowWithHistory(
+					{
+						name: 'BigQuery workflow',
+						nodes: [nodeWithCredential(oldCredentialId)],
+						connections: {},
+					},
+					importingUser,
+				);
+				// `createWorkflowWithHistory` pre-seeds nodeType-only rows; drop them so the indexer writes real ones.
+				await workflowDependencyRepository.removeDependenciesForWorkflow(localWorkflow.id);
+				await workflowIndexService.updateIndexForDraft(localWorkflow);
+				expect(await draftCredentialKeys(localWorkflow.id)).toEqual([oldCredentialId]);
+
+				// 2. The remote version of the workflow uses credential Y. Pull it.
+				const remoteWorkflow = makeWorkflowImport({
+					id: localWorkflow.id,
+					name: localWorkflow.name,
+					nodes: [nodeWithCredential(newCredentialId)] as IWorkflowToImport['nodes'],
+				});
+				const file = putWorkflowFile(localWorkflow.id, remoteWorkflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: localWorkflow.id, file })],
+					importingUser.id,
+				);
+
+				// The pull wrote the new nodes.
+				const stored = await workflowRepository.findOneByOrFail({ id: localWorkflow.id });
+				expect(stored.nodes[0].credentials?.googleApi.id).toBe(newCredentialId);
+
+				// 3. The index must name credential Y only. Credential X is no longer in use.
+				await retryUntil(async () => {
+					expect(await draftCredentialKeys(localWorkflow.id)).toEqual([newCredentialId]);
+				});
 			});
 		});
 

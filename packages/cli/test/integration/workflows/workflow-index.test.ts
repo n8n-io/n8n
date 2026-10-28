@@ -326,6 +326,94 @@ describe('WorkflowIndexService Integration', () => {
 		});
 	});
 
+	describe('workflow-deactivated event (unpublish)', () => {
+		const nodeWithCredential = (credentialId: string): INode => ({
+			id: 'bq-node',
+			name: 'Google BigQuery',
+			type: 'n8n-nodes-base.googleBigQuery',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {},
+			credentials: { googleApi: { id: credentialId, name: `Credential ${credentialId}` } },
+		});
+
+		const credentialKeys = async (workflowId: string) => {
+			const deps = await workflowDependencyRepository.find({ where: { workflowId } });
+			return deps
+				.filter((d) => d.dependencyType === 'credentialId')
+				.map((d) => d.dependencyKey)
+				.sort();
+		};
+
+		// CONTEXT-399: unpublish leaves the published-lane rows behind, and a later draft
+		// save only prunes draft-lane rows, so the old credential keeps listing the workflow.
+		it('should stop listing the old credential after unpublish and a draft save with a new credential', async () => {
+			const owner = await createOwner();
+			const oldCredentialId = 'old-credential-x';
+			const newCredentialId = 'new-credential-y';
+
+			// 1. Create and index a workflow that uses credential X.
+			const workflow = await createWorkflow({ nodes: [nodeWithCredential(oldCredentialId)] });
+			// `createWorkflow` pre-seeds nodeType-only rows; drop them so the indexer writes real ones.
+			await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			eventService.emit('workflow-created', {
+				user: createUserPayload(owner),
+				workflow,
+				publicApi: false,
+				projectId: uuid(),
+				projectType: 'personal',
+			});
+			await retryUntil(async () => {
+				expect(await credentialKeys(workflow.id)).toEqual([oldCredentialId]);
+			});
+
+			// 2. Publish it. Published-lane rows for X are written.
+			const publishedVersionId = uuid();
+			await createWorkflowHistory({ ...workflow, versionId: publishedVersionId });
+			await setActiveVersion(workflow.id, publishedVersionId);
+			workflow.activeVersionId = publishedVersionId;
+			eventService.emit('workflow-activated', {
+				user: createUserPayload(owner),
+				workflow,
+				workflowId: workflow.id,
+				publicApi: false,
+			});
+			await retryUntil(async () => {
+				const deps = await workflowDependencyRepository.find({
+					where: { workflowId: workflow.id, publishedVersionId },
+				});
+				expect(deps.some((d) => d.dependencyKey === oldCredentialId)).toBe(true);
+			});
+
+			// 3. Unpublish it.
+			await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+			workflow.active = false;
+			workflow.activeVersionId = null;
+			eventService.emit('workflow-deactivated', {
+				user: createUserPayload(owner),
+				workflowId: workflow.id,
+				workflow,
+				publicApi: false,
+				deactivatedVersionId: publishedVersionId,
+			});
+
+			// 4. Switch the node to credential Y and save as a draft.
+			workflow.nodes = [nodeWithCredential(newCredentialId)];
+			workflow.versionCounter = workflow.versionCounter + 1;
+			const savedWorkflow = await workflowRepository.save(workflow);
+			eventService.emit('workflow-saved', {
+				user: createUserPayload(owner),
+				workflow: savedWorkflow,
+				publicApi: false,
+			});
+
+			// 5. Only credential Y should list the workflow. No version uses X any more.
+			await retryUntil(async () => {
+				expect(await credentialKeys(workflow.id)).toEqual([newCredentialId]);
+			});
+		});
+	});
+
 	describe('workflow-deleted event', () => {
 		it('should remove both draft and published index entries', async () => {
 			const owner = await createOwner();
