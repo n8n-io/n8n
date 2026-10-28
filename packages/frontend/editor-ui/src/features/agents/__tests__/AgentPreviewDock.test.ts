@@ -180,7 +180,7 @@ describe('AgentPreviewDock', () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
-	it('keeps the overlay at the host width when full width was saved', async () => {
+	it('ignores the saved full-width layout in an overlay', async () => {
 		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
 		const wrapper = mountDock({ overlay: true });
 

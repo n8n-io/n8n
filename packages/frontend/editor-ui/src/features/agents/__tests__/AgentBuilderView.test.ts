@@ -2407,6 +2407,25 @@ describe('AgentBuilderView — preview routing', () => {
 		}
 	});
 
+	it('uses the full editor area for the building indicator when the test chat has a host', async () => {
+		const wrapper = await renderView();
+		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:building', true);
+		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview', 'primary');
+		await flushPromises();
+		const indicator = wrapper.getComponent({ name: 'AgentBuildingIndicator' });
+		expect(indicator.element.parentElement?.style.right).not.toBe('');
+
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		try {
+			await wrapper.setProps({ artifactPreviewChatTarget: target });
+			expect(indicator.element.parentElement?.style.right).toBe('');
+		} finally {
+			target.remove();
+		}
+	});
+
 	it('closes Preview from the primary action beside the Agent title', async () => {
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });

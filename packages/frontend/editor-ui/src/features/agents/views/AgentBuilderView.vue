@@ -3402,7 +3402,10 @@ useKeybindings({
 				:class="$style.activityArea"
 				:style="{
 					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
-					right: isPreviewDockOpen ? `${renderedSidePanelWidths.preview}px` : undefined,
+					right:
+						isPreviewDockOpen && !props.artifactPreviewChatTarget
+							? `${renderedSidePanelWidths.preview}px`
+							: undefined,
 				}"
 			>
 				<AgentBuildingIndicator />

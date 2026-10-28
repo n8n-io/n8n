@@ -1,3 +1,5 @@
+import type { InstanceAiEnsureThreadResponse } from '@n8n/api-types';
+import { randomUUID } from 'crypto';
 import type { APIResponse } from '@playwright/test';
 
 import type { ApiHelpers } from './api-helper';
@@ -16,6 +18,31 @@ export interface InstanceAiFileAttachmentPayload {
  */
 export class InstanceAiApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
+
+	async createAgentThread(projectId: string, agentId: string, name: string): Promise<string> {
+		const threadId = randomUUID();
+		const response = await this.api.request.post('/rest/instance-ai/threads', {
+			data: { threadId, projectId, source: 'assistant_page' },
+		});
+		if (!response.ok()) throw new Error(`Failed to create thread: ${await response.text()}`);
+		const body: { data: InstanceAiEnsureThreadResponse } = await response.json();
+		const metadataResponse = await this.api.request.patch(`/rest/instance-ai/threads/${threadId}`, {
+			data: { metadata: { instanceAiAgentBuilderTarget: { projectId, agentId, name } } },
+		});
+		if (!metadataResponse.ok())
+			throw new Error(`Failed to set agent target: ${await metadataResponse.text()}`);
+		const tabsResponse = await this.api.request.put(`/rest/instance-ai/threads/${threadId}/tabs`, {
+			data: {
+				tabs: [{ type: 'agent', id: agentId, projectId, name }],
+				closedTabs: [],
+				activeTab: { type: 'agent', id: agentId },
+				previewOpen: true,
+			},
+		});
+		if (!tabsResponse.ok())
+			throw new Error(`Failed to open agent tab: ${await tabsResponse.text()}`);
+		return body.data.thread.id;
+	}
 
 	/**
 	 * Post a chat message to a thread.

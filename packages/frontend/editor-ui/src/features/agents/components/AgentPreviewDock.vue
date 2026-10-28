@@ -342,8 +342,6 @@ defineExpose({ clearBudgetStops });
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion' as motion;
-
 .dock {
 	position: absolute;
 	top: 0;
@@ -379,7 +377,10 @@ defineExpose({ clearBudgetStops });
 		transform: translateX(0);
 	}
 
-	@include motion.reduced-motion;
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
 }
 .fullpage {
 	width: 100%;
