@@ -528,12 +528,16 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toMatch(
 			/Do not ask whether to build now and set up\s+credentials later/,
 		);
-		expect(loaded?.instructions).toContain(
-			'Ask once when a service has multiple credentials of the same type',
+		expect(loaded?.instructions).toMatch(
+			/Let setup collect the choice when a service has multiple credentials of the\s+same type/,
 		);
 		expect(loaded?.instructions).toContain(
-			'Ask which auth type to use when a service supports more than one',
+			'Ask which auth type to use when a service supports more than one** only for a\nstandalone credential request',
 		);
+		expect(loaded?.instructions).toMatch(
+			/In a\s+workflow build, never ask about the auth type, before or after the build/,
+		);
+		expect(loaded?.instructions).not.toContain('Credentials before build');
 		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
 		expect(loaded?.instructions).toContain('load the `publishing` reference');
 		expect(loaded?.instructions).toContain('load `error-workflows` and follow its');
@@ -568,11 +572,6 @@ describe('Instance AI skills', () => {
 		expect(publishing).toContain('Fixing a workflow that is already published');
 		expect(publishing).toContain(
 			'Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks',
-		);
-
-		expect(loaded?.instructions).toContain('## Credentials before build');
-		expect(loaded?.instructions).toContain(
-			'Ask once when a service has multiple credentials of the same type',
 		);
 
 		const recipes = (await source.loadSkill('credential-recipe-research'))?.instructions ?? '';

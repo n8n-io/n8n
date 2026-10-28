@@ -73,4 +73,17 @@ describe('mockOutputEnvelopeValidator', () => {
 	it('does not warn when an item has fields next to json', () => {
 		expect(envelopeWarnings([{ json: { a: 1 }, total: 2 }])).toHaveLength(0);
 	});
+
+	it('warns on a JSON round trip when fromJSON gets the declared outputs back', () => {
+		const authored = build([{ json: { orderId: 'ord_1' } }]);
+		const declaredOutputs = authored.generatePinData().toJSON().pinData;
+
+		const warnings = workflow
+			.fromJSON(authored.toJSON(), { declaredOutputs })
+			.validate()
+			.warnings.filter((w) => w.code === 'MOCK_OUTPUT_JSON_ENVELOPE');
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].nodeName).toBe('Fetch Orders');
+	});
 });

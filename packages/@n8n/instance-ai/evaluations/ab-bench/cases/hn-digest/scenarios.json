@@ -1,0 +1,13 @@
+{
+	"pinByType": {
+		"hackerNews": [
+			{ "title": "Show HN: A tiny database", "url": "https://example.com/a", "objectID": "1" },
+			{ "title": "Rust 2.0 released", "url": "https://example.com/b", "objectID": "2" },
+			{ "title": "Why tabs beat spaces", "url": "https://example.com/c", "objectID": "3" },
+			{ "title": "A new CSS layout", "url": "https://example.com/d", "objectID": "4" },
+			{ "title": "Ask HN: Remote work", "url": "https://example.com/e", "objectID": "5" },
+			{ "title": "Sixth story", "url": "https://example.com/f", "objectID": "6" }
+		]
+	},
+	"scenarios": [{ "name": "The digest posts to Slack", "expect": { "reach": ["slack"] } }]
+}

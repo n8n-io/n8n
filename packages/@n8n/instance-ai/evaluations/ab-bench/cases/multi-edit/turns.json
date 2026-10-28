@@ -1,0 +1,6 @@
+[
+	"Create a webhook that receives contact form submissions with name, email and message. Save each submission in a data table called \"contacts\", then reply to the caller with a JSON confirmation that includes the saved name.",
+	"Also send an email with Gmail to sales@example.com for each submission, with the name and the message in the body.",
+	"If the email field is missing, reply with a 400 error and do not save the submission.",
+	"What does this workflow do now? Give me a short summary."
+]
