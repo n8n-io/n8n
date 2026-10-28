@@ -763,6 +763,10 @@ const {
 	compareVersions,
 	compareLatestTwo,
 } = useSkillVersions(() => props.data.skillId);
+/** The Versions panel shows beside the editor once its list has loaded. Compare mode hides it. */
+const showVersionsPanel = computed(
+	() => isFormStep.value && versionsOpen.value && !!versions.value && !comparison.value,
+);
 // The list loads the first time the panel opens.
 watch(
 	versionsOpen,
@@ -1223,7 +1227,13 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div :class="[$style.content, isFormStep && $style.contentFlush]">
+			<div
+				:class="[
+					$style.content,
+					isFormStep && $style.contentFlush,
+					showVersionsPanel && $style.contentBesidePanel,
+				]"
+			>
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1300,7 +1310,7 @@ function onRemove() {
 			</div>
 		</template>
 
-		<template v-if="isFormStep && versionsOpen && versions && !comparison" #sidePanel>
+		<template v-if="showVersionsPanel && versions" #sidePanel>
 			<SkillVersionTimeline
 				:versions="versions"
 				:shown-version="viewedVersion?.version ?? versions[0]?.version"
@@ -1442,6 +1452,11 @@ function onRemove() {
 .contentFlush {
 	gap: 0;
 	align-items: stretch;
+}
+
+/* The Versions panel takes its width from the window, so the editor gives up the same width. */
+.contentBesidePanel {
+	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3 - var(--spacing--5xl) * 1.25));
 }
 
 /* Nested, so it wins over the file list's own background. */
