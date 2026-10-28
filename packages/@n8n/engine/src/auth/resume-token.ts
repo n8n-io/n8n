@@ -102,7 +102,11 @@ const callbackMac = (secret: string, stepId: string, decision: ApprovalDecision)
 		.digest('base64url')
 		.slice(0, 32);
 
-/** Mints the approval callback that gives `decision` to the wait of `stepId`. */
+/**
+ * Mints the approval callback that gives `decision` to the wait of `stepId`.
+ *
+ * @throws {UnexpectedError} when `stepId` is not a UUID v7.
+ */
 export function mintApprovalCallback(
 	secret: string,
 	stepId: string,
