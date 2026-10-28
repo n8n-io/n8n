@@ -303,7 +303,6 @@
     "epub2": "3.0.2",
     "express": "catalog:",
     "form-data": "catalog:",
-    "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "ignore": "^5.2.0",
     "js-tiktoken": "catalog:",

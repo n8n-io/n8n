@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, toPathSegment } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -46,7 +46,7 @@ async function fetchLakebaseRestBase(
 	// `authentication` is a top-level option, not per item, so index 0 is right for every caller
 	const credentialType = getActiveCredentialType(context);
 	const host = await getHost(context, credentialType);
-	const parent = `${host}/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}`;
+	const parent = `${host}/api/2.0/postgres/projects/${toPathSegment(project)}/branches/${toPathSegment(branch)}`;
 
 	const response: EndpointsResponse = await databricksApiRequest(context, credentialType, {
 		method: 'GET',

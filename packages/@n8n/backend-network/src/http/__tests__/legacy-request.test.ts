@@ -110,7 +110,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			return this.req.headers;
 		};
 
-		it.each([[undefined], [true]])(
+		it.each([[true]])(
 			'forwards the authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
 			async (sendCredentialsOnCrossOriginRedirect) => {
 				nock(baseUrl)
@@ -134,26 +134,88 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			},
 		);
 
-		it('does not forward the authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
-			nock(baseUrl)
-				.get('/redirect')
-				.reply(301, '', { Location: `${otherOrigin}/test` });
-			nock(otherOrigin).get('/test').reply(200, reflectHeaders);
-			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+		it.each([[undefined], [false]])(
+			'does not forward the authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				nock(baseUrl)
+					.get('/redirect')
+					.reply(301, '', { Location: `${otherOrigin}/test` });
+				nock(otherOrigin).get('/test').reply(200, reflectHeaders);
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
-			const response = (await client.requestLegacy({
-				url: `${baseUrl}/redirect`,
-				auth: { username: 'testuser', password: 'testpassword' },
-				headers: { 'X-Other-Header': 'otherHeaderContent' },
-				resolveWithFullResponse: true,
-				sendCredentialsOnCrossOriginRedirect: false,
-			})) as { statusCode: number; body: string };
+				const response = (await client.requestLegacy({
+					url: `${baseUrl}/redirect`,
+					auth: { username: 'testuser', password: 'testpassword' },
+					headers: { 'X-Other-Header': 'otherHeaderContent' },
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { statusCode: number; body: string };
 
-			expect(response.statusCode).toBe(200);
-			const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
-			expect(forwardedHeaders.authorization).toBeUndefined();
-			expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
-		});
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
+				expect(forwardedHeaders.authorization).toBeUndefined();
+				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+			},
+		);
+
+		it.each([
+			['https://example.test', 'http://example.test', undefined],
+			['http://example.test', 'https://example.test:8443', undefined],
+			['https://example.test', 'https://sub.example.test', undefined],
+			['https://example.test', 'https://sub.example.test', false],
+		])(
+			'does not forward credential headers on a redirect from %s to %s when sendCredentialsOnCrossOriginRedirect is %s',
+			async (fromOrigin, toOrigin, sendCredentialsOnCrossOriginRedirect) => {
+				nock(fromOrigin)
+					.get('/redirect')
+					.reply(301, '', { Location: `${toOrigin}/test` });
+				nock(toOrigin).get('/test').reply(200, reflectHeaders);
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const response = (await client.requestLegacy({
+					url: `${fromOrigin}/redirect`,
+					headers: {
+						authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { statusCode: number; body: string };
+
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
+				expect(forwardedHeaders.authorization).toBeUndefined();
+				expect(forwardedHeaders.cookie).toBeUndefined();
+				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+			},
+		);
+
+		it.each([[undefined], [false]])(
+			'forwards credential headers on a redirect from http to https on the same host when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				nock('http://example.test')
+					.get('/redirect')
+					.reply(301, '', { Location: 'https://example.test/test' });
+				nock('https://example.test').get('/test').reply(200, reflectHeaders);
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const response = (await client.requestLegacy({
+					url: 'http://example.test/redirect',
+					headers: {
+						authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+					},
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { statusCode: number; body: string };
+
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
+				expect(forwardedHeaders.authorization).toBe('Bearer secret');
+				expect(forwardedHeaders.cookie).toBe('session=secret');
+			},
+		);
 
 		it.each([[undefined], [true], [false]])(
 			'forwards the authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',

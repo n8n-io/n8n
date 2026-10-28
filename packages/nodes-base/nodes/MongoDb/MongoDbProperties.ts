@@ -138,7 +138,7 @@ export const nodeProperties: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]',
-		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query. <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/" target="_blank">Learn more about aggregation pipelines</a>.',
+		hint: 'Query parameters insert literal values. Write field and variable references directly in the pipeline. <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/" target="_blank">Learn more about aggregation pipelines</a>.',
 		required: true,
 		description:
 			'MongoDB aggregation pipeline in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',

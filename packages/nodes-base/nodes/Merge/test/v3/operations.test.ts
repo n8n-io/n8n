@@ -251,6 +251,32 @@ describe('Test MergeV3, combineBySql operation', () => {
 		expect(returnData[0].map((item) => item.json.name)).toEqual(['Sam', 'Dan']);
 	});
 
+	it('keeps a resolved value out of another parameter slot', async () => {
+		const mergeNode: INode = {
+			...node,
+			typeVersion: 3.2,
+			parameters: {
+				options: { queryParameters: '={{ $json.name }},Jon' },
+			},
+		};
+		const context = {
+			...createMockExecuteFunction(
+				{
+					operation: 'combineBySql',
+					query: 'SELECT name FROM input1 WHERE name = ? OR name = ?',
+					options: { queryParameters: 'Sam, Dan,Jon' },
+				},
+				mergeNode,
+			),
+			evaluateExpression: (expr: string) => (expr === '{{ $json.name }}' ? 'Sam, Dan' : expr),
+			getWorkflow: () => ({ id: 'test-workflow-id', name: 'Test Workflow', active: false }),
+		};
+
+		const returnData = await mode.combineBySql.execute.call(context as never, inputsData);
+
+		expect(returnData[0].map((item) => item.json.name)).toEqual(['Jon']);
+	});
+
 	it('LEFT JOIN, missing input 2(empty array)', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',

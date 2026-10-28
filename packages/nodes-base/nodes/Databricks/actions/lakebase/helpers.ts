@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, toPathSegment } from 'n8n-workflow';
 import type { IExecuteFunctions, ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { extractResourceLocatorValue } from '../helpers';
@@ -37,7 +37,7 @@ export async function resolveSelectedLakebaseSchema(
 
 	const base = await resolveLakebaseRestBase(context, project, branch);
 	return {
-		schemaUrl: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
+		schemaUrl: `${base}/${toPathSegment(database)}/${toPathSegment(schema)}`,
 		table,
 	};
 }
@@ -65,7 +65,7 @@ export async function resolveLakebaseSchemaUrl(
 	const database = readLocator(context, itemIndex, 'lakebaseDatabase', 'database');
 	const schema = readLocator(context, itemIndex, 'lakebaseSchema', 'schema');
 	const base = await resolveLakebaseRestBase(context, project, branch);
-	return `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`;
+	return `${base}/${toPathSegment(database)}/${toPathSegment(schema)}`;
 }
 
 export async function resolveLakebaseTableUrl(
@@ -73,5 +73,5 @@ export async function resolveLakebaseTableUrl(
 	itemIndex: number,
 ): Promise<string> {
 	const table = readLocator(context, itemIndex, 'lakebaseTable', 'table');
-	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/${encodeURIComponent(table)}`;
+	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/${toPathSegment(table)}`;
 }
