@@ -826,11 +826,11 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().availableToMCP).toBeUndefined();
 		});
 
-		it('hides the toggle for an agent skill', async () => {
+		it('passes the MCP availability of an agent skill, so a move can turn it on', async () => {
 			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 			await openSkill(detail({ scope: 'agent', agentId: 'a1', availableToMCP: false }));
 
-			expect(lastModalData().availableToMCP).toBeUndefined();
+			expect(lastModalData().availableToMCP).toBe(false);
 		});
 
 		it('marks the skills that MCP clients get in the table', async () => {

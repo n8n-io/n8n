@@ -1720,6 +1720,28 @@ describe('Assistant availability', () => {
 		);
 	});
 
+	it.each([
+		['Marketing', 'project:p1'],
+		['Global', 'instance'],
+	])('shows the MCP toggle before saving a move to %s', async (label, scope) => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			onConfirm,
+			settings: { ...agentSettings, availableToMCP: false },
+		});
+		expect(queryByTestId('skill-available-to-mcp')).not.toBeInTheDocument();
+		await selectScope(label);
+		await userEvent.click(getByTestId('skill-available-to-mcp'));
+		await userEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ scope, availableToMCP: true, skill: savedSkill }),
+			),
+		);
+	});
+
 	it('saves a toggle-only change with the existing form', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({

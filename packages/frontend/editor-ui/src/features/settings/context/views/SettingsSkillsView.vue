@@ -427,9 +427,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
-			...(mcpSkillsEnabled.value && detail.scope !== 'agent'
-				? { availableToMCP: detail.availableToMCP }
-				: {}),
+			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],

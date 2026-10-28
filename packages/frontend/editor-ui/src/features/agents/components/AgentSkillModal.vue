@@ -188,7 +188,11 @@ const assistantAvailabilityChanged = computed(
 		availableToAssistant.value !== props.data.availableToAssistant,
 );
 const availableToMCP = ref(props.data.availableToMCP ?? false);
-const showAvailableToMCP = computed(() => props.data.availableToMCP !== undefined);
+const showAvailableToMCP = computed(
+	() =>
+		props.data.availableToMCP !== undefined &&
+		(scope.value === 'instance' || scope.value.startsWith('project:')),
+);
 const availableToMCPChanged = computed(
 	() => showAvailableToMCP.value && availableToMCP.value !== props.data.availableToMCP,
 );
