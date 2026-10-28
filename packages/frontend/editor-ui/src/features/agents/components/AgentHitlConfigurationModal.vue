@@ -74,6 +74,10 @@ const channelKey = ref(
 const channel = computed(() =>
 	channels.value.find((item) => `${item.channel}:${item.credentialId}` === channelKey.value),
 );
+function channelLabel(item: AgentHitlChannelDescriptor) {
+	const connections = channels.value.filter((other) => other.channel === item.channel);
+	return connections.length > 1 ? `${item.label} ${connections.indexOf(item) + 1}` : item.label;
+}
 const recipientKind = ref<'channel' | 'user'>(
 	props.configuration?.method === 'channel' ? props.configuration.recipient.kind : 'channel',
 );
@@ -346,16 +350,20 @@ function save() {
 						:teleported="false"
 						data-testid="agent-hitl-channel"
 					>
+						<template v-if="channel" #prefix
+							><N8nIcon :icon="channel.channel" :size="16"
+						/></template>
 						<N8nOption
 							v-for="item in channels"
 							:key="`${item.channel}:${item.credentialId}`"
 							:value="`${item.channel}:${item.credentialId}`"
-							:label="
-								channels.filter((other) => other.channel === item.channel).length > 1
-									? `${item.label} ${channels.filter((other) => other.channel === item.channel).indexOf(item) + 1}`
-									: item.label
-							"
-						/>
+							:label="channelLabel(item)"
+						>
+							<span :class="$style.channelOption">
+								<N8nIcon :icon="item.channel" :size="16" />
+								{{ channelLabel(item) }}
+							</span>
+						</N8nOption>
 					</N8nSelect>
 				</N8nInputLabel>
 				<N8nInputLabel
@@ -365,6 +373,7 @@ function save() {
 					<AgentHitlDestinationPicker
 						:key="`${channelKey}:guild`"
 						v-model="guild"
+						icon="server"
 						:label="i18n.baseText('agents.hitl.server')"
 						:load="(query, cursor) => loadOptions('guild', query, cursor)"
 					/>
@@ -382,8 +391,15 @@ function save() {
 				</template>
 				<template v-else-if="channel && (channel.channel !== 'discord' || guild)">
 					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipientType')">
-						<N8nSelect v-model="recipientKind" :teleported="false"
-							><N8nOption
+						<N8nSelect
+							v-model="recipientKind"
+							:teleported="false"
+							data-testid="agent-hitl-recipient-type"
+						>
+							<template #prefix
+								><N8nIcon :icon="recipientKind === 'user' ? 'user' : 'hash'" :size="16"
+							/></template>
+							<N8nOption
 								v-for="kind in recipientKinds"
 								:key="kind"
 								:value="kind"
@@ -392,12 +408,23 @@ function save() {
 										kind === 'user' ? 'agents.hitl.user' : 'agents.hitl.channelRecipient',
 									)
 								"
-						/></N8nSelect>
+							>
+								<span :class="$style.channelOption">
+									<N8nIcon :icon="kind === 'user' ? 'user' : 'hash'" :size="16" />
+									{{
+										i18n.baseText(
+											kind === 'user' ? 'agents.hitl.user' : 'agents.hitl.channelRecipient',
+										)
+									}}
+								</span>
+							</N8nOption>
+						</N8nSelect>
 					</N8nInputLabel>
 					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipient')">
 						<AgentHitlDestinationPicker
 							:key="`${channelKey}:${guild?.id}:${recipientKind}`"
 							v-model="recipient"
+							:icon="recipientKind === 'user' ? 'user' : 'hash'"
 							:label="i18n.baseText('agents.hitl.recipient')"
 							:load="(query, cursor) => loadOptions(recipientKind, query, cursor)"
 						/>
@@ -499,5 +526,10 @@ function save() {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	white-space: normal;
+}
+.channelOption {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

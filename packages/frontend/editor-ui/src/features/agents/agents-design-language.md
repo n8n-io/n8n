@@ -493,6 +493,9 @@ Keep expiry local until Save, as the destination and approval policy do.
 Keep Save disabled until the HITL configuration is complete. Explain the missing
 name, workflow selection, or channel configuration in a tooltip on hover and focus.
 Use a searchable select for the decision workflow. Put Create workflow in its menu.
+Show platform icons in the connected channel select. Use the same form field
+style for searchable destinations. Mark channel results with a hash icon and
+user results with a user icon. Keep search and pagination in the destination menu.
 Show attached tools in a multiple select with the same icon and name pills as Build.
 Keep attachment edits local until Save. Selecting a tool enables approval and sets
 its destination. Removing a selection restores its default approval behavior.

@@ -47,7 +47,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			setup(_props, { emit }) {
 				provide('select', (value: string) => emit('update:modelValue', value));
 			},
-			template: '<div><slot /></div>',
+			template: '<div><slot name="prefix" /><slot /></div>',
 		}),
 		N8nOption: defineComponent({
 			props: ['value', 'label', 'disabled'],
@@ -446,4 +446,29 @@ it('uses the tool modal Remove action', async () => {
 	expect(remove.find('[data-icon="trash-2"]').exists()).toBe(true);
 	await remove.trigger('click');
 	expect(wrapper.emitted('remove')).toHaveLength(1);
+});
+
+it('shows platform icons in the channel select and recipient icons for each destination type', async () => {
+	const wrapper = render({
+		id: 'review',
+		name: 'Review',
+		method: 'channel',
+		channel: 'slack',
+		credentialId: 'slack',
+		recipient: { kind: 'user', id: 'U1', name: 'Reviewer' },
+	});
+	await flushPromises();
+	const platforms = wrapper.get('[data-testid="agent-hitl-channel"]');
+	expect(platforms.find('button [data-icon="slack"]').exists()).toBe(true);
+	expect(platforms.find('button [data-icon="telegram"]').exists()).toBe(true);
+	expect(platforms.find('[data-icon="slack"]').exists()).toBe(true);
+	const types = wrapper.get('[data-testid="agent-hitl-recipient-type"]');
+	expect(types.find('button [data-icon="hash"]').exists()).toBe(true);
+	expect(types.find('button [data-icon="user"]').exists()).toBe(true);
+	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('user');
+	await types
+		.findAll('button')
+		.find((button) => button.text() === 'Channel')
+		?.trigger('click');
+	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('hash');
 });

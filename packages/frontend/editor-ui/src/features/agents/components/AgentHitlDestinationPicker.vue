@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nInput, N8nPopover, N8nRecycleScroller, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nPopover,
+	N8nRecycleScroller,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentHitlOption, AgentHitlOptionsPage } from '@n8n/api-types';
 
 const props = defineProps<{
 	modelValue?: AgentHitlOption;
 	label: string;
+	icon: 'hash' | 'user' | 'server';
 	load: (query: string, cursor?: string) => Promise<AgentHitlOptionsPage>;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [option: AgentHitlOption] }>();
@@ -95,88 +103,135 @@ function move(event: KeyboardEvent) {
 		:content-class="$style.popover"
 	>
 		<template #trigger>
-			<N8nButton
-				type="secondary"
+			<button
+				type="button"
 				:class="$style.trigger"
-				:label="modelValue?.name ?? label"
 				:aria-label="label"
-				icon="chevron-down"
 				data-testid="agent-hitl-destination-picker"
-			/>
+			>
+				<N8nIcon :icon="icon" :size="16" />
+				<span :class="[$style.value, !modelValue && $style.placeholder]">{{
+					modelValue?.name ?? label
+				}}</span>
+				<N8nIcon icon="chevron-down" :size="16" color="text-light" />
+			</button>
 		</template>
-		<div :class="$style.content">
-			<N8nInput
-				v-model="query"
-				@keydown="move"
-				:placeholder="i18n.baseText('agents.hitl.searchDestinations')"
-				:aria-label="i18n.baseText('agents.hitl.searchDestinations')"
-				role="combobox"
-				aria-expanded="true"
-				:aria-controls="listId"
-				:aria-activedescendant="
-					activeIndex >= 0 ? `${listId}-${options[activeIndex]?.id}` : undefined
-				"
-			/>
-			<div :id="listId" role="listbox" :aria-label="label" :aria-busy="loading">
-				<N8nRecycleScroller
-					v-if="options.length"
-					ref="scroller"
-					:items="options"
-					item-key="id"
-					:item-size="40"
-					:class="$style.list"
-				>
-					<template #default="{ item }">
-						<button
-							:id="`${listId}-${item.id}`"
-							type="button"
-							role="option"
-							tabindex="-1"
-							:aria-selected="modelValue?.id === item.id"
-							:class="[$style.option, options[activeIndex]?.id === item.id && $style.active]"
-							@click="select(item)"
-						>
-							{{ item.name }}
-						</button>
-					</template>
-				</N8nRecycleScroller>
-				<N8nText v-else-if="!loading && !error" color="text-light">{{
-					i18n.baseText('agents.hitl.noDestinations')
+		<template #content>
+			<div :class="$style.content">
+				<N8nInput
+					v-model="query"
+					@keydown="move"
+					:placeholder="i18n.baseText('agents.hitl.searchDestinations')"
+					:aria-label="i18n.baseText('agents.hitl.searchDestinations')"
+					role="combobox"
+					aria-expanded="true"
+					:aria-controls="listId"
+					:aria-activedescendant="
+						activeIndex >= 0 ? `${listId}-${options[activeIndex]?.id}` : undefined
+					"
+				/>
+				<div :id="listId" role="listbox" :aria-label="label" :aria-busy="loading">
+					<N8nRecycleScroller
+						v-if="options.length"
+						ref="scroller"
+						:items="options"
+						item-key="id"
+						:item-size="40"
+						:class="$style.list"
+					>
+						<template #default="{ item }">
+							<button
+								:id="`${listId}-${item.id}`"
+								type="button"
+								role="option"
+								tabindex="-1"
+								:aria-selected="modelValue?.id === item.id"
+								:class="[$style.option, options[activeIndex]?.id === item.id && $style.active]"
+								@click="select(item)"
+							>
+								<N8nIcon :icon="icon" :size="16" />
+								<span :class="$style.value">{{ item.name }}</span>
+							</button>
+						</template>
+					</N8nRecycleScroller>
+					<N8nText v-else-if="!loading && !error" color="text-light">{{
+						i18n.baseText('agents.hitl.noDestinations')
+					}}</N8nText>
+				</div>
+				<N8nText v-if="error" color="danger">{{
+					i18n.baseText('agents.hitl.destinationLoadFailed')
 				}}</N8nText>
+				<N8nButton
+					v-if="cursor || error || loading"
+					variant="ghost"
+					:loading="loading"
+					:label="i18n.baseText(error ? 'generic.retry' : 'agents.hitl.loadMore')"
+					@click="loadPage(!error)"
+				/>
 			</div>
-			<N8nText v-if="error" color="danger">{{
-				i18n.baseText('agents.hitl.destinationLoadFailed')
-			}}</N8nText>
-			<N8nButton
-				v-if="cursor || error || loading"
-				type="tertiary"
-				:loading="loading"
-				:label="i18n.baseText(error ? 'generic.retry' : 'agents.hitl.loadMore')"
-				@click="loadPage(!error)"
-			/>
-		</div>
+		</template>
 	</N8nPopover>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/input';
+@use '@n8n/design-system/css/mixins/focus';
+
 .popover {
-	width: min(calc(var(--spacing--2xl) * 8), calc(100vw - var(--spacing--xl)));
+	width: var(--reka-popover-trigger-width);
 }
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs);
 }
 .trigger {
+	@include input.theme-variables;
+	@include input.size-variables('large');
+	@include focus.focus-visible-ring;
+
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
-	justify-content: space-between;
+	min-height: var(--input--height);
+	padding: 0 var(--input--padding);
+	border: var(--border-width) solid var(--input--border-color);
+	border-radius: var(--input--radius);
+	background: var(--input--color--background);
+	color: var(--input--color--text);
+	font-size: var(--input--font-size);
+	text-align: left;
+	cursor: pointer;
+
+	&:hover {
+		border-color: var(--input--border-color--hover);
+	}
+
+	&:focus-visible,
+	&[data-state='open'] {
+		border-color: var(--input--border-color--focus);
+	}
+}
+.value {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.placeholder {
+	color: var(--input--placeholder--color);
 }
 .list {
 	height: calc(var(--height--xl) * 6);
 	overflow-y: scroll;
 }
 .option {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	text-align: left;
 	height: var(--height--xl);
@@ -184,6 +239,7 @@ function move(event: KeyboardEvent) {
 	background: transparent;
 	color: var(--text-color);
 	padding: var(--spacing--xs);
+	border-radius: var(--radius--xs);
 	cursor: pointer;
 	overflow: hidden;
 	text-overflow: ellipsis;

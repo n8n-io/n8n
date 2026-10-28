@@ -1,20 +1,22 @@
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils';
 import { defineComponent } from 'vue';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { AgentHitlOptionsPage } from '@n8n/api-types';
 import AgentHitlDestinationPicker from '../components/AgentHitlDestinationPicker.vue';
 
-function render(load: (query: string, cursor?: string) => Promise<AgentHitlOptionsPage>) {
+vi.unmock('reka-ui');
+
+enableAutoUnmount(afterEach);
+
+function render(
+	load: (query: string, cursor?: string) => Promise<AgentHitlOptionsPage>,
+	icon: 'hash' | 'user' | 'server' = 'hash',
+) {
 	return mount(AgentHitlDestinationPicker, {
-		props: { label: 'Destination', load },
+		props: { label: 'Destination', load, icon },
+		attachTo: document.body,
 		global: {
 			stubs: {
-				N8nPopover: defineComponent({
-					name: 'N8nPopover',
-					props: ['open'],
-					emits: ['update:open'],
-					template: '<div><slot name="trigger" /><div v-if="open"><slot /></div></div>',
-				}),
 				N8nRecycleScroller: defineComponent({
 					props: ['items'],
 					setup(_props, { expose }) {
@@ -32,7 +34,7 @@ it('loads another page and lets the user select a result with the keyboard', asy
 		.mockResolvedValueOnce({ options: [{ id: 'first', name: 'First' }], nextCursor: 'next' })
 		.mockResolvedValueOnce({ options: [{ id: 'second', name: 'Second' }] });
 	const wrapper = render(load);
-	wrapper.findComponent({ name: 'N8nPopover' }).vm.$emit('update:open', true);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
 	await flushPromises();
 	expect(load).toHaveBeenCalledWith('', undefined);
 	await wrapper
@@ -59,7 +61,7 @@ it('ignores an old response when the search changes', async () => {
 		.mockReturnValueOnce(first.promise)
 		.mockResolvedValue({ options: [{ id: 'new', name: 'New match' }] });
 	const wrapper = render(load);
-	wrapper.findComponent({ name: 'N8nPopover' }).vm.$emit('update:open', true);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
 	await flushPromises();
 	await wrapper.find('input').setValue('new');
 	await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
@@ -77,7 +79,7 @@ it('keeps lookup errors recoverable', async () => {
 		.mockRejectedValueOnce(new Error('Missing scope'))
 		.mockResolvedValue({ options: [] });
 	const wrapper = render(load);
-	wrapper.findComponent({ name: 'N8nPopover' }).vm.$emit('update:open', true);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
 	await flushPromises();
 	expect(wrapper.text()).toContain('Could not load destinations');
 	await wrapper
@@ -89,3 +91,24 @@ it('keeps lookup errors recoverable', async () => {
 	expect(wrapper.text()).not.toContain('Could not load destinations');
 	wrapper.unmount();
 });
+
+it.each(['hash', 'user', 'server'] as const)(
+	'shows the %s icon in the select and its results',
+	async (icon) => {
+		const destination = { id: 'review', name: 'Review destination' };
+		const wrapper = render(vi.fn().mockResolvedValue({ options: [destination] }), icon);
+		const trigger = wrapper.get('[data-testid="agent-hitl-destination-picker"]');
+		expect(trigger.find(`[data-icon="${icon}"]`).exists()).toBe(true);
+		expect(trigger.attributes('aria-expanded')).toBe('false');
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(trigger.attributes('aria-expanded')).toBe('true');
+		const option = wrapper.get('[role="option"]');
+		expect(option.find(`[data-icon="${icon}"]`).exists()).toBe(true);
+		await option.trigger('click');
+		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([destination]);
+		await wrapper.setProps({ modelValue: destination });
+		expect(trigger.text()).toBe(destination.name);
+		expect(trigger.attributes('aria-expanded')).toBe('false');
+	},
+);
