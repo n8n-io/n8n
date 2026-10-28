@@ -47,13 +47,14 @@ export class AgentFileBridge {
 	 * Copy each `item.binary` entry into agent storage. The copy keeps the file
 	 * available after the tool's execution is pruned. `files` lists the metadata
 	 * of each new file, and `skippedFiles` the files that are too large to store.
-	 * Pass the same `stored` map to calls for one tool result, so a binary that
-	 * many nodes pass on is stored one time.
+	 * Pass the same `stored` map and `skipped` set to calls for one tool result,
+	 * so a binary that many nodes pass on is stored or skipped one time.
 	 */
 	async adoptFromItems(
 		items: INodeExecutionData[],
 		scope: AgentFileScope,
 		stored = new Map<string, AgentToolOutputFile>(),
+		skipped = new Set<string>(),
 	): Promise<{
 		items: AdoptedItem[];
 		files: AgentToolOutputFile[];
@@ -74,7 +75,9 @@ export class AgentFileBridge {
 			for (const [key, binary] of Object.entries(item.binary)) {
 				let file = binary.id ? stored.get(binary.id) : undefined;
 				if (!file) {
+					if (binary.id && skipped.has(binary.id)) continue;
 					if (await this.isTooLarge(binary)) {
+						if (binary.id) skipped.add(binary.id);
 						skippedFiles.push({
 							fileName: binary.fileName ?? key,
 							reason: `larger than ${MAX_AGENT_TOOL_OUTPUT_FILE_BYTES / 1024 / 1024} MB`,

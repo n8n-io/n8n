@@ -153,6 +153,26 @@ describe('AgentFileBridge', () => {
 			});
 		});
 
+		it('lists a too-large binary that many items and calls pass on one time', async () => {
+			binaryDataService.getMetadata.mockResolvedValue({
+				fileSize: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES + 1,
+			});
+			const items = [
+				{ json: {}, binary: { data: pngBinary } },
+				{ json: {}, binary: { data: pngBinary } },
+			];
+			const stored = new Map();
+			const skipped = new Set<string>();
+
+			const first = await bridge.adoptFromItems(items, scope, stored, skipped);
+			const second = await bridge.adoptFromItems(items, scope, stored, skipped);
+
+			expect(first.skippedFiles).toEqual([{ fileName: 'cat.png', reason: 'larger than 50 MB' }]);
+			expect(second.skippedFiles).toEqual([]);
+			expect(binaryDataService.getMetadata).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+		});
+
 		it('stores a file at the limit', async () => {
 			const result = await bridge.adoptFromItems(
 				[{ json: {}, binary: { data: { ...pngBinary, bytes: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } } }],

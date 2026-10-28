@@ -778,8 +778,9 @@ async function finishResult(
 	const files: AgentToolOutputFile[] = [];
 	const skippedFiles: AgentToolSkippedFile[] = [];
 	const stored = new Map<string, AgentToolOutputFile>();
+	const skipped = new Set<string>();
 	for (const [nodeName, nodeItems] of Object.entries(items)) {
-		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored);
+		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored, skipped);
 		data[nodeName] = adopted.items.map(({ json, binary }) => (binary ? { ...json, binary } : json));
 		files.push(...adopted.files);
 		skippedFiles.push(...adopted.skippedFiles);

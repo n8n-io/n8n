@@ -960,6 +960,7 @@ describe('workflow tool → binary output', () => {
 			[binaryItem],
 			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1' },
 			expect.any(Map),
+			expect.any(Set),
 		);
 		expect(output).toEqual({
 			executionId: 'exec-1',
