@@ -1,7 +1,9 @@
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import nock from 'nock';
+import type { MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
@@ -207,8 +209,15 @@ describe('Promotion reviews in the Inbox', () => {
 		delete process.env.N8N_ENV_FEAT_PROMOTIONS;
 	});
 
+	let emitSpy: MockInstance | undefined;
+
+	afterEach(() => {
+		emitSpy?.mockRestore();
+	});
+
 	beforeEach(async () => {
 		testServer.license.reset();
+		emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		await Container.get(PromotionRunRepository).delete({});
 		await reviewRepository.delete({});
 		await Container.get(PromotionEnvironmentRepository).delete({});
@@ -472,6 +481,15 @@ describe('Promotion reviews in the Inbox', () => {
 			});
 			expect(response.body.data).toEqual(merged);
 			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-approved',
+				expect.objectContaining({
+					reviewId,
+					reviewType: 'gitlab',
+					outcome: 'merged',
+					durationMs: expect.any(Number),
+				}),
+			);
 		});
 
 		it('refuses a member and a disabled rollout flag without a GitLab write', async () => {
@@ -501,6 +519,14 @@ describe('Promotion reviews in the Inbox', () => {
 
 			expect((await approve(await createAdmin(), reviewId, sha)).status).toBe(status);
 			expect(writes).toEqual([]);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-approved',
+				expect.objectContaining({
+					reviewId,
+					outcome: 'failed',
+					failureKind: 'user',
+				}),
+			);
 			expect(await approvedById(reviewId)).toBeNull();
 		});
 

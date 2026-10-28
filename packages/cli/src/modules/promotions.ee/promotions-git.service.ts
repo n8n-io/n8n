@@ -8,6 +8,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
+	GitError,
 	GitPluginError,
 	simpleGit,
 	type SimpleGit,
@@ -22,6 +23,7 @@ import {
 	PROMOTION_KEY_COMMENT,
 } from './constants';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
+import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -867,8 +869,28 @@ export class PromotionsGitService {
 		}
 
 		this.logger.warn('Git operation failed', ctx);
-		return new BadRequestError('Could not complete the Git operation');
+		return isRemoteGitError(error)
+			? new PromotionGitError('Could not complete the Git operation')
+			: new PromotionLocalGitError('Could not complete the Git operation');
 	}
+}
+
+const REMOTE_GIT_COMMANDS = new Set(['clone', 'fetch', 'push', 'pull', 'ls-remote']);
+
+/** Reads the Git subcommand, not the message, which can hold secrets. */
+function isRemoteGitError(error: unknown): boolean {
+	if (!(error instanceof GitError)) return false;
+	const commands = error.task?.commands ?? [];
+	for (let index = 0; index < commands.length; index++) {
+		// `-c key=value` passes config before the subcommand.
+		if (commands[index] === '-c') {
+			index++;
+			continue;
+		}
+		if (commands[index].startsWith('-')) continue;
+		return REMOTE_GIT_COMMANDS.has(commands[index]);
+	}
+	return false;
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {
