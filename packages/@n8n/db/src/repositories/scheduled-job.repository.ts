@@ -18,12 +18,9 @@ export interface JobAdvance {
 }
 
 /** The schedule state of one job and the time of its newest dispatch. */
-export interface JobScheduleState {
-	ownerId: string;
-	nextRunAt: Date | null;
+export type JobScheduleState = Pick<ScheduledJob, 'ownerId' | 'nextRunAt' | 'lastDispatchedAt'> & {
 	runnable: boolean;
-	lastDispatchedAt: Date | null;
-}
+};
 
 /** A job row to insert; remaining bookkeeping columns take their schema defaults. */
 export type NewScheduledJob = Pick<
