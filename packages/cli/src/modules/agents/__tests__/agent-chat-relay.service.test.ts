@@ -46,7 +46,7 @@ describe('AgentChatRelayService', () => {
 
 	describe('relayQueuedStop', () => {
 		it('subscribes before acceptance and keeps the stream open for the report', async () => {
-			const streams = mock<AgentQueuedPreviewStreamService>();
+			const streams = mock<AgentQueuedTestStreamService>();
 			let finish!: () => void;
 			const subscription = {
 				accepted: vi.fn(),

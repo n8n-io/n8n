@@ -168,7 +168,7 @@ export class AgentChatRelayService {
 	) {
 		const delivery = initSseStream(res);
 		let queueId: string | undefined;
-		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
+		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
 
 		try {
 			await request((id) => {
