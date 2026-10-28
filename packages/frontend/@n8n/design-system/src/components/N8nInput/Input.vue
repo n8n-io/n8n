@@ -264,7 +264,7 @@ defineExpose({ focus, blur, select });
 		</div>
 
 		<!-- Append slot (outside input container, after) -->
-		<span v-if="$slots.append" :class="$style.append">
+		<span v-if="$slots.append" :class="props.appendClass || $style.append">
 			<slot name="append" />
 		</span>
 	</div>

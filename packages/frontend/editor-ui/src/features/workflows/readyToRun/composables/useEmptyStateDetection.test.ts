@@ -26,6 +26,22 @@ const dataTableStoreState = {
 	totalCount: 0,
 };
 
+const agentListStoreState = {
+	totalCount: 0 as number | undefined,
+};
+
+const settingsStoreState = {
+	isAgentsEnabled: true,
+};
+
+vi.mock('@/features/agents/agentList.store', () => ({
+	useAgentListStore: () => agentListStoreState,
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStoreState,
+}));
+
 vi.mock('@/features/core/folders/folders.store', () => ({
 	useFoldersStore: () => foldersStoreState,
 }));
@@ -59,10 +75,37 @@ beforeEach(() => {
 	credentialsStoreState.allCredentials = [];
 	environmentsStoreState.variables = [];
 	dataTableStoreState.totalCount = 0;
+	agentListStoreState.totalCount = 0;
+	settingsStoreState.isAgentsEnabled = true;
 });
 
 describe('useEmptyStateDetection', () => {
 	describe('isTrulyEmpty', () => {
+		it('keeps the overview when only agents exist', () => {
+			agentListStoreState.totalCount = 2;
+			const { isTrulyEmpty, hasKnownInstanceContent } = useEmptyStateDetection();
+
+			expect(isTrulyEmpty()).toBe(false);
+			expect(hasKnownInstanceContent.value).toBe(true);
+		});
+
+		it('keeps the overview until the agent count is known', () => {
+			agentListStoreState.totalCount = undefined;
+			const { isTrulyEmpty, hasKnownInstanceContent } = useEmptyStateDetection();
+
+			expect(isTrulyEmpty()).toBe(false);
+			expect(hasKnownInstanceContent.value).toBe(false);
+		});
+
+		it('allows the empty state when agents are disabled', () => {
+			settingsStoreState.isAgentsEnabled = false;
+			agentListStoreState.totalCount = 2;
+			const { isTrulyEmpty, hasKnownInstanceContent } = useEmptyStateDetection();
+
+			expect(isTrulyEmpty()).toBe(true);
+			expect(hasKnownInstanceContent.value).toBe(false);
+		});
+
 		it('should return true when state is truly empty', () => {
 			const { isTrulyEmpty } = useEmptyStateDetection();
 			const route = mockRoute();

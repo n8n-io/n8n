@@ -2,7 +2,7 @@ import { assertClearedFor, credentialContentSubject, credentialSubject } from '@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
@@ -26,7 +26,6 @@ import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
-import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 export class CredentialIdConflictError extends UserError {
@@ -159,46 +158,6 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return rows.map((row) => row.id);
 	}
 
-	/** Reads workflow eligibility and access for the package's credential and project IDs. */
-	async findPromotionBindingAccess(
-		ids: string[],
-		projectIds: string[],
-	): Promise<
-		Array<
-			Pick<CredentialsEntity, 'id' | 'type' | 'usageScope' | 'isGlobal'> & { projectIds: string[] }
-		>
-	> {
-		const found = [];
-		for (const batch of chunkIds(ids)) {
-			const credentials = await this.find({
-				where: { id: In(batch) },
-				select: ['id', 'type', 'usageScope', 'isGlobal'],
-			});
-			const projectsByCredential = new Map<string, string[]>();
-			for (const projectBatch of chunkIds(projectIds)) {
-				const relations = await this.manager.find(SharedCredentials, {
-					where: { credentialsId: In(batch), projectId: In(projectBatch) },
-					select: ['credentialsId', 'projectId'],
-				});
-				for (const relation of relations) {
-					const projects = projectsByCredential.get(relation.credentialsId) ?? [];
-					projects.push(relation.projectId);
-					projectsByCredential.set(relation.credentialsId, projects);
-				}
-			}
-			found.push(
-				...credentials.map(({ id, type, usageScope, isGlobal }) => ({
-					id,
-					type,
-					usageScope,
-					isGlobal,
-					projectIds: projectsByCredential.get(id) ?? [],
-				})),
-			);
-		}
-		return found;
-	}
-
 	/** True when any of the given credentials is a private (resolvable) credential. */
 	async hasResolvableCredential(ids: string[]): Promise<boolean> {
 		if (ids.length === 0) return false;
@@ -316,6 +275,24 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			id: credentialId,
 			usageScope: 'instance',
 		});
+	}
+
+	/**
+	 * Finds a project credential that has no `shared_credentials` row at all. Such a credential has
+	 * no owner, so the project-scoped lookups cannot find it. Returns `null` if the credential does
+	 * not exist or still has any `shared_credentials` row — even a non-owner share keeps the
+	 * credential reachable through the regular, access-checked delete path, so it is not orphaned.
+	 */
+	async findProjectCredentialWithoutOwner(
+		credentialId: string,
+		ctx: OperationContext = {},
+	): Promise<CredentialsEntity | null> {
+		const credential = await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+			relations: { shared: true },
+		});
+		if (!credential || credential.shared.length > 0) return null;
+		return credential;
 	}
 
 	async deleteInstanceCredentialIfUnassigned(
@@ -442,7 +419,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
+			filter.name = ILike(`%${filter.name}%`);
 		}
 
 		if (typeof filter?.type === 'string' && filter?.type !== '') {
@@ -589,6 +566,27 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({ usageScope: 'project', shared: { projectId } });
+	}
+
+	/** Read execution metadata for credentials shared with this project or all projects. */
+	async findCredentialsUsableInProject(
+		projectId: string,
+		credentialIds?: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
+		if (credentialIds?.length === 0) return [];
+
+		const filter = this.excludePendingAuthorization({
+			usageScope: 'project',
+			...(credentialIds ? { id: In(credentialIds) } : {}),
+		});
+
+		return await this.find({
+			where: [
+				{ ...filter, shared: { projectId } },
+				{ ...filter, isGlobal: true },
+			],
+			select: ['id', 'name', 'type'],
+		});
 	}
 
 	/**

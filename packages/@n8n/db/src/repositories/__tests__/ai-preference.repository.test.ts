@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { In, IsNull, Not } from '@n8n/typeorm';
+import type { FindOperator } from '@n8n/typeorm';
 
 import { AiPreference } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -60,7 +61,7 @@ describe('AiPreferenceRepository', () => {
 					{ userId: 'user-1', id: In(['a', 'b']) },
 					{ projectId: In(['p-1']), id: In(['a', 'b']) },
 				],
-				relations: { project: true, user: true },
+				relations: { project: true, user: true, createdBy: true },
 				order: { createdAt: 'ASC', id: 'ASC' },
 				skip: 0,
 				take: 2,
@@ -107,6 +108,50 @@ describe('AiPreferenceRepository', () => {
 				expect.objectContaining({
 					where: [{ userId: IsNull(), projectId: IsNull() }, { userId: 'user-1' }],
 				}),
+			);
+		});
+
+		it('narrows every visibility branch to the content search', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: ['p-1'],
+				allUsers: false,
+				skip: 0,
+				take: 10,
+				search: '100%_Off',
+			});
+
+			const [, options] = entityManager.findAndCount.mock.calls[0];
+			const where = options?.where;
+			if (!Array.isArray(where)) throw new Error('expected one where clause per branch');
+			expect(where).toHaveLength(3);
+			for (const branch of where) {
+				const operator = branch.content as FindOperator<string>;
+				expect(operator.type).toBe('raw');
+				expect(operator.objectLiteralParameters).toEqual({ contentSearch: '%100\\%\\_Off%' });
+				expect((operator.getSql as (column: string) => string)('"AiPreference"."content"')).toBe(
+					'LOWER("AiPreference"."content") LIKE LOWER(:contentSearch) ESCAPE \'\\\'',
+				);
+			}
+		});
+
+		it('orders the page by the requested sort', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: [],
+				allUsers: false,
+				skip: 0,
+				take: 10,
+				sortBy: 'updatedAt:desc',
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({ order: { updatedAt: 'DESC', id: 'DESC' } }),
 			);
 		});
 	});

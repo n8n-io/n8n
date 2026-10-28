@@ -120,3 +120,10 @@ export interface LogsPanelHost {
 	heightContainer?: MaybeRefOrGetter<HTMLElement | null | undefined>;
 }
 export const LogsPanelHostKey: InjectionKey<LogsPanelHost> = Symbol('LogsPanelHost');
+
+/**
+ * Canvas area of an embedded editor, below its own header. Fixed overlays, such
+ * as the node creator, align to its top. The standalone editor provides nothing.
+ */
+export const EmbeddedCanvasElementKey: InjectionKey<Readonly<Ref<HTMLElement | null>>> =
+	Symbol('EmbeddedCanvasElement');

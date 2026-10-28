@@ -6,6 +6,7 @@ import {
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { useI18n } from '@n8n/i18n';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -13,11 +14,19 @@ import {
 	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	INTERACTION_EXTENSION_TOOL_NAME,
+	TOOL_CALL_STATE,
+} from './constants';
 import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
+import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
+import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
+	AgentsChatHostEvent,
 	ApprovalInput,
 	ChatMessage,
 	ChatMessageAttachment,
@@ -157,9 +166,17 @@ function isDeclinedToolOutput(value: unknown): boolean {
  *   awaiting-user prompt. Used when a refresh during a suspension restored the
  *   suspended assistant turn from the open checkpoint.
  *
+ * Host extensions are tried after all built-in cards, so a host cannot take
+ * over an approval, a Wait node or a `chat_action` call. Without extensions, no
+ * extension card is mapped. Extensions without `parse` have no card, so the
+ * mapper skips them.
+ *
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
-export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
+export function rebuildInteractiveFromHistory(
+	tc: ToolCall,
+	extensions: readonly AgentsChatInteractionExtension[] = [],
+): InteractivePayload | undefined {
 	const approvalInput = parseApprovalInput(tc.suspendPayload) ?? parseApprovalInput(tc.input);
 	if (approvalInput) {
 		const resolved = tc.output !== undefined;
@@ -208,7 +225,30 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		};
 	}
 
+	for (const extension of extensions) {
+		const input = extension.parse?.(tc);
+		if (input === undefined) continue;
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: INTERACTION_EXTENSION_TOOL_NAME,
+			extensionKey: extension.key,
+			input,
+		};
+	}
+
 	return undefined;
+}
+
+export function createStoppedMessage(executionId: string): ChatMessage {
+	return {
+		id: `${executionId}:stopped`,
+		role: CHAT_MESSAGE_ROLE.ASSISTANT,
+		content: useI18n().baseText('agentSessions.stopped'),
+		status: CHAT_MESSAGE_STATUS.SUCCESS,
+		executionId,
+	};
 }
 
 /**
@@ -216,16 +256,34 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
  *
  * Whenever a tool call is interactive, we attach a reconstructed
  * `InteractivePayload` so the UI re-renders the card in either its open
- * (awaiting user) or resolved (disabled) state.
+ * (awaiting user) or resolved (disabled) state. `extensions` are the card
+ * types of the chat host (see `rebuildInteractiveFromHistory`).
  */
-export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
+export function convertDbMessages(
+	dbMessages: AgentPersistedMessageDto[],
+	extensions: readonly AgentsChatInteractionExtension[] = [],
+): ChatMessage[] {
 	const result: ChatMessage[] = [];
+	const lastMessageByExecution = new Map(
+		dbMessages
+			.filter(
+				(message) =>
+					message.executionId &&
+					Array.isArray(message.content) &&
+					(message.role === CHAT_MESSAGE_ROLE.USER || message.role === CHAT_MESSAGE_ROLE.ASSISTANT),
+			)
+			.map((message) => [message.executionId, message]),
+	);
 
 	for (const msg of dbMessages) {
 		if (!msg.role || !Array.isArray(msg.content)) continue;
 
 		const role: ChatMessage['role'] | null =
-			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
+			msg.role === CHAT_MESSAGE_ROLE.USER
+				? 'user'
+				: msg.role === CHAT_MESSAGE_ROLE.ASSISTANT
+					? 'assistant'
+					: null;
 		if (role === null) continue;
 
 		let text = '';
@@ -235,6 +293,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
+		const hostEvents: AgentsChatHostEvent[] = [];
 		let status: ChatMessage['status'];
 		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
@@ -251,6 +310,13 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					mimeType: part.mimeType ?? 'application/octet-stream',
 					sizeBytes: part.sizeBytes,
 				});
+			} else if (part.type === 'host-event' && typeof part.name === 'string' && part.name) {
+				hostEvents.push({
+					id: `${msg.id}:host-event:${partIndex}`,
+					name: part.name,
+					...(typeof part.key === 'string' && part.key ? { key: part.key } : {}),
+					payload: part.payload ?? null,
+				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
 				thinkingSegments.push({
@@ -262,12 +328,19 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
-				const canceled = part.canceled === true;
+				const canceled =
+					part.canceled === true ||
+					(msg.executionStatus === 'cancelled' &&
+						part.state !== 'resolved' &&
+						part.state !== 'rejected');
 				if (part.state === 'resolved') {
 					output = part.output;
 					if (canceled) {
 						state = TOOL_CALL_STATE.CANCELLED;
-					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
+					} else if (
+						isFailedDelegateOutput(part.toolName, part.output) ||
+						isPolicyRefusedToolOutput(part.output)
+					) {
 						state = TOOL_CALL_STATE.ERROR;
 					} else {
 						state = TOOL_CALL_STATE.DONE;
@@ -275,6 +348,9 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
+				} else if (canceled) {
+					state = TOOL_CALL_STATE.CANCELLED;
+					output = undefined;
 				} else if (failed) {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -297,8 +373,9 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
+				if (msg.executionStatus === 'cancelled') continue;
 
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (!rebuilt) continue;
 				if (rebuilt.resolvedAt === undefined && !failed && msg.executionStatus !== 'running') {
 					toolCall.state = TOOL_CALL_STATE.SUSPENDED;
@@ -323,9 +400,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
-			...(role === 'assistant' && msg.backgroundTaskSignal
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.backgroundTaskSignal
 				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
 			...(Number.isFinite(createdAt) && { createdAt }),
@@ -347,6 +425,13 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				...(msg.executionId ? { executionId: msg.executionId } : {}),
 			});
 		}
+		if (
+			msg.executionStatus === 'cancelled' &&
+			msg.executionId &&
+			lastMessageByExecution.get(msg.executionId) === msg
+		) {
+			result.push(createStoppedMessage(msg.executionId));
+		}
 	}
 	return result;
 }
@@ -359,11 +444,12 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
  *
  * Mutates `chat` in place (history-load happens before reactivity wraps the
  * messages, so this is safe and avoids an extra deep clone) and returns it
- * for ergonomic chaining.
+ * for ergonomic chaining. `extensions` are the card types of the chat host.
  */
 export function applyOpenSuspensions(
 	chat: ChatMessage[],
 	suspensions: AgentBuilderOpenSuspension[],
+	extensions: readonly AgentsChatInteractionExtension[] = [],
 ): ChatMessage[] {
 	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s]));
 	for (const msg of chat) {
@@ -384,7 +470,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
-				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;
 					upsertMessageInteractive(msg, rebuilt);

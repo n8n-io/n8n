@@ -1,14 +1,27 @@
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	type ProjectRole,
+} from '@n8n/permissions';
+import { DataSource, In } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { ProjectRelation, Role } from '../entities';
+import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class ProjectRelationRepository extends Repository<ProjectRelation> {
-	constructor(dataSource: DataSource) {
-		super(ProjectRelation, dataSource.manager);
+export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ProjectRelation, dataSource.manager, transactionRunner);
+	}
+
+	async findByUserAndProjects(userId: string, projectIds: string[]): Promise<ProjectRelation[]> {
+		return await this.find({
+			where: { userId, projectId: In(projectIds) },
+			relations: ['role'],
+		});
 	}
 
 	async findPersonalOwnerEmails(projectIds: string[]): Promise<Map<string, string>> {
@@ -38,6 +51,26 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 				},
 			},
 		});
+	}
+
+	/** Admin user ids per project, sorted, keyed by project id. Projects without an admin are absent. */
+	async findAdminUserIdsByProjectIds(projectIds: string[]): Promise<Map<string, string[]>> {
+		const admins = new Map<string, string[]>();
+		if (projectIds.length === 0) return admins;
+
+		for (const chunk of chunkIds([...new Set(projectIds)])) {
+			const rows = await this.find({
+				select: ['projectId', 'userId'],
+				where: { projectId: In(chunk), role: { slug: PROJECT_ADMIN_ROLE_SLUG } },
+				order: { projectId: 'ASC', userId: 'ASC' },
+			});
+			for (const row of rows) {
+				const ids = admins.get(row.projectId) ?? [];
+				ids.push(row.userId);
+				admins.set(row.projectId, ids);
+			}
+		}
+		return admins;
 	}
 
 	async getPersonalProjectsForUsers(userIds: string[]) {

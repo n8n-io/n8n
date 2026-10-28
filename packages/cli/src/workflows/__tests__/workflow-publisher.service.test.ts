@@ -3,7 +3,6 @@ import type { WorkflowPublishHistoryRepository } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import * as credentialSharing from '@/constants/credential-sharing';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 describe('WorkflowPublisherService', () => {
@@ -16,7 +15,6 @@ describe('WorkflowPublisherService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(true);
 	});
 
 	// The caller passes the version whose nodes are about to run, never the
@@ -118,14 +116,5 @@ describe('WorkflowPublisherService', () => {
 
 			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
 		});
-	});
-
-	// The single gate for this behaviour, so every call site stays unconditional.
-	it('reads nothing at all while the feature flag is off', async () => {
-		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(false);
-
-		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBeUndefined();
-
-		expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
 	});
 });

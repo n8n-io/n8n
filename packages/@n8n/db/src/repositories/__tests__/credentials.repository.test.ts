@@ -2,10 +2,10 @@ import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { ILike, In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsEntity, SharedCredentials } from '../../entities';
+import { CredentialsEntity } from '../../entities';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { CredentialsRepository } from '../credentials.repository';
@@ -88,59 +88,6 @@ describe('CredentialsRepository', () => {
 
 			expect(entityManager.find).not.toHaveBeenCalled();
 		});
-	});
-
-	it('loads only binding metadata and preserves credential and project pairs', async () => {
-		entityManager.find
-			.mockResolvedValueOnce([
-				{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: false },
-				{ id: 'cred-b', type: 'slackApi', usageScope: 'project', isGlobal: true },
-			])
-			.mockResolvedValueOnce([
-				{ credentialsId: 'cred-a', projectId: 'alpha' },
-				{ credentialsId: 'cred-b', projectId: 'beta' },
-			]);
-		expect(
-			await credentialsRepository.findPromotionBindingAccess(
-				['cred-a', 'cred-b'],
-				['alpha', 'beta'],
-			),
-		).toEqual([
-			{
-				id: 'cred-a',
-				type: 'githubApi',
-				usageScope: 'project',
-				isGlobal: false,
-				projectIds: ['alpha'],
-			},
-			{
-				id: 'cred-b',
-				type: 'slackApi',
-				usageScope: 'project',
-				isGlobal: true,
-				projectIds: ['beta'],
-			},
-		]);
-		expect(entityManager.find).toHaveBeenCalledTimes(2);
-		expect(entityManager.find).toHaveBeenNthCalledWith(1, CredentialsEntity, {
-			where: { id: In(['cred-a', 'cred-b']) },
-			select: ['id', 'type', 'usageScope', 'isGlobal'],
-		});
-		expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedCredentials, {
-			where: { credentialsId: In(['cred-a', 'cred-b']), projectId: In(['alpha', 'beta']) },
-			select: ['credentialsId', 'projectId'],
-		});
-	});
-
-	it('reads binding metadata without target projects and skips an empty credential list', async () => {
-		entityManager.find.mockResolvedValueOnce([
-			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true },
-		]);
-		expect(await credentialsRepository.findPromotionBindingAccess(['cred-a'], [])).toEqual([
-			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true, projectIds: [] },
-		]);
-		expect(await credentialsRepository.findPromotionBindingAccess([], ['alpha'])).toEqual([]);
-		expect(entityManager.find).toHaveBeenCalledTimes(1);
 	});
 
 	it('finds only dangling project credentials', async () => {
@@ -325,6 +272,18 @@ describe('CredentialsRepository', () => {
 
 			const callArg = entityManager.find.mock.calls[0]?.[1];
 			expect(callArg?.order).toBeUndefined();
+		});
+	});
+
+	describe('findManyAndCount with a name filter', () => {
+		it('matches the name without case sensitivity', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+			entityManager.count.mockResolvedValueOnce(0);
+
+			await credentialsRepository.findManyAndCount({ filter: { name: 'github' } });
+
+			const callArg = entityManager.find.mock.calls[0]?.[1];
+			expect(callArg?.where).toMatchObject({ name: ILike('%github%') });
 		});
 	});
 

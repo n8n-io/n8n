@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, JwtService } from '@n8n/backend-services';
 import {
 	mockInstance,
 	randomEmail,
@@ -18,7 +18,6 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
-import { JwtService } from '@/services/jwt.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -125,10 +124,12 @@ describe('InvitationController', () => {
 		});
 
 		test('should fail with invalid payloads', async () => {
-			const memberShell = await userRepository.save({
-				email: randomEmail(),
-				role: { slug: 'global:member' },
-			});
+			const memberShell = await userRepository.save(
+				userRepository.create({
+					email: randomEmail(),
+					role: { slug: 'global:member' },
+				}),
+			);
 			const validToken = invitationToken(instanceOwner.id, memberShell.id);
 
 			const invalidPayloads = [

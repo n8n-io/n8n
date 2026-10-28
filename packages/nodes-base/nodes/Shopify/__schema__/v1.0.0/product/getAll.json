@@ -4,6 +4,9 @@
         "admin_graphql_api_id": {
             "type": "string"
         },
+        "body_html": {
+            "type": "string"
+        },
         "created_at": {
             "type": "string"
         },
@@ -202,5 +205,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

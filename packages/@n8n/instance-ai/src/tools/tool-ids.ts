@@ -1,28 +1,54 @@
-import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAMES,
+} from '@n8n/api-types';
 
 export const DOMAIN_TOOL_IDS = {
-	WORKFLOWS: 'workflows',
+	LIST_WORKFLOWS: WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS,
+	GET_WORKFLOW_NODE_USAGE: WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_NODE_USAGE,
+	GET_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW,
+	GET_WORKFLOW_AS_CODE: WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE,
+	ARCHIVE_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.ARCHIVE_WORKFLOW,
+	UNARCHIVE_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.UNARCHIVE_WORKFLOW,
+	SETUP_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+	VALIDATE_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
+	PUBLISH_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.PUBLISH_WORKFLOW,
+	UNPUBLISH_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.UNPUBLISH_WORKFLOW,
+	LIST_WORKFLOW_VERSIONS: WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
+	RESTORE_WORKFLOW_VERSION: WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	UPDATE_WORKFLOW_VERSION: WORKFLOW_BUILDER_TOOL_NAMES.UPDATE_WORKFLOW_VERSION,
 	EVAL_CONFIG: 'eval-config',
-	EXECUTIONS: 'executions',
-	CREDENTIALS: 'credentials',
-	DATA_TABLES: 'data-tables',
+	EXECUTIONS: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
+	LIST_CREDENTIALS: SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
+	SEARCH_CREDENTIAL_TYPES: SHARED_BUILDER_TOOL_NAMES.SEARCH_CREDENTIAL_TYPES,
+	SETUP_CREDENTIALS: SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
+	TEST_CREDENTIAL: SHARED_BUILDER_TOOL_NAMES.TEST_CREDENTIAL,
+	DELETE_CREDENTIAL: SHARED_BUILDER_TOOL_NAMES.DELETE_CREDENTIAL,
+	DATA_TABLES: SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	WORKSPACE: 'workspace',
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n-docs',
-	NODES: 'nodes',
-	SEARCH_MODELS: 'searchModels',
-	ASK_USER: 'ask-user',
+	NODES: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
+	SEARCH_NODES: SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	GET_NODE_TYPES: SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	GET_NODE_PARAMETER_OPTIONS: SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
+	EXECUTE_NODE: SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE,
+	SEARCH_MODELS: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	ASK_USER: WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
 	LEAVE_ONBOARDING: 'leave-onboarding',
-	BUILD_WORKFLOW: 'build-workflow',
+	BUILD_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	PARSE_FILE: 'parse-file',
 	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SKILLS: 'skills',
 } as const;
 
-/** Trace-only chain-typed child run emitted by `build-workflow` with the
+/** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
  *  compiled workflow JSON — bookkeeping, not an agent-facing tool. Consumed by
  *  the eval harness (`langsmith-seed.ts`) so seed reconstruction can skip the
  *  SDK re-parse; excluded by name from rebuilt transcripts. */
@@ -33,13 +59,11 @@ export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 
 export const ORCHESTRATION_TOOL_IDS = {
-	CREATE_TASKS: 'create-tasks',
-	TASK_CONTROL: 'task-control',
-	COMPLETE_CHECKPOINT: 'complete-checkpoint',
-	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
-	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
-	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
-	BUILD_AGENT: 'build-agent',
+	TASK_CONTROL: WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
+	VERIFY_BUILT_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
+	REPORT_VERIFICATION_VERDICT: WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,
+	APPLY_WORKFLOW_CREDENTIALS: WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
+	SELECT_AGENT: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 	GET_SESSION: 'get-session',
 } as const;
 
@@ -47,7 +71,6 @@ export const WORKSPACE_TOOL_IDS = {
 	WRITE_FILE: 'write-file',
 } as const;
 
-export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
 export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
@@ -55,18 +78,40 @@ export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
 
+const RETIRED_AGENT_BUILDER_TOOL_NAMES = new Set<string>([
+	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
+	AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	AGENT_BUILDER_TOOL_NAMES.GET_RESOURCE_LOCATOR_OPTIONS,
+	AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
+	AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,
+]);
+
+/** Agent builder tools the orchestrator runs itself. The agents module supplies all but the selector. */
+export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.values(
+	AGENT_BUILDER_TOOL_NAMES,
+).filter((name) => !RETIRED_AGENT_BUILDER_TOOL_NAMES.has(name));
+
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
 	// Deferring it would price the user's "let me out" at search_tools + load_tool.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
-	DOMAIN_TOOL_IDS.CREDENTIALS,
-	DOMAIN_TOOL_IDS.WORKFLOWS,
+	DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+	DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+	DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+	DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+	DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+	...WORKFLOW_TOOL_NAMES,
 	DOMAIN_TOOL_IDS.EXECUTIONS,
 	DOMAIN_TOOL_IDS.DATA_TABLES,
 	DOMAIN_TOOL_IDS.PARSE_FILE,
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	DOMAIN_TOOL_IDS.NODES,
+	DOMAIN_TOOL_IDS.SEARCH_NODES,
+	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+	DOMAIN_TOOL_IDS.EXECUTE_NODE,
+	DOMAIN_TOOL_IDS.SEARCH_MODELS,
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
@@ -74,8 +119,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// search_tools + load_tool while web search stayed one call away — so the agent
 	// web-searched things the docs answer (INS-749).
 	DOMAIN_TOOL_IDS.N8N_DOCS,
-	// Agent research and session diagnosis are direct operations. Deferring this
-	// tool causes the model to hand read-only work to the builder sub-agent.
+	// Agent research, session diagnosis, and every Agent build read through this tool.
 	DOMAIN_TOOL_IDS.AGENT_CONTEXT,
 	// Deferring this one defeats its purpose: it exists for the case where
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
@@ -93,13 +137,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// build-agent is the primary route for agent-anchored intents; deferring it
-	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
-	// on every agent build.
-	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
-]);
-
-export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([
-	ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
-	DOMAIN_TOOL_IDS.EXECUTIONS,
+	// The orchestrator builds Agents with these tools directly. Deferring them would cost
+	// 2 LLM rounds (search_tools + load_tool) per tool and a prompt-cache rewrite on
+	// every agent build. Registered only when the host provides a builder delegate
+	// (Agents module active), so an instance without it pays nothing.
+	...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
+	DOMAIN_TOOL_IDS.SKILLS,
 ]);

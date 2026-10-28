@@ -4,7 +4,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Resource Mapper',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
@@ -89,7 +89,7 @@ test.describe(
 test.describe(
 	'Resource Mapper values persistence during node navigation',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test('should preserve resource mapper values when navigating between connected nodes via floating nodes', async ({

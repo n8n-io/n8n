@@ -311,4 +311,31 @@ describe('SubworkflowPolicyChecker', () => {
 			});
 		});
 	});
+
+	describe('isCallAllowed', () => {
+		it('should allow a subworkflow without an ID, such as one loaded from a file', async () => {
+			const subworkflow = mock<Workflow>({ id: '', settings: { callerPolicy: 'none' } });
+
+			await expect(checker.isCallAllowed(subworkflow, uuid())).resolves.toBe(true);
+		});
+
+		it('should return false on denial, without throwing or logging', async () => {
+			const subworkflow = mock<Workflow>({ id: uuid(), settings: { callerPolicy: 'none' } });
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: uuid() }));
+			const logDenial = vi.spyOn(checker as never, 'logDenial');
+
+			await expect(checker.isCallAllowed(subworkflow, uuid())).resolves.toBe(false);
+			expect(logDenial).not.toHaveBeenCalled();
+		});
+
+		it('should return true when the policy allows the parent', async () => {
+			const parentWorkflowId = uuid();
+			const subworkflow = mock<Workflow>({
+				id: uuid(),
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: parentWorkflowId },
+			});
+
+			await expect(checker.isCallAllowed(subworkflow, parentWorkflowId)).resolves.toBe(true);
+		});
+	});
 });

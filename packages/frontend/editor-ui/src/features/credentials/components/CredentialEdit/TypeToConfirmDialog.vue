@@ -4,10 +4,11 @@ import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
-	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -57,13 +58,13 @@ function close(): void {
 	<N8nDialog
 		:open="open"
 		:header="title"
-		size="small"
+		size="medium"
 		stacked
 		data-test-id="credential-type-to-confirm-dialog"
 		@update:open="emit('update:open', $event)"
 	>
-		<div :class="$style.body">
-			<N8nText color="text-base">{{ message }}</N8nText>
+		<N8nDialogBody>
+			<N8nDialogDescription>{{ message }}</N8nDialogDescription>
 			<N8nInputLabel
 				:label="
 					i18n.baseText('credentialEdit.credentialEdit.confirmMessage.typeToConfirm', {
@@ -77,7 +78,7 @@ function close(): void {
 					@keyup.enter="onConfirm"
 				/>
 			</N8nInputLabel>
-		</div>
+		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
 				variant="outline"
@@ -96,11 +97,3 @@ function close(): void {
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
-
-<style lang="scss" module>
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-}
-</style>

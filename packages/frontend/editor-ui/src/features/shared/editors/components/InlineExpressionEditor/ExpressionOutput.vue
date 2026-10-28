@@ -96,7 +96,9 @@ const resolvedSegments = computed<Resolved[]>(() => {
 			segment.to = cursor;
 			return segment;
 		})
-		.filter((segment): segment is Resolved => segment.kind === 'resolvable');
+		.filter(
+			(segment): segment is Resolved => segment.kind === 'resolvable' && segment.from < segment.to,
+		);
 });
 
 function initializeEditor() {

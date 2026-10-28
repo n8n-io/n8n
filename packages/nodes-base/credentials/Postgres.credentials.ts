@@ -78,6 +78,48 @@ export class Postgres implements ICredentialType {
 			default: 'disable',
 		},
 		{
+			displayName: 'CA Certificate',
+			name: 'caCertificate',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: ['allow', 'require'],
+				},
+			},
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Client Private Key',
+			name: 'clientPrivateKey',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: ['allow', 'require'],
+				},
+			},
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'clientCertificate',
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: ['allow', 'require'],
+				},
+			},
+			type: 'string',
+			default: '',
+		},
+		{
 			displayName: 'Port',
 			name: 'port',
 			type: 'number',

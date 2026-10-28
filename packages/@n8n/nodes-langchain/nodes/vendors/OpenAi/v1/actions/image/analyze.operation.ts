@@ -206,7 +206,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				content,
 			},
 		],
-		max_tokens: (options.maxTokens as number) || 300,
+		max_completion_tokens: (options.maxTokens as number) || 300,
 	};
 
 	let response = await apiRequest.call(this, 'POST', '/chat/completions', { body });

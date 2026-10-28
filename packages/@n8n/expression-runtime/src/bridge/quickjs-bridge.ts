@@ -2,21 +2,23 @@ import { LruCache } from '@n8n/utils/lru-cache';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
-import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
+import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
 	isEscapedTransferValue,
-	isOpaqueTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
+import type { DataHolder } from './host-functions';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
+	heldData,
 	isErrorSentinel,
 	reconstructError,
 	serializeError,
@@ -30,11 +32,13 @@ type QuickJSWasm = Awaited<ReturnType<QuickJSModule['getQuickJS']>>;
 let _quickjs: QuickJSModule | null = null;
 
 /**
- * The instantiated WASM module, cached after the first async initialize().
- * Creating runtimes/contexts from it is synchronous, so once it is cached
- * (pool warmup does this) initializeSync() can build a bridge on demand.
+ * The instantiated WASM module that new bridges use, cached after the first
+ * async initialize(). Creating runtimes/contexts from it is synchronous, so
+ * once it is cached (pool warmup does this) initializeSync() can build a
+ * bridge on demand. retireQuickJSWasm() replaces it.
  */
 let _quickjsWasm: QuickJSWasm | null = null;
+let _quickjsWasmLoading: Promise<QuickJSWasm> | null = null;
 /** Runtime bundle source, read once per process by loadRuntimeBundle(). */
 let _runtimeBundle: string | null = null;
 
@@ -43,6 +47,40 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 		_quickjs = await import('quickjs-emscripten');
 	}
 	return _quickjs;
+}
+
+/**
+ * Our own module instance, not the library's getQuickJS() singleton: that one
+ * cannot be replaced after it is retired.
+ */
+async function loadQuickJSWasm(): Promise<QuickJSWasm> {
+	if (_quickjsWasm) return _quickjsWasm;
+	_quickjsWasmLoading ??= getQuickJSModule()
+		.then(async ({ newQuickJSWASMModule }) => await newQuickJSWASMModule())
+		.then((wasm) => {
+			_quickjsWasm = wasm;
+			return wasm;
+		})
+		.finally(() => {
+			_quickjsWasmLoading = null;
+		});
+	return await _quickjsWasmLoading;
+}
+
+/**
+ * Stop building runtimes on a module that a host error unwound through. The
+ * unwind skips the code that restores the module's stack pointer, and all
+ * runtimes in the module share that stack. Runtimes that already exist keep
+ * their stack limit, but a new one would take its limit from the lowered
+ * pointer and could write past the end of the stack.
+ */
+function retireQuickJSWasm(wasm: QuickJSWasm, logger: Logger): void {
+	if (_quickjsWasm !== wasm) return;
+	_quickjsWasm = null;
+	// Load the replacement now, so that the next initializeSync() finds it.
+	loadQuickJSWasm().catch((error: unknown) => {
+		logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
+	});
 }
 
 // Joined by hand, not with `path.join`. This runs at module load, and a browser
@@ -78,6 +116,16 @@ function isNaNSentinel(value: unknown): value is { __isNaN: true } {
 		typeof value === 'object' &&
 		value !== null &&
 		(value as Record<string, unknown>).__isNaN === true
+	);
+}
+
+// The guest escapes a user object with this key. Only the sentinel has this key alone.
+function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isUndefined === true &&
+		Object.keys(value).length === 1
 	);
 }
 
@@ -125,19 +173,17 @@ function isEscapedObject(
 /**
  * Give back the payload of an escape wrapper.
  *
- * A walked payload only had its own keys collide, so the walk goes on and
- * rebuilds the markers deeper in it. An opaque payload is a value the guest
- * could not walk, so `opaque` keeps every marker in it as data.
+ * The guest escapes every marker-shaped object inside an opaque payload, so the
+ * host walk can rebuild the markers in any payload.
  */
 function unescapeTransferValue(value: EscapedTransferValue): unknown {
 	const inner: unknown = value.__value;
-	const opaque = isOpaqueTransferValue(value);
 	if (typeof inner !== 'object' || inner === null) return inner;
-	if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
-	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
+	if (isEscapedObject(inner)) return unwrapSentinels(inner);
+	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry));
 	const unescaped: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(inner)) {
-		unescaped[key] = unwrapSentinels(entry, opaque);
+		unescaped[key] = unwrapSentinels(entry);
 	}
 	return unescaped;
 }
@@ -145,13 +191,8 @@ function unescapeTransferValue(value: EscapedTransferValue): unknown {
 /**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
- *
- * With `markersAsData` set, a transfer marker is left as the plain object it
- * is, for the contents of a payload the guest marked opaque. The guest escapes
- * most such objects itself, but one that also carries `__isError` leaves the
- * guest walk before the escape, so the host must not read it as a marker.
  */
-function unwrapSentinels(value: unknown, markersAsData = false): unknown {
+function unwrapSentinels(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	// Escaped user objects: keys collided with the sentinel markers, so the
@@ -161,16 +202,15 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key], markersAsData);
+			result[key] = unwrapSentinels(inner[key]);
 		}
 		return result;
 	}
-	if (!markersAsData) {
-		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-		if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
-	}
+	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
+	if (isUndefinedSentinel(value)) return undefined;
 	if (isErrorValueSentinel(value)) {
 		const ErrorCtor =
 			(
@@ -186,29 +226,21 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, markersAsData);
+				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v);
 			}
 		}
 		return err;
 	}
 	if (isMapSentinel(value)) {
-		return new Map(
-			value.__entries.map(([k, v]) => [
-				unwrapSentinels(k, markersAsData),
-				unwrapSentinels(v, markersAsData),
-			]),
-		);
+		return new Map(value.__entries.map(([k, v]) => [unwrapSentinels(k), unwrapSentinels(v)]));
 	}
 	if (isSetSentinel(value)) {
-		return new Set(value.__values.map((entry) => unwrapSentinels(entry, markersAsData)));
+		return new Set(value.__values.map((entry) => unwrapSentinels(entry)));
 	}
-	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, markersAsData));
-	// Pass error sentinels through untouched — execute() detects them after
-	// unwrapping and reconstructs the Error on the host.
-	if (isErrorSentinel(value)) return value;
+	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry));
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], markersAsData);
+		result[key] = unwrapSentinels((value as Record<string, unknown>)[key]);
 	}
 	return result;
 }
@@ -217,10 +249,12 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 const TRANSFER_MARKER_KEYS = new Set([
 	'__isDate',
 	'__isNaN',
+	'__isUndefined',
 	'__isErrorValue',
 	'__isMap',
 	'__isSet',
 	'__isEscaped',
+	'__isError',
 ]);
 
 /**
@@ -251,8 +285,6 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
 	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
-	// Error sentinels are already in transfer shape — leave them intact.
-	if (isErrorSentinel(value)) return value;
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
@@ -443,6 +475,9 @@ const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
 	},
 };
 
+/** The dumped result of one guest call. */
+type GuestOutcome = { kind: 'compileError' | 'error' | 'value'; dump: unknown };
+
 /**
  * QuickJsBridge - Runtime bridge using quickjs-emscripten for expression evaluation.
  *
@@ -458,10 +493,23 @@ const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
  * the host callback functions directly.
  */
 export class QuickJsBridge implements RuntimeBridge {
+	private wasm: QuickJSWasm | undefined;
 	private runtime: import('quickjs-emscripten').QuickJSRuntime | undefined;
 	private vm: import('quickjs-emscripten').QuickJSContext | undefined;
 	private initialized = false;
 	private disposed = false;
+
+	/**
+	 * Set when a host error escapes a call into the runtime, for example V8
+	 * running out of native stack in deep recursion. QuickJS reports its own
+	 * errors as results, so an escaped error means that the unwind skipped
+	 * QuickJS cleanup. The runtime is not used again, and execute() builds a new
+	 * one on a new module.
+	 */
+	private broken = false;
+
+	/** The bundle that the runtime loaded. A rebuild loads it again. */
+	private runtimeBundle: string | undefined;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
 
@@ -480,6 +528,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	// deadline passes, so a nested call cannot extend the outer call's budget.
 	private deadlines: number[] = [];
 
+	/** Load and instantiate the shared WASM module, so a later initialize() does not wait for it. */
+	static async loadWasm(): Promise<void> {
+		await loadQuickJSWasm();
+	}
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -493,9 +546,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (this.disposed) throw new Error('Bridge has been disposed and cannot be reinitialized.');
 		if (this.initialized) return;
 
-		const { getQuickJS } = await getQuickJSModule();
-		const QuickJS = await getQuickJS();
-		_quickjsWasm = QuickJS;
+		const QuickJS = await loadQuickJSWasm();
 
 		// A host without a filesystem (the browser) passes the bundle in, so
 		// loadRuntimeBundle() — the only Node-only code here — is never reached.
@@ -520,11 +571,12 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Both caches are populated by the same async initialize() (pool
 		// warmup), so the sync path never touches the filesystem or the
-		// event loop beyond the context setup itself.
+		// event loop beyond the context setup itself. The module is also empty
+		// while a replacement for a retired one loads.
 		if (_quickjsWasm === null || _runtimeBundle === null) {
 			throw new Error(
 				'QuickJS WASM module and runtime bundle are not loaded yet: an async initialize() ' +
-					'must run once (pool warmup) before bridges can be created synchronously',
+					'must load them before bridges can be created synchronously',
 			);
 		}
 
@@ -533,6 +585,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	/** Everything after module/bundle acquisition is synchronous and shared. */
 	private setupContext(QuickJS: QuickJSWasm, runtimeBundle: string): void {
+		this.wasm = QuickJS;
 		// Create runtime with memory limit (MB → bytes)
 		this.runtime = QuickJS.newRuntime();
 		this.runtime.setMemoryLimit(this.config.memoryLimit * 1024 * 1024);
@@ -542,7 +595,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Install the interrupt handler once. It reads the live deadline stack, so
 		// nested execute() calls share one budget: the earliest deadline wins.
 		// Math.min() of an empty stack is Infinity, so an idle runtime never fires.
-		this.runtime.setInterruptHandler(() => Date.now() > Math.min(...this.deadlines));
+		// A broken runtime also stops the outer call that a nested call broke it in.
+		this.runtime.setInterruptHandler(
+			() => (this.broken && this.deadlines.length > 0) || Date.now() > Math.min(...this.deadlines),
+		);
 
 		// Set up 'global' / 'globalThis' self-reference
 		const globalHandle = this.vm.global;
@@ -554,6 +610,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system, buildContext)
 		this.loadRuntimeBundle(runtimeBundle);
+		this.runtimeBundle = runtimeBundle;
 
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
@@ -564,6 +621,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.verifyProxySystem();
 
 		this.initialized = true;
+		this.broken = false;
 
 		this.logger.info('[QuickJsBridge] Initialized successfully');
 	}
@@ -889,20 +947,18 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v instanceof Map) {
 			var entries = [];
 			v.forEach(function(val, key) {
-				entries.push([wrapSpecialValues(key, true), wrapSpecialValues(val, true)]);
+				entries.push([wrapChild(key, true), wrapChild(val, true)]);
 			});
 			return { __isMap: true, __entries: entries };
 		}
 		if (v instanceof Set) {
 			var values = [];
 			v.forEach(function(val) {
-				values.push(wrapSpecialValues(val, true));
+				values.push(wrapChild(val, true));
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
-		// Error sentinels are already in transfer shape — leave them intact.
-		if (v.__isError) return v;
+		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
@@ -930,6 +986,11 @@ export class QuickJsBridge implements RuntimeBridge {
 		return wrapOwnKeys(v, inCollection);
 	}
 
+	// vm.dump() drops an undefined object value and turns an undefined array item into null.
+	function wrapChild(v, inCollection) {
+		return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection);
+	}
+
 	function wrapOwnKeys(v, inCollection) {
 		var result = {};
 		var keys = Object.keys(v);
@@ -937,15 +998,17 @@ export class QuickJsBridge implements RuntimeBridge {
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
 			if (
-				key === '__isDate' || key === '__isNaN' || key === '__isErrorValue' ||
-				key === '__isMap' || key === '__isSet' || key === '__isEscaped'
+				key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
+				key === '__isErrorValue' || key === '__isMap' || key === '__isSet' ||
+				key === '__isEscaped'
 			) {
 				collides = true;
 			}
-			// Inside a collection a transfer marker is user data, so escape the object
-			// and the host reads the keys as the plain data they are.
+			// Inside a collection a transfer marker or an error flag is user data, so
+			// escape the object and the host reads the keys as the plain data they are.
 			if (
 				inCollection && (
+					key === '__isError' ||
 					key === '${TRANSFER_TYPE_KEY}' ||
 					key === '${TRANSFER_ESCAPED_KEY}' ||
 					key === '${TRANSFER_OPAQUE_KEY}'
@@ -953,7 +1016,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapSpecialValues(v[key], inCollection);
+			result[key] = wrapChild(v[key], inCollection);
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of
@@ -965,8 +1028,6 @@ export class QuickJsBridge implements RuntimeBridge {
 	// wrapSpecialValuesForGuest() produces for callback results.
 	globalThis.__unwrapFromHost = function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
-		// Error sentinels stay as-is — the in-context proxy detects and throws them.
-		if (v.__isError === true) return v;
 		if (v.__isDate === true) return new Date(v.__isoString);
 		if (v.__isNaN === true) return NaN;
 		if (v.__isMap === true) {
@@ -1069,7 +1130,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create per-execute callback function handles, closure-scoped to `data`.
+	 * Create per-execute callback function handles.
 	 *
 	 * The handles are passed as arguments into the per-call wrapper function
 	 * (see execute()) instead of being set as VM globals: `execute()` can
@@ -1081,44 +1142,63 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Callers must dispose the returned handles when the call completes.
 	 */
 	private createCallbackHandles(
-		data: WorkflowData,
+		holder: DataHolder,
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
+		const handles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
-		const getValueFn = vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			try {
-				const result = getValueAtPath(data, pathArr);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
+		try {
+			handles.push(
+				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					try {
+						const result = getValueAtPath(heldData(holder), pathArr);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					const index = vm.dump(indexHandle) as number;
+					try {
+						const result = getArrayElement(heldData(holder), pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__callHostImpl', (msgHandle) => {
+					const rawMsg = vm.dump(msgHandle);
+					try {
+						const result = escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+		} catch (error) {
+			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
+			for (const handle of handles) {
+				try {
+					handle.dispose();
+				} catch {
+					// Throw the build error, not a dispose error.
+				}
 			}
-		});
+			throw error;
+		}
 
-		const getArrayFn = vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			const index = vm.dump(indexHandle) as number;
-			try {
-				const result = getArrayElement(data, pathArr, index);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
-			const rawMsg = vm.dump(msgHandle);
-			try {
-				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		return [getValueFn, getArrayFn, callHostFn];
+		return handles;
 	}
 
 	/**
@@ -1130,7 +1210,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	private hostValueToQuickJSHandle(value: unknown): import('quickjs-emscripten').QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 
-		if (value === undefined) return this.vm.undefined;
+		// Building a value runs guest code, which a broken runtime must not do.
+		if (value === undefined || this.broken) return this.vm.undefined;
 		if (value === null) return this.vm.null;
 
 		if (typeof value === 'number') {
@@ -1173,9 +1254,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * 4. Reconstruct error sentinels into real Errors
 	 */
 	execute(code: string, data: WorkflowData, options?: ExecuteOptions): unknown {
+		if (this.broken && !this.disposed) this.rebuildRuntime();
 		if (!this.initialized || !this.vm || !this.runtime) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
+		const vm = this.vm;
 
 		// A nested call runs on what is left of the configured timeout, so the
 		// chain shares one budget (mirrors IsolatedVmBridge). A configured
@@ -1188,8 +1271,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (timeout <= 0) throw this.timeoutError(true);
 		}
 
-		const callbackHandles = this.createCallbackHandles(data);
-		let wrapperFn: import('quickjs-emscripten').QuickJSHandle | undefined;
+		// QuickJS frees a host function only when the guest function is collected,
+		// and its cycle collector runs late. So the callbacks read the data from a
+		// holder that `finally` clears, else a finished call's data stays in memory.
+		const holder: DataHolder = { data };
+		const callbackHandles = this.createCallbackHandles(holder);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1230,19 +1316,20 @@ export class QuickJsBridge implements RuntimeBridge {
   }
 })`;
 
-			const wrapperResult = this.vm.evalCode(wrappedCode);
-			if (wrapperResult.error) {
-				const errDump = this.vm.dump(wrapperResult.error);
-				wrapperResult.error.dispose();
-				throw new Error(`Expression compilation failed: ${String(errDump)}`);
+			let outcome: GuestOutcome;
+			try {
+				outcome = this.runInGuest(vm, wrappedCode, callbackHandles);
+			} catch (error) {
+				this.broken = true;
+				throw error;
 			}
-			wrapperFn = wrapperResult.value;
 
-			const execResult = this.vm.callFunction(wrapperFn, this.vm.undefined, ...callbackHandles);
+			if (outcome.kind === 'compileError') {
+				throw new Error(`Expression compilation failed: ${String(outcome.dump)}`);
+			}
 
-			if (execResult.error) {
-				const errDump = this.vm.dump(execResult.error);
-				execResult.error.dispose();
+			if (outcome.kind === 'error') {
+				const errDump = outcome.dump;
 
 				// buildContext throws on invalid timezone — propagate the original message
 				const errStr = String(
@@ -1263,13 +1350,13 @@ export class QuickJsBridge implements RuntimeBridge {
 				throw new Error(`Expression evaluation failed: ${errStr}`);
 			}
 
-			const rawResult = this.vm.dump(execResult.value);
-			execResult.value.dispose();
-			const result = unwrapSentinels(rawResult);
-
-			if (isErrorSentinel(result)) {
-				throw reconstructError(result);
+			// Only a thrown error reaches the host as a bare sentinel. The guest walk
+			// escapes any user object with the same flag.
+			if (isErrorSentinel(outcome.dump)) {
+				throw reconstructError(outcome.dump);
 			}
+
+			const result = unwrapSentinels(outcome.dump);
 
 			this.logger.debug('[QuickJsBridge] Expression executed successfully');
 
@@ -1285,6 +1372,9 @@ export class QuickJsBridge implements RuntimeBridge {
 				throw error;
 			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			// A host error, for example a WASM trap, can name memory without the
+			// guest reaching its memory limit.
+			if (this.broken) throw new Error(`Expression evaluation failed: ${errorMessage}`);
 			if (errorMessage.includes('interrupted')) {
 				throw this.timeoutError(nested);
 			}
@@ -1296,12 +1386,113 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
+			holder.data = undefined;
 			this.deadlines.pop();
-			wrapperFn?.dispose();
-			for (const handle of callbackHandles) {
-				handle.dispose();
+			if (!this.broken) {
+				for (const handle of callbackHandles) {
+					handle.dispose();
+				}
+			} else if (this.deadlines.length === 0) {
+				// Only the outermost call drops the runtime. A nested call returns
+				// into the frames of the outer call, which still use the runtime.
+				this.abandonRuntime();
 			}
 		}
+	}
+
+	/**
+	 * Run the wrapped code and give back its outcome as host values. QuickJS
+	 * reports guest errors as results, so a throw from here is a host error.
+	 */
+	private runInGuest(
+		vm: import('quickjs-emscripten').QuickJSContext,
+		wrappedCode: string,
+		callbackHandles: Array<import('quickjs-emscripten').QuickJSHandle>,
+	): GuestOutcome {
+		const wrapperResult = vm.evalCode(wrappedCode);
+		if (wrapperResult.error) {
+			const dump: unknown = vm.dump(wrapperResult.error);
+			wrapperResult.error.dispose();
+			return { kind: 'compileError', dump };
+		}
+		const wrapperFn = wrapperResult.value;
+		const execResult = vm.callFunction(wrapperFn, vm.undefined, ...callbackHandles);
+		// A nested execute() that broke the runtime returned into this call.
+		if (this.broken) throw new Error('A nested expression stopped the expression engine');
+		wrapperFn.dispose();
+
+		if (execResult.error) {
+			const dump: unknown = vm.dump(execResult.error);
+			execResult.error.dispose();
+			return { kind: 'error', dump };
+		}
+		const dump: unknown = vm.dump(execResult.value);
+		execResult.value.dispose();
+		return { kind: 'value', dump };
+	}
+
+	/**
+	 * Build a new runtime in place of a broken one, so that the caller that holds
+	 * this bridge can go on. The runtime goes on the current module, which is
+	 * never the retired one.
+	 */
+	private rebuildRuntime(): void {
+		// A nested call must not enter a runtime that an inner call has broken.
+		if (this.vm || _quickjsWasm === null) {
+			// Retries a failed load. A load that is in progress is reused.
+			loadQuickJSWasm().catch((error: unknown) => {
+				this.logger.error('[QuickJsBridge] Failed to load a replacement WASM module', { error });
+			});
+			throw new Error(
+				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
+			);
+		}
+		if (this.runtimeBundle === undefined) {
+			throw new Error('Bridge not initialized. Call initialize() first.');
+		}
+		// The process-wide bundle cache holds the bundle of the bridge that
+		// initialized last, which can differ from the bundle of this bridge.
+		try {
+			this.setupContext(_quickjsWasm, this.runtimeBundle);
+		} catch (error) {
+			// Clears this.vm, so the next execute() tries the rebuild again.
+			this.discardFailedRuntime();
+			throw error;
+		}
+	}
+
+	/**
+	 * Free the runtime of a failed rebuild. It ran no guest call, so it can
+	 * usually be freed. If the free aborts, the module is unusable.
+	 */
+	private discardFailedRuntime(): void {
+		try {
+			for (const handle of this.intlHandles) handle.dispose();
+			this.vm?.dispose();
+			this.runtime?.dispose();
+		} catch {
+			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
+		} finally {
+			this.intlHandles = [];
+			this.vm = undefined;
+			this.runtime = undefined;
+			this.wasm = undefined;
+		}
+	}
+
+	/**
+	 * Drop a broken runtime without freeing it. JS_FreeRuntime asserts that no
+	 * objects are left, and the unwind left some, so a free aborts the module.
+	 * The memory is released when the module is garbage collected.
+	 */
+	private abandonRuntime(): void {
+		if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
+		this.wasm = undefined;
+		this.vm = undefined;
+		this.runtime = undefined;
+		this.intlHandles = [];
+		this.initialized = false;
+		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
 
 	/**
@@ -1333,6 +1524,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	async dispose(): Promise<void> {
 		if (this.disposed) return;
+		if (this.broken && this.vm) this.abandonRuntime();
 
 		for (const handle of this.intlHandles) {
 			handle.dispose();

@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import { WorkflowProjectService, type EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -36,6 +36,7 @@ describe('OwnershipService', () => {
 	const logger = mockInstance(Logger);
 	const eventService = mock<EventService>();
 	const settingsRepository = mock<SettingsRepository>();
+	const workflowProjectService = new WorkflowProjectService(cacheService, sharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
 		cacheService,
@@ -44,7 +45,7 @@ describe('OwnershipService', () => {
 		passwordUtility,
 		projectRelationRepository,
 		projectRepository,
-		sharedWorkflowRepository,
+		workflowProjectService,
 		userRepository,
 		settingsRepository,
 	);
@@ -67,6 +68,20 @@ describe('OwnershipService', () => {
 			const returnedProject = await ownershipService.getWorkflowProjectCached('some-workflow-id');
 
 			expect(returnedProject).toBe(mockProject);
+		});
+
+		test('should ignore a cached project without an id and read the project from the database', async () => {
+			const mockProject = Object.assign(new Project(), { id: 'project-id' });
+			// A cached value without an id, as a lookup of the key `__proto__` used to return
+			cacheService.getHashValue.mockResolvedValueOnce({});
+			sharedWorkflowRepository.findOneOrFail.mockResolvedValueOnce(
+				Object.assign(new SharedWorkflow(), { role: 'workflow:owner', project: mockProject }),
+			);
+
+			const returnedProject = await ownershipService.getWorkflowProjectCached('some-workflow-id');
+
+			expect(returnedProject).toBe(mockProject);
+			expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalled();
 		});
 
 		test('should throw if no workflow owner project found', async () => {
@@ -103,6 +118,7 @@ describe('OwnershipService', () => {
 			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
+			expect(cacheService.setHash).not.toHaveBeenCalled();
 		});
 
 		test('should not use the repository if the owner was found in the cache', async () => {

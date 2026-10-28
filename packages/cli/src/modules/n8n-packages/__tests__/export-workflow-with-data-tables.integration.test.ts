@@ -80,7 +80,7 @@ describe('workflow package export — with data tables', () => {
 					{
 						id: dataTable.id,
 						name: 'Customers',
-						usedByWorkflows: [workflow.id],
+						usedBy: [{ kind: 'workflow', id: workflow.id }],
 					},
 				],
 			});
@@ -98,7 +98,7 @@ describe('workflow package export — with data tables', () => {
 			expect(parsed).toEqual({
 				id: dataTable.id,
 				name: 'Customers',
-				columns: [{ name: 'email', type: 'string', index: 0 }],
+				columns: [{ id: dataTable.columns[0].id, name: 'email', type: 'string', index: 0 }],
 			});
 		});
 
@@ -127,11 +127,12 @@ describe('workflow package export — with data tables', () => {
 			const parsed = jsonParse<{ columns: Array<{ name: string; type: string }> }>(
 				dataTableFile!.content.toString(),
 			);
+			const columnIds = Object.fromEntries(dataTable.columns.map(({ id, name }) => [name, id]));
 			expect(parsed.columns).toEqual([
-				{ name: 'aString', type: 'string', index: 0 },
-				{ name: 'aNumber', type: 'number', index: 1 },
-				{ name: 'aBoolean', type: 'boolean', index: 2 },
-				{ name: 'aDate', type: 'date', index: 3 },
+				{ id: columnIds.aString, name: 'aString', type: 'string', index: 0 },
+				{ id: columnIds.aNumber, name: 'aNumber', type: 'number', index: 1 },
+				{ id: columnIds.aBoolean, name: 'aBoolean', type: 'boolean', index: 2 },
+				{ id: columnIds.aDate, name: 'aDate', type: 'date', index: 3 },
 			]);
 		});
 
@@ -160,7 +161,7 @@ describe('workflow package export — with data tables', () => {
 			expect(jsonParse<Record<string, unknown>>(raw)).toEqual({
 				id: dataTable.id,
 				name: 'WithRows',
-				columns: [{ name: 'email', type: 'string', index: 0 }],
+				columns: [{ id: dataTable.columns[0].id, name: 'email', type: 'string', index: 0 }],
 			});
 			expect(entries.filter((e) => e.name.endsWith('/data-table.json'))).toHaveLength(1);
 		});
@@ -185,7 +186,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
@@ -212,7 +213,7 @@ describe('workflow package export — with data tables', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 
@@ -221,7 +222,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [child.id],
+					usedBy: [{ kind: 'workflow', id: child.id }],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
@@ -252,8 +253,12 @@ describe('workflow package export — with data tables', () => {
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements?.dataTables).toHaveLength(1);
-			expect(manifest.requirements!.dataTables![0].usedByWorkflows.sort()).toEqual(
-				[wfA.id, wfB.id].sort(),
+			expect(manifest.requirements!.dataTables![0].usedBy).toHaveLength(2);
+			expect(manifest.requirements!.dataTables![0].usedBy).toEqual(
+				expect.arrayContaining([
+					{ kind: 'workflow', id: wfA.id },
+					{ kind: 'workflow', id: wfB.id },
+				]),
 			);
 			expect(entries.filter((e) => e.name.endsWith('/data-table.json'))).toHaveLength(1);
 		});
@@ -347,7 +352,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 			expect(entries.map((e) => e.name)).toContain(
@@ -379,7 +384,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 			// Folder packages keep data tables top-level, unlike project packages.
@@ -412,7 +417,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});
@@ -438,7 +443,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});
@@ -463,7 +468,7 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			]);
 		});

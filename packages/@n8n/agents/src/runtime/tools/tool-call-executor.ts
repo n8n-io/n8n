@@ -3,6 +3,7 @@ import {
 	isDelegateSubAgentTool,
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
+import { resolveToolForCall } from './tool-adapter';
 import { ToolCallRunner } from './tool-call-runner';
 import type { BuiltTool, PendingToolCall } from '../../types';
 import type {
@@ -62,30 +63,35 @@ export class ToolCallExecutor {
 		return this.deps.concurrency;
 	}
 
-	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
-		const tool = toolMap.get(toolName);
+	private isForegroundDelegateCall(
+		call: RuntimeToolCall,
+		toolMap: Map<string, BuiltTool>,
+	): boolean {
+		if (call.input.mode === 'background') return false;
+		const tool = resolveToolForCall(toolMap, call.toolName, call.input);
 		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
-	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
-		const tool = toolMap.get(toolName);
+	private getToolCallBatchSize(call: RuntimeToolCall, toolMap: Map<string, BuiltTool>): number {
+		if (!this.isForegroundDelegateCall(call, toolMap)) return this.concurrency;
+		const tool = resolveToolForCall(toolMap, call.toolName, call.input);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
 		if (!delegateOptions) return this.concurrency;
 		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
 	}
 
-	private takeNextToolCallBatch<T extends { toolName: string }>(
-		calls: T[],
+	private takeNextToolCallBatch(
+		calls: RuntimeToolCall[],
 		start: number,
 		toolMap: Map<string, BuiltTool>,
-	): T[] {
+	): RuntimeToolCall[] {
 		const first = calls[start];
 		if (!first) {
 			throw new Error('Unable to build tool-call batch');
 		}
 
-		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName, toolMap);
-		const batchSize = this.getToolCallBatchSize(first.toolName, toolMap);
+		const isDelegateBatch = this.isForegroundDelegateCall(first, toolMap);
+		const batchSize = this.getToolCallBatchSize(first, toolMap);
 		if (
 			batchSize < 1 ||
 			Number.isNaN(batchSize) ||
@@ -93,11 +99,11 @@ export class ToolCallExecutor {
 		) {
 			throw new Error(`Invalid tool-call batch size for ${first.toolName}: ${batchSize}`);
 		}
-		const batch: T[] = [];
+		const batch: RuntimeToolCall[] = [];
 
 		for (let i = start; i < calls.length && batch.length < batchSize; i++) {
 			const candidate = calls[i];
-			if (this.isDelegateSubAgentCall(candidate.toolName, toolMap) !== isDelegateBatch) break;
+			if (this.isForegroundDelegateCall(candidate, toolMap) !== isDelegateBatch) break;
 			batch.push(candidate);
 		}
 
@@ -107,7 +113,7 @@ export class ToolCallExecutor {
 	/**
 	 * Execute tool calls concurrently in batches.
 	 *
-	 * Regular tools use `toolCallConcurrency`. Consecutive delegate-subagent
+	 * Regular tools and background dispatch use `toolCallConcurrency`. Foreground delegation
 	 * calls use the effective `maxChildren` policy from the built delegate tool.
 	 * Provider-executed calls are skipped.
 	 *
@@ -305,6 +311,7 @@ export class ToolCallExecutor {
 		if (outcome.outcome === 'success') {
 			result.customMessage = outcome.customMessage;
 			if (outcome.mcpServerName !== undefined) result.mcpServerName = outcome.mcpServerName;
+			if (outcome.traceOutput !== undefined) result.traceOutput = outcome.traceOutput;
 		}
 		results.push(result);
 	}
@@ -430,7 +437,7 @@ export class ToolCallExecutor {
 		for (const id of Object.keys(ctx.pendingResume.pendingToolCalls)) {
 			if (id === ctx.pendingResume.resumeToolCallId) continue;
 			const entry = ctx.pendingResume.pendingToolCalls[id];
-			const tool = ctx.toolMap.get(entry.toolName);
+			const tool = resolveToolForCall(ctx.toolMap, entry.toolName, entry.input);
 			const params = this.pendingToolCallParams(entry, ctx, ctx.pendingResume.resumeData);
 			if (entry.suspended && tool?.onCancellation) {
 				try {
@@ -486,7 +493,7 @@ export class ToolCallExecutor {
 	): Promise<void> {
 		for (const entry of Object.values(pending)) {
 			if (!entry.suspended) continue;
-			const tool = ctx.toolMap.get(entry.toolName);
+			const tool = resolveToolForCall(ctx.toolMap, entry.toolName, entry.input);
 			if (!tool?.onCancellation) continue;
 			try {
 				await this.runner.runCancellationCleanup(

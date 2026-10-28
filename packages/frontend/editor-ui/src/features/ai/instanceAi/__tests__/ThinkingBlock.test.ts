@@ -56,6 +56,35 @@ describe('ThinkingBlock', () => {
 		createTestingPinia({ stubActions: false });
 	});
 
+	it.each(['completed', 'cancelled', 'error'] as const)(
+		'keeps a stale loading tool static when its agent is %s',
+		async (status) => {
+			const tc = makeToolCall({ isLoading: true });
+			const { getByTestId, findByText } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status, toolCalls: [tc] }),
+					entries: [toolEntry(tc.toolCallId)],
+					active: false,
+				},
+			});
+			await fireEvent.click(getByTestId('thinking-block-header'));
+			expect((await findByText('Searching nodes')).className).not.toContain('shimmer');
+		},
+	);
+
+	it('animates a loading tool owned by a live agent', async () => {
+		const tc = makeToolCall({ isLoading: true });
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: true,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		expect((await findByText('Searching nodes')).className).toContain('shimmer');
+	});
+
 	it('should show duration from tool-call timestamps when settled', () => {
 		const tc = makeToolCall({
 			startedAt: '2026-01-01T00:00:00Z',
@@ -453,5 +482,56 @@ describe('collapsed subline label', () => {
 
 		expect(subline).toContain('could not be read');
 		expect(subline).not.toContain('Read instance context');
+	});
+});
+
+describe('skill update activity', () => {
+	it.each([undefined, 'Updated instructions for this response.'])(
+		'shows the saved skill content with a fallback for metadata-only events (%s)',
+		async (content) => {
+			const entry: InstanceAiTimelineEntry = {
+				type: 'skill-update',
+				runId: 'run-1',
+				skillId: 'hub:1',
+				name: 'Writing',
+				version: 'v2',
+				change: 'updated',
+				content,
+			};
+			const { getByTestId, findByRole, findByText } = renderComponent({
+				props: { agentNode: makeAgentNode(), entries: [entry], active: true },
+				global: { stubs: { ToolResultJson: false } },
+			});
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent(
+				'Using updated skill: Writing',
+			);
+			await fireEvent.click(getByTestId('thinking-block-header'));
+			await fireEvent.click(await findByRole('button', { name: 'Using updated skill: Writing' }));
+			if (content) {
+				expect(await findByText(/Updated instructions for this response/)).toBeVisible();
+				expect(await findByText(/"hash": "v2"/)).toBeVisible();
+			} else {
+				expect(await findByText('Latest version loaded for this response')).toBeVisible();
+			}
+		},
+	);
+
+	it('shows an unnamed unavailable skill without exposing its internal ID', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			version: null,
+			change: 'unavailable',
+		};
+		const { getByTestId, findByRole, findByText, queryByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(
+			await findByRole('button', { name: 'A previously loaded skill is unavailable' }),
+		);
+		expect(await findByText("The Assistant can't use this skill for this response")).toBeVisible();
+		expect(queryByText('hub:internal-id')).toBeNull();
 	});
 });

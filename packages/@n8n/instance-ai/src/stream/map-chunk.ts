@@ -1,13 +1,14 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	AGENT_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
 	instanceAiApprovalDetailsSchema,
 	instanceAiQuestionSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
-	taskListSchema,
-	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	skillUpdatePayloadSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
@@ -210,13 +211,7 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 type EventBase = { runId: string; agentId: string; responseId?: string };
 
-type ConfirmationInputType =
-	| 'approval'
-	| 'text'
-	| 'questions'
-	| 'plan-review'
-	| 'resource-decision'
-	| 'continue';
+type ConfirmationInputType = 'approval' | 'text' | 'questions' | 'resource-decision' | 'continue';
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -246,14 +241,7 @@ function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
 
 function parseInputType(value: unknown): ConfirmationInputType | undefined {
 	const raw = typeof value === 'string' ? value : undefined;
-	const valid = [
-		'approval',
-		'text',
-		'questions',
-		'plan-review',
-		'resource-decision',
-		'continue',
-	] as const;
+	const valid = ['approval', 'text', 'questions', 'resource-decision', 'continue'] as const;
 	return (valid as readonly string[]).includes(raw ?? '')
 		? (raw as (typeof valid)[number])
 		: undefined;
@@ -331,8 +319,6 @@ function mapSuspendedChunk(
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, instanceAiQuestionSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
-	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
-	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
@@ -357,7 +343,11 @@ function mapSuspendedChunk(
 		mcpConnectRequestSchema,
 	);
 	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
-	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+	// A test run of the target Agent pauses for the target's own tool approvals.
+	const isTargetTestRun =
+		typeof chunk.toolName === 'string' &&
+		resolveBuilderToolName(chunk.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
+	const targetApprovalResult = isTargetTestRun
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
 	const targetApproval = targetApprovalResult?.success
@@ -398,8 +388,6 @@ function mapSuspendedChunk(
 			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
-			...(tasks ? { tasks } : {}),
-			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
@@ -443,6 +431,11 @@ function mapMessageChunk(
 	base: EventBase,
 ): InstanceAiEvent | null {
 	const message = getRecordProperty(chunk, 'message');
+	const data = getRecordProperty(message, 'data');
+	if (message?.type === 'custom' && data?.type === 'n8n:runtime-skill-update') {
+		const update = skillUpdatePayloadSchema.safeParse(data.skillUpdate);
+		return update.success ? { type: 'skill-update', ...base, payload: update.data } : null;
+	}
 	if (message?.role !== 'tool') return null;
 
 	const content = getArrayProperty(message, 'content');

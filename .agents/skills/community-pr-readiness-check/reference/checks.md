@@ -76,19 +76,19 @@ The matching regex below is a cached extraction of those rules. If the conventio
 For all types except `revert`:
 
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
 For `revert` titles, the summary is the original commit header (which starts with a lowercase type), so capitalization is not enforced:
 
 ```
-^revert(\([a-zA-Z0-9 ]+( Node)?\))?!?: .+[^.]$
+^revert(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: .+[^.]$
 ```
 
 Quick recap of what the regex enforces (full detail in the conventions file):
 
 - Type must be one of: `feat fix perf test docs refactor build ci chore revert`.
-- Scope is optional, in parentheses; characters limited to `[a-zA-Z0-9 ]` — hyphens like `(nodes-base)` fail.
+- Scope is optional, in parentheses. Each scope is one of `API`, `core`, `editor`, `benchmark`, `ai-builder`, `engine`, or a node display name followed by ` Node` (for example `(Slack Node)`). Separate several scopes with `, `. Package names such as `(nodes-base)` fail.
 - Breaking changes: `!` before the colon.
 - Summary: starts with capital letter (lowercase allowed for `revert:`), no trailing period.
 - No Linear ticket IDs in the title (e.g. `N8N-1234`).

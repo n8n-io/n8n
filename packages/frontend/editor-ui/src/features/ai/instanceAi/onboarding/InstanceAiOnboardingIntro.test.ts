@@ -59,7 +59,7 @@ describe('InstanceAiOnboardingIntro', () => {
 		const { emitted, getByTestId, getByText } = renderIntro({
 			props: {
 				incomplete: true,
-				modelValue: 'anthropic/claude-opus-5',
+				modelValue: 'anthropic/claude-opus-5-5',
 				sandboxValue: 'n8n Sandbox',
 				searchValue: 'Disabled',
 			},
@@ -68,7 +68,7 @@ describe('InstanceAiOnboardingIntro', () => {
 		expect(getByTestId('assistant-setup-incomplete')).toBeVisible();
 		expect(getByTestId('settings-row-group')).toBeVisible();
 		expect(getByText('instanceAi.onboarding.incomplete.lede')).toBeVisible();
-		expect(getByText('anthropic/claude-opus-5')).toBeVisible();
+		expect(getByText('anthropic/claude-opus-5-5')).toBeVisible();
 		expect(getByText('n8n Sandbox')).toBeVisible();
 		expect(getByText('Disabled')).toBeVisible();
 

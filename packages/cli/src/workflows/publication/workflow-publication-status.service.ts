@@ -6,6 +6,10 @@ import {
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { INode } from 'n8n-workflow';
+
+import { UNKNOWN_FAILURE_REASON } from '@/constants';
+import { formatFailedActivationError } from '@/workflows/publication/format-node-failures';
 
 @Service()
 export class WorkflowPublicationStatusService {
@@ -68,6 +72,30 @@ export class WorkflowPublicationStatusService {
 			statuses.set(workflowId, this.deriveSettledStatus(total, failed));
 		}
 		return statuses;
+	}
+
+	/**
+	 * The activation error of a workflow whose last publication failed, worded
+	 * like the outbox record and the push on the activation-outcome path. Null
+	 * unless every trigger row is `failed`. Rows carry no node name and no order,
+	 * so `nodes` supplies both (nodeId fallback, unknown ids last, by id).
+	 */
+	async getFailedActivationError(
+		workflowId: string,
+		nodes: Array<Pick<INode, 'id' | 'name'>>,
+	): Promise<string | null> {
+		const rows = await this.triggerStatusRepository.findByWorkflowId(workflowId);
+		if (this.deriveStatus(false, rows) !== 'failed') return null;
+
+		const position = new Map(nodes.map((node, index) => [node.id, index]));
+		const at = (row: WorkflowPublicationTriggerStatus) => position.get(row.nodeId) ?? nodes.length;
+		const ordered = [...rows].sort((a, b) => at(a) - at(b) || a.nodeId.localeCompare(b.nodeId));
+		return formatFailedActivationError(
+			ordered.map((row) => ({
+				nodeName: nodes[at(row)]?.name ?? row.nodeId, // unknown id: index out of range
+				message: row.errorMessage || UNKNOWN_FAILURE_REASON,
+			})),
+		);
 	}
 
 	private deriveStatus(

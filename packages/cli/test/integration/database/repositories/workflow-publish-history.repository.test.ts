@@ -15,6 +15,7 @@ import { sleep } from '@n8n/utils/sleep';
 import { v4 as uuid } from 'uuid';
 
 import { createUser } from '../../shared/db/users';
+import { createWorkflowPublishHistoryItem } from '../../shared/db/workflow-publish-history';
 
 describe('WorkflowPublishHistoryRepository', () => {
 	beforeAll(async () => {
@@ -27,6 +28,74 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('findLatestActivations', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('should not query events when no version IDs are provided', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			await expect(repository.findLatestActivations('workflow-1', [])).resolves.toEqual([]);
+
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should batch version IDs and return each latest activation once', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflow();
+			const versionIds = Array.from(
+				{ length: 32_768 },
+				(_, i) => `00000000-0000-4000-8000-${i.toString().padStart(12, '0')}`,
+			);
+			const storedVersionIds = [versionIds[0], versionIds[versionIds.length - 1]];
+			const latestActivations = [];
+			for (const versionId of storedVersionIds) {
+				await createWorkflowHistory({ ...workflow, versionId });
+				const version = { workflowId: workflow.id, versionId };
+				await createWorkflowPublishHistoryItem(version, {
+					createdAt: new Date('2026-01-03T00:00:00Z'),
+				});
+				latestActivations.push(
+					await createWorkflowPublishHistoryItem(version, {
+						createdAt: new Date('2026-01-01T00:00:00Z'),
+					}),
+				);
+				await createWorkflowPublishHistoryItem(version, { event: 'deactivated' });
+			}
+			const logQuery = vi.spyOn(repository.manager.connection.logger, 'logQuery');
+
+			const activations = await repository.findLatestActivations(workflow.id, [
+				...versionIds,
+				...storedVersionIds,
+			]);
+
+			expect(activations).toHaveLength(2);
+			expect(activations).toEqual(expect.arrayContaining(latestActivations));
+			expect(logQuery.mock.calls.map(([, parameters]) => parameters?.length)).toEqual([
+				10_002, 10_002, 10_002, 2_770,
+			]);
+		});
+	});
+
+	describe('findTimelinePage', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it.each([0, -1])('should not query events when the limit is %i', async (limit) => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			await expect(
+				repository.findTimelinePage('workflow-1', { offset: 0, limit }),
+			).resolves.toEqual([]);
+
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('addRecord', () => {

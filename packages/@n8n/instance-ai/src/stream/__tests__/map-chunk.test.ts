@@ -104,6 +104,46 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps the skill update content delivered for the response', () => {
+		const update = {
+			skillId: 'hub-example',
+			name: 'Writing style',
+			version: 'v2',
+			change: 'updated',
+			content: 'Private skill instructions.',
+		};
+		expect(
+			map(
+				{
+					type: 'message',
+					message: {
+						type: 'custom',
+						data: {
+							type: 'n8n:runtime-skill-update',
+							skillUpdate: update,
+						},
+					},
+				},
+				'response-1',
+			),
+		).toEqual({
+			type: 'skill-update',
+			runId,
+			agentId,
+			responseId: 'response-1',
+			payload: {
+				skillId: update.skillId,
+				name: update.name,
+				version: update.version,
+				change: update.change,
+				content: update.content,
+			},
+		});
+		expect(
+			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
+		).toBeNull();
+	});
+
 	it('preserves responseId when provided', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' }, 'response-1')).toEqual({
 			type: 'text-delta',
@@ -296,7 +336,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -312,7 +352,7 @@ describe('mapAgentChunkToEvent', () => {
 					],
 					requireUserSelection: true,
 					projectId: 'project-1',
-					inputType: 'plan-review',
+					inputType: 'questions',
 					questions: [
 						{
 							id: 'q1',
@@ -321,18 +361,6 @@ describe('mapAgentChunkToEvent', () => {
 						},
 					],
 					introMessage: 'Before continuing',
-					tasks: {
-						tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-					},
-					planItems: [
-						{
-							id: 'task-1',
-							title: 'Build workflow',
-							kind: 'build-workflow',
-							spec: 'Create a workflow',
-							deps: [],
-						},
-					],
 					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 					credentialFlow: { stage: 'generic' },
 					credentialDestination: {
@@ -362,7 +390,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -376,7 +404,7 @@ describe('mapAgentChunkToEvent', () => {
 				],
 				requireUserSelection: true,
 				projectId: 'project-1',
-				inputType: 'plan-review',
+				inputType: 'questions',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 				credentialFlow: { stage: 'generic' },
 				credentialDestination: {
@@ -399,18 +427,6 @@ describe('mapAgentChunkToEvent', () => {
 					},
 				],
 				introMessage: 'Before continuing',
-				tasks: {
-					tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-				},
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create a workflow',
-						deps: [],
-					},
-				],
 				resourceDecision: {
 					toolGroup: 'Local Gateway',
 					resource: '/tmp/file.txt',
@@ -481,16 +497,15 @@ describe('mapAgentChunkToEvent', () => {
 		expect(
 			map({
 				type: 'tool-call-suspended',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				input: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				input: { message: 'Delete record-1' },
 				suspendPayload: {
 					type: 'approval',
 					requestId: 'approval-1',
 					toolName: 'delete_record',
 					displayName: 'Delete record',
 					args: { id: 'record-1' },
-					builderCheckpoint: { runId: 'builder-run', toolCallId: 'call-agent' },
 				},
 			}),
 		).toEqual({
@@ -499,9 +514,9 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: {
 				requestId: 'approval-1',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				args: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				args: { message: 'Delete record-1' },
 				severity: 'warning',
 				message: 'Confirmation required',
 				targetApproval: {
@@ -686,7 +701,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'executions',
+				toolName: 'workflow_builder_executions',
 				input: { action: 'listen', workflowId: 'wf-1' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -702,7 +717,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'executions',
+				toolName: 'workflow_builder_executions',
 				args: { action: 'listen', workflowId: 'wf-1' },
 				severity: 'info',
 				message: 'Waiting for a test request to Intake',
@@ -747,7 +762,7 @@ describe('mapAgentChunkToEvent', () => {
 		const event = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
-			toolName: 'executions',
+			toolName: 'workflow_builder_executions',
 			suspendPayload: {
 				requestId: 'request-1',
 				severity: 'info',

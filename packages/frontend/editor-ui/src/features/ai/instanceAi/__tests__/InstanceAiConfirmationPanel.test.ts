@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type {
 	InstanceAiConfirmation,
@@ -34,17 +35,17 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.confirmation.details': 'Approval details',
 				'instanceAi.approval.deleteTable': 'Eliminar la tabla y todas sus filas',
 				'instanceAi.confirmation.resourcePrompt': 'Assistant wants to {action} {name}',
-				'instanceAi.tools.workflows.delete.imperative': 'archive workflow',
-				'instanceAi.tools.workflows.restore-version.imperativeWithResource': 'restore a version of',
-				'instanceAi.tools.workflows.update-version.imperativeWithResource': 'update a version of',
-				'instanceAi.tools.workflows.unpublish.imperativeWithResource': 'unpublish',
-				'instanceAi.tools.workflows.unarchive.imperativeWithResource': 'restore',
-				'instanceAi.tools.workflows.delete.imperativeWithResource': 'archive',
-				'instanceAi.tools.build-workflow.imperative': 'edit workflow',
-				'instanceAi.tools.build-workflow.imperativeWithResource': 'edit',
-				'instanceAi.tools.data-tables.add-column.imperative': 'add column',
-				'instanceAi.tools.data-tables.add-column.imperativeWithResource': 'add a column to',
-				'instanceAi.tools.nodes.execute.imperativeWithResource': 'execute the',
+				'instanceAi.tools.archive_workflow.imperative': 'archive workflow',
+				'instanceAi.tools.restore_workflow_version.imperativeWithResource': 'restore a version of',
+				'instanceAi.tools.update_workflow_version.imperativeWithResource': 'update a version of',
+				'instanceAi.tools.unpublish_workflow.imperativeWithResource': 'unpublish',
+				'instanceAi.tools.unarchive_workflow.imperativeWithResource': 'restore',
+				'instanceAi.tools.archive_workflow.imperativeWithResource': 'archive',
+				'instanceAi.tools.workflow_builder_build_workflow.imperative': 'edit workflow',
+				'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource': 'edit',
+				'instanceAi.tools.data_tables.add-column.imperative': 'add column',
+				'instanceAi.tools.data_tables.add-column.imperativeWithResource': 'add a column to',
+				'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource': 'execute the',
 			};
 			if (key === 'agents.chat.approval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
@@ -104,8 +105,12 @@ vi.mock('../components/InstanceAiQuestions.vue', () => ({
 
 vi.mock('../components/DomainAccessApproval.vue', () => ({
 	default: {
-		template: '<div />',
-		props: ['requestId', 'url', 'host', 'query', 'severity'],
+		props: ['url', 'host', 'query', 'severity'],
+		emits: ['decide'],
+		template: `<div>
+			<button data-test-id="domain-access-allow-once" @click="$emit('decide', { kind: 'domainAccessApprove', domainAccessAction: 'allow_once' })" />
+			<button data-test-id="domain-access-deny" @click="$emit('decide', { kind: 'domainAccessDeny' })" />
+		</div>`,
 	},
 }));
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
@@ -133,9 +138,6 @@ vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 		template: '<div data-test-id="mock-workflow-setup" />',
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
 	},
-}));
-vi.mock('../components/PlanReviewPanel.vue', () => ({
-	default: { template: '<div />', props: ['plannedTasks', 'message', 'readOnly'] },
 }));
 
 const renderComponent = createThreadComponentRenderer(InstanceAiConfirmationPanel);
@@ -247,7 +249,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'CRM Lead enrichment',
 				},
 				{ filePath: 'src/workflows/crm.workflow.ts', workflowId: 'wf-1' },
-				'build-workflow',
+				'workflow_builder_build_workflow',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -257,6 +259,23 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					'Renamed nodes with action-oriented labels and updated every expression that referenced the old names.',
 				),
 			).toBeVisible();
+		});
+
+		it('resolves the title for a persisted card that carries a legacy tool name', () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'legacy-name-edit',
+					severity: 'warning',
+					message: 'Updated the trigger.',
+					resourceName: 'CRM Lead enrichment',
+				},
+				{ filePath: 'src/workflows/crm.workflow.ts', workflowId: 'wf-1' },
+				'build-workflow',
+			);
+			const { getByText } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByText('Assistant wants to edit CRM Lead enrichment')).toBeVisible();
 		});
 
 		it('uses the resource phrase for data table column actions', () => {
@@ -269,7 +288,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Contacts',
 				},
 				{ action: 'add-column', dataTableId: 'dt-1' },
-				'data-tables',
+				'data_tables',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -287,7 +306,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Contacts',
 				},
 				{ action: 'delete', dataTableId: 'dt-1' },
-				'data-tables',
+				'data_tables',
 			);
 			const { getByRole } = renderComponent({ props: { kind: 'floating' } });
 			expect(getByRole('region', { name: 'Approval details' }).textContent).toBe(
@@ -301,7 +320,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				thread,
 				{ requestId: 'long-summary', severity: 'warning', message, resourceName: 'Contacts' },
 				{ action: 'add-column', dataTableId: 'dt-1' },
-				'data-tables',
+				'data_tables',
 			);
 			const { getByRole, getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			const description = getByRole('region', {
@@ -309,6 +328,8 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 
 			expect(description.textContent).toBe(message);
+			await waitFor(() => expect(getByTestId('approval-card-always-allow')).toHaveFocus());
+			getByRole('button', { expanded: true }).focus();
 			await userEvent.tab();
 			expect(description).toHaveFocus();
 			expect(getByTestId('approval-card-allow-once')).toBeVisible();
@@ -330,7 +351,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Orders',
 				},
 				{ action, workflowId: 'wf-1' },
-				'workflows',
+				'workflow_builder_workflows',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 			expect(getByText(`Assistant wants to ${phrase} Orders`)).toBeVisible();
@@ -361,7 +382,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					message: 'Edit Target workflow (ID: wf-1)?',
 				},
 				{ filePath: 'src/workflows/orders.workflow.ts', workflowId: 'wf-1' },
-				'build-workflow',
+				'workflow_builder_build_workflow',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -378,7 +399,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					resourceName: 'Google Sheets node',
 				},
 				{ action: 'execute', type: 'n8n-nodes-base.googleSheets' },
-				'nodes',
+				'workflow_builder_nodes',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
@@ -438,7 +459,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					},
 				},
 				{ action: 'setup', workflowId: 'workflow-1' },
-				'workflows',
+				'workflow_builder_workflows',
 			);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
@@ -465,6 +486,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				'User finished providing input',
 				expect.objectContaining({
 					type: 'credential-destination',
+					runtime: 'instance-ai',
 					provided_inputs: [
 						{
 							label: 'Review where this credential will be used',
@@ -618,7 +640,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					workflowId: 'wf-1',
 				},
 				{ filePath: 'src/workflows/main.workflow.ts' },
-				'build-workflow',
+				'workflow_builder_build_workflow',
 			);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
@@ -632,7 +654,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				scope: 'session',
 			});
 			expect(addKeySpy).toHaveBeenCalledWith(
-				'build-workflow',
+				'workflow_builder_build_workflow',
 				{ filePath: 'src/workflows/main.workflow.ts' },
 				'wf-1',
 			);
@@ -647,7 +669,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					message: 'Edit workflow?',
 				},
 				{ filePath: 'src/workflows/main.workflow.ts' },
-				'build-workflow',
+				'workflow_builder_build_workflow',
 			);
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: { kind: 'floating' } });
@@ -667,7 +689,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					workflowId: 'wf-1',
 				},
 				{ filePath: 'src/workflows/main.workflow.ts' },
-				'build-workflow',
+				'workflow_builder_build_workflow',
 			);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
@@ -947,6 +969,45 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					],
 				}),
 			);
+		});
+	});
+
+	describe('domain access confirmation', () => {
+		it('sends the decision of the domain access card through the thread', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-domain',
+				severity: 'info',
+				message: 'Fetch https://example.com/a',
+				domainAccess: { url: 'https://example.com/a', host: 'example.com' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('domain-access-allow-once'));
+
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-domain', 'approved');
+			expect(confirmAction).toHaveBeenCalledWith('req-domain', {
+				kind: 'domainAccessApprove',
+				domainAccessAction: 'allow_once',
+			});
+		});
+
+		it('resolves a denied web search as denied', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-search',
+				severity: 'info',
+				message: 'Search the web',
+				webSearch: { query: 'n8n release notes' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('domain-access-deny'));
+
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-search', 'denied');
+			expect(confirmAction).toHaveBeenCalledWith('req-search', { kind: 'domainAccessDeny' });
 		});
 	});
 

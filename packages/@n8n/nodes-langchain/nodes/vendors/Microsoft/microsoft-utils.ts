@@ -8,6 +8,8 @@ import type {
 } from '@microsoft/agents-hosting';
 
 import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
+import { TracingSourcesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -17,12 +19,10 @@ import {
 } from 'n8n-workflow';
 
 import {
-	InvokeAgentScope,
+	AgenticTokenCacheInstance,
 	BaggageBuilder,
-	ObservabilityManager,
-	type Builder,
-	defaultObservabilityConfigurationProvider,
-} from '@microsoft/agents-a365-observability';
+	InvokeAgentScope,
+} from '@microsoft/opentelemetry';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
 import { invokeAgent } from './langchain-utils';
 import {
@@ -335,13 +335,6 @@ function getMcpServerHeaders(
 	return headers;
 }
 
-function isMicrosoftObservabilityEnabled(): boolean {
-	return (
-		process.env.ENABLE_OBSERVABILITY === 'true' &&
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === 'true'
-	);
-}
-
 export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Credentials) {
 	const authConfig: AuthConfiguration = createAuthConfig(credentials);
 
@@ -504,19 +497,15 @@ export const configureActivityCallback = (
 	activityCapture: ActivityCapture,
 ) => {
 	const systemPrompt = nodeContext.getNodeParameter('systemPrompt') as string;
-	const { clientId, tenantId } = credentials;
 
 	return async (turnContext: TurnContext) => {
-		const agentId = turnContext.activity.recipient?.agenticAppId ?? clientId;
+		const { agentId, tenantId } = getAgentIdentity(turnContext, credentials);
 		const agentName = turnContext.activity.recipient?.name ?? 'Microsoft Agent 365';
-		const tenantDetails = {
-			tenantId: turnContext.activity.recipient?.tenantId ?? tenantId ?? '',
-		};
 		const conversationId = turnContext.activity.conversation?.id;
 		const inputText = turnContext.activity.text || '';
 
 		const baggageScope = new BaggageBuilder()
-			.tenantId(tenantDetails.tenantId)
+			.tenantId(tenantId)
 			.agentId(agentId)
 			.agentName(agentName)
 			.conversationId(conversationId)
@@ -534,7 +523,7 @@ export const configureActivityCallback = (
 			const agentDetails = {
 				agentId,
 				agentName,
-				tenantId: tenantDetails.tenantId,
+				tenantId,
 			};
 
 			const invokeAgentScope = InvokeAgentScope.start(request, invokeScopeDetails, agentDetails);
@@ -605,6 +594,10 @@ export const configureActivityCallback = (
 					if (mcpLogs?.length) {
 						activityCapture.mcpToolLogs = mcpLogs;
 					}
+					// The spans leave after the turn, and a long turn can outlive the token.
+					if (isExportToMicrosoftEnabled()) {
+						void refreshExportToken(turnContext, authorization, credentials);
+					}
 					await disposeActivityResources(invokeAgentScope, mcpClient);
 				}
 			});
@@ -630,6 +623,86 @@ export async function disposeActivityResources(
 	}
 }
 
+function getAgentIdentity(turnContext: TurnContext, credentials: MicrosoftAgent365Credentials) {
+	return {
+		agentId: turnContext.activity.recipient?.agenticAppId ?? credentials.clientId,
+		tenantId: turnContext.activity.recipient?.tenantId ?? credentials.tenantId ?? '',
+	};
+}
+
+function isExportToMicrosoftEnabled(): boolean {
+	return Container.get(TracingSourcesConfig).microsoftAgent365ExportEnabled;
+}
+
+const exportTokenRefreshes = new Map<string, Promise<string | null>>();
+
+const agentsWarnedWithoutExportToken = new Set<string>();
+
+async function refreshExportToken(
+	turnContext: TurnContext,
+	authorization: Authorization,
+	credentials: MicrosoftAgent365Credentials,
+): Promise<string | null> {
+	const { agentId, tenantId } = getAgentIdentity(turnContext, credentials);
+	const key = `${agentId}:${tenantId}`;
+	const inFlight = exportTokenRefreshes.get(key);
+	if (inFlight) return await inFlight;
+
+	const refresh = fetchExportToken(agentId, tenantId, turnContext, authorization).finally(() =>
+		exportTokenRefreshes.delete(key),
+	);
+	exportTokenRefreshes.set(key, refresh);
+	return await refresh;
+}
+
+async function fetchExportToken(
+	agentId: string,
+	tenantId: string,
+	turnContext: TurnContext,
+	authorization: Authorization,
+): Promise<string | null> {
+	// The cache only hands the turn context back to exchangeToken, and its own turn context
+	// type does not match the one from agents-hosting, so the real context stays in this closure.
+	const turnContextForCache = { activity: {}, turnState: new Map<string, unknown>() };
+	try {
+		await AgenticTokenCacheInstance.refreshObservabilityToken(
+			agentId,
+			tenantId,
+			turnContextForCache,
+			{
+				exchangeToken: async (_, authHandlerName, options) =>
+					await authorization.exchangeToken(turnContext, authHandlerName, options),
+			},
+		);
+	} catch {
+		return null;
+	}
+
+	return AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId);
+}
+
+function startExportTokenRefresh(
+	nodeContext: IWebhookFunctions,
+	turnContext: TurnContext,
+	authorization: Authorization,
+	credentials: MicrosoftAgent365Credentials,
+) {
+	const { agentId, tenantId } = getAgentIdentity(turnContext, credentials);
+	const key = `${agentId}:${tenantId}`;
+	void refreshExportToken(turnContext, authorization, credentials).then((token) => {
+		if (token) {
+			agentsWarnedWithoutExportToken.delete(key);
+			return;
+		}
+		if (agentsWarnedWithoutExportToken.has(key)) return;
+
+		agentsWarnedWithoutExportToken.add(key);
+		nodeContext.logger.warn(
+			`Microsoft Agent 365: no observability token was issued for agent ${agentId}, so its spans do not go to Microsoft until one is. Set A365_OBSERVABILITY_LOG_LEVEL=error to see why. Set ENABLE_OBSERVABILITY=false or ENABLE_A365_OBSERVABILITY_EXPORTER=false to stop the export.`,
+		);
+	});
+}
+
 export function configureAdapterProcessCallback(
 	nodeContext: IWebhookFunctions,
 	agent: AgentApplication<TurnState<DefaultConversationState, DefaultUserState>>,
@@ -637,26 +710,8 @@ export function configureAdapterProcessCallback(
 	activityCapture: ActivityCapture,
 ) {
 	return async (turnContext: TurnContext) => {
-		let observability: ReturnType<typeof ObservabilityManager.configure> | undefined;
-
-		if (isMicrosoftObservabilityEnabled()) {
-			const observabilityScopes = [
-				...defaultObservabilityConfigurationProvider.getConfiguration()
-					.observabilityAuthenticationScopes,
-			];
-			const { token: aauToken } = await agent.authorization.exchangeToken(
-				turnContext,
-				observabilityScopes,
-				'agentic',
-			);
-
-			observability = ObservabilityManager.configure((builder: Builder) =>
-				builder
-					.withService('n8n-microsoft-agent-365')
-					.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || ''),
-			);
-
-			observability.start();
+		if (isExportToMicrosoftEnabled()) {
+			startExportTokenRefresh(nodeContext, turnContext, agent.authorization, credentials);
 		}
 
 		const mcpTokenRef = { token: undefined as string | undefined };
@@ -713,24 +768,6 @@ export function configureAdapterProcessCallback(
 			await agent.run(turnContext);
 		} catch (error) {
 			throw new NodeOperationError(nodeContext.getNode(), error);
-		} finally {
-			if (observability) {
-				try {
-					const OBSERVABILITY_SHUTDOWN_TIMEOUT_MS = 5000;
-					await Promise.race([
-						observability.shutdown(),
-						new Promise<never>((_, reject) =>
-							setTimeout(
-								() => reject(new Error('Observability shutdown timed out')),
-								OBSERVABILITY_SHUTDOWN_TIMEOUT_MS,
-							),
-						),
-					]);
-				} catch (error) {
-					// Backend unreachable or export timed out — not a code error
-					console.warn('Failed to shut down observability:', error);
-				}
-			}
 		}
 	};
 }

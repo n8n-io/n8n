@@ -1,4 +1,9 @@
-import { isMcpOAuth2Authentication, shouldRefreshMcpOAuth2Token } from '../src/mcp-helpers';
+import {
+	getMcpAuthHeaders,
+	isMcpOAuth2Authentication,
+	shouldRefreshMcpOAuth2Token,
+} from '../src/mcp-helpers';
+import type { ICredentialDataDecryptedObject } from '../src/interfaces';
 
 describe('isMcpOAuth2Authentication', () => {
 	it('returns true for the canonical "mcpOAuth2Api" type', () => {
@@ -56,5 +61,19 @@ describe('shouldRefreshMcpOAuth2Token', () => {
 				'authorizationCode',
 			),
 		).toBe(false);
+	});
+});
+
+describe('getMcpAuthHeaders', () => {
+	it.each<{ case: string; data: ICredentialDataDecryptedObject; headers: Record<string, string> }>([
+		{
+			case: 'sends the minted token as a bearer token',
+			data: { token: 'minted' },
+			headers: { Authorization: 'Bearer minted' },
+		},
+		{ case: 'sends no header without a token', data: {}, headers: {} },
+		{ case: 'sends no header for an empty token', data: { token: '' }, headers: {} },
+	])('Gateway credits: $case', ({ data, headers }) => {
+		expect(getMcpAuthHeaders('n8nConnectFirecrawlMcpAiGatewayApi', data)).toEqual(headers);
 	});
 });

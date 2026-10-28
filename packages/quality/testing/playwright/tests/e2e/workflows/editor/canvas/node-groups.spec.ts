@@ -24,7 +24,7 @@ const VISIBLE_NODES_AFTER_COLLAPSED_LOAD = 2;
 test.describe(
 	'Canvas node groups',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		let workflowId: string;
@@ -249,7 +249,7 @@ test.describe(
 test.describe(
 	'Canvas node groups with sticky notes',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
@@ -370,7 +370,7 @@ test.describe(
 test.describe(
 	'Canvas node groups with multi-output boundary',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
@@ -400,7 +400,7 @@ test.describe(
 test.describe(
 	'Canvas node groups loaded from API',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
@@ -418,7 +418,7 @@ test.describe(
 
 test.describe(
 	'Canvas node groups — collapse / expand',
-	{ annotation: [{ type: 'owner', description: 'Adore' }] },
+	{ annotation: [{ type: 'owner', description: 'Knowledge' }] },
 	() => {
 		test.describe('Default state on workflow load', () => {
 			test.beforeEach(async ({ n8n }) => {

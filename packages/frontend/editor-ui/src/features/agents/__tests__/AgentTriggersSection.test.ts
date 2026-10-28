@@ -11,6 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 import AgentTriggersSection from '../components/AgentTriggersSection.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 enableAutoUnmount(afterEach);
 
@@ -43,20 +44,34 @@ const modelCredential = mock<ICredentialsResponse>({
 	type: 'openAiApi',
 });
 
+const { catalogItems, routeQuery, routerReplace } = vi.hoisted(function createRouteState() {
+	return {
+		catalogItems: { value: [] as Array<{ type: string; label: string; icon: string }> },
+		routeQuery: { value: {} as Record<string, string> },
+		routerReplace: vi.fn(),
+	};
+});
+
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
-		catalog: { value: [] },
-		ensureLoaded: vi.fn().mockResolvedValue([]),
+		catalog: catalogItems,
+		ensureLoaded: vi.fn(async () => catalogItems.value),
 	}),
 }));
 
-const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy } = vi.hoisted(
+vi.mock('vue-router', () => ({
+	useRoute: () => ({ query: routeQuery.value }),
+	useRouter: () => ({ replace: routerReplace }),
+}));
+
+const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessageSpy } = vi.hoisted(
 	function createStatusSpy() {
 		return {
 			fetchStatusSpy: vi.fn().mockResolvedValue(undefined),
 			disconnectSpy: vi.fn(),
 			loadRuntimeSpy: vi.fn(),
 			showErrorSpy: vi.fn(),
+			showMessageSpy: vi.fn(),
 		};
 	},
 );
@@ -66,7 +81,7 @@ const configured = ref<Record<string, boolean>>({});
 const managedCredential = ref(false);
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorSpy }),
+	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
 }));
 
 vi.mock('../channels/slack/useSlackChannelRuntime', async (importOriginal) => ({
@@ -103,6 +118,23 @@ vi.mock('@n8n/i18n', () => ({
 const n8nChatFlag = vi.hoisted(() => ({ value: false }));
 vi.mock('../composables/useAgentsN8nChatFlag', () => ({
 	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
+const { whatsAppMetaStatus, useWhatsAppMetaStatusSpy, refreshWhatsAppMetaStatusSpy } = vi.hoisted(
+	() => ({
+		whatsAppMetaStatus: {
+			value: null as { state: string; displayName?: string; displayPhoneNumber?: string } | null,
+		},
+		useWhatsAppMetaStatusSpy: vi.fn(),
+		refreshWhatsAppMetaStatusSpy: vi.fn(),
+	}),
+);
+
+vi.mock('../channels/whatsapp/useWhatsAppMetaStatus', () => ({
+	useWhatsAppMetaStatus: (...args: unknown[]) => {
+		useWhatsAppMetaStatusSpy(...args);
+		return { status: whatsAppMetaStatus, refresh: refreshWhatsAppMetaStatusSpy };
+	},
 }));
 
 vi.mock('../components/AgentChannelModal.vue', () => ({
@@ -158,6 +190,64 @@ describe('AgentTriggersSection', () => {
 			return { status: 'disconnected' };
 		});
 		n8nChatFlag.value = false;
+		catalogItems.value = [];
+		routeQuery.value = {};
+		whatsAppMetaStatus.value = null;
+	});
+
+	it('opens the Teams settings when Microsoft returns from the file access consent', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = { state: 'teams-file-access', admin_consent: 'True', tenant: 't-1' };
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes('data-view')).toBe('teams_edit');
+		expect(routerReplace).toHaveBeenCalledWith({ query: {} });
+		expect(fileAccessJustApproved.value).toBe(true);
+	});
+
+	it('opens the Teams settings before the agent config lists the channel', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = { state: 'teams-file-access', admin_consent: 'True' };
+		configured.value = { teams: true };
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: [] });
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes('data-view')).toBe('teams_edit');
+	});
+
+	it('says so when the file access consent was not given', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = {
+			state: 'teams-file-access',
+			error: 'access_denied',
+			error_description: 'AADSTS65004: User declined to consent',
+		};
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
+			'teams_edit',
+		);
+		expect(fileAccessJustApproved.value).toBe(false);
+		expect(showMessageSpy).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'agents.channels.teams.fileAccessConsentFailed',
+		});
+	});
+
+	it('opens nothing on an ordinary visit', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 	});
 
 	it.each(['credential-1', ''])(
@@ -178,6 +268,9 @@ describe('AgentTriggersSection', () => {
 				deleteExternalResource: undefined,
 			});
 			expect(wrapper.emitted('update:connected-triggers')).toEqual([[['telegram']]]);
+			expect(wrapper.emitted('trigger-removed')).toEqual([
+				[{ triggerType: 'slack', triggers: ['telegram'] }],
+			]);
 			expect(wrapper.emitted('agent-changed')).toEqual([[]]);
 			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 		},
@@ -240,6 +333,7 @@ describe('AgentTriggersSection', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		expect(wrapper.emitted('trigger-removed')).toBeUndefined();
 		expect(screen.getByRole('button', { name: 'slack' })).toBeEnabled();
 		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.channels.modal.removeChannelError');
 
@@ -303,6 +397,7 @@ describe('AgentTriggersSection', () => {
 
 			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(expect.anything(), {
 				projectId: 'project-id',
+				forAgent: true,
 			});
 			expect(credentialsStore.getCredentialById(modelCredential.id), phase).toEqual(
 				modelCredential,
@@ -430,12 +525,67 @@ describe('AgentTriggersSection', () => {
 			expect(findChip(wrapper, 'agents.channels.n8nChat.label')).toBeUndefined();
 		});
 
-		it('opens the modal on n8n_chat_edit when clicked', async () => {
+		it.each([
+			{ connectedTriggers: ['n8n_chat'], view: 'n8n_chat_edit' },
+			{ connectedTriggers: [], view: 'n8n_chat_setup' },
+		])('opens the modal on $view when clicked', async ({ connectedTriggers, view }) => {
 			n8nChatFlag.value = true;
-			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat'] });
+			const wrapper = mountSection(undefined, false, { connectedTriggers });
 			await flushPromises();
 
 			await findChip(wrapper, 'agents.channels.n8nChat.label')?.trigger('click');
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
+				view,
+			);
+			expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		});
+
+		it('reports n8n Chat as removed when the modal makes it unavailable', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat', 'slack'] });
+			await flushPromises();
+			await findChip(wrapper, 'agents.channels.n8nChat.label')?.trigger('click');
+			await flushPromises();
+
+			wrapper
+				.findComponent({ name: 'AgentChannelModal' })
+				.vm.$emit('channel-disconnected', 'n8n_chat');
+
+			expect(wrapper.emitted('update:connected-triggers')).toEqual([[['slack']]]);
+			expect(wrapper.emitted('trigger-removed')).toEqual([
+				[{ triggerType: 'n8n_chat', triggers: ['slack'] }],
+			]);
+		});
+
+		it('shows the chip when n8n Chat is not a connected channel', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection();
+			await flushPromises();
+
+			const chip = findChip(wrapper, 'agents.channels.n8nChat.label');
+			expect(chip).toBeTruthy();
+			expect(chip?.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		});
+
+		it('puts n8n Chat first, before connected channels', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['slack', 'n8n_chat'] });
+			await flushPromises();
+
+			expect(wrapper.findAll('button')[0].text()).toContain('agents.channels.n8nChat.label');
+		});
+
+		it('treats n8n Chat as connected when its status is configured', async () => {
+			n8nChatFlag.value = true;
+			configured.value = { n8n_chat: true };
+			const wrapper = mountSection();
+			await flushPromises();
+
+			const chip = findChip(wrapper, 'agents.channels.n8nChat.label');
+			expect(chip?.attributes('aria-description')).toBeUndefined();
+			await chip?.trigger('click');
 			await flushPromises();
 
 			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
@@ -459,6 +609,141 @@ describe('AgentTriggersSection', () => {
 					.find('[data-testid="agent-channel-modal-stub"]')
 					.attributes('data-saved-description'),
 			).toBe('Handles support tickets');
+		});
+	});
+
+	describe('WhatsApp chip and Meta review status', () => {
+		function mountWhatsApp() {
+			catalogItems.value = [{ type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' }];
+			configured.value = { whatsapp: true };
+			connectedCredentials.value = { whatsapp: 'cred-1' };
+			return mountSection(undefined, true, { connectedTriggers: ['whatsapp'] });
+		}
+
+		const chip = (wrapper: ReturnType<typeof mountSection>) =>
+			wrapper.findComponent({ name: 'AgentChipButton' });
+
+		it.each([null, { state: 'connected' }, { state: 'unknown' }])(
+			'shows no icon for %j',
+			async (status) => {
+				whatsAppMetaStatus.value = status;
+
+				const wrapper = mountWhatsApp();
+				await flushPromises();
+
+				expect(chip(wrapper).props('warning')).toBe(false);
+				expect(chip(wrapper).props('invalid')).toBe(false);
+				expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(false);
+				expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+			},
+		);
+
+		it.each([
+			['numberPending', 'agents.channels.whatsapp.meta.numberPending.title'],
+			['dailyLimit', 'agents.channels.whatsapp.meta.dailyLimit.title'],
+			['nameInReviewBlocked', 'agents.channels.whatsapp.meta.nameInReview.title'],
+			['nameInReview', 'agents.channels.whatsapp.meta.nameInReview.title'],
+			['nameDeclined', 'agents.channels.whatsapp.meta.nameDeclined.title'],
+			['businessNotVerified', 'agents.channels.whatsapp.meta.businessNotVerified.title'],
+			['businessInReview', 'agents.channels.whatsapp.meta.businessInReview.title'],
+		])('shows the amber warning with the headline for %s', async (state, headline) => {
+			whatsAppMetaStatus.value = {
+				state,
+				displayName: 'Acme Support',
+				displayPhoneNumber: '+1 555-184-1090',
+			};
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('warning')).toBe(true);
+			expect(chip(wrapper).props('warningReasons')).toEqual([headline]);
+			expect(chip(wrapper).props('invalid')).toBe(false);
+			const icon = wrapper.get('[data-testid="agent-chip-warning-icon"]');
+			expect(icon.attributes('icon')).toBe('triangle-alert');
+		});
+
+		it('shows the red cross with the headline when a declined name blocks sending', async () => {
+			whatsAppMetaStatus.value = { state: 'nameDeclinedBlocked', displayName: 'Acme Support' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('invalid')).toBe(true);
+			expect(chip(wrapper).props('invalidIcon')).toBe('circle-x');
+			expect(chip(wrapper).props('invalidReasons')).toEqual([
+				'agents.channels.whatsapp.meta.nameDeclined.title',
+			]);
+			expect(chip(wrapper).props('warning')).toBe(false);
+			const icon = wrapper.get('[data-testid="agent-chip-invalid-icon"]');
+			expect(icon.attributes('icon')).toBe('circle-x');
+		});
+
+		it('words the tooltip without a gap when Meta gives no number or name', async () => {
+			whatsAppMetaStatus.value = { state: 'dailyLimit' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('warningReasons')).toEqual([
+				'agents.channels.whatsapp.meta.dailyLimit.titleNoNumber',
+			]);
+		});
+
+		it('keeps the triangle for other errors on the chip', async () => {
+			whatsAppMetaStatus.value = { state: 'dailyLimit' };
+
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			expect(chip(wrapper).props('invalidIcon')).toBeUndefined();
+		});
+
+		it('reads the status once, for the connected credential, without polling', async () => {
+			mountWhatsApp();
+			await flushPromises();
+
+			const [project, agent, credential, options] = useWhatsAppMetaStatusSpy.mock.calls.at(-1)!;
+			expect([project.value, agent.value, credential.value]).toEqual([
+				'project-id',
+				'agent-id',
+				'cred-1',
+			]);
+			expect(options).toEqual({ poll: false });
+		});
+
+		it('does not ask for a status when WhatsApp is not connected', async () => {
+			catalogItems.value = [{ type: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' }];
+			connectedCredentials.value = { whatsapp: 'cred-1' };
+
+			mountSection(undefined, true, { connectedTriggers: [] });
+			await flushPromises();
+
+			const credential = useWhatsAppMetaStatusSpy.mock.calls.at(-1)![2];
+			expect(credential.value).toBeUndefined();
+		});
+
+		it('reads the status again when the channel modal closes', async () => {
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+			await chip(wrapper).trigger('click');
+			await flushPromises();
+			expect(refreshWhatsAppMetaStatusSpy).not.toHaveBeenCalled();
+
+			wrapper.findComponent({ name: 'AgentChannelModal' }).vm.$emit('update:open', false);
+			await flushPromises();
+
+			expect(refreshWhatsAppMetaStatusSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not read the status again just because the modal opened', async () => {
+			const wrapper = mountWhatsApp();
+			await flushPromises();
+
+			await chip(wrapper).trigger('click');
+			await flushPromises();
+
+			expect(refreshWhatsAppMetaStatusSpy).not.toHaveBeenCalled();
 		});
 	});
 });

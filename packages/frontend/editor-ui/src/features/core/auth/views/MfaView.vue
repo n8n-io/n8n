@@ -241,7 +241,7 @@ onMounted(() => {
 			</div>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					float="left"
 					:label="i18.baseText('mfa.button.back')"
 					size="large"

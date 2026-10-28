@@ -17,6 +17,7 @@ import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
 import {
+	destroyRequestBody,
 	resolveLegacyRequestUrl,
 	throwIfDomainNotAllowed,
 	validateProxySsrf,
@@ -51,6 +52,22 @@ export async function executeLegacyRequest(
 	logger: Logger,
 	callbacks?: LegacyRequestCallbacks,
 ): Promise<unknown> {
+	try {
+		return await sendLegacyRequest(requestObject, ssrfBridge, logger, callbacks);
+	} catch (error) {
+		// The URL, SSRF and domain checks can throw before axios reads the body.
+		destroyRequestBody(requestObject.body);
+		destroyRequestBody(requestObject.formData);
+		throw error;
+	}
+}
+
+async function sendLegacyRequest(
+	requestObject: IRequestOptions,
+	ssrfBridge: SsrfBridge | undefined,
+	logger: Logger,
+	callbacks?: LegacyRequestCallbacks,
+): Promise<unknown> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		// -1 is the Axios sentinel for "no limit". Infinity also means no limit but
@@ -78,7 +95,7 @@ export async function executeLegacyRequest(
 					agentOptions: buildLegacyAgentOptions(requestObject),
 					allowedDomains: requestObject.allowedDomains,
 					sendCredentialsOnCrossOriginRedirect:
-						requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+						requestObject.sendCredentialsOnCrossOriginRedirect ?? false,
 					authSendImmediately: requestObject.auth?.sendImmediately,
 				})
 			: await invokeAxios(axiosConfig, requestObject.auth?.sendImmediately);

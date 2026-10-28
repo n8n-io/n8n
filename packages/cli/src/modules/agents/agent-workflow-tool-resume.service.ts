@@ -14,7 +14,6 @@ import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadc
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
-import { N8N_CHAT_PRODUCTION_SOURCE } from './utils/agent-thread-access';
 import { AgentTestRunService } from './agent-test-run.service';
 import {
 	AgentBackgroundJobService,
@@ -227,7 +226,7 @@ export class AgentWorkflowToolResumeService {
 			user,
 			usePublishedVersion: true,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
-			source: N8N_CHAT_PRODUCTION_SOURCE,
+			chatSurface: 'n8n-chat',
 			expectedMemory: {
 				threadId: agentRun.threadId,
 				resourceId: productionChatMemoryResourceId(user.id),
@@ -276,7 +275,7 @@ export class AgentWorkflowToolResumeService {
 			toolCallId: agentRun.toolCallId,
 			resumeData,
 			user,
-			previewChat: agentRun.previewChat,
+			chatSurface: agentRun.previewChat ? 'preview' : undefined,
 			automaticPreviewContinuation: true,
 			response: '',
 		});

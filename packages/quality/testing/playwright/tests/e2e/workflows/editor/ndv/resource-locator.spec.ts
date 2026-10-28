@@ -9,7 +9,7 @@ const MODE_SELECTOR_LIST = 'From list';
 test.describe(
 	'Resource Locator',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

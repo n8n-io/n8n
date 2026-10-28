@@ -17,10 +17,10 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
-	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	ExecutionStorageLocation,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -135,6 +135,7 @@ export class WorkflowRunner {
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
+		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -204,11 +205,19 @@ export class WorkflowRunner {
 								if (isManualExecution && !saveSettings.manual) {
 									await this.executionRepository.softDelete(executionId);
 								} else if (!isManualExecution && !saveSettings.success) {
-									await this.executionPersistence.deleteInFlightExecution({
-										workflowId: fullExecutionData.workflowId,
-										executionId,
-										storedAt: fullExecutionData.storedAt,
-									});
+									await this.executionPersistence.deleteInFlightExecution(
+										{
+											workflowId: fullExecutionData.workflowId,
+											executionId,
+											storedAt: fullExecutionData.storedAt,
+										},
+										{
+											status: fullExecutionData.status,
+											// oxlint-disable-next-line typescript/no-deprecated
+											finished: fullExecutionData.finished,
+											stoppedAt: fullExecutionData.stoppedAt,
+										},
+									);
 								}
 							} catch (pruneError) {
 								this.logger.warn('Could not prune a recovered false-positive success', {
@@ -311,7 +320,7 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
-			storedAt: this.storageConfig.modeTag,
+			storedAt,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -363,11 +372,14 @@ export class WorkflowRunner {
 		// the worker will establish context once it populates the stack.
 		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
 		if (data.executionData?.executionData) {
-			// Deliberately lightweight: no pinData, no staticData loading,
-			// no additionalData. establishExecutionContext only needs the
+			// Deliberately lightweight: no pinData, no staticData, no
+			// additionalData. establishExecutionContext only needs the
 			// workflow's settings (for redactionPolicy) and node lookups.
 			// runMainProcess() builds its own fully-configured Workflow for
 			// actual execution.
+			// Do not pass data.workflowData.staticData here: on a webhook run it
+			// is the object the webhook has just written to, and wrapping it in
+			// another Workflow resets its change flag, so the write is never saved.
 			const contextWorkflow = new Workflow({
 				id: data.workflowData.id,
 				name: data.workflowData.name,
@@ -375,7 +387,6 @@ export class WorkflowRunner {
 				connections: data.workflowData.connections,
 				active: data.workflowData.activeVersionId !== null,
 				nodeTypes: this.nodeTypes,
-				staticData: data.workflowData.staticData,
 				settings: data.workflowData.settings ?? {},
 			});
 			try {
@@ -411,6 +422,11 @@ export class WorkflowRunner {
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
 			return await this.engineV2Dispatcher.start(data);
+		}
+
+		// A v2 resume has no control-plane row either.
+		if (existingExecution?.engineResume) {
+			return await this.engineV2Dispatcher.resume(existingExecution, data);
 		}
 
 		const establishContextError = await this.establishContextForPersistence(data);
@@ -478,7 +494,7 @@ export class WorkflowRunner {
 					executionId,
 					data,
 					shouldReloadStaticData,
-					existingExecution?.executionId,
+					existingExecution,
 					executionWorkflow,
 				);
 			}
@@ -563,7 +579,7 @@ export class WorkflowRunner {
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
-		restartExecutionId?: string,
+		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
@@ -605,12 +621,14 @@ export class WorkflowRunner {
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,
 		});
-		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.restartExecutionId = existingExecution?.executionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+
+		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -654,6 +672,7 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
+					storedAt,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
@@ -711,20 +730,17 @@ export class WorkflowRunner {
 							data.executionMode,
 							executionId,
 							additionalData.hooks,
+							storedAt,
 						),
 				);
 		} catch (error) {
-			if (error instanceof WorkflowHasIssuesError) {
-				await this.failExecution(data, executionId, error);
-				return;
-			}
-
 			await this.processError(
 				error,
 				new Date(),
 				data.executionMode,
 				executionId,
 				additionalData.hooks,
+				storedAt,
 			);
 
 			throw error;
@@ -752,7 +768,7 @@ export class WorkflowRunner {
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		let job: Job;
+		let job: Job | undefined;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			const { queueName, poolName } = await this.poolConfigService.resolvePoolForExecution(data);
@@ -763,6 +779,7 @@ export class WorkflowRunner {
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
 				streamingEnabled: data.streamingEnabled,
+				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,
 				projectId: data.projectId,
 				projectName: data.projectName,
@@ -791,7 +808,7 @@ export class WorkflowRunner {
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
-			this.scalingService.popJobResult(executionId);
+			if (job) this.scalingService.popJobResult(job);
 			throw error;
 		}
 
@@ -845,12 +862,12 @@ export class WorkflowRunner {
 						lifecycleHooks,
 					);
 
-					this.scalingService.popJobResult(executionId);
+					this.scalingService.popJobResult(job);
 
 					return reject(error);
 				}
 
-				const jobResult = this.scalingService.popJobResult(executionId);
+				const jobResult = this.scalingService.popJobResult(job);
 
 				let runData: IRun;
 
@@ -903,11 +920,13 @@ export class WorkflowRunner {
 						mode: fullExecutionData.mode,
 						startedAt: fullExecutionData.startedAt,
 						stoppedAt: fullExecutionData.stoppedAt,
-						status: fullExecutionData.status,
-						waitTill: fullExecutionData.waitTill,
+						// The row may already belong to a resumed segment on another main.
+						status: jobResult ? jobResult.status : fullExecutionData.status,
+						waitTill: jobResult ? jobResult.waitTill : fullExecutionData.waitTill,
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,
+						nodeTimeSavedMinutes: jobResult?.nodeTimeSavedMinutes,
 					};
 				} else {
 					runData = {
@@ -927,6 +946,7 @@ export class WorkflowRunner {
 						}),
 						jobId: job.id.toString(),
 						storedAt: this.storageConfig.modeTag,
+						nodeTimeSavedMinutes: jobResult.nodeTimeSavedMinutes,
 					};
 				}
 

@@ -1,4 +1,9 @@
-import { UserError } from 'n8n-workflow';
+import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Thread } from 'chat';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { deriveWhatsAppVerifyToken } from '../../../integration-helpers';
 import { encodeIntegrationMessageContext } from '../../../integration-message-context';
@@ -8,12 +13,25 @@ import {
 	createWhatsAppIntegration,
 	createWhatsAppReplayContext,
 	whatsAppThreadId,
+	type WhatsAppInboundMessageFixture,
 } from '../../../__tests__/helpers/whatsapp/replay-test-context';
 import {
+	whatsAppContact,
+	whatsAppInboundAudioMessage,
+	whatsAppInboundContactsMessage,
+	whatsAppInboundDocumentMessage,
+	whatsAppInboundImageMessage,
+	whatsAppInboundLocationMessage,
+	whatsAppInboundStickerMessage,
 	whatsAppInboundTextMessage,
+	whatsAppInboundVideoMessage,
+	whatsAppInboundVoiceMessage,
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
+import { WhatsAppCredentialCheckService } from '../../whatsapp/whatsapp-credential-check.service';
+import type { WhatsAppSetupTelemetryService } from '../../whatsapp/whatsapp-setup-telemetry.service';
+import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;
@@ -81,6 +99,184 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		} finally {
 			await ctx.shutdown();
 		}
+	});
+
+	describe('inbound media', () => {
+		it.each([
+			['image', whatsAppInboundImageMessage, 'image/jpeg'],
+			['document', whatsAppInboundDocumentMessage, 'application/pdf'],
+			['audio', whatsAppInboundAudioMessage, 'audio/mpeg'],
+			// Real voice-note shape: `type: "audio"` with `audio.voice: true`. The
+			// MIME type is sniffed from the Opus/OGG bytes in WHATSAPP_MEDIA_CONTENT.
+			['voice', whatsAppInboundVoiceMessage, 'audio/ogg; codecs=opus'],
+			['video', whatsAppInboundVideoMessage, 'video/mp4'],
+			['sticker', whatsAppInboundStickerMessage, 'image/webp'],
+		] as const)(
+			'stores a %s attachment and passes it to the agent executor',
+			async (_label, buildMessage, expectedMimeType) => {
+				const fixtures = whatsAppReplayFixtures();
+				const ctx = await createWhatsAppReplayContext(fixtures);
+				try {
+					await ctx.sendWebhook(
+						whatsAppWebhook({
+							phoneNumberId: fixtures.phoneNumberId,
+							contact: fixtures.contact,
+							message: buildMessage({ from: fixtures.contact.wa_id }),
+						}),
+					);
+
+					expect(ctx.attachmentService.storeInbound).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({
+							source: 'whatsapp',
+							mimeType: expectedMimeType,
+							data: expect.any(Buffer),
+						}),
+					);
+					expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({
+							attachments: [expect.objectContaining({ mimeType: expectedMimeType })],
+						}),
+					);
+				} finally {
+					await ctx.shutdown();
+				}
+			},
+		);
+
+		it('degrades to a text note instead of storing an attachment over the size cap', async () => {
+			// WhatsApp's inbound media messages never carry a declared size (see
+			// `WhatsAppInboundMessage`), unlike some other platforms — so this can
+			// only ever be caught after downloading, never pre-empted upfront.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundDocumentMessage({
+							from: fixtures.contact.wa_id,
+							document: {
+								id: 'media-oversized-1',
+								mime_type: 'application/pdf',
+								sha256: 'test-sha256-oversized',
+								filename: 'big.pdf',
+							},
+						}),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: expect.stringContaining('MB') }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('passes a location to the agent as a text summary only', async () => {
+			// The adapter also adds the location as a URL-only pseudo-file (a Google
+			// Maps link with no bytes). The bridge cannot download it, so the
+			// integration drops it. Otherwise the agent gets a misleading
+			// "could not be downloaded" note next to the summary.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundLocationMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: '[Location: London]' }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('passes a shared contact to the agent as a text summary', async () => {
+			// The adapter has no handling for `contacts` and drops the message, so
+			// the integration's adapter subclass summarizes it as text instead.
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundContactsMessage({ from: fixtures.contact.wa_id }),
+					}),
+				);
+
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: '[Contact: Jane Doe - +44 7700 900123]' }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it.each([
+			[
+				'a contact with no name',
+				[{ phones: [{ phone: '+44 7700 900123' }] }],
+				'[Contact: +44 7700 900123]',
+			],
+			[
+				'a contact with no phone numbers',
+				[{ name: { formatted_name: 'Jane Doe' } }],
+				'[Contact: Jane Doe]',
+			],
+			[
+				'a contact with several phone numbers',
+				[
+					{
+						name: { formatted_name: 'Jane Doe' },
+						phones: [{ phone: '+44 7700 900123' }, { phone: '+44 20 7946 0000' }],
+					},
+				],
+				'[Contact: Jane Doe - +44 7700 900123 - +44 20 7946 0000]',
+			],
+			[
+				'several contacts',
+				[
+					{ name: { formatted_name: 'Jane Doe' }, phones: [{ phone: '+44 7700 900123' }] },
+					{ name: { formatted_name: 'John Smith' } },
+				],
+				'[Contact: Jane Doe - +44 7700 900123]\n[Contact: John Smith]',
+			],
+			['a contact with no name or phone numbers', [{}], '[Contact]'],
+			['an empty contacts list', [], '[Contact]'],
+			['no contacts field', undefined, '[Contact]'],
+		] as const)('summarizes %s', async (_label, contacts, expectedMessage) => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(
+					whatsAppWebhook({
+						phoneNumberId: fixtures.phoneNumberId,
+						contact: fixtures.contact,
+						message: whatsAppInboundContactsMessage({
+							from: fixtures.contact.wa_id,
+							contacts: contacts as WhatsAppInboundMessageFixture['contacts'],
+						}),
+					}),
+				);
+
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ message: expectedMessage }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
 	});
 
 	it('persists current message context for the integration context tool', async () => {
@@ -164,6 +360,11 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 	});
 
 	describe('24-hour customer service window', () => {
+		// The typing indicator goes out as a read receipt, which Meta allows
+		// outside the window, so only count the calls that send a message.
+		const sentMessages = (ctx: { apiCalls: Array<{ body: Record<string, unknown> }> }) =>
+			ctx.apiCalls.filter((call) => call.body.status !== 'read');
+
 		it('sends a reply while the customer service window is open', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures);
@@ -200,14 +401,14 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				);
 				// The bridge's own auto-reply to the message above is already
 				// blocked by the guard (its "last inbound" is the message it is
-				// replying to), so no send has succeeded yet.
-				expect(ctx.apiCalls).toHaveLength(0);
+				// replying to), so no message has been sent yet.
+				expect(sentMessages(ctx)).toHaveLength(0);
 
 				const threadId = whatsAppThreadId(fixtures);
 				await expect(
 					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
 				).rejects.toThrow(UserError);
-				expect(ctx.apiCalls).toHaveLength(0);
+				expect(sentMessages(ctx)).toHaveLength(0);
 			} finally {
 				await ctx.shutdown();
 			}
@@ -234,7 +435,285 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					yield 'Still there?';
 				})();
 				await expect(ctx.adapter.stream(threadId, textStream)).rejects.toThrow(UserError);
-				expect(ctx.apiCalls).toHaveLength(0);
+				expect(sentMessages(ctx)).toHaveLength(0);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+	});
+
+	describe('rate limit backoff', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('retries a send after transient rate-limit errors and eventually succeeds', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 2, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				const promise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+
+				// The first attempt fails immediately; the retry must wait for the
+				// base backoff (1s) before trying again — advancing by less than
+				// that must not have produced a second attempt yet, proving the
+				// wrapper actually waits instead of panic-retrying.
+				await vi.advanceTimersByTimeAsync(500);
+				expect(ctx.apiCalls).toHaveLength(1);
+
+				await vi.runAllTimersAsync();
+
+				await expect(promise).resolves.toBeDefined();
+				// 2 rate-limited attempts, then a 3rd that succeeds.
+				expect(ctx.apiCalls).toHaveLength(3);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('exhausts retries and throws an OperationalError the shared rate-limit guard can detect', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: Infinity, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				const promise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+
+				let caught: unknown;
+				const assertion = promise.catch((error: unknown) => {
+					caught = error;
+				});
+				await vi.runAllTimersAsync();
+				await assertion;
+
+				expect(caught).toBeInstanceOf(OperationalError);
+				// Shaped so `httpStatusFromError` (and the shared ChannelRateLimitGuard
+				// that reads it via `caughtIntegrationError`) recognises this as a 429.
+				expect((caught as { response?: { status?: number } }).response?.status).toBe(429);
+				// Every attempt is rate-limited, so all WHATSAPP_RATE_LIMIT_MAX_ATTEMPTS
+				// are used up before giving up.
+				expect(ctx.apiCalls).toHaveLength(4);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it("lets the action executor's own guard block a second `respond` call after retries exhaust", async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: Infinity, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				// Built directly rather than through a webhook: `respond` only needs
+				// `target.threadId`, and no `replyExpectation` means the "already
+				// replied this turn" precondition never triggers.
+				const currentMessageContext = {
+					integrationConnectionId: 'whatsapp:cred-whatsapp',
+					platform: 'whatsapp',
+					target: { type: 'thread' as const, threadId, channelId: threadId },
+					messageId: 'wamid.SYNTHETIC',
+					updatedAt: new Date().toISOString(),
+				};
+				const execute = async () =>
+					await ctx.actionExecutor.execute({
+						descriptor: ctx.descriptor,
+						action: 'respond',
+						input: { message: { text: 'Still there?' } },
+						awaitResponse: false,
+						currentMessageContext,
+					});
+
+				// First call: retries exhaust, the shared guard records the block.
+				const firstResultPromise = execute();
+				await vi.runAllTimersAsync();
+				const firstResult = await firstResultPromise;
+
+				expect(firstResult).toEqual({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('WhatsApp') },
+				});
+				const callsAfterFirst = ctx.apiCalls.length;
+
+				// Blocked by the action executor's own pre-existing guard, not the
+				// adapter-level one exercised below.
+				const secondResult = await execute();
+
+				expect(secondResult).toEqual({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('WhatsApp') },
+				});
+				expect(ctx.apiCalls).toHaveLength(callsAfterFirst);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('blocks a second automatic reply on the same connection once the first exhausts retries, bypassing the action executor entirely', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: Infinity, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+
+				// Automatic replies post through the adapter directly, never the
+				// action executor tested above.
+				const firstPromise = ctx.adapter.postMessage(threadId, { markdown: 'Still there?' });
+				let firstError: unknown;
+				const firstAssertion = firstPromise.catch((error: unknown) => {
+					firstError = error;
+				});
+				await vi.runAllTimersAsync();
+				await firstAssertion;
+
+				expect(firstError).toBeInstanceOf(OperationalError);
+				expect((firstError as { response?: { status?: number } }).response?.status).toBe(429);
+				const callsAfterFirst = ctx.apiCalls.length;
+
+				// The adapter-level guard blocks this immediately — no new API calls.
+				await expect(
+					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
+				).rejects.toMatchObject({ response: { status: 429 } });
+				expect(ctx.apiCalls).toHaveLength(callsAfterFirst);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it("scopes a pair rate-limit's cooldown to the affected recipient, not the whole connection", async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			// Exactly enough failures to exhaust A's retries; B's first attempt
+			// afterward hits a clean stub.
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 4, code: 131056 },
+			});
+			try {
+				const threadA = whatsAppThreadId(fixtures);
+				const contactB = whatsAppContact({ wa_id: 'other-recipient-wa-id' });
+				const threadB = whatsAppThreadId({
+					phoneNumberId: fixtures.phoneNumberId,
+					contact: contactB,
+				});
+
+				const firstPromise = ctx.adapter.postMessage(threadA, { markdown: 'Hi A' });
+				let firstError: unknown;
+				const firstAssertion = firstPromise.catch((error: unknown) => {
+					firstError = error;
+				});
+				await vi.runAllTimersAsync();
+				await firstAssertion;
+				expect(firstError).toBeInstanceOf(OperationalError);
+				const callsAfterA = ctx.apiCalls.length;
+
+				// A different recipient is unaffected by A's cooldown.
+				await expect(ctx.adapter.postMessage(threadB, { markdown: 'Hi B' })).resolves.toBeDefined();
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+
+				// A itself is still blocked — the cooldown is real, just scoped right.
+				await expect(
+					ctx.adapter.postMessage(threadA, { markdown: 'Hi again A' }),
+				).rejects.toMatchObject({ response: { status: 429 } });
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('keeps a pair rate-limit scoped to the recipient when it comes through the action executor', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 4, code: 131056 },
+			});
+			try {
+				const threadA = whatsAppThreadId(fixtures);
+				const threadB = whatsAppThreadId({
+					phoneNumberId: fixtures.phoneNumberId,
+					contact: whatsAppContact({ wa_id: 'other-recipient-wa-id' }),
+				});
+				const respondIn = async (threadId: string) =>
+					await ctx.actionExecutor.execute({
+						descriptor: ctx.descriptor,
+						action: 'respond',
+						input: { message: { text: 'Hi' } },
+						awaitResponse: false,
+						currentMessageContext: {
+							integrationConnectionId: 'whatsapp:cred-whatsapp',
+							platform: 'whatsapp',
+							target: { type: 'thread' as const, threadId, channelId: threadId },
+							messageId: 'wamid.SYNTHETIC',
+							updatedAt: new Date().toISOString(),
+						},
+					});
+
+				const firstResultPromise = respondIn(threadA);
+				await vi.runAllTimersAsync();
+				expect(await firstResultPromise).toEqual({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED', message: expect.stringContaining('recipient') },
+				});
+				expect(ctx.channelRateLimitGuard.isBlocked(ctx.descriptor.integrationConnectionId)).toBe(
+					false,
+				);
+				const callsAfterA = ctx.apiCalls.length;
+
+				// A different recipient still reaches the API.
+				expect(await respondIn(threadB)).toMatchObject({ ok: true });
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+
+				// A stays blocked, and that fast fail doesn't block the connection.
+				expect(await respondIn(threadA)).toMatchObject({
+					ok: false,
+					error: { code: 'RATE_LIMIT_EXCEEDED' },
+				});
+				expect(ctx.apiCalls).toHaveLength(callsAfterA + 1);
+				expect(ctx.channelRateLimitGuard.isBlocked(ctx.descriptor.integrationConnectionId)).toBe(
+					false,
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('retries a reaction send too, since addReaction shares graphApiRequest with postMessage', async () => {
+			vi.useFakeTimers();
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				failureSequence: { count: 1, code: 130429 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				const promise = ctx.adapter.addReaction(threadId, 'wamid.TEST_REACTION_TARGET', '👍');
+				await vi.runAllTimersAsync();
+				await expect(promise).resolves.toBeUndefined();
+				expect(ctx.apiCalls).toHaveLength(2);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not retry a non-rate-limit failure', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				// A template rejected for negative feedback (131051) is a real
+				// content problem, not a transient rate limit.
+				failureSequence: { count: Infinity, code: 131051 },
+			});
+			try {
+				const threadId = whatsAppThreadId(fixtures);
+				await expect(
+					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
+				).rejects.toThrow();
+				expect(ctx.apiCalls).toHaveLength(1);
 			} finally {
 				await ctx.shutdown();
 			}
@@ -593,6 +1072,148 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		});
 	});
 
+	describe('onRemove', () => {
+		const removal = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: 'cred-whatsapp',
+			user: mock<User>(),
+		};
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		it('clears the recorded handshake for the agent', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			await integration.onRemove(removal);
+
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+
+		it('warns that the number is still connected and links to the Meta app dashboard', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			check.getMetaStatus.mockResolvedValue({
+				state: 'connected',
+				displayPhoneNumber: '+1 555-184-1090',
+			});
+			Container.set(WhatsAppCredentialCheckService, check);
+			const integration = createWhatsAppIntegration();
+
+			const warning = await integration.onRemove(removal);
+
+			expect(check.getMetaStatus).toHaveBeenCalledWith(removal.user, 'project-1', 'cred-whatsapp');
+			expect(warning).toEqual({
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+				details: { displayPhoneNumber: '+1 555-184-1090' },
+			});
+		});
+
+		it('still warns, without the number, when Meta cannot be read', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			check.getMetaStatus.mockRejectedValue(new Error('credential not found'));
+			Container.set(WhatsAppCredentialCheckService, check);
+			const integration = createWhatsAppIntegration();
+
+			const warning = await integration.onRemove(removal);
+
+			expect(warning).toEqual({
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+			});
+		});
+
+		it('does not warn for a draft entry that has no credential', async () => {
+			const check = mock<WhatsAppCredentialCheckService>();
+			Container.set(WhatsAppCredentialCheckService, check);
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			const warning = await integration.onRemove({ ...removal, credentialId: '' });
+
+			expect(warning).toBeUndefined();
+			expect(check.getMetaStatus).not.toHaveBeenCalled();
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+
+		it('does not wait long on a slow Meta', async () => {
+			vi.useFakeTimers();
+			try {
+				const check = mock<WhatsAppCredentialCheckService>();
+				check.getMetaStatus.mockReturnValue(new Promise(() => {}));
+				Container.set(WhatsAppCredentialCheckService, check);
+				const integration = createWhatsAppIntegration();
+
+				const pending = integration.onRemove(removal);
+				await vi.advanceTimersByTimeAsync(3_000);
+
+				expect(check.getMetaStatus).toHaveBeenCalledWith(
+					removal.user,
+					'project-1',
+					'cred-whatsapp',
+				);
+				expect(await pending).toEqual(expect.not.objectContaining({ details: expect.anything() }));
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('handshake answered by a connected channel', () => {
+		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
+		const handshake = (token: string) =>
+			new Request(
+				`https://n8n.example.com/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${token}&hub.challenge=12345`,
+			);
+
+		it('records the handshake when the token matches', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
+			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
+				webhookVerification,
+				setupTelemetry,
+			});
+
+			try {
+				const response = await ctx.adapter.handleWebhook(handshake(expectedToken));
+
+				expect(response.status).toBe(200);
+				expect(await response.text()).toBe('12345');
+				expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+				expect(setupTelemetry.webhookVerified).toHaveBeenCalledExactlyOnceWith(
+					'agent-1',
+					'connected',
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('does not record a rejected handshake', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
+			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
+				webhookVerification,
+				setupTelemetry,
+			});
+
+			try {
+				const response = await ctx.adapter.handleWebhook(handshake('wrong-token'));
+
+				expect(response.status).toBe(403);
+				expect(webhookVerification.markVerified).not.toHaveBeenCalled();
+				expect(setupTelemetry.webhookVerified).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+	});
+
 	describe('handleUnauthenticatedWebhook', () => {
 		// createWhatsAppIntegration() wires a fixed 'test-hmac-signature-secret', so
 		// the expected token for 'agent-1' is derivable the same way the real
@@ -600,7 +1221,9 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
 
 		it("answers Meta's handshake with the raw challenge when the token matches", () => {
-			const integration = createWhatsAppIntegration();
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification, setupTelemetry);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -615,10 +1238,14 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toEqual({ status: 200, body: '12345', raw: true });
+			expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+			expect(setupTelemetry.webhookVerified).toHaveBeenCalledExactlyOnceWith('agent-1', 'setup');
 		});
 
 		it('rejects the handshake when the verify token does not match', () => {
-			const integration = createWhatsAppIntegration();
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification, setupTelemetry);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -633,6 +1260,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toEqual({ status: 403, body: 'Forbidden', raw: true });
+			expect(webhookVerification.markVerified).not.toHaveBeenCalled();
 		});
 
 		it('falls through for a non-GET request', () => {
@@ -672,6 +1300,52 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('channel settings', () => {
+		const whatsAppChannel = (settings?: Record<string, unknown>) =>
+			({ type: 'whatsapp', credentialId: 'cred-1', settings }) as AgentIntegrationConfig;
+
+		const resumeParams = (integration?: AgentIntegrationConfig) => {
+			const thread = mock<Thread<unknown, unknown>>({ id: 'whatsapp:phone-1:user-1' });
+			thread.startTyping.mockResolvedValue(undefined);
+			return { thread, logger: mock<Logger>(), agentId: 'agent-1', integration };
+		};
+
+		it.each([
+			['no channel is given', undefined],
+			['the setting is unset', whatsAppChannel()],
+			['the setting is on', whatsAppChannel({ typingIndicator: true })],
+		])('shows the typing indicator when %s', async (_label, channel) => {
+			const integration = createWhatsAppIntegration();
+			const params = resumeParams(channel);
+
+			const context = await integration.createResumeExecutionContext(params);
+
+			expect(context.statusHandle).toBeDefined();
+			expect(params.thread.startTyping).toHaveBeenCalledTimes(1);
+			await context.statusHandle?.clearBeforeResponse();
+		});
+
+		it('does not show the typing indicator when the setting is off', async () => {
+			const integration = createWhatsAppIntegration();
+			const params = resumeParams(whatsAppChannel({ typingIndicator: false }));
+
+			const context = await integration.createResumeExecutionContext(params);
+
+			expect(context).toEqual({});
+			expect(params.thread.startTyping).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the setting is unset', whatsAppChannel(), true],
+			['the setting is on', whatsAppChannel({ downloadMedia: true }), true],
+			['the setting is off', whatsAppChannel({ downloadMedia: false }), false],
+		])('downloads attachments only when allowed (%s)', (_label, channel, expected) => {
+			const integration = createWhatsAppIntegration();
+
+			expect(integration.shouldDownloadAttachments(channel)).toBe(expected);
 		});
 	});
 });

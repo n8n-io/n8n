@@ -15,11 +15,7 @@ import {
 } from './explain-duplicates.js';
 import { isPeerRuleExempt, PUBLISHED_SECTIONS } from './libs.js';
 import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
-import {
-	findPackageJsonFiles,
-	parsePackageJson,
-	relativeDir,
-} from '../utils/package-json-scanner.js';
+import { parsePackageJson, relativeDir } from '../utils/package-json-scanner.js';
 
 // Repo-relative paths whose change can shift dependency resolution repo-wide (the catalog, the
 // root manifest, or the single-instance tooling itself) — a scoped diff would otherwise miss them.
@@ -30,6 +26,31 @@ const ROOT_TRIGGERS = [
 ];
 
 const CLOSURE_SECTIONS = new Set<string>(PUBLISHED_SECTIONS);
+
+// Remove these once n8n-nodes-base no longer publishes platform bindings as regular dependencies.
+const NPM_INSTALL_EXCLUSIONS = [
+	'@napi-rs/canvas-linux-arm64-musl',
+	'@napi-rs/canvas-linux-x64-musl',
+	'@napi-rs/image-linux-arm64-musl',
+	'@napi-rs/image-linux-x64-musl',
+];
+const NPM_INSTALL_EXCLUSION_REPLACEMENT = 'empty-npm-package';
+
+/** Replace Docker-only bindings that npm rejects outside their target platform. */
+export function buildNpmInstallOverrides(
+	packages: string[],
+	tarballByName: Record<string, string>,
+): Record<string, string> {
+	const localPackages = packages.map((name): [string, string] => [
+		name,
+		`file:${tarballByName[name]}`,
+	]);
+	const exclusions = NPM_INSTALL_EXCLUSIONS.map((name): [string, string] => [
+		name,
+		`npm:${NPM_INSTALL_EXCLUSION_REPLACEMENT}@1.0.0`,
+	]);
+	return Object.fromEntries([...localPackages, ...exclusions]);
+}
 
 /** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
 export function filesTriggerFullRun(files: string[]): boolean {
@@ -112,10 +133,32 @@ interface WorkspacePkg {
 	info: PackageJsonInfo;
 }
 
+/** Read package directories from pnpm so workspace exclusions stay authoritative. */
+export function findWorkspacePackageJsonFiles(rootDir: string): string[] {
+	const stdout = execFileSync('pnpm', ['list', '--recursive', '--depth', '-1', '--json'], {
+		cwd: rootDir,
+		encoding: 'utf8',
+	});
+	const result: unknown = JSON.parse(stdout);
+	if (!Array.isArray(result)) throw new Error('Could not read the pnpm workspace package list.');
+
+	return result.map((entry) => {
+		if (
+			typeof entry !== 'object' ||
+			entry === null ||
+			!('path' in entry) ||
+			typeof entry.path !== 'string'
+		) {
+			throw new Error('The pnpm workspace package list contains an invalid entry.');
+		}
+		return join(entry.path, 'package.json');
+	});
+}
+
 /** Every non-private workspace package: name -> { dir, relDir, info }. */
-async function loadWorkspace(rootDir: string): Promise<Map<string, WorkspacePkg>> {
+function loadWorkspace(rootDir: string): Map<string, WorkspacePkg> {
 	const byName = new Map<string, WorkspacePkg>();
-	for (const file of await findPackageJsonFiles(rootDir)) {
+	for (const file of findWorkspacePackageJsonFiles(rootDir)) {
 		const info = parsePackageJson(file);
 		if (info.private) continue;
 		byName.set(info.packageName, { relDir: relativeDir(rootDir, file), info });
@@ -291,7 +334,7 @@ function packWorkspacePackages(
  */
 export async function runVerifyNpmInstall(args: string[], rootDir: string): Promise<number> {
 	const reportOnly = args.includes('--report-only');
-	const byName = await loadWorkspace(rootDir);
+	const byName = loadWorkspace(rootDir);
 	const targets = resolveTargets(args, byName, rootDir);
 	if (targets === null) return 0;
 	if (targets.length === 0) {
@@ -327,7 +370,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
 		// local tarballs. Third-party deps resolve from the real npm registry.
 		const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
-		const overrides = Object.fromEntries(toPack.map(fileDep));
+		const overrides = buildNpmInstallOverrides(toPack, tarballByName);
 		const deps = Object.fromEntries(targets.map(fileDep));
 		writeFileSync(
 			join(scratch, 'package.json'),
@@ -361,7 +404,9 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		const attributed = explainDuplicates(scratch, curatedDuplicates, workspaceNames);
 		const explained = attributed.filter((dup) => failures.some((f) => f.name === dup.name));
 
-		const nonCurated = duplicates.filter((d) => !d.isCurated);
+		const nonCurated = duplicates.filter(
+			(d) => !d.isCurated && d.name !== NPM_INSTALL_EXCLUSION_REPLACEMENT,
+		);
 		if (nonCurated.length > 0) {
 			groupStart(`Other duplicated packages (report-only, NOT enforced — ${nonCurated.length})`);
 			for (const d of nonCurated) {

@@ -12,7 +12,7 @@ import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
 } from '../../../integration-tools';
-import { LinearIntegration } from '../../../platforms/linear-integration';
+import { LinearIntegration } from '../../../platforms/linear/linear-integration';
 import {
 	createReplayContextSetup,
 	installFetchStub,

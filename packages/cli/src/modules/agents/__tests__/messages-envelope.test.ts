@@ -1,7 +1,11 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { N8N_CHAT_ACTION_TOOL_NAME, type AgentPersistedMessageDto } from '@n8n/api-types';
 
-import { withOpenSuspensions } from '../utils/messages-envelope';
+import {
+	ownCheckpoint,
+	threadMessagesResponse,
+	withOpenSuspensions,
+} from '../utils/messages-envelope';
 
 const persisted: AgentPersistedMessageDto[] = [
 	{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'hi' }] },
@@ -344,6 +348,75 @@ describe('withOpenSuspensions', () => {
 		expect(result.messages[1].content[0]).toMatchObject({
 			state: 'resolved',
 			output: { type: 'button', value: 'approve' },
+		});
+	});
+});
+
+/** A suspended run of one user, with one open tool call and two checkpoint messages. */
+function suspendedCheckpoint(resourceId = 'system-chat:user-1'): SerializableAgentState {
+	return {
+		status: 'suspended',
+		persistence: { threadId: 'thread-1', resourceId },
+		pendingToolCalls: {
+			'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+		},
+		messageList: {
+			messages: [
+				{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'hi' }] },
+				{ id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
+			],
+		},
+	} as unknown as SerializableAgentState;
+}
+
+describe('ownCheckpoint', () => {
+	it('keeps a checkpoint of the memory resource of the user', () => {
+		const checkpoint = suspendedCheckpoint('system-chat:user-1');
+		expect(ownCheckpoint(checkpoint, 'system-chat:user-1')).toBe(checkpoint);
+	});
+
+	it('drops a checkpoint of another memory resource', () => {
+		expect(ownCheckpoint(suspendedCheckpoint('system-chat:user-2'), 'system-chat:user-1')).toBe(
+			null,
+		);
+	});
+
+	it('returns null without a checkpoint', () => {
+		expect(ownCheckpoint(null, 'system-chat:user-1')).toBe(null);
+	});
+});
+
+describe('threadMessagesResponse', () => {
+	it('returns the history with its active execution', () => {
+		expect(
+			threadMessagesResponse({ messages: persisted, activeExecutionId: 'exec-1' }, null),
+		).toEqual({ messages: persisted, openSuspensions: [], activeExecutionId: 'exec-1' });
+	});
+
+	it('keeps inactive checkpoint messages out of an existing history', () => {
+		const result = threadMessagesResponse(
+			{ messages: persisted, activeExecutionId: null },
+			suspendedCheckpoint(),
+		);
+
+		// The history already holds the turn, so only the open suspension is added.
+		expect(result.messages.map((message) => message.id)).toEqual(['m1']);
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+	});
+
+	it('shows only the open suspensions of a thread without history', () => {
+		const result = threadMessagesResponse(null, suspendedCheckpoint());
+
+		expect(result.messages.map((message) => message.id)).toEqual(['m1', 'm2']);
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.activeExecutionId).toBe(null);
+	});
+
+	it('returns an empty response for a thread without history or checkpoint', () => {
+		expect(threadMessagesResponse(null, null)).toEqual({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
 		});
 	});
 });

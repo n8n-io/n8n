@@ -21,7 +21,7 @@ export const LICENSE_FEATURES = {
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
-	GIT_CONNECTIONS: 'feat:gitConnections',
+	PROMOTIONS: 'feat:promotions',
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
@@ -59,6 +59,7 @@ export const LICENSE_FEATURES = {
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
 	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 	WORKER_POOLS: 'feat:workerPools',
+	TRUSTED_SOURCE_MANAGE: 'feat:trustedSourceManage',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -113,6 +114,11 @@ export interface LdapConfig {
 	 * Prevents privilege escalation via email-based account linking.
 	 */
 	enforceEmailUniqueness: boolean;
+	/**
+	 * Link an LDAP identity to an existing n8n account that has the same email.
+	 * When disabled, LDAP login and sync skip such accounts instead of linking them.
+	 */
+	linkExistingAccountsByEmail: boolean;
 }
 
 export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
@@ -136,6 +142,7 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	searchPageSize: 0,
 	searchTimeout: 60,
 	enforceEmailUniqueness: true,
+	linkExistingAccountsByEmail: true,
 };
 
 export { Time } from './time';

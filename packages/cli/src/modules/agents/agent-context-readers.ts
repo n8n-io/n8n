@@ -3,7 +3,6 @@ import { UserError } from 'n8n-workflow';
 import type { AgentSkillsService } from './agent-skills.service';
 import type { AgentTaskService } from './agent-task.service';
 import type { Agent } from './entities/agent.entity';
-import { composeJsonConfig } from './json-config/agent-config-composition';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 
 export async function readAgentSkill(
@@ -35,9 +34,7 @@ export async function readAgentSkill(
 }
 
 export async function listAgentTasks(agentTaskService: AgentTaskService, agent: Agent) {
-	const enabledById = new Map(
-		(composeJsonConfig(agent)?.tasks ?? []).map((ref) => [ref.id, ref.enabled]),
-	);
+	const enabledById = new Map((agent.schema?.tasks ?? []).map((ref) => [ref.id, ref.enabled]));
 	const tasks = await agentTaskService.list(agent.id);
 	return tasks.map((task) => ({ ...task, enabled: enabledById.get(task.id) ?? false }));
 }

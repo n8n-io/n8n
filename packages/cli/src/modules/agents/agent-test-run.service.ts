@@ -14,8 +14,11 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	AgentExecutionOrchestratorService,
@@ -65,9 +68,11 @@ export interface ExecutePreparedDraftRunInput
 }
 
 export interface ResumePreparedDraftRunInput
-	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion'>,
+	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion' | 'chatSurface'>,
 		DraftRunConsumptionOptions {
 	user: User;
+	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
+	chatSurface?: 'preview';
 	initialResponse?: string;
 }
 
@@ -77,10 +82,16 @@ type ExecuteDraftRunInput = PrepareDraftRunInput &
 interface ResumeDraftRunInput
 	extends Omit<
 		ResumeForChatConfig,
-		'expectedMemory' | 'integrationType' | 'usePublishedVersion' | 'onExecutionRecorded'
+		| 'expectedMemory'
+		| 'integrationType'
+		| 'usePublishedVersion'
+		| 'onExecutionRecorded'
+		| 'chatSurface'
 	> {
 	sessionId: string;
 	user: User;
+	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
+	chatSurface?: 'preview';
 	response: string;
 }
 
@@ -180,6 +191,7 @@ export class AgentTestRunService {
 		newSession,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
+		await this.assertCanRunDraft(user, projectId);
 		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
 		if (sessionId) {
 			if (
@@ -204,9 +216,21 @@ export class AgentTestRunService {
 
 		return {
 			status: 'ready',
-			sessionId: sessionId ?? randomUUID(),
+			// An empty id means a new session, like an omitted one.
+			sessionId: sessionId || randomUUID(),
 			sessionMode,
 		};
+	}
+
+	/**
+	 * A draft is unpublished config, so running it needs `agent:read` on top of
+	 * the `agent:execute` the routes check. A chat-only member reaches published
+	 * agents through n8n Chat instead.
+	 */
+	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
+		}
 	}
 
 	async executePreparedDraftRun({
@@ -239,6 +263,7 @@ export class AgentTestRunService {
 		onExecutionRecorded,
 		...execution
 	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
+		await this.assertCanRunDraft(execution.user, execution.projectId);
 		let executionId: string | undefined;
 		const stream = this.agentExecutionOrchestratorService.resumeForChat({
 			...execution,
@@ -282,7 +307,7 @@ export class AgentTestRunService {
 				input.projectId,
 				input.agentId,
 				input.user.id,
-				{ previewChat: input.previewChat, sessionMode: 'existing' },
+				{ previewChat: input.chatSurface === 'preview', sessionMode: 'existing' },
 			))
 		) {
 			return { status: 'session_not_found' };

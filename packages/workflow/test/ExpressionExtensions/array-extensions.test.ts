@@ -341,6 +341,17 @@ describe('Data Transformation Functions', () => {
 			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].max() }}')).toThrow();
 		});
 
+		test('.min() and .max() should give NaN for sparse arrays', () => {
+			expect(evaluate('={{ [1, , 3].min() }}')).toBeNaN();
+			expect(evaluate('={{ [1, , 3].max() }}')).toBeNaN();
+		});
+
+		test('.min() and .max() should work on arrays too large to spread', () => {
+			const list = 'Array.from({ length: 200000 }, (_, i) => i - 100000)';
+			expect(evaluate(`={{ ${list}.min() }}`)).toEqual(-100_000);
+			expect(evaluate(`={{ ${list}.max() }}`)).toEqual(99_999);
+		});
+
 		test('.union() should work on an array of objects', () => {
 			expect(
 				evaluate(
@@ -415,6 +426,13 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
+		});
+
+		test('.chunk() should reject a size that is not a positive number', () => {
+			expect(() => evaluate('={{ numberList(1, 20).chunk(-1) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(1, 20).chunk(0) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(1, 20).chunk(NaN) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(1, 20).chunk("5") }}')).toThrow();
 		});
 
 		test('.toJsonString() should work on an array', () => {

@@ -221,14 +221,6 @@
 				"hash": "de1e5b4624e0"
 			}
 		],
-		"packages/@n8n/computer-use/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 48,
-				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "f50c1eee2ed6"
-			}
-		],
 		"packages/@n8n/nodes-langchain/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -1639,14 +1631,6 @@
 				"line": 19,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "a5cc02a1d765"
-			}
-		],
-		"packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 17,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "d34dbe0bf9e7"
 			}
 		],
 		"packages/cli/src/events/relays/telemetry.event-relay.ts": [

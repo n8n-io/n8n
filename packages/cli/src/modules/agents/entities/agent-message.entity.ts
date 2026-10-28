@@ -1,5 +1,5 @@
 import type { AgentMessage } from '@n8n/agents';
-import type { AgentMessageAuthor } from '@n8n/api-types';
+import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
@@ -11,6 +11,8 @@ export interface AgentMessageOrigin {
 	integrationConnectionId?: string;
 	platformMessageId?: string;
 	platformThreadId?: string;
+	/** Typed platform context. Names are snapshots and never define ownership or access. */
+	integration?: AgentMessageIntegrationOrigin;
 }
 
 @Entity({ name: 'agents_messages' })

@@ -2,16 +2,13 @@ import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
-	buildDataTablesSessionGrantKey,
-	buildExecuteNodeSessionGrantKey,
-	buildRunStepSessionGrantKey,
-	buildRunWorkflowSessionGrantKey,
-	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -35,6 +32,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { buildAlwaysAllowKey } from './alwaysAllow';
 import {
 	redactTelemetryProperties,
 	TELEMETRY_EVENT,
@@ -62,7 +60,11 @@ import {
 	EMPTY_ASSISTANT_MENTION_COUNTS,
 	type AssistantMentionCounts,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
+import {
+	handleEvent as reduceEvent,
+	createRunStateFromTree,
+	normalizeAgentTreeToolNames,
+} from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import {
 	useResourceRegistry,
@@ -88,14 +90,6 @@ import {
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
 import { instanceAiResponseNow } from './instanceAi.responseTiming';
-import { resolvePlanTasks } from './planReview.utils';
-
-/** The plan review the composer is currently collecting feedback for. */
-export interface PendingPlanReview {
-	requestId: string;
-	inputThreadId?: string;
-	taskCount: number;
-}
 
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
@@ -133,7 +127,7 @@ export type OnboardingExitOutcome = 'build' | 'left' | 'run_failed';
 /** Tool calls that end the onboarding flow, with the outcome each one reports. */
 const ONBOARDING_EXIT_OUTCOMES = new Map<string, OnboardingExitOutcome>([
 	['leave-onboarding', 'left'],
-	['build-workflow', 'build'],
+	[WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW, 'build'],
 ]);
 /** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
 const MAX_SEEN_EVENT_IDS = 1000;
@@ -174,7 +168,7 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
+	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `workflow_builder_build_workflow`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
 		outcome: OnboardingExitOutcome,
@@ -292,7 +286,7 @@ function getAgentPreviewTargetFromThreadMetadata(
 function collectActionableConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -318,8 +312,7 @@ function collectActionableConfirmations(
 
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
-	const conf = item.toolCall.confirmation;
-	return conf.inputType !== 'plan-review' && !conf.mcpConnectRequest;
+	return !item.toolCall.confirmation.mcpConnectRequest;
 }
 
 /**
@@ -329,7 +322,7 @@ function isPanelConfirmation(item: PendingConfirmationItem): boolean {
  */
 function hasUnresolvedConfirmation(
 	node: InstanceAiAgentNode,
-	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
 ): boolean {
 	for (const tc of node.toolCalls) {
 		if (
@@ -528,9 +521,7 @@ export function createThreadRuntime(
 	 */
 	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = reactive(
-		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
-	);
+	const resolvedConfirmationIds = reactive(new Map<string, 'approved' | 'denied' | 'deferred'>());
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
@@ -549,7 +540,6 @@ export function createThreadRuntime(
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
 	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
-	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// Workflow + execution the editor was showing at hand-off, to load once when
 	// the artifact first opens. Transient (never persisted): set by the editor
@@ -899,41 +889,12 @@ export function createThreadRuntime(
 		actionableConfirmations.value.filter(isPanelConfirmation),
 	);
 
-	/**
-	 * The plan review the composer currently routes messages into, if any.
-	 *
-	 * Newest wins: a revised plan stacks a fresh card on top of the superseded
-	 * one, so the last card is the one the user is looking at. This is the
-	 * opposite of the panel, which queues oldest-first.
-	 *
-	 * Only a card in the transcript tail counts. A later turn strands the older
-	 * card — a suspended run keeps its confirmation row alive and releases its
-	 * concurrency slot, so a new turn starts without settling it. Resuming that
-	 * requestId would revive an abandoned run, and a revision never appends a
-	 * message of its own, so "still the last message" holds for the whole review.
-	 */
-	const pendingPlanReview = computed((): PendingPlanReview | null => {
-		for (let i = actionableConfirmations.value.length - 1; i >= 0; i--) {
-			const item = actionableConfirmations.value[i];
-			const conf = item.toolCall.confirmation;
-			if (conf.inputType !== 'plan-review') continue;
-			// Newest-first: an older card sits even further back in the transcript.
-			if (item.messageId !== messages.value.at(-1)?.id) return null;
-			return {
-				requestId: conf.requestId,
-				inputThreadId: conf.inputThreadId,
-				taskCount: resolvePlanTasks(item.toolCall).length,
-			};
-		}
-		return null;
-	});
-
 	/** True while the run is paused awaiting the user to resolve a confirmation. */
 	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
+		action: 'approved' | 'denied' | 'deferred',
 	): void {
 		resolvedConfirmationIds.set(requestId, action);
 	}
@@ -969,70 +930,6 @@ export function createThreadRuntime(
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
-
-	function resolveAlwaysAllowWorkflowId(
-		args: Record<string, unknown>,
-		confirmationWorkflowId?: string,
-	): string {
-		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
-			return args.workflowId;
-		}
-		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
-			return confirmationWorkflowId;
-		}
-		return '';
-	}
-
-	/**
-	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build-workflow:` key would auto-approve later foreign edits.
-	 */
-	function buildAlwaysAllowKey(
-		toolName: string,
-		args: Record<string, unknown>,
-		confirmationWorkflowId?: string,
-	): string | null {
-		if (toolName === 'submit-workflow') {
-			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
-			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
-		}
-		const action = typeof args.action === 'string' ? args.action : '';
-		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
-		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
-		// workflow the user approved.
-		if (toolName === 'executions' && action === 'run') {
-			return buildRunWorkflowSessionGrantKey(workflowId);
-		}
-		// Running one node grants "always allow" per node, so a debug loop on one
-		// node stops prompting while the rest of the workflow still asks. Without
-		// a node name the key cannot be scoped — refuse to store one (fail closed).
-		if (toolName === 'executions' && action === 'run-step') {
-			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
-			if (!workflowId || !nodeName) return null;
-			return buildRunStepSessionGrantKey(workflowId, nodeName);
-		}
-		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
-		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
-		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
-			if (!workflowId) return null;
-			return buildUpdateWorkflowSessionGrantKey(workflowId);
-		}
-		if (toolName === 'data-tables') {
-			return buildDataTablesSessionGrantKey(action);
-		}
-		// Executing a node grants "always allow" per node type + resource + operation,
-		// mirroring the backend thread grant. Without a type, fail closed.
-		if (toolName === 'nodes' && action === 'execute') {
-			const nodeType = typeof args.type === 'string' ? args.type : '';
-			if (!nodeType) return null;
-			const config = isRecord(args.config) ? args.config : undefined;
-			const parameters = isRecord(config?.parameters) ? config.parameters : undefined;
-			return buildExecuteNodeSessionGrantKey(nodeType, parameters);
-		}
-		return `${toolName}:${action}`;
-	}
 
 	function addAlwaysAllowKey(
 		toolName: string,
@@ -1224,7 +1121,9 @@ export function createThreadRuntime(
 			// A failed or interrupted run (provider down, key rejected, crash, ...) ends the onboarding
 			// too, so the user gets the normal chrome back instead of a stuck flow.
 			if (parsed.data.type === 'tool-call') {
-				const outcome = ONBOARDING_EXIT_OUTCOMES.get(parsed.data.payload.toolName);
+				const outcome = ONBOARDING_EXIT_OUTCOMES.get(
+					resolveBuilderToolName(parsed.data.payload.toolName),
+				);
 				const reason = parsed.data.payload.args.reason;
 				if (outcome) {
 					hooks.onOnboardingLeft?.(
@@ -1490,6 +1389,9 @@ export function createThreadRuntime(
 				if (messages.value.length > 0) return 'skipped';
 				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
 				if (result.messages.length > 0) {
+					for (const msg of result.messages) {
+						if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
+					}
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
 					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);
@@ -1656,7 +1558,7 @@ export function createThreadRuntime(
 				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
-				instanceAiSettingsStore.computerUseChannels,
+				instanceAiSettingsStore.isBrowserUseAvailable,
 				openTabs.value === null
 					? undefined
 					: buildThreadArtifactsContext(
@@ -1800,70 +1702,6 @@ export function createThreadRuntime(
 		amendContext.value = { agentId, role };
 	}
 
-	// --- Plan review ---
-
-	/**
-	 * Send the user's typed feedback as a request to revise the plan.
-	 *
-	 * Deliberately adds nothing to the transcript. A revision does not re-arm the
-	 * run (`shouldRearmRunAfterConfirm` is false for `approved: false`), so the
-	 * revised card merges into the assistant message that already sits above the
-	 * transcript tail — a user bubble appended here would read as if the feedback
-	 * came after the revision it caused. The card's "Changes requested" and
-	 * "Updating plan…" states are the in-flight affordance instead.
-	 */
-	async function requestPlanChanges(requestId: string, message: string): Promise<boolean> {
-		// A second submit landing mid-flight would POST the same requestId again, and
-		// the rejection would clear the "Updating plan…" state of the accepted one.
-		if (updatingPlanRequestIds.has(requestId)) return false;
-		markPlanUpdatePending(requestId);
-
-		const ok = await confirmAction(requestId, {
-			kind: 'approval',
-			approved: false,
-			userInput: message,
-		});
-
-		if (!ok) {
-			clearPlanUpdatePending(requestId);
-			return false;
-		}
-
-		resolveConfirmation(requestId, 'changes-requested');
-		return true;
-	}
-
-	function markPlanUpdatePending(requestId: string): void {
-		updatingPlanRequestIds.add(requestId);
-	}
-
-	function clearPlanUpdatePending(requestId: string): void {
-		updatingPlanRequestIds.delete(requestId);
-	}
-
-	// A revised card takes over the review, so the card it supersedes is no longer
-	// updating. Nothing else retires that marker: request-changes never re-arms the
-	// run, so the stream below stays live for the whole revision. A null review is
-	// not a supersede — the old call settles before the revised card suspends, and
-	// that gap is the wait itself.
-	watch(
-		() => pendingPlanReview.value?.requestId,
-		(requestId) => {
-			if (!requestId) return;
-			for (const id of updatingPlanRequestIds) {
-				if (id !== requestId) updatingPlanRequestIds.delete(id);
-			}
-		},
-	);
-
-	// Defensive cleanup: if a stream ends without a matching clear, drop the
-	// pending markers so we don't leave a card stuck in "Updating plan…".
-	watch(isStreaming, (streaming) => {
-		if (!streaming && updatingPlanRequestIds.size > 0) {
-			updatingPlanRequestIds.clear();
-		}
-	});
-
 	// --- Confirmations ---
 
 	async function confirmAction(
@@ -1952,10 +1790,8 @@ export function createThreadRuntime(
 		sseState,
 		lastEventId,
 		amendContext,
-		updatingPlanRequestIds,
 
 		// computeds
-		pendingPlanReview,
 		isStreaming,
 		isSendingMessage,
 		hasMessages,
@@ -2001,9 +1837,6 @@ export function createThreadRuntime(
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
-		requestPlanChanges,
-		markPlanUpdatePending,
-		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,

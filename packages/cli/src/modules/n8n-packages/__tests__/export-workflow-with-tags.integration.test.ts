@@ -77,8 +77,8 @@ describe('workflow package export — with tags', () => {
 				{ id: beta.id, name: 'beta', target: `tags/beta-${beta.id}` },
 			]);
 			expect(manifest.requirements!.tags).toEqual([
-				{ id: alpha.id, name: 'alpha', usedByWorkflows: [workflow.id] },
-				{ id: beta.id, name: 'beta', usedByWorkflows: [workflow.id] },
+				{ id: alpha.id, name: 'alpha', usedBy: [{ kind: 'workflow', id: workflow.id }] },
+				{ id: beta.id, name: 'beta', usedBy: [{ kind: 'workflow', id: workflow.id }] },
 			]);
 
 			const serialized = workflowJson(entries, manifest.workflows![0].target);
@@ -117,7 +117,14 @@ describe('workflow package export — with tags', () => {
 		]);
 		expect(tagFiles(entries)).toHaveLength(1);
 		expect(manifest.requirements!.tags).toEqual([
-			{ id: tag.id, name: 'shared', usedByWorkflows: [wfA.id, wfB.id] },
+			{
+				id: tag.id,
+				name: 'shared',
+				usedBy: [
+					{ kind: 'workflow', id: wfA.id },
+					{ kind: 'workflow', id: wfB.id },
+				],
+			},
 		]);
 
 		for (const entry of manifest.workflows!) {
@@ -192,13 +199,13 @@ describe('workflow package export — with tags', () => {
 		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [parent.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.tags).toEqual([{ id: tag.id, name: 'prod', target: `tags/prod-${tag.id}` }]);
 		expect(manifest.requirements!.tags).toEqual([
-			{ id: tag.id, name: 'prod', usedByWorkflows: [sub.id] },
+			{ id: tag.id, name: 'prod', usedBy: [{ kind: 'workflow', id: sub.id }] },
 		]);
 
 		const subEntry = manifest.workflows!.find((entry) => entry.id === sub.id)!;

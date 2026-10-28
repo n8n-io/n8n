@@ -2,14 +2,18 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type {
 	AgentConfigValidationIssue,
-	AgentJsonConfig,
 	AgentJsonTaskConfig,
+	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useStorage } from '@n8n/composables/useStorage';
 import { agentsEventBus } from '../agents.eventBus';
+import { N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS } from '../constants';
 import {
 	agentChannelPlatforms,
 	createAgentChannelRuntime,
@@ -21,9 +25,13 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
+import { metaTitleKey, presentWhatsAppMetaState } from '../channels/whatsapp/metaStatus';
+import { useWhatsAppMetaStatus } from '../channels/whatsapp/useWhatsAppMetaStatus';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import N8nChatHintPopover from './N8nChatHintPopover.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 const props = withDefaults(
 	defineProps<{
@@ -34,13 +42,13 @@ const props = withDefaults(
 		isPublished?: boolean;
 		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 		simpleChannelSetup?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
 		/** No agent row exists yet — nothing can be connected to it. */
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
-		personalisation?: AgentJsonConfig['personalisation'] | null;
 		/** n8n Chat's saved description, forwarded to the channel modal. */
 		savedDescription?: string;
 		/** Persists n8n Chat's description, forwarded to the channel modal. */
@@ -55,13 +63,13 @@ const props = withDefaults(
 		simpleChannelSetup: false,
 		taskRefs: () => [],
 		ensureAgentPersisted: undefined,
-		personalisation: null,
 	},
 );
 
 const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
+	'trigger-removed': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
@@ -73,6 +81,36 @@ const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+
+// The chip reads Meta's status once, and again when the channel modal closes.
+// The modal polls on its own while it is open.
+const { status: whatsAppMetaStatus, refresh: refreshWhatsAppMetaStatus } = useWhatsAppMetaStatus(
+	toRef(props, 'projectId'),
+	toRef(props, 'agentId'),
+	computed(() =>
+		props.connectedTriggers.includes('whatsapp') ? connectedCredentials.value.whatsapp : undefined,
+	),
+	{ poll: false },
+);
+
+/**
+ * Meta's review state for a channel, as the headline and how serious it is. Only
+ * WhatsApp has one. The chip shows an error for the same states that show a red callout.
+ */
+function channelMetaNotice(channel: string) {
+	if (channel !== 'whatsapp' || !whatsAppMetaStatus.value) return undefined;
+	const presentation = presentWhatsAppMetaState(whatsAppMetaStatus.value.state);
+	if (!presentation) return undefined;
+	return {
+		isError: presentation.theme === 'danger',
+		message: i18n.baseText(metaTitleKey(presentation, whatsAppMetaStatus.value), {
+			interpolate: {
+				number: whatsAppMetaStatus.value.displayPhoneNumber ?? '',
+				name: whatsAppMetaStatus.value.displayName ?? '',
+			},
+		}),
+	};
+}
 
 const runtimeContext = {
 	projectId: computed(() => props.projectId),
@@ -122,6 +160,10 @@ const channelList = computed(() => withN8nChat(catalog.value ?? []));
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
+
+watch(channelModalOpen, (open, wasOpen) => {
+	if (wasOpen && !open) refreshWhatsAppMetaStatus();
+});
 const channelModalView = ref<ChannelView>('list');
 
 function isIconName(icon: unknown): icon is IconName {
@@ -141,6 +183,8 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const channelIssueMessages = computed(() => {
@@ -161,26 +205,36 @@ function channelRuntimeErrorMessage(channel: string): string {
 	return runtimeErrors.value[channel] || i18n.baseText('agents.channels.modal.notRunning.tooltip');
 }
 
+// n8n Chat always shows, even when it is not in the agent config.
 const channelRows = computed(() =>
-	props.connectedTriggers
-		.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE || isN8nChatEnabled.value)
-		.map((channel) => {
-			const integration = channelList.value.find(({ type }) => type === channel);
-			const credentialId = connectedCredentials.value[channel];
-			// A channel that is configured correctly but failed to start is just as
-			// broken from here as a misconfigured one, so it uses the same affordance.
-			const invalidReasons = [
-				...(channelIssueMessages.value.get(channel) ?? []),
-				...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
-			];
-			return {
-				type: channel,
-				label: integration?.label ?? channel,
-				icon: channelIcon(integration?.icon),
-				credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
-				invalidReasons,
-			};
-		}),
+	[
+		...(isN8nChatEnabled.value ? [N8N_CHAT_INTEGRATION_TYPE] : []),
+		...props.connectedTriggers.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE),
+	].map((channel) => {
+		const integration = channelList.value.find(({ type }) => type === channel);
+		const credentialId = connectedCredentials.value[channel];
+		// A channel that is configured correctly but failed to start is just as
+		// broken from here as a misconfigured one, so it uses the same affordance.
+		const metaNotice = channelMetaNotice(channel);
+		const invalidReasons = [
+			...(channelIssueMessages.value.get(channel) ?? []),
+			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+			...(metaNotice?.isError ? [metaNotice.message] : []),
+		];
+		return {
+			type: channel,
+			label: integration?.label ?? channel,
+			icon: channelIcon(integration?.icon),
+			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
+			invalidReasons,
+			// A red callout in the channel settings shows a red cross on the chip too.
+			invalidIcon: metaNotice?.isError ? ('circle-x' as const) : undefined,
+			warningReasons: metaNotice && !metaNotice.isError ? [metaNotice.message] : [],
+			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
+			connected:
+				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
+		};
+	}),
 );
 
 async function loadChannelDetails() {
@@ -191,10 +245,12 @@ async function loadChannelDetails() {
 	if (!props.agentUnsaved) {
 		await fetchStatus(withN8nChat(integrations).map(({ type }) => type));
 	}
+	openTeamsAfterFileAccessConsent(integrations);
 
 	try {
 		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
+			forAgent: true,
 		});
 		credentialNamesById.value = Object.fromEntries(
 			credentials.map((credential) => [credential.id, credential.name]),
@@ -239,11 +295,16 @@ function openChannelModal() {
 	channelModalOpen.value = true;
 }
 
-function openChannelEdit(channelType: string) {
+function openChannelEdit(channelType: string, connected: boolean) {
 	const hasEditableChannelView = channelList.value.some(({ type }) => type === channelType);
-	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
+	const mode = connected ? 'edit' : 'setup';
+	channelModalView.value = hasEditableChannelView ? `${channelType}_${mode}` : 'list';
 	channelModalOpen.value = true;
 }
+
+// The sidebar "New chat" hint shows on a user's first visit; this one follows it, never both at once.
+const newChatHintStorage = useStorage(N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS.new_chat_sidebar);
+const newChatHintDismissed = computed(() => newChatHintStorage.value === 'true');
 
 function handleChannelConnected(channelType: string) {
 	const channels = Array.from(new Set([...props.connectedTriggers, channelType]));
@@ -252,13 +313,45 @@ function handleChannelConnected(channelType: string) {
 	void loadChannelDetails();
 }
 
+const FILE_ACCESS_CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+
+/**
+ * Microsoft returns an administrator here after the Teams file access consent,
+ * with `state` passed back unchanged. The Teams settings show the result. The
+ * other query values are Microsoft's and only cleared, never shown. Runs after
+ * the status fetch: the agent's channels can load later than this page, and
+ * until then a connected Teams reads as not connected and opens the setup.
+ */
+function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) {
+	// Optional: the section also renders outside the router, as in tests.
+	if (route?.query.state !== FILE_ACCESS_CONSENT_STATE) return;
+	if (!integrations.some(({ type }) => type === 'teams')) return;
+	const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
+		route.query;
+	void router.replace({ query });
+	fileAccessJustApproved.value = admin_consent === 'True';
+	// Microsoft's own error text arrives in the address, so only fixed text is shown.
+	if (error) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.channels.teams.fileAccessConsentFailed'),
+		});
+	}
+	openChannelEdit(
+		'teams',
+		props.connectedTriggers.includes('teams') || integrationStatus.isConfigured('teams'),
+	);
+}
+
 defineExpose({ openChannelModal });
 
 function handleChannelDisconnected(channelType: string) {
-	emit(
-		'update:connected-triggers',
-		props.connectedTriggers.filter((channel) => channel !== channelType),
-	);
+	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
+	emit('update:connected-triggers', channels);
+	emit('trigger-removed', { triggerType: channelType, triggers: channels });
 }
 </script>
 
@@ -278,23 +371,42 @@ function handleChannelDisconnected(channelType: string) {
 			<AgentItemContextMenu
 				v-for="channel in channelRows"
 				:key="channel.type"
-				:disabled="props.disabled || removingChannel"
+				:disabled="props.disabled || removingChannel || !channel.connected"
 				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
-				<AgentChipButton
-					:icon="channel.icon"
-					:invalid="channel.invalidReasons.length > 0"
-					:invalid-reasons="channel.invalidReasons"
-					:disabled="props.disabled || removingChannel"
-					:class="$style.channelChip"
-					@click="openChannelEdit(channel.type)"
+				<N8nChatHintPopover
+					hint="channel_chip"
+					:active="
+						channel.type === N8N_CHAT_INTEGRATION_TYPE &&
+						channel.connected &&
+						!channelModalOpen &&
+						!props.disabled &&
+						newChatHintDismissed
+					"
+					:title="i18n.baseText('agents.n8nChatHint.channelAdded.title')"
+					:body="i18n.baseText('agents.n8nChatHint.channelAdded.body')"
+					:agent-id="props.agentId"
 				>
-					{{ channel.label }}
-				</AgentChipButton>
+					<AgentChipButton
+						:icon="channel.icon"
+						:deactivated="!channel.connected"
+						:invalid="channel.invalidReasons.length > 0"
+						:invalid-reasons="channel.invalidReasons"
+						:invalid-icon="channel.invalidIcon"
+						:warning="channel.warningReasons.length > 0"
+						:warning-reasons="channel.warningReasons"
+						:disabled="props.disabled || removingChannel"
+						:class="$style.channelChip"
+						@click="openChannelEdit(channel.type, channel.connected)"
+					>
+						{{ channel.label }}
+					</AgentChipButton>
+				</N8nChatHintPopover>
 			</AgentItemContextMenu>
 		</AgentChipRow>
 
 		<AgentSchedulesRow
+			:preview-disabled-reason="props.previewDisabledReason"
 			:task-refs="props.taskRefs"
 			:disabled="props.disabled"
 			:project-id="props.projectId"
@@ -320,7 +432,6 @@ function handleChannelDisconnected(channelType: string) {
 			:disabled="props.disabled"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
-			:personalisation="personalisation"
 			:saved-description="savedDescription"
 			:save-description="saveDescription"
 			@channel-connected="handleChannelConnected"

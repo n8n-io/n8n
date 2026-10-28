@@ -22,7 +22,23 @@ const store = reactive({
 	deleteThread: vi.fn(),
 });
 
+const agentThreadsStore = reactive({ deletedThreadIds: new Set<string>(), deleteThread: vi.fn() });
+const assistantAgentThreadsStore = reactive({
+	deletedThreadIds: new Set<string>(),
+	deleteThread: vi.fn(),
+	remember: vi.fn(),
+});
+const settingsStore = reactive({ isAssistantAgentEnabled: false });
+
 vi.mock('../instanceAi.store', () => ({ useInstanceAiStore: () => store }));
+vi.mock('@/features/agents/n8nChatPage/n8nChatThreads.store', () => ({
+	useAgentN8nChatThreadsStore: () => agentThreadsStore,
+}));
+vi.mock('../assistantAgent/assistantAgentThreads.store', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useAssistantAgentThreadsStore: () => assistantAgentThreadsStore,
+}));
+vi.mock('../instanceAiSettings.store', () => ({ useInstanceAiSettingsStore: () => settingsStore }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 // Flag off by default, matching production until the 125_agents_n8n_chat experiment
@@ -33,8 +49,10 @@ vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
 }));
 
 const listN8nChatThreadsMock = vi.fn().mockResolvedValue({ data: [], nextCursor: null });
+const listSystemAgentThreadsMock = vi.fn().mockResolvedValue({ data: [], nextCursor: null });
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+	listSystemAgentThreads: (...args: unknown[]) => listSystemAgentThreadsMock(...args),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-1' } }),
@@ -69,6 +87,8 @@ describe('InstanceAiThreadsView', () => {
 		n8nChatFlag.value = false;
 		vi.clearAllMocks();
 		listN8nChatThreadsMock.mockResolvedValue({ data: [], nextCursor: null });
+		agentThreadsStore.deleteThread.mockReset();
+		agentThreadsStore.deletedThreadIds.clear();
 	});
 
 	afterEach(() => {
@@ -188,12 +208,70 @@ describe('InstanceAiThreadsView', () => {
 		wrapper.unmount();
 	});
 
+	describe('with the Assistant agent on', () => {
+		const agentThread = {
+			id: 'aa1',
+			title: 'Agent runtime chat',
+			updatedAt: '2026-01-03T00:00:00.000Z',
+			projectId: 'project-1',
+		};
+
+		beforeEach(() => {
+			settingsStore.isAssistantAgentEnabled = true;
+			store.threadHistory.threads = [
+				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			];
+			store.threadHistory.hasMore = false;
+			listSystemAgentThreadsMock.mockResolvedValue({ data: [agentThread], nextCursor: null });
+		});
+
+		afterEach(() => {
+			settingsStore.isAssistantAgentEnabled = false;
+			listSystemAgentThreadsMock.mockResolvedValue({ data: [], nextCursor: null });
+		});
+
+		it('merges Assistant agent threads into the list by updatedAt', async () => {
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const rows = wrapper.findAll('[data-test-id="instance-ai-history-thread"]');
+			expect(rows.map((row) => row.text())).toEqual([
+				expect.stringContaining('Agent runtime chat'),
+				expect.stringContaining('Assistant chat'),
+			]);
+			expect(listSystemAgentThreadsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				'assistant',
+				expect.objectContaining({ limit: 30 }),
+			);
+		});
+
+		it('deletes an Assistant agent thread through its own store', async () => {
+			assistantAgentThreadsStore.deleteThread.mockImplementation(async (thread: { id: string }) => {
+				assistantAgentThreadsStore.deletedThreadIds.add(thread.id);
+				return true;
+			});
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const [agentDropdown] = wrapper.findAllComponents({ name: 'ActionDropdown' });
+			agentDropdown.vm.$emit('select', 'delete');
+			await nextTick();
+			await nextTick();
+
+			expect(assistantAgentThreadsStore.deleteThread).toHaveBeenCalledWith(agentThread);
+			expect(store.deleteThread).not.toHaveBeenCalled();
+			expect(agentThreadsStore.deleteThread).not.toHaveBeenCalled();
+			expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(1);
+		});
+	});
+
 	describe('with the n8n Chat flag on', () => {
 		beforeEach(() => {
 			n8nChatFlag.value = true;
 		});
 
-		it('merges agent threads into the list by updatedAt, with no actions menu for them', async () => {
+		it('merges agent threads into the list by updatedAt, each with its own actions menu', async () => {
 			store.threadHistory.threads = [
 				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
 			];
@@ -217,8 +295,44 @@ describe('InstanceAiThreadsView', () => {
 				expect.stringContaining('Agent chat'),
 				expect.stringContaining('Assistant chat'),
 			]);
-			// Only the assistant row gets a rename/delete menu.
-			expect(wrapper.findAllComponents({ name: 'ActionDropdown' })).toHaveLength(1);
+			// Both rows get their own actions menu now (the agent row: delete only).
+			expect(wrapper.findAllComponents({ name: 'ActionDropdown' })).toHaveLength(2);
+		});
+
+		it('deletes an agent thread through the agent threads store and drops it from the list', async () => {
+			const agentThread = {
+				id: 'g1',
+				title: 'Agent chat',
+				updatedAt: '2026-01-03T00:00:00.000Z',
+				agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+			};
+			store.threadHistory.threads = [
+				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			];
+			store.threadHistory.hasMore = false;
+			listN8nChatThreadsMock.mockResolvedValueOnce({ data: [agentThread], nextCursor: null });
+			// The pager drops a row by watching `deletedThreadIds`, so the mock must fill it
+			// in, same as the real action does.
+			agentThreadsStore.deleteThread.mockImplementation(async (thread: { id: string }) => {
+				agentThreadsStore.deletedThreadIds.add(thread.id);
+				return true;
+			});
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const [agentDropdown] = wrapper.findAllComponents({ name: 'ActionDropdown' });
+			agentDropdown.vm.$emit('select', 'delete');
+			await nextTick();
+			await nextTick();
+
+			expect(agentThreadsStore.deleteThread).toHaveBeenCalledWith(agentThread);
+			expect(store.deleteThread).not.toHaveBeenCalled();
+			await vi.waitFor(() => {
+				const remainingRows = wrapper.findAll('[data-test-id="instance-ai-history-thread"]');
+				expect(remainingRows.map((row) => row.text())).toEqual([
+					expect.stringContaining('Assistant chat'),
+				]);
+			});
 		});
 
 		it('shows the error and a retry when only the agent fetch fails', async () => {

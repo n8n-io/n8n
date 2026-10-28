@@ -55,12 +55,69 @@ const jsonwebtokenSubpathRestriction = {
 		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
 };
 
+// Verifying a token signed by a foreign key is the one thing JwtService cannot do.
+// This widens the allowlist to `decode` and `verify` only; `sign` stays restricted.
+const jsonwebtokenVerifyOnlyRestriction = {
+	...jsonwebtokenSigningRestriction,
+	allowImportNames: [...jsonwebtokenSigningRestriction.allowImportNames, 'decode', 'verify'],
+	message: 'Sign through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
 	message:
 		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
 };
+
+// Code outside the skills module imports only its public API, `@/modules/skills`.
+// These patterns match import strings only. The code-health rule `skills-module-boundary`
+// resolves imports to files, so it also catches relative imports.
+const skillsModuleEntry = {
+	group: ['@/modules/skills/**'],
+	message: 'Import the skills module from @/modules/skills, its public API.',
+};
+
+// Tests outside the skills module may also use its fixtures.
+const skillsModuleEntryForTests = {
+	group: ['@/modules/skills/**', '!@/modules/skills/testing'],
+	message:
+		'Import the skills module from @/modules/skills, or its test fixtures from @/modules/skills/testing.',
+};
+
+// The skills module imports nothing else from cli, so it can move into its own package. The
+// allowlist only shrinks. It does not import the modules that use skills either: the agents
+// module registers what the skills module needs on `SkillUsageProxy`.
+const skillsModuleIsolation = {
+	group: [
+		// ESLint reads these as gitignore lines, which cannot re-include a file below an
+		// excluded folder, so `!@/permissions.ee` lets the last line re-include one file.
+		'@/*',
+		'!@/posthog',
+		'!@/telemetry',
+		'!@/permissions.ee',
+		'@/*/**',
+		'!@/permissions.ee/check-access',
+		// Any depth, so files in subfolders of the skills module are covered too.
+		'../**/agents/**',
+		'../**/instance-ai/**',
+		'../**/mcp/**',
+	],
+	message:
+		'The skills module imports nothing from the rest of cli except its allowlist. Ask the agents module through SkillUsageProxy.',
+};
+
+// `no-restricted-imports` does not check `import()` in ESLint (oxlint's rule does), so this
+// selector applies the same boundary to dynamic imports. No dynamic import needs the allowlist.
+const skillsModuleDynamicImportBoundary = {
+	selector: 'ImportExpression[source.value=/^(@\\/|\\.\\.\\/(.*\\/)?(agents|instance-ai|mcp)\\/)/]',
+	message: skillsModuleIsolation.message,
+};
+
+const METRICS_DATABASE_IMPORT_MESSAGE =
+	'Use DatabaseMetricQueryService for metrics database reads.';
+const METRICS_CLI_IMPORT_MESSAGE =
+	'Metrics collectors import only reviewed cli modules. Use DatabaseMetricQueryService for metrics database reads.';
 
 export default defineConfig(
 	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
@@ -76,10 +133,6 @@ export default defineConfig(
 						{
 							rule: 'no-repository-in-public-api-handler',
 							message: 'Call a service instead of reaching the repository.',
-						},
-						{
-							rule: 'require-public-api-controller',
-							message: 'Migrate to `@PublicApiController`.',
 						},
 						{
 							rule: 'no-unsealed-workflow-entity-write',
@@ -141,28 +194,6 @@ export default defineConfig(
 		},
 	},
 	{
-		// Public API guardrail: new endpoints must be `@PublicApiController` classes, not `export =` tuples.
-		files: [
-			'./src/public-api/v1/handlers/**/*.handler.ts',
-			'./src/public-api/v1/handlers/**/*.handler.ee.ts',
-		],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'error',
-		},
-	},
-	{
-		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
-		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
-		// must fail CI. Entries are removed as each handler becomes a controller.
-		files: [
-			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
-			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-		],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'off',
-		},
-	},
-	{
 		files: ['./src/**/*.ts'],
 		ignores: ['./src/modules/engine-v2/**/*.ts'],
 		rules: {
@@ -176,7 +207,7 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenSigningRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
 		},
@@ -196,9 +227,29 @@ export default defineConfig(
 						engineV2ModuleOnlyImport,
 						jsonwebtokenSigningRestriction,
 					],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
+		},
+	},
+	{
+		files: ['./src/modules/skills/**/*.ts'],
+		ignores: ['./src/modules/skills/**/__tests__/**/*.ts'],
+		rules: {
+			// Repeats the package restrictions: a later block replaces the rule's options
+			// wholesale rather than merging them.
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleIsolation],
+				},
+			],
+			'no-restricted-syntax': ['error', skillsModuleDynamicImportBoundary],
 		},
 	},
 	{
@@ -211,16 +262,16 @@ export default defineConfig(
 				'error',
 				{
 					paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
-					patterns: [jsonwebtokenSubpathRestriction],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 				},
 			],
 		},
 	},
 	{
-		// The two places that hold the raw signing API. NEVER add to this list.
+		// The places that hold the raw signing API. The one admitted reason to be here besides
+		// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
+		// verify. Do NOT add a file for any other reason.
 		files: [
-			// Owns the signing key and derives every audience from a purpose.
-			'./src/services/jwt.service.ts',
 			// Verifies subject tokens with a foreign key from the trusted-key store,
 			// against the audience that key is registered for.
 			'./src/modules/token-exchange/services/token-exchange.service.ts',
@@ -228,7 +279,28 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				{
+					paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+					patterns: [skillsModuleEntry],
+				},
+			],
+		},
+	},
+	{
+		// Verifies bearer tokens with the JWKS discovered for a trusted source. Only
+		// `decode` and `verify` are admitted; signing stays with JwtService.
+		files: ['./src/modules/inbound-auth-core/oauth2-bearer.driver.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenVerifyOnlyRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
+				},
 			],
 		},
 	},
@@ -238,7 +310,10 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				{
+					paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+					patterns: [skillsModuleEntryForTests],
+				},
 			],
 		},
 	},
@@ -249,7 +324,17 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION] },
+				{ paths: [POLICY_INTERNAL_RESTRICTION], patterns: [skillsModuleEntryForTests] },
+			],
+		},
+	},
+	{
+		// Integration tests reach the skills module like the tests in src do.
+		files: ['./test/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION], patterns: [skillsModuleEntryForTests] },
 			],
 		},
 	},
@@ -280,17 +365,10 @@ export default defineConfig(
 			'./src/modules/agents/agent-task.service.ts',
 			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
-			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+			'./src/modules/agents/integrations/platforms/discord/discord-integration.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],
-		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
-	},
-	{
-		// Shrink-only ratchet: periodic leader timers not yet migrated to system
-		// tasks. NEVER add to this list — new periodic leader work must be a
-		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
-		files: ['./src/services/pruning/executions-pruning.service.ts'],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
 	{
@@ -330,6 +408,93 @@ export default defineConfig(
 		rules: {
 			'n8n-local-rules/no-top-level-relative-imports-in-backend-module': 'error',
 			'n8n-local-rules/no-constructor-in-backend-module': 'error',
+		},
+	},
+	{
+		files: ['./src/metrics/prometheus/**/*.ts'],
+		ignores: [
+			'./src/metrics/prometheus/**/__tests__/**/*.ts',
+			'./src/metrics/prometheus/**/*.test.ts',
+			'./src/metrics/prometheus/**/*.spec.ts',
+			// These files own queries or read connection state. Review their database access directly.
+			'./src/metrics/prometheus/database-metric-query.service.ts',
+			'./src/metrics/prometheus/cached-metric-query.ts',
+			'./src/metrics/prometheus/db-pool-metrics.service.ts',
+		],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						// Keep the package restrictions: rule options replace earlier options.
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+						{
+							name: '@n8n/db',
+							allowImportNames: ['DbConnectionMetrics', 'WorkflowPublicationOutboxStatus'],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							name: '@n8n/di',
+							importNames: ['Container'],
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+					],
+					patterns: [
+						jsonwebtokenSubpathRestriction,
+						{
+							group: [
+								'@n8n/db/**',
+								'@n8n/typeorm',
+								'@n8n/typeorm/**',
+								'@n8n/di/**',
+								'pg',
+								'pg/**',
+								'sqlite3',
+								'sqlite3/**',
+								'node:sqlite',
+							],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							group: ['**/cached-metric-query', '**/cached-metric-query.*'],
+							allowImportNames: ['toGaugeValue'],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							group: ['**/*.repository', '**/*.repository.*'],
+							allowTypeImports: true,
+							message: METRICS_DATABASE_IMPORT_MESSAGE,
+						},
+						{
+							group: [
+								'@/**',
+								'../**',
+								'./../**',
+								// gitignore cannot re-include a file under an excluded folder, so re-include each folder first.
+								'!@/constants',
+								'!@/eventbus/',
+								'!@/eventbus/message-event-bus/',
+								'!@/eventbus/message-event-bus/message-event-bus',
+								'!@/events/',
+								'!@/events/maps/',
+								'!@/events/maps/system-task-metrics.event-map',
+								'!@/modules/',
+								'!@/modules/instance-ai/',
+								'!@/modules/instance-ai/instance-ai-run-probe',
+								'!@/services/',
+								'!@/services/database-independent-routes.service',
+							],
+							allowTypeImports: true,
+							message: METRICS_CLI_IMPORT_MESSAGE,
+						},
+					],
+				},
+			],
 		},
 	},
 );

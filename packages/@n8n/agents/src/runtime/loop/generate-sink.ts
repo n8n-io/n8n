@@ -49,14 +49,12 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		});
 
 		const aiFinishReason = result.finishReason;
-		// oxlint-disable-next-line typescript/no-deprecated
-		const newMessages = fromAiMessages(result.response.messages);
+		const newMessages = fromAiMessages(result.responseMessages);
 		const errorReason = classifyModelTurnError({ aiFinishReason, newMessages });
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			// oxlint-disable-next-line typescript/no-deprecated
-			usage: toTokenUsage(result.usage, result.providerMetadata),
+			usage: toTokenUsage(result.usage, result.finalStep.providerMetadata),
 			newMessages,
 			toolCalls: result.toolCalls,
 			structuredOutput:

@@ -8,6 +8,7 @@ import {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
@@ -127,6 +128,36 @@ Body`);
 				expect.objectContaining({ code: 'unknown_field', field: 'interface.unknown' }),
 			]),
 		);
+	});
+
+	it('parses a turn lifetime from the skill policy', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: turn
+---
+
+Pick a route.`);
+
+		expect(result.ok && result.skill.policy).toEqual({ lifetime: 'turn' });
+	});
+
+	it('rejects an unknown skill lifetime', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: forever
+---
+
+Pick a route.`);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('Expected skill validation to fail');
+		expect(result.errors).toEqual([
+			expect.objectContaining({ code: 'invalid_field', field: 'policy.lifetime' }),
+		]);
 	});
 
 	it('rejects SKILL.md files without instruction content', () => {
@@ -390,6 +421,128 @@ Use the workflow SDK.`,
 		});
 	});
 
+	it('extends a source with in-memory skills, keeping the base skill on an id collision', async () => {
+		const base = [
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Base body.' },
+			{ id: 'shared_skill', name: 'Shared', description: 'From base.', instructions: 'Base.' },
+		];
+		const source = {
+			...createRuntimeSkillSource(base),
+			loadFile: async (skillId: string, filePath: string) =>
+				await Promise.resolve({ skillId, filePath, content: 'file body' }),
+		};
+		const added = [
+			{
+				id: 'added_skill',
+				name: 'Added skill',
+				description: 'Added.',
+				instructions: 'Added body.',
+			},
+			{ id: 'shared_skill', name: 'Shared', description: 'From added.', instructions: 'Added.' },
+		];
+
+		const extended = extendRuntimeSkillSource(source, added);
+
+		expect(extended.registry.skills.map((skill) => skill.id)).toEqual([
+			'added_skill',
+			'base_skill',
+			'shared_skill',
+		]);
+		expect(extended.registry.skillsHash).toBe(
+			createRuntimeSkillRegistry([...base, added[0]]).skillsHash,
+		);
+		await expect(extended.loadSkill('added_skill')).resolves.toMatchObject({
+			instructions: 'Added body.',
+		});
+		await expect(extended.loadSkill('shared_skill')).resolves.toMatchObject({
+			description: 'From base.',
+		});
+		await expect(extended.loadFile?.('added_skill', 'references/a.md')).resolves.toBeNull();
+		await expect(extended.loadFile?.('base_skill', 'references/a.md')).resolves.toMatchObject({
+			content: 'file body',
+		});
+	});
+
+	it('keeps an added reference whose parent is a base skill', async () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'owner', name: 'Owner', description: 'Owner.', instructions: 'Owner body.' },
+		]);
+		const reference = {
+			id: 'owner-detail',
+			name: 'Owner detail',
+			description: 'Detail.',
+			instructions: 'Detail body.',
+			parents: ['owner'],
+			reference: { owner: 'owner', path: 'references/owner-detail.md' },
+		};
+
+		const extended = extendRuntimeSkillSource(source, [
+			reference,
+			{ ...reference, id: 'orphan', name: 'Orphan', parents: ['missing'] },
+		]);
+
+		expect(extended.registry.skills.map((skill) => skill.id)).toEqual(['owner', 'owner-detail']);
+		expect(extended.registry.skills[1]).toMatchObject({
+			parents: ['owner'],
+			reference: { owner: 'owner', path: 'references/owner-detail.md' },
+		});
+		await expect(extended.loadSkill('owner-detail')).resolves.toMatchObject({
+			instructions: 'Detail body.',
+		});
+	});
+
+	it('returns the source unchanged when every added skill collides', () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },
+		]);
+
+		expect(
+			extendRuntimeSkillSource(source, [
+				{ id: 'base_skill', name: 'Other', description: 'Other.', instructions: 'Other.' },
+			]),
+		).toBe(source);
+	});
+
+	it('rejects an added skill that reuses the name of a base skill', () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },
+		]);
+
+		expect(() =>
+			extendRuntimeSkillSource(source, [
+				{ id: 'other_skill', name: 'base SKILL', description: 'Other.', instructions: 'Other.' },
+			]),
+		).toThrow(InvalidRuntimeSkillError);
+	});
+
+	it('rebuilds the merged registry after the base source prepares', async () => {
+		const source = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Body.' },
+		]);
+		source.prepare = async () => {
+			await Promise.resolve();
+			source.registry = {
+				...source.registry,
+				skills: source.registry.skills.map((skill) => ({ ...skill, hash: 'prepared-hash' })),
+			};
+		};
+		const extended = extendRuntimeSkillSource(source, [
+			{ id: 'added_skill', name: 'Added skill', description: 'Added.', instructions: 'Added.' },
+		]);
+		const hashBefore = extended.registry.skillsHash;
+
+		await extended.prepare?.();
+
+		expect(extended.registry.skills.find((skill) => skill.id === 'base_skill')?.hash).toBe(
+			'prepared-hash',
+		);
+		expect(extended.registry.skills.map((skill) => skill.id)).toEqual([
+			'added_skill',
+			'base_skill',
+		]);
+		expect(extended.registry.skillsHash).not.toBe(hashBefore);
+	});
+
 	it('renders a compact skill catalog without skill bodies', () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -462,6 +615,46 @@ Use the workflow SDK.`,
 		});
 	});
 
+	it('accepts path-only reference metadata until the file is requested', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'deferred',
+				name: 'Deferred',
+				description: 'Load later.',
+				instructions: 'See the guide.',
+				linkedFiles: {
+					references: [{ path: 'references/guide.md' }],
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = vi.fn(async (skillId, filePath) => ({
+			skillId,
+			filePath,
+			content: 'Guide.',
+			bytes: 6,
+			sha256: 'guide-hash',
+		}));
+		const tool = createSkillLoadTool(source);
+		const activation = await tool.handler?.(
+			{ skillId: 'deferred' },
+			{ loadSkill: source.loadSkill },
+		);
+		if (!isZodSchema(tool.outputSchema)) throw new Error('Expected Zod output schema');
+		expect(tool.outputSchema.safeParse(activation).success).toBe(true);
+		expect(activation).toMatchObject({
+			linkedFiles: { references: [{ path: 'references/guide.md' }] },
+		});
+		expect(source.loadFile).not.toHaveBeenCalled();
+		const file = await tool.handler?.({ skillId: 'deferred', filePath: 'references/guide.md' }, {});
+		expect(tool.outputSchema.safeParse(file).success).toBe(true);
+		expect(file).toMatchObject({ content: 'Guide.', bytes: 6, sha256: 'guide-hash' });
+	});
+
 	it('prepares the runtime skill source before load_skill reads the registry', async () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -475,19 +668,50 @@ Use the workflow SDK.`,
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
-				skills: source.registry.skills.map((skill) => ({
-					...skill,
-					path: '/workspace/skills/summarize_notes/SKILL.md',
-					directory: '/workspace/skills/summarize_notes',
-				})),
+				skills: source.registry.skills.map((skill) => ({ ...skill, hash: 'prepared-hash' })),
 			};
 		});
 		source.prepare = prepare;
 		const loadTool = createSkillLoadTool(source);
 
 		const loaded = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
-		expect(loaded).toContain('/workspace/skills/summarize_notes');
+		expect(loaded).toContain('[Skill hash: "prepared-hash"]');
 		expect(prepare).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not show server file paths to the model', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'summarize_notes',
+				name: 'Summarize notes',
+				description: 'Use for meeting notes.',
+				instructions: 'Extract decisions.',
+				path: '/usr/local/lib/node_modules/n8n/skills/summarize_notes/SKILL.md',
+				sourcePath: '/usr/local/lib/node_modules/n8n/skills/summarize_notes/SKILL.md',
+				directory: '/usr/local/lib/node_modules/n8n/skills/summarize_notes',
+				linkedFiles: {
+					references: [{ path: 'references/guide.md', bytes: 5, sha256: 'abc' }],
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = async (skillId, filePath) =>
+			await Promise.resolve({ skillId, filePath, content: 'Guide' });
+		const loadTool = createSkillLoadTool(source);
+
+		const skill = skillLoadText(await loadTool.handler?.({ skillId: 'summarize_notes' }, {}));
+		const file = await loadTool.handler?.(
+			{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
+			{},
+		);
+
+		expect(skill).toContain('Extract decisions.');
+		expect(file).toMatchObject({ success: true, content: 'Guide' });
+		expect(JSON.stringify([skill, file])).not.toContain('/usr/local/lib');
 	});
 
 	it('injects the agent skill catalog without preparing the runtime skill source', async () => {
@@ -816,7 +1040,7 @@ describe('reference skills', () => {
 		expect(agents).toContain('- "models": "Load before choosing a model."');
 	});
 
-	it('records references with descriptions in the activation result', async () => {
+	it('returns the activation acknowledgement, version, and reference paths', async () => {
 		writeBuilderWithReferences();
 		const source = loadRuntimeSkillSourceFromDirectory(root);
 		const loadTool = createSkillLoadTool(source);
@@ -829,6 +1053,8 @@ describe('reference skills', () => {
 		expect(result).toMatchObject({
 			success: true,
 			skillId: 'builder',
+			hash: source.registry.skills.find((skill) => skill.id === 'builder')?.hash,
+			content: 'The skill instructions are active. Follow them for this task.',
 			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
 			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
 		});

@@ -129,6 +129,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
+	const isNodeDeprecated = computed(() => {
+		return (node: { type: string; typeVersion: number }): boolean =>
+			getNodeType.value(node.type, node.typeVersion)?.deprecated === true;
+	});
+
 	const getNodeVersions = computed(() => {
 		return (nodeTypeName: string): number[] => {
 			return Object.keys(nodeTypes.value[nodeTypeName] ?? {}).map(Number);
@@ -137,7 +142,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getCredentialOnlyNodeType = computed(() => {
 		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-			const credentialName = utils.getCredentialTypeName(nodeTypeName);
+			const credentialName = utils.getCredentialOnlyNodeCredentialType(nodeTypeName);
 			const httpNode = getNodeType.value(
 				HTTP_REQUEST_NODE_TYPE,
 				version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
@@ -213,7 +218,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
-			.filter((nodeType) => !nodeType.hidden && !isNodeTypeModuleDisabled(nodeType.name));
+			.filter(
+				(nodeType) =>
+					!nodeType.hidden && !nodeType.deprecated && !isNodeTypeModuleDisabled(nodeType.name),
+			);
 	});
 
 	const nativelyNumberSuffixedDefaults = computed(() => {
@@ -548,6 +556,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		allNodeTypes,
 		allLatestNodeTypes,
 		getNodeType,
+		isNodeDeprecated,
 		getNodeVersions,
 		getCredentialOnlyNodeType,
 		isConfigNode,

@@ -25,6 +25,7 @@ import {
 	executeContextToolOperation,
 	INTEGRATION_ACTION_RESUME_SCHEMA,
 	integrationActionApprovalKey,
+	isSilentActionOutput,
 } from './integration-tool-execution';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
@@ -143,6 +144,7 @@ export function createIntegrationContextTool(params: {
 								descriptor,
 								queryExecutor,
 								persistence: ctx.persistence,
+								abortSignal: ctx.abortSignal,
 							}),
 						};
 					}),
@@ -156,6 +158,7 @@ export function createIntegrationContextTool(params: {
 				descriptor,
 				queryExecutor,
 				persistence: ctx.persistence,
+				abortSignal: ctx.abortSignal,
 			});
 		});
 }
@@ -167,11 +170,13 @@ export function createIntegrationActionTool(params: {
 }) {
 	const { descriptor, messageContextStore, actionExecutor } = params;
 
+	// The model is told to stop after staying silent, but may call it again.
 	return new Tool(descriptor.actionToolName)
 		.description(buildActionToolDescription(descriptor))
 		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
 		.suspend(actionSuspendSchema)
 		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
+		.endsTurnWhen(isSilentActionOutput)
 		.handler(async (input, ctx) => {
 			const interruptCtx = ctx as InterruptibleToolContext;
 			const approvalDecision = readApprovalDecision(interruptCtx);

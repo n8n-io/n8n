@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { computed, defineComponent, nextTick, ref } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
@@ -69,6 +69,7 @@ const InstanceAiViewHeaderStub = defineComponent({
 
 // `handoff()` reaches the conversation through a template ref, not props/emits
 // — these two stand in for the real `defineExpose`d `isDirty`/`applyHandoff`.
+const focusMock = vi.hoisted(() => vi.fn());
 const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
 const applyHandoffMock = vi.hoisted(() => vi.fn());
 const setPrefillMock = vi.hoisted(() => vi.fn());
@@ -76,9 +77,10 @@ const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
-	props: ['beforeSend'],
-	emits: ['thread-missing', 'agent-attachment-restored'],
+	props: ['beforeSend', 'placeholder'],
+	emits: ['thread-missing', 'agent-attachment-restored', 'message-sent'],
 	methods: {
+		focus: focusMock,
 		isDirty: isDirtyMock,
 		applyHandoff: applyHandoffMock,
 		setPrefill: setPrefillMock,
@@ -87,7 +89,7 @@ const InstanceAiConversationStub = defineComponent({
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
 		<textarea data-test-id="conversation-input" class="ignore-key-press-canvas" />
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
-		<slot name="empty" />
+		<slot name="empty" /><slot name="composer-start" />
 	</div>`,
 });
 
@@ -108,6 +110,8 @@ function mountPanel(props: {
 	launch: typeof launch;
 	threadId?: string;
 	beforeSend?: () => Promise<void>;
+	visible?: boolean;
+	closable?: boolean;
 }) {
 	return mount(InstanceAiChatPanel, { props, global: { stubs: panelStubs } });
 }
@@ -139,12 +143,36 @@ describe('InstanceAiChatPanel', () => {
 		useAgentMutationRefreshMock.mockClear();
 		showError.mockClear();
 		showMessage.mockClear();
+		focusMock.mockClear();
 		isDirtyMock.mockReset().mockReturnValue(false);
 		applyHandoffMock.mockClear();
 		setPrefillMock.mockClear();
 		submitSuggestionMock.mockClear();
 		clearPendingHandoffContext('thread-2');
 		clearPendingComposerDraft('thread-2');
+	});
+
+	it('keeps the conversation runtime and draft when the host hides it', async () => {
+		const wrapper = mountPanel({
+			subject,
+			launch,
+			threadId: 't-match',
+			visible: true,
+			closable: false,
+		});
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		expect(focusMock).not.toHaveBeenCalled();
+		await conversation.get('textarea').setValue('Keep this draft');
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		expect(conversation.get<HTMLTextAreaElement>('textarea').element.value).toBe('Keep this draft');
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+		expect(focusMock).toHaveBeenCalled();
+		expect(wrapper.find('[data-test-id="instance-ai-embed-close"]').exists()).toBe(false);
+		wrapper.unmount();
 	});
 
 	it('mints a thread when none is given, calling beforeNewThread first', async () => {
@@ -463,39 +491,6 @@ describe('InstanceAiChatPanel', () => {
 		expect(useAgentMutationRefreshMock).toHaveBeenCalled();
 	});
 
-	it('reports processing from send preparation through the Assistant run', async () => {
-		const runtime = makeThread();
-		store.getOrCreateRuntime.mockReturnValue(runtime);
-		store.getRuntime.mockReturnValue(runtime);
-		const preparation = Promise.withResolvers<void>();
-		const wrapper = mountPanel({
-			subject,
-			launch,
-			threadId: 't-match',
-			beforeSend: () => preparation.promise,
-		});
-		await flushPromises();
-		const prepareSend = wrapper
-			.findComponent({ name: 'InstanceAiConversation' })
-			.props('beforeSend') as () => Promise<void>;
-
-		const send = prepareSend();
-		await nextTick();
-		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
-
-		runtime.isSendingMessage = true;
-		preparation.resolve();
-		await send;
-		runtime.isStreaming = true;
-		runtime.isSendingMessage = false;
-		await nextTick();
-		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([true]);
-
-		runtime.isStreaming = false;
-		await nextTick();
-		expect(wrapper.emitted('update:processing')?.at(-1)).toEqual([false]);
-	});
-
 	it('emits update:building false on unmount so a host closing the panel mid-build unlocks', async () => {
 		const { emitted, unmount } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
 		await vi.waitFor(() => expect(emitted('update:building')).toBeTruthy());
@@ -558,6 +553,27 @@ describe('InstanceAiChatPanel', () => {
 		await vi.waitFor(() =>
 			expect(getByTestId('conversation-stub').dataset.hasBeforeSend).toBe('true'),
 		);
+	});
+
+	it('hides the full Assistant link when the host disables it', () => {
+		const { queryByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', showOpenFullAssistant: false },
+		});
+		expect(queryByTestId('instance-ai-embed-open-full')).not.toBeInTheDocument();
+	});
+
+	it('reports Assistant activity before an artifact mutation starts', async () => {
+		const runtime = makeThread();
+		store.getOrCreateRuntime.mockReturnValue(runtime);
+		const { emitted } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await flushPromises();
+		runtime.isSendingMessage = true;
+		await flushPromises();
+		expect(emitted('update:working')).toContainEqual([true]);
+		expect(buildingIds.value.size).toBe(0);
+		runtime.isSendingMessage = false;
+		await flushPromises();
+		expect(emitted('update:working')?.at(-1)).toEqual([false]);
 	});
 
 	it('navigates to the full assistant thread view', async () => {

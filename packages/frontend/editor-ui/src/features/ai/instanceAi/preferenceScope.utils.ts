@@ -43,3 +43,35 @@ export function preferenceScopeLabel(
 		{ interpolate: { name: project.name ?? project.id } },
 	);
 }
+
+/**
+ * The words the card's header reads for a saved row: where the preference applies,
+ * in the same words on every turn. A personal project is named by its kind, because
+ * its stored name is an email string. A project the store does not list gets a
+ * neutral name rather than its id.
+ */
+export function preferenceSavedLabel(
+	i18n: I18n,
+	scope: AiPreferenceScope,
+	projectId: string | null,
+	myProjects: ProjectListItem[],
+	threadProjectId: string | null = null,
+): string {
+	if (scope === 'user') return i18n.baseText('instanceAi.preferenceCard.saved.justForYou');
+	if (scope === 'instance') return i18n.baseText('instanceAi.preferenceCard.saved.globally');
+
+	const isThreadProject = projectId !== null && projectId === threadProjectId;
+	const project = myProjects.find((candidate) => candidate.id === projectId);
+	const name = project
+		? project.type === 'personal'
+			? i18n.baseText('instanceAi.preferenceCard.saved.namePersonalProject')
+			: (project.name ?? project.id)
+		: i18n.baseText(
+				isThreadProject
+					? 'instanceAi.preferenceCard.saved.nameThisProject'
+					: 'instanceAi.preferenceCard.saved.nameAnotherProject',
+			);
+	return i18n.baseText('instanceAi.preferenceCard.saved.forProject', {
+		interpolate: { name },
+	});
+}

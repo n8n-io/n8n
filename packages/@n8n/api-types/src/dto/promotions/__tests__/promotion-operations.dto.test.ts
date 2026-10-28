@@ -9,12 +9,12 @@ import {
 } from '../promotion-operations.dto';
 
 describe('PromotePackageDto', () => {
-	it('requires a non-blank commit message and accepts an optional force flag', () => {
+	it('accepts an optional non-blank commit message and an optional force flag', () => {
+		expect(PromotePackageDto.safeParse({}).success).toBe(true);
 		expect(PromotePackageDto.safeParse({ commitMessage: 'Update projects' }).success).toBe(true);
 		expect(PromotePackageDto.safeParse({ commitMessage: 'Update', force: true }).success).toBe(
 			true,
 		);
-		expect(PromotePackageDto.safeParse({}).success).toBe(false);
 		expect(PromotePackageDto.safeParse({ commitMessage: '   ' }).success).toBe(false);
 	});
 
@@ -27,7 +27,7 @@ describe('PromotePackageDto', () => {
 });
 
 describe('ContinueApplyPackageDto', () => {
-	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
 	it('accepts the reviewed source identity', () => {
 		expect(ContinueApplyPackageDto.parse({ expectedSource })).toEqual({ expectedSource });
@@ -40,13 +40,18 @@ describe('ContinueApplyPackageDto', () => {
 		});
 	});
 
+	it('accepts a confirmation of destructive data table changes', () => {
+		const body = { expectedSource, confirmDestructiveChanges: true };
+		expect(ContinueApplyPackageDto.parse(body)).toEqual(body);
+	});
+
 	it.each([
 		{},
 		{ expectedSource: {} },
 		{ expectedSource, force: true },
 		{ expectedSource, workflowIds: [] },
 		{ expectedSource: { ...expectedSource, resolved: true } },
-		{ expectedSource: { ...expectedSource, configId: '' } },
+		{ expectedSource: { ...expectedSource, environmentId: '' } },
 		{ expectedSource: { ...expectedSource, branchName: '' } },
 	])('rejects missing or unsupported fields: %j', (body) => {
 		expect(ContinueApplyPackageDto.safeParse(body).success).toBe(false);
@@ -71,7 +76,7 @@ describe('ContinueApplyPackageDto', () => {
 });
 
 describe('ApplyPackageDto', () => {
-	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
 	it('accepts a request without a source and one with the reviewed source', () => {
 		expect(ApplyPackageDto.parse({})).toEqual({});
@@ -82,6 +87,7 @@ describe('ApplyPackageDto', () => {
 		{ force: true },
 		{ expectedSource: {} },
 		{ expectedSource: { ...expectedSource, commitSha: 'HEAD' } },
+		{ expectedSource, confirmDestructiveChanges: true },
 	])('rejects unsupported or incomplete fields: %j', (body) => {
 		expect(ApplyPackageDto.safeParse(body).success).toBe(false);
 	});
@@ -92,7 +98,7 @@ describe.each([
 	{ name: 'ContinueApplySelectionDto', dto: ContinueApplySelectionDto },
 ])('$name', ({ dto }) => {
 	const workflowIds = ['workflow1', 'workflow2'];
-	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
 	it('rejects an empty workflow list', () => {
 		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
@@ -142,21 +148,36 @@ describe('ApplySelectionDto', () => {
 		const workflowIds = ['workflow1'];
 		expect(ApplySelectionDto.parse({ workflowIds })).toEqual({ workflowIds });
 	});
+
+	it('rejects a confirmation of destructive data table changes', () => {
+		expect(
+			ApplySelectionDto.safeParse({ workflowIds: ['workflow1'], confirmDestructiveChanges: true })
+				.success,
+		).toBe(false);
+	});
 });
 
 describe('ContinueApplySelectionDto', () => {
 	it('requires the reviewed source', () => {
 		expect(ContinueApplySelectionDto.safeParse({ workflowIds: ['workflow1'] }).success).toBe(false);
 	});
+
+	it('accepts a confirmation of destructive data table changes', () => {
+		const body = {
+			workflowIds: ['workflow1'],
+			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
+			confirmDestructiveChanges: true,
+		};
+		expect(ContinueApplySelectionDto.parse(body)).toEqual(body);
+	});
 });
 
 describe('ApplyPackageResultDto', () => {
 	const identity = {
-		connectionId: 'connection1',
-		configId: 'config1',
+		environmentId: 'env1',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	};
-	const preflight = {
+	const check = {
 		missingProjects: [],
 		missingBindings: [],
 		accessRequirements: [],
@@ -168,10 +189,10 @@ describe('ApplyPackageResultDto', () => {
 		expect(ApplyPackageResultDto.name).toBe('ApplyPackageResultDto');
 		expect(ApplyPackageResultDto.schema).toBe(applyPackageResultSchema);
 		expect(
-			ApplyPackageResultDto.parse({ ...identity, status: 'blocked', preflight, counts: {} }),
-		).toEqual({ ...identity, status: 'blocked', preflight });
+			ApplyPackageResultDto.parse({ ...identity, status: 'blocked', check, counts: {} }),
+		).toEqual({ ...identity, status: 'blocked', check });
 		expect(
-			ApplyPackageResultDto.parse({ ...identity, status: 'source-changed', preflight, counts: {} }),
+			ApplyPackageResultDto.parse({ ...identity, status: 'source-changed', check, counts: {} }),
 		).toEqual({ ...identity, status: 'source-changed' });
 	});
 
@@ -179,7 +200,7 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity },
 		{ ...identity, status: 'unknown' },
 		{ ...identity, status: 'blocked' },
-		{ ...identity, status: 'blocked', preflight: { ...preflight, missingProjects: undefined } },
+		{ ...identity, status: 'blocked', check: { ...check, missingProjects: undefined } },
 		{ ...identity, status: 'applied', warnings: [] },
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {

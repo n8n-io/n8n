@@ -6,8 +6,7 @@ type McpContentBlock = CallToolResult['content'][number];
 
 export type McpModelContentPart =
 	| { type: 'text'; text: string }
-	| { type: 'image-data'; data: string; mediaType: string }
-	| { type: 'file-data'; data: string; mediaType: string };
+	| { type: 'file'; data: { type: 'data'; data: string }; mediaType: string };
 
 export function hasMcpMediaContent(content: McpContentBlock[]): boolean {
 	return content.some(
@@ -67,8 +66,8 @@ function mcpBlockToModelPart(block: McpContentBlock): McpModelContentPart | unde
 
 	if (block.type === 'image' && block.data) {
 		return {
-			type: 'image-data',
-			data: block.data,
+			type: 'file',
+			data: { type: 'data', data: block.data },
 			mediaType: block.mimeType || 'image/png',
 		};
 	}
@@ -76,8 +75,8 @@ function mcpBlockToModelPart(block: McpContentBlock): McpModelContentPart | unde
 	if (block.type === 'resource') {
 		if ('blob' in block.resource) {
 			return {
-				type: 'file-data',
-				data: block.resource.blob,
+				type: 'file',
+				data: { type: 'data', data: block.resource.blob },
 				mediaType: block.resource.mimeType ?? 'application/octet-stream',
 			};
 		}

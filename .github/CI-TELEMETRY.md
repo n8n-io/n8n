@@ -85,6 +85,7 @@ return 'blacksmith';
 | Accessibility buckets | `packages/quality/testing/playwright/reporters/a11y-reporter.ts` | Per-bucket axe score, violated rules, violating elements |
 | Build stats | `.github/scripts/send-build-stats.mjs` | Per-package build duration, cache hit/miss, run total |
 | Docker stats | `.github/scripts/send-docker-stats.mjs` | Image size per platform, docker build duration |
+| Dive image efficiency | `packages/quality/efficiency/images/image-efficiency.spec.ts` | Layer content size, estimated waste, efficiency score, and layer count through the shared Playwright reporter |
 | Container stack | `packages/quality/environments/containers/telemetry.ts` | E2E stack startup times per service |
 
 ## Secrets

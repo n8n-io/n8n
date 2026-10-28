@@ -92,11 +92,11 @@ export function suggestReplacementModels(
 
 function formatReplacementGuidance(suggestions: string[]): string {
 	if (suggestions.length === 0) {
-		return 'Use nodes(action="explore-resources") on the chat-model node with its connected credential to list allowed models.';
+		return 'Use get_node_parameter_options on the chat-model node with its connected credential to list allowed models.';
 	}
 	return (
 		`Prefer one of: ${suggestions.map((id) => `"${id}"`).join(', ')}. ` +
-		'Confirm with nodes(action="explore-resources") against the connected credential before repairing.'
+		'Confirm with get_node_parameter_options against the connected credential before repairing.'
 	);
 }
 
@@ -145,11 +145,13 @@ export function buildChatModelFailureGuidance(
 	}
 }
 
-async function loadCatalogWithTimeout(): Promise<ProviderCatalog | undefined> {
+async function loadCatalogWithTimeout(
+	fetch: InstanceAiContext['modelFetch'],
+): Promise<ProviderCatalog | undefined> {
 	let timer: NodeJS.Timeout | undefined;
 	try {
 		return await Promise.race([
-			getCachedCatalog(),
+			getCachedCatalog({ fetch }),
 			new Promise<undefined>((resolve) => {
 				timer = setTimeout(() => resolve(undefined), CATALOG_FETCH_TIMEOUT_MS);
 			}),
@@ -273,7 +275,7 @@ export async function computeUnavailableLocatorIssues(
 		const resourceType = isModel ? 'allowed models' : 'allowed options';
 		issues[entry.name] = [
 			`"${sanitizeForGuidance(entry.currentValue)}" isn't available with the connected credential "${sanitizeForGuidance(credential.name)}". ` +
-				`Pick a value the credential offers instead — use nodes(action="explore-resources") to list ${resourceType}.`,
+				`Pick a value the credential offers instead — use get_node_parameter_options to list ${resourceType}.`,
 		];
 	}
 	return issues;
@@ -309,7 +311,7 @@ export async function computeChatModelValidationIssues(
 
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
-	const catalog = await loadCatalogWithTimeout();
+	const catalog = await loadCatalogWithTimeout(context.modelFetch);
 	const issues = computeCatalogChatModelIssues(node.type, parameters, catalog);
 
 	const entry = resolveChatModelCatalogEntry(node.type);
@@ -390,7 +392,7 @@ export interface ChatModelRecoveryContext {
  * replacement suggestions per node, and n8n-credits availability.
  */
 export async function collectChatModelRecoveryContext(
-	context: Pick<InstanceAiContext, 'credentialService'>,
+	context: Pick<InstanceAiContext, 'credentialService' | 'modelFetch'>,
 	nodes: ReadonlyArray<{ name?: string; type?: string }>,
 	connections: IConnections | Record<string, unknown> | undefined,
 ): Promise<ChatModelRecoveryContext> {
@@ -401,7 +403,7 @@ export async function collectChatModelRecoveryContext(
 		return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
 	}
 
-	const catalog = await loadCatalogWithTimeout();
+	const catalog = await loadCatalogWithTimeout(context.modelFetch);
 	const gatewaySupportByCredType = new Map<string, boolean>();
 	for (const node of nodes) {
 		if (!node.name || !isChatModelNode(node.type)) continue;

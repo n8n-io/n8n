@@ -34,9 +34,12 @@
         "waitTill": {
             "type": "null"
         },
+        "workflowId": {
+            "type": "string"
+        },
         "workflowVersionId": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

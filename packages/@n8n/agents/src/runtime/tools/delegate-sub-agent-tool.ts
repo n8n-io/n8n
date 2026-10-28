@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { cancelDelegatedSubAgent, handleDelegateSubAgent } from './delegate-sub-agent-runner';
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
@@ -8,7 +8,9 @@ import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
 	delegateSubAgentInputSchema,
+	delegateSubAgentModeInputSchema,
 	delegateSubAgentOutputSchema,
+	delegateSubAgentBackgroundOutputSchema,
 	delegateSubAgentSuspendSchema,
 	delegateSubAgentResumeSchema,
 	type CreateDelegateSubAgentToolOptions,
@@ -98,7 +100,11 @@ function resolveDelegateSubAgentDescription(options: CreateDelegateSubAgentToolO
 	const { description } = options;
 	if (typeof description === 'string' && description.trim().length > 0) return description;
 
-	return DEFAULT_DELEGATE_SUB_AGENT_DESCRIPTION;
+	if (!options.runBackgroundSubAgent) return DEFAULT_DELEGATE_SUB_AGENT_DESCRIPTION;
+	return (
+		DEFAULT_DELEGATE_SUB_AGENT_DESCRIPTION +
+		' Foreground mode waits for the result and is the default. Background mode returns a job receipt immediately; the child continues after your turn ends.'
+	);
 }
 
 function resolveDelegateSubAgentSystemInstruction(
@@ -112,14 +118,36 @@ function resolveDelegateSubAgentSystemInstruction(
 	}
 
 	return [
-		`${toolName} runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
+		`${toolName} runs a focused child agent in a fresh, isolated context and returns only its final answer${options.runBackgroundSubAgent ? ' in foreground mode' : ''}. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
 		'Use a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.',
 		...formatAvailableSubAgents(options.availableSubAgents),
 		...formatDelegationPolicyInstructions(options.policy, toolName),
+		...formatDelegationModeInstructions(options, toolName),
 		`WHEN TO USE ${toolName}:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.`,
 		`WHEN NOT TO USE ${toolName}:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.`,
 		`HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. ${inlineProviderToolInstruction}\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.`,
 	].join('\n');
+}
+
+function formatDelegationModeInstructions(
+	options: CreateDelegateSubAgentToolOptions,
+	toolName: string,
+): string[] {
+	if (!options.runBackgroundSubAgent) return [];
+	return [
+		`Use ${toolName} with mode: "foreground" by default. Omit mode for the same behavior. ` +
+			'Use mode: "background" when independent work benefits from parallel execution, ' +
+			'when the task will clearly take substantial time, or when the user explicitly requests background work. ' +
+			'Run independent research workstreams as separate background jobs, even when you need all their results for the final synthesis. ' +
+			'A clearly long task can run in the background even if you have no other work. ' +
+			'If duration is uncertain and no other background condition applies, use foreground mode. ' +
+			'The parallelism limit above applies to foreground runs. Background jobs have separate limits. ' +
+			'A background child can request tool approval through this conversation. Pass all context the child needs. ' +
+			'After a successful launch, continue independent work or end your turn with a short progress message. ' +
+			'Completion triggers a follow-up. A launch receipt does not mean the task is complete. ' +
+			'Do not wait, sleep, or poll for completion. The final answer is the contract; do not expect the full trace. ' +
+			'Ask children with large outputs to write them to the shared workspace and return a summary.',
+	];
 }
 
 /**
@@ -192,14 +220,38 @@ function buildDelegateSubAgentTool(
 				inlineProviderToolInstruction,
 			),
 		)
-		.input(delegateSubAgentInputSchema)
-		.output(delegateSubAgentOutputSchema);
+		.input(
+			resolvedOptions.runBackgroundSubAgent
+				? delegateSubAgentModeInputSchema
+				: delegateSubAgentInputSchema.strict(),
+		)
+		.output(
+			resolvedOptions.runBackgroundSubAgent
+				? z.union([delegateSubAgentOutputSchema, delegateSubAgentBackgroundOutputSchema])
+				: delegateSubAgentOutputSchema,
+		);
 	const handler = async (
 		input: DelegateSubAgentInput,
 		ctx: ToolContext | InterruptibleToolContext,
-	) => await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes);
-	const toModelOutput = (output: z.infer<typeof delegateSubAgentOutputSchema>) =>
-		resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
+	) => {
+		if (input.mode === 'background') {
+			if (!resolvedOptions.runBackgroundSubAgent) {
+				throw new Error('Background delegation is unavailable for this run.');
+			}
+			return await resolvedOptions.runBackgroundSubAgent(input, ctx);
+		}
+		return await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes);
+	};
+	const toModelOutput = (
+		output:
+			| z.infer<typeof delegateSubAgentOutputSchema>
+			| z.infer<typeof delegateSubAgentBackgroundOutputSchema>,
+	) => {
+		if ('answer' in output && resolvedOptions.toModelOutput) {
+			return resolvedOptions.toModelOutput(output);
+		}
+		return output;
+	};
 	if (resolvedOptions.resumeSubAgent) {
 		return toolBuilder
 			.suspend(delegateSubAgentSuspendSchema)
@@ -251,6 +303,9 @@ function buildDelegateToolMetadata(
 			: {}),
 		...(resolvedOptions.runSubAgent !== undefined
 			? { runSubAgent: resolvedOptions.runSubAgent }
+			: {}),
+		...(resolvedOptions.runBackgroundSubAgent !== undefined
+			? { runBackgroundSubAgent: resolvedOptions.runBackgroundSubAgent }
 			: {}),
 		...(resolvedOptions.resumeSubAgent !== undefined
 			? { resumeSubAgent: resolvedOptions.resumeSubAgent }

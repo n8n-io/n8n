@@ -8,7 +8,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'NDV',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
 		test('should show up when double clicked on a node and close when Back to canvas clicked', async ({
@@ -164,9 +164,9 @@ test.describe(
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest');
 			await n8n.ndv.close();
 
-			await n8n.canvas.openNode('Function');
+			await n8n.canvas.openNode('Cron');
 			await n8n.ndv.openSettings();
-			await expect(n8n.ndv.getNodeVersion()).toContainText('Function node version 1');
+			await expect(n8n.ndv.getNodeVersion()).toContainText('Cron node version 1');
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Deprecated');
 			await n8n.ndv.close();
 		});

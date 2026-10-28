@@ -101,6 +101,21 @@ describe('CreateWorkflowPublicDto', () => {
 		}
 	});
 
+	test.each([['v2'], ['v1'], [null], ['unknown']])(
+		'accepts settings.engineType %s but ignores it',
+		(engineType) => {
+			const result = CreateWorkflowPublicDto.safeParse({
+				...validPayload,
+				settings: { ...validPayload.settings, engineType },
+			});
+
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.settings).toEqual({ executionOrder: 'v1' });
+			}
+		},
+	);
+
 	test.each([
 		['accepts', 155, true],
 		['rejects', 156, false],

@@ -39,6 +39,7 @@ import {
 	packSandboxLinkedWorkspacePackages,
 	type WorkspacePackageTarball,
 } from './pack-workspace-sdk';
+import type { VerifiedWorkspaceBundles } from './prebaked-workspace-bundle';
 import {
 	runInSandbox,
 	readFileViaSandbox,
@@ -233,6 +234,15 @@ export const PACKAGE_JSON = buildPackageJson(
 
 let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
+const MAX_INSTALL_OUTPUT_CHARS = 4000;
+
+function tailOutput(output: string): string {
+	const trimmed = output.trim();
+	return trimmed.length > MAX_INSTALL_OUTPUT_CHARS
+		? `…${trimmed.slice(-MAX_INSTALL_OUTPUT_CHARS)}`
+		: trimmed;
+}
+
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
 	root: string,
@@ -266,17 +276,20 @@ export async function linkWorkspaceSdkIfEnabled(
 	const tarballArgs = remotePaths
 		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
 		.join(' ');
-	const install = await runInSandbox(
-		workspace,
-		`npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`,
-		root,
-	);
+	const command = `npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`;
+	const install = await runInSandbox(workspace, command, root);
 	if (install.exitCode !== 0) {
+		// Daytona returns all command output in stdout, so stderr alone is empty there.
+		// npm prints its error summary to stderr, so put stderr last and keep the end of the output.
+		const output = tailOutput([install.stdout, install.stderr].filter(Boolean).join('\n'));
 		logger.error('Failed to link workspace packages into sandbox', {
 			exitCode: install.exitCode,
-			stderr: install.stderr,
+			command,
+			output,
 		});
-		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
+		throw new Error(
+			`Failed to install workspace package tarballs (exit code ${install.exitCode}): ${output}`,
+		);
 	}
 
 	logger.info('Linked workspace packages into sandbox', {
@@ -290,9 +303,11 @@ export async function linkWorkspaceSdkIfEnabled(
 
 /**
  * Runner script that executes a workflow TS file via tsx, calls validate() + toJSON(),
- * and outputs structured JSON to stdout. Executed via: node --import tsx build.mjs ./src/workflow.ts
+ * runs the SDK source lint, and outputs structured JSON to stdout.
+ * Executed via: node --import tsx build.mjs ./src/workflow.ts
  */
-export const BUILD_MJS = `const filePath = process.argv[2] || './src/workflow.ts';
+export const BUILD_MJS = `import { readFileSync } from 'node:fs';
+const filePath = process.argv[2] || './src/workflow.ts';
 try {
   const mod = await import(filePath);
   const wf = mod.default;
@@ -306,7 +321,24 @@ try {
     ? wf.generatePinData().toJSON({ tidyUp: true })
     : undefined;
   const declaredOutputFixtures = declaredOutputJson?.pinData;
-  const warnings = [...(validation.errors || []), ...(validation.warnings || [])];
+  // The host runs the Python rules again with the real runner import policy.
+  let lintWarnings = [];
+  try {
+    const { validateWorkflowBuilder } = await import('@n8n/workflow-sdk');
+    const source = readFileSync(filePath, 'utf8');
+    lintWarnings = validateWorkflowBuilder(wf, { lint: true, source }).lint
+      .filter((issue) => issue.lintTarget !== 'pythonCode')
+      .map((issue) => ({
+        code: issue.code,
+        message: issue.line ? \`line \${issue.line}: \${issue.message}\` : issue.message,
+        nodeName: issue.nodeName,
+        parameterPath: issue.parameterPath,
+        severity: issue.severity,
+      }));
+  } catch {
+    // Lint findings never block a save, so a lint failure must not fail the build.
+  }
+  const warnings = [...(validation.errors || []), ...(validation.warnings || []), ...lintWarnings];
   // Use a replacer to preserve undefined values as null — newCredential() produces
   // NewCredentialImpl which serializes to undefined in toJSON(). Without this,
   // JSON.stringify drops the credential keys entirely and the server can't resolve them.
@@ -459,16 +491,43 @@ async function materializeKnowledgeBaseStep(
 	workspace: SandboxWorkspace,
 	root: string,
 	context: InstanceAiContext,
+	verifiedBundles: VerifiedWorkspaceBundles | undefined,
 ): Promise<void> {
 	await setupStep('materialize-knowledge-base', async () => {
 		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
 		await materializeKnowledgeBaseIntoWorkspace({
 			workspace,
+			verifiedBundles,
 			root,
 			logger: context.logger,
 			templatesArchive: templatesBundle?.archive ?? null,
 		});
 	});
+}
+
+const INITIALIZATION_MARKER = '.sandbox-initialized';
+
+async function readInitializationMarker(workspace: SandboxWorkspace): Promise<{
+	root: string;
+	marker: string | null;
+}> {
+	const root = await setupStep(
+		'resolve-workspace-root',
+		async () => await getWorkspaceRoot(workspace),
+	);
+	const marker = await setupStep(
+		'read-initialization-marker',
+		async () => await readWorkspaceFile(workspace, joinWorkspacePath(root, INITIALIZATION_MARKER)),
+	);
+	return { root, marker };
+}
+
+/**
+ * Whether workspace setup finished in this sandbox. The marker lives in the
+ * sandbox, so a sandbox that the provider recreated reports `false`.
+ */
+export async function isSandboxWorkspaceInitialized(workspace: SandboxWorkspace): Promise<boolean> {
+	return (await readInitializationMarker(workspace)).marker !== null;
 }
 
 /**
@@ -482,24 +541,16 @@ async function materializeKnowledgeBaseStep(
 export async function setupSandboxWorkspace(
 	workspace: SandboxWorkspace,
 	context: InstanceAiContext,
+	options: { verifiedBundles?: VerifiedWorkspaceBundles } = {},
 ): Promise<boolean> {
 	return await traceSandboxOperation(
 		'initialize-workspace',
 		{ processResult: (initialized) => ({ outputs: { initialized, reused: !initialized } }) },
 		async () => {
-			const root = await setupStep(
-				'resolve-workspace-root',
-				async () => await getWorkspaceRoot(workspace),
-			);
-			const markerFile = joinWorkspacePath(root, '.sandbox-initialized');
-
 			// Check marker file for idempotency
-			const marker = await setupStep(
-				'read-initialization-marker',
-				async () => await readWorkspaceFile(workspace, markerFile),
-			);
+			const { root, marker } = await readInitializationMarker(workspace);
 			if (marker !== null) {
-				await materializeKnowledgeBaseStep(workspace, root, context);
+				await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 				return false;
 			}
 
@@ -526,7 +577,7 @@ export async function setupSandboxWorkspace(
 				'write-workspace-files',
 				async () => await writeWorkspaceFiles(workspace, root, files),
 			);
-			await materializeKnowledgeBaseStep(workspace, root, context);
+			await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 
 			// npm install (must run after package.json is in place)
 			await setupStep('install-dependencies', async () => {
@@ -574,7 +625,7 @@ export async function setupSandboxWorkspace(
 					await writeWorkspaceFiles(
 						workspace,
 						root,
-						new Map([['.sandbox-initialized', new Date().toISOString()]]),
+						new Map([[INITIALIZATION_MARKER, new Date().toISOString()]]),
 					),
 			);
 

@@ -12,6 +12,8 @@ export const MCP_APPS_VARIANT_ENABLED = 'variant';
 
 export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write', 'agent:execute'] as const;
 
+export const MCP_SKILL_SCOPES = ['skill:read', 'skill:write'] as const;
+
 /**
  * OAuth scopes a user can grant to an MCP client on the consent screen for
  * the instance-level MCP server. Each scope gates a set of MCP tools; the
@@ -24,6 +26,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'workflow:execute',
 	'execution:read',
 	...MCP_AGENT_SCOPES,
+	...MCP_SKILL_SCOPES,
 	'credential:read',
 	'dataTable:read',
 	'dataTable:write',

@@ -22,6 +22,8 @@ export class FunctionItem implements INodeType {
 		displayName: 'Function Item',
 		name: 'functionItem',
 		hidden: true,
+		deprecated: true,
+		replacedByNodeType: 'n8n-nodes-base.code',
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -33,12 +35,6 @@ export class FunctionItem implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
-			{
-				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
 			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',

@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -8,6 +9,7 @@ import {
 	type QuestionAnswer,
 	type QuestionsResumeData,
 	type QuestionsSuspendPayload,
+	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
@@ -17,23 +19,15 @@ import { z } from 'zod';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 
 const askQuestionsQuestionSchema = z.object({
-	id: z.string().optional().describe('Unique question identifier; defaults to q1, q2, ...'),
-	question: z.string().describe('The question text to display to the user'),
-	type: z
-		.enum(['single', 'multi', 'text'])
-		.describe('single = pick one option, multi = pick many, text = free-form input'),
-	options: z
-		.array(z.string())
-		.optional()
-		.describe('Suggested answers (required for single/multi, ignored for text)'),
+	id: z.string().optional().describe('Defaults to q1, q2, ...'),
+	question: z.string(),
+	type: z.enum(['single', 'multi', 'text']).describe('single or multi select, or free text'),
+	options: z.array(z.string()).optional().describe('Required for single and multi'),
 });
 
 const askQuestionsInputSchema = z.object({
-	questions: z
-		.array(askQuestionsQuestionSchema)
-		.min(1)
-		.describe('All questions to ask the user, batched into a single card'),
-	introMessage: z.string().optional().describe('Brief intro text shown above the questions'),
+	questions: z.array(askQuestionsQuestionSchema).min(1),
+	introMessage: z.string().optional().describe('Short text above the questions'),
 });
 
 type AskQuestionsInput = z.infer<typeof askQuestionsInputSchema>;
@@ -49,7 +43,7 @@ function withDefaultIds(
 ): InteractionQuestion[] {
 	const explicitIds = questions.map((q) => q.id).filter((id): id is string => id !== undefined);
 	if (new Set(explicitIds).size !== explicitIds.length) {
-		throw new UserError('ask_questions: question ids must be unique');
+		throw new UserError('agent_builder_ask_questions: question ids must be unique');
 	}
 
 	const usedIds = new Set(explicitIds);
@@ -90,16 +84,33 @@ function usableAnswers(resumeData: QuestionsResumeData): QuestionAnswer[] | unde
 	return resumeData.answers;
 }
 
+/** What the model must do with unanswered questions. The tool description stays short. */
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result)) return result;
+	if (result.answered === false) {
+		return {
+			...result,
+			nextStep:
+				'The user did not answer the questions. Assume a sensible default for each, and do not ask them again.',
+		};
+	}
+	const answers = Array.isArray(result.answers) ? result.answers : [];
+	if (!answers.some((answer) => isRecord(answer) && answer.skipped === true)) return result;
+	return {
+		...result,
+		nextStep: 'Assume a sensible default for each skipped question, and do not ask it again.',
+	};
+}
+
 export function buildAskQuestionsTool(deps: { track: BuilderTrackFn }): BuiltTool {
 	return new Tool(ASK_QUESTIONS_TOOL_NAME)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_QUESTIONS_TOOL_NAME))
 		.description(
-			'Ask the user one or more questions in a single batched card; the run suspends until ' +
-				'they respond. ALWAYS use this instead of calling it multiple times when you have more ' +
-				'than one question — batch them into one call. Questions are single-select, ' +
-				'multi-select, or free-text. A question is asked at most once — a dismissal or empty ' +
-				'answer means "proceed without this": assume a sensible default and never re-present ' +
-				'it. Returns { answered: false } on dismissal, or { answered: true, answers } otherwise.',
+			'Ask the user questions in one card and suspend until they respond. Batch every ' +
+				'question you need into one call. Ask each question at most once. Results that need ' +
+				'an action carry `nextStep`: follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(askQuestionsInputSchema)
 		.suspend(questionsSuspendPayloadSchema)
 		.resume(questionsResumeSchema)

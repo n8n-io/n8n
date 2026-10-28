@@ -232,7 +232,7 @@ function toggleSuggestions() {
 .heading {
 	color: var(--text-color);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
 }
 
@@ -303,7 +303,7 @@ function toggleSuggestions() {
 	min-width: 0;
 	overflow: hidden;
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--md);
 	text-overflow: ellipsis;
 	white-space: nowrap;
