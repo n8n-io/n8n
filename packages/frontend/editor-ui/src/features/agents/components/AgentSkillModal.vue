@@ -1255,7 +1255,7 @@ function onRemove() {
 				v-else-if="isPinned && !viewedVersion && data.agentVersions"
 				theme="warning"
 				icon="node-pin"
-				:class="$style.callout"
+				:class="[$style.callout, $style.calloutInset]"
 				data-testid="agent-skill-pinned-bar"
 			>
 				{{
