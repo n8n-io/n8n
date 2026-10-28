@@ -8962,7 +8962,7 @@
 	"agents.list.intro.createBlank": "Create blank",
 	"agents.list.intro.placeholder": "Describe the agent you want to build",
 	"agents.list.intro.templatesLabel": "Or start from a template",
-	"agents.list.actions.newChat": "New chat",
+	"agents.list.actions.newTest": "New test",
 	"agents.list.actions.publish": "Publish",
 	"agents.list.actions.unpublish": "Unpublish",
 	"agents.list.actions.enableMCPAccess": "Enable MCP access",
