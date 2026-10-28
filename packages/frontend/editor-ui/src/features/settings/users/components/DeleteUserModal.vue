@@ -147,41 +147,43 @@ function onDialogOpenUpdate(open: boolean) {
 								<N8nText color="text-dark">{{
 									i18n.baseText('settings.users.transferWorkflowsAndCredentials')
 								}}</N8nText>
+								<div v-if="operation === 'transfer'" class="pt-2xs" @mousedown.stop @click.stop>
+									<N8nText color="text-dark">{{
+										i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
+									}}</N8nText>
+									<ProjectSharing
+										v-model="selectedProject"
+										class="pt-2xs"
+										:search-fn="searchFn"
+										:filter-fn="filterFn"
+										:placeholder="
+											i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+										"
+									/>
+								</div>
 							</template>
 						</N8nRadioGroupItem>
-						<div v-if="operation === 'transfer'" :class="$style.optionInput">
-							<N8nText color="text-dark">{{
-								i18n.baseText('settings.users.transferWorkflowsAndCredentials.user')
-							}}</N8nText>
-							<ProjectSharing
-								v-model="selectedProject"
-								class="pt-2xs"
-								:search-fn="searchFn"
-								:filter-fn="filterFn"
-								:placeholder="
-									i18n.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
-								"
-							/>
-						</div>
 						<N8nRadioGroupItem value="delete">
 							<template #label>
 								<N8nText color="text-dark">{{
 									i18n.baseText('settings.users.deleteWorkflowsAndCredentials')
 								}}</N8nText>
+								<div
+									v-if="operation === 'delete'"
+									class="pt-2xs"
+									data-test-id="delete-data-input"
+									@mousedown.stop
+									@click.stop
+								>
+									<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
+										<N8nInput
+											v-model="deleteConfirmText"
+											:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
+										/>
+									</N8nInputLabel>
+								</div>
 							</template>
 						</N8nRadioGroupItem>
-						<div
-							v-if="operation === 'delete'"
-							:class="$style.optionInput"
-							data-test-id="delete-data-input"
-						>
-							<N8nInputLabel :label="i18n.baseText('settings.users.deleteConfirmationMessage')">
-								<N8nInput
-									v-model="deleteConfirmText"
-									:placeholder="i18n.baseText('settings.users.deleteConfirmationText')"
-								/>
-							</N8nInputLabel>
-						</div>
 					</N8nRadioGroup>
 				</div>
 			</form>
@@ -205,26 +207,11 @@ function onDialogOpenUpdate(open: boolean) {
 	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
 	}
-
-	// Element Plus keeps the radio label on one line. Remove this override
-	// when the radio selection uses the Reka UI design-system component.
-	:global(.el-radio) {
-		max-width: 100%;
-		margin-right: 0;
-		white-space: normal;
-	}
 }
 
 .innerContent {
 	> * {
 		margin-bottom: var(--spacing--2xs);
 	}
-}
-
-.optionInput {
-	// The radio group aligns its children to the start.
-	// Stretch this block so the fields use the full width.
-	align-self: stretch;
-	padding-left: var(--spacing--lg);
 }
 </style>
