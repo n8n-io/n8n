@@ -20,6 +20,7 @@ const uuid = computed(() => props.id ?? generatedId);
 const groupContext = injectRadioGroupRootContext(null);
 const arrowKeyPressed = inject(radioGroupArrowKeyPressedKey, null);
 const isVertical = computed(() => (groupContext?.orientation.value ?? 'vertical') === 'vertical');
+const hasLabel = computed(() => Boolean(props.label || props.description || slots.label));
 
 // Completes arrow-key selection when a parent stops keydown propagation — see RadioGroup.vue.
 function onItemFocusIn(event: FocusEvent) {
@@ -43,17 +44,23 @@ function onItemFocusIn(event: FocusEvent) {
 		>
 			<RadioGroupIndicator :class="$style.dot" />
 		</RekaRadioGroupItem>
-		<Label
-			v-if="label || description || !!slots.label"
-			:for="uuid"
-			:class="$style.content"
-			:data-disabled="disabled ? '' : undefined"
-		>
-			<slot name="label" :label="label" :description="description">
-				<span :class="$style.label">{{ label }}</span>
-				<span v-if="description" :class="$style.description">{{ description }}</span>
-			</slot>
-		</Label>
+		<div v-if="hasLabel || slots.content" :class="$style.body">
+			<Label
+				v-if="hasLabel"
+				:for="uuid"
+				:class="$style.content"
+				:data-disabled="disabled ? '' : undefined"
+			>
+				<slot name="label" :label="label" :description="description">
+					<span :class="$style.label">{{ label }}</span>
+					<span v-if="description" :class="$style.description">{{ description }}</span>
+				</slot>
+			</Label>
+			<!-- Keep follow-up fields out of the label so they are not part of the radio name. -->
+			<div v-if="slots.content" :class="$style.followUp">
+				<slot name="content" />
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -66,7 +73,10 @@ function onItemFocusIn(event: FocusEvent) {
 	gap: var(--spacing--2xs);
 	cursor: pointer;
 
-	&:has(.description) {
+	// Top-align the control only when the label column is taller than the control.
+	// A label-only option stays centered.
+	&:has(.description),
+	&:has(.followUp > *) {
 		align-items: flex-start;
 	}
 
@@ -89,7 +99,9 @@ function onItemFocusIn(event: FocusEvent) {
 	cursor: inherit;
 	flex-shrink: 0;
 
-	.item:has(.description) & {
+	// 1px has no spacing token. The offset keeps the control on the first text line.
+	.item:has(.description) &,
+	.item:has(.followUp > *) & {
 		margin-top: 1px;
 	}
 
@@ -127,6 +139,20 @@ function onItemFocusIn(event: FocusEvent) {
 	border-radius: var(--radius--full);
 	background-color: var(--background--surface);
 	transform: translate(-50%, -50%);
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+
+	.itemVertical & {
+		flex: 1;
+	}
+}
+
+.followUp {
+	cursor: auto;
 }
 
 .content {
