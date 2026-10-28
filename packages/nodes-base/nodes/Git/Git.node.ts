@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path';
 import type { ConfigListSummary, LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 import { simpleGit } from 'simple-git';
-import { URL, fileURLToPath } from 'url';
+import { URL } from 'url';
 
 import {
 	addConfigFields,
