@@ -334,7 +334,7 @@ describe('McpClient', () => {
 		});
 
 		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
-			'simulated tool-level error',
+			'MCP server returned an error for tool "get_weather"',
 		);
 	});
 
@@ -408,7 +408,17 @@ describe('McpClient', () => {
 		const result = await new McpClient().execute.call(executeFunctions);
 
 		expect(result).toEqual([
-			[{ json: { error: { message: 'simulated tool-level error' } }, pairedItem: { item: 0 } }],
+			[
+				{
+					json: {
+						error: {
+							message: 'MCP server returned an error for tool "get_weather"',
+							description: expect.stringContaining('simulated tool-level error'),
+						},
+					},
+					pairedItem: { item: 0 },
+				},
+			],
 		]);
 	});
 
@@ -429,9 +439,10 @@ describe('McpClient', () => {
 			content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
 		});
 
-		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
-			'Tool "get_weather" returned an error',
-		);
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toMatchObject({
+			message: 'MCP server returned an error for tool "get_weather"',
+			description: expect.stringContaining('Tool "get_weather" returned an error'),
+		});
 	});
 
 	it('should throw an error if the tool call fails', async () => {
