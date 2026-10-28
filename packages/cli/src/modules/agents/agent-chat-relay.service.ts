@@ -15,7 +15,7 @@ import { sendStreamToResponse } from '@/response-helper';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
@@ -32,7 +32,7 @@ export type AgentChatStream = ReturnType<AgentChatRelayService['createChatStream
 export class AgentChatRelayService {
 	constructor(
 		private readonly messageQueue: AgentMessageQueueService,
-		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
+		private readonly queuedPreviewStreams: AgentQueuedTestStreamService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
@@ -128,7 +128,7 @@ export class AgentChatRelayService {
 		const delivery = initSseStream(res);
 		const { send, abortSignal } = delivery;
 		let accepted = false;
-		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
+		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
 		let attachments: StoredAttachmentRef[] | undefined;
 		try {
 			const input = await accept(send, abortSignal);

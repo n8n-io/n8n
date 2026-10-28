@@ -8,13 +8,13 @@ import { mock } from 'vitest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
-import { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { initSseStream } from '../agent-sse-stream';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 
-describe('AgentQueuedPreviewStreamService', () => {
+describe('AgentQueuedTestStreamService', () => {
 	const publisher = mock<Publisher>();
 	const subscriber = mock<Subscriber>();
 	const publisherClient = mock<Redis>({ status: 'ready' });
@@ -22,7 +22,7 @@ describe('AgentQueuedPreviewStreamService', () => {
 	let publisherEvents: EventEmitter;
 	let subscriberEvents: EventEmitter;
 	const repository = mock<AgentMessageQueueRepository>();
-	let service: AgentQueuedPreviewStreamService;
+	let service: AgentQueuedTestStreamService;
 	let stream: ReturnType<typeof initSseStream>;
 
 	beforeEach(() => {
@@ -39,7 +39,7 @@ describe('AgentQueuedPreviewStreamService', () => {
 			subscriberEvents.on(event, listener);
 			return subscriberClient;
 		});
-		service = new AgentQueuedPreviewStreamService(
+		service = new AgentQueuedTestStreamService(
 			publisher,
 			mock<InstanceSettings>({ isMultiMain: true }),
 			repository,
@@ -173,7 +173,7 @@ describe('AgentQueuedPreviewStreamService', () => {
 		'closes a remote running stream after relay loss: %s',
 		async (failure) => {
 			vi.useFakeTimers();
-			const receiver = new AgentQueuedPreviewStreamService(
+			const receiver = new AgentQueuedTestStreamService(
 				mock<Publisher>({ getClient: vi.fn(() => mock<Redis>({ status: 'ready' })) }),
 				mock<InstanceSettings>({ isMultiMain: true }),
 				repository,

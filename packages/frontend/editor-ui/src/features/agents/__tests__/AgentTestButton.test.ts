@@ -43,8 +43,8 @@ async function renderComponent(
 		validationIssues?: AgentConfigValidationIssue[];
 	} = { isRunnable: true },
 ) {
-	const { default: AgentPreviewButton } = await import('../components/AgentPreviewButton.vue');
-	return mount(AgentPreviewButton, {
+	const { default: AgentTestButton } = await import('../components/AgentTestButton.vue');
+	return mount(AgentTestButton, {
 		props: { testId: 'preview-agent-button', ...props },
 		global: { stubs: STUBS },
 	});
@@ -54,7 +54,7 @@ async function renderComponent(
 // default 5 s budget when the whole suite is in flight. Later tests hit the cached module.
 vi.setConfig({ testTimeout: 30_000 });
 
-describe('AgentPreviewButton', () => {
+describe('AgentTestButton', () => {
 	it('blocks the preview while a policy restricts a tool node type', async () => {
 		const wrapper = await renderComponent({
 			isRunnable: false,

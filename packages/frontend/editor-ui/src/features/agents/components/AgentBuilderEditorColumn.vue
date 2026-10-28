@@ -33,7 +33,7 @@ import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
-import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentTestButton from './AgentTestButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
@@ -201,7 +201,7 @@ defineExpose({ onSetupTaskAction });
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
-					<AgentPreviewButton
+					<AgentTestButton
 						v-if="!props.hidePreviewButton"
 						:disabled-reason="props.previewDisabledReason"
 						:is-runnable="props.agent?.isRunnable === true"
@@ -257,7 +257,7 @@ defineExpose({ onSetupTaskAction });
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
 						<template #header-actions>
-							<AgentPreviewButton
+							<AgentTestButton
 								:disabled-reason="props.previewDisabledReason"
 								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"

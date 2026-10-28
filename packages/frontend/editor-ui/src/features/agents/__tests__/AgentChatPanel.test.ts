@@ -14,8 +14,8 @@ import type {
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
@@ -208,7 +208,7 @@ vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
 	};
 });
 
-vi.mock('../components/AgentPreviewMoreMenu.vue', function mockPreviewMoreMenu() {
+vi.mock('../components/AgentTestMoreMenu.vue', function mockPreviewMoreMenu() {
 	return { default: { template: '<button />' } };
 });
 
@@ -522,7 +522,7 @@ describe('AgentChatPanel', () => {
 					history: createMemoryHistory(),
 					routes: [{ path: '/', component: { template: '<div />' } }],
 				});
-				const wrapper = mount(AgentPreviewChatPage, {
+				const wrapper = mount(AgentTestChatPage, {
 					global: { plugins: [router, i18nInstance] },
 					props: {
 						initialized: true,
@@ -3895,7 +3895,7 @@ describe('AgentChatPanel', () => {
 	});
 });
 
-describe('AgentPreviewDock stream lifecycle', () => {
+describe('AgentTestDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
@@ -3912,7 +3912,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 					const sessionId = ref('session-1');
 					return () =>
 						open.value
-							? h(AgentPreviewDock, {
+							? h(AgentTestDock, {
 									isOpen: true,
 									sessionTitle: 'Session',
 									sessionOptions: [],

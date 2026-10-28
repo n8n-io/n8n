@@ -14,7 +14,7 @@ import { z } from 'zod';
 import {
 	AGENT_PREVIEW_SESSION_METADATA_KEY,
 	type AgentPreviewSession,
-} from './agent-preview-session-binding';
+} from './agent-test-session-binding';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 

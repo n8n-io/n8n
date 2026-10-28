@@ -22,8 +22,8 @@ import type {
 	AgentResource,
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
-import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
-import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
+import AgentTestChatPage from './AgentTestChatPage.vue';
+import AgentTestMoreMenu from './AgentTestMoreMenu.vue';
 import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
 
 interface SessionOption {
@@ -51,6 +51,7 @@ const props = withDefaults(
 		localConfig: AgentJsonConfig | null;
 		connectedTriggers: string[];
 		isOpen: boolean;
+		overlay?: boolean;
 		inline?: boolean;
 		closable?: boolean;
 		placeholder?: string;
@@ -68,6 +69,7 @@ const props = withDefaults(
 	}>(),
 	{
 		newSession: false,
+		overlay: false,
 		canDeleteSession: false,
 		isDeletingSession: false,
 		dismissedFixToolCallIds: () => [],
@@ -111,11 +113,10 @@ const {
 	isExporting,
 	sendSession,
 } = useAgentSessionLangSmithExport();
-const previewChatPage =
-	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
 const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 const layout = computed<PreviewLayout>(() =>
-	!props.inline && storedLayout.value === PreviewLayout.Fullpage
+	!props.inline && !props.overlay && storedLayout.value === PreviewLayout.Fullpage
 		? PreviewLayout.Fullpage
 		: PreviewLayout.Docked,
 );
@@ -165,6 +166,7 @@ function clearBudgetStops(fields: BudgetAmountField[]) {
 }
 
 function toggleFullWidth() {
+	if (props.overlay) return;
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
@@ -219,7 +221,14 @@ defineExpose({ clearBudgetStops });
 <template>
 	<aside
 		ref="dock"
-		:class="[$style.dock, { [$style.open]: props.isOpen, [$style.inline]: props.inline }]"
+		:class="[
+			$style.dock,
+			{
+				[$style.open]: props.isOpen,
+				[$style.inline]: props.inline,
+				[$style.overlay]: props.overlay,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
@@ -281,7 +290,7 @@ defineExpose({ clearBudgetStops });
 						/>
 					</KeyboardShortcutTooltip>
 
-					<AgentPreviewMoreMenu
+					<AgentTestMoreMenu
 						:project-id="props.projectId"
 						:agent-id="props.agentId"
 						:effective-session-id="props.effectiveSessionId"
@@ -289,7 +298,7 @@ defineExpose({ clearBudgetStops });
 						:can-delete-session="props.canDeleteSession"
 						:is-deleting-session="props.isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
-						:hide-layout-toggle="props.inline"
+						:hide-layout-toggle="props.inline || props.overlay"
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
@@ -317,7 +326,7 @@ defineExpose({ clearBudgetStops });
 				</div>
 			</header>
 
-			<AgentPreviewChatPage
+			<AgentTestChatPage
 				ref="previewChatPage"
 				:visible="props.isOpen"
 				:placeholder="props.placeholder"
@@ -350,7 +359,7 @@ defineExpose({ clearBudgetStops });
 				<template v-if="$slots['composer-footer']" #composer-footer>
 					<slot name="composer-footer" />
 				</template>
-			</AgentPreviewChatPage>
+			</AgentTestChatPage>
 		</div>
 	</aside>
 </template>
@@ -410,6 +419,20 @@ defineExpose({ clearBudgetStops });
 .fullpage {
 	width: 100%;
 	border-left: 0;
+}
+
+.overlay {
+	width: 100%;
+
+	.dockInner {
+		width: 100%;
+		border-left: 0;
+		transform: translateX(-100%);
+	}
+
+	&.open .dockInner {
+		transform: translateX(0);
+	}
 }
 
 .header {

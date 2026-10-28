@@ -1,11 +1,11 @@
 import { OPEN_PREVIEW_PARAM } from '../constants';
 
-export interface AgentPreviewTarget {
+export interface AgentTestTarget {
 	projectId: string;
 	agentId: string;
 }
 
-export interface AgentPreviewLinkTarget extends AgentPreviewTarget {
+export interface AgentTestLinkTarget extends AgentTestTarget {
 	href: string;
 }
 
@@ -21,7 +21,7 @@ function decodePathSegment(value: string): string {
 	}
 }
 
-export function buildAgentPreviewHref(
+export function buildAgentTestHref(
 	projectId: string,
 	agentId: string,
 	queryParams?: URLSearchParams,
@@ -31,10 +31,10 @@ export function buildAgentPreviewHref(
 	return `/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}?${searchParams.toString()}`;
 }
 
-export function resolveAgentPreviewLink(
+export function resolveAgentTestLink(
 	href: string,
 	origin = window.location.origin,
-): AgentPreviewLinkTarget | undefined {
+): AgentTestLinkTarget | undefined {
 	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
 	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
 	if (!isRootRelative && !isAbsolute) return undefined;
