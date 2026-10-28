@@ -32,12 +32,15 @@ async function countInChunks(text: string, countChunk: (chunk: string) => number
 }
 
 // Split before whitespace, where BPE pre-tokens begin, so chunk counts add up to the full count.
+// Without whitespace, never split a surrogate pair.
 function findChunkEnd(text: string, start: number): number {
 	const limit = start + TOKEN_COUNT_CHUNK_CHARS;
 	if (limit >= text.length) return text.length;
 	for (let index = limit - 1; index > start; index--) {
 		if (/\s/.test(text[index])) return index;
 	}
+	const lastCode = text.charCodeAt(limit - 1);
+	if (lastCode >= 0xd800 && lastCode <= 0xdbff) return limit - 1;
 	return limit;
 }
 
