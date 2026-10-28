@@ -1,0 +1,32 @@
+packages/@n8n/telemetry/src/__tests__/catalog.test.ts
+  s_bae59719d51263::t_6ee4ec2c9c3b78 78-79
+packages/@n8n/instance-ai/src/runtime/instance-context-state.ts
+  s_bae59719d51263::t_6ee4ec2c9c3b78 23
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skill-telemetry.test.ts
+  s_bae59719d51263::t_6ee4ec2c9c3b78 39,91,131
+packages/@n8n/agents/src/skills/types.ts
+  s_bae59719d51263::t_6ee4ec2c9c3b78 214
+packages/@n8n/telemetry/assistant-hub-skills.md
+  s_bae59719d51263::t_6ee4ec2c9c3b78 32
+packages/@n8n/agents/src/runtime/__tests__/active-skills.test.ts
+  s_bae59719d51263::t_4c12824c65db4e 599-600
+  s_bae59719d51263::t_6ee4ec2c9c3b78 598
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_bae59719d51263::t_8d67a192121761 1839-1840,1849-1854,1862,1865-1877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6ad726eeac042193c9e4843cd454793a333c7ce",
+  "prompts": {},
+  "sessions": {
+    "s_bae59719d51263": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17d82-6e09-7c92-b990-91908db587a8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
