@@ -3,6 +3,7 @@ export { V1StepExecutor } from './v1-step-executor';
 export { createEngineStepDataLoader } from './engine-step-data-loader';
 export { fromStepInputs, toStepOutputs } from './io';
 export { toV1RunExecutionData } from './v1-execution-read';
+export type { ExecutionLinks, LinkedExecution } from './v1-execution-read';
 export {
 	AmbiguousTriggerError,
 	NotATriggerError,
