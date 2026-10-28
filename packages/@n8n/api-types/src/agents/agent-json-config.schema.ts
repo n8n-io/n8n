@@ -589,7 +589,7 @@ declare const storedSkillRefsBrand: unique symbol;
 
 /**
  * Opaque type of the legacy `skills` key in a stored config. Nothing reads
- * or writes this key: the skill refs live in the skills hub tables. The data
+ * or writes this key: the skill refs live in the skill tables. The data
  * migration removes the key from stored configs.
  */
 export interface OpaqueStoredSkillRefs {

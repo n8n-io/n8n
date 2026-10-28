@@ -13,7 +13,7 @@ recommended_tools:
   - execute_node
   - get_node_types
   - workflow_builder_build_workflow
-  - workflow_builder_workflows
+  - setup_workflow
   - workflow_builder_executions
   - workflow_builder_ask_user
   - workflow_builder_verify_built_workflow
@@ -107,7 +107,7 @@ cannot write to external services directly) — the intent changes the
    as optional in the build outcome — no verification follow-up is scheduled,
    and the completion criterion becomes a live run whose output you read back.
 2. **Setup** is unchanged: if the build outcome requires credential or value
-   setup, route it through `workflow_builder_workflows(action="setup")` as usual. A one-off
+   setup, route it through `setup_workflow` as usual. A one-off
    still needs real credentials before it can run live.
 3. **Run live** with `workflow_builder_executions(action="run")`. The run-approval card is the
    user's consent gate — for a one-off, the live run IS what the user asked

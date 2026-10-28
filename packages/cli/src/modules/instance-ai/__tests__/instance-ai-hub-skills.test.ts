@@ -5,11 +5,11 @@ import {
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { AssistantSkillContent, AssistantSkillProvider } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { loadHubRunSkills } from '../instance-ai-hub-skills';
+import { loadHubRunSkills, type AssistantSkillReader } from '../instance-ai-hub-skills';
+import type { AssistantSkillContent } from '@/modules/skills';
 
 const builtIn = {
 	id: 'workflow-builder',
@@ -39,7 +39,7 @@ function content(overrides: Partial<SavedSkill> = {}): SavedSkill {
 }
 
 function providerFor(contents: SavedSkill[]) {
-	const provider = mock<AssistantSkillProvider>();
+	const provider = mock<AssistantSkillReader>();
 	provider.isEnabled.mockResolvedValue(true);
 	provider.listSkills.mockResolvedValue(
 		contents.map(

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import type { SkillListItem, SkillUsage } from '@n8n/api-types';
+import type { SkillListItem, SkillUsedBy } from '@n8n/api-types';
 import { N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -22,7 +22,7 @@ const router = useRouter();
 const skillsStore = useSkillsStore();
 const { showError } = useToast();
 
-const usage = ref<SkillUsage | null>(null);
+const usage = ref<SkillUsedBy | null>(null);
 const loading = ref(false);
 
 /** A draft and a published version of the same agent count once, as `usedByAgents` does. */

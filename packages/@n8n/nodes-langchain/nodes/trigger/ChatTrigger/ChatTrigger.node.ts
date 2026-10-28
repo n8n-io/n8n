@@ -958,6 +958,12 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
+		// The GET `setup` route only serves the hosted chat page. Other modes have no handler for it.
+		if (ctx.getWebhookName() === 'setup' && nodeMode !== 'hostedChat') {
+			res.status(404).end();
+			return { noWebhookResponse: true };
+		}
+
 		// Only the editor's session-scoped canvas test route may execute a non-public chat
 		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();

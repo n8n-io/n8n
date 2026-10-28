@@ -26,7 +26,7 @@ import {
 	duplicateAgent,
 	listAttachableSkills,
 	createAgentSkill,
-	getHubSkill,
+	getSkillDetail,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import type { SkillListItem } from '@n8n/api-types';
@@ -69,7 +69,7 @@ describe('useAgentApi', () => {
 		});
 	});
 
-	describe('hub skill requests', () => {
+	describe('skill requests', () => {
 		const skill = { name: 'Tone', description: 'Use for replies', instructions: 'Be kind' };
 
 		it('creates an agent skill with its target, and without one when none is given', async () => {
@@ -122,8 +122,8 @@ describe('useAgentApi', () => {
 			);
 		});
 
-		it('gets one hub skill', async () => {
-			await getHubSkill(restApiContext, 'skill-1');
+		it('gets one skill', async () => {
+			await getSkillDetail(restApiContext, 'skill-1');
 
 			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills/skill-1');
 		});

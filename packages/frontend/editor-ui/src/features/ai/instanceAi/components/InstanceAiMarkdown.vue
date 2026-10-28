@@ -1,17 +1,18 @@
 <script lang="ts" setup>
+import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import {
-	buildAgentPreviewHref,
-	resolveAgentPreviewLink,
-	type AgentPreviewTarget,
-} from '@/features/agents/utils/agentPreviewUrl';
+	buildAgentTestHref,
+	resolveAgentTestLink,
+	type AgentTestTarget,
+} from '@/features/agents/utils/agentTestUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const props = defineProps<{
 	content: string;
-	agentPreviewTarget?: AgentPreviewTarget;
+	agentPreviewTarget?: AgentTestTarget;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
 	 * the resource-name decoration — O(content × resources), re-run on every
@@ -24,6 +25,7 @@ const props = defineProps<{
 }>();
 
 const thread = useThread();
+const i18n = useI18n();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
 
@@ -284,13 +286,13 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 }
 
 function resolveContextualAgentPreviewLink(href: string) {
-	const resolved = resolveAgentPreviewLink(href);
+	const resolved = resolveAgentTestLink(href);
 	if (!resolved || !props.agentPreviewTarget) return resolved;
 	const resolvedUrl = new URL(resolved.href, window.location.origin);
 
 	return {
 		...props.agentPreviewTarget,
-		href: buildAgentPreviewHref(
+		href: buildAgentTestHref(
 			props.agentPreviewTarget.projectId,
 			props.agentPreviewTarget.agentId,
 			resolvedUrl.searchParams,
@@ -318,6 +320,13 @@ function enhanceResourceLinks(): void {
 		if (link.dataset.resourceChip || link.dataset.agentPreviewId) continue;
 
 		const href = link.getAttribute('href') ?? '';
+		if (
+			embedSubject?.value.type === 'agent' &&
+			resolveContextualAgentPreviewLink(href) &&
+			link.textContent === 'Preview'
+		) {
+			link.textContent = i18n.baseText('agents.builder.chatMode.test');
+		}
 
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table|agent)\/(.+)$/.exec(
@@ -391,6 +400,7 @@ function enhanceResourceLinks(): void {
  *
  * Click behavior:
  * - An agent Preview link opens the embedded agent chat.
+ * - Cmd/Ctrl+click preserves link navigation in the embedded builder.
  * - Cmd/Ctrl+click on other links opens a new tab.
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
@@ -403,6 +413,8 @@ function handleLinkClick(event: MouseEvent): void {
 
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
+
+	if (embedSubject?.value.type === 'agent' && (event.metaKey || event.ctrlKey)) return;
 
 	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
 	if (previewTarget && openAgentChatPreview) {
