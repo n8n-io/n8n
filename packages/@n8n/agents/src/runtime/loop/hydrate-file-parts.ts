@@ -1,10 +1,5 @@
 import type { BuiltFileStore } from '../../types/sdk/file-store';
-import {
-	isTextMediaType,
-	toolOutputFileParts,
-	type AgentDbMessage,
-	type ContentFile,
-} from '../../types/sdk/message';
+import { toolOutputFileParts, type AgentDbMessage, type ContentFile } from '../../types/sdk/message';
 
 /** Only the newest file parts are hydrated; older ones stay reference-only. */
 export const MAX_HYDRATED_FILE_PARTS = 20;
@@ -47,9 +42,8 @@ export async function hydrateFileParts(
 		for (const block of message.content) {
 			if (block.type === 'file' && block.fileRef) collect(block, isSupported(block.mediaType));
 			if (block.type === 'tool-call' && block.state === 'resolved') {
-				// The model gets a text file from a tool as text, so no file support is needed.
 				for (const part of toolOutputFileParts(block.output)) {
-					collect(part, isTextMediaType(part.mediaType) || isSupported(part.mediaType));
+					collect(part, isSupported(part.mediaType));
 				}
 			}
 		}

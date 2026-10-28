@@ -1,3 +1,5 @@
+import { text } from 'node:stream/consumers';
+
 import { isTextMediaType } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
@@ -20,6 +22,8 @@ const outputSchema = z.object({
 	fileName: z.string(),
 	mimeType: z.string(),
 	sizeBytes: z.number(),
+	/** The content of a text file. Images and PDFs have no text. */
+	text: z.string().optional(),
 });
 
 export function createReadBinaryDataTool({
@@ -43,13 +47,22 @@ export function createReadBinaryDataTool({
 			if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
 
 			const { mimeType } = file;
+			const metadata = {
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType,
+				sizeBytes: file.fileSizeBytes,
+			};
 			if (isTextMediaType(mimeType)) {
 				if (file.fileSizeBytes > MAX_TEXT_FILE_BYTES) {
 					throw new UserError(
 						`File "${fileId}" is too large to read as text. The limit is ${MAX_TEXT_FILE_BYTES} bytes`,
 					);
 				}
-			} else if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
+				// Text goes into the tool result one time, so the tool result guard limits it and later model calls do not load it again.
+				return { ...metadata, text: await text(await attachmentService.getStream(file)) };
+			}
+			if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
 				if (!isAttachmentMediaTypeSupported(provider, mimeType)) {
 					throw new UserError(`This model cannot read files of type "${mimeType}"`);
 				}
@@ -59,23 +72,20 @@ export function createReadBinaryDataTool({
 				);
 			}
 
-			return {
-				fileId: file.id,
-				fileName: file.fileName,
-				mimeType,
-				sizeBytes: file.fileSizeBytes,
-			};
+			return metadata;
 		})
-		.toModelOutput((output) => ({
+		.toModelOutput(({ text: content, ...output }) => ({
 			type: 'content',
 			value: [
 				{ type: 'text', text: JSON.stringify(output) },
-				// The runtime loads the bytes before each model call.
-				{
-					type: 'file',
-					mediaType: output.mimeType,
-					fileRef: { id: output.fileId, fileName: output.fileName, sizeBytes: output.sizeBytes },
-				},
+				content !== undefined
+					? { type: 'text', text: content }
+					: // The runtime loads the bytes before each model call.
+						{
+							type: 'file',
+							mediaType: output.mimeType,
+							fileRef: { id: output.fileId, fileName: output.fileName, sizeBytes: output.sizeBytes },
+						},
 			],
 		}));
 }

@@ -25,7 +25,7 @@ import type {
 	Message,
 	MessageContent,
 } from '../../types/sdk/message';
-import { isFileRefPart, isTextMediaType, toolOutputFileParts } from '../../types/sdk/message';
+import { isFileRefPart, toolOutputFileParts } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
 // Used across all message roles; AssistantContent omits user images and tool approval responses.
@@ -275,11 +275,6 @@ function toAiContent(
 	return base;
 }
 
-function fileDataToText(data: NonNullable<ContentFile['data']>): string {
-	if (typeof data === 'string') return Buffer.from(data, 'base64').toString('utf8');
-	return new TextDecoder().decode(data);
-}
-
 /**
  * Text for a file that a tool read for the model and that is outside the
  * hydration budget now. Keep it stable, so the prompt prefix stays cached.
@@ -291,8 +286,7 @@ function viewedFileText(part: ContentFileWithRef): string {
 
 /**
  * Map file parts with a `fileRef` in a tool output to AI SDK parts. A loaded
- * text file becomes text, other loaded files become file parts, and a part
- * without data becomes a short text.
+ * file becomes a file part, and a part without data becomes a short text.
  */
 function toModelContentOutput(output: ContentToolResultOutput): ContentToolResultOutput {
 	if (toolOutputFileParts(output).length === 0) return output;
@@ -305,9 +299,6 @@ function toModelContentOutput(output: ContentToolResultOutput): ContentToolResul
 			const options = candidate.providerOptions && { providerOptions: candidate.providerOptions };
 			if (candidate.data === undefined) {
 				return { type: 'text', text: viewedFileText(candidate), ...options };
-			}
-			if (isTextMediaType(candidate.mediaType)) {
-				return { type: 'text', text: fileDataToText(candidate.data), ...options };
 			}
 			return {
 				type: 'file',

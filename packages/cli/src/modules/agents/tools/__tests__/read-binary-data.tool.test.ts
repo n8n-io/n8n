@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
@@ -51,13 +53,34 @@ describe('createReadBinaryDataTool', () => {
 		});
 	});
 
-	it.each(['application/pdf', 'text/csv', 'application/json'])('reads %s', async (mimeType) => {
-		attachmentService.getReadable.mockResolvedValue(file({ mimeType }));
+	it('reads a PDF', async () => {
+		attachmentService.getReadable.mockResolvedValue(file({ mimeType: 'application/pdf' }));
 
 		await expect(build().handler!({ fileId: 'file-1' }, ctx)).resolves.toMatchObject({
-			mimeType,
+			mimeType: 'application/pdf',
 		});
 	});
+
+	it.each(['text/csv', 'application/json'])(
+		'returns a %s file as text in the tool result',
+		async (mimeType) => {
+			const attachment = file({ mimeType, fileName: 'data.csv' });
+			attachmentService.getReadable.mockResolvedValue(attachment);
+			attachmentService.getStream.mockResolvedValue(Readable.from([Buffer.from('a,b\n1,2')]));
+			const tool = build();
+
+			const output = await tool.handler!({ fileId: 'file-1' }, ctx);
+
+			expect(attachmentService.getStream).toHaveBeenCalledWith(attachment);
+			expect(tool.toModelOutput!(output)).toEqual({
+				type: 'content',
+				value: [
+					{ type: 'text', text: expect.not.stringContaining('a,b') },
+					{ type: 'text', text: 'a,b\n1,2' },
+				],
+			});
+		},
+	);
 
 	it('rejects a file that the thread cannot read', async () => {
 		attachmentService.getReadable.mockResolvedValue(null);

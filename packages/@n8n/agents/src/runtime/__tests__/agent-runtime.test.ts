@@ -12264,34 +12264,4 @@ describe('AgentRuntime — tool output files', () => {
 		expect(saved.join()).toContain('"fileRef":{"id":"file-0"}');
 		expect(saved.join()).not.toContain('"data"');
 	});
-
-	it('sends a text file as text', async () => {
-		const runtime = new AgentRuntime({
-			name: 'tool-file-test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'Test',
-			tools: [
-				{
-					...readTool,
-					handler: async () => ({
-						type: 'content',
-						value: [{ type: 'file', mediaType: 'text/csv', fileRef: { id: 'file-1' } }],
-					}),
-				},
-			],
-			// Text needs no provider support for files.
-			fileStore: {
-				load: vi.fn().mockResolvedValue(new TextEncoder().encode('a,b')),
-				isMediaTypeSupported: () => false,
-			},
-		});
-		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall('call-1', 'read', { fileId: 'file-1' }))
-			.mockResolvedValueOnce(makeGenerateSuccess());
-
-		await runtime.generate('Read the file', { maxIterations: 5 });
-
-		const messages: aiModule.ModelMessage[] = generateText.mock.calls[1][0].messages ?? [];
-		expect(JSON.stringify(messages)).toContain('"text":"a,b"');
-	});
 });

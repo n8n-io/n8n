@@ -56,7 +56,9 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 
 ### `read_binary_data`
 
-- Purpose: Reads a file by its fileId. Images and PDFs go to the model as file parts. Text files go to the model as text. Other types return an error. The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows a short text, and the model can read it again. The tool checks that the thread can read the file.
+- Purpose: Reads a file by its fileId. The tool checks that the thread can read the file. Other types than images, PDFs and text return an error.
+  - Images and PDFs go to the model as file parts. The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows a short text, and the model can read it again.
+  - Text files (up to 200 KB) go into the tool result as text, one time. The tool result size guard applies to them, and later model calls do not load them again.
 - Attach condition: The agent is not an inline agent.
 - Source: [`tools/read-binary-data.tool.ts`](./tools/read-binary-data.tool.ts).
 
