@@ -55,7 +55,7 @@ describe('N8nMemoryImpl memory source messages', () => {
 			toolCallId: 'call-1',
 			content,
 			evidenceText: content,
-			kind: 'preference',
+			replacesEarlier: false,
 		});
 		const entry = await memory.episodic.saveEntryWithSources(
 			{ resourceId: scope.resourceId, content, embedding: [1, 0], embeddingModel: 'test-model' },

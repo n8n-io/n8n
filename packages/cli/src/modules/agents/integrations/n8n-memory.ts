@@ -160,8 +160,9 @@ export class N8nMemoryImpl
 			await this.getEpisodicMemoryEntriesByContentHashes(scope, contentHashes),
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
-		searchEntries: async (scope, query, opts) =>
-			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		// Ranking uses the query embedding in `opts`, not the query text.
+		searchEntries: async (scope, _query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
@@ -734,7 +735,6 @@ export class N8nMemoryImpl
 
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const statuses = opts?.includeStatuses ?? ['active'];
@@ -759,7 +759,6 @@ export class N8nMemoryImpl
 		}
 		return rankEpisodicMemoryEntries(
 			[...newestByContent.values()].map((entity) => this.toEpisodicMemoryEntry(entity)),
-			query,
 			opts,
 		);
 	}
@@ -1035,7 +1034,7 @@ export class N8nMemoryImpl
 			toolCallId: entity.toolCallId,
 			content: entity.content,
 			evidenceText: entity.evidenceText,
-			kind: entity.kind,
+			replacesEarlier: entity.replacesEarlier,
 			status: entity.status,
 			attemptCount: entity.attemptCount,
 			createdAt: entity.createdAt,

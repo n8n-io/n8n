@@ -1,4 +1,4 @@
-import type { EpisodicMemoryCaptureKind, EpisodicMemoryCaptureStatus } from '@n8n/agents';
+import type { EpisodicMemoryCaptureStatus } from '@n8n/agents';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
@@ -33,8 +33,8 @@ export class AgentMemoryEntryCandidateEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	evidenceText: string;
 
-	@Column({ type: 'varchar', length: 32 })
-	kind: EpisodicMemoryCaptureKind;
+	@Column({ type: 'boolean', default: false })
+	replacesEarlier: boolean;
 
 	@Column({ type: 'varchar', length: 16, default: 'pending' })
 	status: EpisodicMemoryCaptureStatus;

@@ -1411,7 +1411,7 @@ describe('N8nMemory', () => {
 				toolCallId: 'call-1',
 				content: 'The Flan recipe uses three eggs.',
 				evidenceText: 'Use three eggs.',
-				kind: 'fact',
+				replacesEarlier: false,
 			});
 			await memory.episodic.getPendingCaptureCandidates(scope);
 
@@ -1524,7 +1524,7 @@ describe('N8nMemory', () => {
 					toolCallId: 'call-1',
 					content: 'The Flan recipe uses three eggs.',
 					evidenceText: 'Use three eggs.',
-					kind: 'fact',
+					replacesEarlier: false,
 				});
 				await memory.episodic.getPendingCaptureCandidates(scope);
 

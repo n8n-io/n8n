@@ -8,7 +8,12 @@ import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
-import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
+import type {
+	AgentExecutionCounter,
+	BuiltTool,
+	JSONObject,
+	NativeToolDeferralConfig,
+} from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
@@ -51,6 +56,16 @@ import {
 import type { ActiveSkills } from '../skills/active-skills';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
+
+/**
+ * The memory instructions tell the model to call these tools by name, so their
+ * input schemas must always be sent. A deferred schema makes the model guess the input.
+ */
+function withEagerMemoryTools(config: NativeToolDeferralConfig): NativeToolDeferralConfig {
+	return {
+		eagerToolNames: [...config.eagerToolNames, RECALL_MEMORY_TOOL_NAME, FLAG_MEMORY_TOOL_NAME],
+	};
+}
 
 /** Wrap tool-instruction fragments in a `<built_in_rules>` block, or `undefined` when there are none. */
 function wrapBuiltInRules(fragments: string[]): string | undefined {
@@ -171,7 +186,7 @@ export class RuntimeContextBuilder {
 			? await applyNativeToolDeferral(
 					catalog,
 					this.nativeToolDeferral,
-					this.config.nativeToolDeferral,
+					withEagerMemoryTools(this.config.nativeToolDeferral),
 				)
 			: { tools: catalog, searchToolName: undefined };
 		const aiToolCount = Object.keys(allTools).length;

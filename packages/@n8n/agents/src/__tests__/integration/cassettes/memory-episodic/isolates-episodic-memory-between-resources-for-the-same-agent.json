@@ -56,21 +56,12 @@
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
 							},
-							"kind": {
-								"type": "string",
-								"enum": [
-									"explicit_remember",
-									"preference",
-									"decision",
-									"fact",
-									"correction",
-									"resolution",
-									"request"
-								],
-								"description": "explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later."
+							"replacesEarlier": {
+								"type": "boolean",
+								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
-						"required": ["content", "evidence", "kind"],
+						"required": ["content", "evidence"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -81,7 +72,7 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgFY2oEtSHWBasSwfxChU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01YTTsRgf93AHNUXHDCPiuYy\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Resource Alpha deployment codename is QUARTZ-RIVER-91.\",\"evidence\":\"the exact deployment codename is QUARTZ-RIVER-91\",\"kind\":\"explicit_remember\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1619,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":116,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgFY2oEtSHWBasSwfxChU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01YTTsRgf93AHNUXHDCPiuYy\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Resource Alpha deployment codename is QUARTZ-RIVER-91.\",\"evidence\":\"the exact deployment codename is QUARTZ-RIVER-91\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1619,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":116,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
@@ -142,8 +133,7 @@
 							"name": "flag_memory",
 							"input": {
 								"content": "Resource Alpha deployment codename is QUARTZ-RIVER-91.",
-								"evidence": "the exact deployment codename is QUARTZ-RIVER-91",
-								"kind": "explicit_remember"
+								"evidence": "the exact deployment codename is QUARTZ-RIVER-91"
 							},
 							"caller": {
 								"type": "direct"
@@ -195,21 +185,12 @@
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
 							},
-							"kind": {
-								"type": "string",
-								"enum": [
-									"explicit_remember",
-									"preference",
-									"decision",
-									"fact",
-									"correction",
-									"resolution",
-									"request"
-								],
-								"description": "explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later."
+							"replacesEarlier": {
+								"type": "boolean",
+								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
-						"required": ["content", "evidence", "kind"],
+						"required": ["content", "evidence"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -411,21 +392,12 @@
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
 							},
-							"kind": {
-								"type": "string",
-								"enum": [
-									"explicit_remember",
-									"preference",
-									"decision",
-									"fact",
-									"correction",
-									"resolution",
-									"request"
-								],
-								"description": "explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later."
+							"replacesEarlier": {
+								"type": "boolean",
+								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
-						"required": ["content", "evidence", "kind"],
+						"required": ["content", "evidence"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -583,21 +555,12 @@
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
 							},
-							"kind": {
-								"type": "string",
-								"enum": [
-									"explicit_remember",
-									"preference",
-									"decision",
-									"fact",
-									"correction",
-									"resolution",
-									"request"
-								],
-								"description": "explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later."
+							"replacesEarlier": {
+								"type": "boolean",
+								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
-						"required": ["content", "evidence", "kind"],
+						"required": ["content", "evidence"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}

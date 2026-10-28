@@ -68,7 +68,7 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 			toolCallId,
 			content: `Durable memory for ${toolCallId}`,
 			evidenceText: `Evidence for ${toolCallId}`,
-			kind: 'fact',
+			replacesEarlier: false,
 		});
 	}
 

@@ -2,7 +2,6 @@ import { embed, embedMany } from 'ai';
 
 import type {
 	BuiltTelemetry,
-	EpisodicMemoryCaptureKind,
 	EpisodicMemoryEntry,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -30,6 +29,8 @@ vi.mock('ai', () => ({
 const mockedEmbed = vi.mocked(embed);
 const mockedEmbedMany = vi.mocked(embedMany);
 const fakeEmbedder = { specificationVersion: 'v2' } as never;
+/** Similar to every stored test embedding, so a search lists the active entries of a scope. */
+const MATCH_ANY = [1, 1];
 
 function entry(overrides: Partial<EpisodicMemoryEntry> = {}): EpisodicMemoryEntry {
 	const now = new Date('2026-05-12T10:00:00.000Z');
@@ -60,7 +61,10 @@ async function saveEpisodicEntry(
 		},
 	],
 ): Promise<EpisodicMemoryEntry> {
-	const saved = await memory.episodic.saveEntryWithSources(newEntry, sources);
+	const saved = await memory.episodic.saveEntryWithSources(
+		{ embedding: [1, 0], ...newEntry },
+		sources,
+	);
 	if (!saved) throw new Error('Expected episodic entry to be saved');
 	return saved;
 }
@@ -90,7 +94,7 @@ async function enqueueCandidate(
 	memory: InMemoryMemory,
 	toolCallId = 'call-1',
 	runId = 'run-1',
-	overrides: Partial<{ content: string; kind: EpisodicMemoryCaptureKind }> = {},
+	overrides: Partial<{ content: string; replacesEarlier: boolean }> = {},
 ): Promise<void> {
 	const tool = createFlagMemoryTool({
 		memory,
@@ -103,7 +107,6 @@ async function enqueueCandidate(
 		{
 			content: 'User prefers concise reports.',
 			evidence: 'I prefer concise reports',
-			kind: 'preference',
 			...overrides,
 		},
 		{ runId, toolCallId },
@@ -111,85 +114,112 @@ async function enqueueCandidate(
 }
 
 describe('rankEpisodicMemoryEntries', () => {
-	it('combines lexical, vector, and recency while ignoring inactive entries by default', () => {
-		const newer = entry({
-			id: 'newer',
-			content: 'Acme webhook retries were caused by 429 responses.',
-			embedding: [1, 0],
-			createdAt: new Date(),
-		});
-		const oldDate = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000);
-		const older = entry({
-			id: 'older',
-			content: 'Acme webhook delay investigation ruled out queue lag.',
-			embedding: [0.9, 0.1],
-			createdAt: oldDate,
-			lastSeenAt: oldDate,
-		});
+	it('ranks by similarity and ignores inactive entries by default', () => {
+		const close = entry({ id: 'close', content: 'Acme webhook retries', embedding: [1, 0] });
+		const far = entry({ id: 'far', content: 'Acme webhook 429 delay', embedding: [0.6, 0.8] });
 		const superseded = entry({
 			id: 'superseded',
 			content: 'Acme webhook memory store was SQLite.',
+			embedding: [1, 0],
 			status: 'superseded',
 		});
 
-		const results = rankEpisodicMemoryEntries([older, superseded, newer], 'Acme webhook 429', {
+		const results = rankEpisodicMemoryEntries([far, superseded, close], {
 			queryEmbedding: [1, 0],
 			topK: 5,
 		});
 
-		expect(results.map((result) => result.id)).toEqual(['newer', 'older']);
+		expect(results.map((result) => result.id)).toEqual(['close', 'far']);
 		expect(results[0].vectorScore).toBeGreaterThan(results[1].vectorScore);
-		expect(results[0].finalScore).toBeGreaterThan(results[1].finalScore);
 	});
 
-	it('uses recency as a ranking signal when relevant entries are otherwise tied', () => {
+	it('keeps only entries at or above the similarity floor', () => {
+		// Cosine similarity to [1, 0]: 1, 0.8 and 0.3.
+		const entries = [
+			entry({ id: 'best', embedding: [1, 0] }),
+			entry({ id: 'related', embedding: [0.8, 0.6] }),
+			entry({ id: 'unrelated', embedding: [0.3, 0.95] }),
+		];
+
+		const withFloor = rankEpisodicMemoryEntries(entries, {
+			queryEmbedding: [1, 0],
+			minSimilarity: 0.4,
+		});
+		const withoutFloor = rankEpisodicMemoryEntries(entries, { queryEmbedding: [1, 0] });
+
+		expect(withFloor.map((result) => result.id)).toEqual(['best', 'related']);
+		expect(withoutFloor).toHaveLength(3);
+	});
+
+	it('ranks a newer correction above the value it replaced when the floor is on', () => {
+		const day = (n: number) => new Date(Date.UTC(2026, 5, n));
+		const replaced = entry({ id: 'replaced', embedding: [0.81, 0.586], lastSeenAt: day(1) });
+		const correction = entry({ id: 'correction', embedding: [0.8, 0.6], lastSeenAt: day(28) });
+		// Weakly related entries below the floor still count for the recency rank.
+		const weak = Array.from({ length: 40 }, (_, index) =>
+			entry({ embedding: [0.3, 0.954], lastSeenAt: new Date(day(2).getTime() + index * 60_000) }),
+		);
+
+		const results = rankEpisodicMemoryEntries([replaced, correction, ...weak], {
+			queryEmbedding: [1, 0],
+			minSimilarity: 0.4,
+		});
+
+		expect(results.map((result) => result.id)).toEqual(['correction', 'replaced']);
+	});
+
+	it('returns nothing when no entry reaches the similarity floor', () => {
+		const results = rankEpisodicMemoryEntries(
+			[entry({ embedding: [0.3, 0.95] }), entry({ embedding: [0.2, 0.98] })],
+			{ queryEmbedding: [1, 0], minSimilarity: 0.4 },
+		);
+
+		expect(results).toEqual([]);
+	});
+
+	it('does not match on shared words alone', () => {
+		// The words match the query exactly, but the meaning is unrelated.
+		const wordMatch = entry({ id: 'words', content: 'Acme webhook 429', embedding: [0.1, 0.99] });
+		const meaning = entry({
+			id: 'meaning',
+			content: 'Rate limits on Acme callbacks',
+			embedding: [1, 0],
+		});
+
+		const results = rankEpisodicMemoryEntries([wordMatch, meaning], {
+			queryEmbedding: [1, 0],
+			topK: 1,
+		});
+
+		expect(results.map((result) => result.id)).toEqual(['meaning']);
+	});
+
+	it('ranks the newer of two equally similar entries first', () => {
 		const now = new Date();
-		const stalePlanning = entry({
-			id: 'stale-planning',
-			content: 'Midwest Southeast rollout current state manager mapping invoice review summary.',
+		const older = entry({
+			id: 'older',
+			content: 'Billing contact is Dana.',
 			embedding: [1, 0],
 			createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
 			lastSeenAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
 		});
-		const currentState = entry({
-			id: 'current-state',
-			content: 'Midwest Southeast rollout current state manager mapping invoice review summary.',
+		const newer = entry({
+			id: 'newer',
+			content: 'Billing contact is now Priya.',
 			embedding: [1, 0],
 			createdAt: now,
 			lastSeenAt: now,
 		});
 
-		const results = rankEpisodicMemoryEntries(
-			[stalePlanning, currentState],
-			'Midwest Southeast rollout current state manager mapping invoice review',
-			{ queryEmbedding: [1, 0], topK: 2 },
-		);
+		const results = rankEpisodicMemoryEntries([older, newer], { queryEmbedding: [1, 0], topK: 2 });
 
-		expect(results.map((result) => result.id)).toEqual(['current-state', 'stale-planning']);
+		expect(results.map((result) => result.id)).toEqual(['newer', 'older']);
 	});
 
-	it('returns no entries when the query has no lexical or vector match', () => {
-		const now = new Date();
-		const newest = entry({
-			id: 'newest-unrelated',
-			content: 'User chose Postgres for durable memory storage.',
-			createdAt: now,
-			lastSeenAt: now,
-		});
-		const older = entry({
-			id: 'older-unrelated',
-			content: 'User prefers concise answers in implementation reviews.',
-			createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-			lastSeenAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-		});
+	it('returns no entries without a query embedding', () => {
+		const stored = entry({ id: 'stored', content: 'User chose Postgres.', embedding: [1, 0] });
 
-		const results = rankEpisodicMemoryEntries(
-			[older, newest],
-			'prior travel itinerary hotel booking',
-			{ topK: 5 },
-		);
-
-		expect(results).toEqual([]);
+		expect(rankEpisodicMemoryEntries([stored], { topK: 5 })).toEqual([]);
 	});
 });
 
@@ -209,9 +239,7 @@ describe('createRecallMemoryTool', () => {
 						id: 'memory-1',
 						content: 'User chose Postgres for durable memory storage.',
 						createdAt: '2026-05-20T13:42:36.631Z',
-						lexicalScore: 0.3,
 						vectorScore: 0.6,
-						rrfScore: 0.04,
 						finalScore: 0.04,
 					},
 				],
@@ -248,6 +276,30 @@ describe('createRecallMemoryTool', () => {
 				],
 			}),
 		).toEqual({ entryIds: ['memory-1'] });
+	});
+
+	it('recalls only entries relevant to the query', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const scope = { resourceId: 'user-1', threadId: 'thread-1' };
+		await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'Spend alerts go to Sin on Slack.',
+			embedding: [1, 0],
+		});
+		await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User likes salmon.',
+			embedding: [0.2, 0.98],
+		});
+		const tool = createRecallMemoryTool({ memory, config: { embedder: fakeEmbedder }, scope });
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		const output = await tool.handler({ query: 'who gets spend alerts?' }, {});
+
+		expect(output).toEqual({
+			entries: [expect.objectContaining({ content: 'Spend alerts go to Sin on Slack.' })],
+		});
 	});
 
 	it('counts recall query embedding tokens when usage is available', async () => {
@@ -427,7 +479,7 @@ describe('InMemoryMemory resolved episodic scope', () => {
 
 	async function saveIn(memory: InMemoryMemory, scope: ReturnType<typeof inChannel>) {
 		const saved = await memory.episodic.saveEntryWithSources(
-			{ resourceId: scope.resourceId, episodic: scope.episodic, content },
+			{ resourceId: scope.resourceId, episodic: scope.episodic, content, embedding: [1, 0] },
 			[
 				{
 					candidateId: `candidate-${scope.threadId}`,
@@ -452,7 +504,11 @@ describe('InMemoryMemory resolved episodic scope', () => {
 		expect(first.resourceId).toBe('channel:1');
 		expect(second.resourceId).toBe('channel:2');
 		const ids = async (scope: typeof one) =>
-			(await memory.episodic.searchEntries(scope, 'team chose Postgres')).map(({ id }) => id);
+			(
+				await memory.episodic.searchEntries(scope, 'team chose Postgres', {
+					queryEmbedding: MATCH_ANY,
+				})
+			).map(({ id }) => id);
 		expect(await ids(one)).toEqual([first.id]);
 		expect(await ids(two)).toEqual([second.id]);
 		expect(
@@ -468,7 +524,13 @@ describe('InMemoryMemory resolved episodic scope', () => {
 		const two = inChannel('2');
 		const save = async (scope: typeof one, lastSeenAt: Date) =>
 			await memory.episodic.saveEntryWithSources(
-				{ resourceId: scope.resourceId, episodic: scope.episodic, content, lastSeenAt },
+				{
+					resourceId: scope.resourceId,
+					episodic: scope.episodic,
+					content,
+					lastSeenAt,
+					embedding: [1, 0],
+				},
 				[
 					{
 						candidateId: `candidate-${scope.threadId}`,
@@ -486,6 +548,7 @@ describe('InMemoryMemory resolved episodic scope', () => {
 				episodic: { writeScopeId: 'channel:1', readScopeIds: ['channel:1', 'channel:2'] },
 			},
 			'team chose Postgres',
+			{ queryEmbedding: MATCH_ANY },
 		);
 
 		expect(results.map(({ id }) => id)).toEqual([newer?.id]);
@@ -503,7 +566,7 @@ describe('InMemoryMemory resolved episodic scope', () => {
 			toolCallId: 'call-1',
 			content,
 			evidenceText: content,
-			kind: 'fact',
+			replacesEarlier: false,
 		});
 
 		expect(candidate.resourceId).toBe('channel:1');
@@ -561,7 +624,7 @@ describe('InMemoryMemory episodic source cleanup', () => {
 			toolCallId: 'candidate-orphaned',
 			content: 'User prefers concise reports.',
 			evidenceText: 'I prefer concise reports',
-			kind: 'preference',
+			replacesEarlier: false,
 		});
 		const candidateBacked = await saveEpisodicEntry(
 			memory,
@@ -597,29 +660,21 @@ describe('InMemoryMemory episodic source cleanup', () => {
 			memory.episodic.searchEntries(
 				{ resourceId: 'user-1', threadId: 'thread-1' },
 				'source-backed',
-				{ topK: 10 },
+				{ queryEmbedding: MATCH_ANY, topK: 10 },
 			),
 		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);
-		await expect(
-			memory.episodic.searchEntries(
-				{ resourceId: 'user-1', threadId: 'thread-1' },
-				'Postgres storage',
-				{
-					includeStatuses: ['dropped'],
-					topK: 10,
-				},
-			),
-		).resolves.toEqual([expect.objectContaining({ id: orphaned.id, status: 'dropped' })]);
-		await expect(
-			memory.episodic.searchEntries(
-				{ resourceId: 'user-1', threadId: 'thread-1' },
-				'concise reports',
-				{
-					includeStatuses: ['dropped'],
-					topK: 10,
-				},
-			),
-		).resolves.toEqual([expect.objectContaining({ id: candidateBacked.id, status: 'dropped' })]);
+		const dropped = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1', threadId: 'thread-1' },
+			'dropped entries',
+			{ queryEmbedding: MATCH_ANY, includeStatuses: ['dropped'], topK: 10 },
+		);
+		expect(dropped).toHaveLength(2);
+		expect(dropped).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: orphaned.id, status: 'dropped' }),
+				expect.objectContaining({ id: candidateBacked.id, status: 'dropped' }),
+			]),
+		);
 		await expect(
 			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
 		).resolves.toEqual([]);
@@ -686,19 +741,41 @@ describe('agent-directed episodic capture', () => {
 			list,
 		});
 		if (!tool.handler) throw new Error('Expected flag memory tool to have a handler');
+		await tool.handler(
+			{ content: 'User prefers detailed reports.', evidence: 'I prefer detailed reports' },
+			{ runId: 'run-1', toolCallId: 'call-2' },
+		);
+
+		// The current response is never evidence; the latest user message is used instead.
+		await expect(
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
+		).resolves.toContainEqual(
+			expect.objectContaining({
+				toolCallId: 'call-2',
+				sourceMessageId: 'message-1',
+				evidenceText: 'Please remember that I prefer concise reports.',
+			}),
+		);
+	});
+
+	it('rejects a flag when the conversation has no user message to quote', async () => {
+		const tool = createFlagMemoryTool({
+			memory: new InMemoryMemory(),
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
+			persistence: { resourceId: 'user-1', threadId: 'thread-1' },
+			list: new AgentMessageList(),
+		});
+		if (!tool.handler) throw new Error('Expected flag memory tool to have a handler');
+
 		await expect(
 			tool.handler(
-				{
-					content: 'User prefers detailed reports.',
-					evidence: 'I prefer detailed reports',
-					kind: 'preference',
-				},
-				{ runId: 'run-1', toolCallId: 'call-2' },
+				{ content: 'User prefers detailed reports.', evidence: 'I prefer detailed reports' },
+				{ runId: 'run-1', toolCallId: 'call-1' },
 			),
 		).rejects.toThrow('one contiguous quote');
 	});
 
-	it('resolves re-typed evidence to the verbatim span and falls back for explicit remembers', async () => {
+	it('resolves re-typed evidence to the verbatim span and falls back to the latest user message', async () => {
 		const memory = new InMemoryMemory();
 		const tool = createFlagMemoryTool({
 			memory,
@@ -707,21 +784,14 @@ describe('agent-directed episodic capture', () => {
 			list: sourceList('Remember this:\nDana’s invoices must CC ap@harborfinch.example.'),
 		});
 		if (!tool.handler) throw new Error('Expected flag memory tool to have a handler');
-		const flag = async (evidence: string, kind: 'fact' | 'explicit_remember', toolCallId: string) =>
+		const flag = async (evidence: string, toolCallId: string) =>
 			await tool.handler!(
-				{ content: 'Harbor & Finch invoices must CC ap@harborfinch.example.', evidence, kind },
+				{ content: 'Harbor & Finch invoices must CC ap@harborfinch.example.', evidence },
 				{ runId: 'run-1', toolCallId },
 			);
 
-		await flag(
-			'"remember this: Dana\'s invoices must CC ap@harborfinch.example."',
-			'fact',
-			'call-1',
-		);
-		await flag('Dana said something else entirely.', 'explicit_remember', 'call-2');
-		await expect(flag('Dana said something else entirely.', 'fact', 'call-3')).rejects.toThrow(
-			'one contiguous quote',
-		);
+		await flag('"remember this: Dana\'s invoices must CC ap@harborfinch.example."', 'call-1');
+		await flag('Dana said something else entirely.', 'call-2');
 
 		const candidates = await memory.episodic.getPendingCaptureCandidates({
 			resourceId: 'user-1',
@@ -774,6 +844,7 @@ describe('agent-directed episodic capture', () => {
 		const entries = await memory.episodic.searchEntries(
 			{ resourceId: 'user-1', threadId: 'thread-1' },
 			'concise reports',
+			{ queryEmbedding: MATCH_ANY },
 		);
 		expect(entries).toEqual([
 			expect.objectContaining({ content: 'User prefers concise reports.', status: 'active' }),
@@ -803,7 +874,7 @@ describe('agent-directed episodic capture', () => {
 				toolCallId: 'earlier-call',
 				content,
 				evidenceText: 'Please keep reports concise.',
-				kind: 'preference',
+				replacesEarlier: false,
 			});
 			const createdAt = new Date('2026-05-01T10:00:00.000Z');
 			const stored = await saveEpisodicEntry(
@@ -891,7 +962,7 @@ describe('agent-directed episodic capture', () => {
 				toolCallId: `call-${index}`,
 				content,
 				evidenceText: `Report preference ${index}`,
-				kind: 'preference',
+				replacesEarlier: false,
 			});
 		}
 		mockedEmbedMany.mockResolvedValue({
@@ -1047,7 +1118,6 @@ describe('agent-directed episodic capture', () => {
 			{
 				content: `The key is ${secret}.`,
 				evidence: `key ${secret}`,
-				kind: 'explicit_remember',
 			},
 			{ runId: 'run-1', toolCallId: 'secret-call' },
 		);
@@ -1126,7 +1196,7 @@ describe('agent-directed episodic capture', () => {
 		const entries = await memory.episodic.searchEntries(
 			{ resourceId: 'user-1', threadId: 'thread-1' },
 			'concise reports summaries',
-			{ topK: 10 },
+			{ queryEmbedding: MATCH_ANY, topK: 10 },
 		);
 		expect(entries).toHaveLength(2);
 		expect(entries).toEqual(
@@ -1171,7 +1241,7 @@ describe('agent-directed episodic capture', () => {
 			toolCallId: 'call-correction',
 			content: 'User switched memory storage from SQLite to Postgres.',
 			evidenceText: 'I switched from SQLite to Postgres',
-			kind: 'correction',
+			replacesEarlier: true,
 		});
 
 		await runEpisodicMemoryCandidateProcessor({
@@ -1209,7 +1279,7 @@ describe('agent-directed episodic capture', () => {
 
 	it('does not retry persisted candidates when reflection fails', async () => {
 		const memory = new InMemoryMemory();
-		await enqueueCandidate(memory, 'call-1', 'run-1', { kind: 'correction' });
+		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
 		const reflectionError = new Error('reflection failed');
 
 		await expect(
@@ -1230,6 +1300,7 @@ describe('agent-directed episodic capture', () => {
 			memory.episodic.searchEntries(
 				{ resourceId: 'user-1', threadId: 'thread-1' },
 				'concise reports',
+				{ queryEmbedding: MATCH_ANY },
 			),
 		).resolves.toHaveLength(1);
 	});
@@ -1267,6 +1338,7 @@ describe('agent-directed episodic capture', () => {
 				memory.episodic.searchEntries(
 					{ resourceId: 'user-1', threadId: 'thread-1' },
 					'concise reports',
+					{ queryEmbedding: MATCH_ANY },
 				),
 			).resolves.toHaveLength(1);
 		}
@@ -1292,7 +1364,7 @@ describe('agent-directed episodic capture', () => {
 			});
 			await enqueueCandidate(memory, 'call-1', 'run-1', {
 				content: 'User switched memory storage from SQLite to Postgres.',
-				kind: 'correction',
+				replacesEarlier: true,
 			});
 			mockedEmbedMany.mockResolvedValue({
 				embeddings: [

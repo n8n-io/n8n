@@ -1,4 +1,3 @@
-import type { EpisodicMemoryCaptureKind } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
@@ -14,7 +13,7 @@ interface EnqueueCandidateInput {
 	toolCallId: string;
 	content: string;
 	evidenceText: string;
-	kind: EpisodicMemoryCaptureKind;
+	replacesEarlier: boolean;
 }
 
 export type CandidateSourceMessage = Pick<AgentMessageEntity, 'author' | 'origin'>;

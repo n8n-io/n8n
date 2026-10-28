@@ -406,7 +406,7 @@ describe('native tool catalog', () => {
 		expect(Object.keys(native)).toEqual(Object.keys(tools));
 	});
 
-	it('includes runtime memory tools in the policy', async () => {
+	it('always sends the runtime memory tools eagerly', async () => {
 		const memory = new InMemoryMemory();
 		const { context, aiProviderTools } = makeContext({
 			memory,
@@ -421,9 +421,10 @@ describe('native tool catalog', () => {
 			list,
 		);
 		for (const name of ['recall_memory', 'flag_memory']) {
-			expect(tools.aiTools[name].providerOptions?.anthropic?.deferLoading).toBe(true);
+			expect(tools.aiTools[name].providerOptions?.anthropic?.deferLoading).toBe(false);
 			expect(tools.toolMap.get(name)?.handler).toBeDefined();
 		}
-		expect(tools.staticToolCacheName).toBe('workspace_read_file');
+		// Memory tools are eager and stable, so the last one carries the cache breakpoint.
+		expect(tools.staticToolCacheName).toBe('flag_memory');
 	});
 });

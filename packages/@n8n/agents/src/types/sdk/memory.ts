@@ -108,15 +108,6 @@ export interface EpisodicMemoryScope {
 	episodic?: ResolvedEpisodicScope;
 }
 
-export type EpisodicMemoryCaptureKind =
-	| 'explicit_remember'
-	| 'preference'
-	| 'decision'
-	| 'fact'
-	| 'correction'
-	| 'resolution'
-	| 'request';
-
 /** `deleted` marks candidates a user deleted, before or after they were stored. */
 export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed' | 'deleted';
 
@@ -129,7 +120,8 @@ export interface EpisodicMemoryCaptureCandidate {
 	toolCallId: string;
 	content: string;
 	evidenceText: string;
-	kind: EpisodicMemoryCaptureKind;
+	/** The agent marked the fact as a correction of something stated earlier. */
+	replacesEarlier: boolean;
 	status: EpisodicMemoryCaptureStatus;
 	attemptCount: number;
 	createdAt: Date;
@@ -197,9 +189,7 @@ export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceF
 	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
-	lexicalScore: number;
 	vectorScore: number;
-	rrfScore: number;
 	finalScore: number;
 }
 
@@ -209,6 +199,8 @@ export interface EpisodicMemorySearchOptions {
 	includeStatuses?: EpisodicMemoryStatus[];
 	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
 	writeScopeOnly?: boolean;
+	/** Lowest cosine similarity to the query an entry needs. Without it, topK alone bounds the result. */
+	minSimilarity?: number;
 }
 
 export interface EpisodicMemoryTaskLockHandle {

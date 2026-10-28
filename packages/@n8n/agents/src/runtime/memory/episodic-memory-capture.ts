@@ -41,16 +41,6 @@ import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime
 export const FLAG_MEMORY_TOOL_NAME = 'flag_memory';
 const EPISODIC_MEMORY_CAPTURE_MAX_ATTEMPTS = 3;
 
-const captureKinds = [
-	'explicit_remember',
-	'preference',
-	'decision',
-	'fact',
-	'correction',
-	'resolution',
-	'request',
-] as const;
-
 const FlagMemoryInputSchema = z.object({
 	content: z
 		.string()
@@ -64,11 +54,10 @@ const FlagMemoryInputSchema = z.object({
 		.describe(
 			'One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks.',
 		),
-	kind: z
-		.enum(captureKinds)
-		.describe(
-			'explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later.',
-		),
+	replacesEarlier: z
+		.boolean()
+		.optional()
+		.describe('Set to true when this corrects or replaces something stated earlier.'),
 });
 
 const FlagMemoryOutputSchema = z.object({
@@ -171,12 +160,11 @@ export function createFlagMemoryTool(opts: {
 		.systemInstruction(buildEpisodicMemoryCaptureInstruction(include, exclude))
 		.input(buildFlagMemoryInputSchema(exclude))
 		.output(FlagMemoryOutputSchema)
-		.handler(async ({ content, evidence, kind }, ctx): Promise<FlagMemoryOutput> => {
+		.handler(async ({ content, evidence, replacesEarlier }, ctx): Promise<FlagMemoryOutput> => {
 			if (!ctx.toolCallId) throw new Error('Memory capture requires a tool-call ID.');
 			if (!ctx.runId) throw new Error('Memory capture requires a run ID.');
 			const source =
-				findEvidenceSource(opts.list, evidence) ??
-				(kind === 'explicit_remember' ? latestUserMessageAsEvidence(opts.list) : undefined);
+				findEvidenceSource(opts.list, evidence) ?? latestUserMessageAsEvidence(opts.list);
 			if (!source) {
 				throw new Error(
 					'Memory evidence must be one contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks.',
@@ -199,7 +187,7 @@ export function createFlagMemoryTool(opts: {
 				toolCallId: ctx.toolCallId,
 				content: normalizedContent,
 				evidenceText: redactText(source.evidenceText).text,
-				kind,
+				replacesEarlier: replacesEarlier === true,
 			});
 			return { status: 'noted' };
 		})
@@ -277,15 +265,9 @@ export async function runEpisodicMemoryCandidateProcessor(
 	if (
 		savedEntries.length > 0 &&
 		config.reflect &&
-		candidates.some((candidate) => candidate.kind === 'correction')
+		candidates.some((candidate) => candidate.replacesEarlier)
 	) {
-		const reflectReports = await runEpisodicMemoryReflection(
-			opts,
-			config,
-			savedEntries,
-			candidates,
-			now,
-		);
+		const reflectReports = await runEpisodicMemoryReflection(opts, config, savedEntries, now);
 		usageReports.push(...reflectReports);
 	}
 	return {
@@ -360,7 +342,7 @@ function findEvidenceSource(list: AgentMessageList, evidence: string): EvidenceS
 	return undefined;
 }
 
-/** An explicit "remember this" nearly always lives in the latest user message. */
+/** When the quote does not match, the fact most likely comes from the latest user message. */
 function latestUserMessageAsEvidence(list: AgentMessageList): EvidenceSource | undefined {
 	for (const message of evidenceCandidateMessages(list)) {
 		if (message.role !== 'user') continue;
@@ -503,11 +485,10 @@ async function runEpisodicMemoryReflection(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
 	savedEntries: EpisodicMemoryEntry[],
-	candidates: EpisodicMemoryCaptureCandidate[],
 	now: Date,
 ): Promise<EpisodicMemoryUsageReport[]> {
 	if (!config.reflect) return [];
-	const cluster = await buildReflectionCluster(opts, config, savedEntries, candidates);
+	const cluster = await buildReflectionCluster(opts, config, savedEntries);
 	if (cluster.length === 0) return [];
 
 	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
@@ -574,16 +555,20 @@ async function buildReflectionCluster(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
 	savedEntries: EpisodicMemoryEntry[],
-	candidates: EpisodicMemoryCaptureCandidate[],
 ): Promise<RetrievedEpisodicMemoryEntry[]> {
-	const query = [
-		...savedEntries.map((entry) => entry.content),
-		...candidates.flatMap((candidate) => [candidate.content, candidate.evidenceText]),
-	].join('\n');
-	const related = await opts.memory.episodic.searchEntries(opts.scope, query, {
-		topK: Math.max(config.topK, 20),
-		writeScopeOnly: true,
-	});
+	// Each new entry looks up the older entries closest to it, by its own embedding.
+	const searches = savedEntries.flatMap((entry) =>
+		entry.embedding
+			? [
+					opts.memory.episodic.searchEntries(opts.scope, entry.content, {
+						topK: Math.max(config.topK, 20),
+						queryEmbedding: entry.embedding,
+						writeScopeOnly: true,
+					}),
+				]
+			: [],
+	);
+	const related = (await Promise.all(searches)).flat();
 	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
 	for (const saved of savedEntries) {
 		if (saved.status !== 'active' || relatedById.has(saved.id)) continue;
@@ -618,11 +603,5 @@ function normalizeEntryContent(content: string): string {
 }
 
 function toRetrievedEntry(entry: EpisodicMemoryEntry): RetrievedEpisodicMemoryEntry {
-	return {
-		...entry,
-		lexicalScore: 0,
-		vectorScore: 0,
-		rrfScore: 0,
-		finalScore: 0,
-	};
+	return { ...entry, vectorScore: 0, finalScore: 0 };
 }
