@@ -55,6 +55,8 @@ export type SelfHealingChatStartOutcome = 'started' | 'busy' | 'failed' | 'unava
 
 export interface SelfHealingChatHandoff {
 	available: ComputedRef<boolean>;
+	/** Whether the Assistant is ready and the user can read the project. Reads reactive state, so call it in a `computed`. */
+	canStart(projectId: string): boolean;
 	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
 	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
 }

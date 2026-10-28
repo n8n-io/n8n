@@ -9,7 +9,6 @@ import {
 	type SelfHealingChatStartOutcome,
 } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { storeToRefs } from 'pinia';
@@ -50,12 +49,7 @@ const router = useRouter();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
-const permissions = capabilityRegistry.tryUse(capabilities.projectPermissions);
-const canChat = computed(
-	() =>
-		!!chat?.available.value &&
-		!!getResourcePermissions(permissions?.scopesFor(props.selection.projectId)).project.read,
-);
+const canChat = computed(() => chat?.canStart(props.selection.projectId) ?? false);
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
 

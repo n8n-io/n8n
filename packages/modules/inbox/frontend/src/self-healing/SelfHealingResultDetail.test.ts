@@ -4,7 +4,6 @@ import type {
 } from '@n8n/api-types';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
-import type { Scope } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -30,7 +29,7 @@ vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, show
 
 const onItemChange = vi.fn();
 const chatAvailable = ref(true);
-const projectScopes = ref<Scope[]>(['project:read']);
+const readableProjectIds = ref<string[]>([]);
 let selectedId: string | null;
 const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	props: {
@@ -86,13 +85,11 @@ beforeEach(() => {
 	chatAvailable.value = true;
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, () => ({
 		available: computed(() => chatAvailable.value),
+		canStart: (projectId: string) =>
+			chatAvailable.value && readableProjectIds.value.includes(projectId),
 		start: startChat,
 	}));
-	projectScopes.value = ['project:read'];
-	capabilityRegistry.provide(capabilities.projectPermissions, {
-		scopesFor: () => projectScopes.value,
-		isReadOnly: () => false,
-	});
+	readableProjectIds.value = [resultSelection.projectId];
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result());
 	vi.mocked(api.fetchResultWorkflow).mockResolvedValue({
 		name: 'Daily report',
@@ -554,7 +551,7 @@ it('does not request chat when the shell is unavailable', async () => {
 
 it('offers chat only while the user can read the result project', async () => {
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'needs_you' }));
-	projectScopes.value = [];
+	readableProjectIds.value = ['other-project'];
 	const view = renderComponent();
 	await waitAllPromises();
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-can-chat', 'false');
@@ -564,7 +561,7 @@ it('offers chat only while the user can read the result project', async () => {
 	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
 	expect(startChat).not.toHaveBeenCalled();
 
-	projectScopes.value = ['project:read'];
+	readableProjectIds.value = [resultSelection.projectId];
 	await waitAllPromises();
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-can-chat', 'true');
 });
