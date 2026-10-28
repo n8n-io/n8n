@@ -240,7 +240,8 @@ function testIdForPath(path: string) {
 }
 
 .selected {
-	background: var(--color--background--light-2);
+	/* A translucent overlay, so the selected file stands out on a grey or a white list. */
+	background: var(--background--active);
 }
 
 .path {
