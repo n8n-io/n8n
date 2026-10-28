@@ -22,8 +22,10 @@ describe('public API', () => {
 			'findIntroducedNameClashes',
 			'findNameClashGroups',
 			'getSkillHash',
+			'isSameSkillTarget',
 			'renameIntroducesClash',
 			'skillNameTakenToolMessage',
+			'skillScopeOf',
 			'toSkillToolRefusal',
 			'withTrimmedName',
 		]);

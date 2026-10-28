@@ -10,7 +10,7 @@ import {
 	type NormalizedEpisodicMemoryConfig,
 } from './episodic-memory';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from './episodic-memory-defaults';
-import { normalizeFlatReflectionActions } from './memory-lifecycle';
+import { uniqueStrings } from './memory-lifecycle';
 import { reportSideCallUsage } from './forward-usage';
 import { saveMessagesToThread } from './memory-store';
 import { redactText } from '../../sdk/guardrails';
@@ -22,10 +22,15 @@ import type {
 	EpisodicMemoryCaptureCandidate,
 	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryConfig,
+	EpisodicMemoryConsolidateFn,
+	EpisodicMemoryConsolidateResult,
+	EpisodicMemoryConsolidation,
+	EpisodicMemoryConsolidatorInput,
 	EpisodicMemoryEntry,
-	EpisodicMemoryReflection,
-	EpisodicMemoryReflectionMerge,
+	EpisodicMemoryEntrySource,
 	EpisodicMemoryScope,
+	NewEpisodicMemoryEntry,
+	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
 import type {
@@ -40,16 +45,10 @@ import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime
 
 export const FLAG_MEMORY_TOOL_NAME = 'flag_memory';
 const EPISODIC_MEMORY_CAPTURE_MAX_ATTEMPTS = 3;
-
-const captureKinds = [
-	'explicit_remember',
-	'preference',
-	'decision',
-	'fact',
-	'correction',
-	'resolution',
-	'request',
-] as const;
+// In the consolidation eval, the replaced value was among the top 3 entries at
+// or above this similarity for 96-100% of corrections.
+const CONSOLIDATION_TOP_K = 3;
+const CONSOLIDATION_MIN_SIMILARITY = 0.5;
 
 const FlagMemoryInputSchema = z.object({
 	content: z
@@ -63,11 +62,6 @@ const FlagMemoryInputSchema = z.object({
 		.min(1)
 		.describe(
 			'One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks.',
-		),
-	kind: z
-		.enum(captureKinds)
-		.describe(
-			'explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later.',
 		),
 });
 
@@ -171,12 +165,11 @@ export function createFlagMemoryTool(opts: {
 		.systemInstruction(buildEpisodicMemoryCaptureInstruction(include, exclude))
 		.input(buildFlagMemoryInputSchema(exclude))
 		.output(FlagMemoryOutputSchema)
-		.handler(async ({ content, evidence, kind }, ctx): Promise<FlagMemoryOutput> => {
+		.handler(async ({ content, evidence }, ctx): Promise<FlagMemoryOutput> => {
 			if (!ctx.toolCallId) throw new Error('Memory capture requires a tool-call ID.');
 			if (!ctx.runId) throw new Error('Memory capture requires a run ID.');
 			const source =
-				findEvidenceSource(opts.list, evidence) ??
-				(kind === 'explicit_remember' ? latestUserMessageAsEvidence(opts.list) : undefined);
+				findEvidenceSource(opts.list, evidence) ?? latestUserMessageAsEvidence(opts.list);
 			if (!source) {
 				throw new Error(
 					'Memory evidence must be one contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks.',
@@ -199,7 +192,7 @@ export function createFlagMemoryTool(opts: {
 				toolCallId: ctx.toolCallId,
 				content: normalizedContent,
 				evidenceText: redactText(source.evidenceText).text,
-				kind,
+				kind: 'fact',
 			});
 			return { status: 'noted' };
 		})
@@ -217,9 +210,9 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	agentName?: string;
 	/**
 	 * Receives each episodic model call's usage the moment it resolves — once
-	 * per embed call and once per reflect call — before any persistence.
+	 * per embed call and once per consolidate call — before any persistence.
 	 * Forwarding it here (rather than only on the success return) keeps a
-	 * billed embed/reflect turn priced even when later persistence throws.
+	 * billed embed/consolidate turn priced even when later persistence throws.
 	 * Fire-and-forget from the caller's perspective.
 	 */
 	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
@@ -237,14 +230,14 @@ export type RunEpisodicMemoryCandidateProcessorResult =
 			status: 'ran';
 			entriesWritten: number;
 			candidatesProcessed: number;
-			/** One usage report per embed/reflect model call, so each is priced separately. */
+			/** One usage report per embed/consolidate model call, so each is priced separately. */
 			usageReports: EpisodicMemoryUsageReport[];
 	  };
 
 /**
- * Flagged candidates become entries as written: the agent already phrased the
- * content, and the verbatim evidence is the source. Reflection runs only when
- * the batch corrects something, because that is when existing entries change.
+ * Turns pending flagged candidates into entries. The agent already phrased the
+ * content, and the verbatim evidence is the source. When consolidation is on, a
+ * new fact that repeats or updates a similar stored entry changes that entry.
  */
 export async function runEpisodicMemoryCandidateProcessor(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
@@ -257,14 +250,12 @@ export async function runEpisodicMemoryCandidateProcessor(
 	});
 	if (candidates.length === 0) return { status: 'skipped' };
 
-	const now = opts.now ?? new Date();
 	const candidateIds = candidates.map((candidate) => candidate.id);
 	const usageReports: EpisodicMemoryUsageReport[] = [];
-	let savedEntries: EpisodicMemoryEntry[];
+	let entries: EpisodicMemoryEntry[];
 	try {
-		const saved = await saveCandidateEntries(opts, config, candidates, now);
-		savedEntries = saved.entries;
-		if (saved.usageReport) usageReports.push(saved.usageReport);
+		const now = opts.now ?? new Date();
+		entries = await saveCandidateEntries(opts, config, candidates, now, usageReports);
 		await opts.memory.episodic.completeCaptureCandidates(candidateIds);
 	} catch (error) {
 		await opts.memory.episodic.recordCaptureCandidateFailure(
@@ -273,28 +264,32 @@ export async function runEpisodicMemoryCandidateProcessor(
 		);
 		throw error;
 	}
-
-	if (
-		savedEntries.length > 0 &&
-		config.reflect &&
-		candidates.some((candidate) => candidate.kind === 'correction')
-	) {
-		const reflectReports = await runEpisodicMemoryReflection(
-			opts,
-			config,
-			savedEntries,
-			candidates,
-			now,
-		);
-		usageReports.push(...reflectReports);
-	}
 	return {
 		status: 'ran',
-		entriesWritten: savedEntries.length,
+		entriesWritten: entries.length,
 		candidatesProcessed: candidates.length,
 		usageReports,
 	};
 }
+
+interface CapturedFact {
+	candidate: EpisodicMemoryCaptureCandidate;
+	contentHash: string;
+	embedding: number[] | undefined;
+}
+
+type ConsolidatedFact = EpisodicMemoryConsolidation['facts'][number];
+
+type FactWrite =
+	| { kind: 'new'; fact: CapturedFact }
+	| { kind: 'duplicate'; fact: CapturedFact; entryId: string }
+	| {
+			kind: 'update';
+			fact: CapturedFact;
+			supersedes: string[];
+			content: string;
+			embedding?: number[];
+	  };
 
 interface EvidenceSource {
 	message: AgentDbMessage;
@@ -360,7 +355,7 @@ function findEvidenceSource(list: AgentMessageList, evidence: string): EvidenceS
 	return undefined;
 }
 
-/** An explicit "remember this" nearly always lives in the latest user message. */
+/** When the quote does not match, the fact most likely comes from the latest user message. */
 function latestUserMessageAsEvidence(list: AgentMessageList): EvidenceSource | undefined {
 	for (const message of evidenceCandidateMessages(list)) {
 		if (message.role !== 'user') continue;
@@ -440,10 +435,9 @@ async function saveCandidateEntries(
 	config: NormalizedEpisodicMemoryConfig,
 	candidates: EpisodicMemoryCaptureCandidate[],
 	now: Date,
-): Promise<{ entries: EpisodicMemoryEntry[]; usageReport?: EpisodicMemoryUsageReport }> {
-	const savedEntries: EpisodicMemoryEntry[] = [];
-	let usageReport: EpisodicMemoryUsageReport | undefined;
-	await withMemorySpan(
+	usageReports: EpisodicMemoryUsageReport[],
+): Promise<EpisodicMemoryEntry[]> {
+	return await withMemorySpan(
 		'save_memory',
 		opts.agentName ?? 'agent',
 		opts.telemetry,
@@ -453,176 +447,285 @@ async function saveCandidateEntries(
 			...inferMemoryStoreAttributes(opts.memory),
 		}),
 		async () => {
-			const hashedCandidates = candidates.map((candidate) => ({
-				candidate,
-				contentHash: hashEpisodicMemoryContent(candidate.content),
-			}));
-			const embedded = await embedCandidateEntries(opts, config, hashedCandidates);
-			usageReport = embedded.report;
-			// Forward the embed usage before the save loop, so a billed embed
-			// call is priced even when a later saveEntryWithSources throws. The
-			// callback is best-effort: a throw or rejection never fails candidate
-			// processing.
-			if (embedded.report)
-				reportSideCallUsage(opts.onUsage, embedded.report.model, embedded.report.usage);
-			for (const { candidate, contentHash } of hashedCandidates) {
-				const saved = await opts.memory.episodic.saveEntryWithSources(
-					{
-						...opts.scope,
-						content: candidate.content,
-						contentHash,
-						embedding: embedded.embeddingsByHash.get(contentHash),
-						embeddingModel: config.embeddingModel,
-						createdAt: now,
-						lastSeenAt: now,
-					},
-					[
-						{
-							candidateId: candidate.id,
-							threadId: candidate.threadId,
-							evidenceText: candidate.evidenceText,
-							createdAt: now,
-						},
-					],
-				);
-				if (saved) savedEntries.push(saved);
+			const facts = await embedCapturedFacts(opts, config, candidates, usageReports);
+			const writes = await planFactWrites(opts, config, facts, now, usageReports);
+			const entries: EpisodicMemoryEntry[] = [];
+			for (const write of writes) {
+				const entry = await writeFact(opts, config, write, now);
+				if (entry) entries.push(entry);
 			}
 			return {
-				result: undefined,
+				result: entries,
 				attributes: {
-					ids: savedEntries.map((entry) => entry.id),
-					operations: savedEntries.map(() => 'created' as const),
+					ids: entries.map((entry) => entry.id),
+					operations: entries.map(() => 'created' as const),
 				},
 			};
 		},
 	);
-	return { entries: savedEntries, usageReport };
 }
 
-async function runEpisodicMemoryReflection(
+async function embedCapturedFacts(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
-	savedEntries: EpisodicMemoryEntry[],
 	candidates: EpisodicMemoryCaptureCandidate[],
-	now: Date,
-): Promise<EpisodicMemoryUsageReport[]> {
-	if (!config.reflect) return [];
-	const cluster = await buildReflectionCluster(opts, config, savedEntries, candidates);
-	if (cluster.length === 0) return [];
+	usageReports: EpisodicMemoryUsageReport[],
+): Promise<CapturedFact[]> {
+	const hashedCandidates = candidates.map((candidate) => ({
+		candidate,
+		contentHash: hashEpisodicMemoryContent(candidate.content),
+	}));
+	const embedded = await embedCandidateEntries(opts, config, hashedCandidates);
+	recordUsage(opts, usageReports, embedded.report);
+	return hashedCandidates.map(({ candidate, contentHash }) => ({
+		candidate,
+		contentHash,
+		embedding: embedded.embeddingsByHash.get(contentHash),
+	}));
+}
 
-	const sources = await opts.memory.episodic.getEntrySources(cluster.map((entry) => entry.id));
-	const reflectResult = await config.reflect({
+/**
+ * Decides how each fact is written. Without consolidation, or without similar
+ * stored entries, every fact becomes a new entry.
+ */
+async function planFactWrites(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	config: NormalizedEpisodicMemoryConfig,
+	facts: CapturedFact[],
+	now: Date,
+	usageReports: EpisodicMemoryUsageReport[],
+): Promise<FactWrite[]> {
+	const asNew = facts.map((fact): FactWrite => ({ kind: 'new', fact }));
+	if (!config.consolidate) return asNew;
+
+	const neighbours = await findFactNeighbours(opts, facts);
+	const similar = facts.filter((fact) => neighbours.get(fact.candidate.id)?.length);
+	if (similar.length === 0) return asNew;
+
+	const input = await buildConsolidatorInput(opts, similar, neighbours, now);
+	const answers = await consolidateFacts(opts, config.consolidate, input, usageReports);
+	if (!answers) return asNew;
+
+	const writes = facts.map((fact) =>
+		resolveFactWrite(fact, neighbours.get(fact.candidate.id) ?? [], answers.get(fact.candidate.id)),
+	);
+	await embedMergedContents(opts, config, writes, usageReports);
+	return writes;
+}
+
+/** The closest active entries of the write scope for each fact, without its exact copy. */
+async function findFactNeighbours(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	facts: CapturedFact[],
+): Promise<Map<string, RetrievedEpisodicMemoryEntry[]>> {
+	const embedded = facts.flatMap((fact) =>
+		fact.embedding ? [{ fact, embedding: fact.embedding }] : [],
+	);
+	if (embedded.length === 0) return new Map();
+	// One extra result replaces the exact copy, which saveEntryWithSources already merges.
+	const results = await opts.memory.episodic.findSimilarEntries(
+		opts.scope,
+		embedded.map(({ embedding }) => embedding),
+		{ topK: CONSOLIDATION_TOP_K + 1, minSimilarity: CONSOLIDATION_MIN_SIMILARITY },
+	);
+	return new Map(
+		embedded.map(({ fact }, index) => [
+			fact.candidate.id,
+			(results[index] ?? [])
+				.filter((entry) => entry.contentHash !== fact.contentHash)
+				.slice(0, CONSOLIDATION_TOP_K),
+		]),
+	);
+}
+
+async function buildConsolidatorInput(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	facts: CapturedFact[],
+	neighbours: Map<string, RetrievedEpisodicMemoryEntry[]>,
+	now: Date,
+): Promise<EpisodicMemoryConsolidatorInput> {
+	const neighboursOf = (fact: CapturedFact) => neighbours.get(fact.candidate.id) ?? [];
+	const neighbourIds = uniqueStrings(
+		facts.flatMap((fact) => neighboursOf(fact).map(({ id }) => id)),
+	);
+	const evidenceByEntryId = newestEvidenceByEntryId(
+		await opts.memory.episodic.getEntrySources(neighbourIds),
+	);
+	return {
 		scope: opts.scope,
 		now,
-		seedEntryIds: savedEntries.map((entry) => entry.id),
-		entries: cluster,
-		sources,
+		facts: facts.map((fact) => ({
+			candidateId: fact.candidate.id,
+			content: fact.candidate.content,
+			evidenceText: fact.candidate.evidenceText,
+			createdAt: fact.candidate.createdAt,
+			neighbours: neighboursOf(fact).map((entry) => ({
+				id: entry.id,
+				content: entry.content,
+				createdAt: entry.createdAt,
+				lastSeenAt: entry.lastSeenAt,
+				evidenceText: evidenceByEntryId.get(entry.id),
+			})),
+		})),
 		executionCounter: opts.executionCounter,
 		modelFetch: opts.modelFetch,
-	});
-	const reflectionResult =
-		'reflection' in reflectResult
-			? reflectResult
-			: { reflection: reflectResult, usage: undefined, model: '' };
-	const reports: EpisodicMemoryUsageReport[] = [];
-	if (reflectionResult.usage !== undefined) {
-		reports.push({
-			task: 'episodic',
-			model: reflectionResult.model,
-			usage: reflectionResult.usage,
-		});
-		// Forward the reflect usage before applyReflection, so a billed
-		// reflect call is priced even when a later merge embed or
-		// applyReflection throws. The callback is best-effort: a throw or
-		// rejection never fails reflection.
-		reportSideCallUsage(opts.onUsage, reflectionResult.model, reflectionResult.usage);
-	}
-	const reflection = normalizeEpisodicMemoryReflection(cluster, reflectionResult.reflection);
-	if (reflection.drop.length === 0 && reflection.merge.length === 0) return reports;
-
-	const mergeContents = reflection.merge.map((entry) => entry.content);
-	let mergeEmbeddings: number[][] = [];
-	if (mergeContents.length > 0) {
-		const mergeEmbedded = await embedTexts(config, mergeContents, opts.executionCounter);
-		if (mergeEmbedded.report) {
-			reports.push(mergeEmbedded.report);
-			// Forward the merge-embed usage before applyReflection. Best-effort:
-			// a callback throw or rejection never fails reflection.
-			reportSideCallUsage(opts.onUsage, mergeEmbedded.report.model, mergeEmbedded.report.usage);
-		}
-		mergeEmbeddings = mergeEmbedded.embeddings;
-	}
-	await opts.memory.episodic.applyReflection(opts.scope, {
-		drop: reflection.drop,
-		merge: reflection.merge.map((merge, index) => ({
-			supersedes: merge.supersedes,
-			entry: {
-				...opts.scope,
-				content: merge.content,
-				contentHash: hashEpisodicMemoryContent(merge.content),
-				embedding: mergeEmbeddings[index],
-				embeddingModel: config.embeddingModel,
-				createdAt: now,
-				lastSeenAt: now,
-			},
-		})),
-	});
-	return reports;
+	};
 }
 
-async function buildReflectionCluster(
+function newestEvidenceByEntryId(sources: EpisodicMemoryEntrySource[]): Map<string, string> {
+	const newest = new Map<string, EpisodicMemoryEntrySource>();
+	for (const source of sources) {
+		const seen = newest.get(source.memoryEntryId);
+		if (!seen || source.createdAt >= seen.createdAt) newest.set(source.memoryEntryId, source);
+	}
+	return new Map([...newest].map(([entryId, source]) => [entryId, source.evidenceText]));
+}
+
+/**
+ * Asks the model in one call how each fact relates to its neighbours. Returns
+ * undefined when the call fails, so the batch saves every fact as new instead
+ * of retrying forever.
+ */
+async function consolidateFacts(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	consolidate: EpisodicMemoryConsolidateFn,
+	input: EpisodicMemoryConsolidatorInput,
+	usageReports: EpisodicMemoryUsageReport[],
+): Promise<Map<string, ConsolidatedFact> | undefined> {
+	let result: EpisodicMemoryConsolidateResult;
+	try {
+		result = await consolidate(input);
+	} catch {
+		return undefined;
+	}
+	if (result.usage !== undefined) {
+		recordUsage(opts, usageReports, { task: 'episodic', model: result.model, usage: result.usage });
+	}
+	return new Map(result.consolidation.facts.map((fact) => [fact.candidateId, fact]));
+}
+
+/**
+ * Reads the model answer for one fact. Unknown ids are ignored, a missing
+ * answer means `different`, and an update without merged content is not used.
+ */
+function resolveFactWrite(
+	fact: CapturedFact,
+	neighbours: RetrievedEpisodicMemoryEntry[],
+	answer: ConsolidatedFact | undefined,
+): FactWrite {
+	const relations = new Map(
+		(answer?.relations ?? []).map(({ entryId, relation }) => [entryId, relation]),
+	);
+	const duplicateOf = neighbours.find((entry) => relations.get(entry.id) === 'duplicate');
+	if (duplicateOf) return { kind: 'duplicate', fact, entryId: duplicateOf.id };
+
+	const updatedIds = neighbours
+		.filter((entry) => relations.get(entry.id) === 'update')
+		.map((entry) => entry.id);
+	const content = normalizeEntryContent(answer?.mergedContent ?? '');
+	if (updatedIds.length === 0 || !content) return { kind: 'new', fact };
+	return { kind: 'update', fact, supersedes: updatedIds, content };
+}
+
+/** Embeds all merged contents in one call. */
+async function embedMergedContents(
 	opts: RunEpisodicMemoryCandidateProcessorOpts,
 	config: NormalizedEpisodicMemoryConfig,
-	savedEntries: EpisodicMemoryEntry[],
-	candidates: EpisodicMemoryCaptureCandidate[],
-): Promise<RetrievedEpisodicMemoryEntry[]> {
-	const query = [
-		...savedEntries.map((entry) => entry.content),
-		...candidates.flatMap((candidate) => [candidate.content, candidate.evidenceText]),
-	].join('\n');
-	const related = await opts.memory.episodic.searchEntries(opts.scope, query, {
-		topK: Math.max(config.topK, 20),
-		writeScopeOnly: true,
-	});
-	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
-	for (const saved of savedEntries) {
-		if (saved.status !== 'active' || relatedById.has(saved.id)) continue;
-		relatedById.set(saved.id, toRetrievedEntry(saved));
-	}
-	return [...relatedById.values()];
+	writes: FactWrite[],
+	usageReports: EpisodicMemoryUsageReport[],
+): Promise<void> {
+	const updates = writes.filter((write) => write.kind === 'update');
+	if (updates.length === 0) return;
+	const embedded = await embedTexts(
+		config,
+		updates.map((update) => update.content),
+		opts.executionCounter,
+	);
+	recordUsage(opts, usageReports, embedded.report);
+	for (const [index, update] of updates.entries()) update.embedding = embedded.embeddings[index];
 }
 
-function normalizeEpisodicMemoryReflection(
-	activeEntries: EpisodicMemoryEntry[],
-	reflection: EpisodicMemoryReflection,
-): EpisodicMemoryReflection {
-	const activeIds = new Set(
-		activeEntries.filter((entry) => entry.status === 'active').map((entry) => entry.id),
+/**
+ * Writes one fact. When a duplicate or an update cannot change its stored
+ * entry, for example because an earlier fact of the batch replaced it, the fact
+ * becomes a new entry. That save returns null when a user deleted the candidate.
+ */
+async function writeFact(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	config: NormalizedEpisodicMemoryConfig,
+	write: FactWrite,
+	now: Date,
+): Promise<EpisodicMemoryEntry | null> {
+	const source = toEntrySource(write.fact.candidate, now);
+	if (write.kind === 'duplicate') {
+		const refreshed = await opts.memory.episodic.addEntrySources(write.entryId, [source], now);
+		if (refreshed) return refreshed;
+	}
+	if (write.kind === 'update') {
+		const merged = await opts.memory.episodic.applyReflection(opts.scope, {
+			drop: [],
+			merge: [
+				{
+					supersedes: write.supersedes,
+					entry: toNewEntry(opts.scope, config, write.content, write.embedding, now),
+					sources: [source],
+				},
+			],
+		});
+		if (merged.inserted[0]) return merged.inserted[0];
+	}
+	const { candidate, embedding } = write.fact;
+	return await opts.memory.episodic.saveEntryWithSources(
+		toNewEntry(opts.scope, config, candidate.content, embedding, now),
+		[source],
 	);
-	return normalizeFlatReflectionActions<
-		EpisodicMemoryReflectionMerge,
-		EpisodicMemoryReflectionMerge
-	>({
-		activeIds,
-		drop: reflection.drop,
-		merge: reflection.merge,
-		normalizeMerge: (entry, supersedes) => {
-			const content = normalizeEntryContent(entry.content);
-			return content ? { supersedes, content } : null;
-		},
-	});
+}
+
+function toNewEntry(
+	scope: EpisodicMemoryScope,
+	config: NormalizedEpisodicMemoryConfig,
+	content: string,
+	embedding: number[] | undefined,
+	now: Date,
+): NewEpisodicMemoryEntry {
+	return {
+		...scope,
+		content,
+		contentHash: hashEpisodicMemoryContent(content),
+		embedding,
+		embeddingModel: config.embeddingModel,
+		createdAt: now,
+		lastSeenAt: now,
+	};
+}
+
+function toEntrySource(
+	candidate: EpisodicMemoryCaptureCandidate,
+	now: Date,
+): NewEpisodicMemoryEntrySourceForEntry {
+	return {
+		candidateId: candidate.id,
+		threadId: candidate.threadId,
+		evidenceText: candidate.evidenceText,
+		createdAt: now,
+	};
+}
+
+/**
+ * Keeps the report for the result and forwards it at once, so a billed call is
+ * priced even when a later write throws. The callback is best-effort: a throw
+ * or rejection never fails candidate processing.
+ */
+function recordUsage(
+	opts: RunEpisodicMemoryCandidateProcessorOpts,
+	usageReports: EpisodicMemoryUsageReport[],
+	report: EpisodicMemoryUsageReport | undefined,
+): void {
+	if (!report) return;
+	usageReports.push(report);
+	reportSideCallUsage(opts.onUsage, report.model, report.usage);
 }
 
 function normalizeEntryContent(content: string): string {
 	return redactText(content.replace(/\s+/g, ' ').trim()).text;
-}
-
-function toRetrievedEntry(entry: EpisodicMemoryEntry): RetrievedEpisodicMemoryEntry {
-	return {
-		...entry,
-		lexicalScore: 0,
-		vectorScore: 0,
-		rrfScore: 0,
-		finalScore: 0,
-	};
 }

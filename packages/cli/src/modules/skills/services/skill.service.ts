@@ -1,4 +1,6 @@
 import {
+	hasSkillInstructions,
+	SKILL_INSTRUCTIONS_REQUIRED_MESSAGE,
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
@@ -12,7 +14,6 @@ import {
 	type SkillNewNameQueryDto,
 	type SkillNewNameResponse,
 	type SkillSaveResponse,
-	type SkillScope,
 	type SkillSortOption,
 	type SkillUserDto,
 	type SkillVersionDetail,
@@ -26,7 +27,7 @@ import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import type { SkillVersion } from '../database/entities/skill-version.entity';
+import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import {
 	SkillRepository,
@@ -35,10 +36,14 @@ import {
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import {
+	isSameSkillTarget,
+	skillScopeOf,
 	toAgentSkill,
+	toLatestSkill,
 	toSkillContent,
 	trimmedName,
 	withTrimmedName,
+	type LatestSkill,
 	type McpSkillContent,
 	type ResolvedSkillRow,
 	type SkillMoveOptions,
@@ -79,8 +84,25 @@ function toMcpSkillContent(row: ResolvedSkillRow): McpSkillContent {
 	return { id: row.skill.id, projectId: row.skill.projectId, skill: toAgentSkill(row) };
 }
 
+function assertUnchangedSince(
+	latest: ResolvedSkillRow,
+	baseVersionId: string | undefined,
+	checkedTarget: SkillTarget | undefined,
+): void {
+	if (checkedTarget && !isSameSkillTarget(latest.skill, checkedTarget)) {
+		throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+	}
+	if (baseVersionId !== undefined && baseVersionId !== latest.version.id) {
+		throw new ConflictError(
+			'The skill was changed somewhere else. Reload to get the latest version.',
+		);
+	}
+}
+
 function assertHasInstructions(skill: AgentSkill): void {
-	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
+	if (!hasSkillInstructions(skill.instructions)) {
+		throw new UserError(SKILL_INSTRUCTIONS_REQUIRED_MESSAGE);
+	}
 }
 
 function toVersionSummary(
@@ -93,12 +115,6 @@ function toVersionSummary(
 		createdBy: version.createdById ? (users.get(version.createdById) ?? null) : null,
 		createdAt: version.createdAt.toISOString(),
 	};
-}
-
-function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
-	if (skill.agentId) return 'agent';
-	if (skill.projectId) return 'project';
-	return 'instance';
 }
 
 /**
@@ -347,6 +363,18 @@ export class SkillService {
 		return { ...toVersionSummary(row.version, users), skill: toAgentSkill(row) };
 	}
 
+	/**
+	 * The latest saved version of each skill, keyed by skill id. Unknown ids are absent.
+	 * Checks no access: the caller checks it.
+	 */
+	async findLatest(
+		skillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, LatestSkill>> {
+		const rows = await this.skillRepository.findLatestSaved(skillIds, ctx);
+		return new Map([...rows].map(([id, row]) => [id, toLatestSkill(row)]));
+	}
+
 	async delete(user: User, skillId: string, source: SkillTelemetrySource = 'ui'): Promise<void> {
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'delete');
 		// The conflict message names only the agents the user may read, as the detail does.
@@ -370,6 +398,7 @@ export class SkillService {
 			source: SkillSource;
 			createdById: string;
 			checkNameTaken?: boolean;
+			frontmatter?: SkillFrontmatter | null;
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -381,7 +410,7 @@ export class SkillService {
 		const id = input.id ?? `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
-			toSkillContent(skill),
+			toSkillContent(skill, input.frontmatter ?? null),
 			ctx,
 		);
 		this.logger.debug('Created skill', { skillId: id });
@@ -410,7 +439,15 @@ export class SkillService {
 			const latest = (await this.skillRepository.findLatestSaved([skillId], txCtx)).get(skillId);
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
-			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
+			const {
+				baseSkillHash,
+				frontmatter,
+				baseVersionId,
+				checkedTarget,
+				allowedTools: _ignored,
+				...changes
+			} = update;
+			assertUnchangedSince(latest, baseVersionId, checkedTarget);
 			// Only a new name is trimmed, so a save never renames a skill it did not rename.
 			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
 			if (baseSkillHash !== getSkillHash(current)) {
@@ -421,23 +458,16 @@ export class SkillService {
 			const skill: AgentSkill = { ...current, ...changes };
 			if (!skill.references?.length) delete skill.references;
 			assertHasInstructions(skill);
-			const content = toSkillContent(skill, latest.version.frontmatter);
+			const content = toSkillContent(
+				skill,
+				frontmatter === undefined ? latest.version.frontmatter : frontmatter,
+			);
 			if (skillContentHash(content) === latest.version.contentHash) {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
 			}
-			// A rename that only changes case or separators keeps the name key, so it can
-			// clash with nothing new. The legacy rule skipped it too.
-			if (skillNameKey(skill.name) !== skillNameKey(latest.version.name)) {
-				await this.assertNameFree(skill.name, latest.skill, skillId, txCtx);
-				await this.skillUsage.assertRenameKeepsNamesApart(
-					skillId,
-					latest.version.name,
-					skill.name,
-					txCtx,
-				);
-			}
+			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
 			const versionId = await this.skillRepository.insertSavedVersion(
 				skillId,
@@ -572,11 +602,45 @@ export class SkillService {
 		exceptSkillId: string | undefined,
 		ctx: OperationContext,
 	): Promise<void> {
+		if (await this.isNameTaken(name, target, exceptSkillId, ctx)) {
+			throw new SkillNameTakenError(name);
+		}
+	}
+
+	/**
+	 * The rename checks of `saveTrusted`: no other skill in the scope, and no other skill of
+	 * an agent that follows this skill, may have a name like the new one. A caller that plans
+	 * a save runs them before it writes anything.
+	 */
+	async assertCanRename(
+		skillId: string,
+		target: SkillTarget,
+		oldName: string,
+		newName: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		// A rename that only changes case or separators keeps the name key, so it can
+		// clash with nothing new. The legacy rule skipped it too.
+		if (skillNameKey(newName) === skillNameKey(oldName)) return;
+		await this.assertNameFree(newName, target, skillId, ctx);
+		await this.skillUsage.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
+	}
+
+	/**
+	 * Whether another skill in the scope has a name that is hard to tell apart from `name`.
+	 * The rule is `isNameTaken`.
+	 */
+	async isNameTaken(
+		name: string,
+		target: SkillTarget,
+		exceptSkillId: string | undefined,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
 		const names = await this.skillRepository.findLatestNamesInTarget(
 			{ projectId: target.projectId, agentId: target.agentId },
 			ctx,
 		);
-		if (isNameTaken(name, names, exceptSkillId)) throw new SkillNameTakenError(name);
+		return isNameTaken(name, names, exceptSkillId);
 	}
 
 	/** Refuses a move that takes the skill away from one of `agentIds`. The rule is `findLosingAgents`. */
@@ -704,7 +768,7 @@ export class SkillService {
 				id: skill.id,
 				name: summary.name,
 				description: summary.description,
-				scope: scopeOf(skill),
+				scope: skillScopeOf(skill),
 				projectId,
 				projectName: projectId ? (projects.get(projectId)?.name ?? null) : null,
 				projectType: projectId ? (projects.get(projectId)?.type ?? null) : null,

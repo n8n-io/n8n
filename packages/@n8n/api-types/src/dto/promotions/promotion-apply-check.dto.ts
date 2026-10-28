@@ -4,7 +4,6 @@ import { z } from 'zod';
 
 import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 import { projectIconSchema } from '../../schemas/project.schema';
-import { Z } from '../../zod-class';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 const sourceId = z.string().min(1);
@@ -142,6 +141,20 @@ export const promotionDataTableChangeSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
+const crossProjectMoveSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	/** The project that holds the item on the branch. */
+	project: promotionBindingProjectSchema,
+	/**
+	 * False when the branch project does not exist on this instance yet. Then the item can only move
+	 * back on the source instance.
+	 */
+	projectExists: z.boolean(),
+	/** The project that holds the item on this instance. */
+	instanceProject: promotionInstanceProjectSchema,
+});
+
 /**
  * Continue can confirm a `destructive-change` or `project-deletion` conflict.
  * The other conflicts need a package or target correction before creation can proceed.
@@ -224,6 +237,11 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		project: promotionBindingProjectSchema,
 		reason: z.string().optional(),
 	}),
+	/** Apply cannot move a workflow or folder between projects. The fields name both projects. */
+	crossProjectMoveSchema.extend({
+		kind: z.enum(['workflow', 'folder']),
+		code: z.literal('moved'),
+	}),
 ]);
 
 export const promotionBindingWarningSchema = z.object({
@@ -235,15 +253,15 @@ export const promotionBindingWarningSchema = z.object({
 });
 
 /**
- * Read-only check of package references. Source IDs define creation scope.
+ * What stops an Apply. Source IDs define creation scope.
  * This result does not certify a complete mirror or authorize later writes.
  * Callers must enforce the permissions for their endpoint.
  */
-export const promotionBindingPreflightResultSchema = z.object({
+export const promotionApplyCheckSchema = z.object({
 	missingProjects: z.array(promotionMissingProjectSchema).openapi({
 		description:
 			'Projects in the package that do not exist on this instance. ' +
-			'Preflight preserves their metadata without checking project creation rules. ' +
+			'The check keeps their metadata without checking project creation rules. ' +
 			'The project creation API can reject invalid values.',
 	}),
 	missingBindings: z.array(
@@ -257,23 +275,8 @@ export const promotionBindingPreflightResultSchema = z.object({
 	warnings: z.array(promotionBindingWarningSchema),
 });
 
-const crossProjectMoveSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	/** The project that holds the item on the branch. */
-	project: promotionBindingProjectSchema,
-	/**
-	 * False when the branch project does not exist on this instance yet. Then the item can only move
-	 * back on the source instance.
-	 */
-	projectExists: z.boolean(),
-	/** The project that holds the item on this instance. */
-	instanceProject: promotionInstanceProjectSchema,
-});
-
-/** What stops the Apply of a project, read from the import plan. */
-export const promotionApplyCheckSchema = z.object({
-	preflight: promotionBindingPreflightResultSchema,
+/** The Apply check of the preview, with the moves between projects as separate lists. */
+export const promotionPreviewCheckSchema = promotionApplyCheckSchema.extend({
 	/**
 	 * Workflows that the branch holds in one project and this instance holds in another, where one of
 	 * the two is this project. Apply cannot move them between projects.
@@ -283,10 +286,6 @@ export const promotionApplyCheckSchema = z.object({
 	movedFolders: z.array(crossProjectMoveSchema),
 });
 
-export class PromotionBindingPreflightResultDto extends Z.class(
-	promotionBindingPreflightResultSchema.shape,
-) {}
-
 export type PromotionBindingProject = z.infer<typeof promotionBindingProjectSchema>;
 export type PromotionBindingConsumer = z.infer<typeof promotionBindingConsumerSchema>;
 export type PromotionVariableScope = z.infer<typeof promotionVariableScopeSchema>;
@@ -295,5 +294,5 @@ export type PromotionCredentialExpressionData = z.infer<
 >;
 export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
 export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
-export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;
 export type PromotionApplyCheck = z.infer<typeof promotionApplyCheckSchema>;
+export type PromotionPreviewCheck = z.infer<typeof promotionPreviewCheckSchema>;

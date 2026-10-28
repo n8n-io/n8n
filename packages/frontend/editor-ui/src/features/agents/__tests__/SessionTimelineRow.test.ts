@@ -74,6 +74,43 @@ describe('SessionTimelineRow', () => {
 		expect(wrapper.find('[data-kind="skill"]').exists()).toBe(true);
 	});
 
+	it('shows the memory activity in a memory row', async () => {
+		const onMemoryDeleted = vi.fn();
+		const memory = { recalls: {}, flags: {} };
+		const wrapper = mount(SessionTimelineRow, {
+			props: {
+				item: item({ kind: 'memory', memoryAction: 'flag', toolCallId: 'call-1' }),
+				selected: false,
+				memory,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				onMemoryDeleted,
+			},
+			global: {
+				stubs: {
+					...STUBS,
+					SessionMemoryDetail: {
+						props: ['memory', 'threadId'],
+						emits: ['deleted'],
+						template:
+							'<button data-testid="memory-detail" :data-thread-id="threadId" :data-has-memory="memory !== undefined" @click="$emit(\'deleted\')" />',
+					},
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-kind="memory"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Flagged this run');
+		const detail = wrapper.find('[data-testid="memory-detail"]');
+		expect(detail.attributes()).toMatchObject({
+			'data-thread-id': 'thread-1',
+			'data-has-memory': 'true',
+		});
+		await detail.trigger('click');
+		expect(onMemoryDeleted).toHaveBeenCalled();
+	});
+
 	it('renders the node icon when the node type is available', async () => {
 		const wrapper = await renderComponent(
 			item({ kind: 'node', nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 4.2 }),

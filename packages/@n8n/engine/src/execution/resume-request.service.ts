@@ -89,6 +89,7 @@ export class ResumeRequestService {
 			if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
 			if (waits[0]) return { stepId: waits[0].id, nodeId: waits[0].nodeId };
 		}
+		// TODO(CET-522): when the only wait is step bound, say to use the step's own resume URL.
 		return null;
 	}
 

@@ -18,6 +18,7 @@ import type {
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryReflectionApply,
+	EpisodicMemoryReflectionApplyMerge,
 	EpisodicMemoryReflectionResult,
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
@@ -135,8 +136,9 @@ export class InMemoryMemory
 		},
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
-		searchEntries: async (scope, query, opts) =>
-			await this.searchEpisodicMemoryEntries(scope, query, opts),
+		// Ranking uses the query embedding in `opts`, not the query text.
+		searchEntries: async (scope, _query, opts) =>
+			await this.searchEpisodicMemoryEntries(scope, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
 		applyReflection: async (scope, reflection) =>
 			await this.applyEpisodicMemoryReflection(scope, reflection),
@@ -148,6 +150,10 @@ export class InMemoryMemory
 			await this.completeEpisodicMemoryCaptureCandidates(ids),
 		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
+		findSimilarEntries: async (scope, embeddings, opts) =>
+			await this.findSimilarEpisodicMemoryEntries(scope, embeddings, opts),
+		addEntrySources: async (entryId, sources, lastSeenAt) =>
+			await this.addEpisodicMemoryEntrySources(entryId, sources, lastSeenAt),
 		taskLock: {
 			acquire: async (scope, opts) =>
 				await this.acquireEpisodicMemoryTaskLock(episodicWriteScopeId(scope), opts),
@@ -681,7 +687,6 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		query: string,
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const scopeIds = opts?.writeScopeOnly
@@ -696,7 +701,39 @@ export class InMemoryMemory
 			if (!seen || entry.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entry);
 		}
 		const scoped = [...newestByContent.values()].map(cloneEpisodicMemoryEntry);
-		return rankEpisodicMemoryEntries(scoped, query, opts);
+		return rankEpisodicMemoryEntries(scoped, opts);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	private async findSimilarEpisodicMemoryEntries(
+		scope: EpisodicMemoryScope,
+		embeddings: number[][],
+		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
+	): Promise<RetrievedEpisodicMemoryEntry[][]> {
+		const resourceId = episodicWriteScopeId(scope);
+		const active = this.episodicMemory
+			.filter((entry) => entry.resourceId === resourceId && entry.status === 'active')
+			.map(cloneEpisodicMemoryEntry);
+		return embeddings.map((queryEmbedding) =>
+			rankEpisodicMemoryEntries(active, { ...opts, queryEmbedding }),
+		);
+	}
+
+	private async addEpisodicMemoryEntrySources(
+		entryId: string,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+		lastSeenAt: Date,
+	): Promise<EpisodicMemoryEntry | null> {
+		const entry = this.episodicMemory.find(
+			(candidate) => candidate.id === entryId && candidate.status === 'active',
+		);
+		if (!entry) return null;
+		await this.saveEpisodicMemoryEntrySources(
+			sources.map((source) => ({ ...source, memoryEntryId: entry.id })),
+		);
+		entry.lastSeenAt = lastSeenAt;
+		entry.updatedAt = new Date();
+		return cloneEpisodicMemoryEntry(entry);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -750,22 +787,7 @@ export class InMemoryMemory
 			const [replacement] = await this.saveEpisodicMemoryEntries([merge.entry]);
 			if (!replacement) continue;
 			inserted.push(replacement);
-			const copiedSources = this.episodicMemorySources
-				.filter((source) => supersedes.includes(source.memoryEntryId))
-				.flatMap((source): NewEpisodicMemoryEntrySource[] => {
-					const provenance = provenanceOf(source);
-					if (!provenance) return [];
-					return [
-						{
-							memoryEntryId: replacement.id,
-							threadId: source.threadId,
-							evidenceText: source.evidenceText,
-							createdAt: merge.entry.createdAt ?? new Date(),
-							...provenance,
-						},
-					];
-				});
-			await this.saveEpisodicMemoryEntrySources(copiedSources);
+			await this.saveEpisodicMemoryEntrySources(this.replacementSources(merge, replacement.id));
 			await this.supersedeEpisodicMemoryEntries(supersedes, replacement.id);
 			supersededIds.push(...supersedes.filter((id) => id !== replacement.id));
 		}
@@ -775,6 +797,33 @@ export class InMemoryMemory
 			supersededIds,
 			inserted,
 		};
+	}
+
+	/** The sources of the superseded entries, then the sources the merge adds. */
+	private replacementSources(
+		merge: EpisodicMemoryReflectionApplyMerge,
+		replacementId: string,
+	): NewEpisodicMemoryEntrySource[] {
+		const copied = this.episodicMemorySources
+			.filter((source) => merge.supersedes.includes(source.memoryEntryId))
+			.flatMap((source): NewEpisodicMemoryEntrySource[] => {
+				const provenance = provenanceOf(source);
+				if (!provenance) return [];
+				return [
+					{
+						memoryEntryId: replacementId,
+						threadId: source.threadId,
+						evidenceText: source.evidenceText,
+						createdAt: merge.entry.createdAt ?? new Date(),
+						...provenance,
+					},
+				];
+			});
+		const added = (merge.sources ?? []).map((source) => ({
+			...source,
+			memoryEntryId: replacementId,
+		}));
+		return [...copied, ...added];
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
