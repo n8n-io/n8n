@@ -3,7 +3,7 @@ import type { ExecutionStatus, WorkflowExecuteMode, WorkflowExecutionSource } fr
 import { isBillableExecution } from '../is-billable-execution';
 
 function run(mode: WorkflowExecuteMode, status: ExecutionStatus) {
-	return { mode, status };
+	return { mode, status, startedAt: new Date(), data: { resultData: {} } };
 }
 
 describe('isBillableExecution', () => {
@@ -49,9 +49,19 @@ describe('isBillableExecution', () => {
 		).toBe(false);
 	});
 
-	test('returns true for a failed production run without the failedBeforeStart flag', () => {
-		expect(isBillableExecution({ ...run('trigger', 'error'), data: { resultData: {} } })).toBe(
+	test('returns false for a production run that no runner took', () => {
+		expect(isBillableExecution({ mode: 'trigger', status: 'crashed', startedAt: null })).toBe(
+			false,
+		);
+	});
+
+	test('returns true for a crashed production run that a runner took', () => {
+		expect(isBillableExecution({ mode: 'trigger', status: 'crashed', startedAt: new Date() })).toBe(
 			true,
 		);
+	});
+
+	test('returns true for a failed production run without the failedBeforeStart flag', () => {
+		expect(isBillableExecution(run('trigger', 'error'))).toBe(true);
 	});
 });
