@@ -3,44 +3,40 @@ import type { IRunData } from 'n8n-workflow';
 import { sumNodeTimeSavedMinutes } from '../time-saved';
 
 describe('sumNodeTimeSavedMinutes', () => {
-	test('sums the minutes of several nodes', () => {
-		const runData = {
-			'Track Time Saved': [{ metadata: { timeSaved: { minutes: 10 } } }],
-			'Track Time Saved 2': [{ metadata: { timeSaved: { minutes: 30 } } }],
-		} as unknown as IRunData;
-
-		expect(sumNodeTimeSavedMinutes(runData)).toBe(40);
-	});
-
-	test('sums the minutes of several runs of one node', () => {
-		const runData = {
-			'Track Time Saved': [
-				{ metadata: { timeSaved: { minutes: 10 } } },
-				{ metadata: { timeSaved: { minutes: 20 } } },
-			],
-		} as unknown as IRunData;
-
-		expect(sumNodeTimeSavedMinutes(runData)).toBe(30);
-	});
-
-	test('counts 0 for a node without metadata', () => {
-		const runData = {
-			'Track Time Saved': [{ metadata: { timeSaved: { minutes: 10 } } }],
-			'Set Fields': [{}],
-		} as unknown as IRunData;
-
-		expect(sumNodeTimeSavedMinutes(runData)).toBe(10);
-	});
-
-	test('counts 0 for time saved without minutes', () => {
-		const runData = {
-			'Track Time Saved': [{ metadata: { timeSaved: {} } }],
-		} as unknown as IRunData;
-
-		expect(sumNodeTimeSavedMinutes(runData)).toBe(0);
-	});
-
-	test('returns 0 for undefined run data', () => {
-		expect(sumNodeTimeSavedMinutes(undefined)).toBe(0);
+	test.each([
+		{
+			case: 'several nodes',
+			runData: {
+				'Track Time Saved': [{ metadata: { timeSaved: { minutes: 10 } } }],
+				'Track Time Saved 2': [{ metadata: { timeSaved: { minutes: 30 } } }],
+			},
+			expected: 40,
+		},
+		{
+			case: 'several runs of one node',
+			runData: {
+				'Track Time Saved': [
+					{ metadata: { timeSaved: { minutes: 10 } } },
+					{ metadata: { timeSaved: { minutes: 20 } } },
+				],
+			},
+			expected: 30,
+		},
+		{
+			case: 'a node without metadata',
+			runData: {
+				'Track Time Saved': [{ metadata: { timeSaved: { minutes: 10 } } }],
+				'Set Fields': [{}],
+			},
+			expected: 10,
+		},
+		{
+			case: 'time saved without minutes',
+			runData: { 'Track Time Saved': [{ metadata: { timeSaved: {} } }] },
+			expected: 0,
+		},
+		{ case: 'undefined run data', runData: undefined, expected: 0 },
+	])('sums the minutes for $case', ({ runData, expected }) => {
+		expect(sumNodeTimeSavedMinutes(runData as unknown as IRunData | undefined)).toBe(expected);
 	});
 });
