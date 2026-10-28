@@ -216,22 +216,25 @@ export function rankEpisodicMemoryEntries(
 	if (!queryEmbedding) return [];
 	const topK = opts.topK ?? DEFAULT_EPISODIC_MEMORY_TOP_K;
 	const statuses = new Set(opts.includeStatuses ?? ['active']);
-	const bySimilarity = entries
+	const positive = entries
 		.filter((entry) => statuses.has(entry.status) && entry.embedding)
 		.map((entry) => ({ entry, score: cosineSimilarity(queryEmbedding, entry.embedding ?? []) }))
-		.filter((item) => item.score > 0)
-		.sort(compareScoredEntries);
+		.filter((item) => item.score > 0);
 	// Rank recency before the floor. Among only the few entries above it, a corrected
 	// fact and the value it replaced get nearly the same recency weight.
 	const recencyRank = new Map(
-		bySimilarity
-			.map((item) => item.entry)
-			.sort((a, b) => getEntryRecencyDate(b).getTime() - getEntryRecencyDate(a).getTime())
-			.map((entry, rank) => [entry.id, rank]),
+		[...positive]
+			.sort(
+				(a, b) =>
+					getEntryRecencyDate(b.entry).getTime() - getEntryRecencyDate(a.entry).getTime() ||
+					b.score - a.score,
+			)
+			.map((item, rank) => [item.entry.id, rank]),
 	);
 	const minSimilarity = opts.minSimilarity ?? 0;
-	return bySimilarity
+	return positive
 		.filter(({ score }) => score >= minSimilarity)
+		.sort(compareScoredEntries)
 		.map(({ entry, score }, rank) => ({
 			...entry,
 			vectorScore: score,
