@@ -1,0 +1,31 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a1820556b083c::t_910175d4525702 8965
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_4a1820556b083c::t_8cffae35704d45 198,202-205
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_5df99f29027675::t_96f699805eb093 241,243,246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bcfbd81c0feb3f5ee3294070162c24624ef0fd62",
+  "prompts": {},
+  "sessions": {
+    "s_4a1820556b083c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5fc4f33-dbd5-42bc-b8cd-3b19bc5cb197",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5df99f29027675": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bef2d32e-df6d-40a9-b29c-7f0aafce90ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
