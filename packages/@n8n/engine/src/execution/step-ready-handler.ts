@@ -122,10 +122,13 @@ export class StepReadyHandler {
 			} else {
 				result = { outputs: await this.runBatchNode(step, execution, node) };
 			}
-			if (result.wait) run = { kind: 'wait', wait: result.wait };
-			else if (result.subExecution)
+			if (result.wait) {
+				run = { kind: 'wait', wait: result.wait };
+			} else if (result.subExecution) {
 				run = { kind: 'subExecution', subExecution: result.subExecution };
-			else run = { kind: 'outputs', outputs: result.outputs, detached: result.detached ?? [] };
+			} else {
+				run = { kind: 'outputs', outputs: result.outputs, detached: result.detached ?? [] };
+			}
 		} catch (error) {
 			run = { kind: 'error', error };
 		}
