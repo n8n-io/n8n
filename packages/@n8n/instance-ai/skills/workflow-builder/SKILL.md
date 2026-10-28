@@ -4,9 +4,9 @@ description: >-
   Load before calling workflow_builder_build_workflow. Use for single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,
   and workflow-local data tables. For any other new workflow, load
-  intent-recognition first when it is listed. Write or edit a workspace source file, run
-  workflow-sdk validate via workspace_execute_command, then call workflow_builder_build_workflow
-  with filePath. When the workflow creates or writes Data Tables, load
+  intent-recognition first when it is listed. Write or edit a workspace source file, then
+  call workflow_builder_build_workflow with filePath. The build validates the source.
+  When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill.
   Do a one-time request (no repeat or trigger words) now: do not ask if it should repeat, and do
   not build or change a kept workflow. For one node, load one-off-operations and run
@@ -256,22 +256,7 @@ workflow, load the `error-workflows` reference and follow its build → publish
    not warrant them. When the canvas will be over the ceiling and no valid group can hold
    the remaining nodes, pass `groupingDecision: 'not_warranted'` with a `groupingReason`
    to `workflow_builder_build_workflow`; without groups or that reason the build is refused.
-7. Before the first `workflow_builder_build_workflow` (and again after substantive edits), run
-   SDK validation on the workspace source file via
-   `workspace_execute_command`:
-   `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
-   Output is lint-style (`line  severity  code  message`). For new workflows,
-   fix every `error` row. For edits, fix errors introduced by your change.
-   Preserve unrelated existing nodes and code even if the CLI reports errors
-   on them. The CLI has no saved-workflow baseline; call `workflow_builder_build_workflow` to
-   decide which findings still block. It can keep existing authentication and
-   missing-output findings informational when their cause is unchanged.
-   If the save remains blocked, report the blocker without
-   expanding scope. CLI warning rows do not block saves; resolve or consciously dismiss
-   them within the requested scope. A clean validate run does not guarantee
-   `workflow_builder_build_workflow` will succeed (no full node-type registry in the sandbox CLI),
-   so still call `workflow_builder_build_workflow`.
-8. Call `workflow_builder_build_workflow` with the `filePath` you wrote.
+7. Call `workflow_builder_build_workflow` with the `filePath` you wrote.
    When the tool offers `folderPath` and the new workflow has a home — the user
    named a folder, or you chose one from the project's folders because the
    related workflows live there — pass it on the create call, named the way the
@@ -281,7 +266,24 @@ workflow, load the `error-workflows` reference and follow its build → publish
    Never leave a workflow at the project root when its place was already clear.
    `folderPath` is for new workflows only; move an existing one with
    `workspace(action="move-workflow-to-folder")`.
-9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
+   Do not run a separate validation command before the build. The build is
+   the validation step. It runs the SDK graph checks, the SDK source lint, and
+   the node schema checks, and it returns the findings. Apply these rules to
+   the findings:
+   - For new workflows, fix every blocking error.
+   - For edits, fix only the errors that your change introduced.
+   - Keep unrelated existing nodes and code, even when the build reports
+     findings on them. The build can keep existing authentication and
+     missing-output findings informational when their cause did not change.
+   - Errors and warnings block the save. Informational findings, including
+     all SDK source lint findings, do not block the save. Resolve them or
+     dismiss them on purpose, within the requested scope.
+   - If the save stays blocked, report the blocker. Do not expand the scope.
+   If a build fails with an error that you cannot understand, you can run
+   `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
+   once through `workspace_execute_command` to get line numbers. Use it only to
+   debug that failure. Do not run it by default.
+8. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`
    or `.to(ifNode.onTrue(...).onFalse(...))`), not as standalone calls on the IF
@@ -291,10 +293,10 @@ workflow, load the `error-workflows` reference and follow its build → publish
    every requested side effect is on a wired branch. Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
-10. Fix errors by editing the same workspace source file, re-running
-    `workflow-sdk validate` on that file, then calling `workflow_builder_build_workflow` again
-    with the same `filePath`. Save again before any verification step.
-11. Modify existing workflows by editing the workspace `.workflow.ts` source
+9. Fix errors by editing the same workspace source file, then calling
+   `workflow_builder_build_workflow` again with the same `filePath`. Save again before any
+   verification step.
+10. Modify existing workflows by editing the workspace `.workflow.ts` source
     file with scoped replacements. A file created by
     `workflow_builder_workflows(action="get-as-code")` is already bound to the saved workflow;
     pass the real n8n `workflowId` on the first `workflow_builder_build_workflow` call only when
@@ -303,7 +305,7 @@ workflow, load the `error-workflows` reference and follow its build → publish
     If you know the workflow's folder (from a `list` result's `folder`), call
     `workflow_builder_workflows(action="list", folderPath)` to read its sibling workflows before
     editing. Match the project's existing naming, node choices, and structure.
-12. After a successful direct `workflow_builder_build_workflow` result, if the tool output
+11. After a successful direct `workflow_builder_build_workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
     `postBuildFlow.instructions` from that output (do not load `post-build-flow`
     separately) before verification, setup, error-workflow follow-up,
@@ -336,7 +338,7 @@ draft, misses the outcome, or the evidence is weak, edit the same source file,
 rebuild with the same `filePath`, then inspect and verify again.
 
 Never tell the user a workflow is fixed, verified, tested, or working from a
-build/save or static `validate` alone — only from a `workflow_builder_verify_built_workflow`
+build/save or its static checks alone — only from a `workflow_builder_verify_built_workflow`
 or `workflow_builder_executions` run that exercised the claimed path; otherwise say explicitly
 what you could not verify and why. Never dismiss a live execution error as a
 harness or stale-state artifact without re-running.
@@ -616,13 +618,13 @@ never from `$now.weekday == N`, which silently no-ops on other days.
 
 ## SDK Code Rules
 
-`workflow-sdk validate` (step 7 in the build loop) enforces common SDK and
+The SDK source lint in `workflow_builder_build_workflow` (step 7) reports common SDK and
 Code-node defects: network calls / forbidden imports in Code nodes, nested
 template literals in `jsCode`, TypeScript-only syntax such as `as const`,
 statements after `export default`, `placeholder()` wrapped in `expr()`,
 unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
-every reported error and warning before calling `workflow_builder_build_workflow`.
+every reported finding, then call `workflow_builder_build_workflow` again.
 
 - Native node first: shape, compute, default or format fields with
   **Edit Fields (Set)** and expressions (full JavaScript); **Filter**, **IF** /
@@ -946,7 +948,7 @@ export default workflow('id', 'name')
 ```
 
 Do NOT wire branches as standalone statements after `export default` — those
-calls never reach the builder (`workflow-sdk validate` flags this).
+calls never reach the builder (the build lint flags this).
 
 ```ts
 // WRONG
@@ -980,7 +982,7 @@ For AI Agent workflows:
 ## Additional SDK Functions
 
 - `placeholder('hint')`: marks a parameter value for user input (use directly as
-  the parameter value; `workflow-sdk validate` flags wrapping it in `expr()`).
+  the parameter value; the build lint flags wrapping it in `expr()`).
 - `.output(n)`: selects a zero-based output index.
 - `.onError(handler)`: connects a node's error output to a handler, on the node
   or on the workflow builder. It sets `onError: 'continueErrorOutput'` on the
