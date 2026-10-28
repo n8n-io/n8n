@@ -409,8 +409,17 @@ async function writeWorkspaceFileBatch(
 		content,
 	}));
 	if (filesystem.writeFiles) {
-		await filesystem.writeFiles(absoluteFiles);
-		return;
+		try {
+			await filesystem.writeFiles(absoluteFiles);
+			return;
+		} catch (error) {
+			// The per-file path below keeps its own command fallback.
+			await traceSandboxOperation(
+				'batch-write-fallback',
+				{ inputs: { fileCount: absoluteFiles.length, error: getErrorMessage(error) } },
+				async () => await Promise.resolve(),
+			);
+		}
 	}
 	await Promise.all(
 		absoluteFiles.map(
@@ -499,6 +508,9 @@ async function materializeKnowledgeBaseStep(
 }
 
 const INITIALIZATION_MARKER = '.sandbox-initialized';
+
+/** Fresh sandboxes this process already set up. Their marker may now exist. */
+const initializedFreshSandboxes = new WeakSet<object>();
 const WRITE_MARKER_COMMAND = `date -u +%Y-%m-%dT%H:%M:%SZ > ${INITIALIZATION_MARKER}`;
 
 async function installDependencies(
@@ -583,9 +595,11 @@ export async function setupSandboxWorkspace(
 		async () => {
 			// Check marker file for idempotency. A sandbox this process just created cannot have one.
 			const root = await resolveWorkspaceRoot(workspace);
-			const marker = workspace.sandbox?.createdFreshSandbox
-				? null
-				: await readInitializationMarker(workspace, root);
+			const sandbox = workspace.sandbox;
+			const marker =
+				sandbox?.createdFreshSandbox && !initializedFreshSandboxes.has(sandbox)
+					? null
+					: await readInitializationMarker(workspace, root);
 			if (marker !== null) {
 				await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 				return false;
@@ -636,6 +650,7 @@ export async function setupSandboxWorkspace(
 				});
 			}
 
+			if (sandbox) initializedFreshSandboxes.add(sandbox);
 			return true;
 		},
 	);

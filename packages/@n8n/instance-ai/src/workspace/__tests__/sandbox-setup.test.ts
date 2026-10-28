@@ -344,6 +344,43 @@ describe('setupSandboxWorkspace', () => {
 		expect(markerIndex).toBeGreaterThan(linkIndex);
 	});
 
+	it('writes workspace files one by one when the batch write fails', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => {});
+		const workspace = createFilesystemWorkspace(writeFile);
+		if (!workspace.filesystem) throw new Error('Expected test workspace to include a filesystem');
+		workspace.filesystem.writeFiles = vi.fn(async () => {
+			throw new Error('bulk upload failed');
+		});
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(true);
+
+		expect(writeFile.mock.calls.map(([path]) => path)).toContain(
+			'/home/daytona/workspace/package.json',
+		);
+	});
+
+	it('reads the initialization marker when setup already ran in this fresh sandbox', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const workspace = createFilesystemWorkspace(vi.fn(async () => {}));
+		workspace.sandbox = { ...workspace.sandbox, createdFreshSandbox: true };
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(true);
+		readFileViaSandbox.mockResolvedValue('2024-01-01T00:00:00Z');
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(false);
+	});
+
 	it('writes workspace files in one batch when the filesystem supports it', async () => {
 		const runInSandbox: RunInSandboxMock = vi.fn();
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
@@ -363,13 +400,13 @@ describe('setupSandboxWorkspace', () => {
 		await setup(workspace, createSetupContext());
 
 		expect(writeFiles).toHaveBeenCalledTimes(1);
-		expect(writeFiles.mock.calls[0][0].map(({ path }) => path)).toEqual(
-			expect.arrayContaining([
-				'/home/daytona/workspace/package.json',
-				'/home/daytona/workspace/workflow-diagnostics.mts',
-				'/home/daytona/workspace/node-types/index.txt',
-			]),
-		);
+		expect(writeFiles.mock.calls[0][0].map(({ path }) => path).sort()).toEqual([
+			'/home/daytona/workspace/build.mjs',
+			'/home/daytona/workspace/node-types/index.txt',
+			'/home/daytona/workspace/package.json',
+			'/home/daytona/workspace/tsconfig.json',
+			'/home/daytona/workspace/workflow-diagnostics.mts',
+		]);
 		const singleWrites = writeFile.mock.calls.map(([path]) => path);
 		expect(singleWrites).not.toContain('/home/daytona/workspace/package.json');
 		expect(singleWrites).not.toContain('/home/daytona/workspace/node-types/index.txt');

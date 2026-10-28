@@ -222,11 +222,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * same-named sandbox another process owns.
 	 */
 	private remoteAcquired = false;
-	/**
-	 * Whether the latest start() created the remote sandbox rather than attaching to one.
-	 * A fresh sandbox holds only what its image bakes.
-	 */
-	createdFreshSandbox = false;
+	private createdFresh = false;
 
 	constructor(private readonly options: DaytonaSandboxOptions = {}) {
 		super();
@@ -243,6 +239,14 @@ export class DaytonaSandbox extends BaseSandbox {
 			logger: options.logger,
 			sandboxName: this.sandboxName,
 		});
+	}
+
+	/**
+	 * Whether the latest start() created the remote sandbox rather than attaching to one.
+	 * A fresh sandbox holds only what its image bakes.
+	 */
+	get createdFreshSandbox(): boolean {
+		return this.createdFresh;
 	}
 
 	get instance(): Sandbox {
@@ -265,7 +269,7 @@ export class DaytonaSandbox extends BaseSandbox {
 				? { sandbox: existing, created: false }
 				: await this.createSandboxOrReattach(client, deadline);
 			this.sandbox = acquired.sandbox;
-			this.createdFreshSandbox = acquired.created;
+			this.createdFresh = acquired.created;
 			this.remoteAcquired = true;
 		} catch (error) {
 			throw this.toAcquisitionError(error);
