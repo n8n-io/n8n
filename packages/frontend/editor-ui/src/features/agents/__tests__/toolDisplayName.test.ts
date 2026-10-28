@@ -2,6 +2,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+	TOOL_SEARCH_TOOL_NAME_KEY,
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
@@ -33,6 +34,19 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('openai.web_search')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('openai.web_search_20270101')).toBe(WEB_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
+	});
+
+	it('returns an i18n key for native tool search tool names', () => {
+		expect(getToolNameTranslationKey('anthropic.tool_search')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('anthropic.tool_search_2')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('openai.tool_search')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('anthropic.tool_search_bm25_20251119')).toBe(
+			TOOL_SEARCH_TOOL_NAME_KEY,
+		);
+		expect(getToolNameTranslationKey('anthropic.tool_search_regex_20251119')).toBe(
+			TOOL_SEARCH_TOOL_NAME_KEY,
+		);
+		expect(getToolNameTranslationKey('tool_search')).toBeUndefined();
 	});
 
 	it('returns translation keys for stable builder tool IDs', () => {
