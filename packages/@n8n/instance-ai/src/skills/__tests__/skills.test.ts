@@ -107,7 +107,7 @@ describe('Instance AI skills', () => {
 
 		expect(recipeResearch).toMatchObject({
 			name: 'credential-recipe-research',
-			recommendedTools: ['research', 'workflow_builder_workflows'],
+			recommendedTools: ['research', 'setup_workflow'],
 		});
 		expect(recipeResearch?.description).toContain('Load before composing');
 		expect(recipeResearch?.description).toContain('credentialHints');
@@ -385,7 +385,9 @@ describe('Instance AI skills', () => {
 			'edit_file',
 			'execute_command',
 			'workflow_builder_build_workflow',
-			'workflow_builder_workflows',
+			'list_workflows',
+			'get_workflow_as_code',
+			'setup_workflow',
 			'search_nodes',
 			'get_node_types',
 			'get_node_parameter_options',
@@ -429,9 +431,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not call\n    `workflow_builder_verify_built_workflow` directly',
 		);
-		expect(loaded?.instructions).toContain(
-			'workflow_builder_workflows(action="get-as-code", workflowId)',
-		);
+		expect(loaded?.instructions).toContain('get_workflow_as_code(workflowId)');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('the `error-workflows` reference');
 		expect(loaded?.instructions).toContain('settings.errorWorkflow');
@@ -526,7 +526,7 @@ describe('Instance AI skills', () => {
 			'Ask which auth type to use when a service supports more than one',
 		);
 		expect(loaded?.instructions).toContain(
-			'Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks',
+			'Only call `publish_workflow` when the user explicitly asks',
 		);
 		expect(loaded?.instructions).toContain(
 			'Do not proactively offer, recommend, or mention publishing until a successful',
@@ -565,7 +565,8 @@ describe('Instance AI skills', () => {
 
 		expect(skill?.recommendedTools).toEqual([
 			'workflow_builder_executions',
-			'workflow_builder_workflows',
+			'get_workflow',
+			'get_workflow_as_code',
 		]);
 
 		const loaded = await source.loadSkill('debugging-executions');

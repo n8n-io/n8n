@@ -5,6 +5,7 @@ import {
 	extendRuntimeSkillSource,
 	Memory,
 } from '@n8n/agents';
+import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -141,10 +142,12 @@ export async function createInstanceAgent(
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools.
+	// Keep MCP tools from shadowing domain or orchestration tools. Former split tool
+	// names stay reserved so persisted calls still resolve through their legacy actions.
 	const reservedToolNames = new Set<string>([
 		...getActiveOrchestratorDomainToolNames(domainContext),
 		...orchestrationTools.keys(),
+		...Object.keys(SPLIT_BUILDER_TOOLS),
 	]);
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);

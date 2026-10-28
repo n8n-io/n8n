@@ -1,7 +1,12 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { JSONSchema7 } from 'json-schema';
 
-import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import {
+	executeTool,
+	isSuspendedToolResult,
+	resolveToolForCall,
+	type SuspendedToolResult,
+} from './tool-adapter';
 import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
@@ -95,7 +100,7 @@ export class ToolCallRunner {
 	 */
 	async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
 		const { toolName, toolMap, list, toolCallId, resumeData } = params;
-		const builtTool = toolMap.get(toolName);
+		const builtTool = resolveToolForCall(toolMap, toolName, params.input);
 
 		if (!builtTool) {
 			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
