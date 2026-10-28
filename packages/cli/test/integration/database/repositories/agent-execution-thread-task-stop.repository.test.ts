@@ -65,7 +65,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 				threadId: thread.id,
 				planId,
 				requestedAt: cutoffAt.toISOString(),
-				generation: await repository.captureGeneration(thread.id, {}),
+				generation: await repository.captureStopTargets(thread.id, {}),
 				failures: [],
 				pause: { id: randomUUID() },
 			},
@@ -138,7 +138,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		const running = await job();
 		const stop = await request();
 		const later = await job();
-		await Container.get(AgentBackgroundJobRepository).requestPause(
+		await Container.get(AgentBackgroundJobRepository).requestPauseForCapturedJobs(
 			agentId,
 			thread.id,
 			'draft-chat:test',

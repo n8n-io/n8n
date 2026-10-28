@@ -751,7 +751,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/** Capture known work once. Later dispatch can escape this stop. */
-	async captureGeneration(threadId: string, ctx: OperationContext) {
+	async captureStopTargets(threadId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 		const threads = new Set([threadId]);
 		let parents = [threadId];
