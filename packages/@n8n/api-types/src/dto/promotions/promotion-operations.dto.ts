@@ -154,6 +154,16 @@ export class ContinueApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const expectedPreviewRevisionSchema = z
+	.string()
+	.regex(/^[0-9a-f]{64}$/)
+	.optional()
+	.openapi({
+		description:
+			'The `revision` of the reviewed Apply preview. Apply builds the preview again and returns ' +
+			'status `preview-changed` without writing when it differs, for example after a local edit.',
+	});
+
 /** The selection is a set, so a repeated workflow id is a malformed request. */
 const selectedWorkflowIdsSchema = z
 	.array(n8nIdSchema)
@@ -166,6 +176,7 @@ export class ApplySelectionDto extends Z.class(
 	{
 		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema.optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 	},
 	{ strict: true },
 ) {}
@@ -174,6 +185,7 @@ export class ContinueApplySelectionDto extends Z.class(
 	{
 		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema,
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
 	},
 	{ strict: true },
@@ -195,6 +207,8 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 		preflight: promotionBindingPreflightResultSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
+	/** This instance changed after the reviewed preview. Nothing was imported. */
+	applyPackageIdentitySchema.extend({ status: z.literal('preview-changed') }),
 ]);
 
 export const ApplyPackageResultDto = {

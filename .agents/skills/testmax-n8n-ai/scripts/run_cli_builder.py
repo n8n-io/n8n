@@ -130,12 +130,43 @@ def codex_interactive_args(model):
 	return args
 
 
+def codex_effort_setting():
+	return setting('CODEX_REASONING_EFFORT', default='medium')
+
+
+def run_effort(builder, session_file, out):
+	"""The reasoning effort that the model got: from the session file for Claude Code, and from the
+	recorded request for Codex. Without a recorded request, the Codex effort is the configured one."""
+	if builder == 'claude':
+		if session_file and session_file.exists():
+			for line in reversed(session_file.read_text().splitlines()):
+				try:
+					row = json.loads(line)
+				except json.JSONDecodeError:
+					continue
+				if row.get('type') == 'assistant' and row.get('effort'):
+					return row['effort'], 'session file'
+		return None, None
+	requests = out / 'requests.jsonl'
+	if requests.exists():
+		for line in requests.read_text().splitlines():
+			try:
+				body = json.loads(line)
+			except json.JSONDecodeError:
+				continue
+			effort = ((body.get('body', body)).get('reasoning') or {}).get('effort')
+			if effort:
+				return effort, 'model request'
+	return codex_effort_setting(), 'CODEX_REASONING_EFFORT'
+
+
 def write_codex_config(home, url, key_env=None, api_base=OPENAI_BASE_URL):
 	"""Write config.toml. With key_env, a provider reads the key from that variable, so the
 	interactive screen does not ask for a sign-in and no key is stored in auth.json."""
 	codex_home = home / '.codex'
 	codex_home.mkdir(parents=True, exist_ok=True)
-	lines = ['approval_policy = "never"', 'sandbox_mode = "read-only"']
+	lines = ['approval_policy = "never"', 'sandbox_mode = "read-only"',
+	         f'model_reasoning_effort = "{codex_effort_setting()}"']
 	if key_env:
 		lines.append('model_provider = "sandbox-openai"')
 	lines += ['', '[features]'] + [f'{name} = false' for name in CODEX_FEATURES_OFF]
@@ -320,6 +351,28 @@ class SessionReader:
 		return rows
 
 
+def turn_span(builder, session_file):
+	"""Start and end of the model turn in the session file, without container start-up, the prompt paste
+	wait and shutdown. (None, None) when the file has no turn."""
+	if not session_file or not session_file.exists():
+		return None, None
+	rows = []
+	for line in session_file.read_text().splitlines():
+		try:
+			rows.append(json.loads(line))
+		except json.JSONDecodeError:
+			continue
+	if builder == 'claude':
+		users = [r['timestamp'] for r in rows if r.get('type') == 'user' and r.get('timestamp')]
+		replies = [r['timestamp'] for r in rows if r.get('type') == 'assistant' and r.get('timestamp')]
+		return (users[0], replies[-1]) if users and replies else (None, None)
+	starts = [r['timestamp'] for r in rows
+	          if r.get('type') == 'event_msg' and (r.get('payload') or {}).get('type') == 'task_started']
+	ends = [r['timestamp'] for r in rows
+	        if r.get('type') == 'event_msg' and (r.get('payload') or {}).get('type') == 'task_complete']
+	return (starts[0], ends[-1]) if starts and ends else (None, None)
+
+
 def docker_command(container, out, env_names):
 	cmd = [
 		'docker', 'run', '--rm', '-i', '--name', container,
@@ -403,6 +456,43 @@ def run_headless(args, out, prompt, cmd, run_env, cwd, container):
 	        'reportedCostUsd': (result or {}).get('total_cost_usd')}
 
 
+# The review screen of a picker with several tabs has no footer, only the submit question.
+QUESTION_MARKERS = ('Enter to select', 'Ready to submit your answers?')
+ANSWER_SETTLE_S = 2
+
+
+class QuestionAnswerer:
+	"""Answers a question picker on the CLI screen with its first option, like the Instance AI runner.
+
+	The first option is the recommended one. A picker with several tabs gets one Enter per tab, then Submit.
+	"""
+
+	def __init__(self, container, log_path):
+		self.container, self.log_path, self.answers, self.seen_at, self.last_screen = container, log_path, [], None, None
+
+	def poll(self):
+		screen = subprocess.run(['docker', 'exec', self.container, 'tmux', 'capture-pane', '-p', '-t', 'run'],
+		                        capture_output=True, text=True).stdout
+		if not any(marker in screen for marker in QUESTION_MARKERS):
+			self.last_screen, self.seen_at = None, None
+			return None
+		# Wait until the picker stops changing, so a key press does not land while it draws.
+		if screen != self.last_screen:
+			self.last_screen, self.seen_at = screen, time.time()
+			return None
+		if time.time() - self.seen_at < ANSWER_SETTLE_S:
+			return None
+		subprocess.run(['docker', 'exec', self.container, 'tmux', 'send-keys', '-t', 'run', 'Enter'],
+		               capture_output=True)
+		question = QUESTION_MARKERS[1] if QUESTION_MARKERS[1] in screen else next(
+			(l.strip() for l in screen.splitlines() if l.strip().endswith('?')), '')
+		option = next((l.strip().lstrip('❯ ').strip() for l in screen.splitlines() if l.strip().startswith('❯ 1.')), '')
+		self.answers.append({'at': time.time(), 'question': question, 'answer': option or 'first option'})
+		self.log_path.write_text(json.dumps(self.answers, indent=2, ensure_ascii=False))
+		self.last_screen, self.seen_at = None, None
+		return f'answered "{question[:80]}" with "{option[:80] or "first option"}"'
+
+
 def run_interactive(args, out, home, prompt, run_env, container):
 	screen_dir = out / '.screen'
 	argv = (claude_interactive_args(args.model, args.claude_tools) if args.builder == 'claude'
@@ -425,9 +515,14 @@ def run_interactive(args, out, home, prompt, run_env, container):
 		if live_enabled() and not open_terminal(LABELS[args.builder], watch, SCREEN['cols'], SCREEN['rows']):
 			print(f'watch {LABELS[args.builder]}: {watch}', flush=True)
 		deadline, last_growth = time.time() + args.timeout_min * 60, time.time()
+		answerer = QuestionAnswerer(container, out / 'answers.json') if args.isolation == 'container' else None
 		while proc.poll() is None and not state:
 			rows = reader.rows()
 			if rows:
+				last_growth = time.time()
+			answered = answerer.poll() if answerer else None
+			if answered:
+				print(f'[{args.builder}] {answered}', flush=True)
 				last_growth = time.time()
 			for row in rows:
 				lines, row_state = session_lines(args.builder, row)
@@ -584,6 +679,8 @@ def main():
 		result = run_headless(args, out, prompt, cmd, run_env, str(work), container)
 
 	session_file = find_session_file(args.builder, home, result['sessionId'])
+	turn_started_at, turn_finished_at = turn_span(args.builder, session_file)
+	effort, effort_source = run_effort(args.builder, session_file, out)
 	meta = {
 		'kind': args.builder,
 		'isolation': args.isolation,
@@ -592,6 +689,10 @@ def main():
 		**({'claudeTools': args.claude_tools} if args.builder == 'claude' else {}),
 		'startedAt': started_at,
 		'finishedAt': now_iso(),
+		'turnStartedAt': turn_started_at,
+		'turnFinishedAt': turn_finished_at,
+		'effort': effort,
+		'effortSource': effort_source,
 		'exitCode': result['exitCode'],
 		'sessionId': result['sessionId'],
 		'sessionFile': str(session_file.relative_to(out)) if session_file else None,

@@ -1519,6 +1519,52 @@ oneOf:
                     - kind
                     - code
                     - project
+                - type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    projectExists:
+                      type: boolean
+                    instanceProject:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                    kind:
+                      type: string
+                      enum:
+                        - workflow
+                        - folder
+                    code:
+                      type: string
+                      enum:
+                        - moved
+                  required:
+                    - id
+                    - name
+                    - project
+                    - projectExists
+                    - instanceProject
+                    - kind
+                    - code
               type: object
           warnings:
             type: array
@@ -1616,6 +1662,30 @@ oneOf:
         type: string
         enum:
           - source-changed
+    required:
+      - environmentId
+      - git
+      - status
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - preview-changed
     required:
       - environmentId
       - git
