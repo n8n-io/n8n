@@ -42,10 +42,7 @@ import { toSessionTitle } from '@/modules/agents/agent-session-read';
 import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
-import {
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-} from '@/modules/skills/skill-name-taken.error';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '@/modules/skills';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,

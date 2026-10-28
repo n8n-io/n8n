@@ -30,4 +30,4 @@ export function isSameAgentConfig(a: unknown, b: unknown): boolean {
 }
 
 /** The skills module owns the skill hash, so agents and skills APIs return the same value. */
-export { getSkillHash as getAgentSkillHash } from '@/modules/skills/skill-hash';
+export { getSkillHash as getAgentSkillHash } from '@/modules/skills';

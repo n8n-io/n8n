@@ -123,7 +123,7 @@ export class AgentDefinitionService {
 	/**
 	 * Replace the draft atomically. Return whether task bodies changed.
 	 * The caller sets the version and integrations. The skill bodies of the
-	 * definition are not written: skills live in the skills hub. With
+	 * definition are not written: skills live in the skills module. With
 	 * `skillPinsFrom`, each skill ref is pinned to the version that this
 	 * published version ran (revert).
 	 */

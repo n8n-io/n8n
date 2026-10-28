@@ -193,6 +193,7 @@ import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-d
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { SkillsGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -749,8 +750,7 @@ export class InstanceAiAdapterService {
 		assistantSkillsEnabled: boolean,
 	): InstanceAiSkillService | undefined {
 		try {
-			const moduleRegistry = Container.get(ModuleRegistry);
-			if (!moduleRegistry.isActive('agents')) return undefined;
+			if (!Container.get(SkillsGate).isEnabled) return undefined;
 			return Container.get(InstanceAiSkillsAdapterService).createService(
 				user,
 				assistantSkillsEnabled,

@@ -37,7 +37,7 @@ import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.s
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
@@ -45,8 +45,13 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import {
+	createSkill,
+	deleteSkill,
+	findLatestSkillVersion,
+	findSkill,
+	findSkillIds,
+} from '@/modules/skills/testing';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -123,7 +128,7 @@ let orchestrator: ImportOrchestrator;
 beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	await initNodeTypes({
 		'n8n-nodes-base.executeWorkflowTrigger': { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },
@@ -251,6 +256,12 @@ async function importSelected(
 		await readerFor(input),
 		input.manifest,
 	);
+}
+
+async function skillIdsOf(agentId: string) {
+	const ids = await findSkillIds();
+	const skills = await Promise.all(ids.map(async (id) => await findSkill(id)));
+	return skills.filter((skill) => skill?.agentId === agentId).map((skill) => skill?.id);
 }
 
 async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedImportRequest> = {}) {
@@ -449,24 +460,19 @@ it.each(['project', 'agent'] as const)(
 			description: 'Keep this skill.',
 			instructions: 'Keep these instructions.',
 		};
-		const repository = Container.get(SkillRepository);
-		await repository.createSkill(
-			{
-				id: 'support_source_skill',
-				target:
-					scope === 'project'
-						? { projectId: project.id, agentId: null }
-						: { projectId: null, agentId: 'other-agent' },
-				source: 'ui',
-				createdById: owner.id,
-			},
-			toSkillContent(body),
-		);
-		const before = await repository.findLatestSaved(['support_source_skill']);
+		await createSkill({
+			id: 'support_source_skill',
+			...(scope === 'project'
+				? { projectId: project.id, agentId: null }
+				: { projectId: null, agentId: 'other-agent' }),
+			createdById: owner.id,
+			content: body,
+		});
+		const before = await findLatestSkillVersion('support_source_skill');
 		await expect(importSelected(input)).rejects.toBeInstanceOf(ConflictError);
-		expect(await repository.findLatestSaved(['support_source_skill'])).toEqual(before);
+		expect(await findLatestSkillVersion('support_source_skill')).toEqual(before);
 		expect(await agents.findById('support_source')).toBeNull();
-		await repository.deleteSkill('support_source_skill');
+		await deleteSkill('support_source_skill');
 	},
 );
 
@@ -501,9 +507,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	expect(promotedSkills.skills.support_source_skill).not.toHaveProperty('references');
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	await importSelected(input);
-	expect(
-		await Container.get(SkillRepository).findLatestSummaries(['support_source_skill']),
-	).toEqual(new Map([['support_source_skill', expect.objectContaining({ version: 2 })]]));
+	expect(await findLatestSkillVersion('support_source_skill')).toMatchObject({ version: 2 });
 	await tasks.insert({
 		id: 'destination-only-task',
 		agentId: initial.id,
@@ -1087,8 +1091,7 @@ it.each(['create', 'update'] as const)(
 		const beforeTasks = await tasks.findByAgentId('research_source');
 		const skillRefs = Container.get(AgentSkillRefsService);
 		const beforeSkills = await skillRefs.readDraft({ id: 'research_source' }, {});
-		const skillRepository = Container.get(SkillRepository);
-		const beforeSkillCount = await skillRepository.countBy({ agentId: 'research_source' });
+		const beforeSkillIds = await skillIdsOf('research_source');
 		const original = structuredClone(plan.agentPlan);
 		const replace = tasks.replaceForAgent.bind(tasks);
 		vi.spyOn(tasks, 'replaceForAgent').mockImplementation(async (...args) => {
@@ -1101,7 +1104,7 @@ it.each(['create', 'update'] as const)(
 		expect(await agents.findById('research_source')).toEqual(beforeAgent);
 		expect(await tasks.findByAgentId('research_source')).toEqual(beforeTasks);
 		expect(await skillRefs.readDraft({ id: 'research_source' }, {})).toEqual(beforeSkills);
-		expect(await skillRepository.countBy({ agentId: 'research_source' })).toBe(beforeSkillCount);
+		expect(await skillIdsOf('research_source')).toEqual(beforeSkillIds);
 		expect(await agents.findById('support_source')).toMatchObject({
 			schema: { instructions: 'Keep this earlier save.' },
 		});

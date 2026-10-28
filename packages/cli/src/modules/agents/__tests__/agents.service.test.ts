@@ -527,7 +527,7 @@ describe('AgentsService', () => {
 			{ type: 'skill' as const, id: 'alpha' },
 			{ type: 'skill' as const, id: 'mid' },
 		];
-		// Refs to skills that are in the hub stay, also without a user.
+		// Refs to skills that are in the skills module stay, also without a user.
 		const skill = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 		refsService.bodies = { zeta: skill, alpha: skill, mid: skill };
 

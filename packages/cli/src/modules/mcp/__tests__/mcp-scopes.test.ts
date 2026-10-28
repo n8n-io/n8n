@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import type { Mock } from 'vitest';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
@@ -5,6 +7,7 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
@@ -41,9 +44,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillService } from '@/modules/skills/skill.service';
-import { SkillsApiService } from '@/modules/skills/skills-api.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillService, SkillsGate } from '@/modules/skills';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -247,12 +248,78 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
+			mockInstance(InstanceWriteAccessService),
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockInstance(SkillAgentsProxy, { hasProvider: false });
+		mockInstance(SkillsGate, { isEnabled: false });
 	});
+
+	it.each([false, true])(
+		'applies instance protection to registered tools: %s',
+		async (readOnly) => {
+			const service = buildService();
+			vi.mocked(Container.get(InstanceWriteAccessService).isReadOnly).mockReturnValue(readOnly);
+			const registeredTools = new Map<
+				string,
+				{ handler: Mock; invoke: (args: unknown, extra: unknown) => Promise<unknown> }
+			>();
+			const createRegistrar = service.createToolRegistrar.bind(service);
+			vi.spyOn(service, 'createToolRegistrar').mockImplementation((...args) => {
+				const register = createRegistrar(...args);
+				return (tool) => {
+					const handler = vi.fn().mockResolvedValue({ content: [] });
+					const registered = register({ ...tool, handler });
+					registeredTools.set(tool.name, {
+						handler,
+						invoke: registered.handler as (args: unknown, extra: unknown) => Promise<unknown>,
+					});
+					return registered;
+				};
+			});
+
+			await service.getServer(user, mcpFeatureFlags());
+
+			const blockedTools = new Set([
+				'test_workflow',
+				'create_workflow_from_code',
+				'update_workflow',
+				'archive_workflow',
+				'restore_workflow_version',
+				'publish_workflow',
+				'unpublish_workflow',
+				'move_workflows_to_folder',
+				'create_folder',
+				'update_folder',
+				'create_data_table',
+				'rename_data_table',
+				'add_data_table_column',
+				'delete_data_table_column',
+				'rename_data_table_column',
+				'add_data_table_rows',
+				'save_user_preference',
+				'update_user_preference',
+				'undo_user_preference',
+			]);
+			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
+			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
+				expect(registeredTools.has(name), name).toBe(true);
+			}
+
+			for (const [name, { handler, invoke }] of registeredTools) {
+				const args = name === 'execute_workflow' ? { executionMode: 'production' } : {};
+				const result = await invoke(args, {});
+				if (readOnly && blockedTools.has(name)) {
+					expect(result, name).toMatchObject({ isError: true });
+					expect(handler, name).not.toHaveBeenCalled();
+				} else {
+					expect(result, name).toEqual({ content: [] });
+					expect(handler, name).toHaveBeenCalledOnce();
+				}
+			}
+		},
+	);
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
@@ -285,10 +352,10 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it.each([true, false])(
-		'registers the skill tools only with an agents provider: %s',
-		async (hasProvider) => {
-			mockInstance(SkillsApiService);
-			mockInstance(SkillAgentsProxy, { hasProvider });
+		'registers the skill tools only while the skills gate is on: %s',
+		async (skillsEnabled) => {
+			mockInstance(SkillService);
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
@@ -297,24 +364,23 @@ describe('McpService scope enforcement', () => {
 
 			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
-				hasProvider ? [...SKILL_TOOLS] : [],
+				skillsEnabled ? [...SKILL_TOOLS] : [],
 			);
 		},
 	);
 
 	it.each([
-		['an agents provider and an API key', true, true, undefined, true],
-		['an agents provider and skill:read', true, true, ['skill:read'], true],
-		['an agents provider and skill:write', true, true, ['skill:write'], true],
-		['an agents provider and no skill scope', true, true, ['workflow:read'], false],
-		['no agents provider', false, true, undefined, false],
+		['skills on and an API key', true, true, undefined, true],
+		['skills on and skill:read', true, true, ['skill:read'], true],
+		['skills on and skill:write', true, true, ['skill:write'], true],
+		['skills on and no skill scope', true, true, ['workflow:read'], false],
+		['skills off', false, true, undefined, false],
 		['the feature flag off', true, false, undefined, false],
 	])(
 		'declares the skills extension with %s',
-		async (_, hasProvider, skillsExtensionEnabled, grantedScopes, declared) => {
-			mockInstance(SkillsApiService);
+		async (_, skillsEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
 			mockInstance(SkillService);
-			mockInstance(SkillAgentsProxy, { hasProvider });
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
 				mcpFeatureFlags({ skillsExtensionEnabled }),
