@@ -676,13 +676,17 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
+		// Mark the execution as canceled before the broadcast. A worker that dequeues the job after
+		// the update reads the canceled status and skips the job.
+		const stopped = await this.stopDuringRun(execution);
+
 		// Broadcast a stop to whichever worker runs this execution. Workers not running it ignore
 		// the command. The abort-job triggered above only works on the main that enqueued the job,
 		// so the broadcast is the only stop path for a subworkflow execution and for a top-level job
 		// enqueued by another process. Both paths are idempotent.
 		await this.executionStopService.requestStop(execution.id);
 
-		return await this.stopDuringRun(execution);
+		return stopped;
 	}
 
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {

@@ -1068,6 +1068,26 @@ describe('ExecutionService', () => {
 						{ requireStatus: 'running' },
 					);
 				});
+
+				it('should persist the canceled status before it broadcasts the stop request', async () => {
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'exec-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					await executionService.stop(execution.id, [execution.id]);
+
+					const [updateOrder] =
+						executionPersistence.updateExistingExecution.mock.invocationCallOrder;
+					const [broadcastOrder] = executionStopService.requestStop.mock.invocationCallOrder;
+					expect(updateOrder).toBeLessThan(broadcastOrder);
+				});
 			});
 		});
 	});
