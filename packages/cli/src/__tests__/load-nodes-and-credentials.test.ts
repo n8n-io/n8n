@@ -1140,6 +1140,78 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('credential domain restriction fields', () => {
+		const createCredentialLoader = (credentialType: ICredentialType) =>
+			mock<NodeLoader>({
+				packageName: 'test-package',
+				known: {
+					nodes: {},
+					credentials: {
+						[credentialType.name]: { className: 'TestApi', sourcePath: 'TestApi.credentials.js' },
+					},
+				},
+				types: { nodes: [], credentials: [] },
+				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
+				getCredential: vi.fn().mockReturnValue({
+					type: credentialType,
+					sourcePath: 'TestApi.credentials.js',
+				}),
+			});
+
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+		});
+
+		it('should not load credential classes when post-processing loaders', async () => {
+			const loader = createCredentialLoader({
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+				authenticate: { type: 'generic', properties: {} },
+			});
+			instance.loaders = { 'test-package': loader };
+
+			await instance.postProcessLoaders();
+
+			expect(loader.getCredential).not.toHaveBeenCalled();
+		});
+
+		it('should add domain restriction fields when a credential is accessed', () => {
+			instance.loaders = {
+				'test-package': createCredentialLoader({
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+					authenticate: { type: 'generic', properties: {} },
+				}),
+			};
+
+			const names = instance.getCredential('testApi').type.properties.map(({ name }) => name);
+
+			expect(names).toContain('apiKey');
+			expect(names).toContain('allowedHttpRequestDomains');
+		});
+
+		it('should add domain restriction fields only once across repeated access', () => {
+			instance.loaders = {
+				'test-package': createCredentialLoader({
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [],
+					authenticate: { type: 'generic', properties: {} },
+				}),
+			};
+
+			instance.getCredential('testApi');
+			const { properties } = instance.getCredential('testApi').type;
+
+			expect(properties.filter(({ name }) => name === 'allowedHttpRequestDomains')).toHaveLength(1);
+		});
+	});
+
 	describe('collectTypes', () => {
 		let instance: LoadNodesAndCredentials;
 
