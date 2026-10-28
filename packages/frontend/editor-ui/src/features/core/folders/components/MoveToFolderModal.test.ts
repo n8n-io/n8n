@@ -1277,6 +1277,38 @@ describe('MoveToFolderModal', () => {
 				expect(toastMock.showForWorkflow).not.toHaveBeenCalled();
 			});
 
+			it('should name the project chosen at submit when the user picks another one mid-move', async () => {
+				const result = { unpublishReasons: unpublishPreview.unpublishReasons };
+				let finishMove: (value: typeof result) => void = () => {};
+				projectsStore.moveResourceToProject = vi.fn(
+					async () => await new Promise<typeof result>((resolve) => (finishMove = resolve)),
+				);
+				const { getByTestId } = renderModal('workflow');
+				await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+				await selectTeamProject(getByTestId);
+				const submitButton = getByTestId('confirm-move-folder-button');
+				await waitFor(() => expect(submitButton).toBeEnabled());
+				await userEvent.click(submitButton);
+				await waitFor(() => expect(projectsStore.moveResourceToProject).toHaveBeenCalled());
+
+				const projectSelect = getByTestId('project-sharing-select');
+				await userEvent.click(projectSelect);
+				const items = await getDropdownItems(projectSelect);
+				const otherProject = [...items].find(
+					(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[1].name,
+				);
+				await userEvent.click(otherProject as Element);
+				finishMove(result);
+
+				await waitFor(() =>
+					expect(toastMock.showForWorkflow).toHaveBeenCalledWith(
+						result,
+						TEST_WORKFLOW_RESOURCE.name,
+						getTruncatedProjectName(teamProjects[0].name),
+					),
+				);
+			});
+
 			it('should not show the toast when the transfer fails', async () => {
 				projectsStore.moveResourceToProject = vi.fn().mockRejectedValue(new Error('nope'));
 

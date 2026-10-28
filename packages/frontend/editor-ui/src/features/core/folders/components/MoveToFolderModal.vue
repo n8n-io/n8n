@@ -232,6 +232,8 @@ const onSubmit = async () => {
 				type: 'project',
 			};
 
+	// The project picker stays enabled while the move runs.
+	const movedToProjectName = targetProjectName.value;
 	loading.value = true;
 
 	try {
@@ -253,7 +255,7 @@ const onSubmit = async () => {
 					destinationParentFolderId,
 					shareCredentials,
 				);
-				unpublishedByMoveToast.showForFolder(result, targetProjectName.value);
+				unpublishedByMoveToast.showForFolder(result, movedToProjectName);
 
 				props.data.workflowListEventBus.emit('folder-transferred', {
 					source: {
@@ -311,7 +313,7 @@ const onSubmit = async () => {
 				unpublishedByMoveToast.showForWorkflow(
 					result,
 					props.data.resource.name,
-					targetProjectName.value,
+					movedToProjectName,
 				);
 
 				props.data.workflowListEventBus.emit('workflow-transferred', {
