@@ -1691,9 +1691,26 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 	}
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return undefined;
+	// A save makes a new version only when the content changed, so a new hash means the next
+	// version. A draft that follows the latest version runs it.
+	const versions = agent.value.skillVersions?.[snapshot.skillId];
+	const savedNewVersion =
+		!!versions && agent.value.skillHashes?.[snapshot.skillId] !== result.skillHash;
 	agent.value = {
 		...agent.value,
 		versionId: result.versionId,
+		...(versions && savedNewVersion
+			? {
+					skillVersions: {
+						...agent.value.skillVersions,
+						[snapshot.skillId]: {
+							...versions,
+							latest: versions.latest + 1,
+							draft: versions.pinned ? versions.draft : versions.latest + 1,
+						},
+					},
+				}
+			: {}),
 		skillHashes: {
 			...(agent.value.skillHashes ?? {}),
 			[snapshot.skillId]: result.skillHash,

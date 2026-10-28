@@ -3,7 +3,6 @@ import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } fr
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 
-import { SkillVersion } from '@/modules/skills/skill-version.entity';
 import { SkillRepository, type ResolvedSkillRow } from '@/modules/skills/skill.repository';
 
 import { AgentPublishHistory } from '../entities/agent-publish-history.entity';
@@ -267,19 +266,28 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		};
 	}
 
-	/** The version number of each skill in one published agent version, keyed by skill id. */
+	/**
+	 * The version number of each skill in one published agent version, keyed by skill id.
+	 * The numbers come from the skills module, which owns the version rows.
+	 */
 	async findPinnedVersionNumbers(
 		agentVersionId: string,
 		ctx: OperationContext = {},
 	): Promise<Map<string, number>> {
-		const rows = await this.managerFor(ctx)
-			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
-			.innerJoin(SkillVersion, 'version', 'version.id = pin.skillVersionId')
-			.where('pin.agentVersionId = :agentVersionId', { agentVersionId })
-			.select('pin.skillId', 'skillId')
-			.addSelect('version.version', 'version')
-			.getRawMany<{ skillId: string; version: number | string }>();
-		return new Map(rows.map((row) => [row.skillId, Number(row.version)]));
+		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+			select: ['skillId', 'skillVersionId'],
+			where: { agentVersionId },
+		});
+		const versions = await this.skillRepository.findVersionRefs(
+			pins.map((pin) => pin.skillVersionId),
+			ctx,
+		);
+		const result = new Map<string, number>();
+		for (const pin of pins) {
+			const version = versions.get(pin.skillVersionId)?.version;
+			if (version !== undefined) result.set(pin.skillId, version);
+		}
+		return result;
 	}
 
 	/** The agents that use the skill: a draft ref or a published pin. */

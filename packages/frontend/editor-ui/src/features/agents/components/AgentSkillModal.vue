@@ -33,7 +33,7 @@ import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import TimeAgo from '@/app/components/TimeAgo.vue';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -467,6 +467,8 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 			divided: items.length > 0,
 			// A skill attached to this agent is in use, so the builder cannot delete it.
 			disabled: !props.data.onDelete || !!props.data.deleteDisabledReason || isSaving.value,
+			// The menu has no tooltip, so the reason shows under the label.
+			description: props.data.deleteDisabledReason,
 			testId: 'agent-skill-menu-delete',
 		});
 	}
@@ -784,6 +786,21 @@ watch(
 	{ immediate: true },
 );
 const displayedSkill = computed(() => viewedVersion.value?.skill ?? skill.value);
+const viewingText = computed(() => {
+	const viewed = viewedVersion.value;
+	if (!viewed) return '';
+	const { date, time } = convertToDisplayDate(viewed.createdAt);
+	return i18n.baseText('agents.builder.skills.versions.viewing', {
+		interpolate: {
+			version: viewed.version,
+			author:
+				preferenceUserName(viewed.createdBy) ||
+				i18n.baseText('agents.builder.skills.versions.unknownUser'),
+			date,
+			time: time.slice(0, 5),
+		},
+	});
+});
 const canRestore = computed(() => !isReadOnly.value);
 
 async function onOpenVersion(version: number) {
@@ -1260,19 +1277,7 @@ function onRemove() {
 				data-testid="agent-skill-viewing-version"
 			>
 				<N8nIcon icon="history" :size="14" />
-				<N8nText size="small">
-					{{
-						i18n.baseText('agents.builder.skills.versions.viewing', {
-							interpolate: {
-								version: viewedVersion.version,
-								author:
-									preferenceUserName(viewedVersion.createdBy) ||
-									i18n.baseText('agents.builder.skills.versions.unknownUser'),
-							},
-						})
-					}}
-					<TimeAgo :date="viewedVersion.createdAt" />.
-				</N8nText>
+				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
 			<div :class="[$style.content, versionsOpen && versions && $style.contentWithVersions]">
 				<AgentSkillUpload

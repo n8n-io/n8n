@@ -59,6 +59,16 @@ function labelOf(section: DiffSection): string {
 function isMarkdown(section: DiffSection): boolean {
 	return MARKDOWN_FIELDS.has(section.key) || section.key.endsWith('.md');
 }
+
+/**
+ * Whether an unchanged run renders as markdown. A run that opens or closes a code fence
+ * without the other half would turn the rest of the run into code, so it stays plain text.
+ */
+function rendersAsMarkdown(section: DiffSection, text: string): boolean {
+	if (!isMarkdown(section)) return false;
+	const fences = text.split('\n').filter((line) => /^\s*(```|~~~)/.test(line)).length;
+	return fences % 2 === 0;
+}
 </script>
 
 <template>
@@ -76,7 +86,7 @@ function isMarkdown(section: DiffSection): boolean {
 			<div :class="$style.body">
 				<template v-for="(block, index) in section.blocks" :key="index">
 					<N8nMarkdown
-						v-if="block.kind === 'equal' && isMarkdown(section)"
+						v-if="block.kind === 'equal' && rendersAsMarkdown(section, block.text)"
 						:class="$style.equal"
 						:content="block.text"
 					/>
