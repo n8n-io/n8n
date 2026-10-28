@@ -1908,8 +1908,8 @@ describe('Apply leaves publish state to the target', () => {
 	const seedTarget = async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.promote.id);
-		await service.clone(environments.apply.id);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
 		const project = await createTeamProject('Orders', owner);
 		const repository = Container.get(WorkflowRepository);
 		const live = await createActiveWorkflow({ name: 'Live' }, project);
