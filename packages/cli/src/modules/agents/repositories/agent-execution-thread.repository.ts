@@ -784,13 +784,13 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		};
 	}
 
-	async targetedJobs(request: TaskStopScope, ctx: OperationContext = {}) {
+	async findJobsCapturedByStop(request: TaskStopScope, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).findBy(AgentBackgroundJob, {
 			id: In(request.generation.jobIds),
 		});
 	}
 
-	async unfinishedWork(request: TaskStopScope, ctx: OperationContext = {}) {
+	async findStopTargetsStillActive(request: TaskStopScope, ctx: OperationContext = {}) {
 		const executions = await this.managerFor(ctx).find(AgentExecution, {
 			where: [
 				{ id: In(request.generation.executionIds), status: 'running' },
@@ -799,7 +799,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			select: ['id'],
 		});
 
-		const jobs = await this.targetedJobs(request, ctx);
+		const jobs = await this.findJobsCapturedByStop(request, ctx);
 
 		return [
 			...jobs
@@ -812,7 +812,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/** A queued report owns these job notifications, including on another main. */
-	async ownsStopReport(stopId: string) {
+	async hasTaskStopWithId(stopId: string) {
 		const expression =
 			this.manager.connection.options.type === 'postgres'
 				? "thread.\"taskStop\"->'pause'->>'id'"
@@ -823,7 +823,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.getExists();
 	}
 
-	async recordAdmission(threadId: string, userInitiated: boolean, ctx: OperationContext) {
+	async markChatResumedAfterStop(threadId: string, userInitiated: boolean, ctx: OperationContext) {
 		if (!userInitiated) return;
 
 		const stop = await this.findTaskStop(threadId, ctx);
@@ -834,7 +834,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		await this.saveStop(stop, ctx);
 	}
 
-	async finishPauseReport(
+	async finalizeStopReport(
 		threadId: string,
 		stopId: string,
 		executionId: string,
@@ -862,6 +862,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	private readStop(thread: AgentExecutionThread | null): TaskStopScope | null {
 		if (!thread?.taskStop) return null;
 		const stop = thread.taskStop;
+
 		return {
 			...stop,
 			threadId: thread.id,

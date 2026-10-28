@@ -116,10 +116,12 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		await job(child.id, execution.id);
 		await job(thread.id, execution.id);
 		expect(stop.generation.threadIds).toContain(child.id);
-		expect((await repository.targetedJobs(stop)).map(({ id }) => id)).toEqual([known.id]);
-		expect(await repository.unfinishedWork(stop)).toEqual([{ jobId: known.id, title: 'Research' }]);
+		expect((await repository.findJobsCapturedByStop(stop)).map(({ id }) => id)).toEqual([known.id]);
+		expect(await repository.findStopTargetsStillActive(stop)).toEqual([
+			{ jobId: known.id, title: 'Research' },
+		]);
 		await db.getRepository(AgentBackgroundJob).update(known.id, { status: 'paused' });
-		expect(await repository.unfinishedWork(stop)).toEqual([]);
+		expect(await repository.findStopTargetsStillActive(stop)).toEqual([]);
 	});
 
 	it('keeps a captured foreground approval unfinished', async () => {
@@ -127,7 +129,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 			.getRepository(AgentExecution)
 			.save({ id: randomUUID(), threadId: thread.id, status: 'success', hitlStatus: 'suspended' });
 		const stop = await request();
-		expect(await repository.unfinishedWork(stop)).toEqual([
+		expect(await repository.findStopTargetsStillActive(stop)).toEqual([
 			{ jobId: execution.id, title: 'Current response' },
 		]);
 	});
@@ -156,7 +158,7 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		expect(
 			(await db.getRepository(AgentBackgroundJob).findOneByOrFail({ id: later.id })).pauseRequestId,
 		).toBeNull();
-		expect(await repository.ownsStopReport(stop.pause.id)).toBe(true);
+		expect(await repository.hasTaskStopWithId(stop.pause.id)).toBe(true);
 	});
 
 	it('keeps late plan writes and dispatch available', async () => {
@@ -208,8 +210,8 @@ describe('AgentExecutionThreadRepository task stops', () => {
 			const execution = await db
 				.getRepository(AgentExecution)
 				.save({ id: randomUUID(), threadId: thread.id, status });
-			expect(await repository.ownsStopReport(stop.pause.id)).toBe(true);
-			await repository.finishPauseReport(thread.id, stop.pause.id, execution.id, {});
+			expect(await repository.hasTaskStopWithId(stop.pause.id)).toBe(true);
+			await repository.finalizeStopReport(thread.id, stop.pause.id, execution.id, {});
 			expect((await repository.findTaskStop(thread.id))?.pause).toMatchObject({
 				reportedAt: expect.any(String),
 				reportFailed: status !== 'success',
@@ -217,9 +219,9 @@ describe('AgentExecutionThreadRepository task stops', () => {
 			expect(
 				(await db.getRepository(AgentBackgroundJob).findOneByOrFail({ id: known.id })).notifiedAt,
 			).not.toBeNull();
-			await repository.recordAdmission(thread.id, false, {});
+			await repository.markChatResumedAfterStop(thread.id, false, {});
 			expect((await repository.findTaskStop(thread.id))?.pause.resumedAt).toBeUndefined();
-			await repository.recordAdmission(thread.id, true, {});
+			await repository.markChatResumedAfterStop(thread.id, true, {});
 			expect((await repository.findTaskStop(thread.id))?.pause.resumedAt).toEqual(
 				expect.any(String),
 			);
