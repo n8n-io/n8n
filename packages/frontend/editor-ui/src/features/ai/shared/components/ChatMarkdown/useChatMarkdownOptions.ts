@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 import type MarkdownIt from 'markdown-it';
 import markdownItKatex from '@vscode/markdown-it-katex';
 import markdownItFootnote from 'markdown-it-footnote';
@@ -67,13 +67,14 @@ export interface ChatMarkdownOptions {
 }
 
 export function useChatMarkdownOptions(
-	config: ChatMarkdownOptions = {},
+	config: MaybeRefOrGetter<ChatMarkdownOptions> = {},
 	tableContainerClassName = 'n8n-markdown-table-container',
 	footnoteRefClassName: string | null = 'n8n-markdown-footnote-ref',
 ) {
 	const options = { breaks: true, linkify: true };
 
 	const plugins = computed(() => {
+		const resolvedConfig = toValue(config);
 		const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 			const defaultLinkOpenRenderer =
 				vueMarkdownItInstance.renderer.rules.link_open ??
@@ -81,6 +82,10 @@ export function useChatMarkdownOptions(
 
 			vueMarkdownItInstance.renderer.rules.link_open = (tokens, idx, options, env, self) => {
 				const href = tokens[idx].attrGet('href');
+				/** Use a safe fragment to carry resource URLs through HTML sanitization. */
+				if (href?.startsWith('n8n-resource://')) {
+					tokens[idx].attrSet('href', `#${href}`);
+				}
 
 				if (href && shouldOpenChatMarkdownLinkInNewTab(href)) {
 					tokens[idx].attrSet('target', '_blank');
@@ -123,7 +128,7 @@ export function useChatMarkdownOptions(
 
 			md.core.ruler.push('hide_orphan_footnote_refs', hideOrphanFootnoteRefs);
 
-			if (!footnoteRefClassName || config.footnotes === 'normal') return;
+			if (!footnoteRefClassName || resolvedConfig.footnotes === 'normal') return;
 
 			md.core.ruler.push('footnote_content_extractor', footnoteContentExtractor);
 
@@ -148,8 +153,8 @@ export function useChatMarkdownOptions(
 		return [
 			linksNewTabPlugin,
 			tablePlugin,
-			...(config.math ? [mathPlugin] : []),
-			...(config.footnotes ? [footnotePlugin] : []),
+			...(resolvedConfig.math ? [mathPlugin] : []),
+			...(resolvedConfig.footnotes ? [footnotePlugin] : []),
 		];
 	});
 

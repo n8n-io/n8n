@@ -28,7 +28,7 @@ describe('ChatMarkdownChunk', () => {
 	it('keeps buttons with shared markdown', () => {
 		const wrapper = mount(ChatMarkdownChunk, {
 			props: {
-				source: { type: 'with-buttons', content: 'Choose', buttons: [] },
+				source: { type: 'with-buttons', content: 'Choose', buttons: [], blockUserInput: false },
 				isButtonsDisabled: true,
 			},
 			global: { stubs: { ChatMarkdown: true, ChatButtons: true } },

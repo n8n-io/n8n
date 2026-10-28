@@ -76,6 +76,8 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 interface MarkdownLink {
 	href: string;
 	label: string;
+	/** Link label HTML after sanitization. */
+	labelHtml: string;
 	title?: string;
 	target?: string;
 	rel?: string;
@@ -93,13 +95,13 @@ function refreshLinkTargets() {
 	const nextLinks: typeof links.value = [];
 	for (const anchor of editor.value.querySelectorAll<HTMLAnchorElement>('a[data-link-slot]')) {
 		const href = anchor.getAttribute('href');
-		/** Keep rich link content in the sanitized HTML instead of reducing it to text. */
-		if (!href || anchor.children.length > 0) continue;
+		if (!href) continue;
 		const target = links.value[nextLinks.length]?.target ?? document.createElement('span');
 		nextLinks.push({
 			props: {
 				href,
 				label: anchor.textContent ?? '',
+				labelHtml: anchor.innerHTML,
 				title: anchor.getAttribute('title') ?? undefined,
 				target: anchor.getAttribute('target') ?? undefined,
 				rel: anchor.getAttribute('rel') ?? undefined,
@@ -111,7 +113,7 @@ function refreshLinkTargets() {
 	links.value = nextLinks;
 }
 const slots = defineSlots<{
-	/** Render sanitized links with plain text labels. */
+	/** Render links with sanitized HTML labels and a plain text fallback. */
 	link?: (props: MarkdownLink) => VNode[];
 	/** Render fenced code without changing its whitespace. */
 	'code-block'?: (props: { code: string; language: string }) => VNode[];

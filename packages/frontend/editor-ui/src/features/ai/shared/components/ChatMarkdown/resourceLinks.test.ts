@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getResourceLinkIcon } from './resourceLinks';
+import { getResourceLinkIcon } from './ChatResourceLink.utils';
 
 describe('getResourceLinkIcon', () => {
 	it.each([
