@@ -94,14 +94,16 @@ export class ProjectPackageImporter {
 		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		const plan = await this.planImport(request, reader, manifest, importSource, 'enforce');
+		const refusal = plan.projectPlan.conflicts.map(projectRefusalError).find((error) => error);
+		if (refusal) throw refusal;
 		if (plan.issues.length > 0) throw toImportBlockedError(plan.issues);
 		return await this.applyPlan(plan);
 	}
 
 	/**
 	 * Plans every project of the import and collects the issues that block it. Writes no data.
-	 * In `enforce` mode, policy checks write audit events and refusals that the import reports as
-	 * an error throw.
+	 * In `enforce` mode, policy checks write audit events. A refused project is an issue in both
+	 * modes, so Apply can report it with the other blockers.
 	 */
 	async planImport(
 		request: ResolvedImportRequest,
@@ -126,10 +128,6 @@ export class ProjectPackageImporter {
 			projects,
 			request.projectConflictPolicy,
 		);
-		if (mode === 'enforce') {
-			const refusal = projectPlan.conflicts.map(projectRefusalError).find((error) => error);
-			if (refusal) throw refusal;
-		}
 		// A refused project decides the whole import, so report it before reading any project's
 		// contents — planning work that is certain to be discarded only delays the same failure.
 		if (projectPlan.conflicts.length > 0) {
