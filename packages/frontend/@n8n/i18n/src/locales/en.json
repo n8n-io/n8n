@@ -5070,6 +5070,8 @@
 	"settings.migrationReport.detail.bulk.migrate": "Migrate",
 	"settings.migrationReport.detail.bulk.notifyOwners": "Notify owners",
 	"settings.migrationReport.detail.bulk.notify.noOwner": "{count} without an owner",
+	"settings.migrationReport.detail.bulk.notifyOwnerCount": "Notify {count} owner | Notify {count} owners",
+	"settings.migrationReport.detail.bulk.notify.tooltip": "Each owner gets one email that lists all of their selected workflows",
 	"settings.migrationReport.detail.bulk.notify.success.title": "Notified the owner of {count} workflow | Notified the owners of {count} workflows",
 	"settings.migrationReport.detail.bulk.notify.partial.title": "Notified owners of {notified} of {total} workflows",
 	"settings.migrationReport.detail.unusedCallout.message": "{count} workflow hasn't run in over 12 months. Mark it as \"Won't fix\" to keep it out of the way. | {count} workflows haven't run in over 12 months. Mark them as \"Won't fix\" to keep them out of the way.",
