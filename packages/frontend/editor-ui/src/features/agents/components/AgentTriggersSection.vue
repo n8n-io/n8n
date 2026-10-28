@@ -40,6 +40,7 @@ const props = withDefaults(
 		isPublished?: boolean;
 		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 		simpleChannelSetup?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
@@ -361,6 +362,7 @@ function handleChannelDisconnected(channelType: string) {
 		</AgentChipRow>
 
 		<AgentSchedulesRow
+			:preview-disabled-reason="props.previewDisabledReason"
 			:task-refs="props.taskRefs"
 			:disabled="props.disabled"
 			:project-id="props.projectId"

@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, shallowMount } from '@vue/test-utils';
@@ -129,6 +130,7 @@ const AgentPreviewMoreMenuStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		inline: boolean;
 		sessionTitle: string;
 		effectiveSessionId?: string;
 		beforeSend: () => Promise<void> | void;
@@ -176,6 +178,13 @@ describe('AgentPreviewDock', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
+	});
+
+	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
+		const wrapper = mountDock({ inline: true });
+		expect(wrapper.attributes('data-preview-layout')).toBe('docked');
+		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(false);
 	});
 
 	it('keeps the last usage on completion', async () => {
@@ -578,8 +587,10 @@ describe('AgentPreviewChatPage', () => {
 			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 			amount: number;
 		}) => Promise<boolean>,
+		standalone = false,
 	) {
 		return shallowMount(AgentPreviewChatPage, {
+			global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: standalone } },
 			props: {
 				initialized: true,
 				projectId: 'project-1',
@@ -593,6 +604,25 @@ describe('AgentPreviewChatPage', () => {
 			},
 		});
 	}
+
+	it.each([true, false])(
+		'uses the plus icon only in the Agents UI (standalone: %s)',
+		(standalone) => {
+			const wrapper = mountChatPage(undefined, undefined, standalone);
+			expect(wrapper.getComponent({ name: 'AgentChatPanel' }).props('attachButtonIcon')).toBe(
+				standalone ? 'plus' : 'paperclip',
+			);
+		},
+	);
+
+	it('reports a first user message only after one exists', () => {
+		const wrapper = mountChatPage();
+		const chat = wrapper.findComponent({ name: 'AgentChatPanel' });
+		chat.vm.$emit('first-user-message', undefined);
+		expect(wrapper.emitted('message-sent')).toBeUndefined();
+		chat.vm.$emit('first-user-message', 'Hello');
+		expect(wrapper.emitted('message-sent')).toEqual([[]]);
+	});
 
 	it('uses a neutral root inside the complementary dock landmark', () => {
 		expect(mountChatPage().element.tagName).toBe('DIV');
