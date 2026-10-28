@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  h_23d60aac2fe72e 36,138,148-157,271-302
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  h_23d60aac2fe72e 1536-1552
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  h_23d60aac2fe72e 12,26,108-117,261,266,271,360-368
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  h_23d60aac2fe72e 185-200,205-213,291
+packages/nodes-base/credentials/N8nApi.credentials.ts
+  h_23d60aac2fe72e 48-59
+packages/nodes-base/credentials/test/N8nApi.credentials.test.ts
+  h_23d60aac2fe72e 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2cc23a9206ed7aff347f257c289f38111f73c61a",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
