@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/useChatMarkdownOptions.ts
+  s_dea0070363175c::t_0b77e022e16038 88
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils.ts
+  s_dea0070363175c::t_18bccb7c6b90af 58,60-62,64-65
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.test.ts
+  s_dea0070363175c::t_0ad527b3ca3f96 12-40,42-43
+  s_dea0070363175c::t_26221b7bd27992 41,44
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.vue
+  s_dea0070363175c::t_b36f3b5dfc3be4 84
+  s_dea0070363175c::t_b304d88b82efbb 77-78
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/useChatMarkdownOptions.test.ts
+  s_dea0070363175c::t_3044a71f14d0b2 13-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c957155b00828f629ed723538f1920abe13a9d4a",
+  "prompts": {},
+  "sessions": {
+    "s_dea0070363175c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18285-ac0d-7797-835a-715b525606dc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
