@@ -648,11 +648,11 @@ describe('skills tool', () => {
 		expect(createSkillsTool(createContext(service)).outputTrust).toBe('untrusted');
 	});
 
-	it('fails when the skills hub is not available', async () => {
+	it('fails when the skills module is not available', async () => {
 		const tool = createSkillsTool(createContext(undefined));
 
 		await expect(executeTool(tool, { action: 'list', limit: 50 })).rejects.toThrow(
-			'The skills hub is not available on this instance.',
+			'Skills are not available on this instance.',
 		);
 	});
 });

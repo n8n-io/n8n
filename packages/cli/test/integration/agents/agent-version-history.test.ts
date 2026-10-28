@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import {
 	markAgentDraftDirty,
 	saveAgentDraftFenced,
@@ -46,7 +46,7 @@ describe('Agent version history', () => {
 		});
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		owner = await createOwner();
 		projectId = (await createTeamProject()).id;
 		agents = Container.get(AgentRepository);

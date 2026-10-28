@@ -1373,10 +1373,10 @@ describe('PATCH /workflows/:workflowId', () => {
 			]);
 		});
 
-		describe('sub-workflow loaded from a URL or file', () => {
-			const UNINSPECTABLE_SOURCE_MESSAGE =
-				'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" or "Define Below" source instead.';
+		const UNINSPECTABLE_SOURCE_MESSAGE =
+			'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" source, or enter fixed JSON in the "Define Below" source.';
 
+		describe('sub-workflow loaded from a URL or file', () => {
 			const remoteSubworkflowNode = (workflowUrl = 'https://example.com/workflow.json') => ({
 				id: 'uuid-sub-1',
 				name: 'Sub',
@@ -1605,6 +1605,69 @@ describe('PATCH /workflows/:workflowId', () => {
 				expect(response.body.message).toBe(
 					"The version to restore is not in this workflow's history.",
 				);
+			});
+		});
+
+		describe('sub-workflow JSON that is not fixed text', () => {
+			const inlineSubworkflowNode = (workflowJson: string | string[], name = 'Sub') => ({
+				id: 'uuid-sub-inline',
+				name,
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0] as [number, number],
+				parameters: { source: 'parameter', workflowJson },
+			});
+
+			it('rejects a member adding a node whose workflow JSON is an expression', async () => {
+				const workflow = await createWorkflow({}, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [inlineSubworkflowNode('={{ $json.wf }}')],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member creating a workflow whose workflow JSON is an array', async () => {
+				const response = await authMemberAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [inlineSubworkflowNode([JSON.stringify({ nodes: [], connections: {} })])],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('lets a member rename a stored node whose workflow JSON is an expression', async () => {
+				const stored = inlineSubworkflowNode('={{ $json.wf }}');
+				const workflow = await createWorkflow({ nodes: [stored] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [inlineSubworkflowNode('={{ $json.wf }}', 'Renamed')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual([{ ...stored, name: 'Renamed' }]);
+			});
+
+			it('lets the owner create a node whose workflow JSON is an expression', async () => {
+				const response = await authOwnerAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [inlineSubworkflowNode('={{ $json.wf }}')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.workflowJson).toBe('={{ $json.wf }}');
 			});
 		});
 
