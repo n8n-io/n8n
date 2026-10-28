@@ -214,6 +214,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// care about the specific previous published version id.
 		const publishedVersionCondition = dependencies.publishedVersionId ? Not(IsNull()) : IsNull();
 
+		// Lock the workflow row before any dependency row. Every index writer takes the
+		// locks in this order, so concurrent writers wait instead of deadlocking.
+		await this.lockWorkflowRow(workflowId, tx);
+
 		// Replace rows from an older workflow version, and rows an older indexer
 		// version wrote for the current workflow version.
 		const outdatedVersionResult = await tx.delete(WorkflowDependency, {
@@ -247,14 +251,13 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			return true;
 		}
 
-		// Nothing was deleted - either no existing data, or existing data is newer/same version
-		// Check if any dependencies exist for this workflow. We lock for update to avoid a race
-		// when two processes try to insert dependencies for the same workflow at the same time.
-		const hasData = await this.acquireLockAndCheckForExistingData(
+		// Nothing was deleted - either no existing data, or existing data is newer/same version.
+		// The workflow row lock stops two processes from inserting rows for the same workflow
+		// at the same time.
+		const hasData = await tx.existsBy(WorkflowDependency, {
 			workflowId,
-			dependencies.publishedVersionId,
-			tx,
-		);
+			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
+		});
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
@@ -324,26 +327,13 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	private async acquireLockAndCheckForExistingData(
-		workflowId: string,
-		publishedVersionId: string | null,
-		tx: EntityManager,
-	): Promise<boolean> {
-		// Build where conditions with publishedVersionId filter
-		const whereConditions: Record<string, unknown> = {
-			workflowId,
-			publishedVersionId: publishedVersionId ?? IsNull(),
-		};
-
-		// Lock on the workflow row, and only then check the dependency table.
-		// This prevents a race between two concurrent updates.
-		await this.lockWorkflowRow(workflowId, tx);
-		return await tx.existsBy(WorkflowDependency, whereConditions);
-	}
-
 	/**
 	 * Lock the workflow row until the transaction ends. Writers of the same workflow's
 	 * index rows, and writers of its `activeVersionId`, wait for the lock.
+	 *
+	 * Take this lock before you touch any dependency row. A dependency insert checks
+	 * its foreign key against the workflow row, so a writer that holds dependency rows
+	 * and then waits for the workflow row can deadlock with one that does the reverse.
 	 */
 	private async lockWorkflowRow(workflowId: string, tx: EntityManager): Promise<void> {
 		// SQLite locks the entire database for writes, so no explicit row lock is needed.

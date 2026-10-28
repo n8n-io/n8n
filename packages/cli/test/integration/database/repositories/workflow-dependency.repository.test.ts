@@ -1,5 +1,6 @@
 import {
 	testDb,
+	createActiveWorkflow,
 	createWorkflow,
 	createTeamProject,
 	linkUserToProject,
@@ -12,6 +13,8 @@ import {
 	WorkflowRepository,
 	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import { DataSource } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createMember, createOwner } from '../../shared/db/users';
@@ -19,7 +22,11 @@ import { createMember, createOwner } from '../../shared/db/users';
 describe('WorkflowDependencyRepository', () => {
 	let workflowDependencyRepository: WorkflowDependencyRepository;
 
+	const isPostgres = process.env.DB_TYPE === 'postgresdb';
+
 	beforeAll(async () => {
+		// Use separate connections for concurrent transactions.
+		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testDb.init();
 		workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 	});
@@ -363,6 +370,154 @@ describe('WorkflowDependencyRepository', () => {
 			expect(savedDependencies).toHaveLength(1);
 			expect(savedDependencies[0].workflowVersionId).toBe(2);
 			expect(savedDependencies[0].dependencyKey).toBe('cred-2');
+		});
+	});
+
+	describe('removePublishedDependenciesForUnpublishedWorkflow()', () => {
+		it('should remove the published rows of an unpublished workflow and keep its draft rows', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const draft = new WorkflowDependencies(workflow.id, 1);
+			draft.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-draft',
+				dependencyInfo: null,
+			});
+			const published = new WorkflowDependencies(workflow.id, 1, 'v1');
+			published.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-published',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, draft);
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published);
+
+			const result =
+				await workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
+					workflow.id,
+				);
+
+			expect(result).toBe(true);
+			const remaining = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(remaining).toHaveLength(1);
+			expect(remaining[0]).toMatchObject({ dependencyKey: 'cred-draft', publishedVersionId: null });
+		});
+
+		it('should keep the published rows of a published workflow', async () => {
+			const workflow = await createActiveWorkflow({ nodes: [] });
+			const published = new WorkflowDependencies(
+				workflow.id,
+				workflow.versionCounter,
+				workflow.versionId,
+			);
+			published.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-published',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, published);
+
+			const result =
+				await workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
+					workflow.id,
+				);
+
+			expect(result).toBe(false);
+			const remaining = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(remaining.filter((row) => row.publishedVersionId !== null)).toHaveLength(1);
+		});
+
+		// SQLite runs one write transaction at a time, so only Postgres can interleave them.
+		describe.runIf(isPostgres)('with a concurrent published index update', () => {
+			const PAUSE_WRITER = 42407001;
+
+			it('should wait for the update instead of deadlocking', async () => {
+				const dataSource = Container.get(DataSource);
+				const table = dataSource.driver.escape(workflowDependencyRepository.metadata.tableName);
+				const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+
+				const oldPublished = new WorkflowDependencies(workflow.id, 1, 'v1');
+				oldPublished.add({
+					dependencyType: 'credentialId',
+					dependencyKey: 'cred-y',
+					dependencyInfo: null,
+				});
+				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, oldPublished);
+
+				// Pause the writer after it deletes the old published rows, before it inserts.
+				await dataSource.query(`CREATE FUNCTION pause_dependency_writer() RETURNS trigger LANGUAGE plpgsql AS $$
+						BEGIN
+							PERFORM pg_advisory_xact_lock(${PAUSE_WRITER});
+							RETURN OLD;
+						END $$`);
+				await dataSource.query(`CREATE TRIGGER pause_dependency_writer AFTER DELETE ON ${table}
+						FOR EACH ROW WHEN (OLD."workflowVersionId" = 1) EXECUTE FUNCTION pause_dependency_writer()`);
+
+				const waitForLockWaiters = async (sql: string) =>
+					await expect
+						.poll(
+							async () => {
+								const rows = await dataSource.query<Array<{ count: string }>>(sql);
+								return Number(rows[0].count);
+							},
+							{ timeout: 5_000 },
+						)
+						.toBeGreaterThanOrEqual(1);
+
+				const newPublished = new WorkflowDependencies(workflow.id, 2, 'v2');
+				newPublished.add({
+					dependencyType: 'credentialId',
+					dependencyKey: 'cred-z',
+					dependencyInfo: null,
+				});
+
+				const barrier = dataSource.createQueryRunner();
+				await barrier.connect();
+				let writer: Promise<boolean> | undefined;
+				let cleanup: Promise<boolean> | undefined;
+
+				try {
+					await barrier.query(`SELECT pg_advisory_lock(${PAUSE_WRITER})`);
+
+					writer = workflowDependencyRepository.updateDependenciesForWorkflow(
+						workflow.id,
+						newPublished,
+					);
+					await waitForLockWaiters(
+						`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND objid = ${PAUSE_WRITER} AND NOT granted`,
+					);
+
+					cleanup = workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
+						workflow.id,
+					);
+					// The cleanup now waits for a row lock that the paused writer holds.
+					await waitForLockWaiters(
+						`SELECT count(*) FROM pg_stat_activity
+						  WHERE datname = current_database() AND wait_event_type = 'Lock' AND wait_event <> 'advisory'`,
+					);
+
+					await barrier.query(`SELECT pg_advisory_unlock(${PAUSE_WRITER})`);
+
+					const [writerResult, cleanupResult] = await Promise.allSettled([writer, cleanup]);
+					expect(writerResult).toEqual({ status: 'fulfilled', value: true });
+					expect(cleanupResult).toEqual({ status: 'fulfilled', value: true });
+				} finally {
+					await barrier.query('SELECT pg_advisory_unlock_all()');
+					await Promise.allSettled([writer, cleanup]);
+					await barrier.release();
+					await dataSource.query(`DROP TRIGGER pause_dependency_writer ON ${table}`);
+					await dataSource.query('DROP FUNCTION pause_dependency_writer()');
+				}
+
+				// The workflow is not published, so the cleanup removed the rows the writer added.
+				const remaining = await workflowDependencyRepository.find({
+					where: { workflowId: workflow.id },
+				});
+				expect(remaining).toHaveLength(0);
+			}, 20_000);
 		});
 	});
 
