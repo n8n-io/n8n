@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/agents/agent-files.constants.ts
+  s_70c57f97002db8::t_7497093b49ef8a 1
+packages/cli/src/modules/agents/__tests__/agent-upload.middleware.test.ts
+  s_70c57f97002db8::t_7497093b49ef8a 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c1a3c3779874efe8b26a4a28618fe65dba8d75a",
+  "prompts": {},
+  "sessions": {
+    "s_70c57f97002db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "613fb601-6c07-4d1a-bd37-af927c9e4841",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
