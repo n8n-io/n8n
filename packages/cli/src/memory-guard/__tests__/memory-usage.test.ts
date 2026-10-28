@@ -38,23 +38,64 @@ describe('memory usage', () => {
 	});
 
 	describe('getOldGenerationLimit', () => {
-		// Heap size limits measured on Node 26
-		it.each([
-			['no container limit', undefined, 4192, 4096],
-			['no container limit and --max-old-space-size=512', undefined, 608, 512],
-			['a 512 MiB container', 512, 268, 256],
-			['a 1 GiB container', 1024, 536, 512],
-			['a 2 GiB container', 2048, 1072, 1024],
-			['a 3 GiB container', 3072, 1632, 1536],
-			['a 1280 MiB container and --max-old-space-size=1300', 1280, 1348, 1300],
-		])('should subtract the young generation with %s', (_, containerMb, heapLimitMb, oldMb) => {
+		const { execArgv } = process;
+
+		const setHeapLimit = (heapLimitMb: number) =>
 			vi.mocked(v8.getHeapStatistics).mockReturnValue({
 				heap_size_limit: heapLimitMb * MB,
 			} as v8.HeapInfo);
 
+		beforeEach(() => {
+			process.execArgv = [];
+			vi.stubEnv('NODE_OPTIONS', '');
+		});
+
+		afterEach(() => {
+			process.execArgv = execArgv;
+			vi.unstubAllEnvs();
+		});
+
+		// Heap size limits measured on Node 26
+		it.each([
+			['no container limit', undefined, 4192, 4096],
+			['a 512 MiB container', 512, 268, 256],
+			['a 1 GiB container', 1024, 536, 512],
+			['a 3 GiB container', 3072, 1632, 1536],
+			['a 6 GiB container', 6144, 2144, 2048],
+		])('should compute the default with %s', (_, containerMb, heapLimitMb, oldMb) => {
+			setHeapLimit(heapLimitMb);
+
 			const containerLimit = containerMb === undefined ? undefined : containerMb * MB;
 
 			expect(getOldGenerationLimit(containerLimit)).toBe(oldMb * MB);
+		});
+
+		it.each([
+			['--max-old-space-size=512', []],
+			['--max_old_space_size=512', []],
+			['--max-old-space-size 512', []],
+			['--max-old-space-size=512 --max-semi-space-size=128', []],
+			['--max-old-space-size=900', ['--max-old-space-size=512']],
+		])('should read the limit from NODE_OPTIONS %s and argv %j', (nodeOptions, argv) => {
+			process.execArgv = argv;
+			vi.stubEnv('NODE_OPTIONS', nodeOptions);
+			setHeapLimit(896);
+
+			expect(getOldGenerationLimit(undefined)).toBe(512 * MB);
+		});
+
+		it('should compute the limit from --max-old-space-size-percentage', () => {
+			process.execArgv = ['--max-old-space-size=512', '--max-old-space-size-percentage=40'];
+			setHeapLimit(867);
+
+			expect(getOldGenerationLimit(2048 * MB)).toBe(819 * MB);
+		});
+
+		it('should cap the limit at the heap size limit', () => {
+			process.execArgv = ['--max-old-space-size=4116'];
+			setHeapLimit(4096);
+
+			expect(getOldGenerationLimit(4096 * MB)).toBe(4096 * MB);
 		});
 	});
 

@@ -12,6 +12,8 @@ export interface MemoryUsage {
 
 const MB = 1024 * 1024;
 
+const GB = 1024 * MB;
+
 const YOUNG_GENERATION_SPACES = new Set(['new_space', 'new_large_object_space']);
 
 /**
@@ -23,18 +25,38 @@ export function getContainerLimit(): number | undefined {
 	return limit > 0 && limit <= totalmem() ? limit : undefined;
 }
 
+/** The last value of a flag. Node reads `NODE_OPTIONS` first, so the command line wins. */
+function readFlag(name: string): number | undefined {
+	const spellings = [`--${name}`, `--${name.replaceAll('-', '_')}`];
+	const args = [...(process.env.NODE_OPTIONS?.split(/\s+/) ?? []), ...process.execArgv];
+	let value: number | undefined;
+	for (const [i, arg] of args.entries()) {
+		const [flag, inlineValue] = arg.split('=');
+		if (!spellings.includes(flag)) continue;
+		const parsed = Number(inlineValue ?? args[i + 1]);
+		if (parsed > 0) value = parsed;
+	}
+	return value;
+}
+
 /**
  * V8 aborts when the old generation is full, but `heap_size_limit` also includes the young
- * generation, and V8 has no API for the old generation limit. Node sizes the young generation
- * from the container limit, else from the machine memory: two semi-spaces and a new large
- * object space, each 1/128 of that memory, 2 to 32 MB, rounded up to a power of two.
- * `--max-old-space-size` does not change it, but `--max-semi-space-size` does.
+ * generation, and V8 has no API for the old generation limit. So the limit comes from the
+ * flags, else from the default that Node sets from the container limit or the machine memory:
+ * half of it, from 256 MB to 2 GB, or to 4 GB with 15 GB or more.
  */
 export function getOldGenerationLimit(containerLimit: number | undefined): number {
-	const physicalMemory = containerLimit ?? totalmem();
-	const semiSpace = Math.min(Math.max(physicalMemory / 128, 2 * MB), 32 * MB);
-	const youngGeneration = 3 * 2 ** Math.ceil(Math.log2(semiSpace));
-	return getHeapStatistics().heap_size_limit - youngGeneration;
+	const memory = containerLimit ?? totalmem();
+	const percentage = readFlag('max-old-space-size-percentage');
+	const sizeMb = readFlag('max-old-space-size');
+
+	let limit: number;
+	if (percentage !== undefined) limit = Math.floor(((memory / MB) * percentage) / 100) * MB;
+	else if (sizeMb !== undefined) limit = sizeMb * MB;
+	else limit = Math.min(Math.max(memory / 2, 256 * MB), memory >= 15 * GB ? 4 * GB : 2 * GB);
+
+	// Pointer compression caps the heap at 4 GB
+	return Math.min(limit, getHeapStatistics().heap_size_limit);
 }
 
 /**
