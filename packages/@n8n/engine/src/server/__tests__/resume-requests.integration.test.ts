@@ -154,6 +154,12 @@ describe('POST /api/workflow-executions/:id/resume-target (integration)', () => 
 		await resumeTarget(executionId, { token }).expect(409, { error: 'ambiguous' });
 	});
 
+	it('refuses an execution whose only wait is step bound with 409', async () => {
+		const { executionId, token } = await seed({ 'wait-a': stepBound });
+
+		await resumeTarget(executionId, { token }).expect(409, { error: 'step_bound_only' });
+	});
+
 	it('refuses a token for another execution with 401', async () => {
 		const { executionId } = await seed({ 'wait-a': acceptsRequest });
 		const token = mintResumeToken(resumeSecret, generateId());

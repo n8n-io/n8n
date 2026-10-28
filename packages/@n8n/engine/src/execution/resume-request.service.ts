@@ -11,7 +11,12 @@ import {
 } from './execution.types';
 import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 
-export type ResumeRejection = 'invalid_token' | 'not_found' | 'not_waiting' | 'ambiguous';
+export type ResumeRejection =
+	| 'invalid_token'
+	| 'not_found'
+	| 'not_waiting'
+	| 'ambiguous'
+	| 'step_bound_only';
 
 export class ResumeRejectedError extends Error {
 	constructor(readonly code: ResumeRejection) {
@@ -90,8 +95,9 @@ export class ResumeRequestService {
 	 * A request can arrive before the step writes its wait. While the execution
 	 * is live, this retries for a short time.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, or `ambiguous`
-	 * when a live execution has two execution-bound waits.
+	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous`
+	 * when a live execution has two execution-bound waits, or `step_bound_only`
+	 * when the hold runs out and the execution has only step-bound waits.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
 		const claims = verifyResumeToken(this.secret, token);
@@ -99,18 +105,25 @@ export class ResumeRequestService {
 			throw new ResumeRejectedError('invalid_token');
 		}
 
+		let stepBoundOnly = false;
 		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
 			if (attempt > 0) await sleep(this.hold.delayMs);
 			const [status, waits] = await Promise.all([
 				this.loadStatus(executionId),
-				this.loadExecutionBoundWaits(executionId),
+				this.stepStore.loadWaitingSteps(executionId),
 			]);
 			// An execution ends before its waits are cancelled, so its status decides first.
 			if (!isLive(status)) return null;
-			if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
-			if (waits[0]) return { stepId: waits[0].id, nodeId: waits[0].nodeId };
+			const executionBound = waits.filter(waitsFor('execution'));
+			if (executionBound.length > 1) throw new ResumeRejectedError('ambiguous');
+			if (executionBound[0]) {
+				return { stepId: executionBound[0].id, nodeId: executionBound[0].nodeId };
+			}
+			stepBoundOnly = waits.some(waitsFor('step'));
 		}
-		// TODO(CET-522): when the only wait is step bound, say to use the step's own resume URL.
+		// Holds first, because another branch can still reach an execution-bound
+		// wait. The token is valid for this execution, so the caller may learn why.
+		if (stepBoundOnly) throw new ResumeRejectedError('step_bound_only');
 		return null;
 	}
 
@@ -147,10 +160,6 @@ export class ResumeRequestService {
 			stepId: step.id,
 		});
 		return step;
-	}
-
-	private async loadExecutionBoundWaits(executionId: string): Promise<StepRecord[]> {
-		return (await this.stepStore.loadWaitingSteps(executionId)).filter(waitsFor('execution'));
 	}
 
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {

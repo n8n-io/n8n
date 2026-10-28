@@ -182,6 +182,13 @@ describe('ResumeRequestService.locate', () => {
 		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
 	});
 
+	it('refuses an execution whose waits are only step bound once the hold runs out', async () => {
+		const { service, loadWaitingSteps } = setup({ waiting: [[stepBound(), deadlineOnly]] });
+
+		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('step_bound_only'));
+		expect(loadWaitingSteps).toHaveBeenCalledTimes(hold.attempts);
+	});
+
 	it('answers null for a wait that only its deadline can end', async () => {
 		const { service } = setup({ waiting: [[deadlineOnly]] });
 

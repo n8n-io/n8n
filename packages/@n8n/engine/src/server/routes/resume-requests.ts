@@ -30,6 +30,7 @@ const REJECTION_STATUS: Record<ResumeRejection, number> = {
 	not_found: 404,
 	not_waiting: 409,
 	ambiguous: 409,
+	step_bound_only: 409,
 };
 
 const notConfigured: RequestHandler = (_req, res) => {
