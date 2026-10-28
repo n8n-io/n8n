@@ -20,10 +20,9 @@ test.describe(
 				await expect(n8n.canvas.canvasPane()).toBeVisible();
 			});
 
-			// Sentinel for the parity suite: the editor saves this workflow, so it
-			// runs on engine v2 only if the `n8n` fixture gave it the stack's engine
-			// type. The check reads the run, not the fixture, so a lost fixture line
-			// turns this test red.
+			// Parity sentinel: the editor saves this workflow, so only the `n8n`
+			// fixture's settings merge sends it to engine v2. The explicit check keeps
+			// this test red if that wiring is lost.
 			test('should run a workflow built on the canvas @engine:v2', async ({ n8n }) => {
 				await n8n.start.fromBlankCanvas();
 				await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });

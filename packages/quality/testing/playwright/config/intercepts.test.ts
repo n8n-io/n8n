@@ -93,8 +93,6 @@ describe('setupDefaultInterceptors workflow settings', () => {
 		expect(continuedBody(continueWith!)).toEqual({ settings: { engineType: 'v1' } });
 	});
 
-	// A PATCH without `settings` keeps the stored settings. Sending only the
-	// stack's keys would replace them, and drop the editor's execution order.
 	test('leaves an update without settings untouched', async () => {
 		const { context, dispatch } = fakeContext();
 		await setupDefaultInterceptors(context, stack);

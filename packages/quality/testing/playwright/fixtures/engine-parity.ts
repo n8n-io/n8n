@@ -124,8 +124,8 @@ export interface CanvasRunGuard {
  * Watches the runs a context's pages start (`POST /rest/workflows/:id/run`: the
  * run button, a node's run button, the chat) and records every one the control
  * plane kept on the legacy engine. The fixture asserts after the test, so a run
- * from its page cannot pass on v1 unnoticed. A run the control plane refused
- * has no execution id and is not a routing fault.
+ * from its page cannot pass on v1 unnoticed. A refused run and a
+ * `waitingForWebhook` run carry no execution id and pass.
  */
 export async function watchCanvasRuns(
 	context: BrowserContext,

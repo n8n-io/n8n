@@ -330,7 +330,6 @@ describe('WorkflowApiHelper.waitForExecution engine routing', () => {
 		).rejects.toThrow(/1783[\s\S]*settings\.engineType/);
 	});
 
-	// A sub-workflow runs in `integrated` mode, which engine v2 does not route.
 	test('accepts a legacy id on a sub-workflow execution', async () => {
 		const { api } = apiListing(settled('1783', 'integrated'), v2);
 

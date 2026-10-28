@@ -281,14 +281,15 @@ its container.
 A workflow saved from the canvas has no `engineType`, so the `n8n` fixture
 merges the stack's settings into the workflows the editor creates and updates.
 An engine type the editor sends, picked in the settings dialog, wins. The
-fixture also watches every run its page starts and fails the test after it
-when a run stayed on the legacy engine; a page from `n8n.start.withUser()` is
-not watched. `api.workflows.runManually` and `runRaw` fail the same way on the
-way in. A webhook or trigger run returns no execution id, so `waitForExecution` and
-`waitForExecutionById` check the execution they hand back. A spec that reads no
-execution calls `api.workflows.assertLatestExecutionRoutedToEngine` after the
-run. A tag the parity buckets do not know also fails the test, and names the
-three valid tags.
+`canvasRuns` fixture watches every run the page starts and fails the test after
+it when a run stayed on the legacy engine; a test that runs the legacy engine
+on purpose calls `canvasRuns.allowLegacyRuns()`, and a page from
+`n8n.start.withUser()` is not watched. `api.workflows.runManually` and `runRaw`
+fail the same way on the way in. A webhook or trigger run returns no execution
+id, so `waitForExecution` and `waitForExecutionById` check the execution they
+hand back. A spec that reads no execution calls
+`api.workflows.assertLatestExecutionRoutedToEngine` after the run. A tag the
+parity buckets do not know also fails the test, and names the three valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track

@@ -34,7 +34,6 @@ type WorkflowImportResult = {
 	webhookMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
 };
 
-/** Engine v2 mints uuidv7 execution ids; the legacy engine mints numbers. */
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
@@ -202,8 +201,7 @@ export class WorkflowApiHelper {
 
 	/**
 	 * Fails a run that the stack meant for engine v2 but the control plane kept.
-	 * Without this a workflow that missed `engineType` runs on v1 and the spec
-	 * still passes, which is parity evidence that proves nothing.
+	 * Without it a workflow that missed `engineType` passes on v1 and proves nothing.
 	 *
 	 * {@link runManually} and {@link runRaw} check on the way in. A webhook or
 	 * trigger run returns no execution id, so {@link waitForExecution} and
@@ -248,7 +246,7 @@ export class WorkflowApiHelper {
 			},
 		});
 
-		// Playwright keeps the body until the response is disposed, so the caller can read it again.
+		// Playwright serves the body again until the response is disposed.
 		if (response.ok()) {
 			const result = await response.json().catch(() => null);
 			const run = (result?.data ?? result) as { executionId?: string } | null;
@@ -546,7 +544,6 @@ export class WorkflowApiHelper {
 	): Promise<ExecutionListResponse> {
 		const deadline = Date.now() + timeoutMs;
 
-		// The mode says whether the id has to be an engine v2 one, so read the row first.
 		let execution = this.routedExecution(await this.getExecution(executionId));
 		while (!isTerminalExecutionStatus(execution.status)) {
 			// Stryker disable next-line EqualityOperator: `>` differs only on the exact
