@@ -505,10 +505,15 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 }
 
 /* The user drags the bottom edge to make the box taller or shorter. Doubled, so it wins over the
-   editor's own hidden overflow. */
+   editor's own overflow. The text scrolls inside the editor's content, which clips it by default,
+   so a shorter box still shows all of it. */
 .resizable.resizable {
 	resize: vertical;
-	overflow: auto;
+	overflow: hidden;
+
+	:global([data-markdown-editor-content-wrapper]) {
+		overflow-y: auto;
+	}
 }
 
 .referenceEditor {
