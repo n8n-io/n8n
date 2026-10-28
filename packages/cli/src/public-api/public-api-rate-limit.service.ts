@@ -78,16 +78,18 @@ export class PublicApiRateLimitService {
 		const access = resolveAccess(method, accessFromDecorator);
 		const endpoint = `${method.toUpperCase()} ${path}`;
 
-		const counters = [
-			this.createEndpointCounter(access, endpoint),
-			this.getAllEndpointsCounter(access),
-		];
+		const endpointCounter = this.createEndpointCounter(access, endpoint);
+		const allEndpointsCounter = this.getAllEndpointsCounter(access);
 
-		return [...counters.map((counter) => this.count(counter)), this.enforceLimits(counters)];
+		return [
+			this.createCountMiddleware(endpointCounter),
+			this.createCountMiddleware(allEndpointsCounter),
+			this.createEnforceLimitsMiddleware([endpointCounter, allEndpointsCounter]),
+		];
 	}
 
 	/** Counts the request. Skips it when rate limiting is off or the counter's limit is 0. */
-	private count(counter: Counter): RequestHandler {
+	private createCountMiddleware(counter: Counter): RequestHandler {
 		return async (req, res, next) => {
 			const { maxRequests, windowSeconds } = counter.readLimit();
 			if (!this.config.enabled || maxRequests === 0) {
@@ -128,7 +130,7 @@ export class PublicApiRateLimitService {
 	 * Runs after the limiters, which only count. Sends a 429 when the request is over any limit.
 	 * Otherwise sets the headers from the limit with the fewest requests left.
 	 */
-	private enforceLimits(counters: Counter[]): RequestHandler {
+	private createEnforceLimitsMiddleware(counters: Counter[]): RequestHandler {
 		return async (req: AugmentedRequest, res, next) => {
 			const stores = this.countingStores.get(req);
 			const counted = counters.flatMap((counter) => {
