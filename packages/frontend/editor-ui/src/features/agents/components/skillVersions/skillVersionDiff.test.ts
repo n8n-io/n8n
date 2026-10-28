@@ -68,6 +68,18 @@ describe('diffSkills', () => {
 		]);
 	});
 
+	it('marks a reference file that only one version has as added or removed', () => {
+		const sections = diffSkills(
+			{ ...base, references: [{ path: 'references/old.md', content: 'Old' }] },
+			{ ...base, references: [{ path: 'references/new.md', content: 'One\nTwo' }] },
+		);
+		const counts = countsByFile(sections);
+
+		expect(counts['references/new.md']).toEqual({ added: 2, removed: 0, status: 'added' });
+		expect(counts['references/old.md']).toEqual({ added: 0, removed: 1, status: 'removed' });
+		expect(counts[SKILL_FILE].status).toBeUndefined();
+	});
+
 	it('counts the fields of SKILL.md together in the file list', () => {
 		const counts = countsByFile(
 			diffSkills(base, { ...base, description: 'New style', instructions: 'Be brief.\nBe kind.' }),

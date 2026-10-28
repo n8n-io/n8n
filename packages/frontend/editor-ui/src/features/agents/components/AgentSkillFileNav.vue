@@ -5,6 +5,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { AgentSkill } from '../types';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
+import type { FileChange } from './skillVersions/skillVersionDiff';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -17,7 +18,7 @@ const props = withDefaults(
 		/** Reference files that block a save, marked so the user can find them. */
 		invalidPaths?: string[];
 		/** Compare mode: lines added and removed in each file, keyed by path. */
-		changeCounts?: Record<string, { added: number; removed: number }>;
+		changeCounts?: Record<string, FileChange>;
 	}>(),
 	{
 		addReferenceDisabled: false,
@@ -120,7 +121,33 @@ function testIdForPath(path: string) {
 						"
 					/>
 					<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
-					<SkillDiffCount :count="props.changeCounts?.[reference.path]" :class="$style.count" />
+					<span v-if="props.changeCounts?.[reference.path]" :class="$style.count">
+						<!-- A file that only one version has: new in the later one, or deleted from it. -->
+						<N8nIcon
+							v-if="props.changeCounts[reference.path].status"
+							:icon="
+								props.changeCounts[reference.path].status === 'added' ? 'file-plus' : 'file-minus'
+							"
+							size="small"
+							:class="
+								props.changeCounts[reference.path].status === 'added'
+									? $style.fileAdded
+									: $style.fileDeleted
+							"
+							:aria-label="
+								i18n.baseText(
+									props.changeCounts[reference.path].status === 'added'
+										? 'agents.builder.skills.versions.fileAdded'
+										: 'agents.builder.skills.versions.fileDeleted',
+								)
+							"
+							:data-testid="`${testIdForPath(reference.path)}-${props.changeCounts[reference.path].status}`"
+						/>
+						<SkillDiffCount
+							:count="props.changeCounts[reference.path]"
+							:hide-zero="!!props.changeCounts[reference.path].status"
+						/>
+					</span>
 				</button>
 				<N8nButton
 					v-if="!props.readOnly"
@@ -261,6 +288,17 @@ function testIdForPath(path: string) {
 	}
 }
 .count {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	margin-left: auto;
+}
+
+.fileAdded {
+	color: var(--diff--color--new);
+}
+
+.fileDeleted {
+	color: var(--diff--color--deleted);
 }
 </style>

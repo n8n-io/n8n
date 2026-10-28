@@ -2,6 +2,12 @@ import type { AgentSkill } from '../../types';
 
 export type DiffCount = { added: number; removed: number };
 
+/** A reference file that only one of the two versions has. */
+export type FileStatus = 'added' | 'removed';
+
+/** The change to one file in the file list. */
+export type FileChange = DiffCount & { status?: FileStatus };
+
 /** A piece of a changed line. `changed` marks the words that differ from the other side. */
 export type DiffSegment = { text: string; changed: boolean };
 
@@ -14,6 +20,8 @@ export type DiffSection = DiffCount & {
 	/** `name`, `description`, `instructions`, or the path of a reference file. */
 	key: string;
 	lines: DiffLine[];
+	/** Set for a reference file that only one version has. */
+	status?: FileStatus;
 };
 
 /** The SKILL.md file, as the editor names it in the file list. */
@@ -149,18 +157,31 @@ export function diffSkills(from: AgentSkill, to: AgentSkill): DiffSection[] {
 		section('name', from.name, to.name),
 		section('description', from.description, to.description),
 		section('instructions', from.instructions, to.instructions),
-		...paths.map((path) => section(path, fromFiles.get(path) ?? '', toFiles.get(path) ?? '')),
+		...paths.map((path) => ({
+			...section(path, fromFiles.get(path) ?? '', toFiles.get(path) ?? ''),
+			...fileStatus(fromFiles.has(path), toFiles.has(path)),
+		})),
 	];
 }
 
+function fileStatus(inFrom: boolean, inTo: boolean): { status?: FileStatus } {
+	if (!inFrom) return { status: 'added' };
+	if (!inTo) return { status: 'removed' };
+	return {};
+}
+
 /** Lines added and removed in each file, keyed by path, for the file list. */
-export function countsByFile(sections: DiffSection[]): Record<string, DiffCount> {
-	const counts: Record<string, DiffCount> = { [SKILL_FILE]: { added: 0, removed: 0 } };
-	for (const { key, added, removed } of sections) {
+export function countsByFile(sections: DiffSection[]): Record<string, FileChange> {
+	const counts: Record<string, FileChange> = { [SKILL_FILE]: { added: 0, removed: 0 } };
+	for (const { key, added, removed, status } of sections) {
 		const path =
 			key === 'name' || key === 'description' || key === 'instructions' ? SKILL_FILE : key;
 		const count = counts[path] ?? { added: 0, removed: 0 };
-		counts[path] = { added: count.added + added, removed: count.removed + removed };
+		counts[path] = {
+			added: count.added + added,
+			removed: count.removed + removed,
+			...(status ? { status } : {}),
+		};
 	}
 	return counts;
 }
