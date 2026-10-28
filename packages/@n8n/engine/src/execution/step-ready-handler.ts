@@ -133,18 +133,23 @@ export class StepReadyHandler {
 			run = { kind: 'error', error };
 		}
 
-		// A detached sub-execution starts while the step still runs, and then the
-		// step completes with the outputs the declaration carries, like any other.
-		// One that cannot start fails the step, as an awaited one does. The
-		// execution can end while this step runs (a sibling fails, or a cancel),
-		// and then it owes no sub-execution: the outputs stand, and nothing starts
-		// under an ended parent.
-		if (run.kind === 'subExecution' && !run.subExecution.awaited) {
-			const started = await this.startDetachedSubExecution(step, execution, run.subExecution);
+		if (run.kind === 'subExecution') {
+			const { subExecution } = run;
+			if (subExecution.awaited) {
+				await this.suspendOnSubExecution(event, step, execution, node, subExecution);
+				return;
+			}
+			// A detached sub-execution starts while the step still runs, and then the
+			// step completes with the outputs the declaration carries, like any other.
+			// One that cannot start fails the step, as an awaited one does. The
+			// execution can end while this step runs (a sibling fails, or a cancel),
+			// and then it owes no sub-execution: the outputs stand, and nothing starts
+			// under an ended parent.
+			const started = await this.startDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
 					? { kind: 'error', error: started.error }
-					: { kind: 'outputs', outputs: run.subExecution.outputs };
+					: { kind: 'outputs', outputs: subExecution.outputs };
 		}
 
 		let recorded: boolean;
@@ -152,13 +157,6 @@ export class StepReadyHandler {
 			recorded = await this.stepStore.completeStep(event.stepId, run.outputs);
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
-		} else if (run.kind === 'subExecution') {
-			// Suspend before start, so the sub-execution cannot end before this step can
-			// be resumed. A crash between the two leaves a waiting step with no
-			// sub-execution row, which reconciliation (CAT-2938) fails.
-			recorded = await this.stepStore.suspendStep(event.stepId, {
-				subExecutionId: run.subExecution.executionId,
-			});
 		} else {
 			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
 		}
@@ -180,27 +178,6 @@ export class StepReadyHandler {
 			return;
 		}
 
-		if (run.kind === 'subExecution') {
-			await this.executionStore.refreshLiveStatus(execution.id);
-			const started = await this.startSubExecution(step, execution, run.subExecution);
-			// A sub-execution that never started resumes nothing, so the step fails here,
-			// where the reason is known. The failure settles it like any other.
-			if (started.kind === 'error') {
-				const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
-				if (!failed) return;
-				this.lifecycleEventPublisher.publish({
-					type: 'step:failed',
-					...stepEventFields(step, node),
-				});
-				await this.orchestrationQueue.publish({
-					type: 'step:settled',
-					executionId: event.executionId,
-					stepId: event.stepId,
-				});
-			}
-			return;
-		}
-
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
@@ -209,6 +186,41 @@ export class StepReadyHandler {
 				: { type: 'step:failed', ...stepEventFields(step, node) },
 		);
 
+		await this.orchestrationQueue.publish({
+			type: 'step:settled',
+			executionId: event.executionId,
+			stepId: event.stepId,
+		});
+	}
+
+	/**
+	 * Suspends the step on an awaited sub-execution, then starts it. Suspend
+	 * before start, so the sub-execution cannot end before this step can be
+	 * resumed; a crash between the two leaves a waiting step with no
+	 * sub-execution row, which reconciliation (CAT-2938) fails. A sub-execution
+	 * that never started resumes nothing, so the step fails here, where the
+	 * reason is known, and the failure settles it like any other.
+	 */
+	private async suspendOnSubExecution(
+		event: StepReadyEvent,
+		step: StepRecord,
+		execution: ExecutionRecord,
+		node: GraphNode,
+		subExecution: SubExecutionDeclaration,
+	): Promise<void> {
+		// A CAS on `running`: losing it means something else took the step over.
+		const recorded = await this.stepStore.suspendStep(event.stepId, {
+			subExecutionId: subExecution.executionId,
+		});
+		if (!recorded) return;
+		await this.executionStore.refreshLiveStatus(execution.id);
+
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (started.kind === 'started') return;
+
+		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+		if (!failed) return;
+		this.lifecycleEventPublisher.publish({ type: 'step:failed', ...stepEventFields(step, node) });
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
 			executionId: event.executionId,
