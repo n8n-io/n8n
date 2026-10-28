@@ -336,7 +336,7 @@ describe('useWorkflowSettingsCache', () => {
 			expect(settings).toEqual({});
 		});
 
-		it('should handle undefined suggestedActions in updates', async () => {
+		it('should keep stored suggestedActions when the update sets them to undefined', async () => {
 			const existingSettings: WorkflowSettings = {
 				firstActivatedAt: 123456789,
 				suggestedActions: {
@@ -352,12 +352,13 @@ describe('useWorkflowSettingsCache', () => {
 			const { upsertWorkflowSettings } = useWorkflowSettingsCache();
 			await upsertWorkflowSettings('workflow-1', updates);
 
-			// suggestedActions will be overwritten with undefined due to spread operator
 			expect(mockCache.setItem).toHaveBeenCalledWith(
 				'workflow-1',
 				JSON.stringify({
 					firstActivatedAt: 123456789,
-					suggestedActions: undefined,
+					suggestedActions: {
+						evaluations: { ignored: true },
+					},
 				}),
 			);
 		});

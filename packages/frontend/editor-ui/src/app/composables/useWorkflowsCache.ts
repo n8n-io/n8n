@@ -71,8 +71,8 @@ export function useWorkflowSettingsCache() {
 			...updates,
 		};
 
-		// Deep merge suggestedActions if provided
-		if (updates.suggestedActions) {
+		// Deep merge suggestedActions, and keep the stored ones when the update has none
+		if (existingSettings.suggestedActions || updates.suggestedActions) {
 			updatedSettings.suggestedActions = {
 				...(existingSettings.suggestedActions ?? {}),
 				...updates.suggestedActions,
