@@ -18,8 +18,9 @@ n8n counts executions in three places. Each count has its own storage and its ow
   them into `insights_by_period`. A crash loses the buffer. An admin can turn the module off.
 - The Cloud quota keeps a monthly counter in a file on the instance.
 
-The counts disagree, because their rules differ. Execution limits need a count for each project,
-at run start, that includes agent messages. None of the three counts has this data.
+The counts disagree, because their rules differ. Execution limits need a count for each project
+that counts runs when they start, not when they end, and that includes agent messages. None of the
+three counts has this data.
 
 ## Decision
 
@@ -39,7 +40,8 @@ own summary table, and a fold step fills it from the ledger.
    `isBillableExecution`. Every fold step uses it. No fold step keeps its own copy of a rule.
 6. A feature that must decide at the moment of an event reads at record time, beside the ledger
    insert. A feature that accepts about 5 s of delay reads its summary table. Execution limits v1
-   accept the delay, so they read their summary table.
+   accept the delay (a soft limit), so they read their summary table. A run can pass a limit by the
+   runs of the last few seconds.
 
 The main reason: one record of the facts lets every feature count the same runs. No feature needs
 its own write path, and no run waits on a shared row.
@@ -65,8 +67,9 @@ its own write path, and no run waits on a shared row.
 ## Consequences
 
 1. Counts are up to about 5 s late. An exact limit would need an atomic counter (Redis, or memory
-   on one main) beside the ledger insert. That counter only decides. It is not a record: the
-   ledger stays the record, and it can fill the counter again.
+   on one main) beside the ledger insert. That counter only decides. It is not a record: if it is
+   lost, it is filled again from the limits summary table and the ledger rows that are not folded
+   yet.
 2. A summary table that a feature adds later starts with no history, because the fold deletes the
    ledger rows.
 3. Every run writes two rows. In a prototype, the `started` row added about 300 B of WAL for each
