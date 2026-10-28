@@ -923,14 +923,17 @@ describe('WaitingForms on an engine v2 execution', () => {
 			status,
 			workflow: { nodes: [formNode, waitNode] },
 		}) as unknown as ExecutionSnapshot;
-	const request = (suffix: string | undefined, headers: Record<string, string> = {}) =>
-		mock<WaitingWebhookRequest>({
+	const request = (suffix: string | undefined, headers: Record<string, string> = {}) => {
+		const url = `/form-waiting/${EXECUTION_ID}/${suffix ?? ''}?${WAITING_TOKEN_QUERY_PARAM}=t`;
+		return mock<WaitingWebhookRequest>({
 			method: 'GET',
 			params: { path: EXECUTION_ID, suffix },
 			query: { [WAITING_TOKEN_QUERY_PARAM]: 't' },
-			url: `/form-waiting/${EXECUTION_ID}/${suffix ?? ''}?${WAITING_TOKEN_QUERY_PARAM}=t`,
+			url,
+			originalUrl: url,
 			headers: { host: 'localhost', ...headers },
 		});
+	};
 	const response = () => {
 		const res = mock<express.Response>();
 		res.status.mockReturnValue(res);

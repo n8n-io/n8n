@@ -21,7 +21,7 @@ import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-r
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitingForms } from '@/webhooks/waiting-forms';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { literalRequestShape, WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
@@ -2055,11 +2055,15 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	const snapshot = (status: ExecutionSnapshot['status']) =>
 		({ id: EXECUTION_ID, status, workflow: { nodes: [waitNode] } }) as unknown as ExecutionSnapshot;
 	const target = { stepId: 'step-1', nodeId: 'wait-id' };
-	const request = (query: Record<string, string>, headers: Record<string, string> = {}) => {
-		const url = `/webhook-waiting/${EXECUTION_ID}?${new URLSearchParams(query).toString()}`;
+	const request = (
+		query: Record<string, string>,
+		headers: Record<string, string> = {},
+		pathId: string = EXECUTION_ID,
+	) => {
+		const url = `/webhook-waiting/${pathId}?${new URLSearchParams(query).toString()}`;
 		return mock<WaitingWebhookRequest>({
 			method: 'GET',
-			params: { path: EXECUTION_ID, suffix: undefined },
+			params: { path: pathId, suffix: undefined },
 			query,
 			url,
 			originalUrl: url,
@@ -2220,6 +2224,27 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		expect(calledReq.params).toEqual({});
 	});
 
+	it('locates a step-bound URL by the step id and the literal path and query, and resumes under the execution id', async () => {
+		const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+		const { executeWebhookSpy } = acceptResume();
+
+		await waitingWebhooks.executeWebhook(
+			request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 'token' }, {}, STEP_ID),
+			response(),
+		);
+
+		expect(dataPlane.locateResume).toHaveBeenCalledWith({
+			id: STEP_ID,
+			token: 'token',
+			request: { pathname: `/webhook-waiting/${STEP_ID}`, search: '?approved=true' },
+		});
+		const [, , , , , , , executionId, , , , , options] = executeWebhookSpy.mock.calls[0];
+		expect(executionId).toBe(EXECUTION_ID);
+		expect(options).toEqual(
+			expect.objectContaining({ engineResume: { stepId: 'step-1', token: 'token' } }),
+		);
+	});
+
 	it('reads the webhook path that follows the token in the query', async () => {
 		acceptResume({ path: 'my-suffix' });
 
@@ -2306,5 +2331,19 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 
 		expect(execution.data.executionData?.nodeExecutionStack[0].node.disabled).toBe(true);
 		expect(execution.workflowData.nodes[0].disabled).toBeUndefined();
+	});
+});
+
+describe('literalRequestShape', () => {
+	it.each([
+		['/webhook-waiting/s/n', '/webhook-waiting/s/n', ''],
+		['/webhook-waiting/s/n?signature=t', '/webhook-waiting/s/n', ''],
+		['/webhook-waiting/s/n?approved=true&signature=t', '/webhook-waiting/s/n', '?approved=true'],
+		['/webhook-waiting/s/n?signature=t&approved=true', '/webhook-waiting/s/n', '?approved=true'],
+		['/webhook-waiting/s/n?a=1&signature=t&b=2', '/webhook-waiting/s/n', '?a=1&b=2'],
+		['/webhook-waiting/s/n?xsignature=1&signature=t', '/webhook-waiting/s/n', '?xsignature=1'],
+		['/webhook-waiting/s/n?q=a%20b&signature=t', '/webhook-waiting/s/n', '?q=a%20b'],
+	])('cuts the token out of %s as a substring', (url, pathname, search) => {
+		expect(literalRequestShape(url)).toEqual({ pathname, search });
 	});
 });
