@@ -1,3 +1,18 @@
+## [3.0.1](https://github.com/n8n-io/n8n/compare/n8n@3.0.0...n8n@3.0.1) (2026-10-28)
+
+
+### Bug Fixes
+
+- core: Keep the ExpressionError name in minified builds (https://github.com/n8n-io/n8n/issues/42309) ([b3192c6](https://github.com/n8n-io/n8n/commit/b3192c6d151125c76c88fe8a421e027b4242a3f9))
+- core: Keep undefined values in QuickJS expression results (https://github.com/n8n-io/n8n/issues/42264) ([532f645](https://github.com/n8n-io/n8n/commit/532f645f21c99e178a09448caf37ebd77d24b56a))
+- editor: Align carets within split buttons (https://github.com/n8n-io/n8n/issues/42203) ([61cbfea](https://github.com/n8n-io/n8n/commit/61cbfeafa267b5c769b345c50ccbd4fc504b0e69))
+- editor: Improve first load speed (https://github.com/n8n-io/n8n/issues/41987) ([8b6bdbb](https://github.com/n8n-io/n8n/commit/8b6bdbbe874bd4be23ec33a8c9fa2483c671d946))
+- editor: Match Evals Run Test button colors (https://github.com/n8n-io/n8n/issues/42200) ([f594853](https://github.com/n8n-io/n8n/commit/f5948531ca013a4794707333a1983081d17ab461))
+- editor: Remove underlines from breadcrumb links (https://github.com/n8n-io/n8n/issues/42201) ([127d65a](https://github.com/n8n-io/n8n/commit/127d65aab5589aede8425b1d630d21ec6d90c788))
+- editor: Remove underlines from Data Table links (https://github.com/n8n-io/n8n/issues/42189) ([619271c](https://github.com/n8n-io/n8n/commit/619271cae6449d92d0ec2f12b20a35c6a11d5835))
+- editor: Stop Safari from opening its own context menu on the canvas (https://github.com/n8n-io/n8n/issues/42175) ([28f9c9e](https://github.com/n8n-io/n8n/commit/28f9c9edbff7d2e33b816cbadf06984bddd65b92))
+
+
 # [3.0.0](https://github.com/n8n-io/n8n/compare/n8n@2.45.0...n8n@3.0.0) (2026-10-27)
 
 
