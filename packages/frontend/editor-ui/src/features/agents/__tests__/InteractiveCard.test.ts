@@ -53,7 +53,7 @@ describe('InteractiveCard', () => {
 
 		await buttons[1].trigger('click');
 
-		expect(wrapper.emitted('submit')).toEqual([[{ type: 'button', value: 'cancel' }]]);
+		expect(wrapper.emitted('submit')).toEqual([[{ type: 'button', value: 'cancel' }, undefined]]);
 	});
 
 	it('renders a host extension card and emits its resume data', async () => {
@@ -70,7 +70,7 @@ describe('InteractiveCard', () => {
 
 		await wrapper.find('[data-testid="test-card-answer"]').trigger('click');
 
-		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }]]);
+		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }, undefined]]);
 	});
 
 	it('passes the callback for an accepted answer from the card to the chat', async () => {

@@ -1220,7 +1220,7 @@ describe('AgentChatMessageList', () => {
 
 		expect(wrapper.emitted('resume')).toEqual([
 			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'yes' } }, onAccepted],
-			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'no' } }],
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'no' } }, undefined],
 		]);
 	});
 

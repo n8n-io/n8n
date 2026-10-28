@@ -88,8 +88,7 @@ const interactiveRenderers = computed<AgentsChatInteractionRenderer[]>(() => [
 ]);
 
 function onSubmit(resumeData: unknown, onAccepted?: () => void) {
-	if (onAccepted) emit('submit', resumeData, onAccepted);
-	else emit('submit', resumeData);
+	emit('submit', resumeData, onAccepted);
 }
 </script>
 

@@ -116,8 +116,7 @@ function trackAnswer(inputs: ConfirmationInputs) {
 function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	if (inputs) emit('submit', body, () => trackAnswer(inputs));
-	else emit('submit', body);
+	emit('submit', body, inputs ? () => trackAnswer(inputs) : undefined);
 	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.

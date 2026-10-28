@@ -112,8 +112,7 @@ function onInteractiveSubmit(
 	// This guard is a defensive belt-and-braces for the type narrowing.
 	if (!payload.runId) return;
 	const resume = { runId: payload.runId, toolCallId: payload.toolCallId, resumeData };
-	if (onAccepted) emit('resume', resume, onAccepted);
-	else emit('resume', resume);
+	emit('resume', resume, onAccepted);
 }
 
 function isIntegrationActionSuspend(value: unknown): value is { type: 'integration_action' } {
