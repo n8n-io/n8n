@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/app/composables/useWorkflowsCache';
-import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
+import { actionTypes, useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -285,9 +285,8 @@ async function handleIgnoreAll() {
 	);
 
 	if (ignoreAllConfirmed === MODAL_CONFIRM) {
-		await workflowsCache.ignoreAllSuggestedActionsForAllWorkflows(
-			availableActions.value.map((action) => action.id),
-		);
+		// Ignore every action type, also the ones that this workflow does not show
+		await workflowsCache.ignoreAllSuggestedActionsForAllWorkflows([...actionTypes]);
 		await loadWorkflowSettings();
 
 		telemetry.track('user clicked ignore suggested actions for all workflows');

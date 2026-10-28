@@ -43,7 +43,9 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowsCache', () => ({
+vi.mock('@/app/composables/useWorkflowsCache', async (importOriginal) => ({
+	actionTypes: (await importOriginal<typeof import('@/app/composables/useWorkflowsCache')>())
+		.actionTypes,
 	useWorkflowSettingsCache: vi.fn(),
 }));
 
@@ -498,9 +500,13 @@ describe('WorkflowProductionChecklist', () => {
 
 			await vi.waitFor(() => {
 				expect(message.confirm).toHaveBeenCalled();
+				// Includes the actions that this workflow does not show
 				expect(workflowsCache.ignoreAllSuggestedActionsForAllWorkflows).toHaveBeenCalledWith([
+					'evaluations',
 					'errorWorkflow',
 					'timeSaved',
+					'workflow-mcp-access',
+					'instance-mcp-access',
 				]);
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'user clicked ignore suggested actions for all workflows',

@@ -119,13 +119,15 @@ test.describe(
 			await n8n.canvas.closeProductionChecklist();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
 
+			const publicationStatusLoaded = n8n.canvas.waitForPublicationStatusResponse();
 			await n8n.page.reload();
-			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
-			// The auto-open runs right after the workflow shows as published, so give it time to fire
-			// eslint-disable-next-line playwright/no-wait-for-timeout
-			await n8n.page.waitForTimeout(1000);
+			await publicationStatusLoaded;
 
-			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
+			// The auto-open waits for the publication status and the settings cache. The menu item
+			// needs the cache too, so once it shows, the auto-open has made its decision.
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeVisible();
+			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
 		});
 
 		test('should allow ignoring individual actions', async ({ n8n }) => {
@@ -173,7 +175,11 @@ test.describe(
 			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.publishWorkflow();
 
-			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
+			// The editor saves the first activation date after it decides whether to open the checklist
+			const secondWorkflowId = n8n.canvas.getWorkflowIdFromUrl();
+			await expect
+				.poll(async () => await n8n.canvas.getChecklistFirstActivatedAt(secondWorkflowId))
+				.toBeDefined();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
 			await n8n.canvas.clickWorkflowMenu();
 			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();

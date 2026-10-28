@@ -2,7 +2,7 @@ import { indexedDbCache } from '@/app/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
 import { ref } from 'vue';
 
-const actionTypes = [
+export const actionTypes = [
 	'evaluations',
 	'errorWorkflow',
 	'timeSaved',
