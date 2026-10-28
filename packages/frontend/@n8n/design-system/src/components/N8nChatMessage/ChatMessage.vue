@@ -62,16 +62,15 @@ defineSlots<{
 
 .userBubble,
 .assistantContent {
-	--n8n-markdown--font-size--base: var(--chat--font-size);
+	--n8n-markdown--font-size--base: var(--font-size--sm);
 	font-size: var(--n8n-markdown--font-size--base);
 }
 
-/** Use the message width so narrow panels keep compact text. */
-@container chat-message (min-width: 48rem) {
+/** Use the message width so narrow panels keep compact text on large screens. */
+@container chat-message (min-width: 8rem) {
 	.userBubble,
 	.assistantContent {
-		--chat--font-size: var(--chat--font-size--wide);
-		--n8n-markdown--font-size--base: var(--chat--font-size);
+		--n8n-markdown--font-size--base: var(--font-size--md);
 	}
 }
 
