@@ -150,6 +150,7 @@
     "@iconify-json/lucide": "catalog:",
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/core": "catalog:",
+    "@microsoft/opentelemetry": "catalog:",
     "@modelcontextprotocol/node": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
