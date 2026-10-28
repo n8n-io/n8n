@@ -1454,9 +1454,11 @@ function onRemove() {
 	align-items: stretch;
 }
 
-/* The Versions panel takes its width from the window, so the editor gives up the same width. */
-.contentBesidePanel {
-	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3 - var(--spacing--5xl) * 1.25));
+/* Beside the Versions panel, the editor gives up the width of the panel. */
+@media (min-width: 769px) {
+	.contentBesidePanel {
+		width: min(52rem, calc(100dvw - var(--spacing--lg) * 3 - var(--spacing--5xl) * 1.25));
+	}
 }
 
 /* Nested, so it wins over the file list's own background. */
