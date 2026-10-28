@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import type { Mock } from 'vitest';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
@@ -5,6 +7,7 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 } from '@n8n/backend-services';
@@ -246,11 +249,77 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
+			mockInstance(InstanceWriteAccessService),
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each([false, true])(
+		'applies instance protection to registered tools: %s',
+		async (readOnly) => {
+			const service = buildService();
+			vi.mocked(Container.get(InstanceWriteAccessService).isReadOnly).mockReturnValue(readOnly);
+			const registeredTools = new Map<
+				string,
+				{ handler: Mock; invoke: (args: unknown, extra: unknown) => Promise<unknown> }
+			>();
+			const createRegistrar = service.createToolRegistrar.bind(service);
+			vi.spyOn(service, 'createToolRegistrar').mockImplementation((...args) => {
+				const register = createRegistrar(...args);
+				return (tool) => {
+					const handler = vi.fn().mockResolvedValue({ content: [] });
+					const registered = register({ ...tool, handler });
+					registeredTools.set(tool.name, {
+						handler,
+						invoke: registered.handler as (args: unknown, extra: unknown) => Promise<unknown>,
+					});
+					return registered;
+				};
+			});
+
+			await service.getServer(user, mcpFeatureFlags());
+
+			const blockedTools = new Set([
+				'test_workflow',
+				'create_workflow_from_code',
+				'update_workflow',
+				'archive_workflow',
+				'restore_workflow_version',
+				'publish_workflow',
+				'unpublish_workflow',
+				'move_workflows_to_folder',
+				'create_folder',
+				'update_folder',
+				'create_data_table',
+				'rename_data_table',
+				'add_data_table_column',
+				'delete_data_table_column',
+				'rename_data_table_column',
+				'add_data_table_rows',
+				'save_user_preference',
+				'update_user_preference',
+				'undo_user_preference',
+			]);
+			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
+			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
+				expect(registeredTools.has(name), name).toBe(true);
+			}
+
+			for (const [name, { handler, invoke }] of registeredTools) {
+				const args = name === 'execute_workflow' ? { executionMode: 'production' } : {};
+				const result = await invoke(args, {});
+				if (readOnly && blockedTools.has(name)) {
+					expect(result, name).toMatchObject({ isError: true });
+					expect(handler, name).not.toHaveBeenCalled();
+				} else {
+					expect(result, name).toEqual({ content: [] });
+					expect(handler, name).toHaveBeenCalledOnce();
+				}
+			}
+		},
+	);
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());

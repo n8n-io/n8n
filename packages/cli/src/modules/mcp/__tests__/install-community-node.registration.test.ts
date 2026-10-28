@@ -4,6 +4,7 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 } from '@n8n/backend-services';
@@ -155,6 +156,7 @@ describe('install_community_node registration', () => {
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig, { communityNodeDiscoveryEnabled: true }),
 			mockInstance(ExecutionRedactionServiceProxy),
+			mockInstance(InstanceWriteAccessService),
 		);
 
 	beforeEach(() => {

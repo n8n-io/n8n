@@ -387,6 +387,38 @@ describe('POST /ldap/sync', () => {
 			expect(authIdentities[0].providerType).toBe('ldap');
 		});
 
+		test('should skip an entry whose email matches an existing account when linking by email is disabled', async () => {
+			const ldapUser = {
+				mail: randomEmail(),
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: uniqueId(),
+			};
+
+			const existingUser = await createUser({
+				role: GLOBAL_MEMBER_ROLE,
+				email: ldapUser.mail,
+				firstName: 'existing',
+				lastName: 'account',
+			});
+
+			const ldapConfig = await createLdapConfig({ linkExistingAccountsByEmail: false });
+			Container.get(LdapService).setConfig(ldapConfig);
+
+			const synchronization = await runTest([ldapUser]);
+			expect(synchronization.created).toBe(0);
+			expect(synchronization.status).toBe('success');
+
+			expect(await getLdapIdentities()).toHaveLength(0);
+
+			const unchanged = await Container.get(UserRepository).findOneByOrFail({
+				id: existingUser.id,
+			});
+			expect(unchanged.firstName).toBe('existing');
+			expect(unchanged.lastName).toBe('account');
+		});
+
 		test('should detect updated user and persist change in model', async () => {
 			const ldapUser = {
 				mail: randomEmail(),
@@ -685,6 +717,40 @@ describe('POST /login', () => {
 		});
 
 		await runTest(ldapUser);
+	});
+
+	test('should refuse login when the email matches an existing account and linking by email is disabled', async () => {
+		const ldapUser = {
+			mail: randomEmail(),
+			dn: '',
+			sn: randomName(),
+			givenName: randomName(),
+			uid: uniqueId(),
+		};
+
+		const existingUser = await createUser({
+			role: GLOBAL_MEMBER_ROLE,
+			email: ldapUser.mail,
+			firstName: 'existing',
+			lastName: 'account',
+		});
+
+		const ldapConfig = await createLdapConfig({ linkExistingAccountsByEmail: false });
+		Container.get(LdapService).setConfig(ldapConfig);
+		await setCurrentAuthenticationMethod('ldap');
+		vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
+		vi.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
+
+		const response = await testServer.authlessAgent
+			.post('/login')
+			.send({ emailOrLdapLoginId: ldapUser.mail, password: 'ldap-password' });
+
+		expect(response.statusCode).toBe(401);
+		expect(await getLdapIdentities()).toHaveLength(0);
+
+		const unchanged = await Container.get(UserRepository).findOneByOrFail({ id: existingUser.id });
+		expect(unchanged.firstName).toBe('existing');
+		expect(unchanged.lastName).toBe('account');
 	});
 });
 
