@@ -3,13 +3,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { ManifestEntry } from '../../../spec/manifest.schema';
+import type { WorkflowManifestEntry } from '../../../spec/manifest.schema';
 import { WorkflowRequirementExporter } from '../workflow-requirement.exporter';
 
 const user = mock<User>({ id: 'user-1' });
 
-function workflowEntry(id: string, name: string): ManifestEntry {
-	return { id, name, target: `workflows/${id}` };
+function workflowEntry(id: string, name: string): WorkflowManifestEntry {
+	return { id, name, target: `workflows/${id}`, isArchived: false };
 }
 
 function makeExporter(accessibleWorkflows: Array<{ id: string; name: string }> = []) {

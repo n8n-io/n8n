@@ -110,7 +110,7 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
-		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel. */
+		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel; `'system'` talks to a system agent, such as the n8n Assistant. */
 		channel?: AgentChatChannel;
 		/**
 		 * The n8n Chat entry page: centers the empty state and the composer together until a
@@ -1600,6 +1600,8 @@ onBeforeUnmount(() => {
 					v-if="pendingApproval"
 					:key="pendingApproval.toolCallId"
 					:input="pendingApproval.input"
+					:agent-name="agentConfig?.name"
+					:tools="agentConfig?.tools"
 					@submit="
 						resume({
 							runId: pendingApproval.runId,
@@ -1620,6 +1622,8 @@ onBeforeUnmount(() => {
 					}}</N8nText>
 					<ApprovalCard
 						:input="backgroundApproval.input"
+						:agent-name="agentConfig?.name"
+						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>

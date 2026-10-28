@@ -47,9 +47,9 @@ let exportDir: string;
 /** Reimporting the package it just produced must put everything back where it was. */
 const importPolicy: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: 'overwrite',
-	workflowConflictPolicy: 'new-version',
-	workflowIdPolicy: 'source',
-	workflowPublishingPolicy: 'match-source',
+	conflictPolicy: 'new-version',
+	idPolicy: 'source',
+	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'import-anyway',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',

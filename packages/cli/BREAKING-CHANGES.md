@@ -13,6 +13,7 @@ Regenerate existing Promotions snapshots.
 Package import errors also use `usedBy` for resource consumers.
 Update API clients to read each consumer's `kind` and `id`.
 
+<<<<<<< HEAD
 # 3.0.0
 
 ### What changed?
@@ -78,6 +79,24 @@ The `$evaluateExpression()` helper was removed from the Code node. A Code node t
 ### When is action necessary?
 
 If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
+=======
+The package import API now uses `conflictPolicy` for both Agents and workflows.
+Update API clients to send this field to `/api/v1/n8n-packages/import` and `/api/v1/n8n-packages/import-selection`.
+Both endpoints reject the old `workflowConflictPolicy` field.
+The ordinary import endpoint requires `conflictPolicy`.
+The selection endpoint defaults it to `new-version`.
+The ordinary import API also uses `idPolicy` and `publishingPolicy` for both Agents and workflows.
+These fields replace `workflowIdPolicy`, `agentIdPolicy`, `workflowPublishingPolicy`, and `agentPublishingPolicy`.
+The old fields are rejected.
+The selection import API replaces `workflowIdPolicy` with `idPolicy`.
+Only `source` is supported for `idPolicy`.
+Selection imports retain their fixed `match-source` publication policy.
+
+Use `--conflict-policy`, `--id-policy`, and `--publishing-policy` in the CLI.
+The CLI rejects the old workflow-specific flag names, including their camelCase spellings.
+Selection imports accept `--conflict-policy` and `--id-policy`.
+There are no compatibility aliases or per-kind policy overrides.
+>>>>>>> 3afe470c7fcae4b55d5749a44943e938abf72d97
 
 # 2.0.0
 

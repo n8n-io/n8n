@@ -1,6 +1,10 @@
 {
   "name": "@n8n/instance-ai",
+<<<<<<< HEAD
   "version": "2.0.0",
+=======
+  "version": "1.31.0",
+>>>>>>> 3afe470c7fcae4b55d5749a44943e938abf72d97
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
@@ -23,7 +27,8 @@
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
-    "prompts:print": "tsx scripts/print-prompts.ts"
+    "prompts:print": "tsx scripts/print-prompts.ts",
+    "context:budget": "CONTEXT_BUDGET_OUT=.output/context-budget.md vitest run src/context-budget/__tests__/orchestrator-context-budget.test.ts && cat .output/context-budget.md"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

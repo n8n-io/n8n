@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -6,6 +7,7 @@ import { N8N_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
+import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
@@ -52,7 +54,7 @@ import {
 	OverwriteDeletionPolicy,
 	LayoutConflictPolicy,
 	TagConflictPolicy,
-	WorkflowConflictPolicy,
+	ImportConflictPolicy,
 	WorkflowIdPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
@@ -105,7 +107,7 @@ type DirectoryProjectPackage =
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	workflowPublishingPolicy: 'match-source',
+	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
@@ -123,8 +125,8 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'bindings'
 	| 'selection'
 	| 'overwriteDeletionPolicy'
-	| 'workflowConflictPolicy'
-	| 'workflowIdPolicy'
+	| 'conflictPolicy'
+	| 'idPolicy'
 	| 'dataTableSchemaConflictPolicy'
 	| 'tagConflictPolicy'
 	| 'credentialConflictPolicy'
@@ -152,6 +154,7 @@ export class N8nPackagesService {
 		private readonly autoIncludedWorkflowResolver: AutoIncludedWorkflowResolver,
 		private readonly autoIncludedWorkflowExporter: AutoIncludedWorkflowExporter,
 		private readonly agentSelectionExporter: AgentSelectionExporter,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
@@ -384,9 +387,8 @@ export class N8nPackagesService {
 		});
 
 		const agentEntries = agentExportResult?.agentEntries ?? [];
-		const manifest = packageManifestSchema.parse({
+		const written = {
 			packageFormatVersion: FORMAT_VERSION,
-			exportedAt: new Date().toISOString(),
 			sourceN8nVersion: N8N_VERSION,
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
@@ -404,7 +406,8 @@ export class N8nPackagesService {
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
-		});
+		} satisfies PackageManifest;
+		const manifest = packageManifestSchema.parse(written);
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
@@ -505,7 +508,8 @@ export class N8nPackagesService {
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
-		const manifest = await this.readImportManifest(reader);
+		const manifest = await this.readImportManifest(reader, { allowAgents: true });
+		assertPackageImportApiKeyScopes(request.apiKeyScopes, packageImportScopes(manifest));
 		const { result, scopes } = await this.dispatchImport(
 			request,
 			reader,
@@ -584,10 +588,18 @@ export class N8nPackagesService {
 		return result;
 	}
 
-	private async readImportManifest(reader: PackageReader): Promise<PackageManifest> {
+	private async readImportManifest(
+		reader: PackageReader,
+		{ allowAgents = false } = {},
+	): Promise<PackageManifest> {
 		const manifest = await this.packageParser.getManifest(reader);
 		if (manifest.agents?.length) {
-			throw new BadRequestError('Importing packages that contain Agents is not supported yet.');
+			if (!allowAgents) {
+				throw new BadRequestError('Agent packages require the ordinary archive import endpoint.');
+			}
+			if (!this.moduleRegistry.isActive('agents')) {
+				throw new BadRequestError('The Agents module is not enabled.');
+			}
 		}
 		return manifest;
 	}
@@ -629,8 +641,8 @@ export class N8nPackagesService {
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
 			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
-			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
-			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
+			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,
+			idPolicy: request.idPolicy ?? WorkflowIdPolicy.Source,
 			dataTableSchemaConflictPolicy:
 				request.dataTableSchemaConflictPolicy ?? DataTableSchemaConflictPolicy.Fail,
 			tagConflictPolicy: request.tagConflictPolicy ?? TagConflictPolicy.Skip,
@@ -685,8 +697,8 @@ export class N8nPackagesService {
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 
-	private dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
-		const byId = new Map<string, ManifestEntry>();
+	private dedupeManifestEntries<T extends ManifestEntry>(entries: T[]): T[] {
+		const byId = new Map<string, T>();
 		for (const entry of entries) {
 			if (!byId.has(entry.id)) {
 				byId.set(entry.id, entry);
@@ -739,6 +751,7 @@ function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 function emptyImportResult(manifest: PackageManifest): ImportResult {
 	return buildImportResult({
 		package: toPackageSummary(manifest),
+		agentOutcomes: [],
 		workflows: [],
 		removedWorkflows: [],
 		removedFolders: [],

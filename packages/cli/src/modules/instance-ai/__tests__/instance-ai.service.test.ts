@@ -82,7 +82,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -839,7 +839,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -1045,6 +1045,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1117,7 +1118,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 
 		// The credit-metering hook is wired to the instance-AI thread/user in
@@ -1212,7 +1213,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
 		expect(unavailableEnvironment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -1407,6 +1408,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();

@@ -1,6 +1,10 @@
 {
   "name": "@n8n/codemirror-lang-html",
+<<<<<<< HEAD
   "version": "2.0.0",
+=======
+  "version": "1.10.0",
+>>>>>>> 3afe470c7fcae4b55d5749a44943e938abf72d97
   "description": "HTML + n8n expression language support for CodeMirror 6",
   "scripts": {
     "clean": "rimraf dist .turbo",

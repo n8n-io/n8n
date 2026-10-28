@@ -1,6 +1,10 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
+<<<<<<< HEAD
   "version": "3.0.0",
+=======
+  "version": "2.46.0",
+>>>>>>> 3afe470c7fcae4b55d5749a44943e938abf72d97
   "description": "",
   "main": "index.js",
   "exports": {
@@ -275,7 +279,6 @@
     "epub2": "3.0.2",
     "express": "catalog:",
     "form-data": "catalog:",
-    "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "ignore": "^5.2.0",
     "js-tiktoken": "catalog:",

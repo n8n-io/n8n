@@ -80,6 +80,7 @@ async function taggedWorkflowPackage(owner: User, tagName: string) {
 	const workflow = await createWorkflow({ name: 'Tagged workflow' }, sourceProject);
 	const tag = await createTag({ name: tagName }, workflow);
 	const packageBuffer = await exportWorkflowPackage(owner, [workflow.id]);
+	await workflowRepository.delete(workflow.id);
 	return { workflow, tag, packageBuffer };
 }
 
@@ -96,7 +97,7 @@ describe('workflow package import — with tags', () => {
 	});
 
 	describe('create missing mode (default)', () => {
-		it('creates an absent shared tag once with its source id and name, attaching re-id’d workflows', async () => {
+		it('creates an absent shared tag once with its source id and name, attaching imported workflows', async () => {
 			const sourceProject = await createTeamProject('Source', owner);
 			const wfA = await createWorkflow({ name: 'Workflow A' }, sourceProject);
 			const wfB = await createWorkflow({ name: 'Workflow B' }, sourceProject);
@@ -104,6 +105,7 @@ describe('workflow package import — with tags', () => {
 			await assignTagToWorkflow(tag, wfA);
 			await assignTagToWorkflow(tag, wfB);
 			const packageBuffer = await exportWorkflowPackage(owner, [wfA.id, wfB.id]);
+			await workflowRepository.delete([wfA.id, wfB.id]);
 			// Absent on the target: the import must recreate it under the source id.
 			await tagRepository.delete(tag.id);
 
@@ -125,7 +127,7 @@ describe('workflow package import — with tags', () => {
 				expect.objectContaining({ id: tag.id, name: 'shared' }),
 			]);
 			for (const imported of result.workflows) {
-				expect(imported.localId).not.toBe(imported.sourceWorkflowId);
+				expect(imported.localId).toBe(imported.sourceWorkflowId);
 				expect(await tagIdsOf(imported.localId)).toEqual([tag.id]);
 			}
 		});
@@ -160,13 +162,13 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const second = await importPackage({
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(first.tags.created).toEqual(['prod']);
@@ -521,7 +523,7 @@ describe('workflow package import — with tags', () => {
 				projectId: targetProject.id,
 				packageBuffer,
 				tagConflictPolicy: 'rename',
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(first.tags.reconciled).toEqual(['prod']);
@@ -596,7 +598,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const imported = await workflowRepository.findOneByOrFail({
 				id: first.workflows[0].localId,
@@ -608,7 +610,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([tag.id]);
@@ -618,12 +620,13 @@ describe('workflow package import — with tags', () => {
 			const sourceProject = await createTeamProject('Source', owner);
 			const workflow = await createWorkflow({ name: 'Untagged workflow' }, sourceProject);
 			const packageBuffer = await exportWorkflowPackage(owner, [workflow.id]);
+			await workflowRepository.delete(workflow.id);
 			const targetProject = await createTeamProject('Target', owner);
 			const first = await importPackage({
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const imported = await workflowRepository.findOneByOrFail({
 				id: first.workflows[0].localId,
@@ -635,7 +638,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([]);
@@ -661,13 +664,13 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const second = await importPackage({
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(second.workflows[0].status).toBe('updated');
@@ -680,12 +683,13 @@ describe('workflow package import — with tags', () => {
 			const workflow = await createWorkflow({ name: 'Tagged workflow' }, sourceProject);
 			await createTag({ name: 'prod' }, workflow);
 			const packageBuffer = await exportWorkflowPackage(owner, [workflow.id], false);
+			await workflowRepository.delete(workflow.id);
 			const targetProject = await createTeamProject('Target', owner);
 			const first = await importPackage({
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			const imported = await workflowRepository.findOneByOrFail({
 				id: first.workflows[0].localId,
@@ -697,7 +701,7 @@ describe('workflow package import — with tags', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tagIdsOf(imported.id)).toEqual([extra.id]);
@@ -716,7 +720,7 @@ describe('workflow package import — with tags', () => {
 			user: owner,
 			projectId: targetProject.id,
 			packageBuffer,
-			workflowConflictPolicy: 'skip',
+			conflictPolicy: 'skip',
 			tagConflictPolicy: 'fail',
 		});
 
@@ -742,7 +746,7 @@ describe('workflow package import — with tags', () => {
 			user: owner,
 			projectId: targetProject.id,
 			packageBuffer,
-			workflowConflictPolicy: 'skip',
+			conflictPolicy: 'skip',
 			apiKeyScopes: ['workflow:import'],
 		});
 

@@ -55,7 +55,8 @@ These projects use the existing artifact and metrics reporters. They do not star
 
 ## CI results
 
-Run `Test: Image Efficiency` through GitHub Actions with a manual dispatch.
+`Test: Image Efficiency` runs on `master` every night at 04:30 UTC.
+To run it on another branch, use a manual dispatch.
 The standalone workflow prepares or restores the cached n8n and runners images on amd64.
 Run the distroless project locally when that image is available.
 The image job uploads a Playwright report and test attachments.

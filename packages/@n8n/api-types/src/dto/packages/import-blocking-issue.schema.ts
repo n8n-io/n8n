@@ -398,6 +398,35 @@ const credentialPolicyViolationIssueSchema = z
 
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
+		z.object({
+			type: z.literal('agent-conflict'),
+			kind: z.enum(['existing', 'id', 'task-id']),
+			sourceAgentId: z.string(),
+			projectId: z.string(),
+			sourceTaskId: z.string().optional(),
+			targetIds: z.array(z.string()),
+		}),
+		z.object({
+			type: z.literal('agent-invalid'),
+			sourceAgentId: z.string(),
+			path: z.string(),
+			message: z.string(),
+		}),
+		z.object({
+			type: z.literal('agent-dependency-unresolved'),
+			sourceAgentId: z.string(),
+			projectId: z.string(),
+			dependencyType: z.enum(['agent', 'workflow', 'credential']),
+			referenceId: z.string(),
+			path: z.string(),
+			reason: z.enum(['missing', 'inaccessible', 'ambiguous', 'unsupported']),
+		}),
+		z.object({
+			type: z.literal('agent-policy-violation'),
+			sourceAgentId: z.string(),
+			name: z.string(),
+			violations: z.array(policyViolationSchema),
+		}),
 		workflowConflictIssueSchema,
 		workflowLineageConflictIssueSchema,
 		workflowIdConflictIssueSchema,
@@ -420,6 +449,15 @@ export const importBlockingIssueSchema = z
 		policyViolationIssueSchema,
 		credentialPolicyViolationIssueSchema,
 	])
+	.refine(
+		(issue) =>
+			issue.type !== 'agent-conflict' ||
+			(issue.kind === 'task-id') === (issue.sourceTaskId !== undefined),
+		{
+			path: ['sourceTaskId'],
+			message: 'Task ID conflicts require sourceTaskId. Other conflicts must omit it.',
+		},
+	)
 	.openapi('ImportBlockingIssue');
 
 export type ImportBlockingIssue = z.infer<typeof importBlockingIssueSchema>;

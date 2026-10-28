@@ -9,6 +9,7 @@ import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type {
 	AgentExecutionThread,
@@ -588,6 +589,19 @@ describe('AgentExecutionService', () => {
 		executionUpdateBroadcaster.notify.mockClear();
 		return params;
 	}
+
+	it('stops only the selected execution through its runtime signal', async () => {
+		await startSnapshotExecution();
+		const signal = service.getAbortSignal('execution-1');
+
+		expect(service.stopExecution('other-execution')).toBe(false);
+		expect(signal.aborted).toBe(false);
+
+		expect(service.stopExecution('execution-1')).toBe(true);
+		expect(signal.aborted).toBe(true);
+		expect(signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+	});
 
 	it('retries failed heartbeats and aborts only after confirmed ownership loss', async () => {
 		vi.useFakeTimers();

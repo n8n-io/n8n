@@ -1,3 +1,4 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
@@ -121,6 +122,7 @@ describe('AgentSkillsService', () => {
 			transactionRunner,
 			skillsTelemetry,
 			projectScopeService,
+			mock<AgentDefinitionService>(),
 		);
 	});
 
@@ -529,7 +531,7 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(skillRefs.unpinDraftRef).toHaveBeenCalledWith(agent, 'skill_a', {});
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },
@@ -679,7 +681,7 @@ describe('AgentSkillsService', () => {
 				[{ type: 'skill', id: 'skill_b' }],
 				{},
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(skillService.deleteSkill).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
