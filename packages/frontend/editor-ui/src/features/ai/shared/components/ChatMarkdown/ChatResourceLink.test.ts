@@ -9,6 +9,39 @@ function click(element: Element, init: MouseEventInit = {}) {
 }
 
 describe('ChatResourceLink', () => {
+	it.each(['workflow', 'credential', 'data-table', 'agent'])('encodes %s resource IDs', (type) => {
+		const id = 'wf/1?#%';
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: `n8n-resource://${type}/${encodeURIComponent(id)}`,
+				label: 'Resource',
+				resources: [{ type, id, name: 'Resource', projectId: 'p1' }],
+			},
+		});
+		const segment = type === 'data-table' ? 'datatables' : `${type}s`;
+		const prefix = type === 'workflow' ? '/workflow' : `/projects/p1/${segment}`;
+		expect(wrapper.attributes('href')).toBe(`${prefix}/${encodeURIComponent(id)}`);
+	});
+
+	it.each([
+		{ metaKey: true },
+		{ ctrlKey: true },
+		{ shiftKey: true },
+		{ altKey: true },
+		{ button: 1 },
+	])('keeps native agent preview clicks for %o', (init) => {
+		const openAgentChatPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href: '/projects/p1/agents/a1/preview',
+				label: 'Preview',
+				openAgentChatPreview,
+			},
+		});
+		expect(click(wrapper.element, init).defaultPrevented).toBe(false);
+		expect(openAgentChatPreview).not.toHaveBeenCalled();
+	});
+
 	it.each(['credential', 'data-table', 'agent'])('builds project URLs for %s', (type) => {
 		const wrapper = mount(ChatResourceLink, {
 			props: {

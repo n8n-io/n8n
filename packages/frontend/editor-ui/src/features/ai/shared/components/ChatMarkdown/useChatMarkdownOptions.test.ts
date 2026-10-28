@@ -10,6 +10,11 @@ function render(content: string, config: Parameters<typeof useChatMarkdownOption
 }
 
 describe('useChatMarkdownOptions', () => {
+	it('keeps resource fragments in the current tab', () => {
+		const { html } = render('[Workflow](n8n-resource://workflow/abc)');
+		expect(html).toContain('href="#n8n-resource://workflow/abc"');
+		expect(html).not.toContain('target="_blank"');
+	});
 	it('adds automatic links and scrollable tables without code actions by default', () => {
 		const { html } = render('https://example.com\n\n| A |\n| - |\n| B |\n\n```\ntext\n```');
 		expect(html).toContain('target="_blank"');

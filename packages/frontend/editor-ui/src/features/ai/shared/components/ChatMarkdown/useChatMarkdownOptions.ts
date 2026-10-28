@@ -85,9 +85,7 @@ export function useChatMarkdownOptions(
 				/** Use a safe fragment to carry resource URLs through HTML sanitization. */
 				if (href?.startsWith('n8n-resource://')) {
 					tokens[idx].attrSet('href', `#${href}`);
-				}
-
-				if (href && shouldOpenChatMarkdownLinkInNewTab(href)) {
+				} else if (href && shouldOpenChatMarkdownLinkInNewTab(href)) {
 					tokens[idx].attrSet('target', '_blank');
 					tokens[idx].attrSet('rel', 'noopener');
 				}

@@ -84,21 +84,14 @@ const icon = computed(() =>
 );
 
 function handleClick(event: MouseEvent) {
-	if (embedSubject?.value.type === 'agent' && (event.metaKey || event.ctrlKey)) return;
+	if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+		return;
 	if (preview.value && props.openAgentChatPreview) {
 		event.preventDefault();
 		props.openAgentChatPreview(preview.value.agentId, preview.value.projectId);
 		return;
 	}
-	if (
-		event.metaKey ||
-		event.ctrlKey ||
-		event.shiftKey ||
-		event.altKey ||
-		event.button !== 0 ||
-		!id.value
-	)
-		return;
+	if (!id.value) return;
 	let switched: boolean | undefined;
 	if (type.value === 'workflow') switched = props.openWorkflowPreview?.(id.value);
 	if (entry.value?.projectId) {
