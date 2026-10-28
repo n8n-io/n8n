@@ -49,7 +49,7 @@ export class AgentRunnableStateService {
 			outdatedSkillIds: string[];
 		}
 	> {
-		// The skill bodies the draft runs, from the skills hub, keyed by skill id.
+		// The skill bodies the draft runs, from the skills module, keyed by skill id.
 		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		// Base hashes for the optimistic-concurrency checks on config and skill writes.
 		const configHash = getAgentConfigHash(composeJsonConfig(agent, skillRefs));

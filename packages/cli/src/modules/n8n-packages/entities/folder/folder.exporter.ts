@@ -7,7 +7,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { FolderSerializer } from './folder.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
@@ -40,7 +40,7 @@ export interface FolderExportResult {
 	/** Folder shells → `manifest.folders[]`. */
 	entries: ManifestEntry[];
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
-	workflowEntries: ManifestEntry[];
+	workflowEntries: WorkflowManifestEntry[];
 	/** What the contained workflows need, gathered at the package top level (credentials today). */
 	requirements: ExportRequirements;
 }

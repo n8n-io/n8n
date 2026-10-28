@@ -33,15 +33,21 @@ Before rollout, verify:
   account cannot qualify. Missing trial status and Cloud API failures retry.
 - The first eligibility check runs after Cloud owner initialization, without
   waiting for the next poll.
-- A qualifying owner sees entry points after the cutoff without refreshing.
+- A qualifying owner sees entry points on the first successful eligibility check,
+  without a 30-minute delay or a page refresh. An owner still waiting under the
+  previous version qualifies on the next check after the backend update.
 - Both arms expand the sidebar once after eligibility and flag loading. A manual
   collapse remains after subsequent checks and editor reloads. Nonparticipants
   keep their sidebar state.
-- Assistant edits before the cutoff exclude the owner. Edits after it do not.
+- Assistant edits at or before first login plus the configured delay exclude the
+  owner. Edits after that cutoff do not. The delay is currently zero.
 - Eligibility remains saved after reload and restart. Control/treatment follows
   the current PostHog value, including local overrides.
 - All four placements open MCP settings before Claude connects, then open Claude in a new tab.
-- Only the expanded sidebar shows `Connect to n8n`, and only while MCP is disabled.
+- While MCP is disabled, the expanded sidebar shows the title, description, and CTA
+  button. The Assistant prefix stays outside its CTA button. After MCP is enabled,
+  both placements show only the short CTA, with no extra copy. The collapsed sidebar
+  shows only the icon.
 - Modern and legacy Claude clients update the CTA connection state.
 - A successful workflow write through Claude, another MCP client, or an unnamed
   client hides all four entry points. Reads, failed writes and zero-operation

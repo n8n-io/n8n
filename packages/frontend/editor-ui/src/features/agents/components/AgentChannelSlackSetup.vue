@@ -12,7 +12,11 @@ import {
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { AgentSlackIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentIntegrationSettings,
+	AgentSlackIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
@@ -36,6 +40,7 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		forceNewCredential?: boolean;
 		setupMode?: 'simple' | 'advanced';
+		savedSettings?: AgentIntegrationSettings;
 	}>(),
 	{
 		connected: false,
@@ -52,6 +57,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		forceNewCredential: false,
+		savedSettings: undefined,
 	},
 );
 
@@ -73,9 +79,12 @@ const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
 const manifestError = shallowRef(false);
 const manifestCopied = shallowRef(false);
-const currentSettings = computed<AgentSlackIntegrationSettings>(() => ({
-	messagingExperience: 'agent',
-}));
+// A draft channel keeps its saved settings. A new channel uses the agent experience.
+const currentSettings = computed<AgentSlackIntegrationSettings>(() =>
+	props.savedSettings && 'messagingExperience' in props.savedSettings
+		? props.savedSettings
+		: { messagingExperience: 'agent' },
+);
 
 const steps = computed(() => [
 	{

@@ -16,7 +16,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import type {
 	DragTarget,
 	DropTarget,

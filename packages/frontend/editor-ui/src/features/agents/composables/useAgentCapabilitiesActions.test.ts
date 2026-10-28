@@ -3,9 +3,12 @@ import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
 
+import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+
 import {
 	useAgentCapabilitiesActions,
 	type AgentCapabilitiesTelemetry,
+	type UseAgentCapabilitiesActionsDeps,
 } from './useAgentCapabilitiesActions';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type {
@@ -16,7 +19,15 @@ import type {
 	AgentSkill,
 } from '../types';
 
-const { openModalWithData } = vi.hoisted(() => ({ openModalWithData: vi.fn() }));
+const { openModalWithData, getSkillDetail } = vi.hoisted(() => ({
+	openModalWithData: vi.fn(),
+	getSkillDetail: vi.fn(),
+}));
+
+vi.mock('./useAgentApi', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./useAgentApi')>()),
+	getSkillDetail,
+}));
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData }),
@@ -50,6 +61,7 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 function makeActions(
 	overrides: Partial<AgentJsonConfig> = {},
 	telemetry?: AgentCapabilitiesTelemetry,
+	deps: Partial<UseAgentCapabilitiesActionsDeps> = {},
 	validationIssues = ref<AgentConfigValidationIssue[]>([]),
 ) {
 	const scheduleConfigUpdate = vi.fn();
@@ -68,6 +80,7 @@ function makeActions(
 		scheduleSkillSave,
 		telemetry,
 		validationIssues,
+		...deps,
 	});
 	return {
 		actions,
@@ -160,6 +173,7 @@ describe('useAgentCapabilitiesActions', () => {
 				],
 			},
 			undefined,
+			{},
 			validationIssues,
 		);
 		actions.onOpenToolFromList(1);
@@ -413,5 +427,80 @@ describe('useAgentCapabilitiesActions', () => {
 		modalData.data.onRemove?.();
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });
+	});
+
+	describe('library skills', () => {
+		const skill: AgentSkill = { name: 'Tone', description: 'Voice', instructions: 'Be brief.' };
+		const detail = { id: 'skill-1', skill, skillHash: 'hash-1' } as SkillDetail;
+
+		async function attach(deps: Partial<UseAgentCapabilitiesActionsDeps>) {
+			const made = makeActions({}, undefined, deps);
+			made.agent.value = { id: 'agent-1' } as unknown as AgentResource;
+			getSkillDetail.mockResolvedValue(detail);
+			await made.actions.onOpenAddSkillModal();
+			const modalData = openModalWithData.mock.calls[0][0] as {
+				data: { onAttach: (item: SkillListItem) => Promise<void> };
+			};
+			return { ...made, onAttach: modalData.data.onAttach };
+		}
+
+		it('attaches a skill to an agent that has no skills yet', async () => {
+			const { agent, scheduleConfigUpdate, onAttach } = await attach({});
+
+			await onAttach({ id: 'skill-1' } as SkillListItem);
+
+			expect(agent.value?.skills).toEqual({ 'skill-1': skill });
+			expect(agent.value?.skillHashes).toEqual({ 'skill-1': 'hash-1' });
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [{ type: 'skill', id: 'skill-1' }],
+			});
+		});
+
+		it('takes back an attach that the save refuses', async () => {
+			const flushConfigSave = vi.fn().mockRejectedValue(new Error('refused'));
+			const { agent, scheduleConfigUpdate, onAttach } = await attach({ flushConfigSave });
+
+			await onAttach({ id: 'skill-1' } as SkillListItem);
+
+			expect(agent.value?.skills).toEqual({});
+			expect(agent.value?.skillHashes).toEqual({});
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ skills: [] });
+		});
+
+		it('keeps the agent it switched to when a refused attach comes back late', async () => {
+			const { agent, agentId, scheduleConfigUpdate, onAttach } = await attach({
+				flushConfigSave: async () => {
+					agentId.value = 'agent-2';
+					throw new Error('refused');
+				},
+			});
+
+			await onAttach({ id: 'skill-1' } as SkillListItem);
+
+			expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+			expect(agent.value?.skills).toEqual({ 'skill-1': skill });
+		});
+
+		it('uses the latest version of a skill on an agent without skill maps', async () => {
+			const { actions, agent, scheduleConfigUpdate } = makeActions({
+				skills: [{ type: 'skill', id: 'skill-1', versionId: 'v1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = { id: 'agent-1' } as unknown as AgentResource;
+			getSkillDetail.mockResolvedValue(detail);
+
+			actions.onOpenSkillFromList('skill-1');
+			const modalData = openModalWithData.mock.calls[0][0] as {
+				data: { onUseLatestVersion: (skillId: string) => void };
+			};
+			modalData.data.onUseLatestVersion('skill-1');
+			await vi.waitFor(() => expect(scheduleConfigUpdate).toHaveBeenCalled());
+
+			expect(agent.value?.skills).toEqual({ 'skill-1': skill });
+			expect(agent.value?.skillHashes).toEqual({ 'skill-1': 'hash-1' });
+			expect(agent.value?.outdatedSkillIds).toEqual([]);
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [{ type: 'skill', id: 'skill-1' }],
+			});
+		});
 	});
 });

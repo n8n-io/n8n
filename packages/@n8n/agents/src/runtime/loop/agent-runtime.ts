@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
+import { createAbortError } from '../../sdk/abort';
 
 import {
 	buildCheckpointOptions,
@@ -740,7 +741,7 @@ export class AgentRuntime {
 	private assertNotAborted(abortScope: AgentAbortScope): void {
 		if (abortScope.isAborted) {
 			this.updateState({ status: 'cancelled' });
-			throw new Error('Agent run was aborted');
+			throw createAbortError('Agent run was aborted');
 		}
 	}
 
@@ -1432,7 +1433,10 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(getCatalogModelId(this.config.model));
+			this.modelCost = await getModelCost(
+				getCatalogModelId(this.config.model),
+				this.config.modelFetch,
+			);
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}

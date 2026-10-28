@@ -44,6 +44,7 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
@@ -52,11 +53,13 @@ import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
+import { PACKAGE_SUBFOLDER } from '../constants';
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionChangesController } from '../promotion-changes.controller';
+import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -138,7 +141,7 @@ async function addEnvironment(providerId: string, direction: PromotionDirection)
 				}
 			: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
 	});
-	await Container.get(PromotionsService).clone(environment.id);
+	await Container.get(PromotionsService).clone(environment.id, { id: 'clone-actor' } as User);
 	return environment;
 }
 
@@ -169,7 +172,7 @@ it("previews against the project's environment, not the instance one", async () 
 		projectPromote.id,
 		'promote',
 	);
-	await Container.get(PromotionsService).clone(projectPromote.id);
+	await Container.get(PromotionsService).clone(projectPromote.id, owner);
 	const agent = server.authAgentFor(owner);
 
 	const linkedPreview = await agent.get(`/promotions/${linked.id}/changes/promote`).expect(200);
@@ -608,8 +611,13 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
+	const readFromGit = vi.spyOn(Container.get(PromotionsGitService), 'readFilesAtCommit');
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data.commitSha).toBe(baseline);
+	expect(readFromGit.mock.calls.flatMap(([{ filePaths }]) => filePaths)).toEqual([
+		`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+	]);
+	readFromGit.mockRestore();
 	expect(response.body.data.changes).toHaveLength(5);
 	expect(response.body.data.changes).toEqual(
 		expect.arrayContaining([

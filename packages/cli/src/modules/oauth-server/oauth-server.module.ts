@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -19,9 +20,22 @@ import { InstanceSettings } from 'n8n-core';
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
 		const { instanceType } = Container.get(InstanceSettings);
+		const { OAuthGrantRepository } = await import(
+			'./database/repositories/oauth-grant.repository.js'
+		);
+		const { UserDeactivationHooks } = await import('@/services/user-deactivation-hooks.service.js');
+		const grants = Container.get(OAuthGrantRepository);
+		Container.get(UserDeactivationHooks).register('oauth-server', async (userId, ctx) => {
+			await grants.deleteUserGrants(userId, ctx);
+		});
 
-		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
 		if (instanceType === 'main') {
+			await grants.deleteGrantsForDisabledUsers().catch((error: unknown) => {
+				Container.get(Logger).error('Failed to clean up OAuth grants for disabled users', {
+					error,
+				});
+			});
+			// Webhook and worker processes do not serve these controllers.
 			await import('./oauth.controller.js');
 			await import('./oauth-consent.controller.js');
 			await import('./oauth-clients.controller.js');
