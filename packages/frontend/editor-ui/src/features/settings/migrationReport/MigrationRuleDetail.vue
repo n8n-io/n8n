@@ -28,6 +28,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 import type { IUser, TableHeader } from '@n8n/design-system';
@@ -534,6 +535,20 @@ async function onNotify(workflow: AffectedWorkflow) {
 
 const bulkNotifyTargets = computed(() =>
 	selectedWorkflows.value.filter((workflow) => canNotifyRow(workflow) && !isBusy(workflow)),
+);
+
+// The backend sends one email per owner, listing all of their selected workflows.
+const bulkNotifyOwnerCount = computed(
+	() => new Set(bulkNotifyTargets.value.map((workflow) => workflow.owner?.id)).size,
+);
+
+const bulkNotifyLabel = computed(() =>
+	bulkNotifyOwnerCount.value > 0
+		? i18n.baseText('settings.migrationReport.detail.bulk.notifyOwnerCount', {
+				adjustToNumber: bulkNotifyOwnerCount.value,
+				interpolate: { count: String(bulkNotifyOwnerCount.value) },
+			})
+		: i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners'),
 );
 
 const isBulkNotifying = computed(() =>
@@ -1048,14 +1063,19 @@ const sortedWorkflows = computed(() => {
 						@click="openMigrateModal(selectedWorkflows)"
 					/>
 					<template v-if="canNotify">
-						<N8nButton
-							variant="outline"
-							:label="i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners')"
-							:disabled="bulkNotifyTargets.length === 0"
-							:loading="isBulkNotifying"
-							data-test-id="migration-bulk-notify-button"
-							@click="onBulkNotify"
-						/>
+						<N8nTooltip
+							:content="i18n.baseText('settings.migrationReport.detail.bulk.notify.tooltip')"
+							:disabled="bulkNotifyOwnerCount === 0"
+						>
+							<N8nButton
+								variant="outline"
+								:label="bulkNotifyLabel"
+								:disabled="bulkNotifyTargets.length === 0"
+								:loading="isBulkNotifying"
+								data-test-id="migration-bulk-notify-button"
+								@click="onBulkNotify"
+							/>
+						</N8nTooltip>
 						<N8nText
 							v-if="selectedWithoutOwnerCount > 0"
 							size="small"

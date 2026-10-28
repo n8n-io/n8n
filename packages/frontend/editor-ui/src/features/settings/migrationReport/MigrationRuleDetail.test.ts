@@ -1774,6 +1774,9 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByTestId('migration-bulk-notify-no-owner')).toHaveTextContent(
 					'1 without an owner',
 				);
+				expect(screen.getByTestId('migration-bulk-notify-button')).toHaveTextContent(
+					'Notify 1 owner',
+				);
 				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
 
 				await waitFor(() => {
