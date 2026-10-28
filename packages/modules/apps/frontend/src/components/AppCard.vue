@@ -4,62 +4,68 @@ import { N8nBadge, N8nCard, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-sys
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 
+import { APP_DETAIL_VIEW } from '../apps.constants';
 import AppActions from './AppActions.vue';
 
 const props = defineProps<{ app: AppResponse }>();
 
-const emit = defineEmits<{ select: [app: AppResponse]; deleted: [appId: string] }>();
+const emit = defineEmits<{ deleted: [appId: string] }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 
 const isPublished = computed(() => props.app.publishedVersionId !== null);
+const appRoute = computed(() => ({
+	name: APP_DETAIL_VIEW,
+	params: { projectId: props.app.projectId, appId: props.app.id },
+}));
 </script>
 
 <template>
-	<N8nCard
-		:class="$style.card"
-		role="button"
-		tabindex="0"
-		data-test-id="app-card"
-		@click="emit('select', app)"
-		@keydown.enter.self.prevent="emit('select', app)"
-		@keydown.space.self.prevent="emit('select', app)"
-	>
-		<template #prepend>
-			<N8nIcon icon="layout-template" size="large" />
-		</template>
-		<template #header>
-			<N8nText tag="h2" bold :class="$style.heading" data-test-id="app-card-name">
-				{{ app.name }}
-			</N8nText>
-		</template>
-		<div :class="$style.description">
-			<span>{{ app.namespace }}</span>
-			<span>|</span>
-			<span>{{ i18n.baseText(`apps.card.visibility.${app.visibility}`) }}</span>
-			<span>|</span>
-			<span>
-				{{ i18n.baseText('apps.card.updated') }}
-				<N8nTimeAgo :date="app.updatedAt" :locale="rootStore.defaultLocale" />
-			</span>
-		</div>
-		<template #append>
-			<div :class="$style.actions" @click.stop>
-				<N8nBadge
-					:variant="isPublished ? 'success' : 'outline'"
-					data-test-id="app-card-publication"
-				>
-					{{ i18n.baseText(isPublished ? 'apps.card.published' : 'apps.card.draft') }}
-				</N8nBadge>
-				<AppActions :app="app" @deleted="emit('deleted', $event)" />
+	<RouterLink :to="appRoute" :class="$style.link" data-test-id="app-card-link">
+		<N8nCard :class="$style.card" data-test-id="app-card">
+			<template #prepend>
+				<N8nIcon icon="layout-template" size="large" />
+			</template>
+			<template #header>
+				<N8nText tag="h2" bold :class="$style.heading" data-test-id="app-card-name">
+					{{ app.name }}
+				</N8nText>
+			</template>
+			<div :class="$style.description">
+				<span>{{ app.namespace }}</span>
+				<span>|</span>
+				<span>{{ i18n.baseText(`apps.card.visibility.${app.visibility}`) }}</span>
+				<span>|</span>
+				<span>
+					{{ i18n.baseText('apps.card.updated') }}
+					<N8nTimeAgo :date="app.updatedAt" :locale="rootStore.defaultLocale" />
+				</span>
 			</div>
-		</template>
-	</N8nCard>
+			<template #append>
+				<div :class="$style.actions" @click.stop.prevent>
+					<N8nBadge
+						:variant="isPublished ? 'success' : 'outline'"
+						data-test-id="app-card-publication"
+					>
+						{{ i18n.baseText(isPublished ? 'apps.card.published' : 'apps.card.draft') }}
+					</N8nBadge>
+					<AppActions :app="app" @deleted="emit('deleted', $event)" />
+				</div>
+			</template>
+		</N8nCard>
+	</RouterLink>
 </template>
 
 <style lang="scss" module>
+.link {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+
 .card {
 	padding: 0 0 0 var(--spacing--sm);
 	align-items: stretch;

@@ -16,9 +16,17 @@ const app: AppResponse = {
 	updatedAt: '2026-10-02T10:00:00.000Z',
 };
 
+const navigate = vi.fn();
+
 const renderComponent = createComponentRenderer(AppCard, {
 	global: {
 		stubs: {
+			RouterLink: {
+				props: ['to'],
+				setup: () => ({ navigate }),
+				template:
+					'<a :href="\'/projects/\' + to.params.projectId + \'/apps/\' + to.params.appId" data-test-id="app-card-link" @click.prevent="navigate"><slot /></a>',
+			},
 			AppActions: {
 				props: ['app'],
 				emits: ['deleted'],
@@ -47,29 +55,18 @@ describe('AppCard', () => {
 		expect(getByTestId('app-card-publication')).toHaveTextContent('Published');
 	});
 
-	it('emits select when the user clicks the card', async () => {
-		const { getByTestId, emitted } = renderComponent({ props: { app } });
+	it('links to the detail page of the app', () => {
+		const { getByTestId } = renderComponent({ props: { app } });
 
-		await userEvent.click(getByTestId('app-card-name'));
-
-		expect(emitted('select')).toEqual([[app]]);
+		expect(getByTestId('app-card-link')).toHaveAttribute('href', '/projects/project-1/apps/app-1');
 	});
 
-	it.each(['{Enter}', ' '])('emits select when the user presses %s on the card', async (key) => {
-		const { getByTestId, emitted } = renderComponent({ props: { app } });
-
-		getByTestId('app-card').focus();
-		await userEvent.keyboard(key);
-
-		expect(emitted('select')).toEqual([[app]]);
-	});
-
-	it('passes a delete on and does not select the app', async () => {
+	it('passes a delete on and does not open the app', async () => {
 		const { getByTestId, emitted } = renderComponent({ props: { app } });
 
 		await userEvent.click(getByTestId('app-actions'));
 
 		expect(emitted('deleted')).toEqual([['app-1']]);
-		expect(emitted('select')).toBeUndefined();
+		expect(navigate).not.toHaveBeenCalled();
 	});
 });

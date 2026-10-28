@@ -6,7 +6,7 @@ import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { getApp } from '../apps.api';
 import type { AppViewTab } from '../apps.constants';
@@ -23,7 +23,14 @@ const latestFetch = useLatestFetch();
 
 const app = ref<AppResponse | null>(null);
 const loading = ref(true);
-const activeTab = ref<AppViewTab>('preview');
+// `<tab>` or `<tab>.<sub-tab>`, for example `configure.authentication`.
+const section = defineModel<string>('section', { default: 'preview' });
+const activeTab = computed<AppViewTab>({
+	get: () => (section.value.split('.')[0] === 'configure' ? 'configure' : 'preview'),
+	set: (tab) => {
+		section.value = tab;
+	},
+});
 
 async function loadApp() {
 	const isLatest = latestFetch.next();
@@ -49,6 +56,7 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 <template>
 	<div :class="$style.view" data-test-id="app-view">
 		<AppHeader
+			v-if="loading || app"
 			v-model:tab="activeTab"
 			:project-id="projectId"
 			:app="app"

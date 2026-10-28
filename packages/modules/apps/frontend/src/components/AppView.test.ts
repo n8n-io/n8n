@@ -57,9 +57,10 @@ describe('AppView', () => {
 
 	it('shows the not-found state without an error toast for a missing app', async () => {
 		vi.mocked(getApp).mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
-		const { findByTestId } = renderComponent();
+		const { findByTestId, queryByTestId } = renderComponent();
 
 		expect(await findByTestId('app-view-not-found')).toBeInTheDocument();
+		expect(queryByTestId('app-header')).not.toBeInTheDocument();
 		expect(showError).not.toHaveBeenCalled();
 	});
 
@@ -119,5 +120,22 @@ describe('AppView', () => {
 
 		expect(await findByTestId('app-view-configure')).toBeInTheDocument();
 		expect(queryByTestId('app-view-preview')).not.toBeInTheDocument();
+	});
+
+	it('opens the configure tab for a configure section with a sub-tab', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId } = renderComponent({ props: { section: 'configure.authentication' } });
+
+		expect(await findByTestId('app-view-configure')).toBeInTheDocument();
+	});
+
+	it('emits the section when the tab changes', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, emitted } = renderComponent();
+		await findByTestId('app-view-preview');
+
+		await userEvent.click(getByTestId('configure'));
+
+		expect(emitted('update:section')).toEqual([['configure']]);
 	});
 });

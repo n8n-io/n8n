@@ -10,6 +10,14 @@ const router = useRouter();
 
 const projectId = computed(() => String(route.params.projectId));
 const appId = computed(() => String(route.params.appId));
+const section = computed({
+	get: () => (typeof route.query.section === 'string' ? route.query.section : 'preview'),
+	set: (value: string) => {
+		void router.replace({
+			query: { ...route.query, section: value === 'preview' ? undefined : value },
+		});
+	},
+});
 
 function onDeleted() {
 	void router.push({ name: PROJECT_APPS, params: { projectId: projectId.value } });
@@ -18,7 +26,12 @@ function onDeleted() {
 
 <template>
 	<div :class="$style.page">
-		<AppView :project-id="projectId" :app-id="appId" @deleted="onDeleted" />
+		<AppView
+			v-model:section="section"
+			:project-id="projectId"
+			:app-id="appId"
+			@deleted="onDeleted"
+		/>
 	</div>
 </template>
 
