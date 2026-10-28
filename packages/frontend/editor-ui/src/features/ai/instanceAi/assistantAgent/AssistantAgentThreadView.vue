@@ -15,6 +15,7 @@ import {
 	ASSISTANT_AGENT_ID,
 	consumePendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -22,12 +23,15 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
+const threadsStore = useAssistantAgentThreadsStore();
 
 // A thread that the empty view just created has its first message waiting. Until
 // the server accepts it, the thread does not exist there yet.
 const pendingMessage = consumePendingAssistantAgentMessage(props.threadId);
 const isNewSession = ref(pendingMessage !== undefined);
 let pendingReferences: InstanceAiAttachment[] = pendingMessage?.references ?? [];
+// The lists show a thread opened by URL even when it is older than the recent page.
+if (!pendingMessage) void threadsStore.loadThread(props.threadId);
 
 const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
@@ -66,6 +70,16 @@ watch(panel, (current) => {
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
+	// The thread exists once the server accepts its first message. Show it in the lists
+	// now, not only after the first reply ends.
+	void threadsStore.loadThread(props.threadId);
+}
+
+// A finished turn can add the thread to the lists, or give it a title.
+let wasStreaming = false;
+function onStreamingChange(streaming: boolean): void {
+	if (wasStreaming && !streaming) void threadsStore.fetchRecent();
+	wasStreaming = streaming;
 }
 </script>
 
@@ -86,6 +100,7 @@ function onSessionCreated(): void {
 			:client-context="clientContext"
 			@session-created="onSessionCreated"
 			@message-accepted="onMessageAccepted"
+			@update:streaming="onStreamingChange"
 		/>
 	</div>
 </template>
