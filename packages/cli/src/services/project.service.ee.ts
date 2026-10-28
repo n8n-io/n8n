@@ -25,8 +25,7 @@ import {
 	type GlobalRole,
 	type ProjectRole,
 	AssignableProjectRole,
-	GLOBAL_ADMIN_ROLE_SLUG,
-	GLOBAL_OWNER_ROLE_SLUG,
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 	PROJECT_OWNER_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
@@ -804,7 +803,8 @@ export class ProjectService {
 				.filter(
 					(u) =>
 						!u.disabled &&
-						(u.role?.slug === GLOBAL_OWNER_ROLE_SLUG || u.role?.slug === GLOBAL_ADMIN_ROLE_SLUG),
+						!!u.role &&
+						IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS.includes(u.role.slug),
 				)
 				.map((u) => u.id),
 		);
@@ -1010,7 +1010,7 @@ export class ProjectService {
 		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
 			projectId: project.id,
 			projectRoleSlugs: [],
-			globalRoleSlugs: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
+			globalRoleSlugs: IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 		});
 	}
 

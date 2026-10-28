@@ -585,7 +585,7 @@ export class AuthService {
 	createJWTHash({ email, password, mfaEnabled, mfaSecret }: User) {
 		const payload = [email, password];
 		if (mfaEnabled && mfaSecret) {
-			payload.push(mfaSecret.substring(0, 3));
+			payload.push(mfaSecret);
 		}
 		return this.hash(payload.join(':')).substring(0, 10);
 	}

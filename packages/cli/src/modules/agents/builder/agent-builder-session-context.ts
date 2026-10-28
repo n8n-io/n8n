@@ -1,4 +1,4 @@
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { buildAgentTestPath } from './agent-builder-test-path';
 
 /** Per-Agent context the builder needs: the Preview link. */
 export async function buildBuilderSessionContext(
@@ -8,5 +8,5 @@ export async function buildBuilderSessionContext(
 	return await Promise.resolve(`\
 ## Session context
 
-- Preview link for the target agent: [Preview](${buildAgentPreviewPath(projectId, agentId)})`);
+- Preview link for the target agent: [Preview](${buildAgentTestPath(projectId, agentId)})`);
 }

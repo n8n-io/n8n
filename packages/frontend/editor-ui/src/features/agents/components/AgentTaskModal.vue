@@ -36,7 +36,7 @@ import {
 	type ScheduleFrequency,
 	weekdayLabel,
 } from '../utils/scheduleBuilder';
-import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentTestButton from './AgentTestButton.vue';
 import AgentModal from './modals/AgentModal.vue';
 
 export type AgentTaskModalData = {
@@ -47,6 +47,7 @@ export type AgentTaskModalData = {
 	isPublished: boolean;
 	isRunnable?: boolean;
 	validationIssues?: AgentConfigValidationIssue[];
+	getPreviewDisabledReason?: () => string | undefined;
 	taskState?: {
 		enabled: boolean;
 	};
@@ -342,7 +343,8 @@ function closeModal() {
 
 function onPreview() {
 	objectiveTouched.value = true;
-	if (objectiveError.value || !props.data.onPreview) return;
+	if (objectiveError.value || !props.data.onPreview || props.data.getPreviewDisabledReason?.())
+		return;
 
 	closeModal();
 	props.data.onPreview(objective.value.trim());
@@ -614,7 +616,8 @@ async function onSave() {
 			</N8nButton>
 		</template>
 		<template #footerBeforeCancel>
-			<AgentPreviewButton
+			<AgentTestButton
+				:disabled-reason="props.data.getPreviewDisabledReason?.()"
 				:is-runnable="props.data.isRunnable === true"
 				:validation-issues="props.data.validationIssues ?? []"
 				variant="ghost"

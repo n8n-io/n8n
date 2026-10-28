@@ -25,11 +25,18 @@ const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 ]);
 
-/** Resolves a former tool name in a trace run name and keeps an `[action]` suffix. */
+/**
+ * Resolves a former tool name in a trace run name. Keeps an `[action]` suffix,
+ * unless the action now has its own tool.
+ */
 function resolveTraceToolName(name: string): string {
 	const bracket = name.indexOf('[');
 	if (bracket === -1) return resolveBuilderToolName(name);
-	return resolveBuilderToolName(name.slice(0, bracket)) + name.slice(bracket);
+	const base = resolveBuilderToolName(name.slice(0, bracket));
+	const action = name.slice(bracket + 1, name.indexOf(']', bracket));
+	// A split tool names the action, so the bracket is no longer needed.
+	const split = resolveBuilderToolName(base, action);
+	return split !== base ? split : base + name.slice(bracket);
 }
 
 // Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
@@ -632,15 +639,18 @@ function buildSeedWorkflows(
 			continue;
 		}
 
-		// A `workflow_builder_workflows`-tool delete (traced as `workflow_builder_workflows[delete]`, or `workflows[delete]` in older traces) drops that id's prior
-		// reconstruction. Gated to the `workflow_builder_workflows` tool so an unrelated delete-shaped input
-		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
-		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
-		if (
-			resolveTraceToolName(tool.name).split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
-			isRecord(tool.inputs) &&
-			tool.inputs.action === 'delete'
-		) {
+		// Older traces name the multi-action workflows tool, with the action in the
+		// name (`workflows[delete]`) or in the inputs.
+		const toolName = resolveBuilderToolName(
+			resolveTraceToolName(tool.name),
+			isRecord(tool.inputs) ? tool.inputs.action : undefined,
+		);
+
+		// An archive drops that id's prior reconstruction. Gated to the archive tool so an
+		// unrelated delete-shaped input can't evict a seed workflow, and to success === true so
+		// a suspended (HITL) or denied archive keeps it. Chronological loop ⇒ a later rebuild
+		// re-adds it.
+		if (toolName === DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW && isRecord(tool.inputs)) {
 			const deletedId = asString(tool.inputs.workflowId);
 			const deleteSucceeded = isRecord(tool.outputs) && tool.outputs.success === true;
 			if (deletedId !== undefined && deleteSucceeded) {
@@ -653,7 +663,7 @@ function buildSeedWorkflows(
 		}
 
 		const out = isRecord(tool.outputs) ? tool.outputs : {};
-		if (tool.name.includes('get-as-code')) {
+		if (toolName === DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE || tool.name.includes('get-as-code')) {
 			const code = asString(out.code);
 			const workflowId = asString(out.workflowId);
 			if (code && workflowId) getAsCodeByWorkflowId.set(workflowId, code);

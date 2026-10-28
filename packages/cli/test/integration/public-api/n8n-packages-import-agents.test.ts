@@ -40,7 +40,7 @@ import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
@@ -56,8 +56,7 @@ import {
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { createSkill, toSkillContent } from '@/modules/skills/testing';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -90,7 +89,7 @@ let agents: AgentRepository;
 let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -135,15 +134,13 @@ beforeEach(async () => {
 			}),
 		});
 		for (const [id, skill] of Object.entries(skills)) {
-			await Container.get(SkillRepository).createSkill(
-				{
-					id,
-					target: { projectId: null, agentId: agent.id },
-					source: 'agent',
-					createdById: owner.id,
-				},
-				toSkillContent(skill),
-			);
+			await createSkill({
+				id,
+				agentId: agent.id,
+				source: 'agent',
+				createdById: owner.id,
+				content: toSkillContent(skill),
+			});
 		}
 		await Container.get(AgentSkillRepository).replaceDependencies(
 			agent.id,

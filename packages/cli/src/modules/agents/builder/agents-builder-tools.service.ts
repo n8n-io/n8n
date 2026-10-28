@@ -74,7 +74,7 @@ import {
 } from '../agent-test-run.service';
 import { AgentsService } from '../agents.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { buildAgentTestPath } from './agent-builder-test-path';
 import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
@@ -99,10 +99,7 @@ import {
 } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
-import {
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-} from '@/modules/skills/skill-name-taken.error';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '@/modules/skills';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -866,7 +863,7 @@ export class AgentsBuilderToolsService {
 						};
 					}
 
-					const previewPath = buildAgentPreviewPath(projectId, agentId);
+					const previewPath = buildAgentTestPath(projectId, agentId);
 					try {
 						const { result, sessionNote } = await this.runDraftTest(
 							ctx,

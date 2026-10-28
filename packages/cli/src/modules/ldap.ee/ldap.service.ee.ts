@@ -3,7 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
-import { isValidEmail, SettingsRepository, User } from '@n8n/db';
+import { chunkIds, isValidEmail, SettingsRepository, User, UserRepository } from '@n8n/db';
 import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
@@ -46,6 +46,10 @@ import {
 	getUserByLdapId,
 } from './helpers.ee';
 import { LdapConnectionError, LdapRejectionError } from './ldap.errors';
+
+/** Submitted LDAP configuration. Clients that predate `linkExistingAccountsByEmail` omit it. */
+type LdapConfigUpdate = Omit<LdapConfig, 'linkExistingAccountsByEmail'> &
+	Partial<Pick<LdapConfig, 'linkExistingAccountsByEmail'>>;
 
 const LDAP_CONNECTION_ERROR_CODES = new Set([
 	'ECONNREFUSED',
@@ -109,18 +113,31 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		if (ldapConfig.enforceEmailUniqueness === undefined) {
 			ldapConfig.enforceEmailUniqueness = true;
 		}
+		if (ldapConfig.linkExistingAccountsByEmail === undefined) {
+			ldapConfig.linkExistingAccountsByEmail = true;
+		}
 
 		ldapConfig.bindingAdminPassword = await this.cipher.decryptV2(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
 
-	async updateConfig(ldapConfig: LdapConfig): Promise<void> {
+	async updateConfig(submittedConfig: LdapConfigUpdate): Promise<void> {
+		let stored: LdapConfig | undefined;
+
 		// The config GET blanks the bind password; when the editor round-trips it back,
 		// keep the currently-stored password instead of overwriting it with the placeholder.
-		if (ldapConfig.bindingAdminPassword === CREDENTIAL_BLANKING_VALUE) {
-			const stored = await this.loadConfig();
-			ldapConfig.bindingAdminPassword = stored.bindingAdminPassword;
+		if (submittedConfig.bindingAdminPassword === CREDENTIAL_BLANKING_VALUE) {
+			stored = await this.loadConfig();
+			submittedConfig.bindingAdminPassword = stored.bindingAdminPassword;
 		}
+
+		// Keep the stored value when the client omits this setting.
+		let { linkExistingAccountsByEmail } = submittedConfig;
+		if (linkExistingAccountsByEmail === undefined) {
+			stored ??= await this.loadConfig();
+			linkExistingAccountsByEmail = stored.linkExistingAccountsByEmail;
+		}
+		const ldapConfig: LdapConfig = Object.assign(submittedConfig, { linkExistingAccountsByEmail });
 
 		const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
@@ -443,8 +460,12 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			return true;
 		});
 
+		const processableUsersToCreate = this.config.linkExistingAccountsByEmail
+			? filteredUsersToCreate
+			: await this.filterExistingAccounts(filteredUsersToCreate);
+
 		this.logger.debug('LDAP - Users to process', {
-			created: filteredUsersToCreate.length,
+			created: processableUsersToCreate.length,
 			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 		});
@@ -455,7 +476,12 @@ export class LdapService implements IPasswordAuthHandler<User> {
 
 		try {
 			if (mode === 'live') {
-				await processUsers(filteredUsersToCreate, filteredUsersToUpdate, usersToDisable);
+				await processUsers(
+					processableUsersToCreate,
+					filteredUsersToUpdate,
+					usersToDisable,
+					this.config.linkExistingAccountsByEmail,
+				);
 			}
 		} catch (error) {
 			status = 'error';
@@ -465,7 +491,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		const syncHistory = await saveLdapSynchronization({
 			startedAt,
 			endedAt,
-			created: filteredUsersToCreate.length,
+			created: processableUsersToCreate.length,
 			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 			scanned: adUsers.length,
@@ -478,7 +504,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			type: !this.syncTimer ? 'scheduled' : `manual_${mode}`,
 			succeeded: status === 'success',
 			usersSynced:
-				filteredUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
+				processableUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
 			error: errorMessage,
 		});
 
@@ -533,6 +559,32 @@ export class LdapService implements IPasswordAuthHandler<User> {
 				this.logger.warn('LDAP sync skipped entry: multiple LDAP accounts share the same email', {
 					email,
 					ldapId: adUser[this.config.ldapIdAttribute],
+				});
+				return false;
+			}
+			return true;
+		});
+	}
+
+	/** Drop LDAP entries whose email already belongs to an n8n account */
+	private async filterExistingAccounts(
+		usersToCreate: Array<[string, User]>,
+	): Promise<Array<[string, User]>> {
+		if (usersToCreate.length === 0) return usersToCreate;
+
+		// Query in batches to stay below the driver's bind-parameter limit.
+		const userRepository = Container.get(UserRepository);
+		const existingEmails = new Set<string>();
+		for (const emails of chunkIds(usersToCreate.map(([, user]) => user.email))) {
+			const existingUsers = await userRepository.findManyByEmail(emails);
+			for (const user of existingUsers) existingEmails.add(user.email);
+		}
+
+		return usersToCreate.filter(([ldapId, user]) => {
+			if (existingEmails.has(user.email)) {
+				this.logger.warn('LDAP sync skipped entry: email matches an existing account', {
+					email: user.email,
+					ldapId,
 				});
 				return false;
 			}
@@ -607,6 +659,15 @@ export class LdapService implements IPasswordAuthHandler<User> {
 
 			// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
 			if (emailPerson && emailPerson.email === emailAttributeValue) {
+				if (!this.config.linkExistingAccountsByEmail) {
+					this.logger.warn('LDAP login blocked: email matches an existing account', {
+						email: emailAttributeValue,
+						ldapId,
+					});
+
+					return undefined;
+				}
+
 				const identity = await createLdapAuthIdentity(emailPerson, ldapId);
 				await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 			} else {

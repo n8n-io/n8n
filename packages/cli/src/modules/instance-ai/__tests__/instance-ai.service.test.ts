@@ -1,4 +1,3 @@
-import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
@@ -451,7 +450,6 @@ const TURN_ENVIRONMENT_FIELDS = [
 	'settingsService',
 	'browserSessionService',
 	'aiService',
-	'dbIterationLogStorage',
 	'instanceWriteAccess',
 	'telemetry',
 	'evalCredentialAllowlists',
@@ -912,7 +910,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
 			aiConfig: Record<string, never>;
@@ -952,7 +949,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -996,7 +993,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 			getThread: vi.fn(async () => undefined),
 		};
-		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
 		service.aiConfig = {};
@@ -1280,7 +1276,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
@@ -1320,7 +1315,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1363,7 +1358,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 			getThread: vi.fn(async () => undefined),
 		};
-		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};

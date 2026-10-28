@@ -2098,7 +2098,8 @@ export class InstanceAiService {
 		suspendPayload: Record<string, unknown> | undefined,
 	): string | undefined {
 		if (!toolName || !suspendPayload) return undefined;
-		if (resolveBuilderToolName(toolName) !== WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS)
+		// Only setup suspends with `setupRequests`, so a former multi-action call is a setup.
+		if (resolveBuilderToolName(toolName, 'setup') !== WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW)
 			return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;

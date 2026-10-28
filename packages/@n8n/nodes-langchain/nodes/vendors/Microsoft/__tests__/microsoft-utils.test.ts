@@ -60,17 +60,6 @@ vi.mock('@microsoft/agents-a365-observability', () => ({
 			}),
 		};
 	}),
-	ObservabilityManager: {
-		configure: vi.fn().mockReturnValue({
-			start: vi.fn(),
-			shutdown: vi.fn(),
-		}),
-	},
-	defaultObservabilityConfigurationProvider: {
-		getConfiguration: vi.fn().mockReturnValue({
-			observabilityAuthenticationScopes: ['observability-scope'],
-		}),
-	},
 }));
 
 vi.mock('@microsoft/agents-a365-runtime', () => ({
@@ -238,6 +227,10 @@ describe('microsoft-utils', () => {
 			};
 		});
 
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
 		test('should not register installationUpdate handler', async () => {
 			const mockTurnContext = {
 				activity: {
@@ -370,13 +363,9 @@ describe('microsoft-utils', () => {
 			expect(agent.run).toHaveBeenCalledWith(mockTurnContext);
 		});
 
-		test('should exchange observability token only when observability is enabled', async () => {
-			const originalEnv = process.env;
-			process.env = {
-				...originalEnv,
-				ENABLE_OBSERVABILITY: 'true',
-				ENABLE_A365_OBSERVABILITY_EXPORTER: 'true',
-			};
+		test('does not exchange an observability token when the Microsoft observability env vars are set', async () => {
+			vi.stubEnv('ENABLE_OBSERVABILITY', 'true');
+			vi.stubEnv('ENABLE_A365_OBSERVABILITY_EXPORTER', 'true');
 
 			const mockTurnContext = {
 				activity: {
@@ -404,60 +393,12 @@ describe('microsoft-utils', () => {
 			);
 
 			await callback(mockTurnContext as any);
-
-			process.env = originalEnv;
-
-			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
-				mockTurnContext,
-				['observability-scope'],
-				'agentic',
-			);
-			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
-				mockTurnContext,
-				'agentic',
-				expect.objectContaining({ scopes: ['mcp-scope'] }),
-			);
-		});
-
-		test('should not exchange observability token when observability is disabled', async () => {
-			const originalEnv = process.env;
-			process.env = { ...originalEnv, ENABLE_OBSERVABILITY: 'false' };
-
-			const mockTurnContext = {
-				activity: {
-					type: 'message',
-					text: 'Test input',
-					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
-					conversation: { id: 'conversation-id' },
-				},
-				sendActivity: vi.fn(),
-				turnState: { set: vi.fn() },
-			};
-
-			(invokeAgent as Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
-				if (param === 'options.welcomeMessage') return 'Welcome!';
-				if (param === 'systemPrompt') return 'Test agent';
-				return undefined;
-			});
-
-			const callback = configureAdapterProcessCallback(
-				nodeContext,
-				agent,
-				credentials,
-				activityCapture,
-			);
-
-			await callback(mockTurnContext as any);
-
-			process.env = originalEnv;
 
 			expect(agent.authorization.exchangeToken).not.toHaveBeenCalledWith(
 				mockTurnContext,
 				['observability-scope'],
 				'agentic',
 			);
-			// MCP token exchange still happens regardless
 			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
 				mockTurnContext,
 				'agentic',
@@ -481,8 +422,9 @@ describe('microsoft-utils', () => {
 
 			agent.authorization.exchangeToken = vi
 				.fn()
-				.mockResolvedValueOnce({ token: 'observability-token' })
 				.mockRejectedValueOnce(new Error('Token exchange failed'));
+			const logger = mock<IWebhookFunctions['logger']>();
+			Object.assign(nodeContext, { logger });
 
 			(invokeAgent as Mock).mockResolvedValue('Test response');
 			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
@@ -500,6 +442,7 @@ describe('microsoft-utils', () => {
 
 			await callback(mockTurnContext as any);
 
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Token exchange failed'));
 			expect(agent.run).toHaveBeenCalled();
 		});
 
@@ -569,45 +512,6 @@ describe('microsoft-utils', () => {
 			await callback(mockTurnContext as any);
 
 			expect(activityCapture.input).toBe('User input message');
-		});
-
-		test('should handle observability when enabled', async () => {
-			const originalEnv = process.env;
-			process.env.ENABLE_OBSERVABILITY = 'true';
-			process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
-
-			const mockTurnContext = {
-				activity: {
-					type: 'message',
-					text: 'Test input',
-					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
-					conversation: { id: 'conversation-id' },
-				},
-				sendActivity: vi.fn(),
-				turnState: {
-					set: vi.fn(),
-				},
-			};
-
-			(invokeAgent as Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
-				if (param === 'options.welcomeMessage') return 'Welcome!';
-				if (param === 'systemPrompt') return 'Test agent';
-				return undefined;
-			});
-
-			const callback = configureAdapterProcessCallback(
-				nodeContext,
-				agent,
-				credentials,
-				activityCapture,
-			);
-
-			await callback(mockTurnContext as any);
-
-			process.env = originalEnv;
-
-			expect(agent.run).toHaveBeenCalled();
 		});
 	});
 

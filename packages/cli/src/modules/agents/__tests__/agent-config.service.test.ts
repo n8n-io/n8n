@@ -1007,7 +1007,7 @@ describe('AgentConfigService', () => {
 				{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 				{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 			]);
-			// The skill refs seam checks skill refs against the skills hub.
+			// The skill refs seam checks skill refs against the skills module.
 			expect(saved.schema).not.toHaveProperty('skills');
 			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
 				saved,

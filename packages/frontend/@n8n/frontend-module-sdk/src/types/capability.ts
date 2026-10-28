@@ -1,4 +1,5 @@
 import type { SelfHealingResultDetail } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
 import type { ComputedRef } from 'vue';
 
 /**
@@ -22,6 +23,13 @@ export interface CapabilityToken<T> {
 export interface ModalOpeners {
 	openModal(name: string): void;
 	openModalWithData(payload: { name: string; data: Record<string, unknown> }): void;
+}
+
+export interface ProjectPermissions {
+	/** The user's global scopes plus their scopes in the project. Reads reactive state, so call it in a `computed`. */
+	scopesFor(projectId: string): Scope[];
+	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
+	isReadOnly(): boolean;
 }
 
 export interface McpExposeAllOffer {
