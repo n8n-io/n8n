@@ -10,6 +10,7 @@ packages/nodes-base/nodes/Git/Git.node.ts
   s_6db733ee4282ae::t_5d46f9f03ec8cb 115-120
 packages/cli/src/controllers/users.controller.ts
   s_cceebc2f7c0a9f::t_a0a04a580651cc 150,152
+  s_cceebc2f7c0a9f::t_4fbbd1af7dc871 149
 packages/cli/test/integration/users.api.test.ts
   s_cceebc2f7c0a9f::t_a40ec6c5d92b45 952
   s_cceebc2f7c0a9f::t_ffd31ae53cf984 28,919,925-930,947-951,953-956,1616-1660
