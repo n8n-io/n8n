@@ -6850,6 +6850,7 @@
 	"packages.import.publishing.reason.stub-credential": "A credential needs setup",
 	"packages.import.publishing.reason.incomplete-credential": "A credential is incomplete",
 	"packages.import.publishing.reason.missing-node-type": "A node type is missing",
+	"packages.import.publishing.reason.channel-setup-required": "A channel needs setup",
 	"packages.import.credentialsNeedSetup": "1 imported credential needs setup before you can publish | {count} imported credentials need setup before you can publish",
 	"packages.import.refreshError": "The package was imported, but the page couldn't refresh.",
 	"packages.import.refreshAgain": "Refresh again",
