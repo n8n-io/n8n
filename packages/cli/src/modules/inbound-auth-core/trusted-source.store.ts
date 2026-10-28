@@ -258,7 +258,6 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 
 		// Only a direct database write can put an admin row under the reserved id.
 		if (existing.managedBy !== 'system') return 'conflict';
-		// TODO: check in with IAM team if this is the right way of doing this
 		await this.ensureAppsSurface(existing);
 		if (existing.issuer === issuer) return 'unchanged';
 
