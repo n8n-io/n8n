@@ -91,7 +91,7 @@ import { TIME } from '@/app/constants/durations';
 import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControls';
 import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
-import ApprovalCard from './interactive/ApprovalCard.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -1677,7 +1677,7 @@ onBeforeUnmount(() => {
 					@stop="stopTasks"
 				/>
 				<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
-					<ApprovalCard
+					<ToolApprovalCard
 						v-if="pendingApproval"
 						:key="pendingApproval.toolCallId"
 						:input="pendingApproval.input"
@@ -1691,7 +1691,7 @@ onBeforeUnmount(() => {
 							})
 						"
 					/>
-					<ApprovalCard
+					<ToolApprovalCard
 						v-else-if="backgroundApproval"
 						:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
 						:input="backgroundApproval.input"
