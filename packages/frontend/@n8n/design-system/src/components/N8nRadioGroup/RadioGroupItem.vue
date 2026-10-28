@@ -56,7 +56,6 @@ function onItemFocusIn(event: FocusEvent) {
 					<span v-if="description" :class="$style.description">{{ description }}</span>
 				</slot>
 			</Label>
-			<!-- Keep follow-up fields out of the label so they are not part of the radio name. -->
 			<div v-if="slots.content" :class="$style.followUp">
 				<slot name="content" />
 			</div>
@@ -99,12 +98,6 @@ function onItemFocusIn(event: FocusEvent) {
 	cursor: inherit;
 	flex-shrink: 0;
 
-	// 1px has no spacing token. The offset keeps the control on the first text line.
-	.item:has(.description) &,
-	.item:has(.followUp > *) & {
-		margin-top: 1px;
-	}
-
 	&[data-disabled] {
 		cursor: not-allowed;
 	}
@@ -144,11 +137,6 @@ function onItemFocusIn(event: FocusEvent) {
 .body {
 	display: flex;
 	flex-direction: column;
-	min-width: 0;
-
-	.itemVertical & {
-		flex: 1;
-	}
 }
 
 .followUp {
