@@ -269,7 +269,116 @@ class RunsSubWorkflow implements INodeType {
 	} as unknown as INodeType['description'];
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		await this.executeWorkflow({ id: 'child' }, this.getInputData());
+		await this.executeWorkflow({ id: 'sub-workflow' }, this.getInputData());
+		return [this.getInputData()];
+	}
+}
+
+/** Starts a sub-workflow without waiting for it, and reports the sub-execution id. */
+class FiresSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Fires Sub Workflow',
+		name: 'firesSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Starts a sub-workflow and moves on',
+		defaults: { name: 'Fires Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const { executionId, data } = await this.executeWorkflow(
+			{ id: 'sub-workflow' },
+			this.getInputData(),
+			undefined,
+			{
+				doNotWaitToFinish: true,
+			},
+		);
+		return [[{ json: { subExecutionId: executionId, data } }]];
+	}
+}
+
+/** Returns what the sub-workflow returned, as the Execute Workflow node does. */
+class EchoesSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Echoes Sub Workflow',
+		name: 'echoesSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and returns its output',
+		defaults: { name: 'Echoes Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{ displayName: 'Last run only', name: 'returnLastRunOnly', type: 'boolean', default: false },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const returnLastRunOnly = this.getNodeParameter('returnLastRunOnly', 0, false) as boolean;
+		const { data } = await this.executeWorkflow(
+			{ id: 'sub-workflow' },
+			this.getInputData(),
+			undefined,
+			{
+				returnLastRunOnly,
+			},
+		);
+		return data.map((slot) => slot ?? []);
+	}
+}
+
+/** Runs a sub-workflow given inline, which the data plane cannot resolve. */
+class RunsInlineSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Runs Inline Sub Workflow',
+		name: 'runsInlineSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes an inline sub-workflow',
+		defaults: { name: 'Runs Inline Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow(
+			{
+				code: {
+					id: 'inline',
+					name: 'Inline',
+					nodes: [],
+					connections: {},
+				} as unknown as IWorkflowBase,
+			},
+			this.getInputData(),
+		);
+		return [this.getInputData()];
+	}
+}
+
+/** Runs a sub-workflow once per item, as the deprecated "each" mode does. */
+class RunsSubWorkflowPerItem implements INodeType {
+	description = {
+		displayName: 'Runs Sub Workflow Per Item',
+		name: 'runsSubWorkflowPerItem',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow for each item',
+		defaults: { name: 'Runs Sub Workflow Per Item' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		for (const item of this.getInputData()) {
+			await this.executeWorkflow({ id: 'sub-workflow' }, [item]);
+		}
 		return [this.getInputData()];
 	}
 }
@@ -287,6 +396,10 @@ const registry = new Map<string, INodeType>([
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
 	['test.waitsUntil', new WaitsUntil()],
 	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	['test.firesSubWorkflow', new FiresSubWorkflow()],
+	['test.echoesSubWorkflow', new EchoesSubWorkflow()],
+	['test.runsInlineSubWorkflow', new RunsInlineSubWorkflow()],
+	['test.runsSubWorkflowPerItem', new RunsSubWorkflowPerItem()],
 	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
@@ -318,6 +431,8 @@ export const testAdditionalDataFactory = async ({
 		variables: {},
 		hooks: undefined,
 		credentialsHelper: undefined,
+		// As the data plane answers: no run data of another execution.
+		getRunExecutionData: async () => undefined,
 	} as unknown as IWorkflowExecuteAdditionalData);
 
 export const v1Workflow = (
