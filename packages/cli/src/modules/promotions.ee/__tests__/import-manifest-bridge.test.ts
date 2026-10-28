@@ -29,6 +29,7 @@ describe('import-manifest-bridge', () => {
 	const leftoverManifest = (overrides: Record<string, unknown> = {}) =>
 		JSON.stringify({
 			packageFormatVersion: '1',
+			// Manifests written before the format dropped the timestamp still carry it.
 			exportedAt: '2026-01-01T00:00:00.000Z',
 			sourceN8nVersion: '1.0.0',
 			sourceId: 'old',
@@ -40,7 +41,6 @@ describe('import-manifest-bridge', () => {
 			'manifest.json': JSON.stringify(
 				packageManifestSchema.parse({
 					packageFormatVersion: '1',
-					exportedAt: '2026-01-01T00:00:00.000Z',
 					sourceN8nVersion: '1.0.0',
 					sourceId: 'inst-1',
 					workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
@@ -49,11 +49,61 @@ describe('import-manifest-bridge', () => {
 		});
 
 		expect((await readLeftoverManifest(exportFolder))?.workflows).toEqual([
-			{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' },
+			{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
 		]);
 
 		await writeFile(path.join(exportFolder, 'manifest.json'), '{not-json');
 		expect(await readLeftoverManifest(exportFolder)).toBeUndefined();
+	});
+
+	it('carries the archive flag of each workflow file through the rebuild, selected or not', async () => {
+		await writeTree({
+			'manifest.json': leftoverManifest({
+				workflows: [
+					{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
+				],
+			}),
+			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
+			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({
+				id: 'w1',
+				name: 'W1',
+				isArchived: true,
+			}),
+			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({
+				id: 'w2',
+				name: 'W2',
+				isArchived: true,
+			}),
+			'projects/alpha/workflows/w3/workflow.json': JSON.stringify({ id: 'w3', name: 'W3' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+				workflows: [
+					{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2', isArchived: true },
+					{ id: 'w3', name: 'W3', target: 'projects/alpha/workflows/w3', isArchived: false },
+				],
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written = packageManifestSchema.parse(
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
+		);
+		expect(written.workflows).toHaveLength(3);
+		expect(written.workflows).toEqual(
+			expect.arrayContaining([
+				// w1 is not selected: the branch copy keeps its flag through the rebuild.
+				{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: true },
+				{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2', isArchived: true },
+				{ id: 'w3', name: 'W3', target: 'projects/alpha/workflows/w3', isArchived: false },
+			]),
+		);
 	});
 
 	it('writes an inventory of the files on disk, not only the staging selection', async () => {
@@ -73,7 +123,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
@@ -89,8 +138,8 @@ describe('import-manifest-bridge', () => {
 		expect(written.projects).toEqual([{ id: 'p1', name: 'Alpha', target: 'projects/alpha' }]);
 		expect(written.workflows).toEqual(
 			expect.arrayContaining([
-				{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' },
-				{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' },
+				{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
+				{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2', isArchived: false },
 			]),
 		);
 		expect(written.credentials).toEqual([
@@ -99,6 +148,28 @@ describe('import-manifest-bridge', () => {
 		expect(written.variables).toEqual([
 			{ id: 'v-old', name: 'API_KEY', target: 'projects/alpha/variables/api-key' },
 		]);
+	});
+
+	it('writes no exportedAt, even when the leftover manifest has one', async () => {
+		await writeTree({
+			'manifest.json': leftoverManifest(),
+			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written: unknown = JSON.parse(
+			await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8'),
+		);
+		expect(written).not.toHaveProperty('exportedAt');
 	});
 
 	it('keeps an unselected variable whose project directory a container move relocated', async () => {
@@ -115,7 +186,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				projects: [{ id: 'p1', name: 'Renamed', target: 'projects/renamed' }],
@@ -166,7 +236,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				requirements: {
@@ -224,7 +293,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
@@ -253,7 +321,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 			}),
@@ -283,7 +350,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 			}),

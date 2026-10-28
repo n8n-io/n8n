@@ -29,6 +29,10 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		/** Text of the Cancel button. Defaults to "Cancel". */
+		cancelLabel?: string;
+		/** Draws a line under the header, for a body whose columns start at the top edge. */
+		headerDivider?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
 		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
@@ -47,6 +51,8 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		cancelLabel: undefined,
+		headerDivider: false,
 		bodyScrollable: true,
 		bodyFlush: false,
 		stableHeight: false,
@@ -68,7 +74,6 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const bodyRoot = useTemplateRef<ComponentPublicInstance>('bodyRoot');
-const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 
 function bodyElement(): HTMLElement | null {
 	const element = bodyRoot.value?.$el;
@@ -111,13 +116,6 @@ function onInteractOutside(event: Event) {
 const bodyAutofocusSelector =
 	'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
 
-/** Puts the editable title in edit mode. */
-function focusTitle() {
-	titleEdit.value?.forceFocus();
-}
-
-defineExpose({ focusTitle });
-
 function onOpenAutoFocus(event: Event) {
 	const body =
 		bodyElement() ?? document.querySelector<HTMLElement>('[data-testid="agent-modal-body"]');
@@ -151,7 +149,7 @@ function onOpenAutoFocus(event: Event) {
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogHeader :class="$style.header">
+		<N8nDialogHeader :class="[$style.header, props.headerDivider && $style.headerDivider]">
 			<div :class="$style.headerContent">
 				<N8nIconButton
 					v-if="props.showBack"
@@ -170,10 +168,9 @@ function onOpenAutoFocus(event: Event) {
 				</div>
 
 				<N8nDialogTitle as-child>
-					<div :class="$style.titleGroup">
+					<div :class="[$style.titleGroup, $slots.titleSuffix && $style.titleGroupWithSuffix]">
 						<N8nInlineTextEdit
 							v-if="props.editableTitle"
-							ref="titleEdit"
 							:model-value="props.title"
 							:max-length="props.titleMaxLength"
 							:max-width="'100%'"
@@ -192,6 +189,10 @@ function onOpenAutoFocus(event: Event) {
 						/>
 					</div>
 				</N8nDialogTitle>
+
+				<div v-if="$slots.titleSuffix" :class="$style.titleSuffix">
+					<slot name="titleSuffix" />
+				</div>
 
 				<div v-if="$slots.headerActions" :class="$style.headerActions">
 					<slot name="headerActions" />
@@ -235,7 +236,7 @@ function onOpenAutoFocus(event: Event) {
 							data-testid="agent-modal-cancel"
 							@click="close"
 						>
-							{{ i18n.baseText('generic.cancel') }}
+							{{ props.cancelLabel ?? i18n.baseText('generic.cancel') }}
 						</N8nButton>
 						<slot name="footerActions" />
 					</div>
@@ -263,6 +264,10 @@ function onOpenAutoFocus(event: Event) {
 	padding-inline-end: calc(
 		var(--spacing--lg) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs)
 	);
+}
+
+.headerDivider {
+	border-bottom: var(--border);
 }
 
 .titleError {
@@ -302,6 +307,17 @@ function onOpenAutoFocus(event: Event) {
 	&:focus-within .editIcon {
 		opacity: 1;
 	}
+}
+
+/* Keeps the suffix beside the title instead of at the far end of the header. */
+.titleGroupWithSuffix {
+	flex: 0 1 auto;
+}
+
+.titleSuffix {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
 }
 
 .title {
@@ -424,7 +440,7 @@ function onOpenAutoFocus(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		button {
+		button:not([role='checkbox']) {
 			flex: 1;
 		}
 	}

@@ -264,6 +264,7 @@ export class AgentChatStreamConsumer {
 		});
 		const responseState = createResponseState(options);
 		let budgetStop: string | undefined;
+		let stopped = false;
 
 		const streamDelta = async (delta: string) => {
 			// Opening on whitespace alone posts a placeholder that the
@@ -342,6 +343,7 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'finish':
 						budgetStop ??= budgetStopText(chunk.guardrail?.code);
+						stopped ||= chunk.finishReason === 'cancelled';
 						break;
 					default:
 						// Ignore non-user-visible chunks (reasoning, tool-input-*,
@@ -349,7 +351,10 @@ export class AgentChatStreamConsumer {
 						break;
 				}
 			}
-			if (budgetStop !== undefined) {
+			if (stopped) {
+				await responseLifecycle.startDiscreteResponse();
+				await this.postBufferedText(thread, 'Session stopped', responseState);
+			} else if (budgetStop !== undefined) {
 				await this.postBudgetStop(thread, budgetStop, responseState, responseLifecycle);
 			} else {
 				await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
@@ -545,6 +550,7 @@ export class AgentChatStreamConsumer {
 			responseState.hasVisibleResponse = true;
 		};
 		let budgetStop: string | undefined;
+		let stopped = false;
 
 		try {
 			for await (const chunk of stream) {
@@ -599,13 +605,22 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'finish':
 						budgetStop ??= budgetStopText(chunk.guardrail?.code);
+						stopped ||= chunk.finishReason === 'cancelled';
 						break;
 					default:
 						break;
 				}
 			}
 			await flushBuffer();
-			if (budgetStop !== undefined) {
+			if (stopped) {
+				await responseLifecycle.startDiscreteResponse();
+				await this.postBufferedText(
+					thread,
+					'Session stopped',
+					responseState,
+					options.throwOnDeliveryError,
+				);
+			} else if (budgetStop !== undefined) {
 				await this.postBudgetStop(
 					thread,
 					budgetStop,

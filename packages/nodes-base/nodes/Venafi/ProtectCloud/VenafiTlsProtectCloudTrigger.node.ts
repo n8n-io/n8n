@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import {
 	NodeConnectionTypes,
 	type IHookFunctions,
@@ -10,6 +11,9 @@ import {
 } from 'n8n-workflow';
 
 import { venafiApiRequest } from './GenericFunctions';
+import { verifySignature } from './VenafiTlsProtectCloudTriggerHelpers';
+
+const connectorName = (webhookUrl: string | undefined) => `n8n-webhook (${webhookUrl})`;
 
 export class VenafiTlsProtectCloudTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -104,20 +108,11 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 
 				const { connectors } = await venafiApiRequest.call(this, 'GET', '/v1/connectors');
 
-				for (const connector of connectors) {
-					const {
-						id,
-						status,
-						properties: {
-							target: {
-								connection: { url },
-							},
-						},
-					} = connector;
-
-					if (url === webhookUrl && status === 'Active') {
+				// The API does not return the connection URL, so match the name that `create` sets
+				const expectedName = connectorName(webhookUrl);
+				for (const { id, name } of connectors) {
+					if (name === expectedName) {
 						await venafiApiRequest.call(this, 'DELETE', `/v1/connectors/${id}`);
-						return false;
 					}
 				}
 				return false;
@@ -125,14 +120,16 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const resource = this.getNodeParameter('resource') as string;
+				const webhookSecret = randomBytes(32).toString('hex');
 				const body = {
-					name: `n8n-webhook (${webhookUrl})`,
+					name: connectorName(webhookUrl),
 					properties: {
 						connectorKind: 'WEBHOOK',
 						target: {
 							type: 'generic',
 							connection: {
 								url: webhookUrl,
+								secret: webhookSecret,
 							},
 						},
 						filter: {
@@ -150,6 +147,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.id as string;
+				webhookData.webhookSecret = webhookSecret;
 
 				return true;
 			},
@@ -166,6 +164,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -181,6 +180,14 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			// Is a create webhook confirmation request
 			const res = this.getResponseObject();
 			res.status(200).end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
 			return {
 				noWebhookResponse: true,
 			};

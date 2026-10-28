@@ -17,6 +17,7 @@ import type {
 } from '@n8n/agents';
 import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	getNativeWebSearchProviderTools,
 	getProviderPrefix,
@@ -165,18 +166,24 @@ function countVectorStoreSearches(
 		...searchTool,
 		async handler(input, ctx) {
 			const finishSearch = onVectorStoreSearch(ctx.runId);
+			const startedAt = Date.now();
 			let output: unknown;
 			try {
 				output = await searchHandler.call(searchTool, input, ctx);
 			} catch (error) {
-				finishSearch({ failed: true });
+				const errorType = error instanceof Error ? error.name : typeof error;
+				finishSearch({ failed: true, searchDurationMs: Date.now() - startedAt, errorType });
 				throw error;
 			}
+
+			const searchDurationMs = Date.now() - startedAt;
 
 			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
 			const json: string | undefined = JSON.stringify(modelOutput);
 			const contentChars = json?.length ?? 0;
-			finishSearch({ failed: false, contentChars });
+			const emptySearch =
+				isRecord(output) && Array.isArray(output.results) && output.results.length === 0;
+			finishSearch({ failed: false, contentChars, searchDurationMs, emptySearch });
 			return output;
 		},
 	};
@@ -406,7 +413,7 @@ function buildFallbackWebSearchTool(
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, searchOptions);
+				return await braveSearch(credential.apiKey, args.query, searchOptions, webSearchFetch);
 			}
 
 			// SearXNG is self-hosted, so it has no gateway-served managed path.
@@ -663,6 +670,7 @@ async function resolveEpisodicMemoryJsonConfig(
 		}),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		...(config.guidance !== undefined && { guidance: config.guidance }),
 		embeddingProviderOptions,
 	};
 }

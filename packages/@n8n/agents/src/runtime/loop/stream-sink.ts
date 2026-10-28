@@ -75,6 +75,10 @@ export class StreamSink implements RunOutputSink<void> {
 		await this.guard.write({ type: 'input', message });
 	}
 
+	async emitMessage(message: AgentMessage): Promise<void> {
+		await this.guard.write({ type: 'message', message });
+	}
+
 	private lastUsage: TokenUsage | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The

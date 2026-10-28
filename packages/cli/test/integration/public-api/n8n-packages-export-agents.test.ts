@@ -36,9 +36,8 @@ import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration
 import { createProjectVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
-import { SkillRepository } from '@/modules/skills/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { createSkill, deleteAllSkills, toSkillContent } from '@/modules/skills/testing';
 
 beforeAll(async () => await testModules.loadModules(['n8n-packages', 'skills', 'agents']));
 const server = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -82,7 +81,7 @@ afterEach(async () => {
 	await repository.delete({});
 	await Container.get(AgentHistoryRepository).delete({});
 	await Container.get(AgentTaskRepository).delete({});
-	await Container.get(SkillRepository).delete({});
+	await deleteAllSkills();
 	await testDb.truncate([
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -142,16 +141,7 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 	});
 	const [skillId] = Object.keys(skills);
 	const { allowedTools: _dropped, ...skill } = skills[skillId];
-	const skillRepository = Container.get(SkillRepository);
-	await skillRepository.createSkill(
-		{
-			id: skillId,
-			target: { projectId: project.id, agentId: null },
-			source: 'ui',
-			createdById: null,
-		},
-		toSkillContent(skill),
-	);
+	await createSkill({ id: skillId, projectId: project.id, content: toSkillContent(skill) });
 	await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 	await Container.get(AgentTaskRepository).save(
 		Object.entries(tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),

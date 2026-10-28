@@ -64,6 +64,13 @@ export const workflowArchiveForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
 };
 
 export const credentialUnresolvedFieldDocs = {
+	reason: {
+		description:
+			'For `not_found` of a credential named by id, when the caller can read all ' +
+			'credentials: `not-on-instance` (no credential has the id), `access-required` (the ' +
+			'credential exists, but it is not shared with the target project), or ' +
+			'`incompatible-usage-scope` (the credential is not a project credential).',
+	},
 	targetId: {
 		description:
 			'Target credential id: for `not_found`, the explicit binding that could not be ' +
@@ -124,6 +131,13 @@ export const credentialUpdateForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
 
 export const projectConflictFieldDocs = {
 	name: { description: "The project's name as it appears in the package." },
+	kind: {
+		description:
+			'`fail-policy`: the project exists and `projectConflictPolicy` is `fail`. The import ' +
+			'endpoints return only this kind. They report the other kinds as a 403 error: ' +
+			'`not-team` (the id belongs to a personal project), `update-forbidden`, ' +
+			'`create-forbidden`, and `license` (the license does not allow team projects).',
+	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const projectConflictIssueOpenApi: ZodOpenAPIMetadata = {
@@ -217,6 +231,11 @@ export const dataTableUnresolvedFieldDocs = {
 	},
 	currentName: {
 		description: "For a rename `name-conflict`: the matched table's current name.",
+	},
+	column: {
+		description:
+			'For `column-id-conflict`: the package column whose id a column of another table ' +
+			'already uses. The import endpoints do not return this. They fail with an error.',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
@@ -335,6 +354,12 @@ export const missingNodeTypeIssueOpenApi: ZodOpenAPIMetadata = {
 export const policyViolationFieldDocs = {
 	sourceWorkflowId: { description: 'Workflow id as it appears in the package.' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const policyCheckFailedIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A policy check that could not run. The import endpoints do not return this. They fail ' +
+		'with an error.',
+};
 
 export const policyViolationIssueOpenApi: ZodOpenAPIMetadata = {
 	description:

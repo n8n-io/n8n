@@ -70,6 +70,9 @@ export const LDAP_CONFIG_SCHEMA = {
 		enforceEmailUniqueness: {
 			type: 'boolean',
 		},
+		linkExistingAccountsByEmail: {
+			type: 'boolean',
+		},
 	},
 	required: [
 		'loginEnabled',
@@ -108,4 +111,5 @@ export const NON_SENSIBLE_LDAP_CONFIG_PROPERTIES: Array<keyof LdapConfig> = [
 	'searchTimeout',
 	'loginLabel',
 	'enforceEmailUniqueness',
+	'linkExistingAccountsByEmail',
 ];

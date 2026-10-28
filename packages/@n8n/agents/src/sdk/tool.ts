@@ -255,6 +255,8 @@ export class Tool<
 
 	private legacyNamesValue?: string[];
 
+	private legacyActionsValue?: Record<string, string[]>;
+
 	constructor(name: string) {
 		this.name = name;
 	}
@@ -265,6 +267,20 @@ export class Tool<
 	 */
 	legacyNames(...names: string[]): this {
 		this.legacyNamesValue = [...(this.legacyNamesValue ?? []), ...names];
+		return this;
+	}
+
+	/**
+	 * Declare that calls of a former tool resolve to this tool when their
+	 * `action` input is one of `actions`. Use it when a multi-action tool became
+	 * one tool for each action.
+	 */
+	legacyActions(legacyName: string, ...actions: string[]): this {
+		const current = this.legacyActionsValue?.[legacyName] ?? [];
+		this.legacyActionsValue = {
+			...this.legacyActionsValue,
+			[legacyName]: [...current, ...actions],
+		};
 		return this;
 	}
 
@@ -435,6 +451,7 @@ export class Tool<
 		const built: BuiltTool = {
 			name: this.name,
 			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
+			...(this.legacyActionsValue ? { legacyActions: this.legacyActionsValue } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,

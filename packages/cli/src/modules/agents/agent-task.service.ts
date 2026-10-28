@@ -17,6 +17,7 @@ import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
 } from './agent-modification-telemetry.service';
+import { AgentDefinitionService } from './agent-definition.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
@@ -82,6 +83,7 @@ export class AgentTaskService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -175,6 +177,7 @@ export class AgentTaskService {
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.saveDefinitions(tasks, ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 		});
 		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
@@ -228,6 +231,7 @@ export class AgentTaskService {
 			markAgentDraftDirty(agent);
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			const [savedTask] = await this.taskRepository.saveDefinitions([task], ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 			return savedTask;
 		});
 		this.saveCompletion.taskSaved(
@@ -252,12 +256,13 @@ export class AgentTaskService {
 
 		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
-			markAgentDraftDirty(agent);
 		}
+		markAgentDraftDirty(agent);
 
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 		});
 		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),

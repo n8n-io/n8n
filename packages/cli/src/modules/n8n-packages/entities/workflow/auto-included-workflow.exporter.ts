@@ -11,7 +11,7 @@ import {
 	writeWorkflowManifestEntry,
 } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
@@ -38,7 +38,7 @@ export interface AutoIncludedWorkflowExportRequest {
 }
 
 export interface AutoIncludedWorkflowExportResult {
-	workflowEntries: ManifestEntry[];
+	workflowEntries: WorkflowManifestEntry[];
 	folderEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];
 	requirements: ExportRequirements;
@@ -89,7 +89,7 @@ export class AutoIncludedWorkflowExporter {
 			projectEntries: [],
 		};
 
-		const workflowEntries: ManifestEntry[] = [];
+		const workflowEntries: WorkflowManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];

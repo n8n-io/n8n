@@ -1,4 +1,3 @@
-import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
@@ -82,7 +81,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -451,7 +450,6 @@ const TURN_ENVIRONMENT_FIELDS = [
 	'settingsService',
 	'browserSessionService',
 	'aiService',
-	'dbIterationLogStorage',
 	'instanceWriteAccess',
 	'telemetry',
 	'evalCredentialAllowlists',
@@ -839,7 +837,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -912,7 +910,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
 			aiConfig: Record<string, never>;
@@ -952,7 +949,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -996,7 +993,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 			getThread: vi.fn(async () => undefined),
 		};
-		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
 		service.aiConfig = {};
@@ -1045,6 +1041,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1117,7 +1114,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 
 		// The credit-metering hook is wired to the instance-AI thread/user in
@@ -1212,7 +1209,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
 		expect(unavailableEnvironment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -1279,7 +1276,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
@@ -1319,7 +1315,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1362,7 +1358,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 			getThread: vi.fn(async () => undefined),
 		};
-		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1407,6 +1402,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
