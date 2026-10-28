@@ -12,6 +12,7 @@ import {
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -526,7 +527,7 @@ async function handleDataSharingToggle(value: boolean) {
 		<template v-else-if="isAdmin">
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
-					<N8nSettingsRow
+					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.n8nAgent.enable.label')"
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
 					>
@@ -582,7 +583,7 @@ async function handleDataSharingToggle(value: boolean) {
 								</template>
 							</N8nDropdownMenu>
 						</template>
-					</N8nSettingsRow>
+					</N8nSettingsEnableRow>
 
 					<N8nSettingsRow
 						v-if="showCredentialsRows"

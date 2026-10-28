@@ -96,6 +96,8 @@ const slots = defineSlots<{
 	info?: () => unknown;
 	action?: () => unknown;
 	expanded?: () => unknown;
+	/** Status badges beside the row title, such as Preview or Limited enterprise support. */
+	titleTrailing?: () => unknown;
 }>();
 
 // Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
@@ -225,10 +227,24 @@ function onKeydown(event: KeyboardEvent) {
 				<div v-if="showVisualSlot" :class="$style.visual" data-test-id="settings-row-visual">
 					<slot name="visual" />
 				</div>
-				<div :class="$style.text">
+				<div :class="[$style.text, slots.titleTrailing && $style.textWithTitleTrailing]">
 					<slot name="info">
+						<span v-if="slots.titleTrailing" :class="$style.titleLine">
+							<N8nText
+								v-if="title"
+								:class="[$style.title, { [$style.truncate]: truncateTitle }]"
+								bold
+								size="medium"
+								color="text-dark"
+							>
+								{{ title }}
+							</N8nText>
+							<span :class="$style.titleTrailing">
+								<slot name="titleTrailing" />
+							</span>
+						</span>
 						<N8nText
-							v-if="title"
+							v-else-if="title"
 							:class="[$style.title, { [$style.truncate]: truncateTitle }]"
 							bold
 							size="medium"
@@ -418,11 +434,36 @@ $expand-easing: motion.$blur-motion-easing;
 	min-width: 0;
 }
 
+// Trailing badges are taller than the title text.
+// A wider gap keeps the description clear of the badge boxes.
+// A row without trailing content keeps the smaller gap.
+.textWithTitleTrailing {
+	gap: var(--spacing--xs);
+}
+
 .title {
 	&.truncate {
 		display: block;
 		@include utils.utils-ellipsis;
 	}
+}
+
+.titleLine {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.titleLine .title {
+	min-width: 0;
+}
+
+.titleTrailing {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .description {
