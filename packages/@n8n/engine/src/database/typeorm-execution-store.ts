@@ -111,6 +111,19 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return result.affected === 1 ? { finishedAt } : null;
 	}
 
+	async loadLiveChildIds(parentExecutionId: string): Promise<string[]> {
+		const rows: Array<{ id: string }> = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.where('execution.parent_execution_id = :parentExecutionId', { parentExecutionId })
+			.andWhere('execution.status IN (:...statuses)', {
+				statuses: ['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[],
+			})
+			.orderBy('execution.id', 'ASC')
+			.getRawMany();
+		return rows.map(({ id }) => id);
+	}
+
 	async refreshLiveStatus(id: string): Promise<void> {
 		// The probes read the steps before the UPDATE takes the row's lock, so a
 		// step can change in between.
