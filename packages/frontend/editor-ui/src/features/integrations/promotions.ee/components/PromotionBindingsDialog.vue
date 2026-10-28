@@ -14,6 +14,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { PromotionBindingConflict, PromotionBindingConsumer } from '@n8n/api-types';
 import { usePromotionBindings } from '../composables/usePromotionBindings';
+import { usePromotionPreviewLabels } from '../composables/usePromotionPreviewLabels';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { moveDetail } = usePromotionPreviewLabels();
 const title = useTemplateRef<HTMLElement>('title');
 const bindings = usePromotionBindings();
 const {
@@ -171,6 +173,7 @@ function destinationScope(binding: MissingPromotionBinding) {
 type HardConflict = (typeof hardConflicts.value)[number];
 
 function conflictTitle(conflict: HardConflict) {
+	if (conflict.code === 'moved') return conflict.name;
 	if (conflict.kind === 'project') return conflict.project.name;
 	if (conflict.kind === 'workflow') {
 		return conflict.consumers
@@ -187,7 +190,13 @@ function conflictTitle(conflict: HardConflict) {
 	return conflict.name;
 }
 
+function conflictDetail(conflict: HardConflict) {
+	if (conflict.code === 'moved') return moveDetail(conflict.kind, conflict);
+	return i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`);
+}
+
 function conflictUsers(conflict: HardConflict) {
+	if (conflict.code === 'moved') return '';
 	if (conflict.kind !== 'project') return consumerNames(conflict.consumers);
 	return 'workflows' in conflict ? conflict.workflows.map(({ name }) => name).join(', ') : '';
 }
@@ -294,7 +303,7 @@ async function continueApply() {
 						<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
 						<N8nCallout v-for="(item, index) in hardConflicts" :key="index" theme="warning">
 							<strong>{{ conflictTitle(item) }}</strong>
-							<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
+							<p>{{ conflictDetail(item) }}</p>
 							<p>{{ conflictUsers(item) }}</p>
 						</N8nCallout>
 					</section>
