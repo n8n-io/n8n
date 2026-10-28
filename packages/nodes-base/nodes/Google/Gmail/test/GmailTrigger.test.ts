@@ -46,6 +46,16 @@ describe('GmailTrigger', () => {
 		return { id: 'testId', threadId: 'testThreadId', ...message };
 	}
 
+	beforeEach(() => {
+		// Keep ordinary fixture dates in the past. Cursor tests set their own poll times.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(7_000_000_000_000);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	beforeAll(() => {
 		vi.spyOn(mailparser, 'simpleParser').mockResolvedValue({
 			headers: new Map([['headerKey', 'headerValue']]),
@@ -664,12 +674,7 @@ describe('GmailTrigger', () => {
 	});
 
 	describe('v1.4 - cursor across polls', () => {
-		beforeEach(() => {
-			vi.useFakeTimers({ toFake: ['Date'] });
-		});
-
 		afterEach(() => {
-			vi.useRealTimers();
 			nock.cleanAll();
 		});
 

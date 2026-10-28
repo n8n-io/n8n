@@ -361,6 +361,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 		let responseData: INodeExecutionData[] = [];
 		const allFetchedMessages: MessageBookkeeping[] = [];
+		const scannedPossibleDuplicates: string[] = [];
 
 		const getEmailDateAsSeconds = (email: Message): number => {
 			let date;
@@ -669,11 +670,12 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
 			// held cursor re-scans its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
+				const previousDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 				// Set-aside ids are dropped along with the handled ones: that list
 				// already owns them and retries them every poll, so queueing them here
 				// as well would have both paths fetch the same message.
 				const alreadyTracked = new Set([
-					...(nodeStaticData.possibleDuplicates ?? []),
+					...previousDuplicates,
 					...(nodeStaticData.failedFetches ?? []).map(([id]) => id),
 					// Fetched earlier in this same poll. Kept in memory rather than read
 					// from the boundary set, which is only written once the poll is sure
@@ -681,7 +683,11 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					...allFetchedMessages.map((m) => m.id),
 				]);
 				if (alreadyTracked.size > 0) {
-					messages = messages.filter((m) => !alreadyTracked.has(m.id));
+					messages = messages.filter((m) => {
+						// Future-dated messages can stay in the query after the cursor advances.
+						if (previousDuplicates.has(m.id)) scannedPossibleDuplicates.push(m.id);
+						return !alreadyTracked.has(m.id);
+					});
 				}
 
 				// Reaching an id no poll has handled proves the window is not wedged, so
@@ -815,7 +821,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			0,
 		);
 
-		const nextPollPossibleDuplicates = allFetchedMessages.map((m) => m.id);
+		const nextPollPossibleDuplicates = [
+			...scannedPossibleDuplicates,
+			...allFetchedMessages.map((m) => m.id),
+		];
 
 		// For older versions, filter at the response level since the pre-fetch filter
 		// above is gated to v1.4+. v1.4+ already skipped these before fetching.
@@ -830,6 +839,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		}
 
 		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+		effectiveLastTimeChecked = Math.min(effectiveLastTimeChecked, +now);
 		if (shouldLimitMessages && !windowFullyScanned) {
 			const trackedIds =
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +
