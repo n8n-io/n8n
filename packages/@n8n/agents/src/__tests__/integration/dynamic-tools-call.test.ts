@@ -116,6 +116,37 @@ describe('dynamic tools', () => {
 		expect(JSON.stringify(calls[0].prompt)).toContain('slack_send_message');
 	});
 
+	it('streams call_tool input under the real tool name from the first chunk', async () => {
+		const input = JSON.stringify({
+			namespace: 'slack',
+			tool: 'slack_send_message',
+			arguments: { channel: 'general', text: 'hi' },
+		});
+		const pieces = [input.slice(0, 15), input.slice(15, 40), input.slice(40)];
+		const parts: MockStreamPart[] = [
+			{ type: 'stream-start', warnings: [] },
+			{ type: 'tool-input-start', id: 'tc-1', toolName: 'call_tool' },
+			...pieces.map((delta): MockStreamPart => ({ type: 'tool-input-delta', id: 'tc-1', delta })),
+			{ type: 'tool-input-end', id: 'tc-1' },
+			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'call_tool', input },
+			{ type: 'finish', finishReason: { unified: 'tool-calls', raw: 'tool_calls' }, usage: USAGE },
+		];
+		const agent = scriptedAgent(
+			[{ stream: convertArrayToReadableStream(parts) }, makeTextTurn('Sent.')],
+			[],
+			[],
+		);
+
+		const result = await agent.stream('Say hi in general');
+		const chunks = await collectStreamChunks(result.stream);
+
+		const starts = chunksOfType(chunks, 'tool-input-start');
+		expect(starts.map((chunk) => chunk.toolName)).toEqual(['slack_send_message']);
+		const deltas = chunksOfType(chunks, 'tool-input-delta');
+		expect(deltas.map((chunk) => chunk.delta).join('')).toBe(input);
+		expect(JSON.stringify(chunks)).not.toContain('"toolName":"call_tool"');
+	});
+
 	it('returns the input schema when call_tool arguments are invalid', async () => {
 		const calls: MockCallOptions[] = [];
 		const inputs: unknown[] = [];

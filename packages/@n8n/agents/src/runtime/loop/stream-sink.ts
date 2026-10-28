@@ -57,6 +57,22 @@ const STALL_RETRY_SAFE_CHUNK_TYPES = new Set<string>([
  * `StreamWriterGuard`, and writes the terminal `finish` / `tool-call-suspended`
  * chunks. Owns the smooth-stream transform option.
  */
+const NAMESPACE_FIELD = /"namespace"\s*:\s*"((?:[^"\\]|\\.)*)"/;
+const TOOL_FIELD = /"tool"\s*:\s*"((?:[^"\\]|\\.)*)"/;
+
+/**
+ * Read `namespace` and `tool` from partial `call_tool` JSON. Returns them only
+ * when both string values are complete (the closing quote has streamed).
+ */
+export function readDynamicToolRef(
+	partialJson: string,
+): { namespace: string; tool: string } | undefined {
+	const namespace = NAMESPACE_FIELD.exec(partialJson)?.[1];
+	const tool = TOOL_FIELD.exec(partialJson)?.[1];
+	if (!namespace || !tool) return undefined;
+	return { namespace, tool };
+}
+
 export class StreamSink implements RunOutputSink<void> {
 	async inputBoundary(signal: AbortSignal): Promise<void> {
 		const acknowledged = createDeferredPromise();
@@ -95,6 +111,14 @@ export class StreamSink implements RunOutputSink<void> {
 	// implementations live behind `RawErrorReader`; undefined when the run's
 	// provider has no reader.
 	private rawErrorReader: RawErrorReader | undefined;
+	/**
+	 * `call_tool` input chunks held back until the streamed arguments name the
+	 * real tool, so the UI never shows a `call_tool` row. Keyed by toolCallId.
+	 */
+	private readonly heldDynamicInputs = new Map<
+		string,
+		{ start: StreamChunk; deltas: StreamChunk[]; text: string }
+	>();
 	constructor(
 		private readonly guard: StreamWriterGuard,
 		private readonly services: RunServices,
@@ -287,6 +311,7 @@ export class StreamSink implements RunOutputSink<void> {
 			if (!this.captureStreamChunk(chunk, attemptState)) continue;
 			await this.writeStreamChunk(chunk);
 		}
+		await this.releaseHeldDynamicInputs();
 
 		return await this.resolveModelTurn(result, ctx, idleMs, turnAbort);
 	}
@@ -368,7 +393,7 @@ export class StreamSink implements RunOutputSink<void> {
 		}
 
 		const converted = convertChunk(chunk);
-		if (converted) await this.guard.write(this.withRealToolName(converted));
+		if (converted) await this.writeConvertedChunk(converted);
 
 		if (chunk.type === 'tool-call' && chunk.providerExecuted) {
 			await this.guard.write({
@@ -377,6 +402,56 @@ export class StreamSink implements RunOutputSink<void> {
 				toolName: chunk.toolName ?? '',
 				startTime: Date.now(),
 			});
+		}
+	}
+
+	private async writeConvertedChunk(chunk: StreamChunk): Promise<void> {
+		if (
+			chunk.type === 'tool-input-start' &&
+			chunk.toolName === CALL_TOOL_TOOL_NAME &&
+			this.services.resolveDynamicToolCall
+		) {
+			this.heldDynamicInputs.set(chunk.toolCallId, { start: chunk, deltas: [], text: '' });
+			return;
+		}
+
+		const toolCallId =
+			'toolCallId' in chunk && typeof chunk.toolCallId === 'string' ? chunk.toolCallId : undefined;
+		const held = toolCallId ? this.heldDynamicInputs.get(toolCallId) : undefined;
+
+		if (held && toolCallId && chunk.type === 'tool-input-delta') {
+			held.deltas.push(chunk);
+			held.text += chunk.delta;
+			const ref = readDynamicToolRef(held.text);
+			if (!ref) return;
+			const resolved = this.services.resolveDynamicToolCall?.(ref);
+			await this.releaseHeldDynamicInput(toolCallId, resolved?.toolName);
+			return;
+		}
+
+		const out = this.withRealToolName(chunk);
+		if (held && toolCallId) {
+			const realName =
+				'toolName' in out && typeof out.toolName === 'string' ? out.toolName : undefined;
+			await this.releaseHeldDynamicInput(toolCallId, realName);
+		}
+		await this.guard.write(out);
+	}
+
+	private async releaseHeldDynamicInput(toolCallId: string, toolName?: string): Promise<void> {
+		const held = this.heldDynamicInputs.get(toolCallId);
+		if (!held) return;
+		this.heldDynamicInputs.delete(toolCallId);
+		const start =
+			toolName && held.start.type === 'tool-input-start' ? { ...held.start, toolName } : held.start;
+		await this.guard.write(start);
+		for (const delta of held.deltas) await this.guard.write(delta);
+	}
+
+	/** Release anything still held when the model stream ends without a tool call. */
+	private async releaseHeldDynamicInputs(): Promise<void> {
+		for (const toolCallId of [...this.heldDynamicInputs.keys()]) {
+			await this.releaseHeldDynamicInput(toolCallId);
 		}
 	}
 
