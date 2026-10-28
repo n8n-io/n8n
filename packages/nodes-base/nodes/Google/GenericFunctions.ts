@@ -27,14 +27,8 @@ export const googleServiceAccountScopes = {
 		'https://www.googleapis.com/auth/drive.appdata',
 		'https://www.googleapis.com/auth/drive.photos.readonly',
 	],
-	gmail: [
-		'https://www.googleapis.com/auth/gmail.labels',
-		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
-		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
-		'https://mail.google.com/',
-		'https://www.googleapis.com/auth/gmail.modify',
-		'https://www.googleapis.com/auth/gmail.compose',
-	],
+	// This scope covers all Gmail operations. Delegation requires authorization for each requested scope.
+	gmail: ['https://mail.google.com/'],
 	sheetV1: [
 		'https://www.googleapis.com/auth/drive',
 		'https://www.googleapis.com/auth/drive.file',

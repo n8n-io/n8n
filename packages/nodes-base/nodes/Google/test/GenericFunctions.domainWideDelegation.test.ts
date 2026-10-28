@@ -29,9 +29,22 @@ describe('getGoogleAccessToken with domain-wide delegation', () => {
 	});
 
 	it.each([
-		{ scenario: 'all Gmail scopes are authorized', authorizedScopes: gmailScopes },
-		{ scenario: 'only the selected mail scope is authorized', authorizedScopes: [mailScope] },
-	])('obtains a delegated Gmail token when $scenario', async ({ authorizedScopes }) => {
+		{
+			scenario: 'all Gmail scopes are authorized',
+			authorizedScopes: gmailScopes,
+			credentialScopes: gmailScopes.join(' '),
+		},
+		{
+			scenario: 'only the selected mail scope is authorized',
+			authorizedScopes: [mailScope],
+			credentialScopes: mailScope,
+		},
+		{
+			scenario: 'only the mail scope is authorized and no credential scopes are set',
+			authorizedScopes: [mailScope],
+			credentialScopes: undefined,
+		},
+	])('obtains a token when $scenario', async ({ authorizedScopes, credentialScopes }) => {
 		const context = mockDeep<IExecuteFunctions>();
 		const credentials: IDataObject = {
 			email,
@@ -39,7 +52,7 @@ describe('getGoogleAccessToken with domain-wide delegation', () => {
 			inpersonate: true,
 			delegatedEmail,
 			httpNode: false,
-			scopes: authorizedScopes.join(' '),
+			scopes: credentialScopes,
 		};
 		const tokenResponse = { access_token: 'delegated-access-token', token_type: 'Bearer' };
 
@@ -73,6 +86,8 @@ describe('getGoogleAccessToken with domain-wide delegation', () => {
 					},
 				});
 			}
+
+			expect(requestedScopes).toEqual([mailScope]);
 
 			return tokenResponse;
 		});
