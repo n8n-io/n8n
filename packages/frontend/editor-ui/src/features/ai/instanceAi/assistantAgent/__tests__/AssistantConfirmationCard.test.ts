@@ -342,6 +342,7 @@ describe('AssistantConfirmationCard', () => {
 				instance_id: 'test-instance-id',
 				action_source: 'unknown',
 				type: 'approval',
+				runtime: 'agents',
 				provided_inputs: [
 					{
 						label: 'Run the workflow',
@@ -455,6 +456,39 @@ describe('AssistantConfirmationCard', () => {
 			}
 
 			expect(lastOnAccepted()).toBeUndefined();
+		});
+
+		it('tracks the servers that an MCP connect card offered and connected', async () => {
+			const { getByTestId, accept } = renderInThread({
+				requestId: 'req-mcp',
+				message: 'Connect Linear',
+				mcpConnectRequest: {
+					servers: [
+						{
+							serverSlug: 'linear',
+							title: 'Linear',
+							usesCredentials: [
+								{ credentialType: 'linearOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+					],
+				},
+			});
+
+			await fireEvent.click(getByTestId('assistant-agent-mcp-connect'));
+			accept();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					type: 'mcp-connect',
+					runtime: 'agents',
+					provided_inputs: [
+						{ label: 'mcp-connect', options: ['linear'], option_chosen: ['linear'] },
+					],
+					skipped_inputs: [],
+				}),
+			);
 		});
 
 		it('does not track domain access, like the current Assistant', async () => {

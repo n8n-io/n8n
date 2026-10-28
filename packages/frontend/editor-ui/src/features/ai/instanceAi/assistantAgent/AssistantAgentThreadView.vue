@@ -61,6 +61,7 @@ function onMessageAccepted(): void {
 	if (nodeCount > 0) {
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 			node_count: nodeCount,
+			runtime: 'agents',
 		});
 	}
 	pendingReferences = [];

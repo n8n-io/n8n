@@ -69,6 +69,7 @@ function trackInputCompleted(conf: InstanceAiConfirmation, inputs: ConfirmationI
 			instanceId: rootStore.instanceId,
 			actionSource: thread.resolveActionSource(),
 			type: getConfirmationType(conf),
+			runtime: 'instance-ai',
 		},
 		inputs,
 	);

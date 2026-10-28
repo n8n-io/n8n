@@ -1,6 +1,10 @@
-import type { InstanceAiConfirmation, InstanceAiQuestion } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmation,
+	InstanceAiMcpConnectServer,
+	InstanceAiQuestion,
+} from '@n8n/api-types';
 import type { useTelemetry } from '@n8n/composables/useTelemetry';
-import { redactTelemetryProperties } from '@n8n/telemetry';
+import { redactTelemetryProperties, type AssistantRuntime } from '@n8n/telemetry';
 
 import type { QuestionAnswer } from './components/InstanceAiQuestions.vue';
 
@@ -32,6 +36,7 @@ type ConfirmationTypeFields = Partial<
 		| 'setupRequests'
 		| 'credentialRequests'
 		| 'channelConfig'
+		| 'mcpConnectRequest'
 	>
 >;
 
@@ -42,6 +47,7 @@ export function getConfirmationType(conf: ConfirmationTypeFields): string {
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
 	if (conf.channelConfig) return 'channel-config';
+	if (conf.mcpConnectRequest) return 'mcp-connect';
 	return 'approval';
 }
 
@@ -98,6 +104,18 @@ export function continueInputs(message: string): ConfirmationInputs {
 	};
 }
 
+/** The MCP connect card. A skip lists every offered server as skipped. */
+export function mcpConnectInputs(
+	servers: InstanceAiMcpConnectServer[],
+	approved: boolean,
+	connectedSlugs: string[],
+): ConfirmationInputs {
+	const options = servers.map((server) => server.serverSlug);
+	return approved
+		? { provided: [{ label: 'mcp-connect', options, option_chosen: connectedSlugs }], skipped: [] }
+		: { provided: [], skipped: [{ label: 'mcp-connect', options }] };
+}
+
 export function questionsInputs(
 	questions: InstanceAiQuestion[],
 	answers: QuestionAnswer[],
@@ -151,6 +169,7 @@ export function trackInputCompleted(
 		instanceId: string;
 		actionSource: string;
 		type: string;
+		runtime: AssistantRuntime;
 	},
 	inputs: ConfirmationInputs,
 ): void {
@@ -160,6 +179,7 @@ export function trackInputCompleted(
 		instance_id: context.instanceId,
 		action_source: context.actionSource,
 		type: context.type,
+		runtime: context.runtime,
 		provided_inputs: inputs.provided,
 		skipped_inputs: inputs.skipped,
 		...inputs.extra,

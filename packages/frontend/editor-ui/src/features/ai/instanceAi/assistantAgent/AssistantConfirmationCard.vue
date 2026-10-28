@@ -27,6 +27,7 @@ import {
 	approvalInputs,
 	continueInputs,
 	getConfirmationType,
+	mcpConnectInputs,
 	questionsInputs,
 	skippedTextInputs,
 	testListenerInputs,
@@ -102,6 +103,7 @@ function trackAnswer(inputs: ConfirmationInputs) {
 			// Assistant agent threads keep no launch source yet.
 			actionSource: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 			type: getConfirmationType(props.input),
+			runtime: 'agents',
 		},
 		inputs,
 	);
@@ -161,7 +163,10 @@ function onMcpConnectResolve({
 	approved: boolean;
 	connectedSlugs: string[];
 }) {
-	submit({ kind: 'mcpConnect', approved, connectedSlugs });
+	submit(
+		{ kind: 'mcpConnect', approved, connectedSlugs },
+		mcpConnectInputs(props.input.mcpConnectRequest?.servers ?? [], approved, connectedSlugs),
+	);
 }
 
 // --- Credential destination ---
