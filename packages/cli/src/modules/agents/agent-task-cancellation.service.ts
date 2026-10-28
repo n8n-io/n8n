@@ -120,7 +120,7 @@ export class AgentTaskCancellationService {
 						failures.push({ jobId: execution.id, title: 'Current response' });
 					}
 				}
-				const jobs = await this.threads.targetedJobs(stop);
+				const jobs = await this.threads.findJobsCapturedByStop(stop);
 				const scopes = new Map(
 					jobs.map((job) => [
 						job.parentThreadId,
@@ -160,7 +160,7 @@ export class AgentTaskCancellationService {
 				signal.throwIfAborted();
 				await this.txRunner.run({}, async (ctx) => {
 					await this.threads.lockById(threadId, ctx);
-					const jobs = await this.threads.targetedJobs(stop, ctx);
+					const jobs = await this.threads.findJobsCapturedByStop(stop, ctx);
 					const latest = await this.threads.findTaskStop(threadId, ctx);
 					if (!latest || latest.pause.id !== stop.pause.id) return;
 					latest.pause.requestsCompleted = true;
@@ -183,7 +183,7 @@ export class AgentTaskCancellationService {
 		if (!stop) return null;
 		const plan = stop.planId ? await this.planService.findPlan(threadId, stop.planId, {}) : null;
 		const outstanding = new Map(
-			(await this.threads.unfinishedWork(stop)).map((failure) => [
+			(await this.threads.findStopTargetsStillActive(stop)).map((failure) => [
 				failure.jobId,
 				{ ...failure, title: scrubSecretsInText(failure.title) },
 			]),

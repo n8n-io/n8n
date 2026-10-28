@@ -141,7 +141,7 @@ describe('AgentWakeService', () => {
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
 			makeJob({ pauseRequestId: 'stop-1', status: 'paused' }),
 		]);
-		cancellations.ownsStopReport.mockResolvedValue(true);
+		cancellations.hasTaskStopWithId.mockResolvedValue(true);
 		await service.attemptWake('thread-1');
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 	});

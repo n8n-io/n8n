@@ -174,7 +174,7 @@ export class AgentWakeService {
 		for (const id of new Set(
 			pending.flatMap((job) => (job.pauseRequestId ? [job.pauseRequestId] : [])),
 		)) {
-			if (await this.threadRepository.ownsStopReport(id)) owned.add(id);
+			if (await this.threadRepository.hasTaskStopWithId(id)) owned.add(id);
 		}
 		pending = pending.filter((job) => !job.pauseRequestId || !owned.has(job.pauseRequestId));
 		const stopped = pending.filter((job) => job.pauseRequestId);

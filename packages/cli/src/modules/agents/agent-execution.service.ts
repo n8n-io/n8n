@@ -261,7 +261,7 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
-		await this.agentExecutionThreadRepository.recordAdmission(
+		await this.agentExecutionThreadRepository.markChatResumedAfterStop(
 			params.threadId,
 			!params.wake &&
 				!params.hideUserMessageFromTranscript &&

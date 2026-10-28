@@ -48,8 +48,8 @@ function setup() {
 	repository.captureStopTargets.mockResolvedValue({ executionIds: [], jobIds: [], threadIds: [] });
 	repository.findTaskStop.mockImplementation(async () => saved);
 	repository.saveStop.mockImplementation(async (value) => (saved = value));
-	repository.targetedJobs.mockImplementation(async () => work);
-	repository.unfinishedWork.mockImplementation(async () =>
+	repository.findJobsCapturedByStop.mockImplementation(async () => work);
+	repository.findStopTargetsStillActive.mockImplementation(async () =>
 		work
 			.filter((job) => ['running', 'suspended'].includes(job.status))
 			.map((job) => ({ jobId: job.id, title: job.title })),
@@ -220,13 +220,15 @@ it('keeps a failed foreground checkpoint stop retryable', async () => {
 	executions.findLatestByThreadId.mockResolvedValue(
 		mock<AgentExecution>({ id: 'response', status: 'success', hitlStatus: 'suspended' }),
 	);
-	repository.unfinishedWork.mockResolvedValue([{ jobId: 'response', title: 'Current response' }]);
+	repository.findStopTargetsStillActive.mockResolvedValue([
+		{ jobId: 'response', title: 'Current response' },
+	]);
 	chat.requestCancel.mockRejectedValueOnce(new Error('Stop failed'));
 	expect(await service.request('thread', null)).toMatchObject({
 		status: 'failed',
 		failures: [{ jobId: 'response', title: 'Current response' }],
 	});
-	repository.unfinishedWork.mockResolvedValue([]);
+	repository.findStopTargetsStillActive.mockResolvedValue([]);
 	expect(await service.request('thread', null)).toMatchObject({ status: 'stopped', failures: [] });
 });
 
@@ -244,7 +246,7 @@ it('deletes discarded attachments after the stop transaction commits', async () 
 });
 it('stops side effects when the cancellation lease is lost', async () => {
 	const { service, repository, jobs, lease, messages } = setup();
-	repository.targetedJobs.mockImplementation(async () => {
+	repository.findJobsCapturedByStop.mockImplementation(async () => {
 		lease.abort(new Error('Lease lost'));
 		return [];
 	});
@@ -263,7 +265,9 @@ it('offers Retry when a suspended response cannot be canceled', async () => {
 	executions.findLatestByThreadId.mockResolvedValue(
 		mock<AgentExecution>({ id: 'response', status: 'success', hitlStatus: 'suspended' }),
 	);
-	repository.unfinishedWork.mockResolvedValue([{ jobId: 'response', title: 'Current response' }]);
+	repository.findStopTargetsStillActive.mockResolvedValue([
+		{ jobId: 'response', title: 'Current response' },
+	]);
 	chat.requestCancel.mockResolvedValue(false);
 	expect(await service.request('thread', null)).toMatchObject({
 		status: 'failed',

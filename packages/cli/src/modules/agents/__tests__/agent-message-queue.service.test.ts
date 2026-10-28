@@ -199,8 +199,8 @@ describe('AgentMessageQueueService', () => {
 			settingsService.getEnabled.mockResolvedValue(true);
 			threadRepository.lockById.mockResolvedValue(makeThread());
 			threadRepository.findTaskStop.mockResolvedValue(stop());
-			threadRepository.unfinishedWork.mockResolvedValue([]);
-			threadRepository.targetedJobs.mockResolvedValue([]);
+			threadRepository.findStopTargetsStillActive.mockResolvedValue([]);
+			threadRepository.findJobsCapturedByStop.mockResolvedValue([]);
 			executionRepository.existsRunningByThread.mockResolvedValue(false);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 			repository.findActive.mockResolvedValue(null);
@@ -225,7 +225,7 @@ describe('AgentMessageQueueService', () => {
 		});
 
 		it('holds the head while captured work runs and claims it after settlement', async () => {
-			threadRepository.unfinishedWork.mockResolvedValueOnce([
+			threadRepository.findStopTargetsStillActive.mockResolvedValueOnce([
 				{ jobId: 'job-1', title: 'Research' },
 			]);
 			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
@@ -252,7 +252,7 @@ describe('AgentMessageQueueService', () => {
 		it('reports a known cancellation failure instead of waiting indefinitely for that job', async () => {
 			const failure = { jobId: 'job-1', title: 'Research' };
 			threadRepository.findTaskStop.mockResolvedValue({ ...stop(), failures: [failure] });
-			threadRepository.unfinishedWork.mockResolvedValue([failure]);
+			threadRepository.findStopTargetsStillActive.mockResolvedValue([failure]);
 			const claimed = await service.claimNext('thread-1', async () => true);
 			expect(claimed?.payload.message).toContain('Research');
 			expect(claimed?.payload.message).toContain('failures');
