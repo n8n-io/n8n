@@ -74,7 +74,7 @@ function matchesCreation(binding: MissingPromotionBinding, created: CreatedPromo
 export function usePromotionBindings() {
 	const rootStore = useRootStore();
 	const originalResult = shallowRef<BlockedApplyResult>();
-	const preflight = shallowRef<BlockedApplyResult['preflight']>();
+	const check = shallowRef<BlockedApplyResult['check']>();
 	const knownBindings = shallowRef(new Map<string, MissingPromotionBinding>());
 	const missingKeys = shallowRef(new Set<string>());
 	// Binding key to the consumer project IDs that still need access to it.
@@ -135,17 +135,15 @@ export function usePromotionBindings() {
 	);
 
 	const destructiveChanges = computed(
-		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
+		() => check.value?.conflicts.filter(isDestructiveChange) ?? [],
 	);
-	const projectDeletions = computed(
-		() => preflight.value?.conflicts.filter(isProjectDeletion) ?? [],
-	);
+	const projectDeletions = computed(() => check.value?.conflicts.filter(isProjectDeletion) ?? []);
 	const needsConfirmation = computed(
 		() => destructiveChanges.value.length > 0 || projectDeletions.value.length > 0,
 	);
-	const hardConflicts = computed(() => preflight.value?.conflicts.filter(isHardConflict) ?? []);
+	const hardConflicts = computed(() => check.value?.conflicts.filter(isHardConflict) ?? []);
 	const mode = computed<'blocked' | 'review' | 'bindings'>(() => {
-		if (hardConflicts.value.length || preflight.value?.accessRequirements.length) return 'blocked';
+		if (hardConflicts.value.length || check.value?.accessRequirements.length) return 'blocked';
 		// A session that started with bindings keeps its table after the last one is created.
 		if (needsConfirmation.value && knownBindings.value.size === 0) return 'review';
 		return 'bindings';
@@ -165,15 +163,15 @@ export function usePromotionBindings() {
 	const savedResources = computed(() => Array.from(createdBindings.value.values()));
 
 	function reconcile(result: BlockedApplyResult) {
-		preflight.value = result.preflight;
+		check.value = result.check;
 		const next = new Map(knownBindings.value);
-		for (const binding of result.preflight.missingBindings) {
+		for (const binding of result.check.missingBindings) {
 			next.set(promotionBindingKey(binding), binding);
 		}
 		knownBindings.value = next;
-		missingKeys.value = new Set(result.preflight.missingBindings.map(promotionBindingKey));
+		missingKeys.value = new Set(result.check.missingBindings.map(promotionBindingKey));
 		accessByKey.value = new Map(
-			result.preflight.accessRequirements.map((access) => [
+			result.check.accessRequirements.map((access) => [
 				JSON.stringify([access.kind, access.sourceId]),
 				new Set(access.consumers.map((consumer) => consumer.project.id)),
 			]),
@@ -258,7 +256,7 @@ export function usePromotionBindings() {
 
 	return {
 		originalResult,
-		preflight,
+		check,
 		groups,
 		rows,
 		destructiveChanges,

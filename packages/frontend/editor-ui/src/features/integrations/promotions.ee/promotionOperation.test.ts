@@ -19,19 +19,17 @@ const consumer = (...ids: string[]) => [
 	},
 ];
 
-const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
+const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-1',
 	git: { branchName: 'main', commitSha: 'c'.repeat(40) },
-	preflight: {
-		missingProjects: [],
-		missingBindings: [],
-		accessRequirements: [],
-		conflicts: [],
-		warnings: [],
-		...preflight,
-	},
+	missingProjects: [],
+	missingBindings: [],
+	accessRequirements: [],
+	conflicts: [],
+	warnings: [],
 	movedWorkflows: [],
 	movedFolders: [],
+	...fields,
 });
 
 describe('promotion operation', () => {
@@ -142,7 +140,7 @@ describe('promotion operation', () => {
 	it('should block every listed workflow for a project-wide conflict', () => {
 		const listed = ['workflow:w1', 'workflow:w2', 'workflow:w3'];
 		const project = { id: 'p1', name: 'Billing' };
-		const blockersOf = (conflicts: ApplyCheckResult['preflight']['conflicts']) =>
+		const blockersOf = (conflicts: ApplyCheckResult['conflicts']) =>
 			indexBlockers(listBlockers(check({ conflicts }), listed));
 
 		const tagConflict = blockersOf([
@@ -174,9 +172,7 @@ describe('promotion operation', () => {
 			graph,
 		);
 
-		expect(scoped.preflight.accessRequirements).toEqual([]);
-		expect(scoped.preflight.missingBindings[0].consumers[0].workflows).toEqual([
-			{ id: 'w1', name: 'w1' },
-		]);
+		expect(scoped.accessRequirements).toEqual([]);
+		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
 	});
 });

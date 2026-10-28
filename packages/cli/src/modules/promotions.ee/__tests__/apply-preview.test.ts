@@ -9,7 +9,7 @@ import type {
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
 
-import { toApplyCheck } from '../apply-preview';
+import { toPreviewCheck } from '../apply-preview';
 import { collectCredentialReferences, collectVariableReferences } from '../package-references';
 
 const ALPHA = { id: 'p1', name: 'Alpha' };
@@ -76,16 +76,16 @@ function checkPackage(
 		issues: [],
 	} as unknown as PackageImportPlan;
 
-	return toApplyCheck({
+	return toPreviewCheck({
 		plan,
 		inventory,
 		credentials: collectCredentialReferences(inventory),
 		variables: collectVariableReferences(inventory, new VariableRequirementsExtractor()),
 		moves: { workflows: [], folders: [] },
-	}).preflight;
+	});
 }
 
-describe('toApplyCheck', () => {
+describe('toPreviewCheck', () => {
 	it('names the project whose plan raised a blocker that stops the whole project', () => {
 		// An Apply of the whole instance plans Alpha and Beta. Only the plan of Beta is blocked.
 		const checkNotRun: BlockingIssue = { type: 'policy-check-failed', point: 'contentImport' };
@@ -110,7 +110,7 @@ describe('toApplyCheck', () => {
 			dataTables: [],
 		} as unknown as PackageDirectoryInventory;
 
-		const { preflight } = toApplyCheck({
+		const check = toPreviewCheck({
 			plan,
 			inventory,
 			credentials: [],
@@ -118,7 +118,7 @@ describe('toApplyCheck', () => {
 			moves: { workflows: [], folders: [] },
 		});
 
-		expect(preflight.conflicts).toEqual([
+		expect(check.conflicts).toEqual([
 			{
 				kind: 'project',
 				code: 'check-not-run',
@@ -167,7 +167,7 @@ describe('toApplyCheck', () => {
 	});
 
 	it('blocks a variable that only another project defines, and accepts a global definition', () => {
-		const preflight = checkPackage(
+		const check = checkPackage(
 			{
 				workflows: [
 					workflow('wf-a', ALPHA.id, [
@@ -183,8 +183,8 @@ describe('toApplyCheck', () => {
 			},
 		);
 
-		expect(preflight.missingBindings).toEqual([]);
-		expect(preflight.conflicts).toEqual([
+		expect(check.missingBindings).toEqual([]);
+		expect(check.conflicts).toEqual([
 			{
 				kind: 'variable',
 				code: 'missing-definition',

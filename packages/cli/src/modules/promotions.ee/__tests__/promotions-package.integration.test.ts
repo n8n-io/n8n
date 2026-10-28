@@ -988,7 +988,7 @@ describe('Promote and Apply', () => {
 
 		const blocked = await service.apply(environments.apply.id, owner);
 		assert(blocked.status === 'blocked');
-		expect(blocked.preflight.conflicts).toEqual([
+		expect(blocked.check.conflicts).toEqual([
 			{
 				kind: 'project',
 				code: 'project-deletion',
@@ -1125,7 +1125,7 @@ describe('Promote and Apply', () => {
 				.expect(200);
 			const blocked = applyResponse.body;
 			assert(blocked.status === 'blocked');
-			expect(blocked.preflight.missingBindings).toEqual(
+			expect(blocked.check.missingBindings).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 					expect.objectContaining({
@@ -1152,7 +1152,7 @@ describe('Promote and Apply', () => {
 			expect(await snapshotApplyState()).toEqual(before);
 
 			if (missingProject) {
-				expect(blocked.preflight.missingProjects).toEqual([
+				expect(blocked.check.missingProjects).toEqual([
 					{
 						id: project.id,
 						name: project.name,
@@ -1161,11 +1161,11 @@ describe('Promote and Apply', () => {
 						customTelemetryTags: project.customTelemetryTags,
 					},
 				]);
-				await agent.post('/projects').send(blocked.preflight.missingProjects[0]).expect(201);
+				await agent.post('/projects').send(blocked.check.missingProjects[0]).expect(201);
 				// A failed binding request must leave the created project in place.
 				await agent.post('/credentials').send({ projectId: project.id }).expect(400);
 				expect(await projectRepository.findOneBy({ id: project.id })).toMatchObject(
-					blocked.preflight.missingProjects[0],
+					blocked.check.missingProjects[0],
 				);
 			} else {
 				await projectRepository.update(project.id, {
@@ -1195,7 +1195,7 @@ describe('Promote and Apply', () => {
 					.expect(200)
 			).body;
 			expect(wrongId.status).toBe('blocked');
-			expect(wrongId.preflight.missingBindings).toContainEqual(
+			expect(wrongId.check.missingBindings).toContainEqual(
 				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 			);
 			const created = await agent.post('/credentials').send(createBody).expect(200);
@@ -1261,7 +1261,7 @@ describe('Promote and Apply', () => {
 		await testServer
 			.publicApiAgentFor(owner)
 			.post('/projects')
-			.send(blocked.preflight.missingProjects[0])
+			.send(blocked.check.missingProjects[0])
 			.expect(201);
 		const before = await snapshotApplyState();
 		await remote.git.pull('origin', 'main');
@@ -1305,7 +1305,7 @@ describe('Promote and Apply', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
-	it('keeps the missing-manifest import error after a clear preflight', async () => {
+	it('keeps the missing-manifest import error after a clear check', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.apply.id);
@@ -1731,18 +1731,18 @@ describe('Apply a project selection', () => {
 			workflowIds: [workflow.id],
 		});
 		assert(blocked.status === 'blocked');
-		expect(blocked.preflight.missingBindings).toHaveLength(2);
-		expect(blocked.preflight.missingBindings).toEqual(
+		expect(blocked.check.missingBindings).toHaveLength(2);
+		expect(blocked.check.missingBindings).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 				expect.objectContaining({ kind: 'variable', name: variable.key }),
 			]),
 		);
-		expect(blocked.preflight.missingBindings).not.toContainEqual(
+		expect(blocked.check.missingBindings).not.toContainEqual(
 			expect.objectContaining({ kind: 'variable', name: unselectedVariable.key }),
 		);
 		expect(
-			blocked.preflight.missingBindings.flatMap(({ consumers }) =>
+			blocked.check.missingBindings.flatMap(({ consumers }) =>
 				consumers.flatMap(({ workflows }) => workflows.map(({ id }) => id)),
 			),
 		).toEqual([workflow.id, workflow.id]);
@@ -2116,7 +2116,7 @@ describe('Apply moves and renames within a project', () => {
 
 		expect(await service.apply(environments.apply.id, owner)).toMatchObject({
 			status: 'blocked',
-			preflight: {
+			check: {
 				conflicts: expect.arrayContaining([
 					expect.objectContaining({
 						kind: 'workflow',
@@ -2144,7 +2144,9 @@ describe('Check of the Apply preview', () => {
 		const preview = await loadApplyPreview(project.id);
 
 		expect(await snapshotApplyState()).toEqual(before);
-		expect(preview.check.preflight.missingBindings).toHaveLength(3);
+		expect(preview.check.missingBindings).toHaveLength(3);
+		// The blocked result holds the check without the lists of moves.
+		const { movedWorkflows, movedFolders, ...applyCheck } = preview.check;
 		expect(
 			await service.applyProjectSelection(project.id, owner, {
 				workflowIds: [workflow.id, unselectedWorkflow.id],
@@ -2155,7 +2157,7 @@ describe('Check of the Apply preview', () => {
 			status: 'blocked',
 			environmentId: preview.source.environmentId,
 			git: { commitSha: preview.commitSha, branchName: preview.source.branchName },
-			preflight: preview.check.preflight,
+			check: applyCheck,
 		});
 	});
 
@@ -2203,7 +2205,7 @@ describe('Check of the Apply preview', () => {
 				instanceProject: { id: orders.id, name: orders.name },
 			},
 		]);
-		expect(check.preflight.missingBindings).toEqual([
+		expect(check.missingBindings).toEqual([
 			expect.objectContaining({
 				kind: 'variable',
 				name: 'API_URL',
@@ -2223,7 +2225,7 @@ describe('Check of the Apply preview', () => {
 
 		const { check } = await loadApplyPreview(project.id);
 
-		expect(check.preflight.conflicts).toEqual([
+		expect(check.conflicts).toEqual([
 			expect.objectContaining({
 				code: 'destructive-change',
 				id: orders.id,
@@ -2235,7 +2237,7 @@ describe('Check of the Apply preview', () => {
 				],
 			}),
 		]);
-		expect(check.preflight.missingBindings).toEqual([]);
+		expect(check.missingBindings).toEqual([]);
 	});
 
 	it('reports a global variable that a project variable overrides as a warning, not a blocker', async () => {
@@ -2258,7 +2260,7 @@ describe('Check of the Apply preview', () => {
 
 		const { check } = await loadApplyPreview(project.id);
 
-		expect(check.preflight).toMatchObject({
+		expect(check).toMatchObject({
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],
@@ -2329,7 +2331,7 @@ describe('Apply a project selection over the public API', () => {
 				.expect(200)
 		).body;
 		expect(blocked.status).toBe('blocked');
-		expect(blocked.preflight.missingBindings).toEqual(
+		expect(blocked.check.missingBindings).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 				expect.objectContaining({ kind: 'variable', name: variable.key }),
@@ -2464,7 +2466,7 @@ describe('Apply a project selection over the public API', () => {
 		expect(response.status, JSON.stringify(response.body)).toBe(200);
 		expect(response.body).toMatchObject({
 			status: 'blocked',
-			preflight: {
+			check: {
 				conflicts: [
 					{
 						kind: 'workflow',
@@ -2582,7 +2584,7 @@ describe('Apply credential changes', () => {
 			await service.applyProjectSelection(project.id, member, { workflowIds: [workflow.id] }),
 		).toMatchObject({
 			status: 'blocked',
-			preflight: {
+			check: {
 				conflicts: [
 					{
 						kind: 'workflow',
@@ -2639,7 +2641,7 @@ describe('Apply data table changes', () => {
 			const result = await applyFlow(flow, promoted);
 
 			assert(result.status === 'blocked');
-			expect(result.preflight.conflicts).toEqual([
+			expect(result.check.conflicts).toEqual([
 				expect.objectContaining({
 					kind: 'data-table',
 					code: 'destructive-change',
@@ -2653,7 +2655,7 @@ describe('Apply data table changes', () => {
 					],
 				}),
 			]);
-			const [conflict] = result.preflight.conflicts;
+			const [conflict] = result.check.conflicts;
 			assert(conflict.code === 'destructive-change');
 			const { changes } = conflict;
 			const removeExtra = {

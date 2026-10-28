@@ -243,7 +243,7 @@ n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
 n8n-cli promotion-environment apply <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
 # Exit 3: the source changed since the review. Review again.
-# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
+# Exit 4: the Apply check found missing bindings, access requirements, or conflicts. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
@@ -315,7 +315,7 @@ Key points:
 - `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
   or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
-  `preflight`.
+  `check`.
 - The `--expected-*` flags go together: pass all three or none. The commit SHA
   must be the full SHA.
 - API key scopes for this group are named `promotions:*`. `promote` also needs

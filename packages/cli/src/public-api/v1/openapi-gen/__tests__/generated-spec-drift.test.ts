@@ -63,7 +63,7 @@ describe('Apply response documentation', () => {
 			expect(outcomes).toHaveLength(4);
 			for (const [status, fields] of [
 				['applied', ['counts', 'warnings']],
-				['blocked', ['preflight']],
+				['blocked', ['check']],
 				['source-changed', []],
 				['preview-changed', []],
 			] as const) {

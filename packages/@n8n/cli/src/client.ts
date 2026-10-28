@@ -118,7 +118,7 @@ export interface PromotionExpectedSource {
 }
 
 /** References in a package that must be set up on this instance before Apply can import it. */
-export interface PromotionBindingPreflight {
+export interface PromotionApplyCheck {
 	missingProjects: Array<Record<string, unknown>>;
 	missingBindings: Array<Record<string, unknown>>;
 	accessRequirements: Array<Record<string, unknown>>;
@@ -145,7 +145,7 @@ export type ApplyPackageResult =
 			counts: ImportPackageCounts;
 			warnings: Array<Record<string, unknown>>;
 	  })
-	| (ApplyPackageIdentity & { status: 'blocked'; preflight: PromotionBindingPreflight })
+	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
 	| (ApplyPackageIdentity & { status: 'source-changed' });
 
 export interface PromotionChangesQuery {
