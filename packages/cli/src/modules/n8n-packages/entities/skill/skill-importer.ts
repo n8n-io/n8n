@@ -146,23 +146,32 @@ export class SkillImporter {
 		conflictPolicy: ImportConflictPolicy,
 	): Promise<SkillDecision> {
 		if (!packaged) {
-			return { kind: 'issue', message: `The package does not contain skill "${skillId}".` };
+			return {
+				kind: 'issue',
+				message: `The package does not contain skill "${skillId}". Export the package again with the skill.`,
+			};
 		}
 		const name = packaged.skill.name;
 		if (packaged.scope === 'agent' && agentIds.some((id) => id !== packaged.agentId)) {
-			return { kind: 'issue', message: `Only its own Agent can use skill "${name}".` };
+			return {
+				kind: 'issue',
+				message: `Only its own Agent can use skill "${name}". Remove the skill from the other Agents, then export again.`,
+			};
 		}
 		const target = targetOf(packaged, projectId);
 		if (row && !isSameSkillTarget(row.target, target)) {
 			return {
 				kind: 'issue',
-				message: `Skill ID "${skillId}" already belongs to another project, Agent or the instance.`,
+				message: `Skill ID "${skillId}" already belongs to another project, Agent or the instance. Change the skill ID in the package, or delete the existing skill.`,
 			};
 		}
 		const decision = decideWrite(packaged, target, row, conflictPolicy);
 		if (decision.kind !== 'write') return decision;
 		if (await this.skillService.isNameTaken(name, target, skillId)) {
-			return { kind: 'issue', message: `Another skill in this scope is already named "${name}".` };
+			return {
+				kind: 'issue',
+				message: `Another skill in this scope is already named "${name}". Rename one of the skills.`,
+			};
 		}
 		return decision;
 	}
@@ -181,7 +190,7 @@ export class SkillImporter {
 		}
 		if (denied.length > 0) {
 			throw new ForbiddenError(
-				`You are not allowed to create or edit skills ${denied.join(', ')}.`,
+				`You are not allowed to create or edit skills ${denied.join(', ')}. Ask an admin for skill permissions, or remove these skills from the package.`,
 			);
 		}
 	}
@@ -247,7 +256,7 @@ function decideWrite(
 	if (blocked) {
 		return {
 			kind: 'issue',
-			message: `Skill "${packaged.skill.name}" already exists with different content.`,
+			message: `Skill "${packaged.skill.name}" already exists with different content. Use the conflict policy new-version to save a new version, or skip to keep the existing skill.`,
 		};
 	}
 	if (action === 'skip') return { kind: 'keep', name: row.skill.name };
@@ -305,7 +314,7 @@ function nameClashIssues(
 	return added.flatMap(({ id, name }, index) => {
 		const earlier = [...current, ...added.slice(0, index).map((skill) => skill.name)];
 		if (findIntroducedNameClashes(earlier, [name]).length === 0) return [];
-		const message = `Skill name "${name}" is hard to tell apart from another skill name of this Agent.`;
+		const message = `Skill name "${name}" is hard to tell apart from another skill name of this Agent. Rename one of the skills.`;
 		return [skillIssue(item.sourceAgentId, id, message)];
 	});
 }

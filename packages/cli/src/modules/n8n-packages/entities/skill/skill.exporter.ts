@@ -36,13 +36,15 @@ export class SkillExporter {
 		for (const id of skillIds) {
 			const row = rows.get(id);
 			if (!row) {
-				throw new PackageExportBlockedError(`Skill "${id}" does not exist. Export aborted.`);
+				throw new PackageExportBlockedError(
+					`Skill "${id}" does not exist. Export aborted. Remove the skill from the Agent, then export again.`,
+				);
 			}
 			const ownerProjectId =
 				row.target.projectId ?? projectOfAgent.get(row.target.agentId ?? '') ?? undefined;
 			if (!canRead(row.target, ownerProjectId ?? null)) {
 				throw new PackageExportBlockedError(
-					`You cannot read skill "${row.skill.name}" (${id}). Export aborted.`,
+					`You cannot read skill "${row.skill.name}" (${id}). Export aborted. Ask for access to the skill, or export without this Agent.`,
 				);
 			}
 			const directory = projectScopedDirectory(
