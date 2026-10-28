@@ -396,10 +396,10 @@ describe('resolveNodeTool → binary output', () => {
 		expect(tool.toModelOutput).toBeUndefined();
 	});
 
-	it('returns the result as it is when the run has no thread', async () => {
+	it('drops the binary when the run has no thread', async () => {
 		const { output, adoptFromItems } = await runTool({});
 
 		expect(adoptFromItems).not.toHaveBeenCalled();
-		expect(output).toEqual({ status: 'success', data: [binaryItem] });
+		expect(output).toEqual({ status: 'success', data: [{ json: { id: 'drive-1' } }] });
 	});
 });

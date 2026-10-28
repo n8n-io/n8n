@@ -182,9 +182,10 @@ export async function resolveNodeTool(
 			if (result.status === 'error') {
 				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
 			}
-			// Without a thread there is no scope for the files, so the result stays as it is.
+			if (!result.data.some((item) => item.binary)) return result;
+			// Without a thread there is no scope for the files, so the binary is dropped.
 			const threadId = toolCtx.persistence?.threadId;
-			if (!threadId || !result.data.some((item) => item.binary)) return result;
+			if (!threadId) return { ...result, data: result.data.map(({ json }) => ({ json })) };
 			const adopted = await Container.get(AgentFileBridge).adoptFromItems(result.data, {
 				agentId: ctx.agentId ?? null,
 				projectId: ctx.projectId,
