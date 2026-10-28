@@ -454,20 +454,27 @@ export class Compression implements INodeType {
 								outputPrefix = this.getNodeParameter('binaryPropertyOutput', i, 'data');
 								binaryProperty = `${outputPrefix}${index ? index : ''}`;
 
+								let fileExtension = binaryData.fileExtension
+									? `.${binaryData.fileExtension.toLowerCase()}`
+									: '';
+
 								fileName = this.getNodeParameter('fileName', i, '') as string;
 								if (!fileName) {
-									// The extension is added again below, so keep all of the name except the last extension
-									fileName =
-										nodeVersion >= 1.2 && binaryData.fileName
-											? parse(binaryData.fileName).name
-											: binaryData.fileName?.split('.')[0];
+									if (nodeVersion >= 1.2 && binaryData.fileName) {
+										// The extension is added again below, so keep all of the name except the last extension
+										const parsedFileName = parse(binaryData.fileName);
+										fileName = parsedFileName.name;
+										// Binary data can have a file name without extension metadata
+										if (!fileExtension) {
+											fileExtension = parsedFileName.ext.toLowerCase();
+										}
+									} else {
+										fileName = binaryData.fileName?.split('.')[0];
+									}
 								} else {
 									fileName = fileName.replace('.gz', '').replace('.gzip', '');
 								}
 
-								const fileExtension = binaryData.fileExtension
-									? `.${binaryData.fileExtension.toLowerCase()}`
-									: '';
 								filePath = `${fileName}${fileExtension}.gz`;
 							} else {
 								outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;

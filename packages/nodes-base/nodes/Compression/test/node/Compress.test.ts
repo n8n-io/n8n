@@ -173,4 +173,17 @@ describe('Compression Node - Compress Operation (gzip)', () => {
 			expect(result[0][0].binary?.data?.fileName).toBe(expectedFileName);
 		},
 	);
+
+	it('should use the extension from the file name when the extension metadata is missing', async () => {
+		mockExecuteFunctions.getNode.mockReturnValue({ ...mockNode, typeVersion: 1.2 });
+		vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue({
+			data: 'base64data',
+			mimeType: 'text/csv',
+			fileName: 'report.final.csv',
+		});
+
+		const result = await compression.execute.call(mockExecuteFunctions);
+
+		expect(result[0][0].binary?.data?.fileName).toBe('report.final.csv.gz');
+	});
 });
