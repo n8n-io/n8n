@@ -528,6 +528,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	// deadline passes, so a nested call cannot extend the outer call's budget.
 	private deadlines: number[] = [];
 
+	/** Load and instantiate the shared WASM module, so a later initialize() does not wait for it. */
+	static async loadWasm(): Promise<void> {
+		await loadQuickJSWasm();
+	}
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
