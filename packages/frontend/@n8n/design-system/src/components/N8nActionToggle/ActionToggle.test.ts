@@ -42,8 +42,8 @@ describe('N8nActionToggle', () => {
 		await openMenu(container);
 
 		const items = document.querySelectorAll('[role="menuitem"]');
-		expect(items[0]?.querySelector('svg')).not.toBeNull();
-		expect(items[1]?.querySelector('svg')).toBeNull();
+		expect(items[0]?.querySelector('[data-icon="pencil"]')).not.toBeNull();
+		expect(items[1]?.querySelector('[data-icon]')).toBeNull();
 	});
 
 	it('renders the horizontal ellipsis icon', function () {
