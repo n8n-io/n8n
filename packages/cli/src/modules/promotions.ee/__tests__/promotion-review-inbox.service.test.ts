@@ -1,4 +1,5 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { ServiceUnavailableError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -29,6 +30,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 		runRepository,
 		hostResolver,
 		mergeRequests,
+		mock<EventService>(),
 		logger,
 		mock(),
 	);

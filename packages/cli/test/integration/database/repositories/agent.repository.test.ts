@@ -7,7 +7,7 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
@@ -20,7 +20,7 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { createSkill } from '@/modules/skills/testing';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -35,6 +35,12 @@ import {
 	storedSkillRefs,
 	type AgentFixtureOverrides,
 } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
+
+const writingSkill = {
+	name: 'Writing',
+	description: 'Write notes',
+	instructions: 'Use short sentences',
+};
 
 describe('AgentRepository', () => {
 	let agentRepo: AgentRepository;
@@ -72,7 +78,7 @@ describe('AgentRepository', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		agentRepo = Container.get(AgentRepository);
 		agentHistoryRepo = Container.get(AgentHistoryRepository);
 		taskRepo = Container.get(AgentTaskRepository);
@@ -163,19 +169,9 @@ describe('AgentRepository', () => {
 		};
 
 		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
-			const skillRepo = Container.get(SkillRepository);
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
-			await skillRepo.createSkill(
-				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: skillId, projectId, content: writingSkill });
 			const credentials = mock<CredentialsService>();
 			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 			const policy = mock<AgentPolicyService>();
@@ -362,21 +358,7 @@ describe('AgentRepository', () => {
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
 			const agent = await createAgent({ availableInMCP: true });
-			await Container.get(SkillRepository).createSkill(
-				{
-					id: 'writing',
-					target: { projectId, agentId: null },
-					source: 'ui',
-					createdById: null,
-				},
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: 'writing', projectId, content: writingSkill });
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
 				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
@@ -434,7 +416,7 @@ describe('AgentRepository', () => {
 				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
-			// The skill refs live in the dependency rows. The skill body stays in the hub.
+			// The skill refs live in the dependency rows. The skill body stays in the skills module.
 			const agentSkillRefs = Container.get(AgentSkillRefsService);
 			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 			const tasks = await taskRepo.findByAgentId(agent.id);

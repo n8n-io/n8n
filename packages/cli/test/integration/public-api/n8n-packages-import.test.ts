@@ -60,12 +60,6 @@ beforeEach(async () => {
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 });
 
-const testWithAPIKey = (method: 'post', url: string, apiKey: string | null) => async () => {
-	void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-	const response = await authOwnerAgent[method](url);
-	expect(response.statusCode).toBe(401);
-};
-
 async function buildImportPackage(
 	options: { variable?: { name: string; value: string } } = {},
 ): Promise<Buffer> {
@@ -134,12 +128,19 @@ async function buildImportPackage(
 }
 
 describe('POST /n8n-packages/import', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/n8n-packages/import', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/n8n-packages/import');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/n8n-packages/import', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/n8n-packages/import');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('rejects unsupported Content-Type', async () => {
 		const response = await authOwnerAgent

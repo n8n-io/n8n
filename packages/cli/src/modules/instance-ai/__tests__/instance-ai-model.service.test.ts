@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
+import { AI_REQUEST_TIMEOUT_MS } from '@/utils/ai-proxy-fetch';
 
 const capturedTokenGetters: Array<() => Promise<unknown>> = [];
 vi.mock('@/services/proxy-token-manager', () => ({
@@ -62,9 +63,13 @@ describe('InstanceAiModelService', () => {
 			expect(service.getModelFetch()).toBe(baseFetch);
 			expect(service.getModelFetch()).toBe(baseFetch);
 			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
-			expect(outboundHttp.transport).toHaveBeenCalledWith(
-				expect.objectContaining({ proxy: 'env', useDefaultSsrfPolicy: 'unsafe' }),
-			);
+			expect(outboundHttp.transport).toHaveBeenCalledWith({
+				proxy: 'env',
+				timeouts: {
+					headersTimeout: AI_REQUEST_TIMEOUT_MS,
+					bodyTimeout: AI_REQUEST_TIMEOUT_MS,
+				},
+			});
 		});
 	});
 

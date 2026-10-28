@@ -2,7 +2,7 @@ import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { getPromotionPreview } from '../promotions.api';
 import type { ApplyCheckResult } from '../promotions.types';

@@ -265,7 +265,7 @@ describe('AgentContextService', () => {
 		await expect(lookup).rejects.toThrow(error.message);
 	});
 
-	it('lists the hub skills attached to the agent', async () => {
+	it('lists the skills attached to the agent', async () => {
 		const { service, agentsService, agentSkillRefs } = makeService();
 		agentSkillRefs.bodies.notes = {
 			name: 'Notes',

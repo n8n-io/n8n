@@ -274,8 +274,10 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UsersListStatusCounts,
 	type UserProject,
 	usersListSchema,
+	usersListStatusCountsSchema,
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
@@ -1025,3 +1027,11 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export {
+	scimDeprovisioningPolicySchema,
+	type ScimConfigResponse,
+	type ScimDeprovisioningPolicy,
+	type ScimTransferTargetPerson,
+	type ScimTransferTargetProject,
+	type ScimTransferTargetsResponse,
+} from './schemas/scim-config.schema';

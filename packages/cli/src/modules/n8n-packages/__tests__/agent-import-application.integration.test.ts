@@ -1,5 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -36,7 +37,7 @@ import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.s
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
@@ -44,8 +45,13 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import {
+	createSkill,
+	deleteSkill,
+	findLatestSkillVersion,
+	findSkill,
+	findSkillIds,
+} from '@/modules/skills/testing';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -122,7 +128,7 @@ let orchestrator: ImportOrchestrator;
 beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	await initNodeTypes({
 		'n8n-nodes-base.executeWorkflowTrigger': { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
 		'n8n-nodes-base.scheduleTrigger': { type: new ScheduleTrigger(), sourcePath: '' },
@@ -252,6 +258,12 @@ async function importSelected(
 	);
 }
 
+async function skillIdsOf(agentId: string) {
+	const ids = await findSkillIds();
+	const skills = await Promise.all(ids.map(async (id) => await findSkill(id)));
+	return skills.filter((skill) => skill?.agentId === agentId).map((skill) => skill?.id);
+}
+
 async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedImportRequest> = {}) {
 	const reader = await readerFor(input);
 	const parser = Container.get(N8nPackageParser);
@@ -351,6 +363,9 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		});
 	const connect = vi.spyOn(Container.get(ChatIntegrationService), 'connect');
 	const schedule = vi.spyOn(Container.get(AgentTaskService), 'registerEnabledForAgent');
+	vi.spyOn(Container.get(UrlService), 'getInstanceBaseUrl').mockReturnValue(
+		'https://example.com/n8n',
+	);
 	const original = structuredClone(input);
 	const imported = await importSelected(input, {
 		bindings: { credentials: new Map([['source-model', credential.id]]) },
@@ -393,10 +408,20 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 		...first.tasks[`${first.id}_task`],
 	});
 	expect(saved.schema!.tasks![0].id).toBe(savedTask.id);
-	expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-chat' })).toMatchObject(
-		{ type: 'slackApi' },
-	);
-	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'source-chat' }]);
+	// A channel credential never connects an imported channel, so the import does not stub it.
+	expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-chat' })).toBeNull();
+	expect(saved.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	expect(outcomes[0]).toMatchObject({
+		blockedFromPublish: 'channel-setup-required',
+		channels: [
+			{
+				type: 'slack',
+				status: 'setup-required',
+				reason: 'new-channel',
+				setupUrl: `https://example.com/n8n/projects/${project.id}/agents/${first.id}`,
+			},
+		],
+	});
 	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
 	expect(observed).toHaveBeenCalledTimes(2);
 	expect(runtimes.clearRuntimes).not.toHaveBeenCalled();
@@ -406,17 +431,20 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	const setupCompleted = telemetry.track.mock.calls.filter(([event]) =>
 		Object.is(event, TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED),
 	);
-	expect(setupCompleted).toHaveLength(2);
+	// The channel of the first Agent still needs setup, so only the child is complete.
+	expect(setupCompleted).toEqual([
+		[
+			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+			expect.objectContaining({ agent_id: child.id, project_id: project.id, user_id: owner.id }),
+		],
+	]);
+	expect(await agents.findById(saved.id)).toMatchObject({ setupCompletedAt: null });
+	expect(await agents.findById(child.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
 	for (const agent of [saved, child]) {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 			expect.objectContaining({ agent_id: agent.id, event_version: '3' }),
 		);
-		expect(await agents.findById(agent.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
-		expect(setupCompleted).toContainEqual([
-			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
-			expect.objectContaining({ agent_id: agent.id, project_id: project.id, user_id: owner.id }),
-		]);
 	}
 	expect(input).toEqual(original);
 });
@@ -432,24 +460,19 @@ it.each(['project', 'agent'] as const)(
 			description: 'Keep this skill.',
 			instructions: 'Keep these instructions.',
 		};
-		const repository = Container.get(SkillRepository);
-		await repository.createSkill(
-			{
-				id: 'support_source_skill',
-				target:
-					scope === 'project'
-						? { projectId: project.id, agentId: null }
-						: { projectId: null, agentId: 'other-agent' },
-				source: 'ui',
-				createdById: owner.id,
-			},
-			toSkillContent(body),
-		);
-		const before = await repository.findLatestSaved(['support_source_skill']);
+		await createSkill({
+			id: 'support_source_skill',
+			...(scope === 'project'
+				? { projectId: project.id, agentId: null }
+				: { projectId: null, agentId: 'other-agent' }),
+			createdById: owner.id,
+			content: body,
+		});
+		const before = await findLatestSkillVersion('support_source_skill');
 		await expect(importSelected(input)).rejects.toBeInstanceOf(ConflictError);
-		expect(await repository.findLatestSaved(['support_source_skill'])).toEqual(before);
+		expect(await findLatestSkillVersion('support_source_skill')).toEqual(before);
 		expect(await agents.findById('support_source')).toBeNull();
-		await repository.deleteSkill('support_source_skill');
+		await deleteSkill('support_source_skill');
 	},
 );
 
@@ -484,9 +507,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	expect(promotedSkills.skills.support_source_skill).not.toHaveProperty('references');
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	await importSelected(input);
-	expect(
-		await Container.get(SkillRepository).findLatestSummaries(['support_source_skill']),
-	).toEqual(new Map([['support_source_skill', expect.objectContaining({ version: 2 })]]));
+	expect(await findLatestSkillVersion('support_source_skill')).toMatchObject({ version: 2 });
 	await tasks.insert({
 		id: 'destination-only-task',
 		agentId: initial.id,
@@ -732,6 +753,134 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	});
 });
 
+describe('channels', () => {
+	const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
+
+	/** Publish the Agent, then connect Slack on the destination as the channel UI would. */
+	async function publishWithDestinationSlack(input: AgentPackageFixture) {
+		const initial = await importSelected(input, { publishingPolicy: 'publish-all' });
+		const published = initial.agentOutcomes[0].agent;
+		expect(published.activeVersionId).not.toBeNull();
+		const slack = await createCredentials(
+			{ id: 'destination-slack', name: 'Slack', type: 'slackApi', data: '' },
+			project,
+		);
+		await agents.update(published.id, {
+			integrations: [{ type: 'slack', credentialId: slack.id }],
+		});
+		return published;
+	}
+
+	function withSourceSlack(input: AgentPackageFixture) {
+		const agent = source(input);
+		agent.config!.integrations = [
+			{ type: 'slack', credentialId: 'source-slack', settings: slackSettings },
+		];
+		input.manifest.requirements = {
+			credentials: [
+				{
+					id: 'source-slack',
+					name: 'Source Slack',
+					type: 'slackApi',
+					usedBy: [{ kind: 'agent', id: agent.id }],
+				},
+			],
+		};
+		return agent;
+	}
+
+	it('reuses the destination connection when publication fails or stays unchanged', async () => {
+		const input = publishableFixture();
+		input.manifest.agents.splice(1);
+		const published = await publishWithDestinationSlack(input);
+		withSourceSlack(input);
+		const disconnect = vi.spyOn(Container.get(ChatIntegrationService), 'disconnect');
+		deniedPublishName = published.name;
+
+		const failed = await importSelected(input, {
+			credentialMissingMode: 'create-stub',
+			publishingPolicy: 'publish-all',
+		});
+		input.files[`${input.manifest.agents[0].target}/agent-metadata.json`] = {
+			versionId: 'selected-draft',
+			publishedVersionId: 'absent-published-version',
+		};
+		const unchanged = await importSelected(input, { credentialMissingMode: 'create-stub' });
+
+		expect(failed.agentOutcomes[0].publishing.state).toBe('failed');
+		expect(unchanged.agentOutcomes[0].publishing).toEqual({ state: 'unchanged' });
+		for (const imported of [failed, unchanged]) {
+			expect(imported.agentOutcomes[0]).toMatchObject({
+				status: 'updated',
+				agent: { activeVersionId: published.activeVersionId },
+				channels: [{ type: 'slack', status: 'reused' }],
+			});
+		}
+		expect((await agents.findById(published.id))?.integrations).toEqual([
+			{ type: 'slack', credentialId: 'destination-slack', settings: slackSettings },
+		]);
+		expect(disconnect).not.toHaveBeenCalled();
+		expect(await Container.get(CredentialsRepository).findOneBy({ id: 'source-slack' })).toBeNull();
+	});
+
+	it('keeps the verified connection when a new channel blocks publication', async () => {
+		const input = publishableFixture();
+		input.manifest.agents.splice(1);
+		const published = await publishWithDestinationSlack(input);
+		const agent = withSourceSlack(input);
+		agent.config!.integrations!.push({
+			type: 'telegram',
+			credentialId: 'source-telegram',
+			settings: { accessMode: 'private', allowedUsers: ['alice'] },
+		});
+		const disconnect = vi.spyOn(Container.get(ChatIntegrationService), 'disconnect');
+
+		const imported = await importSelected(input, { publishingPolicy: 'publish-all' });
+
+		expect(imported.agentOutcomes[0]).toMatchObject({
+			agent: { activeVersionId: published.activeVersionId },
+			publishing: { state: 'unchanged', skippedPublishReason: 'channel-setup-required' },
+			channels: [
+				{ type: 'slack', status: 'reused' },
+				{ type: 'telegram', status: 'setup-required', reason: 'new-channel' },
+			],
+		});
+		expect((await agents.findById(published.id))?.integrations).toEqual([
+			{ type: 'slack', credentialId: 'destination-slack', settings: slackSettings },
+			{
+				type: 'telegram',
+				credentialId: '',
+				settings: { accessMode: 'private', allowedUsers: ['alice'] },
+			},
+		]);
+		expect(disconnect).not.toHaveBeenCalled();
+	});
+
+	it('does not set up a channel because the destination has the same credential', async () => {
+		const input = publishableFixture();
+		input.manifest.agents.splice(1);
+		withSourceSlack(input);
+		// The same credential ID exists here, for example on another instance with this Agent ID.
+		await createCredentials(
+			{ id: 'source-slack', name: 'Source Slack', type: 'slackApi', data: '' },
+			project,
+		);
+		const connect = vi.spyOn(Container.get(ChatIntegrationService), 'connect');
+
+		const imported = await importSelected(input, { publishingPolicy: 'publish-all' });
+
+		expect(imported.agentOutcomes[0]).toMatchObject({
+			status: 'created',
+			publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+			channels: [{ type: 'slack', status: 'setup-required', reason: 'new-channel' }],
+		});
+		expect(imported.agentOutcomes[0].agent.integrations).toEqual([
+			{ type: 'slack', credentialId: '', settings: slackSettings },
+		]);
+		expect(connect).not.toHaveBeenCalled();
+	});
+});
+
 it.each([
 	['stub-credential', false],
 	['stub-credential', true],
@@ -942,8 +1091,7 @@ it.each(['create', 'update'] as const)(
 		const beforeTasks = await tasks.findByAgentId('research_source');
 		const skillRefs = Container.get(AgentSkillRefsService);
 		const beforeSkills = await skillRefs.readDraft({ id: 'research_source' }, {});
-		const skillRepository = Container.get(SkillRepository);
-		const beforeSkillCount = await skillRepository.countBy({ agentId: 'research_source' });
+		const beforeSkillIds = await skillIdsOf('research_source');
 		const original = structuredClone(plan.agentPlan);
 		const replace = tasks.replaceForAgent.bind(tasks);
 		vi.spyOn(tasks, 'replaceForAgent').mockImplementation(async (...args) => {
@@ -956,7 +1104,7 @@ it.each(['create', 'update'] as const)(
 		expect(await agents.findById('research_source')).toEqual(beforeAgent);
 		expect(await tasks.findByAgentId('research_source')).toEqual(beforeTasks);
 		expect(await skillRefs.readDraft({ id: 'research_source' }, {})).toEqual(beforeSkills);
-		expect(await skillRepository.countBy({ agentId: 'research_source' })).toBe(beforeSkillCount);
+		expect(await skillIdsOf('research_source')).toEqual(beforeSkillIds);
 		expect(await agents.findById('support_source')).toMatchObject({
 			schema: { instructions: 'Keep this earlier save.' },
 		});

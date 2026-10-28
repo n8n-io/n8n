@@ -1325,6 +1325,46 @@ describe('AgentRuntime — execution counters', () => {
 		expect(resumed.finishReason).not.toBe('error');
 	});
 
+	it('resumes a suspended call of a split tool in the tool that owns its action', async () => {
+		const resumedBy: string[] = [];
+		const makeActionTool = (name: string, handlerLabel: string): BuiltTool => ({
+			...makeInterruptibleTool(),
+			name,
+			inputSchema: z.object({ question: z.string(), action: z.string().optional() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				resumedBy.push(handlerLabel);
+				return { approved: true };
+			},
+		});
+		const splitTool = makeActionTool('approve', 'delete handler');
+		const otherTool = makeActionTool('other', 'publish handler');
+		const { runtime } = createRuntimeWithTools([splitTool, otherTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: 'approve',
+					args: { question: 'continue?', action: 'publish' },
+				},
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(splitTool, { name: 'delete_item', legacyActions: { approve: ['delete'] } });
+		Object.assign(otherTool, { name: 'publish_item', legacyActions: { approve: ['publish'] } });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumedBy).toEqual(['publish handler']);
+	});
+
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
 		const suspendPayload = { question: 'approve?', marker: 'xyz' };
 		let observedCtx: InterruptibleToolContext | undefined;
@@ -1819,6 +1859,7 @@ describe('AgentRuntime — guardrails', () => {
 
 	it('prices a Foundry deployment by the model it serves', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const modelFetch = vi.fn<typeof fetch>();
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: {
@@ -1828,13 +1869,14 @@ describe('AgentRuntime — guardrails', () => {
 				endpointType: 'foundry',
 				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
 			},
+			modelFetch,
 			instructions: 'You are a test assistant.',
 			eventBus: new AgentEventBus(),
 		});
 
 		await runtime.generate('hi');
 
-		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1', modelFetch);
 	});
 
 	it('does not start the next model call after a turn spends the session cap', async () => {

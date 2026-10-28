@@ -1533,6 +1533,43 @@ describe('SystemAgentExecutionService', () => {
 				NotFoundError,
 			);
 		});
+
+		it('finds no thread for an id that the user has no thread with', async () => {
+			const { service, threadRepository, provider } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(null);
+
+			await expect(service.findUsableThread(AGENT_ID, user, 'new-thread')).resolves.toBeNull();
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('still runs the floor when it finds a thread', async () => {
+			const { service } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(service.findUsableThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('listThreads', () => {
+		it("reads a page of the user's sessions with the agent", async () => {
+			const { service, threadRepository } = setup();
+			const page = { threads: [thread], hasMore: true };
+			threadRepository.findOwnedHistoryPage.mockResolvedValue(page);
+			const before = { updatedAt: new Date('2026-10-19T10:00:00.000Z'), id: 'thread-0' };
+
+			await expect(
+				service.listThreads(AGENT_ID, user, { limit: 5, search: 'digest', before }),
+			).resolves.toBe(page);
+			expect(threadRepository.findOwnedHistoryPage).toHaveBeenCalledWith(
+				AGENT_ID,
+				user.id,
+				5,
+				'digest',
+				before,
+			);
+		});
 	});
 
 	describe('prepareChatMessage', () => {
