@@ -32,6 +32,7 @@ export type {
 	ExecutionListItem,
 	ResolveStepRequest,
 	ResolveStepResponse,
+	ResumeLocateRequest,
 	ResumeTargetRequest,
 	ResumeTargetResponse,
 } from './server';

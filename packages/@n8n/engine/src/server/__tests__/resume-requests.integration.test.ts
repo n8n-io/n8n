@@ -38,11 +38,19 @@ const graph: WorkflowGraph = {
 
 const acceptsRequest: WaitDeclaration = { resumeBinding: 'execution' };
 const stepBound: WaitDeclaration = { resumeBinding: 'step' };
+const shapeOf = (stepId: string) => ({
+	pathname: `/webhook-waiting/${stepId}/wait-a`,
+	search: '?approved=true',
+});
 const stepTokens = [
 	[
 		'a step-bound token',
 		(stepId: string) =>
-			mintStepBoundResumeToken(resumeSecret, stepId, `/webhook-waiting/${stepId}/wait-a`),
+			mintStepBoundResumeToken(
+				resumeSecret,
+				stepId,
+				`${shapeOf(stepId).pathname}${shapeOf(stepId).search}`,
+			),
 	],
 	['an approval callback', (stepId: string) => mintApprovalCallback(resumeSecret, stepId, 'a')],
 ] as const;
@@ -111,6 +119,9 @@ async function seed(waits: Partial<Record<'wait-a' | 'wait-b', WaitDeclaration>>
 
 const resumeTarget = (executionId: string, body: object) =>
 	request(app).post(`/api/workflow-executions/${executionId}/resume-target`).set(auth()).send(body);
+
+const locate = (body: object) =>
+	request(app).post('/api/resume-requests/locate').set(auth()).send(body);
 
 const resolve = (stepId: string, body: object) =>
 	request(app).post(`/api/step-executions/${stepId}/resolve`).set(auth()).send(body);
@@ -215,6 +226,112 @@ describe('POST /api/workflow-executions/:id/resume-target (integration)', () => 
 		await request(app)
 			.post(`/api/workflow-executions/${executionId}/resume-target`)
 			.send({ token })
+			.expect(401);
+	});
+});
+
+describe('POST /api/resume-requests/locate (integration)', () => {
+	it('locates the wait of an execution-bound token by the execution id', async () => {
+		const { executionId, stepIds, token } = await seed({ 'wait-a': acceptsRequest });
+
+		const response = await locate({ id: executionId, token }).expect(200);
+		const body = response.body as ResumeTargetResponse;
+
+		expect(body.target).toEqual({ stepId: stepIds['wait-a'], nodeId: 'wait-a' });
+		expect(body.execution.id).toBe(executionId);
+	});
+
+	it.each(stepTokens)('locates the wait that %s names by the step id', async (_, mint) => {
+		const { executionId, stepIds } = await seed({ 'wait-a': stepBound });
+		const stepId = stepIds['wait-a'];
+
+		const response = await locate({
+			id: stepId,
+			token: mint(stepId),
+			request: shapeOf(stepId),
+		}).expect(200);
+		const body = response.body as ResumeTargetResponse;
+
+		expect(body.target).toEqual({ stepId, nodeId: 'wait-a' });
+		expect(body.execution.id).toBe(executionId);
+		expect(body.execution.steps).toHaveLength(2);
+	});
+
+	it.each([
+		['a changed parameter', '?approved=false'],
+		['an added parameter', '?approved=true&extra=1'],
+		['a removed parameter', ''],
+	])('refuses a step-bound token with %s with 401', async (_, search) => {
+		const { stepIds } = await seed({ 'wait-a': stepBound });
+		const stepId = stepIds['wait-a'];
+		const [, mint] = stepTokens[0];
+
+		await locate({
+			id: stepId,
+			token: mint(stepId),
+			request: { ...shapeOf(stepId), search },
+		}).expect(401, { error: 'invalid_token' });
+	});
+
+	it('refuses a step-bound token with the execution id with 401', async () => {
+		const { executionId, stepIds } = await seed({ 'wait-a': stepBound });
+		const [, mint] = stepTokens[0];
+
+		await locate({
+			id: executionId,
+			token: mint(stepIds['wait-a']),
+			request: shapeOf(stepIds['wait-a']),
+		}).expect(401, { error: 'invalid_token' });
+	});
+
+	it('answers no target for an approval callback at an execution-bound wait', async () => {
+		const { stepIds } = await seed({ 'wait-a': acceptsRequest });
+		const stepId = stepIds['wait-a'];
+
+		const response = await locate({
+			id: stepId,
+			token: mintApprovalCallback(resumeSecret, stepId, 'a'),
+		}).expect(200);
+
+		expect((response.body as ResumeTargetResponse).target).toBeNull();
+	});
+
+	it('answers no target once the wait has ended', async () => {
+		const { stepIds } = await seed({ 'wait-a': stepBound });
+		const stepId = stepIds['wait-a'];
+		const token = mintApprovalCallback(resumeSecret, stepId, 'a');
+		await resolve(stepId, { token, outputs: [] }).expect(200);
+
+		const response = await locate({ id: stepId, token }).expect(200);
+
+		expect((response.body as ResumeTargetResponse).target).toBeNull();
+	});
+
+	it('answers 404 for a step that does not exist', async () => {
+		const stepId = generateId();
+
+		await locate({ id: stepId, token: mintApprovalCallback(resumeSecret, stepId, 'a') }).expect(
+			404,
+			{ error: 'not_found' },
+		);
+	});
+
+	it.each([
+		['an unknown key', { extra: 1 }],
+		['an id that is not a UUID', { id: 'not-a-uuid' }],
+		['a request shape with an unknown key', { request: { pathname: '/', search: '', hash: '' } }],
+	])('rejects a body with %s with 400', async (_, change) => {
+		const { executionId, token } = await seed({ 'wait-a': acceptsRequest });
+
+		await locate({ id: executionId, token, ...change }).expect(400, { error: 'invalid_request' });
+	});
+
+	it('requires the identity token', async () => {
+		const { executionId, token } = await seed({ 'wait-a': acceptsRequest });
+
+		await request(app)
+			.post('/api/resume-requests/locate')
+			.send({ id: executionId, token })
 			.expect(401);
 	});
 });
@@ -324,7 +441,7 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 
 describe('resume secret', () => {
 	it.each([undefined, ''])(
-		'answers 501 on both routes when the resume secret is %j',
+		'answers 501 on every resume route when the resume secret is %j',
 		async (resumeSecret) => {
 			const { app: bare } = createEngineRuntime({
 				dataSource,
@@ -344,6 +461,11 @@ describe('resume secret', () => {
 				.post(`/api/step-executions/${id}/resolve`)
 				.set(auth())
 				.send({ token: 't', outputs: [] })
+				.expect(501);
+			await request(bare)
+				.post('/api/resume-requests/locate')
+				.set(auth())
+				.send({ id, token: 't' })
 				.expect(501);
 		},
 	);
