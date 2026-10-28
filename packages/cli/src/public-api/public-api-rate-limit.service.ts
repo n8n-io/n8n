@@ -74,6 +74,7 @@ export class PublicApiRateLimitService {
 		path: string,
 		accessFromDecorator?: RateLimitAccessName,
 	): RequestHandler[] {
+		this.storeFactory.connect();
 		const access = resolveAccess(method, accessFromDecorator);
 		const endpoint = `${method.toUpperCase()} ${path}`;
 

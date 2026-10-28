@@ -85,6 +85,14 @@ export class PublicApiRateLimitStoreFactory {
 		this.redisHealth = new RedisHealth(logger);
 	}
 
+	/**
+	 * Call at startup. The client does not queue commands, so a client created on the first
+	 * request is not connected yet, and that request would pass without a count.
+	 */
+	connect() {
+		if (this.instanceSettings.isMultiMain) this.getRedisClient();
+	}
+
 	/** @param name Identifies one limiter. Two limiters must not use the same name. */
 	create(name: string): Store {
 		if (!this.instanceSettings.isMultiMain) return new MemoryStore();
