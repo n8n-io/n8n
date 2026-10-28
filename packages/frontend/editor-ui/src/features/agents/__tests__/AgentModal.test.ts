@@ -146,9 +146,7 @@ describe('AgentModal', () => {
 	it('names the cancel button Cancel by default', () => {
 		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
 
-		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain(
-			'Cancel',
-		);
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Cancel');
 		wrapper.unmount();
 	});
 
