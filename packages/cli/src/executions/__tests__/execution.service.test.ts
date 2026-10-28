@@ -1088,6 +1088,27 @@ describe('ExecutionService', () => {
 					const [broadcastOrder] = executionStopService.requestStop.mock.invocationCallOrder;
 					expect(updateOrder).toBeLessThan(broadcastOrder);
 				});
+
+				it('should broadcast the stop request when persisting the canceled status fails', async () => {
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'exec-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockRejectedValue(
+						new Error('database unavailable'),
+					);
+
+					await expect(executionService.stop(execution.id, [execution.id])).rejects.toThrow(
+						'database unavailable',
+					);
+
+					expect(executionStopService.requestStop).toHaveBeenCalledWith(execution.id);
+				});
 			});
 		});
 	});
