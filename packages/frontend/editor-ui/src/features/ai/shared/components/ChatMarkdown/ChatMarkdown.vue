@@ -69,10 +69,6 @@ const markdown = useChatMarkdownOptions(() => props.options);
 </style>
 
 <style scoped>
-.n8n-markdown {
-	--n8n-markdown--font-size--base: var(--chat--font-size);
-	font-size: var(--n8n-markdown--font-size--base);
-}
 .n8n-markdown :deep(.n8n-markdown-footnote-block) {
 	display: none;
 }

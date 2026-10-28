@@ -1110,21 +1110,6 @@ watch(
 	color: var(--text-color--danger);
 }
 
-.markdownContent {
-	--n8n-markdown--font-size--base: var(--chat--font-size);
-	font-size: var(--n8n-markdown--font-size--base);
-	color: var(--text-color);
-	line-height: var(--line-height--xl);
-
-	> *:last-child > *:last-child {
-		margin-bottom: 0;
-	}
-
-	> *:first-child > *:first-child {
-		margin-top: 0;
-	}
-}
-
 .typingIndicator {
 	margin-top: var(--spacing--xs);
 }
