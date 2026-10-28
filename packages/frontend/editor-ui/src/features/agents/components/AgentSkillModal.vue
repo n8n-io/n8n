@@ -963,7 +963,7 @@ function onRemove() {
 			<N8nSwitch
 				id="skill-assistant-availability"
 				v-model="availableToAssistant"
-				:label="i18n.baseText('settings.context.skills.assistant.label')"
+				:label="i18n.baseText('settings.context.skills.assistant.toggle')"
 				:disabled="editorLocked"
 				data-testid="skill-assistant-availability"
 			/>
