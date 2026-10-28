@@ -2,7 +2,7 @@
 import { computed, inject } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, n8nHtml as vN8nHtml } from '@n8n/design-system';
 import {
 	buildAgentTestHref,
 	resolveAgentTestLink,
@@ -125,7 +125,7 @@ function handleClick(event: MouseEvent) {
 	>
 		<N8nIcon v-if="icon" :icon="icon" aria-hidden="true" :class="$style.icon" />
 		<template v-if="testLabel">{{ testLabel }}</template>
-		<span v-else-if="labelHtml !== undefined" v-html="labelHtml" />
+		<span v-else-if="labelHtml !== undefined" v-n8n-html="labelHtml" />
 		<template v-else>{{ label }}</template>
 	</a>
 </template>
