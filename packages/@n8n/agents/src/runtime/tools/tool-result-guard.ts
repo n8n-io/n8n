@@ -1,3 +1,4 @@
+import { MAX_AGENT_FILE_SIZE_BYTES } from '@n8n/api-types';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentMessage } from '../../types/sdk/message';
@@ -19,8 +20,6 @@ export {
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
 // BPE tokens cannot exceed UTF-8 bytes; reserve room for provider message framing.
 const SMALL_PAYLOAD_OVERHEAD_BYTES = 1_024;
-// Matches the n8n sandbox service file limit; it rejects larger uploads.
-export const MAX_OFFLOADED_TOOL_RESULT_BYTES = 25 * 1024 * 1024;
 
 interface TruncatedToolResult extends JSONObject {
 	_truncated: true;
@@ -198,7 +197,7 @@ async function tryOffloadResult(
 	storage?: ToolResultGuardStorage,
 ): Promise<OffloadedToolResult | undefined> {
 	if (!storage || storage.filesystem.readOnly === true) return undefined;
-	if (Buffer.byteLength(serialized, 'utf8') > MAX_OFFLOADED_TOOL_RESULT_BYTES) return undefined;
+	if (Buffer.byteLength(serialized, 'utf8') > MAX_AGENT_FILE_SIZE_BYTES) return undefined;
 
 	try {
 		const path = await storeToolResult(storage.filesystem, storage, kind, serialized);
