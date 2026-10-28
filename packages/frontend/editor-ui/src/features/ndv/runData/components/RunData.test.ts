@@ -433,6 +433,16 @@ describe('RunData', () => {
 		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
 	});
 
+	it('should not render pagination on html tab', async () => {
+		const { queryByTestId } = render({
+			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
+				json: { html: `<h1>Test ${i}</h1>` },
+			})),
+			displayMode: 'html',
+		});
+		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+	});
+
 	it('should render pagination with binary data on non-binary tab', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
