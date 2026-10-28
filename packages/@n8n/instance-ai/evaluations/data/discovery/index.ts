@@ -7,11 +7,26 @@ import type { DiscoveryMcpState } from '../../discovery/stub-mcp-registry';
 import type { DiscoveryConfirmations, DiscoveryTestCase } from '../../discovery/types';
 import { CaseSeedSchema, type CaseSeed } from '../../harness/schema';
 
+/** Inline seed slots the stub instance cannot create. A case that declares one
+ *  would run without that state, so the loader rejects it. */
+const UNSUPPORTED_INLINE_SEED_SLOTS = ['folders', 'projects', 'recordedRuns'] as const;
+
 /** The stub instance serves inline seeds only; a replay seed needs a real thread. */
 const inlineSeedSchema = CaseSeedSchema.refine(
 	(seed): seed is Extract<CaseSeed, { mode: 'inline' }> => seed.mode === 'inline',
 	{ message: 'discovery cases support only an inline seed' },
-);
+).superRefine((seed, ctx) => {
+	if (seed.mode !== 'inline') return;
+	for (const slot of UNSUPPORTED_INLINE_SEED_SLOTS) {
+		if ((seed[slot]?.length ?? 0) > 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [slot],
+				message: `the discovery stub instance cannot seed ${slot}`,
+			});
+		}
+	}
+});
 
 const forbiddenToolCallSchema = z
 	.object({

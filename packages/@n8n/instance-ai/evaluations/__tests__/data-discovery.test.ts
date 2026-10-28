@@ -7,8 +7,24 @@
  * runner.
  */
 
+import type { InstanceAiEvalFailedExecutionEnvelope } from '@n8n/api-types';
+
 import { discoveryTestCaseSchema, loadDiscoveryTestCasesWithFiles } from '../data/discovery';
 import { runExpectedToolsInvokedCheck } from '../discovery/expected-tools-invoked';
+
+const recordedEnvelope: InstanceAiEvalFailedExecutionEnvelope = {
+	format: 'n8n-instance-ai-failed-execution',
+	version: 1,
+	source: {
+		executionId: '42',
+		workflowId: 'source-wf',
+		workflowVersionId: null,
+		createdAt: '2026-10-20T06:00:00.000Z',
+		startedAt: '2026-10-20T06:00:00.000Z',
+		stoppedAt: '2026-10-20T06:00:05.000Z',
+	},
+	execution: { mode: 'trigger', status: 'error', finished: false, workflowData: {}, data: '[{}]' },
+};
 
 describe('loadDiscoveryTestCasesWithFiles', () => {
 	const cases = loadDiscoveryTestCasesWithFiles();
@@ -107,6 +123,39 @@ describe('discoveryTestCaseSchema', () => {
 	])('validates the browserUse state strictly: %s', (_name, browserUse, ok) => {
 		const withState = { ...valid, instanceState: { browserUse } };
 		expect(discoveryTestCaseSchema.safeParse(withState).success).toBe(ok);
+	});
+
+	it('accepts an inline seed with workflows the stub instance serves', () => {
+		const seeded = {
+			...valid,
+			seed: {
+				mode: 'inline',
+				workflows: [{ id: 'wf-seeded-1', name: 'Seeded', nodes: [], connections: {} }],
+			},
+		};
+		expect(discoveryTestCaseSchema.safeParse(seeded).success).toBe(true);
+	});
+
+	it('rejects a replay seed', () => {
+		const replay = { ...valid, seed: { mode: 'replay', threadId: 'thread-1' } };
+		expect(discoveryTestCaseSchema.safeParse(replay).success).toBe(false);
+	});
+
+	it.each([
+		['folders', { folders: [{ id: 'folder-0001', name: 'Reports' }] }],
+		['projects', { projects: [{ name: 'Foobar' }] }],
+		[
+			'recordedRuns',
+			{
+				workflows: [{ id: 'wf-seeded-1', name: 'Seeded', nodes: [], connections: {} }],
+				recordedRuns: [{ workflow: 'wf-seeded-1', envelope: recordedEnvelope }],
+			},
+		],
+	])('rejects an inline seed with %s, which the stub instance cannot serve', (slot, extra) => {
+		const unsupported = { ...valid, seed: { mode: 'inline', ...extra } };
+		const parsed = discoveryTestCaseSchema.safeParse(unsupported);
+		expect(parsed.success).toBe(false);
+		expect(parsed.error?.issues.map((issue) => issue.path.join('.'))).toContain(`seed.${slot}`);
 	});
 
 	it('rejects the retired computerUse key instead of passing vacuously', () => {
