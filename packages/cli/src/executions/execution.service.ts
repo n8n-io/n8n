@@ -204,6 +204,34 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
+<<<<<<< HEAD
+=======
+		// Reading a workflow is not reading its runs: a custom project role can
+		// hold `workflow:read` without `execution:read`, as in the executions API.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) return undefined;
+
+		// A workflow runs on one engine, and only that engine holds its executions.
+		const settings = await this.workflowRepository.findSettings(workflowId);
+		const execution =
+			settings?.engineType === 'v2'
+				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
+				: await this.lastSuccessfulV1Execution(workflowId);
+		if (!execution) return undefined;
+
+		await this.executionRedactionServiceProxy.processExecution(execution, {
+			user,
+			redactExecutionData,
+		});
+		return execution;
+	}
+
+	private async lastSuccessfulV1Execution(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+>>>>>>> cbe4d6c8 (fix(core): Require execution:read when workflow-scoped routes read execution data (#42305))
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
