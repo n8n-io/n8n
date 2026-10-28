@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_7697af894b7e28::t_33b6aa9555c4fd 230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55ba726b92c8025610076b149956be20c732b133",
+  "prompts": {},
+  "sessions": {
+    "s_7697af894b7e28": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18278-bbae-7797-835a-71590a3e3e5c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
