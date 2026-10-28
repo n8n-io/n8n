@@ -973,6 +973,8 @@ function onRemove() {
 		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
 		:show-cancel="step !== 'select' && !viewedVersion"
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
+		:header-divider="isFormStep"
+		:body-flush="isFormStep"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
 		data-testid="agent-skill-modal"
@@ -1104,7 +1106,7 @@ function onRemove() {
 			<N8nCallout
 				v-if="data.readOnly"
 				theme="info"
-				:class="$style.callout"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-read-only-callout"
 			>
 				{{ i18n.baseText('settings.context.skills.readOnly') }}
@@ -1112,7 +1114,7 @@ function onRemove() {
 			<N8nCallout
 				v-if="openedWithMissingContent && !isReadOnly"
 				theme="warning"
-				:class="$style.callout"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-missing-content-callout"
 			>
 				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
@@ -1120,7 +1122,7 @@ function onRemove() {
 			<N8nCallout
 				v-if="accessWarning"
 				theme="warning"
-				:class="$style.callout"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-access-warning"
 			>
 				{{ accessWarning }}
@@ -1133,7 +1135,13 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div :class="[$style.content, versionsOpen && versions && $style.contentWithVersions]">
+			<div
+				:class="[
+					$style.content,
+					isFormStep && $style.contentFlush,
+					versionsOpen && versions && $style.contentWithVersions,
+				]"
+			>
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1143,6 +1151,7 @@ function onRemove() {
 				/>
 				<template v-else>
 					<AgentSkillFileNav
+						:class="isFormStep && $style.fileColumn"
 						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
@@ -1154,6 +1163,7 @@ function onRemove() {
 					/>
 					<AgentSkillViewer
 						:key="viewedVersion?.version ?? 'latest'"
+						:class="isFormStep && $style.formColumn"
 						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
@@ -1296,19 +1306,39 @@ function onRemove() {
 	width: min(68rem, calc(100dvw - var(--spacing--lg) * 3));
 }
 
+/* A full-width strip under the header, as the body of the form steps is flush. */
 .viewingBar {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--md);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-radius: var(--radius);
+	padding: var(--spacing--xs) var(--spacing--lg);
+	border-bottom: var(--border);
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--shade-1);
 }
 
 .versionsButtonActive {
 	background-color: var(--background--active);
+}
+
+/* The form steps have a flush body, so their callouts keep the body inset themselves. */
+.calloutInset {
+	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+/* The file list runs to the edges of the modal and each column keeps its own inset. */
+.contentFlush {
+	gap: 0;
+	align-items: stretch;
+}
+
+.fileColumn {
+	background-color: var(--color--background--light-2);
+}
+
+.formColumn {
+	flex: 1;
+	padding: var(--spacing--md) var(--spacing--lg);
 }
 
 .footerHint {
