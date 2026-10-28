@@ -40,6 +40,12 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('anthropic.tool_search')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('anthropic.tool_search_2')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
 		expect(getToolNameTranslationKey('openai.tool_search')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('anthropic.tool_search_bm25_20251119')).toBe(
+			TOOL_SEARCH_TOOL_NAME_KEY,
+		);
+		expect(getToolNameTranslationKey('anthropic.tool_search_regex_20251119')).toBe(
+			TOOL_SEARCH_TOOL_NAME_KEY,
+		);
 		expect(getToolNameTranslationKey('tool_search')).toBeUndefined();
 	});
 

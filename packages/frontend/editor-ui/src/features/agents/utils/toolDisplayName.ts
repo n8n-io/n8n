@@ -14,8 +14,10 @@ export const FLAG_MEMORY_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.fla
 export const TOOL_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.toolSearch';
 
 const WEB_SEARCH_TOOL_NAME_PATTERN = /^(?:web_search|(?:anthropic|openai)\.web_search(?:_\d{8})?)$/;
-// Native tool search is registered as `<provider>.tool_search`, with `_N` added on a name collision.
-const TOOL_SEARCH_TOOL_NAME_PATTERN = /^(?:anthropic|openai)\.tool_search(?:_\d+)?$/;
+// Native tool search is registered as `<provider>.tool_search`, with an optional
+// `_bm25_<date>` or `_regex_<date>` variant suffix and `_N` added on a name collision.
+const TOOL_SEARCH_TOOL_NAME_PATTERN =
+	/^(?:anthropic|openai)\.tool_search(?:_(?:bm25|regex)_\d{8})?(?:_\d+)?$/;
 const FIND_FILE_TOOL_NAME = 'find_file';
 const SEARCH_TEXT_TOOL_NAME = 'search_text';
 const READ_FILE_TOOL_NAME = 'read_file';
