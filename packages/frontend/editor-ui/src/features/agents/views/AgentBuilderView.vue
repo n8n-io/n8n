@@ -3451,7 +3451,6 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
-			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3459,7 +3458,6 @@ useKeybindings({
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
-			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3677,6 +3675,7 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
+					:tasks="areSetupTasksVisible && !isAgentArchived ? setupTasks : undefined"
 					:main-tab-options="mainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
@@ -3716,6 +3715,7 @@ useKeybindings({
 					@open-preview="onOpenPreview"
 					@close-preview="closePreviewDock"
 					@publish-agent="onSetupTaskPublishAgent"
+					@setup-task-action="onSetupTaskAction"
 				/>
 
 				<AgentVersionHistoryPanel
