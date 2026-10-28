@@ -3,7 +3,7 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import {
@@ -2332,14 +2332,21 @@ describe('credential tools', () => {
 });
 
 describe('update credential description tool', () => {
-	it.each(['  Reporting  ', '', null])(
+	it('advertises an explicit description and rejects missing or null input', () => {
+		const tool = createUpdateCredentialDescriptionTool(createMockContext());
+		expect(inputJsonSchema(tool).required).toContain('description');
+		expect(parseToolInput(tool, { credentialId: 'cred-1' }).success).toBe(false);
+		expect(parseToolInput(tool, { credentialId: 'cred-1', description: null }).success).toBe(false);
+	});
+
+	it.each(['  Reporting  ', '', '  '])(
 		'updates or clears the description: %s',
 		async (description) => {
 			const context = createMockContext();
 			const tool = createUpdateCredentialDescriptionTool(context);
-			expect(
-				await executeTool(tool, { credentialId: 'cred-1', description }, noSuspendCtx()),
-			).toEqual({ success: true });
+			const parsed = parseToolInput(tool, { credentialId: 'cred-1', description });
+			if (!parsed.success) throw parsed.error;
+			expect(await executeTool(tool, parsed.data, noSuspendCtx())).toEqual({ success: true });
 			expect(context.credentialService.updateDescription).toHaveBeenCalledWith(
 				'cred-1',
 				description?.trim() || null,

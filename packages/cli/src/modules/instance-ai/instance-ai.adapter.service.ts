@@ -1135,13 +1135,16 @@ export class InstanceAiAdapterService {
 			}
 		};
 
-		const assertCredentialInBoundProject = async (credentialId: string) => {
+		const assertCredentialInBoundProject = async (
+			credentialId: string,
+			{ requireOwner = false }: { requireOwner?: boolean } = {},
+		) => {
 			if (boundProjectId === undefined) return;
 			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 				credentialId,
 			);
-			// A missing credential falls through to the caller's not-found path.
-			if (owner) assertInBoundProject(owner.id);
+			// Description edits require a project owner; other callers retain their not-found path.
+			if (owner || requireOwner) assertInBoundProject(owner?.id);
 		};
 
 		return {
@@ -3058,7 +3061,7 @@ export class InstanceAiAdapterService {
 
 			async updateDescription(credentialId, description) {
 				assertInstanceWritable();
-				await assertCredentialInBoundProject(credentialId);
+				await assertCredentialInBoundProject(credentialId, { requireOwner: true });
 				await credentialsService.updateDescription(user, credentialId, description);
 			},
 

@@ -929,12 +929,12 @@ describe('bound project write guard', () => {
 		await expect(write).rejects.toThrow(OutsideThreadProjectError);
 	};
 
-	it.each(['bound-project', 'other-project'])(
+	it.each(['bound-project', 'other-project', undefined])(
 		'checks the credential owner project before updating a description: %s',
 		async (projectId) => {
-			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue({
-				id: projectId,
-			} as never);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				projectId ? ({ id: projectId } as never) : undefined,
+			);
 			const ctx = service.createContext(user, { projectId: 'bound-project' });
 			const write = ctx.credentialService.updateDescription('cred-1', 'Reporting');
 			if (projectId === 'bound-project') {

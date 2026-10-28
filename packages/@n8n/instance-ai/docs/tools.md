@@ -844,7 +844,7 @@ response never contains credential secret data.
 ### `update_credential_description`
 
 Set or replace an existing credential description. Pass `credentialId` and `description`.
-The description is trimmed and limited to 512 characters. Pass `null` or a blank string to clear it.
+The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
 Returns `{ success: true }`.
 
 The tool is available when credential descriptions are enabled. The user must have

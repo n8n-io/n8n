@@ -1089,11 +1089,13 @@ export function createDeleteCredentialTool(context: InstanceAiContext) {
 }
 
 export function createUpdateCredentialDescriptionTool(context: InstanceAiContext) {
+	// Sanitization makes nullable fields optional, but updates require an explicit description.
+	const inputSchema = sanitizeInputSchema(updateCredentialDescriptionSchema).required();
 	return new Tool(DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION)
 		.description(
 			'Update the description of an existing credential. The credential name, type, and secret data stay unchanged.',
 		)
-		.input(sanitizeInputSchema(updateCredentialDescriptionSchema))
+		.input(inputSchema)
 		.output(z.object({ success: z.literal(true) }))
 		.handler(async (input) => {
 			const { credentialId, description } = updateCredentialDescriptionSchema.parse(input);

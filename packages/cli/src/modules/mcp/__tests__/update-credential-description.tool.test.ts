@@ -25,6 +25,7 @@ describe('update credential description MCP tool', () => {
 			expect(result.structuredContent).toEqual({ success: true });
 			expect(result.content).toEqual([{ type: 'text', text: JSON.stringify({ success: true }) }]);
 			expect(tool.config.annotations?.readOnlyHint).toBe(false);
+			expect(tool.config.annotations?.destructiveHint).toBe(true);
 			expect(telemetry.track.mock.calls[0][1]).toMatchObject({
 				parameters: { credentialId: 'cred-1' },
 			});
