@@ -1,5 +1,5 @@
 import { createScopedWorkspace } from '@n8n/agents';
-import type { Workspace } from '@n8n/agents';
+import type { RuntimeSkillSource, Workspace } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -77,6 +77,35 @@ export function resolveOperatorPromptVersion(configured: string | undefined): st
 	if (!version) return undefined;
 	assertInstanceAiPromptVersion(version);
 	return version;
+}
+
+const WORKFLOW_BUILDER_SKILL_ID = 'workflow-builder';
+
+/**
+ * Starts the sandbox when the workflow builder skill first loads. The build
+ * uses the sandbox only after the model has streamed the workflow source, so
+ * setup runs in that window instead of blocking the first workspace tool call,
+ * which joins the in-flight setup.
+ */
+function withSandboxPrewarm(source: RuntimeSkillSource, prewarm: () => void): RuntimeSkillSource {
+	let started = false;
+	return {
+		...source,
+		// Delegate, because a source's `prepare` can replace its registry.
+		get registry() {
+			return source.registry;
+		},
+		set registry(registry) {
+			source.registry = registry;
+		},
+		loadSkill: async (skillId) => {
+			if (skillId === WORKFLOW_BUILDER_SKILL_ID && !started) {
+				started = true;
+				prewarm();
+			}
+			return await source.loadSkill(skillId);
+		},
+	};
 }
 
 /** What the shared turn setup returns for one run. */
@@ -455,6 +484,7 @@ export class AssistantTurnEnvironmentFactory {
 		runtime.turnState.setPromptConfiguration(promptMetadata);
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
+		let skillSource = skills.source;
 
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		if (sandboxStatus.workflowBuilderAvailable) {
@@ -485,6 +515,15 @@ export class AssistantTurnEnvironmentFactory {
 					filesystemInstructions: '',
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent(await runtime.sandbox.getOrCreateWorkspace(context)),
+				});
+				skillSource = withSandboxPrewarm(skills.source, () => {
+					void runtime.sandbox.getOrCreateWorkspace(context).catch((error: unknown) => {
+						this.logger.warn('Failed to prepare the sandbox in the background', {
+							threadId,
+							runId,
+							error: getErrorMessage(error),
+						});
+					});
 				});
 			}
 		}
@@ -550,7 +589,7 @@ export class AssistantTurnEnvironmentFactory {
 			taskStorage,
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
-			skills: skills.source,
+			skills: skillSource,
 			skillAvailabilityNotice: skills.availabilityNotice,
 			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,

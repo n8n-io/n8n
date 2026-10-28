@@ -132,6 +132,116 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			abortSignal: new AbortController().signal,
 		};
 
+		describe('sandbox prewarm', () => {
+			const skillContent = { id: 'workflow-builder', body: 'skill body' };
+
+			function createSandboxSetup({
+				enabled = true,
+				workflowBuilderAvailable = true,
+				getOrCreateWorkspace = vi.fn(async () => undefined),
+			}: {
+				enabled?: boolean;
+				workflowBuilderAvailable?: boolean;
+				getOrCreateWorkspace?: AssistantTurnRuntime['sandbox']['getOrCreateWorkspace'];
+			} = {}) {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getSandboxStatus = vi.fn(() => ({ workflowBuilderAvailable }));
+				fields.skillsService.loadSkills = vi.fn(async () => ({
+					source: {
+						registry: { skillsHash: 'hash', skills: [] },
+						loadSkill: vi.fn(async () => skillContent),
+					},
+					disabledTools: [],
+				}));
+				const runtime = createRuntime({
+					sandbox: {
+						resolveConfig: vi.fn(
+							async () => ({ enabled, provider: 'n8n-sandbox' }) as SandboxConfig,
+						),
+						getOrCreateWorkspace,
+					},
+				});
+				return { factory, fields, runtime };
+			}
+
+			it('starts the sandbox once when the workflow-builder skill loads', async () => {
+				const { factory, runtime } = createSandboxSetup();
+
+				const { context, orchestrationContext } = await factory.create(params, runtime);
+				const { skills } = orchestrationContext;
+				const loaded = await skills?.loadSkill('workflow-builder');
+				await skills?.loadSkill('workflow-builder');
+
+				expect(loaded).toBe(skillContent);
+				expect(runtime.sandbox.getOrCreateWorkspace).toHaveBeenCalledTimes(1);
+				expect(runtime.sandbox.getOrCreateWorkspace).toHaveBeenCalledWith(context);
+			});
+
+			it('shows a registry that the source replaces during prepare', async () => {
+				const { factory, fields, runtime } = createSandboxSetup();
+				const refreshed = { skillsHash: 'refreshed', skills: [] };
+				const source = {
+					registry: { skillsHash: 'hash', skills: [] },
+					loadSkill: vi.fn(async () => skillContent),
+					prepare: vi.fn(async () => {
+						source.registry = refreshed;
+					}),
+				};
+				fields.skillsService.loadSkills = vi.fn(async () => ({ source, disabledTools: [] }));
+
+				const { orchestrationContext } = await factory.create(params, runtime);
+				await orchestrationContext.skills?.prepare?.();
+
+				expect(orchestrationContext.skills?.registry).toBe(refreshed);
+			});
+
+			it('does not start the sandbox for other skills', async () => {
+				const { factory, runtime } = createSandboxSetup();
+
+				const { orchestrationContext } = await factory.create(params, runtime);
+				await orchestrationContext.skills?.loadSkill('data-table-manager');
+
+				expect(runtime.sandbox.getOrCreateWorkspace).not.toHaveBeenCalled();
+			});
+
+			it('does not start the sandbox when it is disabled', async () => {
+				const { factory, runtime } = createSandboxSetup({ enabled: false });
+
+				const { orchestrationContext } = await factory.create(params, runtime);
+				await orchestrationContext.skills?.loadSkill('workflow-builder');
+
+				expect(runtime.sandbox.getOrCreateWorkspace).not.toHaveBeenCalled();
+			});
+
+			it('does not start the sandbox when workflow building is unavailable', async () => {
+				const { factory, runtime } = createSandboxSetup({ workflowBuilderAvailable: false });
+
+				const { orchestrationContext } = await factory.create(params, runtime);
+				await orchestrationContext.skills?.loadSkill('workflow-builder');
+
+				expect(runtime.sandbox.getOrCreateWorkspace).not.toHaveBeenCalled();
+			});
+
+			it('logs a failed prewarm and still returns the skill', async () => {
+				const { factory, fields, runtime } = createSandboxSetup({
+					getOrCreateWorkspace: vi.fn(async () => {
+						throw new Error('sandbox unavailable');
+					}),
+				});
+
+				const { orchestrationContext } = await factory.create(params, runtime);
+				const loaded = await orchestrationContext.skills?.loadSkill('workflow-builder');
+
+				expect(loaded).toBe(skillContent);
+				await vi.waitFor(() =>
+					expect(fields.logger.warn).toHaveBeenCalledWith(
+						'Failed to prepare the sandbox in the background',
+						expect.objectContaining({ threadId: 'thread-1', error: 'sandbox unavailable' }),
+					),
+				);
+			});
+		});
+
 		it('reads and stores the turn settings through the runtime', async () => {
 			const { factory } = createSetupFactory();
 			const runtime = createRuntime();
