@@ -30,6 +30,8 @@ jobs:
     env:
       # NODE_OPTIONS does not limit tsgolint's Go heap. Leave room for the concurrent lint task.
       GOMEMLIMIT: ${{ inputs.runner-provider == 'namespace' && matrix.name == 'Backend' && '6GiB' || '' }}
+      # tsgolint runs more workers on 8 vCPU than on Blacksmith's 4 and runs out of the 16 GB.
+      GOMAXPROCS: ${{ inputs.runner-provider == 'namespace' && matrix.name == 'Backend' && '4' || '' }}
     strategy:
       fail-fast: false
       matrix:
