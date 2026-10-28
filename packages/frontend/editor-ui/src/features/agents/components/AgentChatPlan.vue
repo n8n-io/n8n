@@ -86,20 +86,26 @@ watch(
 	{ immediate: true },
 );
 
+const endTime = computed(() => {
+	if (isFinished.value) {
+		return Date.parse(props.plan.finishedAt ?? props.plan.closedAt ?? '') || now.value;
+	}
+
+	if (props.plan.closed) return Date.parse(props.plan.closedAt ?? '');
+
+	if (isStopped.value) {
+		return Date.parse(props.plan.lastActivityAt ?? props.stoppedAt ?? '') || now.value;
+	}
+
+	if (tasks.value.some((task) => task.status === 'in_progress')) return now.value;
+
+	return Date.parse(props.plan.lastActivityAt ?? '') || now.value;
+});
+
 const elapsed = computed(() => {
-	const endTime = isFinished.value
-		? Date.parse(props.plan.finishedAt ?? props.plan.closedAt ?? '') || now.value
-		: props.plan.closed
-			? Date.parse(props.plan.closedAt ?? '')
-			: isStopped.value
-				? Date.parse(props.plan.lastActivityAt ?? props.stoppedAt ?? '') || now.value
-				: tasks.value.some((task) => task.status === 'in_progress')
-					? now.value
-					: Date.parse(props.plan.lastActivityAt ?? '') || now.value;
+	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime.value)) return null;
 
-	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
-
-	return formatAgentElapsedTime(endTime - startTime.value);
+	return formatAgentElapsedTime(endTime.value - startTime.value);
 });
 
 const label = computed(() => {
@@ -115,6 +121,14 @@ const label = computed(() => {
 				i18n.baseText('agents.chat.plan.title', {
 					interpolate: { title: props.plan.document.title },
 				}));
+});
+
+const stopLabel = computed(() => {
+	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+
+	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.retry');
+
+	return i18n.baseText('agents.chat.tasks.stopAll');
 });
 
 type PlanItem = AgentPlanView['document']['items'][number];
@@ -333,15 +347,7 @@ const summary = computed(() => {
 					data-testid="agent-chat-plan-stop"
 					@click="emit('stop', $event)"
 				>
-					{{
-						i18n.baseText(
-							stopping
-								? 'agents.chat.tasks.stopping'
-								: stopFailed
-									? 'agents.chat.tasks.retry'
-									: 'agents.chat.tasks.stopAll',
-						)
-					}}
+					{{ stopLabel }}
 				</N8nButton>
 				<span :class="$style.summary" data-testid="agent-chat-plan-summary">{{ summary }}</span>
 			</div>

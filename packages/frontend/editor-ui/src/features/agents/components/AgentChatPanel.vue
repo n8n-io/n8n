@@ -64,9 +64,9 @@ import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
+import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
 import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
-import { isAgentPlanFinished } from '../utils/agent-plan';
 import {
 	mergeClientContextPatches,
 	type AgentChatComposerAttachment,
@@ -87,9 +87,7 @@ import {
 	type BudgetAmountField,
 } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
-import { useAgentPlan } from '../composables/useAgentPlan';
-import { useAgentTaskCancellation } from '../composables/useAgentTaskCancellation';
-import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
+import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControls';
 import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ApprovalCard from './interactive/ApprovalCard.vue';
@@ -286,86 +284,6 @@ provide(
 	computed(() => props.interactionExtensions),
 );
 
-const planStopActive = computed(() => props.channel === 'chat' && props.backgroundJobsActive);
-
-const completedPlanCalls = computed(() =>
-	messages.value
-		.flatMap((message) => message.toolCalls ?? [])
-		.filter(
-			(call) =>
-				['create_plan', 'read_plan', 'update_plan', 'close_plan'].includes(call.tool) &&
-				call.state === TOOL_CALL_STATE.DONE,
-		)
-		.map((call) => call.toolCallId)
-		.join(','),
-);
-
-const {
-	state: planStop,
-	isStopping: stoppingPlan,
-	stopAll: stopPlan,
-} = useAgentTaskCancellation({
-	projectId: () => props.projectId,
-	agentId: () => props.agentId,
-	threadId: () => props.continueSessionId,
-	active: () => planStopActive.value,
-	planId: () => currentPlan.value?.planId ?? null,
-	requestStop: requestTaskStop,
-});
-
-const { plan: currentPlan, refresh: refreshPlan } = useAgentPlan({
-	projectId: () => props.projectId,
-	agentId: () => props.agentId,
-	threadId: () => props.continueSessionId,
-	active: () => true,
-	channel: () => props.channel,
-});
-
-watch(completedPlanCalls, () => {
-	void refreshPlan();
-});
-
-const currentPlanStop = computed(() =>
-	planStopActive.value && planStop.value?.planId === (currentPlan.value?.planId ?? null)
-		? planStop.value
-		: null,
-);
-
-const planExpanded = ref(false);
-
-watch(
-	[
-		() => props.projectId,
-		() => props.agentId,
-		() => props.continueSessionId,
-		() => currentPlan.value?.planId,
-	],
-	() => {
-		planExpanded.value = false;
-	},
-);
-
-const canStopPlan = computed(
-	() =>
-		planStopActive.value &&
-		!planStopped.value &&
-		(canStopBackgroundJobs.value ||
-			(!currentPlan.value?.closed &&
-				currentPlan.value?.document.items.some(
-					(item) =>
-						item.status === 'pending' ||
-						item.status === 'in_progress' ||
-						(item.kind === 'group' &&
-							item.tasks.some(
-								(task) => task.status === 'pending' || task.status === 'in_progress',
-							)),
-				))),
-);
-
-const showPlanStop = computed(
-	() => planStopActive.value && (canStopPlan.value || tasksStopping.value),
-);
-
 const editingQueueId = ref<string>();
 provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 	getChatAttachmentUrl(
@@ -544,182 +462,36 @@ async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: numb
 	if (queueOrder.value !== reordered) return;
 	queueOrder.value = undefined;
 }
+
 const {
-	jobs: backgroundJobs,
+	currentPlan,
+	planExpanded,
+	planStopActive,
+	planCardProps,
+	showPlanCard,
+	backgroundJobs,
+	showBackgroundJobs,
+	canStopBackgroundJobs,
+	backgroundStoppingIds,
+	backgroundStopLabel,
+	tasksStopping,
+	tasksStopped,
+	stopDisabled,
+	stopNotice,
+	stopTasks,
 	respondToApproval,
-	stopAll,
-	isStopping,
-} = useAgentBackgroundJobs({
+} = useAgentChatTaskControls({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => props.backgroundJobsActive,
 	channel: () => props.channel,
-	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
+	backgroundJobsActive: () => props.backgroundJobsActive,
+	visible: () => props.visible,
+	messages: () => messages.value,
+	requestStop: requestTaskStop,
+	hasPendingApprovals: () => hasPendingApprovals.value,
+	focusInput,
 });
-const canStopBackgroundJobs = computed(() =>
-	backgroundJobs.value.some((job) => job.status === 'running' || job.status === 'suspended'),
-);
-const backgroundStoppingIds = computed(
-	() =>
-		new Set(
-			backgroundJobs.value
-				.filter(
-					(job) =>
-						(job.status === 'running' || job.status === 'suspended') &&
-						(isStopping.value || job.pauseRequested),
-				)
-				.map((job) => job.id),
-		),
-);
-
-const stopFailed = ref(false);
-
-const tasksStopping = computed(
-	() =>
-		isStopping.value ||
-		stoppingPlan.value ||
-		currentPlanStop.value?.status === 'stopping' ||
-		backgroundStoppingIds.value.size > 0,
-);
-
-const canRetryStop = computed(
-	() =>
-		stopFailed.value ||
-		currentPlanStop.value?.status === 'failed' ||
-		(!isStopping.value &&
-			backgroundJobs.value.some(
-				(job) => job.kind === 'workflow' && job.status === 'running' && job.pauseRequested,
-			)),
-);
-
-const stopDisabled = computed(() =>
-	props.channel === 'n8n-chat'
-		? isStopping.value
-		: isStopping.value || stoppingPlan.value || (tasksStopping.value && !canRetryStop.value),
-);
-
-const backgroundStopLabel = computed(() =>
-	locale.baseText(
-		props.channel === 'n8n-chat'
-			? 'agents.chat.backgroundTasks.stopAll'
-			: stopDisabled.value
-				? 'agents.chat.tasks.stopping'
-				: canRetryStop.value
-					? 'agents.chat.tasks.retry'
-					: 'agents.chat.tasks.stopAll',
-	),
-);
-
-const tasksStopped = computed(() => {
-	if (!planStopActive.value) return false;
-
-	if (tasksStopping.value || canStopBackgroundJobs.value) return false;
-
-	if (backgroundJobs.value.some((job) => job.status === 'paused')) return true;
-
-	// A job that finishes after Continue supersedes an earlier workflow stop.
-	const latest = [...backgroundJobs.value].sort((a, b) =>
-		(b.settledAt ?? '').localeCompare(a.settledAt ?? ''),
-	)[0];
-
-	return Boolean(latest?.pauseRequested);
-});
-
-const planStopped = computed(() => {
-	const tasks =
-		currentPlan.value?.document.items.flatMap((item) =>
-			item.kind === 'group' && item.tasks.length ? item.tasks : [item],
-		) ?? [];
-	const unfinished = tasks.filter((item) =>
-		['pending', 'in_progress', 'paused'].includes(item.status),
-	);
-
-	return unfinished.length > 0 && unfinished.every((item) => item.status === 'paused');
-});
-
-watch(
-	[
-		() => props.projectId,
-		() => props.agentId,
-		() => props.continueSessionId,
-		canStopBackgroundJobs,
-	],
-	() => {
-		stopFailed.value = false;
-	},
-);
-
-let taskStopFocus:
-	| { button: EventTarget | null; threadId?: string; projectId: string; agentId: string }
-	| undefined;
-
-async function restoreTaskStopFocus() {
-	if (!taskStopFocus) return;
-
-	const target = taskStopFocus;
-	taskStopFocus = undefined;
-	await nextTick();
-
-	if (
-		disposed ||
-		!props.visible ||
-		props.continueSessionId !== target.threadId ||
-		props.projectId !== target.projectId ||
-		props.agentId !== target.agentId ||
-		hasPendingApprovals.value ||
-		document.activeElement !== document.body
-	)
-		return;
-
-	if (
-		target.button instanceof HTMLElement &&
-		target.button.isConnected &&
-		!target.button.matches(':disabled')
-	)
-		target.button.focus({ preventScroll: true });
-	else focusInput({ preventScroll: true });
-}
-
-watch(stopDisabled, () => {
-	void restoreTaskStopFocus();
-});
-
-async function stopBackgroundJobs(event: MouseEvent) {
-	const stopCurrentPlan = planStopActive.value;
-
-	if (
-		stopDisabled.value ||
-		!(canRetryStop.value || (stopCurrentPlan ? canStopPlan.value : canStopBackgroundJobs.value))
-	)
-		return;
-
-	stopFailed.value = false;
-	const threadId = props.continueSessionId;
-
-	if (event.currentTarget === document.activeElement) {
-		taskStopFocus = {
-			button: event.currentTarget,
-			threadId: props.continueSessionId,
-			projectId: props.projectId,
-			agentId: props.agentId,
-		};
-	}
-
-	try {
-		if (stopCurrentPlan) await stopPlan();
-		else await stopAll();
-	} catch (error) {
-		if (disposed || props.continueSessionId !== threadId) return;
-
-		stopFailed.value = true;
-
-		if (!planStopActive.value)
-			toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
-	}
-
-	await restoreTaskStopFocus();
-}
 
 const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
@@ -922,70 +694,6 @@ const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
-const hideStoppedStack = computed(
-	() =>
-		planStopActive.value &&
-		(stoppingPlan.value ||
-			stopFailed.value ||
-			(currentPlanStop.value && currentPlanStop.value.status !== 'resumed') ||
-			(currentPlan.value ? planStopped.value : tasksStopped.value)),
-);
-
-const planFinished = computed(() => currentPlan.value && isAgentPlanFinished(currentPlan.value));
-
-const showPlanCard = computed(
-	() => Boolean(currentPlan.value) && !hideStoppedStack.value && !planFinished.value,
-);
-
-const stopNotice = computed(() => {
-	if (!planStopActive.value) return null;
-
-	if (stoppingPlan.value) return 'stopping';
-
-	if (stopFailed.value || currentPlanStop.value?.status === 'failed') return 'failed';
-
-	if (currentPlanStop.value?.status === 'resumed') return null;
-
-	if (currentPlanStop.value?.status === 'stopping') return 'stopping';
-
-	const report = currentPlanStop.value?.report;
-	const savedReply = messages.value.some(
-		(message) =>
-			message.executionId === report?.executionId &&
-			message.stopReport &&
-			(message.content.trim() || message.status !== 'streaming'),
-	);
-
-	if (savedReply) return null;
-
-	if (currentPlanStop.value?.reportFailed) return 'reportFailed';
-
-	if (
-		report &&
-		['queued', 'running'].includes(report.status) &&
-		!messages.value.some(
-			(message) =>
-				message.executionId === report.executionId &&
-				message.role === 'assistant' &&
-				message.content.trim(),
-		)
-	)
-		return 'preparing';
-
-	return null;
-});
-
-watch(hideStoppedStack, () => {
-	void restoreTaskStopFocus();
-});
-
-const showBackgroundJobs = computed(
-	() =>
-		props.backgroundJobsActive &&
-		!hideStoppedStack.value &&
-		(props.channel !== 'chat' || !currentPlan.value) &&
-		backgroundJobs.value.some((job) => ['running', 'suspended'].includes(job.status)),
-);
 
 function focusInput(options?: FocusOptions) {
 	chatInput.value?.focus(options);
@@ -1784,42 +1492,14 @@ onBeforeUnmount(() => {
 				<slot name="message-actions" v-bind="actionProps" />
 			</template>
 			<template v-if="stopNotice" #status>
-				<div
-					:class="$style.stopNotice"
-					role="status"
-					aria-live="polite"
-					data-testid="agent-task-stop-status"
-				>
-					<N8nIcon
-						v-if="stopNotice === 'stopping' || stopNotice === 'preparing'"
-						icon="loader-circle"
-						spin
-						size="small"
-						aria-hidden="true"
-					/>
-					<div>
-						<p>{{ locale.baseText(`agents.chat.tasks.inline.${stopNotice}`) }}</p>
-						<p v-if="stopNotice === 'stopping'">
-							{{ locale.baseText('agents.chat.tasks.inline.wait') }}
-						</p>
-						<N8nButton
-							v-if="stopNotice === 'failed'"
-							variant="ghost"
-							size="small"
-							:disabled="stopDisabled"
-							@click="stopBackgroundJobs"
-							>{{ locale.baseText('agents.chat.tasks.retry') }}</N8nButton
-						>
-						<N8nLink
-							v-if="continueSessionId && capabilities.traceLinks"
-							:to="backgroundTraceRoute"
-							theme="text"
-							size="small"
-							underline
-							>{{ locale.baseText('agents.chat.plan.viewTrace') }}</N8nLink
-						>
-					</div>
-				</div>
+				<AgentChatTaskStopNotice
+					:status="stopNotice"
+					:retry-disabled="stopDisabled"
+					:trace-route="
+						continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+					"
+					@retry="stopTasks"
+				/>
 			</template>
 		</AgentChatMessageList>
 
@@ -1910,7 +1590,7 @@ onBeforeUnmount(() => {
 								:class="$style.jobStopButton"
 								:disabled="stopDisabled"
 								data-testid="agent-background-jobs-stop"
-								@click="stopBackgroundJobs"
+								@click="stopTasks"
 							>
 								<span :class="$style.jobTraceLabel">
 									<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
@@ -1927,13 +1607,8 @@ onBeforeUnmount(() => {
 					v-model:expanded="planExpanded"
 					:plan="currentPlan"
 					:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
-					:show-stop="showPlanStop"
-					:can-stop="canStopPlan"
-					:stopping="planStopActive && stopDisabled"
-					:stopped="planStopped"
-					:stopped-at="currentPlanStop?.requestedAt"
-					:stop-failed="canRetryStop && canStopPlan && !isStopping"
-					@stop="stopBackgroundJobs"
+					v-bind="planCardProps"
+					@stop="stopTasks"
 				/>
 				<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
 					<ApprovalCard
@@ -2005,13 +1680,8 @@ onBeforeUnmount(() => {
 						<AgentChatPlan
 							v-else-if="currentPlan && showPlanCard"
 							v-model:expanded="planExpanded"
-							:show-stop="showPlanStop"
-							:can-stop="canStopPlan"
-							:stopping="planStopActive && stopDisabled"
-							:stopped="planStopped"
-							:stopped-at="currentPlanStop?.requestedAt"
-							:stop-failed="canRetryStop && canStopPlan && !isStopping"
-							@stop="stopBackgroundJobs"
+							v-bind="planCardProps"
+							@stop="stopTasks"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
 							:plan="currentPlan"
 							:trace-route="
@@ -2298,15 +1968,5 @@ onBeforeUnmount(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	word-break: break-word;
-}
-.stopNotice {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--sm);
-	p {
-		margin: 0;
-	}
 }
 </style>
