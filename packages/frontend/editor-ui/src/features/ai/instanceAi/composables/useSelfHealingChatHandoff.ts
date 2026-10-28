@@ -6,7 +6,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 
 import { useInstanceAiReady } from './useInstanceAiAvailability';
-import { ensurePersonalProjectId, useInstanceAiHandoff } from './useInstanceAiHandoff';
+import { useInstanceAiHandoff } from './useInstanceAiHandoff';
 
 export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 	const available = useInstanceAiReady();
@@ -46,5 +46,5 @@ export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
 		return outcome === 'setup' ? 'unavailable' : outcome;
 	}
 
-	return { available, resolveProjectId: ensurePersonalProjectId, start };
+	return { available, start };
 }

@@ -15,11 +15,10 @@ import * as api from './selfHealingResults.api';
 import { result, resultSelection, suggestion } from './selfHealingResults.test.utils';
 
 vi.mock('./selfHealingResults.api');
-const { push, showError, showMessage, resolveChatProject, startChat } = vi.hoisted(() => ({
+const { push, showError, showMessage, startChat } = vi.hoisted(() => ({
 	push: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
-	resolveChatProject: vi.fn(),
 	startChat: vi.fn(),
 }));
 vi.mock('vue-router', async (importOriginal) => ({
@@ -81,12 +80,10 @@ async function changeSelection(
 beforeEach(() => {
 	vi.resetAllMocks();
 	selectedId = resultSelection.id;
-	resolveChatProject.mockResolvedValue('personal-project');
 	startChat.mockResolvedValue('started');
 	chatAvailable.value = true;
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, () => ({
 		available: computed(() => chatAvailable.value),
-		resolveProjectId: resolveChatProject,
 		start: startChat,
 	}));
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result());
@@ -148,10 +145,7 @@ it.each([
 			}),
 		);
 		if (destination === 'chat') {
-			expect(resolveChatProject.mock.invocationCallOrder[0]).toBeLessThan(
-				vi.mocked(api.reviewSelfHealingResult).mock.invocationCallOrder[0],
-			);
-			expect(startChat).toHaveBeenCalledExactlyOnceWith('personal-project', closedResult);
+			expect(startChat).toHaveBeenCalledExactlyOnceWith(resultSelection.projectId, closedResult);
 			expect(push).not.toHaveBeenCalled();
 		} else {
 			expect(push).toHaveBeenCalledExactlyOnceWith({
@@ -187,56 +181,6 @@ it.each(['editor', 'chat'] as const)(
 		expect(view.getByTestId('result-content')).not.toHaveAttribute('data-pending');
 	},
 );
-
-it.each([true, false])(
-	'keeps the result open when the chat project cannot load with suggestion=%s',
-	async (withSuggestion) => {
-		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
-			result({
-				outcome: 'needs_you',
-				suggestion: withSuggestion ? suggestion({ resultKind: 'needs_you' }) : null,
-			}),
-		);
-		resolveChatProject.mockResolvedValueOnce(null);
-		const view = renderComponent();
-		await waitAllPromises();
-		view.getByTestId('chat').click();
-		await waitAllPromises();
-
-		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
-		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'open');
-		expect(showMessage).toHaveBeenCalledExactlyOnceWith(
-			expect.objectContaining({ type: 'error', title: "Couldn't open chat" }),
-		);
-		expect(onItemChange).not.toHaveBeenCalled();
-		expect(startChat).not.toHaveBeenCalled();
-
-		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
-			result({ outcome: 'needs_you', reviewState: withSuggestion ? 'applied' : 'dismissed' }),
-		);
-		view.getByTestId('chat').click();
-		await waitAllPromises();
-		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
-		expect(startChat).toHaveBeenCalledOnce();
-	},
-);
-
-it('does not close the result when the selection changes while the chat project loads', async () => {
-	const projectLookup = createDeferredPromise<string | null>();
-	resolveChatProject.mockReturnValue(projectLookup.promise);
-	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome: 'needs_you' }));
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId('chat').click();
-	selectedId = null;
-	projectLookup.resolve('personal-project');
-	await waitAllPromises();
-
-	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
-	expect(startChat).not.toHaveBeenCalled();
-	expect(showMessage).not.toHaveBeenCalled();
-	expect(onItemChange).not.toHaveBeenCalled();
-});
 
 it.each([
 	{ withSuggestion: true, reviewState: 'applied' },
@@ -341,8 +285,7 @@ it('offers chat without starting it when a lost Apply response is followed by ap
 
 	view.getByTestId('self-healing-chat-retry-button').click();
 	await waitAllPromises();
-	expect(startChat).toHaveBeenCalledExactlyOnceWith('personal-project', applied);
-	expect(resolveChatProject).toHaveBeenCalledOnce();
+	expect(startChat).toHaveBeenCalledExactlyOnceWith(resultSelection.projectId, applied);
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 	expect(view.queryByTestId('self-healing-chat-retry')).not.toBeInTheDocument();
 });
@@ -669,7 +612,6 @@ it.each(dismissals)(
 		expect(showError).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
 		expect(startChat).not.toHaveBeenCalled();
-		expect(resolveChatProject).not.toHaveBeenCalled();
 	},
 );
 
@@ -704,8 +646,7 @@ it.each(['busy', 'failed', 'unavailable'] as const)(
 		await waitAllPromises();
 
 		expect(startChat).toHaveBeenCalledTimes(2);
-		expect(startChat).toHaveBeenLastCalledWith('personal-project', applied);
-		expect(resolveChatProject).toHaveBeenCalledOnce();
+		expect(startChat).toHaveBeenLastCalledWith(resultSelection.projectId, applied);
 		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 		expect(onItemChange).toHaveBeenCalledOnce();
 		expect(view.queryByTestId('self-healing-chat-retry')).not.toBeInTheDocument();

@@ -177,7 +177,6 @@ async function onAction(action: SelfHealingResultAction) {
 		reviewAction = action;
 	}
 	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
-	let chatProjectId: string | null = null;
 
 	/**
 	 * Without a response, the saved state does not show which request closed the result.
@@ -193,8 +192,8 @@ async function onAction(action: SelfHealingResultAction) {
 			(action === 'dismiss' && result.reviewState === 'discarded');
 		if (!isSelected(target.id) || !closed) return false;
 
-		if (chatProjectId) {
-			const request = { target, projectId: chatProjectId, result };
+		if (action === 'chat') {
+			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
 		} else if (action !== 'dismiss') {
@@ -220,20 +219,6 @@ async function onAction(action: SelfHealingResultAction) {
 	}
 
 	try {
-		if (action === 'chat') {
-			// Load the chat project before closing, so a failed lookup leaves the result open.
-			chatProjectId = (await chat?.resolveProjectId().catch(() => null)) ?? null;
-			if (!isSelected(target.id)) return;
-			if (!chatProjectId) {
-				showMessage({
-					type: 'error',
-					title: i18n.baseText('inbox.selfHealing.action.chatError'),
-					message: i18n.baseText('inbox.selfHealing.action.chatProjectError'),
-				});
-				return;
-			}
-		}
-
 		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
 		store.acceptResult(result);
