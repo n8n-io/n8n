@@ -1585,12 +1585,12 @@ export class WorkflowExecute {
 		}
 	}
 
-	private markFailedBeforeStart(): void {
+	private markFailedBeforeStart(): boolean {
 		const { resultData } = this.runExecutionData;
 		const isResume = this.additionalData.restartExecutionId !== undefined;
-		if (!hasExecutionRunNodes(resultData.runData, isResume)) {
-			resultData.failedBeforeStart = true;
-		}
+		if (hasExecutionRunNodes(resultData.runData, isResume)) return false;
+		resultData.failedBeforeStart = true;
+		return true;
 	}
 
 	private setupExecution(): {
@@ -1712,8 +1712,7 @@ export class WorkflowExecute {
 			const e = error as unknown as ExecutionBaseError;
 
 			// Read before the start-node task below fills `runData`.
-			this.markFailedBeforeStart();
-			const { failedBeforeStart } = this.runExecutionData.resultData;
+			const failedBeforeStart = this.markFailedBeforeStart();
 
 			// Set the error that it can be saved correctly
 			const executionError: ExecutionBaseError = {
@@ -1745,7 +1744,7 @@ export class WorkflowExecute {
 					},
 					lastNodeExecuted: startItem.node.name,
 					error: executionError,
-					...(failedBeforeStart && { failedBeforeStart }),
+					...(failedBeforeStart && { failedBeforeStart: true }),
 				};
 			} else {
 				this.runExecutionData.resultData.error = executionError;
