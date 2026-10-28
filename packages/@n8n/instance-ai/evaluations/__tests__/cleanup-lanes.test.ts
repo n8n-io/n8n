@@ -38,6 +38,36 @@ describe('cleanupLanes', () => {
 		expect(deleteUser.mock.calls.map(([id]) => id as string)).toEqual(['u1', 'u2', 'u3']);
 	});
 
+	it('deletes the team build projects a build cleanup left, ignoring ones already gone', async () => {
+		const deleteProject = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('HTTP 404'))
+			.mockResolvedValue(undefined);
+		const lane = {
+			...laneWithPool().lane,
+			client: { deleteProject } as unknown as N8nClient,
+			buildUserPool: undefined,
+			teamBuildProjectIds: new Set(['p1', 'p2']),
+		};
+
+		await cleanupLanes([lane], { workflows: false, buildUsers: true }, silentLogger);
+
+		expect(deleteProject.mock.calls.map(([id]) => id as string)).toEqual(['p1', 'p2']);
+	});
+
+	it('keeps the team build projects under --keep-workflows', async () => {
+		const deleteProject = vi.fn();
+		const lane = {
+			...laneWithPool().lane,
+			client: { deleteProject } as unknown as N8nClient,
+			teamBuildProjectIds: new Set(['p1']),
+		};
+
+		await cleanupLanes([lane], { workflows: false, buildUsers: false }, silentLogger);
+
+		expect(deleteProject).not.toHaveBeenCalled();
+	});
+
 	it('keeps the build users, and the workflows in their projects, under --keep-workflows', async () => {
 		const { lane, buildUserPool, deleteUser } = laneWithPool();
 		await buildUserPool.claim();

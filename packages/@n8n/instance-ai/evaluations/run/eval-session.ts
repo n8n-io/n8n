@@ -147,11 +147,13 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		let buildProject: (() => Promise<{ userId?: string; projectId: string }>) | undefined;
 		if (lane.teamBuildProjects) {
 			// The owner creates it, so is its admin and keeps access to the build's credentials.
-			buildProject = async () => ({
-				projectId: (
-					await lane.client.createTeamProject(`${ownerName.firstName} ${ownerName.lastName}`)
-				).id,
-			});
+			buildProject = async () => {
+				const { id } = await lane.client.createTeamProject(
+					`${ownerName.firstName} ${ownerName.lastName}`,
+				);
+				lane.teamBuildProjectIds?.add(id);
+				return { projectId: id };
+			};
 		} else if (buildUserPool) {
 			buildProject = async () =>
 				await provisionBuildProject({

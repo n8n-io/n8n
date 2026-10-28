@@ -74,6 +74,7 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				workflowIdsToDelete,
 				buildUserPool,
 				teamBuildProjects,
+				teamBuildProjectIds: new Set<string>(),
 			};
 		}),
 	);
@@ -99,6 +100,12 @@ export async function cleanupLanes(
 			// users when workflows are kept.
 			if (cleanup.buildUsers && lane.buildUserPool) {
 				await cleanupLaneUsers(lane.client, lane.buildUserPool, logger);
+			}
+			// Most are already gone (404); only a build whose own cleanup failed left one.
+			if (cleanup.buildUsers) {
+				for (const id of lane.teamBuildProjectIds ?? []) {
+					await lane.client.deleteProject(id).catch(() => {});
+				}
 			}
 		}),
 	);

@@ -103,6 +103,9 @@ export interface Lane {
 	/** The license allows team projects, so each orchestrator build gets one the owner
 	 *  administers. Without them, n8n hides execution output from the owner. */
 	teamBuildProjects?: boolean;
+	/** Team build projects created on this lane; the run-end cleanup deletes any a
+	 *  build's own cleanup left behind. */
+	teamBuildProjectIds?: Set<string>;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
