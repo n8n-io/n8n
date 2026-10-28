@@ -219,13 +219,7 @@ function fileLabel(block: ContentFile): string {
 function toUserAiContent(block: MessageContent): Array<AiContentPart | undefined> {
 	const part = toAiContent(block);
 	if (part?.type === 'file' && isFile(block) && block.fileRef) {
-		return [
-			{
-				type: 'text',
-				text: `[${fileLabel(block)}. The file is attached below. Do not read it again.]`,
-			},
-			part,
-		];
+		return [{ type: 'text', text: `[${fileLabel(block)}.]` }, part];
 	}
 	return [part];
 }
