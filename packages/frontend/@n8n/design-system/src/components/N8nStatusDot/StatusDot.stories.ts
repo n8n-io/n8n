@@ -8,7 +8,11 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['success', 'warning', 'danger'],
+			options: ['success', 'warning', 'danger', 'neutral'],
+		},
+		appearance: {
+			control: 'select',
+			options: ['fill', 'outline'],
 		},
 		pulse: {
 			control: 'boolean',
@@ -18,7 +22,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A small decorative status indicator dot. Pair it with text that carries the meaning; the dot itself is hidden from assistive technology.',
+					'A small decorative status indicator dot. Pair it with text that carries the meaning. The dot itself is hidden from assistive technology. Each color can be filled or an outline ring.',
 			},
 		},
 	},
@@ -35,6 +39,7 @@ export const Default = {
 	}),
 	args: {
 		variant: 'success',
+		appearance: 'fill',
 		pulse: false,
 	},
 } satisfies Story;
@@ -43,15 +48,30 @@ export const Variants = {
 	render: () => ({
 		components: { N8nStatusDot },
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 16px">
-			<div style="display: flex; align-items: center; gap: 8px;">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm)">
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
 				<N8nStatusDot variant="success" /> Success
 			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
 				<N8nStatusDot variant="warning" /> Warning
 			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
 				<N8nStatusDot variant="danger" /> Danger
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
+				<N8nStatusDot variant="neutral" /> Neutral
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
+				<N8nStatusDot variant="success" appearance="outline" /> Success outline
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
+				<N8nStatusDot variant="warning" appearance="outline" /> Warning outline
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
+				<N8nStatusDot variant="danger" appearance="outline" /> Danger outline
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
+				<N8nStatusDot variant="neutral" appearance="outline" /> Neutral outline
 			</div>
 		</div>
 		`,
