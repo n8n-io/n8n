@@ -50,6 +50,7 @@ const activeTab = computed(() =>
 	props.tab === 'changes' && hasSuggestion.value ? 'changes' : 'activity',
 );
 const pending = computed(() => props.pendingAction !== null);
+const continuing = computed(() => pending.value && props.pendingAction !== 'dismiss');
 
 const outcomeLabel = computed(() => {
 	switch (props.detail.outcome) {
@@ -160,7 +161,6 @@ function onTabChange(tab: string) {
 							<N8nButton
 								size="small"
 								:disabled="pending"
-								:loading="pending && pendingAction !== 'dismiss'"
 								data-test-id="self-healing-review-trigger"
 							>
 								{{
@@ -170,7 +170,7 @@ function onTabChange(tab: string) {
 											: 'inbox.selfHealing.action.continueIn',
 									)
 								}}
-								<N8nIcon icon="chevron-down" />
+								<N8nIcon :icon="continuing ? 'loader' : 'chevron-down'" :spin="continuing" />
 							</N8nButton>
 						</template>
 						<template v-if="menuNotes.length" #footer>
