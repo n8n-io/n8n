@@ -141,7 +141,11 @@ export class InstanceAiMcpRegistryService {
 			);
 		}
 
-		const credential = await this.findUsableCredential(input.credentialId, user);
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
+			input.credentialId,
+			user,
+		);
 		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
@@ -484,7 +488,11 @@ export class InstanceAiMcpRegistryService {
 		credentialId: string,
 		user: User,
 	): Promise<{ credential: CredentialsEntity; data: ICredentialDataDecryptedObject } | null> {
-		const credential = await this.findUsableCredential(credentialId, user);
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
+			credentialId,
+			user,
+		);
 		if (!credential) {
 			return null;
 		}
@@ -503,20 +511,17 @@ export class InstanceAiMcpRegistryService {
 		newCredentialId: string,
 		server: McpRegistryServer,
 	) {
-		const newCredential = await this.findUsableCredential(newCredentialId, user);
+		const newCredential = await findUsableMcpCredential(
+			this.credentialsFinderService,
+			newCredentialId,
+			user,
+		);
 		if (!newCredential) {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
 
 		this.assertCredentialAllowed(server, newCredential.type);
 		connection.credentialId = newCredentialId;
-	}
-
-	private async findUsableCredential(
-		credentialId: string,
-		user: User,
-	): Promise<CredentialsEntity | null> {
-		return await findUsableMcpCredential(this.credentialsFinderService, credentialId, user);
 	}
 
 	private assertCredentialAllowed(server: McpRegistryServer, credentialType: string): void {
