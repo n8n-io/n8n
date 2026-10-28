@@ -37,6 +37,8 @@ packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
   s_127a9acd7ce7b7::t_773539e0d5c109 115-116,118,120-121,127-129
   s_127a9acd7ce7b7::t_5090c35ca99a69 1,4,54,64,96,106-107,132-135,138,171,173-185,187-198,308-316,319-320,330-334
   s_127a9acd7ce7b7::t_0e341e58ca3b27 335-336
+  s_127a9acd7ce7b7::t_2c4185a894cb18 186
+  s_127a9acd7ce7b7::t_f9c9103d2d5411 172
 packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
   s_127a9acd7ce7b7::t_a51ff6e34f0405 33,135-137,144-148,183-186
 packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
