@@ -424,6 +424,11 @@ export class WorkflowRunner {
 			return await this.engineV2Dispatcher.start(data);
 		}
 
+		// A v2 resume has no control-plane row either.
+		if (existingExecution?.engineResume) {
+			return await this.engineV2Dispatcher.resume(existingExecution, data);
+		}
+
 		const establishContextError = await this.establishContextForPersistence(data);
 
 		if (!establishContextError) {
