@@ -40,6 +40,21 @@ function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
 }
 
+/** The name a screen reader reads for a reference row. The status icon itself is hidden from it. */
+function referenceLabel(path: string) {
+	const label = isInvalid(path)
+		? i18n.baseText('agents.builder.skills.references.invalidLabel', { interpolate: { path } })
+		: path;
+	const status = props.changeCounts?.[path]?.status;
+	if (!status) return label;
+	const statusLabel = i18n.baseText(
+		status === 'added'
+			? 'agents.builder.skills.versions.fileAdded'
+			: 'agents.builder.skills.versions.fileDeleted',
+	);
+	return `${label}, ${statusLabel}`;
+}
+
 function isSelected(path: string) {
 	return props.selectedPath === path;
 }
@@ -102,13 +117,7 @@ function testIdForPath(path: string) {
 					type="button"
 					:class="[$style.item, $style.reference]"
 					:aria-current="isSelected(reference.path) ? 'page' : undefined"
-					:aria-label="
-						isInvalid(reference.path)
-							? i18n.baseText('agents.builder.skills.references.invalidLabel', {
-									interpolate: { path: reference.path },
-								})
-							: reference.path
-					"
+					:aria-label="referenceLabel(reference.path)"
 					:data-testid="testIdForPath(reference.path)"
 					@click="emit('select', reference.path)"
 				>
@@ -133,13 +142,6 @@ function testIdForPath(path: string) {
 								props.changeCounts[reference.path].status === 'added'
 									? $style.fileAdded
 									: $style.fileDeleted
-							"
-							:aria-label="
-								i18n.baseText(
-									props.changeCounts[reference.path].status === 'added'
-										? 'agents.builder.skills.versions.fileAdded'
-										: 'agents.builder.skills.versions.fileDeleted',
-								)
 							"
 							:data-testid="`${testIdForPath(reference.path)}-${props.changeCounts[reference.path].status}`"
 						/>
