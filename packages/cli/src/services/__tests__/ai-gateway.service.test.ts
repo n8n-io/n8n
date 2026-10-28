@@ -52,6 +52,7 @@ let requestMock: Mock;
 
 function makeService({
 	baseUrl = BASE_URL as string | null,
+	gatewayBaseUrl = '',
 	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
@@ -63,7 +64,7 @@ function makeService({
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
-		aiGateway: { enabled: aiGatewayEnabled },
+		aiGateway: { enabled: aiGatewayEnabled, baseUrl: gatewayBaseUrl },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
 		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
@@ -113,6 +114,28 @@ describe('AiGatewayService', () => {
 		it('rejects instances that opt out', () => {
 			expect(() => makeService({ aiGatewayEnabled: false }).assertEnabled()).toThrow(
 				BadRequestError,
+			);
+		});
+
+		it('allows instances with only the gateway base URL set', () => {
+			expect(() =>
+				makeService({ baseUrl: null, gatewayBaseUrl: 'http://dedicated.test' }).assertEnabled(),
+			).not.toThrow();
+		});
+
+		it('rejects instances with neither base URL set', () => {
+			expect(() => makeService({ baseUrl: null }).assertEnabled()).toThrow(BadRequestError);
+		});
+	});
+
+	describe('base URL', () => {
+		it('calls the gateway base URL when set, ahead of the AI assistant base URL', async () => {
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+
+			await makeService({ gatewayBaseUrl: 'http://dedicated.test' }).getGatewayConfig();
+
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({ url: 'http://dedicated.test/v1/gateway/config' }),
 			);
 		});
 	});

@@ -18,6 +18,7 @@ import type { MfaService } from '@/mfa/mfa.service';
 import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -209,6 +210,7 @@ describe('FrontendService', () => {
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const inboxService = mock<InboxService>();
+	const aiGatewayService = mock<AiGatewayService>();
 
 	const createMockService = () => {
 		Container.set(
@@ -249,6 +251,7 @@ describe('FrontendService', () => {
 					workflowRepository,
 					workflowReviewPolicyService,
 					inboxService,
+					aiGatewayService,
 				),
 				license,
 			};
@@ -264,8 +267,7 @@ describe('FrontendService', () => {
 		globalConfig.diagnostics.enabled = false;
 		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
-		globalConfig.aiGateway.enabled = false;
-		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		aiGatewayService.isEnabled.mockReturnValue(false);
 		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
@@ -361,10 +363,8 @@ describe('FrontendService', () => {
 			expect(settings.excludeNodes).toEqual(['n8n-nodes-base.executeWorkflow']);
 		});
 
-		it('should enable the AI Gateway when configured and licensed', async () => {
-			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
-			globalConfig.aiGateway.enabled = true;
-			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+		it('should enable the AI Gateway when AiGatewayService reports it enabled', async () => {
+			aiGatewayService.isEnabled.mockReturnValue(true);
 			const { service } = createMockService();
 
 			const settings = await service.getSettings();
@@ -372,9 +372,7 @@ describe('FrontendService', () => {
 			expect(settings.aiGateway?.enabled).toBe(true);
 		});
 
-		it('should keep the AI Gateway disabled when configured but not licensed', async () => {
-			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
-			globalConfig.aiGateway.enabled = true;
+		it('should keep the AI Gateway disabled when AiGatewayService reports it disabled', async () => {
 			const { service } = createMockService();
 
 			const settings = await service.getSettings();
@@ -383,9 +381,7 @@ describe('FrontendService', () => {
 		});
 
 		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
-			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
-			globalConfig.aiGateway.enabled = true;
-			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			aiGatewayService.isEnabled.mockReturnValue(true);
 			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
 			const { service } = createMockService();
 

@@ -9,4 +9,11 @@ export class AiGatewayConfig {
 	 */
 	@Env('N8N_AI_GATEWAY_ENABLED')
 	enabled: boolean = true;
+
+	/**
+	 * Base URL of the AI Gateway service. Read it through `AiGatewayService`,
+	 * which falls back to `N8N_AI_ASSISTANT_BASE_URL` when this is unset.
+	 */
+	@Env('N8N_AI_GATEWAY_BASE_URL')
+	baseUrl: string = '';
 }
