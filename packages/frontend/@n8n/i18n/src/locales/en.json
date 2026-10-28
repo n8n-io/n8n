@@ -8448,6 +8448,7 @@
 	"instanceAi.tools.search_credential_types": "Searching credential types",
 	"instanceAi.tools.setup_credentials": "Setting up credentials",
 	"instanceAi.tools.test_credential": "Testing credential",
+	"instanceAi.tools.update_credential_description": "Updating credential description",
 	"instanceAi.tools.delete_credential": "Deleting credential",
 	"instanceAi.tools.delete_credential.imperative": "delete credential",
 	"instanceAi.tools.mcp-servers": "Tools",
