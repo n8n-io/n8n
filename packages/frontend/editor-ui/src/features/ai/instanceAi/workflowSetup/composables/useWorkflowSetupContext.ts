@@ -12,11 +12,14 @@ import {
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import type { INodeUi } from '@/Interface';
-import type { ConfirmationSubmit } from '../../confirmationTransport';
-import { useOptionalThread } from '../../instanceAi.store';
-import type { TerminalState, WorkflowSetupSection } from '../workflowSetup.types';
+import type {
+	TerminalState,
+	WorkflowSetupApplyPayload,
+	WorkflowSetupOutcome,
+	WorkflowSetupSection,
+} from '../workflowSetup.types';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
-import { useWorkflowSetupApply } from './useWorkflowSetupApply';
+import { useWorkflowSetupDecision } from './useWorkflowSetupDecision';
 import { useWorkflowSetupBootstrap } from './useWorkflowSetupBootstrap';
 import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 import { useWorkflowSetupInputs, type CredentialSelectionsMap } from './useWorkflowSetupInputs';
@@ -58,12 +61,19 @@ interface ProvideOptions {
 	projectId: Ref<string | undefined>;
 	workflowId: Ref<string | undefined>;
 	credentialFlow: Ref<InstanceAiCredentialFlow | undefined>;
-	/** Sends the answer through the caller, such as the Assistant agent chat. Defaults to the thread. */
-	submit?: () => ConfirmationSubmit | undefined;
+	/** The thread that the telemetry reports. */
+	threadId: Ref<string>;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId: Ref<string | undefined>;
+	/** How the parent settled the last answer. */
+	outcome: Ref<WorkflowSetupOutcome | undefined>;
+	/** Hands the user's apply to the parent, which sends it. */
+	emitApply: (payload: WorkflowSetupApplyPayload) => void;
+	/** Hands the user's defer to the parent, which sends it. */
+	emitDefer: () => void;
 }
 
 export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetupContext {
-	const thread = useOptionalThread();
 	const { hydrateCredentialTestResults } = useCredentialTestInBackground();
 
 	hydrateCredentialTestResults(
@@ -77,10 +87,10 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	const { sections } = useWorkflowSetupSections(opts.setupRequests);
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
-	const applyMachine = useWorkflowSetupApply({
-		requestId: opts.requestId,
-		thread,
-		submit: opts.submit,
+	const applyMachine = useWorkflowSetupDecision({
+		outcome: opts.outcome,
+		emitApply: opts.emitApply,
+		emitDefer: opts.emitDefer,
 	});
 
 	const currentStepIndex = ref(0);
@@ -130,7 +140,8 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 			apply: applyMachine.apply,
 			defer: applyMachine.defer,
 		},
-		thread,
+		threadId: opts.threadId,
+		inputThreadId: opts.inputThreadId,
 	});
 
 	// Clamp currentStepIndex when the section list shrinks beneath it.

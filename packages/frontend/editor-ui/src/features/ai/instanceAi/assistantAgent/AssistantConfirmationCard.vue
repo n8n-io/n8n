@@ -42,6 +42,10 @@ import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.v
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
+import type {
+	WorkflowSetupApplyPayload,
+	WorkflowSetupOutcome,
+} from '../workflowSetup/workflowSetup.types';
 import { ASSISTANT_AGENT_PROJECT_ID, ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
 
@@ -126,6 +130,20 @@ function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.
 	void nextTick(reopen);
+}
+
+// The workflow setup card hands its answer here, and this card resumes the tool with it.
+// The chat shows the tool result, so the setup card settles as soon as the answer is sent.
+const workflowSetupOutcome = ref<WorkflowSetupOutcome>();
+
+function onWorkflowSetupApply(payload: WorkflowSetupApplyPayload) {
+	submit({ kind: 'setupWorkflowApply', ...payload });
+	workflowSetupOutcome.value = { state: 'applied' };
+}
+
+function onWorkflowSetupDefer() {
+	submit({ kind: 'approval', approved: false });
+	workflowSetupOutcome.value = { state: 'deferred' };
 }
 
 function onQuestionsSubmit(answers: QuestionAnswer[]) {
@@ -323,34 +341,39 @@ function onApprovalSelect(key: string) {
 			:project-id="projectId"
 			:credential-flow="input.credentialFlow"
 			:workflow-id="input.workflowId"
-			:submit="submit"
+			:thread-id="threadId"
+			:input-thread-id="input.inputThreadId"
+			:outcome="workflowSetupOutcome"
+			@apply="onWorkflowSetupApply"
+			@defer="onWorkflowSetupDefer"
 		/>
 		<InstanceAiCredentialSetup
 			v-else-if="variant === 'credential-setup' && input.credentialRequests"
-			:request-id="input.requestId"
 			:credential-requests="input.credentialRequests"
 			:message="input.message"
 			:project-id="projectId"
 			:credential-flow="input.credentialFlow"
 			:require-user-selection="input.requireUserSelection"
-			:submit="submit"
+			:thread-id="threadId"
+			:input-thread-id="input.inputThreadId"
+			@decide="(body) => submit(body)"
 		/>
 		<GatewayResourceDecision
 			v-else-if="variant === 'resource-decision' && input.resourceDecision"
 			data-test-id="assistant-agent-resource-decision"
-			:request-id="input.requestId"
 			:resource="input.resourceDecision.resource"
 			:description="input.resourceDecision.description"
 			:options="input.resourceDecision.options"
-			:submit="submit"
+			:thread-id="threadId"
+			:input-thread-id="input.inputThreadId"
+			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
 		/>
 		<InstanceAiChannelSetup
 			v-else-if="variant === 'channel-config' && input.channelConfig"
-			:request-id="input.requestId"
 			:integration-type="input.channelConfig.integrationType"
 			:agent-id="input.channelConfig.agentId"
 			:project-id="projectId ?? ''"
-			:submit="submit"
+			@decide="(approved) => submit({ kind: 'approval', approved })"
 		/>
 		<N8nCard
 			v-else-if="variant === 'test-listener' && input.testListener"

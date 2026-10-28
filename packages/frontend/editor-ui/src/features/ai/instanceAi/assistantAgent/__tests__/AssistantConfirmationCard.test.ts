@@ -44,27 +44,34 @@ vi.mock('../../components/InstanceAiMcpConnectCard.vue', () => ({
 }));
 
 // The setup cards pull in many stores. These stubs check that the card hands them
-// its submit callback and the project, and forwards what they send.
-function submitStub(testId: string, body: Record<string, unknown>) {
+// the project, and resumes with the answer that they emit.
+function eventStub(testId: string, emitExpression: string) {
 	return {
 		default: {
-			props: ['submit', 'projectId'],
-			template: `<button data-test-id="${testId}" :data-project-id="projectId" @click="submit(${JSON.stringify(body).replace(/"/g, "'")})" />`,
+			props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
+			template: `<button data-test-id="${testId}" :data-project-id="projectId" @click="${emitExpression}" />`,
 		},
 	};
 }
 
 vi.mock('../../components/InstanceAiCredentialSetup.vue', () =>
-	submitStub('stub-credential-setup', {
-		kind: 'credentialSelection',
-		credentials: { slackApi: 'cred-1' },
-	}),
+	eventStub(
+		'stub-credential-setup',
+		"$emit('decide', { kind: 'credentialSelection', credentials: { slackApi: 'cred-1' } }, 'approved')",
+	),
 );
-vi.mock('../../workflowSetup/InstanceAiWorkflowSetup.vue', () =>
-	submitStub('stub-workflow-setup', { kind: 'approval', approved: false }),
-);
+vi.mock('../../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
+	default: {
+		props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
+		template: `<div>
+			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" @click="$emit('defer')" />
+			<button data-test-id="stub-workflow-setup-apply" @click="$emit('apply', { nodeCredentials: { Slack: { slackApi: 'cred-1' } } })" />
+			<span data-test-id="stub-workflow-setup-outcome">{{ outcome?.state }}</span>
+		</div>`,
+	},
+}));
 vi.mock('../../components/InstanceAiChannelSetup.vue', () =>
-	submitStub('stub-channel-setup', { kind: 'approval', approved: true }),
+	eventStub('stub-channel-setup', "$emit('decide', true)"),
 );
 
 vi.mock('../../components/InstanceAiQuestions.vue', () => ({
@@ -317,6 +324,25 @@ describe('AssistantConfirmationCard', () => {
 			expect(sent(emitted().submit)).toEqual([[body]]);
 		},
 	);
+
+	it('resumes with the workflow setup apply, and settles the setup card', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-w',
+					message: 'Set up the workflow',
+					setupRequests: [{ node: { name: 'Slack' } }],
+				} as unknown as AssistantConfirmationInput,
+			},
+		});
+
+		await fireEvent.click(getByTestId('stub-workflow-setup-apply'));
+
+		expect(sent(emitted().submit)).toEqual([
+			[{ kind: 'setupWorkflowApply', nodeCredentials: { Slack: { slackApi: 'cred-1' } } }],
+		]);
+		expect(getByTestId('stub-workflow-setup-outcome')).toHaveTextContent('applied');
+	});
 
 	it('submits a gateway resource decision', async () => {
 		const { getByTestId, emitted } = renderComponent({
