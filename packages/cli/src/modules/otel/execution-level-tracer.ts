@@ -31,7 +31,11 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
-import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
+import {
+	type CustomAttributePrefixes,
+	OtelBaggageConfig,
+	OtelCustomAttributesConfig,
+} from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
@@ -47,6 +51,8 @@ type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
 	projectCustomAttributes: Record<string, string>;
+	// Sanitized caller `baggage` header. Kept off every context that is or becomes active.
+	baggage?: string;
 };
 
 @Service()
@@ -58,6 +64,7 @@ export class ExecutionLevelTracer {
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
+		private readonly baggageConfig: OtelBaggageConfig,
 	) {}
 
 	private get tracer() {
@@ -89,11 +96,14 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
+			// Off: saved caller baggage is neither sent nor copied to later segments.
+			const baggage = this.baggageConfig.propagate ? params.tracingContext?.baggage : undefined;
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 				context: workflowContext,
 				projectCustomAttributes,
+				baggage,
 			});
 
 			if (params.emitStartSpan) {
@@ -105,7 +115,7 @@ export class ExecutionLevelTracer {
 				);
 			}
 
-			return toTracingParentContext(span, identity);
+			return toTracingParentContext(span, identity, baggage);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -311,6 +321,10 @@ export class ExecutionLevelTracer {
 			if (!span) return;
 
 			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+
+			// Sent as the caller sent it. Parsing and serializing again would re-encode the values.
+			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			if (baggage) headers.baggage = baggage;
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -410,10 +424,19 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
-function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {
+function toTracingParentContext(
+	span: Span,
+	identity: ExecutionIdentity,
+	baggage: string | undefined,
+): TracingContext {
 	const carrier: Record<string, string> = {};
 	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
-	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
+	return {
+		traceparent: carrier.traceparent,
+		tracestate: carrier.tracestate,
+		identity,
+		...(baggage && { baggage }),
+	};
 }
 
 // Only a recorded SDK span has a start time. The API span type does not expose it.

@@ -7,6 +7,7 @@ import {
 	CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR,
 	DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES,
 	OTEL_ENV_VARS,
+	PROPAGATE_BAGGAGE_ENV_VAR,
 } from './otel.constants';
 
 @Config
@@ -81,4 +82,13 @@ export class OtelCustomAttributesConfig {
 	 */
 	@Env(CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR, customAttributePrefixesSchema)
 	prefixes: CustomAttributePrefixes = { ...DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES };
+}
+
+@Config
+export class OtelBaggageConfig {
+	/**
+	 * Whether n8n forwards the W3C `baggage` header of an incoming webhook call to every HTTP request that the execution sends, including requests to third-party services. n8n sends it only when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is also true, and drops entries with keys that start with `n8n.`. Sub-workflows and error workflows don't send it. Baggage entries never become span attributes. Set the same value on all main, worker, and webhook instances.
+	 */
+	@Env(PROPAGATE_BAGGAGE_ENV_VAR)
+	propagate: boolean = false;
 }

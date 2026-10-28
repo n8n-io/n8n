@@ -8,12 +8,13 @@ import { mock } from 'vitest-mock-extended';
 import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { StartWorkflowParams } from '../execution-level-tracer.types';
-import type { OtelSettingsService } from '../otel-settings.service';
 import {
 	type CustomAttributePrefixes,
+	OtelBaggageConfig,
 	type OtelConfig,
 	OtelCustomAttributesConfig,
 } from '../otel.config';
+import type { OtelSettingsService } from '../otel-settings.service';
 import { OtelTestProvider } from './support/otel-test-provider';
 
 describe('ExecutionLevelTracer', () => {
@@ -31,16 +32,21 @@ describe('ExecutionLevelTracer', () => {
 	const makeTracer = ({
 		settings,
 		prefixes,
+		propagateBaggage = false,
 	}: {
 		settings?: Partial<OtelConfig>;
 		prefixes?: CustomAttributePrefixes;
+		propagateBaggage?: boolean;
 	} = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
+		const baggageConfig = new OtelBaggageConfig();
+		baggageConfig.propagate = propagateBaggage;
 		return new ExecutionLevelTracer(
 			makeOtelSettingsService(settings),
 			logger,
 			customAttributesConfig,
+			baggageConfig,
 		);
 	};
 
@@ -962,6 +968,7 @@ describe('ExecutionLevelTracer', () => {
 				failingSettings,
 				logger,
 				new OtelCustomAttributesConfig(),
+				new OtelBaggageConfig(),
 			);
 
 			const headers: Record<string, string> = {};
@@ -1019,6 +1026,146 @@ describe('ExecutionLevelTracer', () => {
 		});
 	});
 
+	describe('caller baggage', () => {
+		const node = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+		const withBaggage = { ...inboundTracingContext, baggage: 'tenant=acme' };
+
+		const end = (target: ExecutionLevelTracer, executionId: string) =>
+			target.endWorkflow({ executionId, status: 'success', mode: 'webhook', isRetry: false });
+
+		it('sends the caller baggage on node and workflow requests when propagation is on', () => {
+			const baggageTracer = makeTracer({ propagateBaggage: true });
+			baggageTracer.startWorkflow({
+				executionId: 'exec-bag',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			baggageTracer.startNode({ executionId: 'exec-bag', node });
+
+			const nodeHeaders: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-bag', node.name, nodeHeaders);
+			const workflowHeaders: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-bag', undefined, workflowHeaders);
+			end(baggageTracer, 'exec-bag');
+
+			expect(nodeHeaders).toEqual({ traceparent: expect.any(String), baggage: 'tenant=acme' });
+			expect(workflowHeaders.baggage).toBe('tenant=acme');
+		});
+
+		it('sends the caller baggage when the webhook sent no traceparent', () => {
+			const baggageTracer = makeTracer({ propagateBaggage: true });
+			baggageTracer.startWorkflow({
+				executionId: 'exec-bag-root',
+				tracingContext: { baggage: 'tenant=acme' },
+				workflow: defaultWorkflow,
+			});
+
+			const headers: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-bag-root', undefined, headers);
+			end(baggageTracer, 'exec-bag-root');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('does not send baggage when propagation is off', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-off',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-bag-off', undefined, headers);
+			end(tracer, 'exec-bag-off');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('sends no headers when injectOutbound is false', () => {
+			const baggageTracer = makeTracer({
+				propagateBaggage: true,
+				settings: { injectOutbound: false },
+			});
+			baggageTracer.startWorkflow({
+				executionId: 'exec-bag-no-inject',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+
+			const headers: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-bag-no-inject', undefined, headers);
+			end(baggageTracer, 'exec-bag-no-inject');
+
+			expect(headers).toEqual({});
+		});
+
+		it('saves the caller baggage, so a resumed segment sends it again', () => {
+			const baggageTracer = makeTracer({ propagateBaggage: true });
+			const saved = baggageTracer.startWorkflow({
+				executionId: 'exec-bag-resume',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			end(baggageTracer, 'exec-bag-resume');
+
+			expect(saved.baggage).toBe('tenant=acme');
+
+			const resaved = baggageTracer.startWorkflow({
+				executionId: 'exec-bag-resume',
+				tracingContext: saved,
+				linkTo: saved,
+				workflow: defaultWorkflow,
+			});
+			const headers: Record<string, string> = {};
+			baggageTracer.injectTraceHeaders('exec-bag-resume', undefined, headers);
+			end(baggageTracer, 'exec-bag-resume');
+
+			expect(resaved.baggage).toBe('tenant=acme');
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('keeps the caller baggage off the context that agent runs use', () => {
+			const baggageTracer = makeTracer({ propagateBaggage: true });
+			baggageTracer.startWorkflow({
+				executionId: 'exec-bag-ctx',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			baggageTracer.startNode({ executionId: 'exec-bag-ctx', node });
+
+			const ctx = baggageTracer.getActiveContext('exec-bag-ctx', node.name);
+			end(baggageTracer, 'exec-bag-ctx');
+
+			expect(ctx).toBeDefined();
+			expect(propagation.getBaggage(ctx!)).toBeUndefined();
+		});
+
+		it('does not add caller baggage to span attributes', () => {
+			const baggageTracer = makeTracer({ propagateBaggage: true });
+			baggageTracer.startWorkflow({
+				executionId: 'exec-bag-attrs',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			baggageTracer.startNode({ executionId: 'exec-bag-attrs', node });
+			baggageTracer.endNode({
+				executionId: 'exec-bag-attrs',
+				node,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			end(baggageTracer, 'exec-bag-attrs');
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(2);
+			for (const span of spans) {
+				expect(span.attributes).not.toHaveProperty('tenant');
+			}
+		});
+	});
+
 	describe('trace context ownership', () => {
 		const traceparentPattern = /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/;
 
@@ -1039,6 +1186,35 @@ describe('ExecutionLevelTracer', () => {
 			const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 			expect(workflowSpan.parentSpanContext).toBeUndefined();
 			expect(workflowSpan.spanContext().traceId).not.toBe(foreignSpan.spanContext().traceId);
+		});
+
+		it('should send no headers through another OTel setup when injectOutbound is false', () => {
+			const noInjectTracer = makeTracer({ settings: { injectOutbound: false } });
+			propagation.disable();
+			propagation.setGlobalPropagator({
+				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),
+				extract: (ctx) => ctx,
+				fields: () => ['sentry-trace'],
+			});
+
+			try {
+				noInjectTracer.startWorkflow({
+					executionId: 'exec-foreign-off',
+					workflow: defaultWorkflow,
+				});
+				const headers: Record<string, string> = {};
+				noInjectTracer.injectTraceHeaders('exec-foreign-off', undefined, headers);
+				noInjectTracer.endWorkflow({
+					executionId: 'exec-foreign-off',
+					status: 'success',
+					mode: 'webhook',
+					isRetry: false,
+				});
+
+				expect(headers).toEqual({});
+			} finally {
+				propagation.disable();
+			}
 		});
 
 		it('should emit W3C trace context while another library owns the global propagator', () => {

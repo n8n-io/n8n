@@ -60,6 +60,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
@@ -1323,19 +1324,8 @@ export async function executeWebhook(
 			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
-		// Extract W3C trace context from webhook headers for OTEL propagation.
-		const traceparent = req.headers.traceparent;
-		if (
-			typeof traceparent === 'string' &&
-			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
-		) {
-			const tracestate = req.headers.tracestate;
-			runData.tracingContext = {
-				traceparent,
-				tracestate:
-					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
-			};
-		}
+		const tracingContext = extractTracingContext(req.headers, additionalData.otel);
+		if (tracingContext) runData.tracingContext = tracingContext;
 
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
@@ -1833,4 +1823,31 @@ function toUnansweredRunResponse(
 				responseCode: 504,
 			};
 	}
+}
+
+/**
+ * Reads the W3C trace context and, through the otel module, the caller's baggage from webhook
+ * headers for OTel propagation.
+ * Returns undefined when the request has neither.
+ */
+export function extractTracingContext(
+	headers: IncomingHttpHeaders,
+	otel: IWorkflowExecuteAdditionalData['otel'],
+): IWorkflowExecutionDataProcess['tracingContext'] {
+	const tracingContext: NonNullable<IWorkflowExecutionDataProcess['tracingContext']> = {};
+
+	const { traceparent, tracestate } = headers;
+	if (
+		typeof traceparent === 'string' &&
+		/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+	) {
+		tracingContext.traceparent = traceparent;
+		tracingContext.tracestate =
+			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
+	}
+
+	const baggage = otel?.extractInboundBaggage(headers.baggage);
+	if (baggage) tracingContext.baggage = baggage;
+
+	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }

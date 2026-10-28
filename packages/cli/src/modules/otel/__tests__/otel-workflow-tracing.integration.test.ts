@@ -25,8 +25,9 @@ import {
 	createFailingWorkflowFixture,
 	createWaitWorkflowFixture,
 } from './support/otel-workflow-fixtures';
+import { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelSettingsService } from '../otel-settings.service';
-import { OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
+import { OtelBaggageConfig, OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
 import { DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES } from '../otel.constants';
 
 let otel: OtelTestProvider;
@@ -154,8 +155,8 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const resumedContext = (await executionRepository.findOneBy({ id: executionId }))
 			?.tracingContext;
 
-		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent.split('-');
-		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent.split('-');
+		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent!.split('-');
+		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent!.split('-');
 		expect(resumedTraceId).toBe(parkedTraceId);
 		expect(resumedSpanId).not.toBe(parkedSpanId);
 	});
@@ -220,6 +221,94 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan).toBeDefined();
 		expect(workflowSpan.spanContext().traceId).toBe(inboundTraceId);
+	});
+});
+
+describe('Caller baggage', () => {
+	const tracingContext = { baggage: 'tenant=acme' };
+
+	const setBaggagePropagation = async (enabled: boolean) => {
+		Container.get(OtelBaggageConfig).propagate = enabled;
+		await Container.get(OtelSettingsService).loadSettings();
+	};
+
+	beforeAll(async () => await setBaggagePropagation(true));
+	afterAll(async () => await setBaggagePropagation(false));
+
+	// The headers that `injectTraceHeaders` gives each node while it runs, the same call that
+	// the HTTP request helpers and the MCP client make.
+	const sentHeaders: Array<Record<string, string>> = [];
+
+	beforeEach(() => {
+		sentHeaders.length = 0;
+		const tracer = Container.get(ExecutionLevelTracer);
+		const endNode = tracer.endNode.bind(tracer);
+		vi.spyOn(tracer, 'endNode').mockImplementation((params) => {
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders(params.executionId, params.node.name, headers);
+			sentHeaders.push(headers);
+			endNode(params);
+		});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const savedBaggage = async (executionId: string) =>
+		(await executionRepository.findOneBy({ id: executionId }))?.tracingContext?.baggage;
+
+	it('should keep the caller baggage in the saved trace context', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
+			tracingContext,
+		});
+		await waitForExecution(executionRepository, executionId);
+
+		expect(await savedBaggage(executionId)).toBe('tenant=acme');
+	});
+
+	it('should keep the caller baggage when a worker runs the execution', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+
+		const executionId = await executeWorkflowOnWorker(workflow, project.id, { tracingContext });
+
+		expect(await savedBaggage(executionId)).toBe('tenant=acme');
+		for (const span of otel.getFinishedSpans()) {
+			expect(span.attributes).not.toHaveProperty('tenant');
+		}
+	});
+
+	it('should send the caller baggage from each node on a worker', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+
+		await executeWorkflowOnWorker(workflow, project.id, { tracingContext });
+
+		expect(sentHeaders).toHaveLength(workflow.nodes.length);
+		for (const headers of sentHeaders) {
+			expect(headers).toMatchObject({ traceparent: expect.any(String), baggage: 'tenant=acme' });
+		}
+	});
+
+	it('should send the caller baggage from each node after a Wait node resumes', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWaitWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
+			tracingContext,
+		});
+		await waitForExecutionStatus(executionRepository, executionId, 'waiting');
+		sentHeaders.length = 0;
+
+		await Container.get(WaitTracker).startExecution(executionId);
+		await waitForExecutionStatus(executionRepository, executionId, 'success');
+
+		expect(sentHeaders.length).toBeGreaterThan(0);
+		for (const headers of sentHeaders) {
+			expect(headers.baggage).toBe('tenant=acme');
+		}
 	});
 });
 

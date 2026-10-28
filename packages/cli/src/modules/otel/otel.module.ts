@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -30,10 +31,16 @@ export class OtelModule implements ModuleInterface {
 
 	async context(): Promise<ModuleContext> {
 		const { ExecutionLevelTracer } = await import('./execution-level-tracer.js');
+		const { OtelSettingsService } = await import('./otel-settings.service.js');
+		const { sanitizeInboundBaggage } = await import('./inbound-baggage.js');
 		const tracer = Container.get(ExecutionLevelTracer);
+		const settings = Container.get(OtelSettingsService);
+		const logger = Container.get(Logger);
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
+			extractInboundBaggage: (header: unknown) =>
+				settings.shouldPropagateBaggage() ? sanitizeInboundBaggage(header, logger) : undefined,
 		};
 	}
 

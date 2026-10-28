@@ -95,9 +95,10 @@ export class ExecutionEntity {
 
 	@Column({ type: jsonColumnType, nullable: true })
 	tracingContext: {
-		traceparent: string;
+		traceparent?: string;
 		tracestate?: string;
 		identity?: Record<string, string>;
+		baggage?: string;
 	} | null;
 	/**
 	 * Optional caller-supplied key that uniquely identifies this logical

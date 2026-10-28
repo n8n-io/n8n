@@ -141,12 +141,14 @@ export async function executeWorkflow(
 export async function executeWorkflowOnWorker(
 	workflow: WorkflowEntity,
 	projectId: string,
+	options: { tracingContext?: TracingContext } = {},
 ): Promise<string> {
 	const executionId = await Container.get(ActiveExecutions).add({
 		workflowData: workflow,
 		projectId,
 		executionMode: 'trigger',
 		executionData: createTriggerExecutionData(workflow),
+		tracingContext: options.tracingContext,
 	});
 
 	const job = {

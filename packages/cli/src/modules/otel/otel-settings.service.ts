@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 
-import { OtelConfig } from './otel.config';
+import { OtelBaggageConfig, OtelConfig } from './otel.config';
 import { OTEL_ENV_VARS } from './otel.constants';
 
 export const OTEL_SETTINGS_KEY = 'features.otel';
@@ -68,6 +68,7 @@ export class OtelSettingsService {
 		private readonly config: OtelConfig,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly logger: Logger,
+		private readonly baggageConfig: OtelBaggageConfig,
 	) {}
 
 	getSettings(): OtelSettingsResponse {
@@ -79,6 +80,15 @@ export class OtelSettingsService {
 			exporterHeaders: this.redactHeaders(this.currentSettings.exporterHeaders),
 			envManagedFields: this.envManagedFields,
 		};
+	}
+
+	/**
+	 * Whether a webhook keeps the caller's baggage for outbound requests. False when the
+	 * settings are not loaded, for example when the OTel module is off.
+	 */
+	shouldPropagateBaggage(): boolean {
+		const settings = this.currentSettings;
+		return this.baggageConfig.propagate && !!settings?.enabled && settings.injectOutbound;
 	}
 
 	/**

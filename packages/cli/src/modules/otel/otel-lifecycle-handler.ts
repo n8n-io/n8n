@@ -21,7 +21,7 @@ import { buildNodeGenAiAttributes } from './gen-ai-attributes';
 import type { CustomAttributes, ProjectContext } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
-import { TraceContextService } from './tracing-context';
+import { type TracingContext, TraceContextService } from './tracing-context';
 import { OwnershipService } from '../../services/ownership.service';
 
 const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
@@ -87,7 +87,7 @@ export class OtelLifecycleHandler {
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
 			? // Set for sub-workflows and error workflows to link their spans to the parent
-				await this.traceContextService.get(parentExecutionId)
+				withoutCallerBaggage(await this.traceContextService.get(parentExecutionId))
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
 
@@ -349,4 +349,14 @@ export function countInputItems(ctx: NodeExecuteAfterContext): number {
 	}
 
 	return total;
+}
+
+/**
+ * Caller baggage stays with the execution that the webhook started. Sub-workflows and error
+ * workflows do not send it, because the caller did not call them.
+ */
+function withoutCallerBaggage(tracingContext?: TracingContext): TracingContext | undefined {
+	if (!tracingContext?.baggage) return tracingContext;
+	const { baggage: _baggage, ...rest } = tracingContext;
+	return rest;
 }
