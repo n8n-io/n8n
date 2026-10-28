@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e528f948ce3dc8da1603fa419a6793149782e861",
+  "prompts": {},
+  "sessions": {
+    "s_7000cd54115292": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c992-ff25-740b-bb65-8292b2f2ed80",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

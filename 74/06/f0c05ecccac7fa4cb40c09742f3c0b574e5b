@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  ai_agent 1399
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_ef2fe8491daaf9::t_01b5423b4735c0 445-447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7406f0c05ecccac7fa4cb40c09742f3c0b574e5b",
+  "prompts": {},
+  "sessions": {
+    "s_ef2fe8491daaf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edf1e92c-e697-4d8b-aab2-6ee47b01b00a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

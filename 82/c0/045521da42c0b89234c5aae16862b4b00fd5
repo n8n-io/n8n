@@ -1,0 +1,25 @@
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_7a118b07ee147d::t_d52f66c538e6f0 12,136-139,198-202
+  s_7a118b07ee147d::t_ee44ff9fdd6bee 131-135,140-197,203-212
+packages/cli/src/modules/agents/__tests__/agent-memory-trace.service.test.ts
+  s_7a118b07ee147d::t_6ed5709c2d9705 1-248
+packages/cli/test/integration/database/repositories/agent-memory-entry-candidate.repository.test.ts
+  s_7a118b07ee147d::t_d52f66c538e6f0 125-127
+  s_7a118b07ee147d::t_40acf3cce6cccc 111-124,128-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82c0045521da42c0b89234c5aae16862b4b00fd5",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

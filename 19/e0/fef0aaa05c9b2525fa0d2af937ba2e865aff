@@ -1,0 +1,94 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_bae59719d51263::t_f6e55c38f78283 3950
+  s_bae59719d51263::t_2396b0117df174 110,370,2495,2644,2705,2859,3833,5024,5029,5051
+  s_bae59719d51263::t_82efc841acc61a 3853
+  s_bae59719d51263::t_bb8aaf8fdfd946 2645-2649,3828-3831,3838-3842,3969-3973
+packages/@n8n/agents/src/index.ts
+  s_bae59719d51263::t_51367ff49a471b 266
+  s_bae59719d51263::t_72972075bbc1de 224-225
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_bae59719d51263::t_c277fef95d94f7 1786-1793,1796-1801
+  s_bae59719d51263::t_4d2011d8c80712 1785,1794-1795,1802-1810
+packages/@n8n/agents/src/skills/types.ts
+  s_bae59719d51263::t_a8428c6358e3aa 183-184
+  s_bae59719d51263::t_51367ff49a471b 195-196,211-214
+packages/@n8n/telemetry/src/__tests__/catalog.test.ts
+  s_bae59719d51263::t_24733f07ef317d 52-54,56,78-79
+packages/@n8n/instance-ai/src/index.ts
+  s_bae59719d51263::t_20670427109138 551
+packages/@n8n/telemetry/README.md
+  s_bae59719d51263::t_fabb00382ffe50 18-19
+packages/cli/src/modules/instance-ai/instance-ai-hub-skills.ts
+  s_bae59719d51263::t_a8428c6358e3aa 115,117,119-123,127
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_bae59719d51263::t_bb8aaf8fdfd946 95-227
+packages/@n8n/instance-ai/src/runtime/instance-context-state.ts
+  s_bae59719d51263::t_bb8aaf8fdfd946 6-25
+  s_bae59719d51263::t_20670427109138 4-5,26-29,36
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_bae59719d51263::t_9910600eddd0de 1127
+packages/@n8n/agents/src/runtime/skills/active-skills.ts
+  s_bae59719d51263::t_bb8aaf8fdfd946 149-151,153-154
+  s_bae59719d51263::t_7bd3f478f26864 53,65,92,152
+  s_bae59719d51263::t_51367ff49a471b 8,52,86,138-148,155-156,158-165
+  s_bae59719d51263::t_72db8779cd7db2 51,64,137,157,380
+packages/@n8n/agents/src/skills/registry.ts
+  s_bae59719d51263::t_a8428c6358e3aa 12,109
+  s_bae59719d51263::t_c277fef95d94f7 101-105,154-158
+  s_bae59719d51263::t_383431bbcc3ab7 148
+packages/@n8n/agents/src/skills/tools.ts
+  s_bae59719d51263::t_c277fef95d94f7 161-164,201-203
+  s_bae59719d51263::t_f9c83982b36b6b 88,181,194,212,214,236,242
+  s_bae59719d51263::t_a8428c6358e3aa 18,200,205
+  s_bae59719d51263::t_72972075bbc1de 149,344,382
+  s_bae59719d51263::t_ae0993dab7af21 243
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-hub-skills.test.ts
+  s_bae59719d51263::t_c277fef95d94f7 447-454,480-483
+  s_bae59719d51263::t_a8428c6358e3aa 446,455-479,484-485
+  s_bae59719d51263::t_c33aafefa551d2 12,444-445,486-495,502,509-513,524
+  s_bae59719d51263::t_ae0993dab7af21 496-501,503-508,514-523
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-skill-telemetry.test.ts
+  s_bae59719d51263::t_71ddee3b27506d 156,165,171
+  s_bae59719d51263::t_bb8aaf8fdfd946 12-18,22-25,51-55,57-66,73-75,77-86,89-97,126-130,144-153,158-160,164,166-170,172,180-186,193-212
+  s_bae59719d51263::t_fbe9d29be1b9d6 1-11,19-21,26-42,50,56,67-72,76,87-88,98-110,121-125,131-143,154-155,157,161-163,173-179,187-192,213-214
+  s_bae59719d51263::t_f6e55c38f78283 111-114,119-120
+  s_bae59719d51263::t_ae0993dab7af21 43-49,115-118
+packages/@n8n/telemetry/assistant-hub-skills.md
+  s_bae59719d51263::t_bde1fe5619b4e3 1-59
+packages/@n8n/agents/src/skills/index.ts
+  s_bae59719d51263::t_72972075bbc1de 59-60
+  s_bae59719d51263::t_51367ff49a471b 28
+packages/@n8n/telemetry/src/__tests__/instance-context-turn.test.ts
+  s_bae59719d51263::t_bde1fe5619b4e3 144-146,159-160,167-168
+  s_bae59719d51263::t_bb8aaf8fdfd946 147-158,161-166
+packages/@n8n/agents/src/runtime/__tests__/active-skills.test.ts
+  s_bae59719d51263::t_4d2011d8c80712 616-617
+  s_bae59719d51263::t_bb8aaf8fdfd946 565-615,618-632
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_bae59719d51263::t_bb8aaf8fdfd946 235-239,6633-6709
+  s_bae59719d51263::t_c33aafefa551d2 3993,6963
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_bae59719d51263::t_e0204434926b75 848-850,852
+packages/cli/src/modules/instance-ai/instance-ai-skill-telemetry.ts
+  s_bae59719d51263::t_d2c762d88aa638 8-16,21-33,40-46,48-65,69-74,97-106,109-112,117-125,128-129,132-148,153,160-165
+  s_bae59719d51263::t_f9c83982b36b6b 66
+  s_bae59719d51263::t_bb8aaf8fdfd946 1-2,5-7,17-20,75-96,107-108,113-116,126-127,130-131,149-152,154-159
+  s_bae59719d51263::t_f6e55c38f78283 3-4,47
+  s_bae59719d51263::t_ae0993dab7af21 34-39,67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19e0fef0aaa05c9b2525fa0d2af937ba2e865aff",
+  "prompts": {},
+  "sessions": {
+    "s_bae59719d51263": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17d82-6e09-7c92-b990-91908db587a8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
