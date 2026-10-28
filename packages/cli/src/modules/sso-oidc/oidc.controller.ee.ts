@@ -236,6 +236,8 @@ export class OidcController {
 		const encryptedIdToken: unknown = req.cookies[OIDC_ID_TOKEN_COOKIE_NAME];
 		res.clearCookie(OIDC_ID_TOKEN_COOKIE_NAME);
 
+		this.eventService.emit('user-logged-out', { user: req.user });
+
 		// Only sessions established through OIDC carry the ID token cookie:
 		// email or LDAP sessions must never trigger a logout at the provider.
 		if (

@@ -337,6 +337,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
+			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -2367,6 +2368,10 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userMfaDisabled({ user }: RelayEventMap['user-mfa-disabled']) {
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, { user_id: user.id });
+	}
+
+	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, { user_id: user.id });
 	}
 
 	private userSubmittedPersonalizationSurvey({
