@@ -22,6 +22,12 @@
       "agent-config": [
         "dist/esm/agent-config/index.d.ts"
       ],
+      "llm-usage": [
+        "dist/cjs/llm-usage/index.d.ts"
+      ],
+      "llm-usage/langchain": [
+        "dist/cjs/llm-usage/langchain.d.ts"
+      ],
       "fromai-helpers": [
         "dist/esm/utils/fromai-helpers.d.ts"
       ],
@@ -78,6 +84,14 @@
       "types": "./dist/esm/agent-config/index.d.ts",
       "import": "./dist/esm/agent-config/index.js",
       "require": "./dist/cjs/agent-config/index.js"
+    },
+    "./llm-usage": {
+      "types": "./dist/cjs/llm-usage/index.d.ts",
+      "default": "./dist/cjs/llm-usage/index.js"
+    },
+    "./llm-usage/langchain": {
+      "types": "./dist/cjs/llm-usage/langchain.d.ts",
+      "default": "./dist/cjs/llm-usage/langchain.js"
     },
     "./fromai-helpers": {
       "types": "./dist/esm/utils/fromai-helpers.d.ts",
@@ -173,6 +187,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",
+    "uuid": "catalog:",
     "tmp-promise": "catalog:",
     "js-tiktoken": "catalog:",
     "@thednp/dommatrix": "^3.1.1",

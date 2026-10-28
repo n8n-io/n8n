@@ -10,6 +10,11 @@ import { AgentEventBus } from '../state/event-bus';
 
 // The provider stub keeps the transport it is given, so each test can call the
 // model's fetch and see whether a request span is recorded.
+// The test reads the transport off the provider's stub model, which the usage wrapper hides.
+vi.mock('../model/llm-usage-middleware', () => ({
+	withLlmUsageReporting: (model: unknown) => model,
+}));
+
 vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: (opts?: { fetch?: typeof globalThis.fetch }) => (model: string) => ({
 		provider: 'anthropic',

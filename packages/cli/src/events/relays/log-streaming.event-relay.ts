@@ -128,6 +128,10 @@ export class LogStreamingEventRelay extends EventRelay {
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
 			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
+			'llm-budget-threshold-reached': (event) =>
+				this.llmBudgetWarning('n8n.audit.llm-budget.threshold-reached', event),
+			'llm-budget-limit-reached': (event) =>
+				this.llmBudgetWarning('n8n.audit.llm-budget.limit-reached', event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -848,6 +852,13 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #endregion
 
 	// #region Node type policy
+
+	private llmBudgetWarning(
+		eventName: 'n8n.audit.llm-budget.threshold-reached' | 'n8n.audit.llm-budget.limit-reached',
+		event: RelayEventMap['llm-budget-threshold-reached'],
+	) {
+		void this.eventBus.sendAuditEvent({ eventName, payload: { ...event } });
+	}
 
 	private nodeTypePolicyScopeUpdated(event: RelayEventMap['node-type-policy-scope-updated']) {
 		void this.eventBus.sendAuditEvent({

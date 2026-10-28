@@ -86,6 +86,20 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 			},
 			{ kind: 'system', reason: 'execution' },
 		),
+	llmCall: async () =>
+		await service.enforceLlmCall(
+			{
+				callerType: 'node',
+				workflowId: 'wf-1',
+				agentId: null,
+				projectId: 'proj-1',
+				accountableUserId: null,
+				credential: { id: 'cred-1' },
+				provider: 'openai',
+				model: 'gpt-4o',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 });
 
 const evaluateCalls = (service: PolicyEnforcementService) => ({

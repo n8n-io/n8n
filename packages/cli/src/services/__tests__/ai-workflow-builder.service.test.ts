@@ -1,9 +1,16 @@
 import type { Mock, MockedClass } from 'vitest';
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import {
+	getLlmCallContext,
+	setLlmUsageSink,
+	type LlmCallContext,
+} from '@n8n/ai-utilities/llm-usage';
 import type { Logger } from '@n8n/backend-common';
 import { WorkflowBuilderSessionRepository } from '@n8n/backend-module-workflow-builder';
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { type Project, ProjectRepository, SharedWorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -298,6 +305,76 @@ describe('WorkflowBuilderService', () => {
 				mockUser,
 				abortController.signal,
 			);
+		});
+
+		describe('LLM usage scope', () => {
+			afterEach(() => setLlmUsageSink(undefined));
+
+			const chatWithProbe = async (workflowId?: string) => {
+				setLlmUsageSink({ write: () => {} });
+				const contexts: (LlmCallContext | undefined)[] = [];
+				const mockAiService = mock<AiWorkflowBuilderService>();
+				(mockAiService.chat as Mock).mockReturnValue(
+					(async function* () {
+						await Promise.resolve();
+						contexts.push(getLlmCallContext());
+						yield { messages: ['response'] };
+					})(),
+				);
+				MockedAiWorkflowBuilderService.mockImplementation(function () {
+					return mockAiService;
+				});
+				const payload = {
+					id: '1',
+					message: 'test',
+					workflowContext: { currentWorkflow: { id: workflowId } },
+				};
+				for await (const _chunk of service.chat(payload, mockUser)) {
+					// Consume outside any scope.
+				}
+				return contexts[0];
+			};
+
+			it('keeps the context inside the inner generator, with the workflow project', async () => {
+				const sharedWorkflows = mock<SharedWorkflowRepository>();
+				sharedWorkflows.getWorkflowOwningProject.mockResolvedValue(
+					mock<Project>({ id: 'project-1' }),
+				);
+				Container.set(SharedWorkflowRepository, sharedWorkflows);
+
+				expect(await chatWithProbe('wf-1')).toEqual({
+					callerType: 'workflow-builder',
+					userId: 'test-user-id',
+					workflowId: 'wf-1',
+					projectId: 'project-1',
+				});
+			});
+
+			it("uses the user's personal project for a new workflow", async () => {
+				const projects = mock<ProjectRepository>();
+				projects.getPersonalProjectForUser.mockResolvedValue(mock<Project>({ id: 'personal-1' }));
+				Container.set(ProjectRepository, projects);
+
+				expect(await chatWithProbe()).toMatchObject({ projectId: 'personal-1' });
+			});
+
+			it('marks Assistant credits when the AI assistant service runs the chat', async () => {
+				(service as unknown as { client: object }).client = {};
+
+				expect(await chatWithProbe()).toMatchObject({ credential: { managedBy: 'assistant' } });
+			});
+
+			it('runs the chat without a project when the project lookup fails', async () => {
+				const sharedWorkflows = mock<SharedWorkflowRepository>();
+				sharedWorkflows.getWorkflowOwningProject.mockRejectedValue(new Error('db down'));
+				Container.set(SharedWorkflowRepository, sharedWorkflows);
+
+				expect(await chatWithProbe('wf-1')).toEqual({
+					callerType: 'workflow-builder',
+					userId: 'test-user-id',
+					workflowId: 'wf-1',
+				});
+			});
 		});
 	});
 

@@ -14,6 +14,7 @@ import type {
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
+import type { LlmUsageHooks } from './llm-usage-context';
 
 /** Standardized mock HTTP response returned by the eval mock handler. */
 export interface EvalMockHttpResponse {
@@ -65,6 +66,8 @@ declare module 'n8n-workflow' {
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
 		'inbound-auth-core'?: { trustedSourceDirectory: TrustedSourceDirectory };
+		/** Set by the llm-usage module when it is enabled. */
+		'llm-usage'?: LlmUsageHooks;
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.

@@ -1,0 +1,283 @@
+operationId: updateLlmBudget
+tags:
+  - LLM budgets
+summary: Update an LLM budget
+description: 'Replace an LLM budget. Send the `version` you read: a newer stored version gives 409.'
+x-required-scope: llmBudget:manage
+parameters:
+  - schema:
+      type: string
+      minLength: 1
+      maxLength: 36
+    required: true
+    name: llmBudgetId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          enabled:
+            type: boolean
+            default: true
+          target:
+            type: object
+            properties:
+              workflow:
+                oneOf:
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - all
+                    required:
+                      - match
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - ids
+                      ids:
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                        minItems: 1
+                    required:
+                      - match
+                      - ids
+                    additionalProperties: false
+                type: object
+              agent:
+                oneOf:
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - all
+                    required:
+                      - match
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - ids
+                      ids:
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                        minItems: 1
+                    required:
+                      - match
+                      - ids
+                    additionalProperties: false
+                type: object
+              project:
+                oneOf:
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - all
+                    required:
+                      - match
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - ids
+                      ids:
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                        minItems: 1
+                    required:
+                      - match
+                      - ids
+                    additionalProperties: false
+                type: object
+              user:
+                oneOf:
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - all
+                    required:
+                      - match
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - ids
+                      ids:
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                        minItems: 1
+                    required:
+                      - match
+                      - ids
+                    additionalProperties: false
+                type: object
+              credential:
+                oneOf:
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - all
+                    required:
+                      - match
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      match:
+                        type: string
+                        enum:
+                          - ids
+                      ids:
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                        minItems: 1
+                    required:
+                      - match
+                      - ids
+                    additionalProperties: false
+                type: object
+            additionalProperties: false
+            description: 'Dimension name to filter. `{ match: "all" }` gives each value its own counter; `{ match: "ids", ids }` only these values. A credential value is a credential ID, or `managed:aiGateway` for Gateway credits.'
+          window:
+            oneOf:
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - rolling
+                  unit:
+                    type: string
+                    enum:
+                      - day
+                      - week
+                      - month
+                required:
+                  - kind
+                  - unit
+                additionalProperties: false
+              - type: object
+                properties:
+                  kind:
+                    type: string
+                    enum:
+                      - calendar
+                  unit:
+                    type: string
+                    enum:
+                      - day
+                      - week
+                      - month
+                  timezone:
+                    type: string
+                    enum:
+                      - instance
+                      - UTC
+                required:
+                  - kind
+                  - unit
+                additionalProperties: false
+            type: object
+          metric:
+            type: string
+            enum:
+              - costUsd
+            default: costUsd
+          limit:
+            type: number
+            minimum: 0
+            exclusiveMinimum: true
+            description: The limit in the unit of `metric`.
+          action:
+            type: string
+            enum:
+              - block
+              - warn
+            default: block
+            description: '`block` stops calls at the limit. `warn` only emits events.'
+          warnAtPercent:
+            type: array
+            items:
+              type: integer
+              minimum: 1
+              maximum: 100
+            maxItems: 5
+            default:
+              - 80
+            description: Each threshold emits one log-streaming event when it is crossed.
+          managedBy:
+            type: string
+            nullable: true
+            maxLength: 32
+            default: null
+            description: The system that owns the budget, for example `lighthouse`.
+          externalId:
+            type: string
+            nullable: true
+            maxLength: 255
+            default: null
+          version:
+            type: integer
+            minimum: 1
+            description: The version that was read. A newer stored version gives 409.
+        required:
+          - name
+          - target
+          - window
+          - limit
+          - version
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/llmBudgetPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

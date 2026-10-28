@@ -240,6 +240,11 @@ import type {
 	InstanceContextSurface,
 } from '@n8n/api-types';
 import { UNLIMITED_CREDITS, type InstanceAiHandoffContext } from '@n8n/api-types';
+import {
+	getLlmCallContext,
+	setLlmUsageSink,
+	type LlmCallContext,
+} from '@n8n/ai-utilities/llm-usage';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -6980,4 +6985,59 @@ describe('InstanceAiService — instance-context turn event', () => {
 			);
 		},
 	);
+});
+
+describe('InstanceAiService — LLM usage scope', () => {
+	afterEach(() => setLlmUsageSink(undefined));
+
+	it('starts the run in a scope with the thread and user', () => {
+		setLlmUsageSink({ write: () => {} });
+		const service = createStartRunService();
+		let context: LlmCallContext | undefined;
+		service.executeRun = vi.fn(() => {
+			context = getLlmCallContext();
+		});
+
+		service.startRun(fakeUser, 'thread-a', 'Hello');
+
+		expect(context).toEqual({ callerType: 'instance-ai', threadId: 'thread-a', userId: 'user-1' });
+	});
+
+	it('adds the project of the suspended run and its Assistant credits when a run resumes', async () => {
+		setLlmUsageSink({ write: () => {} });
+		const service = createStartRunService();
+		(service as unknown as { aiService: { isProxyEnabled: () => boolean } }).aiService = {
+			isProxyEnabled: () => true,
+		};
+		let context: LlmCallContext | undefined;
+		const resumed = new Promise<void>((resolve) => {
+			(service as unknown as { processResumedStream: () => Promise<void> }).processResumedStream =
+				vi.fn(async () => {
+					context = getLlmCallContext();
+					resolve();
+				});
+		});
+
+		(
+			service as unknown as { startProcessResumedStream: (...args: unknown[]) => void }
+		).startProcessResumedStream(
+			{},
+			{},
+			{
+				threadId: 'thread-a',
+				runId: 'run-1',
+				user: fakeUser,
+				orchestrationContext: { projectId: 'project-1' },
+			},
+		);
+		await resumed;
+
+		expect(context).toEqual(
+			expect.objectContaining({
+				callerType: 'instance-ai',
+				projectId: 'project-1',
+				credential: { managedBy: 'assistant' },
+			}),
+		);
+	});
 });

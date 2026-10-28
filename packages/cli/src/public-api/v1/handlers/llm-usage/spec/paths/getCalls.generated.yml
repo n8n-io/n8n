@@ -1,0 +1,166 @@
+operationId: getCalls
+tags:
+  - LLM usage
+summary: Retrieve LLM calls
+description: Retrieve the LLM calls of your instance in a date range, oldest first, with their token counts, estimated cost and the credential that paid for them.
+x-required-scope: llmUsage:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      format: date-time
+      description: ISO 8601 start of the range, inclusive. Defaults to 30 days before endDate.
+    required: false
+    name: startDate
+    in: query
+  - schema:
+      type: string
+      format: date-time
+      description: ISO 8601 end of the range, exclusive. Defaults to now. Set it to page through a fixed range.
+    required: false
+    name: endDate
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  callId:
+                    type: string
+                    description: Unique identifier of the call.
+                  startedAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                    description: When the call started. Null when it is not known.
+                  finishedAt:
+                    type: string
+                    format: date-time
+                    description: When the call finished.
+                  durationMs:
+                    type: number
+                    nullable: true
+                    description: Duration of the call in milliseconds. Null when not known.
+                  callerType:
+                    type: string
+                    description: What made the call.
+                    example: node
+                  workflowId:
+                    type: string
+                    nullable: true
+                    description: Workflow that made the call.
+                  executionId:
+                    type: string
+                    nullable: true
+                    description: Execution that made the call.
+                  executionMode:
+                    type: string
+                    nullable: true
+                    description: Mode of the run that started the work.
+                    example: trigger
+                  nodeName:
+                    type: string
+                    nullable: true
+                    description: Name of the node that made the call.
+                  nodeType:
+                    type: string
+                    nullable: true
+                    description: Type of the node that made the call.
+                  agentId:
+                    type: string
+                    nullable: true
+                    description: Agent that made the call.
+                  threadId:
+                    type: string
+                    nullable: true
+                    description: Agent or n8n Assistant session of the call.
+                  projectId:
+                    type: string
+                    nullable: true
+                    description: Project that the call belongs to.
+                  userId:
+                    type: string
+                    nullable: true
+                    description: User who started the work.
+                  credentialId:
+                    type: string
+                    nullable: true
+                    description: Credential that paid for the call.
+                  managedBy:
+                    type: string
+                    nullable: true
+                    enum:
+                      - aiGateway
+                      - assistant
+                    description: 'Set when n8n credits paid for the call instead of a credential: aiGateway for Gateway credits, assistant for Assistant credits.'
+                  provider:
+                    type: string
+                    description: LLM provider.
+                    example: openai
+                  model:
+                    type: string
+                    description: Model that answered the call.
+                    example: gpt-5-mini
+                  inputTokens:
+                    type: number
+                    description: All input tokens, cached tokens included.
+                  outputTokens:
+                    type: number
+                    description: All output tokens, reasoning tokens included.
+                  cacheReadTokens:
+                    type: number
+                    description: Input tokens read from the provider cache.
+                  cacheWriteTokens:
+                    type: number
+                    description: Input tokens written to the provider cache.
+                  estimatedCostUsd:
+                    type: number
+                    nullable: true
+                    description: Estimated cost in US dollars, from public list prices. Null when the model has no price.
+                required:
+                  - callId
+                  - startedAt
+                  - finishedAt
+                  - durationMs
+                  - callerType
+                  - workflowId
+                  - executionId
+                  - executionMode
+                  - nodeName
+                  - nodeType
+                  - agentId
+                  - threadId
+                  - projectId
+                  - userId
+                  - credentialId
+                  - managedBy
+                  - provider
+                  - model
+                  - inputTokens
+                  - outputTokens
+                  - cacheReadTokens
+                  - cacheWriteTokens
+                  - estimatedCostUsd
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

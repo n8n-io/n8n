@@ -14,6 +14,7 @@ import type {
 	ITaskDataConnections,
 	ITaskMetadata,
 	IWorkflowExecuteAdditionalData,
+	LlmUsageNodeContext,
 	Workflow,
 	WorkflowExecuteMode,
 	NodeConnectionType,
@@ -21,6 +22,8 @@ import type {
 	NodeExecutionHint,
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+
+import { buildLlmUsageNodeContext } from '../llm-usage-context';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -100,6 +103,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				additionalData,
 				runExecutionData,
 				connectionInputData,
+				mode,
 			),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
@@ -205,6 +209,13 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	getNextRunIndex(): number {
 		const nodeName = this.node.name;
 		return this.runExecutionData.resultData.runData[nodeName]?.length ?? 0;
+	}
+
+	getLlmUsageContext(): LlmUsageNodeContext {
+		return buildLlmUsageNodeContext(this.workflow, this.node, this.additionalData, {
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
 	}
 
 	/** Returns true if the node is being executed as an AI Agent tool */

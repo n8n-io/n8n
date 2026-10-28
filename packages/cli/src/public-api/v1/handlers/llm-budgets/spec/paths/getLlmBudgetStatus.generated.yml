@@ -1,0 +1,60 @@
+operationId: getLlmBudgetStatus
+tags:
+  - LLM budgets
+summary: Retrieve the spend of an LLM budget
+description: Retrieve the counters of an enabled budget in its current window, highest spend first. A budget on all users has one counter for each user.
+x-required-scope: llmBudget:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      minLength: 1
+      maxLength: 36
+    required: true
+    name: llmBudgetId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    description: The values of the counter, for example `user=<id>`.
+                  spent:
+                    type: number
+                  percent:
+                    type: number
+                  unpricedCalls:
+                    type: number
+                    description: Calls without a price. They count as 0 in `spent`.
+                required:
+                  - key
+                  - spent
+                  - percent
+                  - unpricedCalls
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

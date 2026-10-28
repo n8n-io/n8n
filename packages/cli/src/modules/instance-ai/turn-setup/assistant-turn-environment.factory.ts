@@ -1,6 +1,7 @@
 import { createScopedWorkspace } from '@n8n/agents';
 import type { Workspace } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { enrichLlmCallContext } from '@n8n/ai-utilities/llm-usage';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
@@ -250,6 +251,12 @@ export class AssistantTurnEnvironmentFactory {
 			throw new UnexpectedError(
 				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
 			);
+		}
+		// The run's LLM calls start after this point, so they all carry the project.
+		enrichLlmCallContext({ projectId: boundProjectId });
+		// Through the AI service proxy, Assistant credits pay for every model call of the run.
+		if (this.aiService.isProxyEnabled()) {
+			enrichLlmCallContext({ credential: { managedBy: 'assistant' } });
 		}
 
 		const adminSettings = await this.settingsService.getAdminSettings();

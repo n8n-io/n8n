@@ -1498,6 +1498,22 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		};
 }
 
+/**
+ * Who runs a node, for the records of its LLM calls. Mirrors `LlmCallContext` of
+ * `@n8n/ai-utilities/llm-usage`: `n8n-workflow` cannot depend on that package.
+ */
+export interface LlmUsageNodeContext {
+	callerType: 'node';
+	workflowId?: string;
+	executionId?: string;
+	/** Mode of the run that started the work, so a sub-workflow reports its parent's mode. */
+	executionMode?: string;
+	nodeName: string;
+	nodeType: string;
+	projectId?: string;
+	userId?: string;
+}
+
 export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 	FunctionsBaseWithRequiredKeys<'getMode'> &
 	Pick<
@@ -1528,6 +1544,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 			runIndex: number;
 			inputData: INodeExecutionData[][];
 		}): ISupplyDataFunctions;
+		/** Who runs this node, for the records of its LLM calls. */
+		getLlmUsageContext?(): LlmUsageNodeContext;
 	};
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {

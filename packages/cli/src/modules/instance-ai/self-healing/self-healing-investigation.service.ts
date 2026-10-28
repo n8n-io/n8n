@@ -1,4 +1,5 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
+import { runWithLlmCallContext, type LlmCallContext } from '@n8n/ai-utilities/llm-usage';
 import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -105,8 +106,18 @@ export class SelfHealingInvestigationService {
 			const claimed = await this.claim(input, baseline, configuration.id);
 			if (!claimed || 'kind' in claimed) return claimed;
 
+			const { workflowId, projectId, executionId } = input;
+			const llmContext: LlmCallContext = {
+				callerType: 'instance-ai',
+				threadId: claimed.threadId,
+				userId: actor.id,
+				workflowId,
+				projectId,
+				executionId,
+			};
+			const run = async () => await this.run(claimed, baseline, actor);
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, baseline, actor).catch((error: unknown) => {
+			void runWithLlmCallContext(llmContext, run).catch((error: unknown) => {
 				this.logger.error('Self-healing investigation failed.', {
 					investigationId: claimed.id,
 					error,

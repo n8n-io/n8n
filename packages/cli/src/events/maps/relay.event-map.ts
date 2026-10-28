@@ -6,6 +6,7 @@ import type {
 	ProjectRelation,
 	RedactionFloor,
 } from '@n8n/api-types';
+import type { LlmBudgetWarningEvent } from '@n8n/backend-module-llm-usage';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -1452,6 +1453,13 @@ export type RelayEventMap = {
 		user: UserLike;
 		enabled: boolean;
 	};
+
+	// #endregion
+
+	// #region LLM budget
+
+	'llm-budget-threshold-reached': LlmBudgetWarningEvent;
+	'llm-budget-limit-reached': LlmBudgetWarningEvent;
 
 	// #endregion
 

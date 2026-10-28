@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, splitModelId } from '@n8n/ai-utilities/agent-config';
+import { isLlmUsageCredential, type LlmUsageCredential } from '@n8n/ai-utilities/llm-usage';
 import {
 	AZURE_AI_FOUNDRY_AUDIENCE,
 	ensureUrlPathSuffix,
@@ -15,6 +16,7 @@ import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
 import { loadAi } from './lazy-ai';
+import { withLlmUsageReporting } from './llm-usage-middleware';
 import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
@@ -610,7 +612,8 @@ export function createModel(
 	telemetry?: BuiltTelemetry,
 ): LanguageModel {
 	if (isLanguageModel(config)) {
-		return config;
+		// `LanguageModel` also types model ID strings. Only model objects are wrapped.
+		return typeof config === 'string' ? config : withLlmUsageReporting(config);
 	}
 
 	const rawId = typeof config === 'string' ? config : config.id;
@@ -634,9 +637,14 @@ export function createModel(
 
 	// Collect credential fields: strip `id`, pass the rest to Zod validation.
 	let credFields: Record<string, unknown> = {};
+	let usageCredential: LlmUsageCredential | undefined;
 	if (typeof config !== 'string') {
 		const { id: _id, ...rest } = config;
 		credFields = rest;
+		// Set by the host for LLM usage records. Removed here: it is not a field of the provider.
+		const credential = credFields.usageCredential;
+		delete credFields.usageCredential;
+		if (isLlmUsageCredential(credential)) usageCredential = credential;
 	}
 	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
 	// endpoints) spell the base URL as `url`; the provider schemas only know
@@ -663,7 +671,14 @@ export function createModel(
 		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
 		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
+	const model = (entry.build as EntryBuilder<typeof provider>)(
+		parsed.data,
+		modelName,
+		resolvedFetch,
+	);
+	return typeof model === 'string'
+		? model
+		: withLlmUsageReporting(model, provider, usageCredential);
 }
 
 /**

@@ -309,6 +309,7 @@ packages/@n8n/config/src/configs/ai-gateway.config.ts   @n8n-io/relay
 packages/@n8n/api-types/src/dto/ai/ai-gateway-config-response.dto.ts @n8n-io/relay
 packages/@n8n/api-types/src/dto/ai/ai-gateway-usage-response.dto.ts @n8n-io/relay
 packages/@n8n/api-types/src/dto/ai/ai-gateway-wallet-response.dto.ts @n8n-io/relay
+packages/modules/llm-usage/                             @n8n-io/relay
 packages/cli/src/modules/mcp/mcp-ai-gateway.helper.ts   @n8n-io/relay
 packages/cli/src/modules/agents/json-config/node-tool-ai-gateway.service.ts @n8n-io/relay
 packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts @n8n-io/relay

@@ -49,6 +49,7 @@ export const MODULE_NAMES = [
 	'skills',
 	'apps',
 	'knowledge',
+	'llm-usage',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

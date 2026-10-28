@@ -163,6 +163,24 @@ paths:
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
+  /llm-budgets:
+    get:
+      $ref: ./handlers/llm-budgets/spec/paths/listLlmBudgets.generated.yml
+    post:
+      $ref: ./handlers/llm-budgets/spec/paths/createLlmBudget.generated.yml
+  /llm-budgets/{llmBudgetId}:
+    get:
+      $ref: ./handlers/llm-budgets/spec/paths/getLlmBudget.generated.yml
+    put:
+      $ref: ./handlers/llm-budgets/spec/paths/updateLlmBudget.generated.yml
+    delete:
+      $ref: ./handlers/llm-budgets/spec/paths/deleteLlmBudget.generated.yml
+  /llm-budgets/{llmBudgetId}/status:
+    get:
+      $ref: ./handlers/llm-budgets/spec/paths/getLlmBudgetStatus.generated.yml
+  /llm-usage/calls:
+    get:
+      $ref: ./handlers/llm-usage/spec/paths/getCalls.generated.yml
   /settings/ldap:
     get:
       $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml

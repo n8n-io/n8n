@@ -20,6 +20,7 @@ export const ENFORCEMENT_POINTS = [
 	'credentialTransfer',
 	'credentialDecrypt',
 	'contentImport',
+	'llmCall',
 ] as const;
 
 export type EnforcementPoint = (typeof ENFORCEMENT_POINTS)[number];
@@ -125,6 +126,24 @@ export type CredentialDecryptContext = {
 	/** `null` when no node is asking, e.g. a credential test. */
 	readonly consumer: CredentialConsumer | null;
 	readonly projectId: string | null;
+};
+
+/**
+ * An LLM call that is about to be sent, as a check sees it.
+ *
+ * Fires before each call, so a check must decide from memory. Every field is `null` when the
+ * caller does not know it.
+ */
+export type LlmCallPolicyContext = {
+	readonly callerType: string;
+	readonly workflowId: string | null;
+	readonly agentId: string | null;
+	readonly projectId: string | null;
+	/** The user who started the run. A check can fall back to the publisher of the workflow. */
+	readonly accountableUserId: string | null;
+	readonly credential: { readonly id: string } | { readonly managedBy: string } | null;
+	readonly provider: string | null;
+	readonly model: string | null;
 };
 
 /**
@@ -240,6 +259,7 @@ export interface RegisteredPolicyCheck {
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
 	onContentImport?(ctx: ContentImportContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onLlmCall?(ctx: LlmCallPolicyContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 }
 
 /** The {@link RegisteredPolicyCheck} method for a point, e.g. `'onWorkflowSave'`. */
@@ -263,6 +283,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	credentialTransfer: 'onCredentialTransfer',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
+	llmCall: 'onLlmCall',
 };
 
 /** Constructor of a class implementing {@link RegisteredPolicyCheck}, for DI. */

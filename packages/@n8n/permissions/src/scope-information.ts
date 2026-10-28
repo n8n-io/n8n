@@ -180,6 +180,18 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
 	},
+	'llmBudget:read': {
+		displayName: 'Read LLM budgets',
+		description: 'Allows reading LLM spending budgets and their current spend.',
+	},
+	'llmBudget:manage': {
+		displayName: 'Manage LLM budgets',
+		description: 'Allows creating, updating and deleting LLM spending budgets.',
+	},
+	'llmUsage:read': {
+		displayName: 'Read LLM usage',
+		description: 'Allows reading LLM calls, their token counts and their estimated cost.',
+	},
 	'testRun:read': {
 		displayName: 'Read Test Run',
 		description: 'Allows reading evaluation test runs and their per-case results.',

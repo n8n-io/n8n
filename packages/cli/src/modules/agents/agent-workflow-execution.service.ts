@@ -5,6 +5,7 @@ import type {
 	CredentialProvider,
 	StreamChunk,
 } from '@n8n/agents';
+import { runWithLlmCallContext, type LlmCallContext } from '@n8n/ai-utilities/llm-usage';
 import type { AgentJsonConfig, AgentSkill, BudgetGuardrailConfig } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
@@ -378,10 +379,22 @@ export class AgentWorkflowExecutionService {
 					state,
 					parentCtx !== undefined,
 				);
+			const llmContext: LlmCallContext = {
+				callerType: 'agent',
+				// An inline agent has no saved agent: its calls belong to the workflow node.
+				agentId: params.savedAgentId,
+				threadId: params.threadId,
+				projectId: tracing.projectId,
+				workflowId: tracing.workflowId,
+				executionId: tracing.executionId,
+				nodeName: tracing.nodeName,
+				userId: params.telemetryUserId,
+			};
+			const scopedRun = async () => await runWithLlmCallContext(llmContext, run);
 			if (parentCtx) {
-				await context.with(parentCtx, run);
+				await context.with(parentCtx, scopedRun);
 			} else {
-				await run();
+				await scopedRun();
 			}
 		} catch (error) {
 			state.executionError = error;
