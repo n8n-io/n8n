@@ -30,7 +30,10 @@ function fakeContext() {
 			request: () => ({
 				method: () => method,
 				url: () => url,
-				postDataJSON: () => body,
+				postDataJSON: () => {
+					if (body instanceof Error) throw body;
+					return body;
+				},
 			}),
 			continue: continueWith,
 		} as unknown as Route);
@@ -99,6 +102,19 @@ describe('setupDefaultInterceptors workflow settings', () => {
 		const continueWith = await dispatch('PATCH', 'http://localhost:5678/rest/workflows/abc', {
 			name: 'renamed',
 		});
+
+		expect(continueWith).toHaveBeenCalledWith();
+	});
+
+	test('passes a save whose body is not JSON through unchanged', async () => {
+		const { context, dispatch } = fakeContext();
+		await setupDefaultInterceptors(context, stack);
+
+		const continueWith = await dispatch(
+			'POST',
+			'http://localhost:5678/rest/workflows',
+			new SyntaxError('Unexpected token <'),
+		);
 
 		expect(continueWith).toHaveBeenCalledWith();
 	});

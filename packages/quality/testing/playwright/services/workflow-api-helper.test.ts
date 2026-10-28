@@ -235,6 +235,20 @@ describe('WorkflowApiHelper.runRaw engine routing', () => {
 		await expect(new WorkflowApiHelper(api).runRaw('wf-1', run)).resolves.toBe(response);
 	});
 
+	test('returns a response whose body is not JSON', async () => {
+		const response = {
+			ok: () => true,
+			status: () => 200,
+			json: async () => {
+				throw new SyntaxError('Unexpected token <');
+			},
+		};
+		const post = vi.fn().mockResolvedValue(response);
+		const api = { request: { post }, options: v2 } as unknown as ApiHelpers;
+
+		await expect(new WorkflowApiHelper(api).runRaw('wf-1', run)).resolves.toBe(response);
+	});
+
 	test('returns the response of a run the control plane refused', async () => {
 		const { api, response } = apiAnswering(400, { message: 'Workflow has issues' }, v2);
 

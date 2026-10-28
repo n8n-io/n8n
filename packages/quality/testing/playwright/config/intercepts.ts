@@ -1,4 +1,4 @@
-import type { BrowserContext, Route } from '@playwright/test';
+import type { BrowserContext, Request, Route } from '@playwright/test';
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
 import type { IWorkflowSettings } from 'n8n-workflow';
@@ -197,7 +197,7 @@ async function routeWorkflowSettings(
 			const url = new URL(request.url());
 			const isCreate = request.method() === 'POST' && isWorkflowCreate(url);
 			const isUpdate = request.method() === 'PATCH' && isWorkflowUpdate(url);
-			const body = isCreate || isUpdate ? (request.postDataJSON() as { settings?: object }) : null;
+			const body = isCreate || isUpdate ? saveBody(request) : null;
 
 			if (!body || (isUpdate && !body.settings)) {
 				await route.continue();
@@ -209,4 +209,13 @@ async function routeWorkflowSettings(
 			});
 		},
 	);
+}
+
+/** The editor sends JSON; anything else passes through untouched instead of stalling the request. */
+function saveBody(request: Request): { settings?: object } | null {
+	try {
+		return request.postDataJSON() as { settings?: object } | null;
+	} catch {
+		return null;
+	}
 }

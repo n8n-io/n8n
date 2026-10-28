@@ -83,8 +83,18 @@ describe('watchCanvasRuns', () => {
 			}),
 		} as unknown as BrowserContext;
 
-		async function answer(url: string, status: number, body: unknown) {
-			const response = { ok: () => status < 400, status: () => status, json: async () => body };
+		async function answer(
+			url: string,
+			status: number,
+			body: unknown,
+			overrides: Partial<{ json: () => Promise<unknown> }> = {},
+		) {
+			const response = {
+				ok: () => status < 400,
+				status: () => status,
+				json: async () => body,
+				...overrides,
+			};
 			const fulfill = vi.fn();
 			for (const { matcher, handler } of routes) {
 				if (!matcher(new URL(url))) continue;
@@ -143,6 +153,29 @@ describe('watchCanvasRuns', () => {
 
 		expect(fulfill).not.toHaveBeenCalled();
 		expect(() => guard.assertRoutedToEngine()).not.toThrow();
+	});
+
+	test('reads a run body without the data wrapper', async () => {
+		const { context, answerRun } = fakeContext();
+		const guard = await watchCanvasRuns(context, { engineType: 'v2' });
+
+		await answerRun(200, { executionId: '1783' });
+
+		expect(() => guard.assertRoutedToEngine()).toThrow(/1783/);
+	});
+
+	// A proxy error page is ok to the browser but not JSON; the route must still answer.
+	test('answers the browser when the body is not JSON', async () => {
+		const { context, answer } = fakeContext();
+		await watchCanvasRuns(context, { engineType: 'v2' });
+
+		const { fulfill } = await answer('http://localhost:5678/rest/workflows/wf-1/run', 200, null, {
+			json: async () => {
+				throw new SyntaxError('Unexpected token <');
+			},
+		});
+
+		expect(fulfill).toHaveBeenCalledTimes(1);
 	});
 
 	test('ignores a run the control plane refused', async () => {

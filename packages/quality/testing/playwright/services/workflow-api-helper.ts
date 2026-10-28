@@ -250,9 +250,9 @@ export class WorkflowApiHelper {
 
 		// Playwright keeps the body until the response is disposed, so the caller can read it again.
 		if (response.ok()) {
-			const result = await response.json();
-			const run = (result.data ?? result) as { executionId?: string };
-			if (run.executionId !== undefined) this.assertRoutedToEngine(run.executionId);
+			const result = await response.json().catch(() => null);
+			const run = (result?.data ?? result) as { executionId?: string } | null;
+			if (run?.executionId !== undefined) this.assertRoutedToEngine(run.executionId);
 		}
 
 		return response;
