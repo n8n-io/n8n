@@ -2951,6 +2951,17 @@ describe('executeWebhook on engine v2', () => {
 			);
 		});
 
+		it('reports a resume with a v1 execution id as a bug, before the node runs', async () => {
+			await startWebhook({ startNode: webhookNode(WAIT_NODE_TYPE), executionId: '42' });
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'An engine v2 resume needs a v2 execution id' }),
+				expect.anything(),
+			);
+			expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('dispatches the run without a response expectation, because nobody listens', async () => {
 			await startWebhook();
 

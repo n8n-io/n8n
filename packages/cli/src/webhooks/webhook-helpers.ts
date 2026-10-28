@@ -1113,13 +1113,17 @@ export async function executeWebhook(
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			// A workflow that runs on engine v2 in this mode never starts on v1, so a
+			// resume here names a v2 execution. Anything else is a bug.
+			if (executionId !== undefined && !isExecutionIdV2(executionId)) {
+				throw new UnexpectedError('An engine v2 resume needs a v2 execution id', {
+					extra: { executionId },
+				});
+			}
 			// Created before the node runs, so a file the node stores is written under
 			// the path of its run from the start, and no rename is needed later. A
 			// resume reuses the id of the waiting execution.
-			engineV2ExecutionId =
-				executionId !== undefined && isExecutionIdV2(executionId)
-					? executionId
-					: createExecutionIdV2();
+			engineV2ExecutionId = executionId ?? createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
