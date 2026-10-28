@@ -140,10 +140,45 @@ describe('useUnpublishedByMoveToast', () => {
 
 			const { container } = renderComponent({ props: { vnode: shownMessage() } });
 
-			expect(Array.from(container.querySelectorAll('p')).map((p) => p.textContent)).toEqual([
+			expect(container).toHaveTextContent(
 				"Team A doesn't allow publishing these workflows, so the move unpublished them: 'First'.",
-				"n8n couldn't republish these workflows after the move, so they're now unpublished: 'Second'.",
-			]);
+			);
+			expect(container).toHaveTextContent(
+				"n8n couldn't republish these workflows after the move, so they're now unpublished:",
+			);
+			expect(container.querySelector('[data-test-id="republish-failure"]')).toHaveTextContent(
+				"'Second': boom",
+			);
+		});
+
+		it('should list each blocked type once, however many workflows use it', () => {
+			useUnpublishedByMoveToast().showForFolder(result, 'Team A');
+
+			const { container } = renderComponent({ props: { vnode: shownMessage() } });
+
+			expect(container.querySelectorAll('[data-test-id="policy-violation"]')).toHaveLength(1);
+			expect(container).toHaveTextContent('n8n-nodes-base.slack');
+		});
+
+		it('should give the reason for each workflow whose republish failed', () => {
+			useUnpublishedByMoveToast().showForFolder(
+				{
+					unpublishedWorkflows: [
+						{ id: 'w1', name: 'First', error: { name: 'Error', message: 'boom' } },
+						{ id: 'w2', name: 'Second', error: { name: 'Error', message: 'bad credentials' } },
+					],
+				},
+				'Team A',
+			);
+
+			const { container } = renderComponent({ props: { vnode: shownMessage() } });
+
+			expect(
+				Array.from(container.querySelectorAll('[data-test-id="republish-failure"]')).map(
+					(item) => item.textContent,
+				),
+			).toEqual(["'First': boom", "'Second': bad credentials"]);
+			expect(container.querySelectorAll('[data-test-id="policy-violation"]')).toHaveLength(0);
 		});
 
 		it('should render workflow names as text, not markup', () => {
