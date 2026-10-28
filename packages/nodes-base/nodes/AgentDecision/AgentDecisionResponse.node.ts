@@ -10,7 +10,8 @@ export class AgentDecisionResponse implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Agent decision',
 		name: 'agentDecisionResponse',
-		icon: 'node:ai-agent',
+		icon: 'node:agent-decision-response',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Return approval or rejection to the Agent',

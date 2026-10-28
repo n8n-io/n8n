@@ -11,7 +11,8 @@ export class AgentDecisionTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Agent decision Trigger',
 		name: 'agentDecisionTrigger',
-		icon: 'node:ai-agent',
+		icon: 'node:agent-decision-trigger',
+		iconColor: 'purple',
 		group: ['trigger'],
 		version: 1,
 		description: 'Start a workflow when an Agent requests tool approval',
