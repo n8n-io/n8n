@@ -1,0 +1,14 @@
+packages/cli/test/integration/public-api/discover.test.ts
+  h_5d40c27a8fdfd1 27-29,33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d04c1a50101733485fde0c97cd0b871f38d42849",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
