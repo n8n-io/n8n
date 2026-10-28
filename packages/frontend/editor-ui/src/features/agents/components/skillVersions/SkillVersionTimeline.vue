@@ -125,7 +125,8 @@ function onAction(version: number, action: VersionAction) {
 	/* About 320px, as in the design. */
 	width: calc(var(--spacing--5xl) * 1.25);
 	flex-shrink: 0;
-	padding-left: var(--spacing--md);
+	/* The editor body is flush, so the panel keeps its own inset. */
+	padding: var(--spacing--md) var(--spacing--sm) var(--spacing--md) var(--spacing--md);
 	border-left: var(--border);
 	/* Long version lists scroll inside the panel, not the whole modal body. */
 	max-height: min(60dvh, calc(var(--spacing--5xl) * 2.5));
