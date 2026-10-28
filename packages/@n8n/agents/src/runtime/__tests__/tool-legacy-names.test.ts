@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { Tool } from '../../sdk/tool';
 import type { AgentDbMessage, BuiltTool } from '../../types';
 import { DeferredToolManager, LOAD_TOOL_TOOL_NAME } from '../tools/deferred-tool-manager';
-import { buildToolMap, toAiSdkTools } from '../tools/tool-adapter';
+import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap, resolveToolForCall, toAiSdkTools } from '../tools/tool-adapter';
 
 function makeTool(name: string, legacyNames?: string[]): BuiltTool {
 	const builder = new Tool(name)
@@ -12,6 +13,15 @@ function makeTool(name: string, legacyNames?: string[]): BuiltTool {
 		.handler(async () => await Promise.resolve({ ok: true }));
 	if (legacyNames) builder.legacyNames(...legacyNames);
 	return builder.build();
+}
+
+function makeActionTool(name: string, legacyName: string, ...actions: string[]): BuiltTool {
+	return new Tool(name)
+		.description(`${name} description`)
+		.input(z.object({ id: z.string() }))
+		.legacyActions(legacyName, ...actions)
+		.handler(async () => await Promise.resolve({ ok: true }))
+		.build();
 }
 
 function loadToolMessage(toolName: string): AgentDbMessage {
@@ -91,5 +101,71 @@ describe('tool legacy names', () => {
 		manager.hydrateLoadedToolsFromMessages([loadToolMessage('old-name')]);
 
 		expect(manager.getLoadedTools().map((t) => t.name)).toEqual(['new_name']);
+	});
+
+	describe('legacy actions', () => {
+		const publish = makeActionTool('publish_item', 'items', 'publish', 'republish');
+		const remove = makeActionTool('delete_item', 'items', 'delete');
+
+		it('stores legacy actions on the built tool', () => {
+			expect(publish.legacyActions).toEqual({ items: ['publish', 'republish'] });
+		});
+
+		it('resolves a former split tool by the call action', () => {
+			const map = buildToolMap([publish, remove]);
+
+			expect(resolveToolForCall(map, 'items', { action: 'publish', id: '1' })).toBe(publish);
+			expect(resolveToolForCall(map, 'items', '{"action":"delete","id":"1"}')).toBe(remove);
+			expect(resolveToolForCall(map, 'items', { action: 'unknown' })).toBeUndefined();
+			expect(resolveToolForCall(map, 'items', undefined)).toBeUndefined();
+		});
+
+		it('keeps current names ahead of legacy actions', () => {
+			const map = buildToolMap([publish, remove]);
+
+			expect(resolveToolForCall(map, 'publish_item', { action: 'delete' })).toBe(publish);
+		});
+
+		it('lets a registered tool with the former name win over legacy actions', () => {
+			const items = makeTool('items');
+			const map = buildToolMap([publish, items]);
+
+			expect(resolveToolForCall(map, 'items', { action: 'publish' })).toBe(items);
+		});
+
+		it('resolves a deferred tool by the call action in getTool', () => {
+			const manager = new DeferredToolManager([publish, remove]);
+
+			expect(manager.getTool('items', { action: 'delete' })).toBe(remove);
+			expect(manager.getTool('items', '{"action":"publish","id":"1"}')).toBe(publish);
+			expect(manager.getTool('items', { action: 'unknown' })).toBeUndefined();
+		});
+
+		it('lets a registered deferred tool with the former name win over legacy actions', () => {
+			const items = makeTool('items');
+			const manager = new DeferredToolManager([publish, items]);
+
+			expect(manager.getTool('items', { action: 'publish' })).toBe(items);
+		});
+
+		it('repairs a model call of the former name and drops the action', async () => {
+			const map = buildToolMap([publish, remove]);
+
+			const repaired = await fixToolCall(
+				{
+					toolCall: {
+						toolCallId: 'tc-1',
+						toolName: 'items',
+						input: '{"action":"delete","id":"1"}',
+					},
+					error: { name: 'AI_NoSuchToolError' } as never,
+				},
+				map,
+			);
+
+			expect(repaired).toEqual(
+				expect.objectContaining({ toolName: 'delete_item', input: '{"id":"1"}' }),
+			);
+		});
 	});
 });

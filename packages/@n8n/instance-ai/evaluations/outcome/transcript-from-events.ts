@@ -6,7 +6,11 @@
  * LangSmith LLM-run outputs, not forwarded over SSE.
  */
 
-import { resolveBuilderToolName, type InstanceAiConfirmRequest } from '@n8n/api-types';
+import {
+	getLegacyBuilderToolActions,
+	resolveBuilderToolName,
+	type InstanceAiConfirmRequest,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { redactSecrets, redactSecretsInText, redactSecretsInTextDeep } from '../harness/redact';
@@ -199,8 +203,8 @@ function interpretToolCall(
 	outcomeByCallId: Map<string, ToolOutcome>,
 ): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
-	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const args = getRecord(payload, 'args') ?? {};
+	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '', args.action);
 
 	// workflow_builder_ask_user is rendered from the confirmation-request (which has the answers).
 	if (toolName === DOMAIN_TOOL_IDS.ASK_USER) return null;
@@ -209,8 +213,8 @@ function interpretToolCall(
 	if (!toolName) return null;
 	const callId = getString(payload, 'toolCallId');
 	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
-	// `workflow_builder_workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
-	const result = toolName === DOMAIN_TOOL_IDS.WORKFLOWS ? undefined : outcome?.result;
+	// Setup output is rendered as the setup-wizard block — don't duplicate its result here.
+	const result = isWorkflowSetupTool(toolName) ? undefined : outcome?.result;
 	return {
 		kind: 'tool-call',
 		toolName,
@@ -225,12 +229,22 @@ function interpretToolCall(
 	};
 }
 
+/** Results carry no args, so a result under the former multi-action name may be a setup. */
+const WORKFLOW_SETUP_TOOL_NAMES = new Set<string>([
+	DOMAIN_TOOL_IDS.SETUP_WORKFLOW,
+	...getLegacyBuilderToolActions(DOMAIN_TOOL_IDS.SETUP_WORKFLOW).map(([legacyName]) => legacyName),
+]);
+
+function isWorkflowSetupTool(toolName: string): boolean {
+	return WORKFLOW_SETUP_TOOL_NAMES.has(toolName);
+}
+
 function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = resolveBuilderToolName(getString(payload, 'toolName') ?? '');
 	const result = payload.result;
 
-	if (toolName === DOMAIN_TOOL_IDS.WORKFLOWS && isRecord(result)) {
+	if (isWorkflowSetupTool(toolName) && isRecord(result)) {
 		return extractSetupWizardOutcome(result);
 	}
 	return null;

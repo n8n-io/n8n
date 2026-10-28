@@ -13,7 +13,8 @@ describe('createSaveFailureRemediation', () => {
 			shouldEdit: true,
 			reason: 'workflow_modified_externally',
 		});
-		expect(remediation.guidance).toContain('get-as-code');
+		expect(remediation.guidance).not.toContain('get-as-code');
+		expect(remediation.guidance).toContain('get_workflow_as_code');
 		expect(remediation.guidance).toContain('status "conflict"');
 	});
 
@@ -93,6 +94,6 @@ describe('createSaveFailureRemediation', () => {
 			reason: 'workflow_id_not_found',
 		});
 		expect(remediation.guidance).toContain('omit workflowId');
-		expect(remediation.guidance).toContain('workflow_builder_workflows()');
+		expect(remediation.guidance).toContain('list_workflows');
 	});
 });
