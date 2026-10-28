@@ -462,6 +462,24 @@ function onOpenAutoFocus(event: Event) {
 	margin-left: auto;
 }
 
+/* A narrow window has no room beside the body, so the side panel goes under it. */
+@media (max-width: 768px) {
+	.splitWithPanel {
+		flex-direction: column;
+	}
+
+	.sidePanel {
+		width: auto;
+		border-left: none;
+		border-top: var(--border);
+	}
+
+	.sidePanelScroll {
+		position: static;
+		max-height: 40dvh;
+	}
+}
+
 @media (max-width: 480px) {
 	.body {
 		--agent-modal-body--padding-inline: var(--spacing--md);

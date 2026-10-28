@@ -118,6 +118,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			<template #titlePrefix><slot name="titlePrefix" /></template>
 			<template #titleSuffix><slot name="titleSuffix" /></template>
 			<template #headerActions><slot name="headerActions" /></template>
+			<template v-if="$slots.sidePanel" #sidePanel><slot name="sidePanel" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
 			<template #footerBeforeCancel><slot name="footerBeforeCancel" /></template>
