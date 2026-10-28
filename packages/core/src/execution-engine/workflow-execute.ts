@@ -1689,6 +1689,9 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		hooks: ExecutionLifecycleHooks,
 	): Promise<void> {
+		// A retry copies the original's data, flag included; this run decides it afresh.
+		delete this.runExecutionData.resultData.failedBeforeStart;
+
 		try {
 			await workflow.expression.acquireIsolate();
 

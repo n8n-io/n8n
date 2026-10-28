@@ -104,6 +104,30 @@ describe('processRunExecutionData', () => {
 		expect(result.data.resultData.failedBeforeStart).toBeUndefined();
 	});
 
+	test('clears the failed-before-start flag carried over from the retried execution', async () => {
+		const node = createNodeData({ name: 'node', type: types.passThrough });
+		const workflow = new DirectedGraph()
+			.addNodes(node)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+		const executionData = createRunExecutionData({
+			startData: { startNodes: [{ name: node.name, sourceData: null }] },
+			resultData: { failedBeforeStart: true },
+			executionData: {
+				nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+			},
+		});
+
+		const result = await new WorkflowExecute(
+			additionalData,
+			'retry',
+			executionData,
+		).processRunExecutionData(workflow);
+
+		expect(result.status).toBe('success');
+		expect(result.data.resultData.failedBeforeStart).toBeUndefined();
+	});
+
 	test('calls the right hooks in the right order', async () => {
 		// ARRANGE
 		const node1 = createNodeData({ name: 'node1', type: types.passThrough });
