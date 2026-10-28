@@ -82,7 +82,8 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
+/** `deleted` marks entries a user deleted; `dropped` marks entries the agent dropped. */
+export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped' | 'deleted';
 
 /**
  * The host's decision on who owns a turn's episodic memories. Memories are
@@ -116,7 +117,8 @@ export type EpisodicMemoryCaptureKind =
 	| 'resolution'
 	| 'request';
 
-export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed';
+/** `deleted` marks candidates a user deleted, before or after they were stored. */
+export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed' | 'deleted';
 
 export interface EpisodicMemoryCaptureCandidate {
 	id: string;

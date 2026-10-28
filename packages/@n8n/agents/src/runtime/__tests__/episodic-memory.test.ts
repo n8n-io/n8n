@@ -226,6 +226,30 @@ describe('createRecallMemoryTool', () => {
 		});
 	});
 
+	it('keeps recalled entry ids in the trace output only', () => {
+		const tool = createRecallMemoryTool({
+			memory: new InMemoryMemory(),
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
+		});
+
+		expect(
+			tool.toTraceOutput?.({
+				entries: [
+					{
+						id: 'memory-1',
+						content: 'User chose Postgres.',
+						createdAt: '2026-05-20T13:42:36.631Z',
+						lexicalScore: 0.3,
+						vectorScore: 0.6,
+						rrfScore: 0.04,
+						finalScore: 0.04,
+					},
+				],
+			}),
+		).toEqual({ entryIds: ['memory-1'] });
+	});
+
 	it('counts recall query embedding tokens when usage is available', async () => {
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
 		const counter = {

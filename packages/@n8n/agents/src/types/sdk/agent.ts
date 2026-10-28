@@ -159,6 +159,8 @@ export type StreamChunk = ContentMetadata &
 				canceled?: boolean;
 				/** Configured name of the MCP server the tool belongs to; absent for non-MCP tools. */
 				mcpServerName?: string;
+				/** Host-only trace data from the tool's `toTraceOutput`. The model never sees it. */
+				traceOutput?: unknown;
 		  }
 		| {
 				type: 'tool-call-suspended';

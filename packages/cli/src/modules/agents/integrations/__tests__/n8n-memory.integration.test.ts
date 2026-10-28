@@ -805,5 +805,90 @@ describe('N8nMemoryImpl', () => {
 				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual(sourcesBefore);
 			},
 		);
+
+		describe('capture deletion', () => {
+			async function enqueue(content = 'User prefers concise reports.', toolCallId = 'call-1') {
+				await memory.saveThread({ id: scope.threadId, resourceId: scope.resourceId });
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId,
+					content,
+					evidenceText: content,
+					kind: 'preference',
+				});
+				const save = async () =>
+					await memory.episodic.saveEntryWithSources({ resourceId: scope.resourceId, content }, [
+						{ candidateId: candidate.id, threadId: scope.threadId, evidenceText: content },
+					]);
+				return { candidate, save };
+			}
+
+			const deleteCandidate = async (candidateId: string) =>
+				await entryRepository.deleteCandidate(agentId, candidateId, {});
+
+			const activeEntries = async () => await entryRepository.findBy({ status: 'active' });
+
+			it('stores nothing when the capture saves a candidate deleted after it was read', async () => {
+				const { candidate, save } = await enqueue();
+
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
+
+				await expect(save()).resolves.toBeNull();
+				expect(await entryRepository.count()).toBe(0);
+				await expect(memory.episodic.getPendingCaptureCandidates(scope)).resolves.toEqual([]);
+			});
+
+			it('deletes the stored entry when a completed candidate is deleted', async () => {
+				const { candidate, save } = await enqueue();
+				const entry = await save();
+
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
+
+				await expect(entryRepository.findOneByOrFail({ id: entry!.id })).resolves.toMatchObject({
+					status: 'deleted',
+				});
+				await expect(memory.episodic.searchEntries(scope, 'concise')).resolves.toEqual([]);
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(false);
+			});
+
+			it('stores a user delete as deleted', async () => {
+				const { entry } = await captureEntry(memory, scope);
+
+				await expect(entryRepository.markDeleted(agentId, entry.id)).resolves.toBe(true);
+
+				await expect(entryRepository.findOneByOrFail({ id: entry.id })).resolves.toMatchObject({
+					status: 'deleted',
+				});
+			});
+
+			it('keeps an entry that another candidate still supports', async () => {
+				const first = await enqueue();
+				const second = await enqueue(undefined, 'call-2');
+				const entry = await first.save();
+				await second.save();
+
+				await deleteCandidate(first.candidate.id);
+
+				await expect(activeEntries()).resolves.toEqual([
+					expect.objectContaining({ id: entry!.id }),
+				]);
+				await expect(memory.episodic.getEntrySources([entry!.id])).resolves.toEqual([
+					expect.objectContaining({ candidateId: second.candidate.id }),
+				]);
+			});
+
+			it('leaves no active entry when delete and capture run at the same time', async () => {
+				for (let attempt = 0; attempt < 5; attempt++) {
+					await entryRepository.delete({});
+					const { candidate, save } = await enqueue(`Fact ${attempt}`, `call-${attempt}`);
+
+					await Promise.all([save(), deleteCandidate(candidate.id)]);
+
+					await expect(activeEntries()).resolves.toEqual([]);
+				}
+			});
+		});
 	});
 });
