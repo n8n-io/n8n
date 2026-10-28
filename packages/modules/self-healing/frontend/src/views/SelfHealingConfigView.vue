@@ -357,6 +357,7 @@ onBeforeRouteUpdate(async (to, from) => {
 					</N8nSettingsRowGroup>
 				</N8nSettingsSection>
 				<N8nSettingsSection
+					v-if="!isPersonalTab"
 					:title="i18n.baseText('selfHealing.config.reviewers')"
 					:description="i18n.baseText('selfHealing.config.reviewersHelp')"
 				>
