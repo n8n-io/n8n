@@ -381,6 +381,86 @@ describe('EngineV2ExecutionReader', () => {
 			});
 		});
 
+		it('should note the parent execution on the trigger task of a child', async () => {
+			const parentId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb' as ExecutionIdV2;
+			dataPlane.getExecution.mockImplementation(async (id) =>
+				id === parentId
+					? snapshot({ id: parentId, workflowId: 'wf-parent' })
+					: snapshot({
+							steps: [step()],
+							parent: { executionId: parentId, stepId: 'step-call', awaited: true },
+						}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID, 'wf-parent']);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
+				parentExecution: { executionId: parentId, workflowId: 'wf-parent' },
+			});
+			// The parent's identity only: no steps.
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(parentId, { includeSteps: false });
+		});
+
+		it('should note the sub-executions on the steps that started them', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+			dataPlane.searchExecutions.mockResolvedValue({
+				items: [
+					{
+						id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfc',
+						workflowId: 'wf-child',
+						status: 'completed',
+						mode: 'manual',
+						hostMode: 'manual',
+						parent: { executionId: EXECUTION_ID, stepId: 'step-1', awaited: true },
+						createdAt: '2026-08-25T10:00:01.000Z',
+						updatedAt: '2026-08-25T10:00:02.000Z',
+						finishedAt: '2026-08-25T10:00:02.000Z',
+					},
+				],
+				nextCursor: null,
+			});
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			// Scoped to what the caller can read, so no link names an execution it cannot open.
+			expect(dataPlane.searchExecutions).toHaveBeenCalledWith({
+				workflowIds: [WORKFLOW_ID],
+				parentExecutionId: EXECUTION_ID,
+				limit: 100,
+			});
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toEqual({
+				subExecution: {
+					executionId: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfc',
+					workflowId: 'wf-child',
+				},
+				subExecutionsCount: 1,
+			});
+		});
+
+		it('should omit the parent link when the caller cannot read the parent workflow', async () => {
+			const parentId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb' as ExecutionIdV2;
+			dataPlane.getExecution.mockImplementation(async (id) =>
+				id === parentId
+					? snapshot({ id: parentId, workflowId: 'wf-private' })
+					: snapshot({
+							steps: [step()],
+							parent: { executionId: parentId, stepId: 'step-call', awaited: true },
+						}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.runData.Trigger[0].metadata).toBeUndefined();
+		});
+
+		it('should read the parent only when there is one', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+
+			await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
+		});
+
 		it('should report empty run data when the snapshot carries no steps', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 
