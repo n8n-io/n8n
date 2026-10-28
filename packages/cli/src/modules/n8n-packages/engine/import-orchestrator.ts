@@ -35,7 +35,10 @@ import {
 	columnIdConflictError,
 	DataTableImporter,
 } from '../entities/data-table/data-table-importer';
-import { dropRepeatedSharedWrites } from '../entities/skill/skill-import.types';
+import {
+	dropRepeatedSharedWrites,
+	shareRevisionRaises,
+} from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -386,7 +389,9 @@ export class ImportOrchestrator {
 		const plans: ImportPlan[] = [];
 		for (const input of inputs) plans.push(await this.planScope(input, mode));
 		if (!plans.some((plan) => plan.agentPlan)) return plans;
-		dropRepeatedSharedWrites(plans.flatMap(({ agentPlan }) => agentPlan?.skills ?? []));
+		const skillPlans = plans.flatMap(({ agentPlan }) => agentPlan?.skills ?? []);
+		dropRepeatedSharedWrites(skillPlans);
+		shareRevisionRaises(skillPlans);
 
 		const agentImporter = await this.getAgentImporter();
 		const { AgentImportBindings } = await import('../entities/agent/agent-import-bindings.js');

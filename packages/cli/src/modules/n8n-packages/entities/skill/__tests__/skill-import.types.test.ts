@@ -12,7 +12,11 @@ function instanceSkill(id: string): SerializedSkill {
 
 function plan(...ids: string[]): SkillImportPlan {
 	const target = { projectId: null, agentId: null };
-	return { shared: ids.map((id) => ({ skill: instanceSkill(id), target })), owned: new Map() };
+	return {
+		shared: ids.map((id) => ({ skill: instanceSkill(id), target })),
+		owned: new Map(),
+		raisedRevisions: new Map(),
+	};
 }
 
 describe('dropRepeatedSharedWrites', () => {

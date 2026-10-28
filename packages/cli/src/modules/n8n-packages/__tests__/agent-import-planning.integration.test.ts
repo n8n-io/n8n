@@ -354,6 +354,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 		owned: new Map([
 			['shared', [{ skill: review, target: { projectId: null, agentId: 'shared' } }]],
 		]),
+		raisedRevisions: new Map(),
 	});
 	expect(a.tools).toEqual(first.tools);
 	expect(a.config?.skills).toEqual(first.config?.skills);
@@ -732,6 +733,29 @@ it.each([
 	]);
 	expect(await findLatestSkillVersion(existingId)).toEqual(before);
 	await deleteSkill(existingId);
+});
+
+it('reimports a changed instance skill across two projects', async () => {
+	const skill = sharedSkill('skill_revision_regression', 'instance');
+	const refs = [{ type: 'skill' as const, id: skill.id }];
+	const requests = [
+		input([agent('first', { skills: refs })]),
+		input([agent('second', { skills: refs })], otherProject.id),
+	];
+	for (const request of requests) request.skills = [skill];
+	async function applyPackage() {
+		const plans = await planner.planPackage(requests);
+		expect(plans.flatMap((plan) => plan.blockingIssues)).toEqual([]);
+		for (const plan of plans) await planner.apply(plan);
+	}
+	try {
+		await applyPackage();
+		skill.skill.instructions = 'Updated shared instructions.';
+		await expect(applyPackage()).resolves.toBeUndefined();
+	} finally {
+		await agents.delete({});
+		await deleteSkill(skill.id);
+	}
 });
 
 it('checks the names that the Agent keeps after a skipped skill', async () => {

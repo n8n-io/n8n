@@ -50,7 +50,7 @@ export class SkillImporter {
 		packageSkills: SerializedSkill[],
 		conflictPolicy: ImportConflictPolicy,
 	): Promise<{ plan: SkillImportPlan; issues: AgentImportIssue[] }> {
-		const plan: SkillImportPlan = { shared: [], owned: new Map() };
+		const plan: SkillImportPlan = { shared: [], owned: new Map(), raisedRevisions: new Map() };
 		const active = items.filter(({ action }) => action !== 'skip');
 		const users = skillUsers(active);
 		const decisions = await this.decideAll(context.projectId, users, packageSkills, conflictPolicy);
@@ -110,20 +110,19 @@ export class SkillImporter {
 	 * Rechecks the permission for every planned write, then writes the project and instance
 	 * skills. Call it before the Agents are written: the Agent transactions check nothing.
 	 * Each new skill version raises the revision of the Agents that follow the skill by one.
-	 * Returns how many times the revision of each Agent went up, keyed by Agent ID.
+	 * Adds these raises to `plan.raisedRevisions`.
 	 */
-	async applyShared(user: User, plan: SkillImportPlan): Promise<Map<string, number>> {
+	async applyShared(user: User, plan: SkillImportPlan): Promise<void> {
 		await this.assertCanWrite(user, allWrites(plan));
-		const raised = new Map<string, number>();
-		if (plan.shared.length === 0) return raised;
+		if (plan.shared.length === 0) return;
 		const following = await this.transactionRunner.run({}, async (ctx) => {
 			const agentIds: string[] = [];
 			for (const write of plan.shared) agentIds.push(...(await this.write(user, write, ctx)));
 			return agentIds;
 		});
+		const raised = plan.raisedRevisions;
 		for (const agentId of following) raised.set(agentId, (raised.get(agentId) ?? 0) + 1);
-		await this.skillService.refreshFollowingAgents([...raised.keys()]);
-		return raised;
+		await this.skillService.refreshFollowingAgents([...new Set(following)]);
 	}
 
 	/** The writer for the skills of one Agent, for that Agent's save transaction. */

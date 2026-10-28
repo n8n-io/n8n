@@ -153,9 +153,8 @@ export class AgentImporter {
 			{ ...context, projectPendingCreation: false },
 			requiredAgentScopes(plan),
 		);
-		const raisedRevisions = plan.skills
-			? await this.skillImporter.applyShared(context.user, plan.skills)
-			: new Map<string, number>();
+		if (plan.skills) await this.skillImporter.applyShared(context.user, plan.skills);
+		const raisedRevisions = plan.skills?.raisedRevisions ?? new Map<string, number>();
 		for (const item of plan.items) {
 			if (item.action === 'skip') {
 				outcomes.push({
@@ -192,7 +191,7 @@ export class AgentImporter {
 					context.user,
 					{
 						...options,
-						// The shared skill writes above raised the revision of the Agents that follow them.
+						// The shared skill writes of this package raised the revision of the Agents that follow them.
 						expectedRevision:
 							item.existing.revision + (raisedRevisions.get(item.sourceAgentId) ?? 0),
 					},
