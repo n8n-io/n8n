@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.x, 24.22.1, 25.x]
+        node-version: [22.x, 24.22.1]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}

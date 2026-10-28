@@ -16,6 +16,9 @@ on:
         type: string
         default: ''
 
+env:
+  NODE_OPTIONS: --max-old-space-size=6144
+
 jobs:
   bench:
     name: Benchmarks
