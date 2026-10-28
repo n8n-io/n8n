@@ -2,12 +2,12 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h, provide } from 'vue';
 
 import {
-	CONFIRMATION_THREAD_ID,
 	useConfirmationThreadId,
 	useConfirmationTransport,
 	type ConfirmationSubmit,
 	type ConfirmationTransport,
 } from '../confirmationTransport';
+import { ASSISTANT_AGENT_THREAD_ID } from '../assistantAgent/assistantAgentThreads';
 import { provideThread, type ThreadRuntime } from '../instanceAi.store';
 
 function transportIn(options: { thread?: ThreadRuntime; submit?: ConfirmationSubmit }) {
@@ -90,7 +90,7 @@ describe('useConfirmationThreadId', () => {
 		});
 		const Host = defineComponent({
 			setup() {
-				if (options.providedThreadId) provide(CONFIRMATION_THREAD_ID, options.providedThreadId);
+				if (options.providedThreadId) provide(ASSISTANT_AGENT_THREAD_ID, options.providedThreadId);
 				return () => h(Card);
 			},
 		});
