@@ -1,5 +1,5 @@
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
-import type { PolicyViolation } from '@n8n/api-types';
+import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
@@ -582,6 +582,7 @@ export interface ImportedAgentSummary {
 	activeVersionId: string | null;
 	status: 'created' | 'updated' | 'skipped';
 	publishing: PublishingOutcome;
+	channels: ImportedAgentChannel[];
 }
 
 export interface ImportStatusCounts {

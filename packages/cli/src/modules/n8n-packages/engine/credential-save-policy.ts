@@ -33,7 +33,7 @@ export class CredentialSavePolicyGate {
 		resolution: CredentialResolution,
 		projectId: string,
 		actor: PolicyActor,
-		mode: ImportPlanMode = 'enforce',
+		mode: ImportPlanMode,
 	): Promise<BlockingIssue[]> {
 		// Having no policy at all is the common case, so skip the selection too.
 		if (!this.policyEnforcementService.hasChecksFor('credentialSave')) return [];
@@ -93,7 +93,7 @@ export class CredentialSavePolicyGate {
 		updatesByTarget: ReadonlyMap<string, CredentialUpdateCandidate[]>,
 		transport: ContentImportTransport,
 		actor: PolicyActor,
-		mode: ImportPlanMode = 'enforce',
+		mode: ImportPlanMode,
 	): Promise<BlockingIssue[]> {
 		const checksSave = this.policyEnforcementService.hasChecksFor('credentialSave');
 		const checksImport = this.policyEnforcementService.hasChecksFor('contentImport');

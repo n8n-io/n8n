@@ -14,6 +14,7 @@ import type {
 import { AiService } from '@/services/ai.service';
 
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSandboxService } from '../sandbox';
 
 /**
@@ -49,6 +50,7 @@ export class AssistantSandboxWorkspaceSource
 		errorReporter: ErrorReporter,
 		aiService: AiService,
 		private readonly settingsService: InstanceAiSettingsService,
+		adapterService: InstanceAiAdapterService,
 	) {
 		this.sandboxService = new InstanceAiSandboxService({
 			config: globalConfig.instanceAi,
@@ -61,6 +63,7 @@ export class AssistantSandboxWorkspaceSource
 			backgroundTasks: { getRunningTasks: () => [] },
 			settingsService,
 			aiService,
+			getTemplatesService: () => adapterService.getTemplatesService(),
 		});
 	}
 

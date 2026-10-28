@@ -1,13 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import type { InstanceAiContext } from '@n8n/instance-ai';
+import type { BuilderTemplatesService, InstanceAiContext } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
 
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
+import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import { InstanceAiSandboxService } from '../../sandbox';
 import {
 	AssistantSandboxWorkspaceSource,
@@ -35,20 +36,30 @@ describe('AssistantSandboxWorkspaceSource', () => {
 		} as ReturnType<InstanceAiSettingsService['getSandboxStatus']>);
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
+		const adapterService = mock<InstanceAiAdapterService>();
 		const source = new AssistantSandboxWorkspaceSource(
 			logger,
 			mock<GlobalConfig>({ instanceAi: {} }),
 			mock<ErrorReporter>(),
 			mock<AiService>(),
 			settingsService,
+			adapterService,
 		);
 		const sandboxService = vi.mocked(InstanceAiSandboxService).mock.results.at(-1)?.value as Record<
 			string,
 			ReturnType<typeof vi.fn>
 		>;
 		const options = vi.mocked(InstanceAiSandboxService).mock.calls.at(-1)?.[0];
-		return { source, sandboxService, options };
+		return { source, sandboxService, options, adapterService };
 	}
+
+	it('creates sandboxes with the shared templates service', () => {
+		const { options, adapterService } = createSource();
+		const templatesService = {} as BuilderTemplatesService;
+		adapterService.getTemplatesService.mockReturnValue(templatesService);
+
+		expect(options?.getTemplatesService()).toBe(templatesService);
+	});
 
 	it('gives no lease when the instance cannot run the workflow builder sandbox', async () => {
 		const { source, sandboxService } = createSource(false);

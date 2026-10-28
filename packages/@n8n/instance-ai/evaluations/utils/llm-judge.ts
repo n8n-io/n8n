@@ -43,13 +43,16 @@ function tryParseMarkdownVerdict(text: string): JudgeVerdict | undefined {
 	return undefined;
 }
 
+/** Judge instruction to reach the verdict from the reasoning, not to justify a verdict already given. */
+export const REASONING_FIRST_RULE = 'Write your reasoning FIRST, then decide pass or fail.';
+
 /**
  * Suffix appended to a judge's system prompt. Forces the model to commit to
  * a binary verdict in a parseable shape.
  */
 export const REASONING_FIRST_SUFFIX = `
 
-IMPORTANT: Write your reasoning FIRST, then decide pass or fail. Be concise — focus only on critical issues.
+IMPORTANT: ${REASONING_FIRST_RULE} Be concise — focus only on critical issues.
 
 Respond with a JSON object (inside a markdown code fence) with exactly two fields:
 - "reasoning": brief analysis (max 3-4 sentences)

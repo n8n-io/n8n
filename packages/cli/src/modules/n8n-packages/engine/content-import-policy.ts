@@ -38,7 +38,7 @@ export class ContentImportPolicyGate {
 		projectId: string,
 		transport: ContentImportTransport,
 		actor: PolicyActor,
-		mode: ImportPlanMode = 'enforce',
+		mode: ImportPlanMode,
 	): Promise<BlockingIssue[]> {
 		// Skips the whole loop rather than paying a per-workflow guard: a package can hold
 		// hundreds, and having no policy at all is the common case.

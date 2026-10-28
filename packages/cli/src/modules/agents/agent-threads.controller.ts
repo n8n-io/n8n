@@ -7,6 +7,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { AgentSessionStopService } from './agent-session-stop.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
@@ -17,6 +18,7 @@ export class AgentThreadsController {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly sessionStopService: AgentSessionStopService,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -83,6 +85,15 @@ export class AgentThreadsController {
 			threadId,
 			user: req.user,
 		});
+	}
+
+	@Post('/:agentId/threads/:threadId/stop')
+	@ProjectScope('agent:execute')
+	async stopSession(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		return await this.sessionStopService.stopSession(projectId, agentId, threadId, req.user.id);
 	}
 
 	@Delete('/:agentId/threads/:threadId')
