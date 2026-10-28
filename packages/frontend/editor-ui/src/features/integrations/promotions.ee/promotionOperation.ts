@@ -68,22 +68,18 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 			});
 			return consumers.length > 0 ? [{ ...entry, consumers }] : [];
 		});
-	const { preflight } = check;
 	return {
 		...check,
-		preflight: {
-			...preflight,
-			missingBindings: scope(preflight.missingBindings),
-			accessRequirements: scope(preflight.accessRequirements),
-			conflicts: preflight.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
-				if ('consumers' in conflict) return scope([conflict]);
-				if (conflict.code === 'project-not-team') {
-					return conflict.workflows.some(({ id }) => listed(id)) ? [conflict] : [];
-				}
-				return [conflict];
-			}),
-			warnings: scope(preflight.warnings),
-		},
+		missingBindings: scope(check.missingBindings),
+		accessRequirements: scope(check.accessRequirements),
+		conflicts: check.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
+			if ('consumers' in conflict) return scope([conflict]);
+			if (conflict.code === 'project-not-team') {
+				return conflict.workflows.some(({ id }) => listed(id)) ? [conflict] : [];
+			}
+			return [conflict];
+		}),
+		warnings: scope(check.warnings),
 		movedWorkflows: check.movedWorkflows.filter(({ id }) => listed(id)),
 		// A folder that moved into the project stops the import for every selection, so keep all.
 		movedFolders: check.movedFolders,
@@ -92,11 +88,18 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 
 /** The blockers of the check. A project-wide conflict blocks every workflow in `listedWorkflowKeys`. */
 export function listBlockers(
-	{ preflight, movedWorkflows, movedFolders }: ApplyCheckResult,
+	{
+		missingBindings,
+		accessRequirements,
+		conflicts,
+		warnings,
+		movedWorkflows,
+		movedFolders,
+	}: ApplyCheckResult,
 	listedWorkflowKeys: ResourceKey[],
 ): Blocker[] {
 	const blockers: Blocker[] = [];
-	for (const binding of preflight.missingBindings) {
+	for (const binding of missingBindings) {
 		blockers.push({
 			kind: 'missing',
 			resourceKey:
@@ -106,14 +109,14 @@ export function listBlockers(
 			workflowKeys: consumerKeys(binding.consumers),
 		});
 	}
-	for (const access of preflight.accessRequirements) {
+	for (const access of accessRequirements) {
 		blockers.push({
 			kind: 'access',
 			resourceKey: `credential:${access.sourceId}`,
 			workflowKeys: consumerKeys(access.consumers),
 		});
 	}
-	for (const conflict of preflight.conflicts) {
+	for (const conflict of conflicts) {
 		// Moves come from `movedWorkflows` and `movedFolders` below.
 		if (conflict.code === 'moved') continue;
 		if (conflict.code === 'destructive-change') {
@@ -156,7 +159,7 @@ export function listBlockers(
 			});
 		}
 	}
-	for (const warning of preflight.warnings) {
+	for (const warning of warnings) {
 		blockers.push({
 			kind: 'warning',
 			resourceKey: variableKey(warning.name, warning.scope),

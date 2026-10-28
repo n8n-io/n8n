@@ -38,12 +38,13 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const labels = usePromotionPreviewLabels();
 
-const asBlockedResult = (check: ApplyCheckResult): BlockedApplyResult => ({
-	status: 'blocked',
-	environmentId: check.environmentId,
-	git: check.git,
-	preflight: check.preflight,
-});
+const asBlockedResult = ({
+	environmentId,
+	git,
+	movedWorkflows,
+	movedFolders,
+	...check
+}: ApplyCheckResult): BlockedApplyResult => ({ status: 'blocked', environmentId, git, check });
 
 // The binding session lives as long as the commit. A later check for the same commit keeps the
 // created bindings in the table as resolved.
@@ -54,7 +55,7 @@ watch(
 	() => props.check,
 	(check) => {
 		const result = asBlockedResult(check);
-		creation.updatePreflight(check.preflight);
+		creation.updateCheck(result.check);
 		if (sessionCommit === check.git.commitSha) {
 			bindings.reconcile(result);
 			return;
@@ -162,7 +163,7 @@ function movedRow(
 }
 
 const blockerRows = computed<BlockerRow[]>(() => {
-	const { preflight, movedWorkflows, movedFolders } = props.check;
+	const { accessRequirements, movedWorkflows, movedFolders } = props.check;
 	return [
 		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => ({
 			key,
@@ -176,7 +177,7 @@ const blockerRows = computed<BlockerRow[]>(() => {
 					? i18n.baseText(`promotions.preview.blockers.create.${binding.kind}`)
 					: undefined,
 		})),
-		...preflight.accessRequirements.map((access) => ({
+		...accessRequirements.map((access) => ({
 			key: `access:${access.sourceId}`,
 			icon: resourceIcon('credential'),
 			name: access.name,
@@ -205,7 +206,7 @@ function removedColumns(
 		.join(', ');
 }
 
-const warnings = computed(() => props.check.preflight.warnings);
+const warnings = computed(() => props.check.warnings);
 
 // Data table changes and variable warnings do not block Apply, so they share one section.
 const warningCount = computed(

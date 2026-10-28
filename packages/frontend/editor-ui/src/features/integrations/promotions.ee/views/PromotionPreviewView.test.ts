@@ -40,7 +40,7 @@ vi.mock('../promotionsSettings.api');
 vi.mock('@/features/collaboration/projects/projects.api');
 // The editors are modals of the app. The test answers for them.
 vi.mock('../composables/usePromotionBindingCreation', () => ({
-	usePromotionBindingCreation: () => ({ createBinding, updatePreflight: vi.fn() }),
+	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
 }));
 vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
 vi.mock('@n8n/composables/useToast', () => ({
@@ -105,27 +105,25 @@ const consumers = (...ids: string[]) => [
 	{ project: { id: 'p1', name: 'Billing' }, workflows: ids.map((id) => ({ id, name: id })) },
 ];
 
-const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
+const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-apply',
 	git: { branchName: 'main', commitSha: COMMIT_SHA },
-	preflight: {
-		missingProjects: [],
-		missingBindings: [],
-		accessRequirements: [],
-		conflicts: [],
-		warnings: [],
-		...preflight,
-	},
+	missingProjects: [],
+	missingBindings: [],
+	accessRequirements: [],
+	conflicts: [],
+	warnings: [],
 	movedWorkflows: [],
 	movedFolders: [],
+	...fields,
 });
 
 const REVISION = 'a'.repeat(64);
 
 /** The Apply preview carries its blockers and its revision. */
-const previewWithCheck = ({ preflight, movedWorkflows, movedFolders } = check()) => ({
+const previewWithCheck = ({ environmentId, git, ...previewCheck } = check()) => ({
 	...billingPreview(),
-	check: { preflight, movedWorkflows, movedFolders },
+	check: previewCheck,
 	revision: REVISION,
 });
 

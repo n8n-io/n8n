@@ -2,7 +2,7 @@ import type {
 	PromotionApplyCheck,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
-	PromotionBindingPreflightResult,
+	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceChange,
 	PromotionVariableScope,
@@ -147,7 +147,7 @@ export type ApplyCheckInput = {
  * - a variable must exist in the scope that the branch declares, not only in a fallback scope;
  * - a variable without a file in the package blocks.
  */
-export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
+export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 	const { plan, inventory, moves } = input;
 	const projects = new Map(inventory.projects.map((project) => [project.id, project]));
 	const projectOf: ProjectLookup = (id) => {
@@ -164,7 +164,7 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 			projectOf,
 		);
 
-	const result: PromotionBindingPreflightResult = {
+	const result: PromotionApplyCheck = {
 		missingProjects: plan.projectPlan.items
 			.filter(({ action }) => action === 'create')
 			.flatMap(({ sourceProjectId }) => {
@@ -225,13 +225,11 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 	}
 
 	return {
-		preflight: {
-			...result,
-			missingBindings: sortedByJson(result.missingBindings),
-			accessRequirements: sortedByJson(result.accessRequirements),
-			conflicts: sortedByJson(result.conflicts),
-			warnings: sortedByJson(result.warnings),
-		},
+		...result,
+		missingBindings: sortedByJson(result.missingBindings),
+		accessRequirements: sortedByJson(result.accessRequirements),
+		conflicts: sortedByJson(result.conflicts),
+		warnings: sortedByJson(result.warnings),
 		movedWorkflows: moves.workflows,
 		movedFolders: moves.folders,
 	};
@@ -377,7 +375,7 @@ function addCredentialRules(
 	{ plan, inventory, credentials }: ApplyCheckInput,
 	consumersOfIds: (consumers: readonly PackageRequirementConsumer[]) => PromotionBindingConsumer[],
 	projectOf: ProjectLookup,
-	result: PromotionBindingPreflightResult,
+	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
 	const issuesById = new Map<
@@ -502,7 +500,7 @@ function addCredentialRules(
 function addVariableRules(
 	{ plan, variables }: ApplyCheckInput,
 	projectOf: ProjectLookup,
-	result: PromotionBindingPreflightResult,
+	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
 	// Scopes of each matched variable, by consumer project.
@@ -608,7 +606,7 @@ function canonicalJson(value: unknown): string {
  */
 export function previewRevision(
 	resources: PromotionResource[],
-	check: PromotionApplyCheck,
+	check: PromotionPreviewCheck,
 ): string {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, resources, check }))

@@ -928,7 +928,7 @@ describe('resources in the preview', () => {
 		).body.data;
 
 		const releases = { id: project.id, name: 'Releases' };
-		expect(preview.check.preflight.conflicts).toEqual([
+		expect(preview.check.conflicts).toEqual([
 			{
 				kind: 'workflow',
 				code: 'missing-node-type',

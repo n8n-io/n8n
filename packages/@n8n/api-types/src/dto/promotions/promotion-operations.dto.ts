@@ -6,9 +6,9 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
 	promotionApplyCheckSchema,
-	promotionBindingPreflightResultSchema,
 	promotionBindingWarningSchema,
-} from './promotion-binding-preflight.dto';
+	promotionPreviewCheckSchema,
+} from './promotion-apply-check.dto';
 import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
@@ -204,7 +204,7 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),
-		preflight: promotionBindingPreflightResultSchema,
+		check: promotionApplyCheckSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
 	/** This instance changed after the reviewed preview. Nothing was imported. */
@@ -219,6 +219,6 @@ export const ApplyPackageResultDto = {
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
 
-const applyCheckResultSchema = applyPackageIdentitySchema.merge(promotionApplyCheckSchema);
+const applyCheckResultSchema = applyPackageIdentitySchema.merge(promotionPreviewCheckSchema);
 
 export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;
