@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import {
 	getPreferences,
 	updatePreferences,
@@ -98,6 +98,12 @@ describe('PromotionsSettingsView', () => {
 		await userEvent.click(await screen.findByTestId('action-remove'));
 
 		expect(await screen.findByTestId('promotion-environment-add-apply')).toBeInTheDocument();
+		// A plain Git environment has no promotion reviews to close.
+		expect(mockConfirm).toHaveBeenCalledWith(
+			expect.not.stringContaining('promotion reviews'),
+			expect.anything(),
+			expect.anything(),
+		);
 		expect(api.deletePromotionEnvironment).toHaveBeenCalledWith(
 			expect.anything(),
 			'environment-apply',
@@ -108,6 +114,32 @@ describe('PromotionsSettingsView', () => {
 		);
 		await cachedEnvironments.load();
 		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
+	});
+
+	it('says that removing a Git host environment closes its open promotion reviews', async () => {
+		const gitlabEnvironment: PromotionEnvironment = {
+			...applyEnvironment,
+			provider: { ...applyEnvironment.provider, type: 'gitlab', authType: 'token' },
+		};
+		api.fetchPromotionEnvironments.mockResolvedValue([gitlabEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(gitlabEnvironment);
+		mockConfirm.mockResolvedValue(MODAL_CANCEL);
+		renderView();
+
+		const card = await screen.findByTestId('promotion-environment-card-apply');
+		await userEvent.click(
+			within(within(card).getByTestId('promotion-environment-menu')).getByRole('button'),
+		);
+		await userEvent.click(await screen.findByTestId('action-remove'));
+
+		await waitFor(() =>
+			expect(mockConfirm).toHaveBeenCalledWith(
+				expect.stringContaining('open promotion reviews close in n8n'),
+				expect.anything(),
+				expect.anything(),
+			),
+		);
+		expect(api.deletePromotionEnvironment).not.toHaveBeenCalled();
 	});
 
 	it('offers no switch back while no v1 repository is connected', async () => {
