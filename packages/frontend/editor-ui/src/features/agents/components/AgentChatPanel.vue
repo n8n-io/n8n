@@ -1411,6 +1411,8 @@ defineExpose({
 	removeComposerAttachment,
 	// Read-only views of the chat state, for hosts that derive their own UI from it.
 	messages: readonly(messages),
+	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
+	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
 	isLoadingHistory: computed(() => isLoadingHistory.value),
 });

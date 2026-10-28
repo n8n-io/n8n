@@ -1,4 +1,4 @@
-import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { WORKFLOW_BUILDER_TOOL_NAMES, type InstanceAiNodesAttachment } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -7,10 +7,12 @@ import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, type Ref } from 'vue';
 
+import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactThread } from '../../artifactThread';
 import { INSTANCE_AI_VIEW } from '../../constants';
+import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -26,6 +28,7 @@ const {
 	previewProps,
 	previewThread,
 	routerPush,
+	focusInput,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	sendMessageFromOutside: vi.fn(),
@@ -33,6 +36,7 @@ const {
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
 	previewThread: { current: undefined as ArtifactThread | undefined },
 	routerPush: vi.fn(),
+	focusInput: vi.fn(),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -54,20 +58,40 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 // The chat state that the stub panel exposes, as the real panel does.
 const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
+const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
-		setup(_props, { attrs, expose }) {
+		setup(_props, { attrs, expose, slots }) {
+			// A chip with the same id replaces the old one, as in the real panel.
+			const addComposerAttachment = (
+				chip: AgentChatComposerAttachment['chip'],
+				clientContextPatch?: Record<string, unknown>,
+			) => {
+				composerAttachments.value = [
+					...composerAttachments.value.filter((item) => item.chip.id !== chip.id),
+					{ chip, clientContextPatch },
+				];
+			};
+			const removeComposerAttachment = (id: string) => {
+				composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
+			};
 			expose({
 				sendMessageFromOutside,
+				focusInput,
+				addComposerAttachment,
+				removeComposerAttachment,
+				composerAttachments,
 				messages: chatMessages,
 				isStreaming: ref(false),
 				isLoadingHistory,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
-				return h('div', { 'data-test-id': 'agent-chat-panel-stub' });
+				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
+					slots['composer-attachments']?.(),
+				]);
 			};
 		},
 	}),
@@ -92,14 +116,45 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({
-		emits: ['togglePreview'],
+		emits: ['togglePreview', 'toggleExpanded'],
 		setup:
 			(_props, { emit }) =>
-			() =>
+			() => [
 				h('button', {
 					'data-test-id': 'tab-bar-preview-toggle',
 					onClick: () => emit('togglePreview'),
 				}),
+				h('button', {
+					'data-test-id': 'tab-bar-expand-toggle',
+					onClick: () => emit('toggleExpanded'),
+				}),
+			],
+	}),
+}));
+
+// The real chips resolve the nodes from the workflow document, which has its own tests.
+vi.mock('../../components/NodesAttachmentChips.vue', () => ({
+	default: defineComponent({
+		props: { attachment: { type: Object, required: true } },
+		emits: ['update:attachment', 'remove-all'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h('div', { 'data-test-id': 'nodes-chips-stub' }, [
+					JSON.stringify(props.attachment),
+					h('button', {
+						'data-test-id': 'nodes-chips-keep-first-set',
+						onClick: () =>
+							emit('update:attachment', {
+								...props.attachment,
+								sets: [(props.attachment as InstanceAiNodesAttachment).sets[0]],
+							}),
+					}),
+					h('button', {
+						'data-test-id': 'nodes-chips-remove-all',
+						onClick: () => emit('remove-all'),
+					}),
+				]),
 	}),
 }));
 
@@ -127,6 +182,19 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
 
+type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
+
+function nodeSet(...names: string[]): InstanceAiNodesAttachment['sets'][number] {
+	return { nodes: names.map((name) => ({ id: `id-${name}`, name })) };
+}
+
+function stagedNodes(): unknown[] {
+	return composerAttachments.value.map(({ chip, clientContextPatch }) => ({
+		id: chip.id,
+		attachments: clientContextPatch?.attachments,
+	}));
+}
+
 function buildMessage(toolCallId: string): ChatMessage {
 	return {
 		id: `a-${toolCallId}`,
@@ -153,6 +221,8 @@ describe('AssistantAgentThreadView', () => {
 		previewProps.current = undefined;
 		previewThread.current = undefined;
 		routerPush.mockReset();
+		focusInput.mockReset();
+		composerAttachments.value = [];
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 		if (threadArea.width) threadArea.width.value = 0;
@@ -225,8 +295,8 @@ describe('AssistantAgentThreadView', () => {
 		// A send that the server refuses can be sent again, with the same references.
 		expect(clientContext()).toMatchObject({ attachments: [reference] });
 
-		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
-		onMessageAccepted();
+		const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+		onMessageAccepted({ clientContext: clientContext() });
 		expect(clientContext()).not.toHaveProperty('attachments');
 		expect(telemetryTrack).not.toHaveBeenCalled();
 	});
@@ -256,9 +326,10 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 		expect(telemetryTrack).not.toHaveBeenCalled();
 
-		const onMessageAccepted = panelProps.current.onMessageAccepted as () => void;
-		onMessageAccepted();
-		onMessageAccepted();
+		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+		const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+		onMessageAccepted({ clientContext: clientContext() });
+		onMessageAccepted({ clientContext: clientContext() });
 
 		expect(telemetryTrack).toHaveBeenCalledTimes(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
@@ -438,6 +509,108 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-1' });
+		});
+	});
+
+	describe('canvas nodes', () => {
+		beforeEach(() => {
+			// The store moves the staged nodes for real.
+			setActivePinia(createTestingPinia({ stubActions: false }));
+		});
+
+		async function renderThread() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			return result;
+		}
+
+		it('moves the nodes that the canvas adds to the chat into a composer chip for each workflow', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+
+			store.stageNodeSets('wf-1', [nodeSet('Webhook')]);
+			await flushPromises();
+			store.stageNodeSets('wf-1', [nodeSet('Slack')]);
+			store.stageNodeSets('wf-2', [nodeSet('Gmail')]);
+			await flushPromises();
+
+			expect(store.pendingComposerAttachments).toEqual([]);
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [
+						{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook'), nodeSet('Slack')] },
+					],
+				},
+				{
+					id: 'nodes:wf-2',
+					attachments: [{ type: 'nodes', workflowId: 'wf-2', sets: [nodeSet('Gmail')] }],
+				},
+			]);
+		});
+
+		it('moves the nodes that the canvas staged before the chat mounted', async () => {
+			useInstanceAiStore().stageNodeSets('wf-1', [nodeSet('Webhook')]);
+
+			await renderThread();
+
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+				},
+			]);
+		});
+
+		it('shows the staged nodes as node chips, which can remove some or all of them', async () => {
+			const { getByTestId, queryByTestId } = await renderThread();
+			useInstanceAiStore().stageNodeSets('wf-1', [nodeSet('Webhook'), nodeSet('Slack')]);
+			await flushPromises();
+
+			expect(getByTestId('nodes-chips-stub')).toHaveTextContent('Slack');
+
+			await userEvent.click(getByTestId('nodes-chips-keep-first-set'));
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+				},
+			]);
+
+			await userEvent.click(getByTestId('nodes-chips-remove-all'));
+			expect(stagedNodes()).toEqual([]);
+			expect(queryByTestId('nodes-chips-stub')).not.toBeInTheDocument();
+		});
+
+		it('shows the chat and focuses its input when the canvas asks for it', async () => {
+			const { getByTestId } = await renderThread();
+			await userEvent.click(getByTestId('tab-bar-expand-toggle'));
+			expect(getByTestId('assistant-agent-preview-panel').style.width).toBe('');
+
+			useInstanceAiStore().requestComposerFocus();
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-preview-panel').style.width).not.toBe('');
+			expect(focusInput).toHaveBeenCalledTimes(1);
+		});
+
+		it('tracks the nodes that a sent message attached', async () => {
+			await renderThread();
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+
+			onMessageAccepted({
+				clientContext: {
+					attachments: [
+						{ type: 'workflow', id: 'wf-2', name: 'Digest' },
+						{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook', 'Slack')] },
+					],
+				},
+			});
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES,
+				{ node_count: 2, runtime: 'agents' },
+			);
 		});
 	});
 });
