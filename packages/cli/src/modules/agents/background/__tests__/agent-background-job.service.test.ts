@@ -1557,7 +1557,7 @@ describe('settleWorkflowJobByExecutionId', () => {
 		it('stores the binary output of a completed job as files of the parent thread', async () => {
 			const { service, jobRepository, fileBridge } = setup();
 			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
-			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file] });
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file], skippedFiles: [] });
 
 			await service.settleWorkflowJobByExecutionId('exec-1', { status: 'completed' }, runData);
 
@@ -1613,7 +1613,7 @@ describe('settleWorkflowJobByExecutionId', () => {
 				status: 'success',
 				data: { resultData: { runData } },
 			} as never);
-			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file] });
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file], skippedFiles: [] });
 
 			await service.reconcile();
 
