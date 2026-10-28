@@ -100,10 +100,7 @@ import {
 } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
-import {
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-} from '@/modules/skills/skill-name-taken.error';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '@/modules/skills';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',

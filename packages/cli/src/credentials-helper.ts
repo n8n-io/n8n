@@ -32,7 +32,6 @@ import {
 	ICredentialsHelper,
 	MANAGED_VERSION_KEY,
 	NodeHelpers,
-	OPEN_AI_API_CREDENTIAL_TYPE,
 	Workflow,
 	UnexpectedError,
 	UserError,
@@ -441,6 +440,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		decryptedData: ICredentialDataDecryptedObject,
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		selfData: ICredentialDataDecryptedObject,
 	): ICredentialDataDecryptedObject {
 		try {
 			return workflow.expression.getComplexParameterValue(
@@ -450,7 +450,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalKeys,
 				undefined,
 				undefined,
-				decryptedData,
+				selfData,
 			) as ICredentialDataDecryptedObject;
 		} catch (error) {
 			// Non-execution contexts may not have runtime data for optional credential fields.
@@ -461,6 +461,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedData,
 				mode,
 				additionalKeys,
+				selfData,
 				error,
 			);
 		}
@@ -472,6 +473,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		decryptedData: ICredentialDataDecryptedObject,
 		mode: WorkflowExecuteMode,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		selfData: ICredentialDataDecryptedObject,
 		originalError: unknown,
 	): ICredentialDataDecryptedObject {
 		const propertiesByName = new Map(
@@ -488,7 +490,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					additionalKeys,
 					undefined,
 					undefined,
-					decryptedData,
+					selfData,
 				) as ICredentialDataDecryptedObject;
 
 				if (Object.prototype.hasOwnProperty.call(resolvedProperty, propertyName)) {
@@ -598,10 +600,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
-		// Managed OpenAI credentials are unavailable to nodes that can request undeclared types.
+		// Managed credentials are unavailable to nodes that can request undeclared types.
 		if (
 			credentialsEntity.isManaged &&
-			type === OPEN_AI_API_CREDENTIAL_TYPE &&
 			consumerNode &&
 			FULL_ACCESS_NODE_TYPES.has(consumerNode.type)
 		) {
@@ -819,6 +820,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 			isCredential: true,
 		});
 
+		// Secret values supplied by an instance overwrite stay out of `$self`.
+		const selfData = { ...decryptedData };
+		for (const { name, typeOptions } of credentialsProperties) {
+			if (
+				(typeOptions?.password || typeOptions?.expirable) &&
+				dataWithOverwrites[name] !== storedData[name]
+			) {
+				delete selfData[name];
+			}
+		}
+
 		if (expressionResolveValues) {
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
@@ -832,7 +844,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					additionalKeys,
 					executeData,
 					false,
-					decryptedData,
+					selfData,
 				) as ICredentialDataDecryptedObject;
 			} catch (e) {
 				e.message += ' [Error resolving credentials]';
@@ -855,6 +867,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					decryptedData,
 					mode,
 					additionalKeys,
+					selfData,
 				);
 			} finally {
 				await workflow.expression.releaseIsolate();

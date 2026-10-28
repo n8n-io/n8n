@@ -108,7 +108,7 @@ describe('CreateSkillDto', () => {
 		expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
 	});
 
-	it('rejects allowed tools, which hub skills ignore', () => {
+	it('rejects allowed tools, which skills ignore', () => {
 		expect(
 			CreateSkillDto.safeParse({
 				scope: 'instance',

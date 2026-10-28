@@ -110,10 +110,10 @@ type DraftAgentCreateOptions = {
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
-	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skills hub skill
-	 *  stays a ref; a ref with only a body gets a new hub skill in this project. */
+	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skill of the skills module
+	 *  stays a ref; a ref with only a body gets a new skill in this project. */
 	skills?: Record<string, AgentSkill>;
-	/** Creates the hub skills of refs with only a body when `user` is not set.
+	/** Creates the skills of refs with only a body when `user` is not set.
 	 *  Without either, those refs are dropped. */
 	skillCreator?: User;
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;

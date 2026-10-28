@@ -17,14 +17,14 @@ import type { AgentRunSource } from '../../utils/agent-published-snapshot';
  * A JSON document as a stored config fixture. The fake skill refs seam of
  * `createAgentSkillRefsService` reads the `skills` key of the fixture as the
  * skill refs, so a caller test declares the refs in one place. The real seam
- * reads the refs from the skills hub tables.
+ * reads the refs from the skill tables.
  */
 export function storedAgentConfig(document: AgentJsonConfig): StoredAgentConfig {
 	return document as unknown as StoredAgentConfig;
 }
 
 export type FakeAgentSkillRefsService = ReturnType<typeof mock<AgentSkillRefsService>> & {
-	/** Skill bodies of the fake skills hub, keyed by skill id. */
+	/** Skill bodies of the fake skills module, keyed by skill id. */
 	bodies: Record<string, AgentSkill>;
 	/** Draft refs written through the fake seam, keyed by agent id. */
 	draftRefs: Map<string, AgentJsonSkillConfig[]>;
@@ -93,7 +93,7 @@ export function createAgentSkillRefsService(
 	service.restoreDraftRefs.mockImplementation(async (agent, version, refs) =>
 		writeRefs(agent, pinnedRefs(version.versionId, refs ?? [])),
 	);
-	// A ref to a skill of the fake hub stays. A ref with only a body needs a creator, as
+	// A ref to a skill of the fake skills module stays. A ref with only a body needs a creator, as
 	// in the real seam; the fake keeps its id instead of minting a new one.
 	service.createDraftRefs.mockImplementation(async (agent, refs, _bodies, creator) => {
 		writeRefs(
