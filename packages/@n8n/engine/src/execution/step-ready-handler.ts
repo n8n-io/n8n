@@ -31,7 +31,7 @@ import {
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import type { StartExecutionService } from './start-execution.service';
+import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -131,10 +131,11 @@ export class StepReadyHandler {
 			run = { kind: 'error', error };
 		}
 
-		// Before the outcome is on the row: the execution cannot end while this
-		// step still runs, so no sub-execution of an ended parent starts here. One
-		// that cannot start fails the step, as an awaited one does, while the
-		// node's outcome is still ours to record.
+		// Before the outcome is on the row, while the node's outcome is still ours
+		// to record: one that cannot start fails the step, as an awaited one does.
+		// The execution can end while this step runs (a sibling fails, or a
+		// cancel), and then it owes no sub-execution: the outputs stand, as they
+		// would for a step with none, and nothing starts under an ended parent.
 		if (run.kind === 'outputs' && run.detached.length > 0) {
 			const started = await this.startDetachedSubExecutions(step, execution, run.detached);
 			if (started.kind === 'error') run = { kind: 'error', error: started.error };
@@ -212,16 +213,20 @@ export class StepReadyHandler {
 	/**
 	 * Starts the detached sub-executions in order, and stops at the first that
 	 * could not start. The rest are not started: the step fails, and the node
-	 * reported ids that will not run.
+	 * reported ids that will not run. A refused link is the one exception: the
+	 * step is running and its own, so the link can only be refused because the
+	 * execution has ended, and an ended execution is owed no sub-execution.
 	 */
 	private async startDetachedSubExecutions(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		subExecutions: SubExecutionDeclaration[],
-	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
+	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
 		for (const subExecution of subExecutions) {
 			const started = await this.startSubExecution(step, execution, subExecution, false);
-			if (started.kind === 'error') return started;
+			if (started.kind === 'error') {
+				return started.error instanceof InvalidParentLinkError ? { kind: 'parent-ended' } : started;
+			}
 		}
 		return { kind: 'started' };
 	}

@@ -13,7 +13,7 @@ import {
 	type WaitDeclaration,
 } from '../execution.types';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
-import type { StartExecutionService } from '../start-execution.service';
+import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -1288,6 +1288,36 @@ describe('StepReadyHandler sub-executions', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('records the outputs and starts nothing more when the execution ended before a detached sub-execution started', async () => {
+		// A sibling failed, or a cancel came, while the node ran: the outputs are
+		// still the node's outcome, and an ended execution is owed no sub-execution.
+		const stepStore = makeStepStore();
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi.fn().mockRejectedValue(new InvalidParentLinkError('execution exec-1 is cancelled')),
+		};
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			makeQueue(),
+			{
+				v1StepExecutor: makeExecutor({
+					outputs: [[{ json: { ok: true } }]],
+					detached: [subExecution, { ...subExecution, executionId: 'exec-sub-2' }],
+				}),
+			},
+			undefined,
+			undefined,
+			undefined,
+			subExecutionStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(subExecutionStarter.start).toHaveBeenCalledTimes(1);
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 	});
 
 	it('fails the step instead of completing it when a detached sub-execution cannot start', async () => {
