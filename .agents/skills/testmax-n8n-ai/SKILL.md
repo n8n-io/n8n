@@ -43,6 +43,17 @@ standard library and the Playwright copy in the repository.
 S="$(git rev-parse --show-toplevel)/.agents/skills/testmax-n8n-ai/scripts"
 ```
 
+## Compare two n8n builds instead
+
+This skill compares builders on one instance. To compare two builds of Instance
+AI, for example master and your branch, use `pnpm eval:ab-bench` in
+`packages/@n8n/instance-ai` (see its
+[README](../../../packages/@n8n/instance-ai/evaluations/ab-bench/README.md)).
+It runs the one-turn cases through this skill's `compare.py --builders iai`, so
+the deterministic checks are the same, and it adds per-call token reports and a
+table that compares the two builds. To measure only the static context of a
+prompt, skill, or tool change, run `pnpm context:budget` in the same package.
+
 ## Settings
 
 All settings are in `.env.ai-surfaces` in the repository root. Git ignores

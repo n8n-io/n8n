@@ -1266,11 +1266,23 @@ export interface WorkflowBuilderOptions {
 }
 
 /**
+ * Options for `workflow.fromJSON()`
+ */
+export interface FromJSONOptions {
+	/**
+	 * Mock `output` items by node name, as `generatePinData()` returns them.
+	 * WorkflowJSON does not carry `output`, so pass them to give validators the
+	 * authored mocks back.
+	 */
+	declaredOutputs?: Record<string, IDataObject[]>;
+}
+
+/**
  * Static workflow builder methods
  */
 export interface WorkflowBuilderStatic {
 	(id: string, name: string, options?: WorkflowSettings | WorkflowBuilderOptions): WorkflowBuilder;
-	fromJSON(json: WorkflowJSON): WorkflowBuilder;
+	fromJSON(json: WorkflowJSON, options?: FromJSONOptions): WorkflowBuilder;
 }
 
 // =============================================================================
