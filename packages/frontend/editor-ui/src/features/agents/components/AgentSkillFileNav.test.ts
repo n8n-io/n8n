@@ -38,10 +38,14 @@ describe('AgentSkillFileNav', () => {
 
 		expect(
 			byTestId(container, 'agent-skill-reference-nav-item-references-new-md-added'),
-		).toHaveAttribute('aria-label', 'New file');
+		).not.toBeNull();
 		expect(
 			byTestId(container, 'agent-skill-reference-nav-item-references-old-md-removed'),
-		).toHaveAttribute('aria-label', 'Deleted file');
+		).not.toBeNull();
+		// The icon is hidden from screen readers, so the row's name says the status.
+		expect(newRow).toHaveAttribute('aria-label', 'references/new.md, New file');
+		expect(oldRow).toHaveAttribute('aria-label', 'references/old.md, Deleted file');
+		expect(sameRow).toHaveAttribute('aria-label', 'references/same.md');
 		// A new file has no removed lines, and a deleted file has no added lines.
 		expect(newRow).toHaveTextContent('+2');
 		expect(newRow).not.toHaveTextContent('−0');
