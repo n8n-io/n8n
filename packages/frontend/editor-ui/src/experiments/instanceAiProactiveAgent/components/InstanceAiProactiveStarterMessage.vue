@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { N8nAssistantIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
@@ -40,7 +40,7 @@ onBeforeUnmount(() => {
 		data-test-id="instance-ai-proactive-starter"
 	>
 		<div :class="$style.avatar" aria-hidden="true">
-			<N8nAssistantIcon size="large" theme="blank" />
+			<N8nIcon icon="n8n-assistant" :size="18" color="--color--neutral-white" />
 		</div>
 
 		<section :class="$style.bubble" aria-live="polite">
