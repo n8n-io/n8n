@@ -3,18 +3,20 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
+import ResourcesListSkeleton from '@/app/components/layouts/ResourcesListSkeleton.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
 } from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
+import type { SlotResourcesListLayoutProps } from '@n8n/frontend-module-sdk';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import {
@@ -23,81 +25,43 @@ import {
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
-	N8nLoading,
 	N8nOption,
 	N8nPagination,
 	N8nRecycleScroller,
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-type UIConfig = {
-	searchEnabled: boolean;
-	showFiltersDropdown: boolean;
-	sortEnabled: boolean;
-};
-
 const route = useRoute();
 const router = useRouter();
 const { callDebounced } = useDebounce();
 const telemetry = useTelemetry();
 const n8nLocalStorage = useN8nLocalStorage();
 
-const props = withDefaults(
-	defineProps<{
-		resourceKey: string;
-		displayName?: (resource: ResourceType) => string;
-		resources: ResourceType[];
-		disabled: boolean;
-		initialize?: () => Promise<void>;
-		filters?: BaseFilters;
-		additionalFiltersHandler?: (
-			resource: ResourceType,
-			filters: BaseFilters,
-			matches: boolean,
-		) => boolean;
-		shareable?: boolean;
-		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
-		sortOptions?: string[];
-		type?: 'datatable' | 'list-full' | 'list-paginated';
-		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
-		loading: boolean;
-		customPageSize?: number;
-		availablePageSizeOptions?: number[];
-		totalItems?: number;
-		resourcesRefreshing?: boolean;
-		// Set to true if sorting and filtering is done outside of the component
-		dontPerformSortingAndFiltering?: boolean;
-		hasEmptyState?: boolean;
-		uiConfig?: UIConfig;
-		tabKey?: LocalStorageTabKey;
-		persistKeyExclusions?: string[];
-	}>(),
-	{
-		displayName: (resource: ResourceType) => resource.name || '',
-		initialize: async () => {},
-		filters: () => ({ search: '', homeProject: '' }),
-		sortFns: () => ({}),
-		sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
-		type: 'list-full',
-		typeProps: () => ({ itemSize: 80 }),
-		loading: true,
-		additionalFiltersHandler: undefined,
-		shareable: true,
-		customPageSize: 25,
-		availablePageSizeOptions: () => [10, 25, 50, 100],
-		totalItems: 0,
-		dontPerformSortingAndFiltering: false,
-		resourcesRefreshing: false,
-		hasEmptyState: true,
-		uiConfig: () => ({
-			searchEnabled: true,
-			showFiltersDropdown: true,
-			sortEnabled: true,
-		}),
-		tabKey: 'workflows',
-		persistKeyExclusions: () => [],
-	},
-);
+const props = withDefaults(defineProps<SlotResourcesListLayoutProps<ResourceType>>(), {
+	displayName: (resource: ResourceType) => resource.name || '',
+	initialize: async () => {},
+	filters: () => ({ search: '', homeProject: '' }),
+	sortFns: () => ({}),
+	sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+	type: 'list-full',
+	typeProps: () => ({ itemSize: 80 }),
+	loading: true,
+	additionalFiltersHandler: undefined,
+	shareable: true,
+	customPageSize: 25,
+	availablePageSizeOptions: () => [10, 25, 50, 100],
+	totalItems: 0,
+	dontPerformSortingAndFiltering: false,
+	resourcesRefreshing: false,
+	hasEmptyState: true,
+	uiConfig: () => ({
+		searchEnabled: true,
+		showFiltersDropdown: true,
+		sortEnabled: true,
+	}),
+	tabKey: 'workflows',
+	persistKeyExclusions: () => [],
+});
 
 const { getResourceText } = useResourcesListI18n(props.resourceKey);
 
@@ -167,7 +131,8 @@ const showEmptyState = computed(() => {
 const showLoadingState = computed(() => {
 	return (
 		props.loading ||
-		(props.resourcesRefreshing &&
+		(props.hasEmptyState &&
+			props.resourcesRefreshing &&
 			props.resources.length === 0 &&
 			!hasFilters.value &&
 			!filtersModel.value.search)
@@ -604,9 +569,7 @@ defineExpose({
 		<template #header>
 			<slot name="header" />
 		</template>
-		<div v-if="showLoadingState" class="resource-list-loading">
-			<N8nLoading :rows="25" :shrink-last="false" />
-		</div>
+		<ResourcesListSkeleton v-if="showLoadingState" />
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">
@@ -699,9 +662,7 @@ defineExpose({
 
 				<slot name="preamble" />
 
-				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
-					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />
-				</div>
+				<ResourcesListSkeleton v-if="resourcesRefreshing" :rows="rowsPerPage" immediate />
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
@@ -870,49 +831,5 @@ defineExpose({
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
-}
-</style>
-
-<style lang="scss" scoped>
-.resource-list-loading {
-	position: relative;
-	height: 0;
-	width: 100%;
-	overflow: hidden;
-	/*
-	Show the loading skeleton only if the loading takes longer than 300ms
-	*/
-	animation: 0.01s linear 0.3s forwards changeVisibility;
-	:deep(.el-skeleton) {
-		position: absolute;
-		height: 100%;
-		width: 100%;
-		overflow: hidden;
-
-		> div {
-			> div:first-child {
-				.el-skeleton__item {
-					height: 42px;
-					margin: 0;
-				}
-			}
-		}
-
-		.el-skeleton__item {
-			height: 69px;
-		}
-	}
-}
-.resource-list-loading-instant {
-	animation: 0.01s linear 0s forwards changeVisibility;
-}
-
-@keyframes changeVisibility {
-	from {
-		height: 0;
-	}
-	to {
-		height: 100%;
-	}
 }
 </style>

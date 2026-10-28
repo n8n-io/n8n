@@ -71,8 +71,10 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 	}
 
 	/** Cascades to this environment's project links only. */
-	async deleteEnvironment(id: string): Promise<void> {
-		await this.delete({ id });
+	/** Returns false when no row was deleted, for example after a concurrent delete. */
+	async deleteEnvironment(id: string): Promise<boolean> {
+		const result = await this.delete({ id });
+		return (result.affected ?? 0) > 0;
 	}
 
 	async countByProviderId(providerId: string): Promise<number> {

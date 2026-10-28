@@ -7,6 +7,9 @@ import {
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useSelfHealingChatHandoff } from '@/features/ai/instanceAi/composables/useSelfHealingChatHandoff';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -58,8 +61,17 @@ const mcpExposeAllOffer = {
 	},
 };
 
+const projectPermissions = {
+	scopesFor: (projectId: string) => [
+		...(useUsersStore().currentUser?.globalScopes ?? []),
+		...(useProjectsStore().myProjects.find((project) => project.id === projectId)?.scopes ?? []),
+	],
+	isReadOnly: () => useSourceControlStore().preferences.branchReadOnly,
+};
+
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
+	capabilityRegistry.provide(capabilities.projectPermissions, projectPermissions);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
 	capabilityRegistry.provide(capabilities.createSelfHealingChatHandoff, useSelfHealingChatHandoff);

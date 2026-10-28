@@ -17,17 +17,17 @@ const eligible: McpDiscoveryEligibilityInput = {
 };
 
 describe('MCP discovery eligibility', () => {
-	it('qualifies at exactly 30 elapsed minutes without a role restriction', () => {
+	it('qualifies immediately with a zero delay', () => {
+		expect(MCP_DISCOVERY_DELAY_MS).toBe(0);
 		expect(evaluateMcpDiscoveryEligibility(eligible)).toEqual({
 			status: 'eligible',
 			eligibleAt: eligible.now,
 		});
 	});
 
-	it('waits until the deadline', () => {
+	it('does not qualify before the recorded first login', () => {
 		expect(evaluateMcpDiscoveryEligibility({ ...eligible, now: eligible.now - 1 })).toEqual({
-			status: 'waiting',
-			eligibleAt: eligible.now,
+			status: 'unknown',
 		});
 	});
 
@@ -61,12 +61,12 @@ describe('MCP discovery eligibility', () => {
 		},
 	);
 
-	it('excludes an Assistant edit before the waiting period ends', () => {
+	it('excludes an Assistant edit at the eligibility cutoff', () => {
 		expect(
 			evaluateMcpDiscoveryEligibility({
 				...eligible,
 				now: firstVisit + 1000,
-				assistantMutationAt: firstVisit + 500,
+				assistantMutationAt: firstVisit,
 			}),
 		).toEqual({ status: 'excluded', reason: 'assistant' });
 	});
