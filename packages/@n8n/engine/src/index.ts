@@ -85,6 +85,7 @@ export type {
 	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
+	SubExecutionDeclaration,
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
@@ -109,6 +110,10 @@ export type {
 export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
 export type {
 	CallerContext,
+	SubExecutionOutcome,
+	SubExecutionResult,
+	SubExecutionResumeCause,
+	SubExecutionStarter,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
