@@ -58,12 +58,17 @@ import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
 /**
- * The memory instructions tell the model to call these tools by name, so their
- * input schemas must always be sent. A deferred schema makes the model guess the input.
+ * The memory instructions tell the model to call the runtime memory tools by name,
+ * so their input schemas must always be sent. A deferred schema makes the model
+ * guess the input. Only tools the runtime created for this run are added, so a
+ * user tool with the same name keeps its configured deferral when memory is off.
  */
-function withEagerMemoryTools(config: NativeToolDeferralConfig): NativeToolDeferralConfig {
+function withEagerMemoryTools(
+	config: NativeToolDeferralConfig,
+	memoryTools: BuiltTool[],
+): NativeToolDeferralConfig {
 	return {
-		eagerToolNames: [...config.eagerToolNames, RECALL_MEMORY_TOOL_NAME, FLAG_MEMORY_TOOL_NAME],
+		eagerToolNames: [...config.eagerToolNames, ...memoryTools.map((tool) => tool.name)],
 	};
 }
 
@@ -179,14 +184,18 @@ export class RuntimeContextBuilder {
 		executionCounter?: AgentExecutionCounter,
 		list?: AgentMessageList,
 	) {
-		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
+		const { tools: allUserTools, memoryTools } = this.collectRunTools(
+			persistence,
+			executionCounter,
+			list,
+		);
 		const aiTools = toAiSdkTools(allUserTools);
 		const catalog = { ...aiTools, ...aiProviderTools };
 		const { tools: allTools, searchToolName } = this.config.nativeToolDeferral
 			? await applyNativeToolDeferral(
 					catalog,
 					this.nativeToolDeferral,
-					withEagerMemoryTools(this.config.nativeToolDeferral),
+					withEagerMemoryTools(this.config.nativeToolDeferral, memoryTools),
 				)
 			: { tools: catalog, searchToolName: undefined };
 		const aiToolCount = Object.keys(allTools).length;
@@ -280,6 +289,15 @@ export class RuntimeContextBuilder {
 		executionCounter?: AgentExecutionCounter,
 		list?: AgentMessageList,
 	): BuiltTool[] {
+		return this.collectRunTools(persistence, executionCounter, list).tools;
+	}
+
+	/** All tools for this run, plus the memory tools the runtime created for it. */
+	private collectRunTools(
+		persistence?: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
+	): { tools: BuiltTool[]; memoryTools: BuiltTool[] } {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
 			...baseTools,
@@ -292,10 +310,12 @@ export class RuntimeContextBuilder {
 				: []),
 		];
 
+		const memoryTools: BuiltTool[] = [];
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
-		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
-		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
-		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
+		if (recallTool) memoryTools.push(recallTool);
+		const flagTool = this.createFlagMemoryToolForRun(persistence, [...tools, ...memoryTools], list);
+		if (flagTool) memoryTools.push(flagTool);
+		return { tools: [...tools, ...memoryTools], memoryTools };
 	}
 
 	hydrateDeferredToolsFromList(list: AgentMessageList): void {

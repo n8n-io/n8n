@@ -427,4 +427,18 @@ describe('native tool catalog', () => {
 		// Memory tools are eager and stable, so the last one carries the cache breakpoint.
 		expect(tools.staticToolCacheName).toBe('flag_memory');
 	});
+
+	it('keeps a user tool named recall_memory deferred when episodic memory is off', async () => {
+		const { context, aiProviderTools } = makeContext({
+			tools: [makeTool('workspace_read_file')],
+			deferredTools: [makeTool('recall_memory')],
+		});
+		const tools = await context.buildToolLoopContext(
+			aiProviderTools,
+			{ threadId: 'thread', resourceId: 'user' },
+			undefined,
+			new AgentMessageList(),
+		);
+		expect(tools.aiTools.recall_memory.providerOptions?.anthropic?.deferLoading).toBe(true);
+	});
 });

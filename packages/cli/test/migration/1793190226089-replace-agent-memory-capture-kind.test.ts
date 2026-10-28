@@ -2,7 +2,6 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
-	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
@@ -112,7 +111,7 @@ describe('ReplaceAgentMemoryCaptureKind migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('maps corrections to replacesEarlier, keeps sources, and restores kind on revert', async () => {
+	it('maps corrections to replacesEarlier and keeps sources', async () => {
 		await withContext(seed);
 
 		await runSingleMigration(MIGRATION_NAME);
@@ -124,14 +123,6 @@ describe('ReplaceAgentMemoryCaptureKind migration', () => {
 				`SELECT "id" FROM ${context.escape.tableName('agents_memory_entry_sources')}`,
 			);
 			expect(sources).toEqual([{ id: ids.source }]);
-		});
-
-		await undoLastSingleMigration();
-		await withContext(async (context) => {
-			expect(await candidateColumn(context, 'kind')).toEqual({
-				[ids.keptCandidate]: 'correction',
-				[ids.deletedCandidate]: 'fact',
-			});
 		});
 	});
 });

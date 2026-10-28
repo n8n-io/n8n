@@ -556,12 +556,13 @@ async function buildReflectionCluster(
 	config: NormalizedEpisodicMemoryConfig,
 	savedEntries: EpisodicMemoryEntry[],
 ): Promise<RetrievedEpisodicMemoryEntry[]> {
+	const limit = Math.max(config.topK, 20);
 	// Each new entry looks up the older entries closest to it, by its own embedding.
 	const searches = savedEntries.flatMap((entry) =>
 		entry.embedding
 			? [
 					opts.memory.episodic.searchEntries(opts.scope, entry.content, {
-						topK: Math.max(config.topK, 20),
+						topK: limit,
 						queryEmbedding: entry.embedding,
 						writeScopeOnly: true,
 					}),
@@ -569,7 +570,13 @@ async function buildReflectionCluster(
 			: [],
 	);
 	const related = (await Promise.all(searches)).flat();
-	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
+	related.sort((a, b) => b.vectorScore - a.vectorScore);
+	// Cap the merged searches so the reflection prompt stays bounded however many entries were saved.
+	const relatedById = new Map<string, RetrievedEpisodicMemoryEntry>();
+	for (const entry of related) {
+		if (relatedById.size >= limit) break;
+		if (!relatedById.has(entry.id)) relatedById.set(entry.id, entry);
+	}
 	for (const saved of savedEntries) {
 		if (saved.status !== 'active' || relatedById.has(saved.id)) continue;
 		relatedById.set(saved.id, toRetrievedEntry(saved));

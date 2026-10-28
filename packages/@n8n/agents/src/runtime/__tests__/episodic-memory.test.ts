@@ -1277,6 +1277,44 @@ describe('agent-directed episodic capture', () => {
 		);
 	});
 
+	it('caps the reflection cluster at the most similar related entries and keeps saved entries', async () => {
+		const memory = new InMemoryMemory();
+		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
+		await enqueueCandidate(memory, 'call-2', 'run-1', { content: 'User works in Berlin.' });
+		mockedEmbedMany.mockResolvedValue({
+			embeddings: [
+				[1, 0],
+				[0, 1],
+			],
+			usage: { tokens: 6 },
+		} as never);
+		let searchCall = 0;
+		vi.spyOn(memory.episodic, 'searchEntries').mockImplementation(async () => {
+			const offset = searchCall++ * 20;
+			return await Promise.resolve(
+				Array.from({ length: 20 }, (_, i) => ({
+					...entry(),
+					vectorScore: (offset + i) / 100,
+					finalScore: 0,
+				})),
+			);
+		});
+		const reflect = vi.fn().mockResolvedValue({ drop: [], merge: [] });
+
+		await runEpisodicMemoryCandidateProcessor({
+			memory,
+			config: { embedder: fakeEmbedder, reflect },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
+		});
+
+		const { entries, seedEntryIds } = reflect.mock.calls[0][0];
+		expect(entries).toHaveLength(22);
+		const ids = entries.map((e: EpisodicMemoryEntry) => e.id);
+		expect(ids).toEqual(expect.arrayContaining(seedEntryIds));
+		const related = entries.filter((e: EpisodicMemoryEntry) => !seedEntryIds.includes(e.id));
+		expect(Math.min(...related.map((e: { vectorScore: number }) => e.vectorScore))).toBe(0.2);
+	});
+
 	it('does not retry persisted candidates when reflection fails', async () => {
 		const memory = new InMemoryMemory();
 		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });

@@ -28,9 +28,9 @@ import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
 const RRF_K = 60;
-// Recency lifts a corrected fact above the value it replaced. In our retrieval eval a
-// weight of 0.05 kept nearly all of the similarity ranking; higher weights pushed
-// relevant entries out of topK behind recent unrelated ones.
+// Recency is a small signal. It can put a newer fact above an older one with nearly
+// the same similarity. In our retrieval eval, higher weights pushed relevant entries
+// out of topK behind recent unrelated ones.
 const RECENCY_RRF_WEIGHT = 0.05;
 // In our retrieval eval, this floor cut unrelated recall results in small scopes from
 // about 4 of 5 to 0.4, kept every answer, and returned nothing for most questions

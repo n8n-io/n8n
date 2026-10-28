@@ -841,15 +841,32 @@ describe('N8nMemoryImpl', () => {
 			});
 
 			it('deletes the stored entry when a completed candidate is deleted', async () => {
-				const { candidate, save } = await enqueue();
-				const entry = await save();
+				const { candidate } = await enqueue();
+				const entry = await memory.episodic.saveEntryWithSources(
+					{
+						resourceId: scope.resourceId,
+						content: candidate.content,
+						embedding: [1, 0],
+						embeddingModel: 'test-model',
+					},
+					[
+						{
+							candidateId: candidate.id,
+							threadId: scope.threadId,
+							evidenceText: candidate.content,
+						},
+					],
+				);
+				const search = async () =>
+					await memory.episodic.searchEntries(scope, 'concise', { queryEmbedding: [1, 0] });
+				expect((await search()).map(({ id }) => id)).toEqual([entry!.id]);
 
 				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
 
 				await expect(entryRepository.findOneByOrFail({ id: entry!.id })).resolves.toMatchObject({
 					status: 'deleted',
 				});
-				await expect(memory.episodic.searchEntries(scope, 'concise')).resolves.toEqual([]);
+				await expect(search()).resolves.toEqual([]);
 				await expect(deleteCandidate(candidate.id)).resolves.toBe(false);
 			});
 
