@@ -1,4 +1,4 @@
-export { StartExecutionService } from './start-execution.service';
+export { InvalidParentLinkError, StartExecutionService } from './start-execution.service';
 export { CancelExecutionService } from './cancel-execution.service';
 export type { CancelExecutionResult } from './cancel-execution.service';
 export type {
@@ -10,6 +10,7 @@ export type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepKey,
 	StepKeyId,
