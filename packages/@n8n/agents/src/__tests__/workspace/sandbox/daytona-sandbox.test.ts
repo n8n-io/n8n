@@ -67,6 +67,7 @@ const {
 			fs: {
 				downloadFile: vi.fn(),
 				uploadFile: vi.fn(),
+				uploadFiles: vi.fn(),
 				deleteFile: vi.fn(),
 				createFolder: vi.fn(),
 				listFiles: vi.fn(),
@@ -1238,6 +1239,26 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 
 		await expect(filesystem.exists('/workspace/missing')).resolves.toBe(false);
 		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('DaytonaFilesystem.writeFiles() uploads every file in one request', async () => {
+		const handle = makeMockSandbox('sb-1', 'started');
+		queuedGetResults.push(handle);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await filesystem.writeFiles([
+			{ path: '/workspace/a.txt', content: 'a' },
+			{ path: '/workspace/nested/b.txt', content: Buffer.from('b') },
+		]);
+
+		expect(handle.fs.uploadFiles).toHaveBeenCalledTimes(1);
+		expect(handle.fs.uploadFiles).toHaveBeenCalledWith([
+			{ source: Buffer.from('a'), destination: '/workspace/a.txt' },
+			{ source: Buffer.from('b'), destination: '/workspace/nested/b.txt' },
+		]);
+		expect(handle.fs.uploadFile).not.toHaveBeenCalled();
 	});
 
 	it('DaytonaFilesystem.appendFile() treats a genuine 404 as an empty file', async () => {

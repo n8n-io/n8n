@@ -369,24 +369,15 @@ async function writeWorkspaceFiles(
 		async () => {
 			const filesystem = workspace.filesystem;
 			if (filesystem) {
-				// `writeFile` only creates parent dirs as a side-effect of writing a file.
-				await Promise.all(
-					ALWAYS_PRESENT_DIRS.map(
+				// Writes only create parent dirs as a side-effect of writing a file, so empty
+				// dirs need their own call. Nothing orders the two, so they run together.
+				await Promise.all([
+					...ALWAYS_PRESENT_DIRS.map(
 						async (dir) =>
 							await createWorkspaceDirectory(workspace, filesystem, joinWorkspacePath(root, dir)),
 					),
-				);
-				await Promise.all(
-					[...files].map(
-						async ([path, content]) =>
-							await writeWorkspaceFile(
-								workspace,
-								filesystem,
-								joinWorkspacePath(root, path),
-								content,
-							),
-					),
-				);
+					writeWorkspaceFileBatch(workspace, filesystem, root, files),
+				]);
 				return;
 			}
 
@@ -406,6 +397,27 @@ async function writeWorkspaceFiles(
 }
 
 type WorkspaceFilesystem = NonNullable<SandboxWorkspace['filesystem']>;
+
+async function writeWorkspaceFileBatch(
+	workspace: SandboxWorkspace,
+	filesystem: WorkspaceFilesystem,
+	root: string,
+	files: Map<string, string>,
+): Promise<void> {
+	const absoluteFiles = [...files].map(([path, content]) => ({
+		path: joinWorkspacePath(root, path),
+		content,
+	}));
+	if (filesystem.writeFiles) {
+		await filesystem.writeFiles(absoluteFiles);
+		return;
+	}
+	await Promise.all(
+		absoluteFiles.map(
+			async ({ path, content }) => await writeWorkspaceFile(workspace, filesystem, path, content),
+		),
+	);
+}
 
 async function createWorkspaceDirectory(
 	workspace: SandboxWorkspace,
@@ -487,6 +499,47 @@ async function materializeKnowledgeBaseStep(
 }
 
 const INITIALIZATION_MARKER = '.sandbox-initialized';
+const WRITE_MARKER_COMMAND = `date -u +%Y-%m-%dT%H:%M:%SZ > ${INITIALIZATION_MARKER}`;
+
+async function installDependencies(
+	workspace: SandboxWorkspace,
+	root: string,
+	logger: Logger,
+	options: { writeMarker: boolean },
+): Promise<void> {
+	await setupStep('install-dependencies', async () => {
+		// One deadline covers both attempts. The signal stops us waiting; it does not kill
+		// the remote command, which the sandbox collects at its own timeout.
+		const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
+		const install = async (flags: string) =>
+			await runInSandbox(
+				workspace,
+				`npm install ${flags}${options.writeMarker ? ` && ${WRITE_MARKER_COMMAND}` : ''}`,
+				{ cwd: root, abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) },
+			);
+
+		const flags = resolveNpmInstallFlags(workspace);
+		let npmResult = await install(flags);
+		if (
+			npmResult.exitCode !== 0 &&
+			flags !== NPM_INSTALL_FLAGS_REFRESH_METADATA &&
+			Date.now() < deadline
+		) {
+			// A snapshot older than the pinned SDK version holds a packument that cannot
+			// resolve it. That is the one failure the cache causes, and refreshing metadata
+			// is the only way out, so retry once with whatever budget is left. Providers
+			// that already refresh have nothing left to try.
+			logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
+				stderr: npmResult.stderr.slice(0, 500),
+				remainingMs: deadline - Date.now(),
+			});
+			npmResult = await install(NPM_INSTALL_FLAGS_REFRESH_METADATA);
+		}
+		if (npmResult.exitCode !== 0) {
+			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
+		}
+	});
+}
 
 async function resolveWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
 	return await setupStep('resolve-workspace-root', async () => await getWorkspaceRoot(workspace));
@@ -563,55 +616,25 @@ export async function setupSandboxWorkspace(
 			);
 			await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 
-			// npm install (must run after package.json is in place)
-			await setupStep('install-dependencies', async () => {
-				// One deadline covers both attempts. The signal stops us waiting; it does not kill
-				// the remote command, which the sandbox collects at its own timeout.
-				const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
-				const install = async (flags: string) =>
-					await runInSandbox(workspace, `npm install ${flags}`, {
-						cwd: root,
-						abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
-					});
-
-				const flags = resolveNpmInstallFlags(workspace);
-				let npmResult = await install(flags);
-				if (
-					npmResult.exitCode !== 0 &&
-					flags !== NPM_INSTALL_FLAGS_REFRESH_METADATA &&
-					Date.now() < deadline
-				) {
-					// A snapshot older than the pinned SDK version holds a packument that cannot
-					// resolve it. That is the one failure the cache causes, and refreshing metadata
-					// is the only way out, so retry once with whatever budget is left. Providers
-					// that already refresh have nothing left to try.
-					context.logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
-						stderr: npmResult.stderr.slice(0, 500),
-						remainingMs: deadline - Date.now(),
-					});
-					npmResult = await install(NPM_INSTALL_FLAGS_REFRESH_METADATA);
-				}
-				if (npmResult.exitCode !== 0) {
-					throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
-				}
+			// npm install (must run after package.json is in place). The marker must come
+			// after the SDK link when that runs; otherwise it rides on the install command.
+			const linkSdk = isLinkWorkspaceSdkEnabled();
+			await installDependencies(workspace, root, context.logger, {
+				writeMarker: !linkSdk,
 			});
 
-			if (isLinkWorkspaceSdkEnabled()) {
+			if (linkSdk) {
 				await setupStep(
 					'link-workspace-sdk',
 					async () => await linkWorkspaceSdkIfEnabled(workspace, root, context.logger),
 				);
+				await setupStep('write-initialization-marker', async () => {
+					const result = await runInSandbox(workspace, WRITE_MARKER_COMMAND, { cwd: root });
+					if (result.exitCode !== 0) {
+						throw new Error(`Failed to write the initialization marker: ${result.stderr}`);
+					}
+				});
 			}
-
-			await setupStep(
-				'write-initialization-marker',
-				async () =>
-					await writeWorkspaceFiles(
-						workspace,
-						root,
-						new Map([[INITIALIZATION_MARKER, new Date().toISOString()]]),
-					),
-			);
 
 			return true;
 		},
