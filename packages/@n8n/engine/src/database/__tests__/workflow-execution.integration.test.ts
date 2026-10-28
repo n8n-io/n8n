@@ -430,13 +430,13 @@ describe('workflow_execution table (integration)', () => {
 		await store.createExecution({ ...newRecord(detachedId), parent: detached });
 		await store.createExecution(newRecord(topLevelId));
 
-		const children = await viewStore.listExecutionViews({
+		const subExecutions = await viewStore.listExecutionViews({
 			workflowIds: 'all',
 			parentExecutionId: parentId,
 			limit: 10,
 		});
 
-		expect(children.map((child) => [child.id, child.parent])).toEqual([
+		expect(subExecutions.map((row) => [row.id, row.parent])).toEqual([
 			[detachedId, detached],
 			[awaitedId, awaited],
 		]);

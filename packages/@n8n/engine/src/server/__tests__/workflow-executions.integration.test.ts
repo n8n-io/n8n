@@ -135,8 +135,8 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		const parentId = await start(generateId());
 		const awaited = { executionId: parentId, stepId: generateId(), awaited: true };
 		const detached = { executionId: parentId, stepId: generateId(), awaited: false };
-		const awaitedId = await startChild(awaited);
-		const detachedId = await startChild(detached);
+		const awaitedId = await startSubExecution(awaited);
+		const detachedId = await startSubExecution(detached);
 
 		const response = await search({ workflowIds: 'all', parentExecutionId: parentId }).expect(200);
 
@@ -229,14 +229,14 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 });
 
 /**
- * A child execution, written through the store: the route refuses to set a
+ * A sub-execution, written through the store: the route refuses to set a
  * parent, and the engine's own start path is what sets one.
  */
-async function startChild(parent: ParentLink): Promise<string> {
+async function startSubExecution(parent: ParentLink): Promise<string> {
 	const id = generateId();
 	await createStores(dataSource).executionStore.createExecution({
 		id,
-		workflowId: 'wf-child',
+		workflowId: 'wf-sub',
 		status: 'queued',
 		mode: 'production',
 		graph: { ...sampleGraph, seeded: [] },
@@ -733,16 +733,16 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
 	});
 
-	it('reports the parent link of a child execution', async () => {
+	it('reports the parent link of a sub-execution', async () => {
 		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
-		const childId = await startChild(parent);
+		const subExecutionId = await startSubExecution(parent);
 
 		const response = await request(url)
-			.get(`/api/workflow-executions/${childId}`)
+			.get(`/api/workflow-executions/${subExecutionId}`)
 			.set(authHeader());
 
 		expect(response.status).toBe(200);
-		expect(response.body).toMatchObject({ id: childId, parent });
+		expect(response.body).toMatchObject({ id: subExecutionId, parent });
 	});
 
 	it('returns 404 not_found for an unknown execution id', async () => {
