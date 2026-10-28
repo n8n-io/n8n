@@ -235,6 +235,12 @@ export class TelemetryEventRelay extends EventRelay {
 		await this.telemetry.init();
 
 		this.setupListeners({
+			'data-table-storage-limit-reached': ({ totalBytes, maxBytes }) => {
+				this.telemetry.track('User hit data table storage limit', {
+					total_bytes: totalBytes,
+					max_bytes: maxBytes,
+				});
+			},
 			'team-project-updated': (event) => this.teamProjectUpdated(event),
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
