@@ -666,8 +666,9 @@ describe('sub-workflows', () => {
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
 		expect(result.subExecution).toMatchObject({ ...resolved, awaited: false });
+		expect(result.outputs).toBeUndefined();
 		// The node reports the sub-execution id, as it does on v1, with no data.
-		expect(result.outputs).toEqual([
+		expect(result.subExecution?.awaited === false && result.subExecution.outputs).toEqual([
 			[{ json: { subExecutionId: result.subExecution?.executionId, data: [null] } }],
 		]);
 	});

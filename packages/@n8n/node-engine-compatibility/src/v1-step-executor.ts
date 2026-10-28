@@ -66,7 +66,7 @@ function toStepResult(
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) {
 		const outputs = toStepOutputs(nodeResult);
-		return declaration ? { outputs, subExecution: declaration } : { outputs };
+		return declaration ? { subExecution: { ...declaration, outputs } } : { outputs };
 	}
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);

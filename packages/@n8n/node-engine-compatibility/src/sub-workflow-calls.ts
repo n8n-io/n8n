@@ -1,7 +1,6 @@
 import type {
 	SubExecutionResult,
 	SubExecutionResumeCause,
-	SubExecutionDeclaration,
 	StepExecutionContext,
 	StepError,
 } from '@n8n/engine';
@@ -19,7 +18,7 @@ import {
 	SubWorkflowsNotSupportedError,
 } from './errors';
 import { fromStepInputs } from './io';
-import type { SubWorkflowResolver } from './types';
+import type { SubWorkflowResolveResult, SubWorkflowResolver } from './types';
 import { toV1ExecuteMode } from './v1-adapters';
 
 /** The options of `executeWorkflow` that the shim reads. */
@@ -41,7 +40,8 @@ interface CallOptions {
  */
 export class SubWorkflowCalls {
 	/** The sub-execution the node asked for, once a call was made. */
-	declaration?: SubExecutionDeclaration & ({ awaited: true } | { awaited: false });
+	declaration?: { executionId: string } & SubWorkflowResolveResult &
+		({ awaited: true } | { awaited: false });
 	private called = false;
 
 	constructor(
