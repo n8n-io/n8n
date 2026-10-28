@@ -745,7 +745,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	/**
 	 * Points the draft ref at a version of the skill: pinned with `versionId`, else following
-	 * the latest. Saves, then reopens the editor on it with the Versions panel shown.
+	 * the latest. Saves, then shows it in the open editor with the Versions panel shown.
 	 */
 	async function applySkillVersion(
 		skillId: string,
@@ -811,7 +811,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		} catch {
 			return;
 		}
-		if (agentId.value !== targetAgentId) return;
+		// The editor stays open and shows the saved version. A closed editor stays closed.
+		if (agentId.value !== targetAgentId || !uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open) return;
 		onOpenSkillFromList(skillId, { showVersions: true });
 	}
 

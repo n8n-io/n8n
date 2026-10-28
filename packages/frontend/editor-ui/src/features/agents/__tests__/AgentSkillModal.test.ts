@@ -1435,8 +1435,43 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-skill-use-latest'));
 
-			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			// The editor stays open. The builder sends the saved version to it.
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 			expect(onUseLatestVersion).toHaveBeenCalledWith('tone');
+		});
+
+		it('shows the skill that the builder sends after a version change, without closing', async () => {
+			getSkillDetail.mockResolvedValue(
+				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
+			);
+			const data = {
+				projectId: 'p1',
+				agentId: 'a1',
+				skillRefsEnabled: true,
+				skillId: 'tone',
+				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
+				outdated: true,
+				onUseLatestVersion: vi.fn(),
+				onConfirm: vi.fn(),
+			};
+			const { findByTestId, getByTestId, rerender } = renderModal(data);
+			expect(await findByTestId('agent-skill-description-text')).toHaveTextContent(
+				'Use for replies',
+			);
+
+			await rerender({
+				modalName: MODAL_NAME,
+				data: {
+					...data,
+					skill: { ...data.skill, description: 'Use for every reply' },
+					outdated: false,
+				},
+			});
+
+			const description = await findByTestId('agent-skill-description-input');
+			expect(description.querySelector('input')).toHaveValue('Use for every reply');
+			expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 
 		it('keeps a skill that the user can edit editable', async () => {
