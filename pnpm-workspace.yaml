@@ -396,6 +396,8 @@ overrides:
   tslib: ^2.6.2
   vue-tsc: catalog:frontend
   gaxios: '>=7.1.1'
+  '@google-cloud/resource-manager>google-gax': ^5.0.1
+  '@google-cloud/secret-manager>google-gax': ^5.0.1
   google-gax: ^4.3.7
   ws: '>=8.21.1'
   date-fns: 2.30.0
