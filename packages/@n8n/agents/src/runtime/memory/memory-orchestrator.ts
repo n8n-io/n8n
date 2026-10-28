@@ -974,7 +974,12 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		if (!onSideCallUsage || !usage || !model) return;
 		try {
-			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
+			const cost = await computeSideCallCost(
+				model,
+				usage,
+				this.config.promptCaching,
+				this.config.modelFetch,
+			);
 			await onSideCallUsage({
 				task,
 				model,

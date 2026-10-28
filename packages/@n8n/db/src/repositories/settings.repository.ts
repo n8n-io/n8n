@@ -44,20 +44,6 @@ export class SettingsRepository extends BaseRepository<Settings> {
 	}
 
 	/**
-	 * Reads the row for a read-modify-write. On Postgres it holds the row until the
-	 * transaction ends, so concurrent writers take turns. SQLite allows one write
-	 * transaction at a time.
-	 */
-	async findByKeyForUpdate(key: string, ctx: OperationContext): Promise<Settings | null> {
-		const manager = this.managerFor(ctx);
-		return await manager.findOne(Settings, {
-			where: { key },
-			lock:
-				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
-		});
-	}
-
-	/**
 	 * Reads the row and holds a write lock on it until the transaction of
 	 * `ctx` ends, so that a read-merge-write of the value cannot lose a
 	 * parallel change. A missing row is created with `defaultValue` first,

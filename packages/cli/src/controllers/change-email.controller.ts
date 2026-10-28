@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { AuthenticatedRequest, UserRepository } from '@n8n/db';
+import { AuthenticatedRequest, isPerson, PersonRepository, UserRepository } from '@n8n/db';
 import {
 	Body,
 	createUserKeyedRateLimiter,
@@ -18,7 +18,7 @@ import {
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { AuthlessRequest } from '@/requests';
 import { EmailChangeService } from '@/services/email-change.service';
@@ -33,6 +33,7 @@ export class ChangeEmailController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly emailChangeService: EmailChangeService,
 		private readonly eventService: EventService,
@@ -51,15 +52,18 @@ export class ChangeEmailController {
 		res: Response,
 		@Body payload: ChangeEmailRequestDto,
 	): Promise<ChangeEmailResponse> {
-		const { user } = req;
-		const currentEmail = user.email;
+		if (!isPerson(req.user)) {
+			throw new ForbiddenError('Only a person can change their email');
+		}
+		const person = req.user;
+		const currentEmail = person.email;
 		const newEmail = payload.email;
 
 		if (newEmail === currentEmail) {
 			throw new BadRequestError('The new email address matches the current one');
 		}
 
-		await this.emailChangeService.assertMayRequestEmailChange(user, {
+		await this.emailChangeService.assertMayRequestEmailChange(person, {
 			currentPassword: payload.currentPassword,
 			mfaCode: payload.mfaCode,
 		});
@@ -69,29 +73,29 @@ export class ChangeEmailController {
 		// Fallback: without email delivery the confirmation cannot be sent, so apply
 		// the change immediately (preserves the pre-existing self-hosted behavior).
 		if (!this.mailer.isEmailSetUp) {
-			const publicUser = await this.applyEmailChange(user.id, currentEmail, newEmail);
+			const publicUser = await this.applyEmailChange(person.id, currentEmail, newEmail);
 			this.authService.issueCookie(
 				res,
-				await this.userService.findUserWithAuthIdentities(user.id),
+				await this.userService.findUserWithAuthIdentities(person.id),
 				req.authInfo?.usedMfa ?? false,
 				req.browserId,
 			);
 			return { status: 'changed', user: publicUser };
 		}
 
-		const confirmationUrl = this.authService.generateEmailChangeUrl(user, newEmail);
+		const confirmationUrl = this.authService.generateEmailChangeUrl(person, newEmail);
 
 		// Fail closed: a send failure must leave the email unchanged, so rethrow.
 		try {
 			await this.mailer.emailChangeConfirmation({
 				email: currentEmail,
-				firstName: user.firstName,
+				firstName: person.firstName,
 				newEmail,
 				confirmationUrl,
 			});
 		} catch (error) {
 			this.eventService.emit('email-failed', {
-				user,
+				user: person,
 				messageType: 'Email change confirmation',
 				publicApi: false,
 			});
@@ -101,9 +105,9 @@ export class ChangeEmailController {
 			throw error;
 		}
 
-		this.logger.info('Sent email change confirmation successfully', { userId: user.id });
+		this.logger.info('Sent email change confirmation successfully', { userId: person.id });
 		this.eventService.emit('user-transactional-email-sent', {
-			userId: user.id,
+			userId: person.id,
 			messageType: 'Email change confirmation',
 			publicApi: false,
 		});
@@ -139,29 +143,29 @@ export class ChangeEmailController {
 		const resolved = await this.authService.resolveEmailChangeToken(payload.token);
 		if (!resolved) throw new NotFoundError('');
 
-		const { user, newEmail } = resolved;
-		const oldEmail = user.email;
+		const { person, newEmail } = resolved;
+		const oldEmail = person.email;
 
 		// Re-run the guards: a token minted before the instance state changed
 		// (SAML/SSO enabled, account became env-managed) must not slip through.
-		await this.emailChangeService.assertMayApplyEmailChange(user);
+		await this.emailChangeService.assertMayApplyEmailChange(person);
 
 		await this.assertEmailAvailable(newEmail);
 
-		await this.applyEmailChange(user.id, oldEmail, newEmail);
+		await this.applyEmailChange(person.id, oldEmail, newEmail);
 
 		await this.mailer.emailChangeCompleted({
 			email: oldEmail,
-			firstName: user.firstName,
+			firstName: person.firstName,
 			newEmail,
 		});
 
-		this.logger.info('Email change confirmed successfully', { userId: user.id });
+		this.logger.info('Email change confirmed successfully', { userId: person.id });
 
 		return { success: true };
 	}
 
-	/** Reject when another user already owns the target email. */
+	/** Reject when another account of either kind already owns the target email. */
 	private async assertEmailAvailable(email: string): Promise<void> {
 		const existing = await this.userRepository.findOneBy({ email });
 		if (existing) {
@@ -174,7 +178,7 @@ export class ChangeEmailController {
 		// Reject a stale change before the side-effecting hook, so a hook does not
 		// run for a change that will not apply. `changeEmail` below stays the
 		// authoritative guard for the concurrent race after this check.
-		const current = await this.userRepository.findOneBy({ id: userId });
+		const current = await this.personRepository.findById(userId);
 		if (!current || current.email !== oldEmail) throw new NotFoundError('');
 
 		await this.externalHooks.run('user.profile.beforeUpdate', [
@@ -185,7 +189,7 @@ export class ChangeEmailController {
 
 		// Reject the token when the email changed since the token was resolved, so
 		// a concurrent change is not overwritten.
-		const result = await this.userRepository.changeEmail(userId, oldEmail, newEmail);
+		const result = await this.personRepository.changeEmail(userId, oldEmail, newEmail);
 		if (result === 'stale') throw new NotFoundError('');
 		if (result === 'email-taken') {
 			throw new BadRequestError('This email address is already in use');

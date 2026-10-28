@@ -42,13 +42,14 @@ export class AgentRunnableStateService {
 		Agent & {
 			isRunnable: boolean;
 			hasPublishHistory: boolean;
+			hasVersionHistory: boolean;
 			configHash: string | null;
 			skills: Record<string, AgentSkill>;
 			skillHashes: Record<string, string>;
 			outdatedSkillIds: string[];
 		}
 	> {
-		// The skill bodies the draft runs, from the skills hub, keyed by skill id.
+		// The skill bodies the draft runs, from the skills module, keyed by skill id.
 		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		// Base hashes for the optimistic-concurrency checks on config and skill writes.
 		const configHash = getAgentConfigHash(composeJsonConfig(agent, skillRefs));
@@ -57,10 +58,14 @@ export class AgentRunnableStateService {
 		);
 		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(skillRefs, skills, {});
 		if (draftValidation) {
-			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);
+			const [hasPublishHistory, hasVersionHistory] = await Promise.all([
+				this.agentPublishService.hasPublishHistory(agent.id),
+				this.agentPublishService.hasVersionHistory(agent.id),
+			]);
 			return Object.assign(agent, {
 				isRunnable: true,
 				hasPublishHistory,
+				hasVersionHistory,
 				configHash,
 				skills,
 				skillHashes,
@@ -74,7 +79,7 @@ export class AgentRunnableStateService {
 			user,
 			agent.id,
 		);
-		const [validation, hasPublishHistory] = await Promise.all([
+		const [validation, hasPublishHistory, hasVersionHistory] = await Promise.all([
 			this.agentValidationService.validateLoadedAgentConfiguration(
 				agent,
 				projectId,
@@ -82,11 +87,13 @@ export class AgentRunnableStateService {
 				'runtime',
 			),
 			this.agentPublishService.hasPublishHistory(agent.id),
+			this.agentPublishService.hasVersionHistory(agent.id),
 		]);
 
 		return Object.assign(agent, {
 			isRunnable: validation.status === 'valid',
 			hasPublishHistory,
+			hasVersionHistory,
 			configHash,
 			skills,
 			skillHashes,

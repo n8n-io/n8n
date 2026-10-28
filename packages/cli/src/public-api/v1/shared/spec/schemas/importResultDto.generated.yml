@@ -7,13 +7,141 @@ properties:
         type: string
       sourceId:
         type: string
-      exportedAt:
-        type: string
-        format: date-time
     required:
       - sourceN8nVersion
       - sourceId
-      - exportedAt
+  agents:
+    type: array
+    items:
+      type: object
+      properties:
+        sourceAgentId:
+          type: string
+          description: Agent ID in the package.
+        localId:
+          type: string
+          description: Agent ID on the target instance. New Agents use the package ID. Updated and skipped Agents keep their destination ID.
+        name:
+          type: string
+        projectId:
+          type: string
+        activeVersionId:
+          type: string
+          nullable: true
+          description: Published version on the target after import. Null when no version is published.
+        status:
+          type: string
+          enum:
+            - created
+            - updated
+            - skipped
+        publishing:
+          type: object
+          properties:
+            state:
+              type: string
+              enum:
+                - published
+                - unpublished
+                - unchanged
+                - blocked
+                - failed
+              description: '`blocked` means the imported version could not be published and no version is active (for example because the Agent or workflow uses an empty or incomplete credential, or a node type this instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+            error:
+              type: string
+              description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
+            blockedReason:
+              type: string
+              enum:
+                - stub-credential
+                - incomplete-credential
+                - missing-node-type
+                - channel-setup-required
+              description: 'Present when `state` is `blocked`: the imported version could not be published and no version is active.'
+            skippedPublishReason:
+              type: string
+              enum:
+                - stub-credential
+                - incomplete-credential
+                - missing-node-type
+                - channel-setup-required
+              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials).'
+          required:
+            - state
+          description: Publication outcome. A failed publication does not undo the definition import.
+        channels:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  type:
+                    type: string
+                    description: Channel type, for example `slack`.
+                  status:
+                    type: string
+                    enum:
+                      - reused
+                    description: The import kept the channel connection that the destination Agent already had.
+                required:
+                  - type
+                  - status
+              - type: object
+                properties:
+                  type:
+                    type: string
+                    description: Channel type, for example `slack`.
+                  status:
+                    type: string
+                    enum:
+                      - setup-required
+                    description: The import saved the channel settings without a connection. Set up the channel in the destination before the Agent can be published.
+                  reason:
+                    type: string
+                    enum:
+                      - new-channel
+                      - destination-draft
+                    description: '`new-channel`: the destination Agent had no connection for this channel. `destination-draft`: the destination Agent has this channel, but its setup is not complete.'
+                  setupUrl:
+                    type: string
+                    description: Link to the destination Agent, where you can set up the channel.
+                required:
+                  - type
+                  - status
+                  - reason
+                  - setupUrl
+            type: object
+          description: Channel outcome for each external channel in the imported definition. A credential from the package never connects a channel. Empty for skipped Agents.
+      required:
+        - sourceAgentId
+        - localId
+        - name
+        - projectId
+        - activeVersionId
+        - status
+        - publishing
+        - channels
+  counts:
+    type: object
+    properties:
+      agents:
+        type: object
+        properties:
+          created:
+            type: integer
+            minimum: 0
+          updated:
+            type: integer
+            minimum: 0
+          skipped:
+            type: integer
+            minimum: 0
+        required:
+          - created
+          - updated
+          - skipped
+    required:
+      - agents
   workflows:
     type: array
     items:
@@ -24,7 +152,7 @@ properties:
           description: Workflow id as it appeared in the package.
         localId:
           type: string
-          description: "Workflow id on the target instance: newly assigned for `created` (fresh under `workflowIdPolicy=new`, the package id under `source`), the existing workflow's id for `updated`/`skipped`."
+          description: Workflow ID on the target instance. New workflows use the package ID. Updated and skipped workflows keep their destination ID.
         name:
           type: string
         projectId:
@@ -50,7 +178,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because the workflow uses an empty or incomplete credential, or uses a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because the Agent or workflow uses an empty or incomplete credential, or a node type this instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -60,6 +188,7 @@ properties:
                 - stub-credential
                 - incomplete-credential
                 - missing-node-type
+                - channel-setup-required
               description: 'Present when `state` is `blocked`: the imported version could not be published and no version is active.'
             skippedPublishReason:
               type: string
@@ -67,6 +196,7 @@ properties:
                 - stub-credential
                 - incomplete-credential
                 - missing-node-type
+                - channel-setup-required
               description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials).'
           required:
             - state
@@ -199,6 +329,11 @@ properties:
   bindings:
     type: object
     properties:
+      agents:
+        type: object
+        additionalProperties:
+          type: string
+        description: Source-to-target IDs for created, updated, and skipped package Agents.
       workflows:
         type: object
         additionalProperties:
@@ -209,6 +344,7 @@ properties:
           type: string
         description: Credential id from `requirements.credentials` in the package manifest → resolved target credential id on the target instance. Covers both a matched existing credential and a credential that the import created under `credentialMissingMode=create-stub` or `create-with-values`.
     required:
+      - agents
       - workflows
       - credentials
     description: Source id → target id mappings produced during import, one map per entity type. Each value maps an id as it appeared in the package to the id on the target instance.
@@ -335,6 +471,8 @@ properties:
     description: Resolution of the tags referenced by the imported workflows, matched by source id. Tag names only.
 required:
   - package
+  - agents
+  - counts
   - workflows
   - removedWorkflows
   - removedFolders

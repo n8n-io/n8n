@@ -3,7 +3,7 @@ import { InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { UserRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { PersonRepository, UserRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { User, PublicUser, AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,6 +27,7 @@ describe('InvitationController', () => {
 	const userService: UserService = mockInstance(UserService);
 	const passwordUtility: PasswordUtility = mockInstance(PasswordUtility);
 	const userRepository: UserRepository = mockInstance(UserRepository);
+	const personRepository: PersonRepository = mockInstance(PersonRepository);
 	const postHog: PostHogClient = mockInstance(PostHogClient);
 	const eventService: EventService = mockInstance(EventService);
 
@@ -38,6 +39,7 @@ describe('InvitationController', () => {
 			userService,
 			passwordUtility,
 			userRepository,
+			personRepository,
 			postHog,
 			eventService,
 		);
@@ -130,9 +132,10 @@ describe('InvitationController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(inviter);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(invitee);
 			vi.mocked(passwordUtility.hash).mockResolvedValue('Password123!');
-			vi.mocked(userRepository.save).mockResolvedValue(invitee);
+			vi.mocked(personRepository.save).mockResolvedValue(invitee);
 			vi.mocked(authService.issueCookie).mockResolvedValue(invitee as never);
 			vi.mocked(eventService.emit).mockResolvedValue(invitee as never);
 			vi.mocked(userService.toPublic).mockResolvedValue(invitee as unknown as PublicUser);
@@ -158,18 +161,42 @@ describe('InvitationController', () => {
 			);
 
 			expect(userService.getInvitationIdsFromPayload).toHaveBeenCalledWith(token);
-			expect(userRepository.find).toHaveBeenCalledWith({
-				where: [{ id: inviterId }, { id: inviteeId }],
-				relations: ['role'],
-			});
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith(inviterId);
+			expect(personRepository.findByIdWithRole).toHaveBeenCalledWith(inviteeId);
 			expect(passwordUtility.hash).toHaveBeenCalledWith('Password123!');
-			expect(userRepository.save).toHaveBeenCalled();
+			expect(personRepository.save).toHaveBeenCalled();
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, invitee, false, 'browser-id');
 			expect(eventService.emit).toHaveBeenCalledWith('user-signed-up', {
 				user: invitee,
 				userType: 'email',
 				wasDisabledLdapUser: false,
 			});
+		});
+
+		it('throws a BadRequestError if the inviter and the invitee are the same', async () => {
+			vi.mocked(personRepository.findByIdWithRole).mockClear();
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const id = uuidv4();
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
+				inviterId: id,
+				inviteeId: id,
+			});
+			const payload = {
+				token: 'valid-jwt-token',
+				firstName: 'John',
+				lastName: 'Doe',
+				password: 'Password123!',
+			} as AcceptInvitationRequestDto;
+
+			const promise = defaultInvitationController().acceptInvitationWithToken(
+				mock<AuthlessRequest>({ body: payload }),
+				mock<Response>(),
+				payload,
+			);
+
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow('Invalid payload or URL');
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 		});
 
 		it('throws a BadRequestError if users are not found', async () => {
@@ -183,7 +210,8 @@ describe('InvitationController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(userRepository.find).mockResolvedValue([]);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(null);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(null);
 
 			const invitationController = defaultInvitationController();
 
@@ -226,7 +254,8 @@ describe('InvitationController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(inviter);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(invitee);
 
 			const invitationController = defaultInvitationController();
 

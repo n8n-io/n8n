@@ -394,6 +394,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const announced = state.toolCallsById[event.payload.toolCallId];
 			if (announced) {
 				announced.args = event.payload.args;
+				announced.toolName = resolveBuilderToolName(
+					event.payload.toolName,
+					event.payload.args.action,
+				);
 				break;
 			}
 			const agent = ensureAgent(state, event.agentId);
@@ -401,7 +405,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const tc: InstanceAiToolCallState = {
 					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: resolveBuilderToolName(event.payload.toolName),
+					toolName: resolveBuilderToolName(event.payload.toolName, event.payload.args.action),
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
@@ -552,6 +556,27 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					type: 'instance-context',
 					runId: event.runId,
 					injection: event.payload.injection,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
+		case 'skill-update': {
+			const agent = ensureAgent(state, event.agentId);
+			const alreadyShown = agent?.timeline.some(
+				(entry) =>
+					entry.type === 'skill-update' &&
+					entry.runId === event.runId &&
+					entry.skillId === event.payload.skillId &&
+					entry.version === event.payload.version &&
+					entry.change === event.payload.change,
+			);
+			if (agent && !alreadyShown) {
+				agent.timeline.push({
+					type: 'skill-update',
+					runId: event.runId,
+					...event.payload,
 					...(event.responseId ? { responseId: event.responseId } : {}),
 				});
 			}

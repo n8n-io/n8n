@@ -1,4 +1,3 @@
-import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
@@ -82,7 +81,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -839,7 +838,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -952,7 +951,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1045,6 +1044,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1117,7 +1117,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 
 		// The credit-metering hook is wired to the instance-AI thread/user in
@@ -1212,7 +1212,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
 		expect(unavailableEnvironment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -1319,7 +1319,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1343,6 +1343,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				aiPreferencesEnabled: false,
+				assistantSkillsEnabled: enabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -1406,6 +1407,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1441,6 +1443,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ assistantSkillsEnabled: enabled }),
 		);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
@@ -5919,7 +5925,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			}),
 		).toBeUndefined();
 		expect(
-			service.getWorkflowSetupSuspensionWorkflowId('workflow_builder_credentials', {
+			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
 			}),

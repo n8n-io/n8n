@@ -82,6 +82,10 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
 vi.mock('@/permissions.ee/check-access');
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({}),
 }));
@@ -353,6 +357,90 @@ describe('exploreResources — eval-seeded credential', () => {
 		await ctx.nodeService.exploreResources!(baseParams);
 
 		expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveParameterOptions — eval-seeded credentials
+// ---------------------------------------------------------------------------
+
+describe('resolveParameterOptions — eval-seeded credential', () => {
+	const baseParams = {
+		nodeType: 'n8n-nodes-base.googleSheets',
+		version: 1,
+		parameterPath: 'documentId',
+		credentialId: 'cred-123',
+		credentialType: 'googleSheetsOAuth2Api',
+	};
+	const unavailable = {
+		ok: false,
+		code: 'lookup_failed',
+		message: 'Resource exploration is not available.',
+	};
+
+	const expectNoLookup = () => {
+		expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaLoadOptionsByPath).not.toHaveBeenCalled();
+	};
+
+	beforeEach(() => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-123',
+			name: 'Seeded Sheets',
+			type: 'googleSheetsOAuth2Api',
+		} as never);
+	});
+
+	it('answers "not available" without a lookup for a credential the harness treats as connected', async () => {
+		const ctx = service.createContext(user, {
+			shouldBypassCredentialTest: (credentialId) => credentialId === 'cred-123',
+		});
+
+		await expect(ctx.nodeService.resolveParameterOptions!(baseParams)).resolves.toEqual(
+			unavailable,
+		);
+		expectNoLookup();
+	});
+
+	it('answers "not available" for a bypassed credential passed in the credentials map', async () => {
+		const ctx = service.createContext(user, { shouldBypassCredentialTest: () => true });
+
+		await expect(
+			ctx.nodeService.resolveParameterOptions!({
+				nodeType: baseParams.nodeType,
+				version: baseParams.version,
+				parameterPath: baseParams.parameterPath,
+				credentials: { googleSheetsOAuth2Api: { id: 'cred-123', name: 'Seeded Sheets' } },
+			}),
+		).resolves.toEqual(unavailable);
+		expectNoLookup();
+	});
+
+	it('still rejects a bypassed credential the user cannot access', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const ctx = service.createContext(user, { shouldBypassCredentialTest: () => true });
+
+		await expect(ctx.nodeService.resolveParameterOptions!(baseParams)).resolves.toEqual({
+			ok: false,
+			code: 'lookup_failed',
+			message: 'Credential cred-123 not found or not accessible',
+		});
+		expectNoLookup();
+	});
+
+	it('runs the live lookup for a credential the harness does not treat as connected', async () => {
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('Unknown node type');
+		});
+		const ctx = service.createContext(user, { shouldBypassCredentialTest: () => false });
+
+		await expect(ctx.nodeService.resolveParameterOptions!(baseParams)).resolves.toMatchObject({
+			ok: false,
+			code: 'node_type_not_found',
+		});
+		expect(nodeTypes.getByNameAndVersion).toHaveBeenCalled();
 	});
 });
 

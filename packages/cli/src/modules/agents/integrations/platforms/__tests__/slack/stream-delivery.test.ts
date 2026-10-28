@@ -13,6 +13,7 @@ import {
 	createSlackResumeExecutionContext,
 	SLACK_STREAMING_OPTIONS,
 } from '../../slack/slack-bridge-behavior';
+import { SlackIntegration } from '../../slack/slack-integration';
 
 async function makeSlackContext(topLevel: boolean, resume = false) {
 	const threadTs = topLevel ? '1719000001.000100' : '1719000000.000100';
@@ -203,59 +204,100 @@ describe('Slack stream delivery', () => {
 		{ method: 'chat.postMessage', topLevel: true },
 		{ method: 'chat.update', topLevel: false },
 		{ method: 'chat.update', topLevel: true },
-	])('clears status after $method fails (topLevel=$topLevel)', async ({ method, topLevel }) => {
-		const calls: Array<{ method: string; body: Record<string, string> }> = [];
-		let failed = false;
+	])(
+		'reposts the reply and clears status after $method fails (topLevel=$topLevel)',
+		async ({ method, topLevel }) => {
+			const calls: Array<{ method: string; body: Record<string, string> }> = [];
+			let failed = false;
+			nock('https://slack.com')
+				.persist()
+				.post(/\/api\/.+/)
+				.reply(200, (uri, requestBody) => {
+					const calledMethod = uri.replace('/api/', '');
+					const body =
+						typeof requestBody === 'string'
+							? Object.fromEntries(new URLSearchParams(requestBody))
+							: (requestBody as Record<string, string>);
+					calls.push({ method: calledMethod, body });
+					if (calledMethod === method && !failed) {
+						failed = true;
+						return { ok: false, error: 'channel_not_found' };
+					}
+					return { ok: true, ts: '1719000999.000100', message: { ts: '1719000999.000100' } };
+				});
+			const { thread, threadTs, logger, context } = await makeSlackContext(topLevel);
+			const postErrorToThread = vi.fn().mockResolvedValue(undefined);
+			const consumer = new AgentChatStreamConsumer({
+				disableStreaming: false,
+				logger,
+				postErrorToThread,
+				handleSuspension: vi.fn().mockResolvedValue('skipped'),
+				handleMessage: vi.fn().mockResolvedValue(false),
+			});
+			async function* stream(): AsyncGenerator<StreamChunk> {
+				yield { type: 'text-delta', id: 'progress', delta: 'Saving the reply.\n' };
+				yield { type: 'text-end', id: 'progress' };
+				yield { type: 'finish-step' };
+				yield { type: 'text-delta', id: 'answer', delta: 'The reply is saved.' };
+				yield { type: 'finish', finishReason: 'stop' };
+			}
+
+			await consumer.consume(stream(), thread, {
+				...context,
+				statusHandle: onceStatusHandle(context.statusHandle),
+			});
+
+			expect(failed).toBe(true);
+			expect(postErrorToThread).not.toHaveBeenCalled();
+			expect(calls.at(-1)).toMatchObject({
+				method: 'assistant.threads.setStatus',
+				body: { channel_id: 'C_CHANNEL', thread_ts: threadTs, status: '' },
+			});
+			expect(calls.at(-2)).toMatchObject({
+				method: 'chat.postMessage',
+				body: { markdown_text: 'Saving the reply.\n\n\nThe reply is saved.' },
+			});
+		},
+	);
+
+	it('posts a reply over the Slack limit as messages that Slack accepts', async () => {
+		const messages = new Map<string, string>();
 		nock('https://slack.com')
 			.persist()
 			.post(/\/api\/.+/)
 			.reply(200, (uri, requestBody) => {
-				const calledMethod = uri.replace('/api/', '');
+				const method = uri.replace('/api/', '');
 				const body =
 					typeof requestBody === 'string'
 						? Object.fromEntries(new URLSearchParams(requestBody))
 						: (requestBody as Record<string, string>);
-				calls.push({ method: calledMethod, body });
-				if (calledMethod === method && !failed) {
-					failed = true;
-					return { ok: false, error: 'channel_not_found' };
+				const ts = method === 'chat.update' ? body.ts : `1719001000.${messages.size}`;
+				if (method === 'chat.postMessage' || method === 'chat.update') {
+					if (body.markdown_text.length > 12_000) return { ok: false, error: 'msg_too_long' };
+					messages.set(ts, body.markdown_text);
 				}
-				return { ok: true, ts: '1719000999.000100', message: { ts: '1719000999.000100' } };
+				return { ok: true, ts, message: { ts } };
 			});
-		const { thread, threadTs, logger, context } = await makeSlackContext(topLevel);
-		const postErrorToThread = vi.fn(async () => {
-			await thread.post({ markdown: 'Could not deliver the reply.' });
-		});
+		const { thread, logger, context } = await makeSlackContext(false);
+		const postErrorToThread = vi.fn().mockResolvedValue(undefined);
 		const consumer = new AgentChatStreamConsumer({
 			disableStreaming: false,
+			maxMessageLength: new SlackIntegration(mock()).maxMessageLength,
 			logger,
 			postErrorToThread,
 			handleSuspension: vi.fn().mockResolvedValue('skipped'),
 			handleMessage: vi.fn().mockResolvedValue(false),
 		});
+		const lines = Array.from({ length: 600 }, (_, i) => `Line ${i} of a long research report.\n`);
 		async function* stream(): AsyncGenerator<StreamChunk> {
-			yield { type: 'text-delta', id: 'progress', delta: 'Saving the reply.\n' };
-			yield { type: 'text-end', id: 'progress' };
-			yield { type: 'finish-step' };
-			yield { type: 'text-delta', id: 'answer', delta: 'The reply is saved.' };
+			for (const delta of lines) yield { type: 'text-delta', id: 'report', delta };
 			yield { type: 'finish', finishReason: 'stop' };
 		}
 
-		await consumer.consume(stream(), thread, {
-			...context,
-			statusHandle: onceStatusHandle(context.statusHandle),
-		});
+		await consumer.consume(stream(), thread, context);
 
-		expect(failed).toBe(true);
-		expect(postErrorToThread).toHaveBeenCalledOnce();
-		expect(postErrorToThread).toHaveBeenCalledWith(thread, expect.any(Error), undefined);
-		expect(calls.at(-1)).toMatchObject({
-			method: 'assistant.threads.setStatus',
-			body: { channel_id: 'C_CHANNEL', thread_ts: threadTs, status: '' },
-		});
-		expect(calls.at(-2)).toMatchObject({
-			method: 'chat.postMessage',
-			body: { markdown_text: 'Could not deliver the reply.' },
-		});
+		expect(postErrorToThread).not.toHaveBeenCalled();
+		expect(messages.size).toBeGreaterThan(1);
+		expect([...messages.values()].join('').trimEnd()).toBe(lines.join('').trimEnd());
 	});
 });

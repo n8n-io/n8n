@@ -102,6 +102,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope
@@ -202,6 +203,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   datetime_3_ createdAt
+  TEXT description
+  TEXT name
   varchar publishedById FK
   TEXT schema
   TEXT skills
