@@ -63,12 +63,7 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 		if (flags.id && newState) {
 			this.logger.info(`Publishing workflow ${flags.id} with current version`);
 			this.logger.warn(`Please use: publish:workflow --id=${flags.id}\n`);
-			try {
-				await cliWorkflowPublisher.publish(flags.id);
-			} catch (error) {
-				this.logger.error('Failed to publish workflow');
-				throw error;
-			}
+			await cliWorkflowPublisher.publish(flags.id);
 
 			this.logger.info(cliWorkflowPublisher.whenChangeApplies());
 			return;
