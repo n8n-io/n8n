@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatBackgroundJobSignal.vue
+  s_a9406db86844b8::t_a68d4bc54788c5 2,7,9-13,15-16,20-50,71-72
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_a9406db86844b8::t_a68d4bc54788c5 647-652
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatBackgroundJobSignal.test.ts
+  s_a9406db86844b8::t_51f1c51875eba9 20-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6eb6c9288a2c74e78dd56247f60755df280c8c7",
+  "prompts": {},
+  "sessions": {
+    "s_a9406db86844b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2315531e-83c9-4c88-9ccc-a293d57e6ef3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
