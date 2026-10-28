@@ -133,6 +133,8 @@ export interface FileUploadLimits {
 	maxFiles: number;
 	/** Maximum size of one file. */
 	maxFileBytes: number;
+	/** Maximum length of the text that goes with files. Undefined means no limit. */
+	maxCaptionLength?: number;
 }
 
 export interface PlatformAgentContext {

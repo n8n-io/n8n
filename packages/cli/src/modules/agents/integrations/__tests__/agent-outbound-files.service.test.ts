@@ -134,6 +134,33 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		expect(second).toHaveProperty('attachments.length', 2);
 	});
 
+	it('posts Telegram reply text over the caption limit as its own message before the files', async () => {
+		const { service, thread } = createService();
+		const caption = 'a'.repeat(1025);
+
+		await service.postReplyFiles(thread, 'telegram', { fileIds: ['file-1'], caption, scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(2);
+		expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: caption });
+		expect(thread.post).toHaveBeenNthCalledWith(2, {
+			raw: '',
+			attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
+		});
+	});
+
+	it('posts Telegram reply text at the caption limit as the caption', async () => {
+		const { service, thread } = createService();
+		const caption = 'a'.repeat(1024);
+
+		await service.postReplyFiles(thread, 'telegram', { fileIds: ['file-1'], caption, scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(1);
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: caption,
+			attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
+		});
+	});
+
 	it('posts mixed Slack files in one message', async () => {
 		const { service, thread } = createService();
 

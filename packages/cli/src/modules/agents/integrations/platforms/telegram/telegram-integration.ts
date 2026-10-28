@@ -103,7 +103,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 	];
 
 	// The Bot API sends up to 50 MB for each file, and up to 10 files as one media group.
-	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 50 * 1024 * 1024 };
+	// The adapter cuts a caption at 1024 characters, but a text message can have 4096.
+	readonly fileUploadLimits = {
+		maxFiles: 10,
+		maxFileBytes: 50 * 1024 * 1024,
+		maxCaptionLength: 1024,
+	};
 
 	// sendDocument shows an image as a generic file. Typed attachments use sendPhoto, sendVideo and sendAudio.
 	readonly sendFilesAsAttachments = true;

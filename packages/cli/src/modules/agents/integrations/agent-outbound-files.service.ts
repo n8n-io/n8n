@@ -34,20 +34,36 @@ export type OutboundPostable =
 
 /**
  * Post a message with its files, one message for each file group. The text
- * or card goes with the first group. Return the result of the first post.
+ * or card goes with the first group. Text longer than `maxCaptionLength` is
+ * posted as its own message before the files, so the platform does not cut it.
+ * Return the result of the first post.
  */
 export async function postWithFileGroups<T>(
 	post: (message: OutboundPostable) => Promise<T>,
 	message: OutboundPostable,
 	groups: OutboundFileFields[],
+	maxCaptionLength?: number,
 ): Promise<T> {
 	const [firstGroup, ...otherGroups] = groups;
 	if (!firstGroup) return await post(message);
+	const text = postableText(message);
+	if (maxCaptionLength !== undefined && text !== undefined && text.length > maxCaptionLength) {
+		const first = await post(message);
+		for (const group of groups) await post({ raw: '', ...group });
+		return first;
+	}
 	const first = await post(
 		typeof message === 'string' ? { raw: message, ...firstGroup } : { ...message, ...firstGroup },
 	);
 	for (const group of otherGroups) await post({ raw: '', ...group });
 	return first;
+}
+
+function postableText(message: OutboundPostable): string | undefined {
+	if (typeof message === 'string') return message;
+	if ('raw' in message) return message.raw;
+	if ('markdown' in message) return message.markdown;
+	return undefined;
 }
 
 export interface OutboundFileScope {
@@ -160,7 +176,12 @@ export class AgentOutboundFiles {
 		if (!Array.isArray(checked)) throw new OperationalError(checked.error.message);
 		const groups = await this.load(platform, checked);
 		const caption: PostableMarkdown = { markdown: params.caption };
-		await postWithFileGroups(async (message) => await thread.post(message), caption, groups);
+		await postWithFileGroups(
+			async (message) => await thread.post(message),
+			caption,
+			groups,
+			this.integrationRegistry.get(platform)?.fileUploadLimits?.maxCaptionLength,
+		);
 	}
 }
 
