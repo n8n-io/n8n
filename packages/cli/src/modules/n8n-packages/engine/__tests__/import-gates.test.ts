@@ -14,7 +14,6 @@ it('does not require workflow:import for a project-only package', () => {
 	expect(
 		packageImportScopes({
 			packageFormatVersion: '1',
-			exportedAt: '2026-10-16T00:00:00.000Z',
 			sourceN8nVersion: '2.0.0',
 			sourceId: 'source',
 			projects: [{ id: 'project-1', name: 'Project', target: 'projects/project-1' }],

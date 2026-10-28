@@ -7,7 +7,7 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
@@ -20,7 +20,7 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
-import { SkillRepository } from '@/modules/skills/skill.repository';
+import { createSkill } from '@/modules/skills/testing';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -35,6 +35,12 @@ import {
 	storedSkillRefs,
 	type AgentFixtureOverrides,
 } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
+
+const writingSkill = {
+	name: 'Writing',
+	description: 'Write notes',
+	instructions: 'Use short sentences',
+};
 
 describe('AgentRepository', () => {
 	let agentRepo: AgentRepository;
@@ -72,7 +78,7 @@ describe('AgentRepository', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
-		registerSkillAgentsProvider();
+		registerSkillUsage();
 		agentRepo = Container.get(AgentRepository);
 		agentHistoryRepo = Container.get(AgentHistoryRepository);
 		taskRepo = Container.get(AgentTaskRepository);
@@ -163,19 +169,9 @@ describe('AgentRepository', () => {
 		};
 
 		it('rolls back Agent creation with its skill references, then commits one creation on retry', async () => {
-			const skillRepo = Container.get(SkillRepository);
 			const skillRefs = Container.get(AgentSkillRefsService);
 			const skillId = uuid();
-			await skillRepo.createSkill(
-				{ id: skillId, target: { projectId, agentId: null }, source: 'ui', createdById: null },
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: skillId, projectId, content: writingSkill });
 			const credentials = mock<CredentialsService>();
 			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 			const policy = mock<AgentPolicyService>();
@@ -210,8 +206,9 @@ describe('AgentRepository', () => {
 				completion,
 				mock<AgentSetupCompletionService>(),
 				mock(),
+				definitionService,
 			);
-			const user = mock<User>();
+			const user = mock<User>({ firstName: 'Test', lastName: 'User' });
 			const id = uuid();
 			const options = {
 				id,
@@ -242,6 +239,12 @@ describe('AgentRepository', () => {
 				config: { instructions: 'Help users', skills: [{ type: 'skill', id: skillId }] },
 			});
 			expect(created.configHash).toBe(getAgentConfigHash(created.config));
+			expect(
+				await agentHistoryRepo.findByVersionAndAgentId(created.agent.versionId!, created.agent.id),
+			).toMatchObject({ schema: { instructions: 'Help users' } });
+			expect(
+				await Container.get(AgentSkillRepository).findPinnedSkillIds(created.agent.versionId!),
+			).toEqual([skillId]);
 			expect(await agentRepo.findById(id)).toMatchObject({
 				schema: { instructions: 'Help users' },
 			});
@@ -297,6 +300,7 @@ describe('AgentRepository', () => {
 				completion,
 				Container.get(AgentSkillRefsService),
 				mock<ChatIntegrationRegistry>(),
+				definitionService,
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -309,7 +313,13 @@ describe('AgentRepository', () => {
 				modifiedBy: 'user',
 			} as const;
 			await expect(
-				service.updateConfig(agent.id, projectId, config, mock<User>(), options),
+				service.updateConfig(
+					agent.id,
+					projectId,
+					config,
+					mock<User>({ firstName: 'Test', lastName: 'User' }),
+					options,
+				),
 			).rejects.toThrow('Task cleanup failed');
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema,
@@ -318,32 +328,37 @@ describe('AgentRepository', () => {
 			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'task-remove' }]);
 			expect(completion.configurationSaved).not.toHaveBeenCalled();
 
-			const saved = await service.updateConfig(agent.id, projectId, config, mock<User>(), options);
+			const saved = await service.updateConfig(
+				agent.id,
+				projectId,
+				config,
+				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				options,
+			);
 			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
 			expect(await agentRepo.findById(agent.id)).toMatchObject({
 				schema: { name: 'Updated agent', tasks: [] },
 			});
 			expect(await taskRepo.findByAgentId(agent.id)).toEqual([]);
+			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
+			const repeated = await service.updateConfig(
+				agent.id,
+				projectId,
+				saved.config,
+				mock<User>({ firstName: 'Test', lastName: 'User' }),
+				{
+					...options,
+					baseConfigHash: saved.configHash,
+				},
+			);
+			expect(repeated.versionId).toBe(saved.versionId);
+			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
 			expect(completion.configurationSaved).toHaveBeenCalled();
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
 			const agent = await createAgent({ availableInMCP: true });
-			await Container.get(SkillRepository).createSkill(
-				{
-					id: 'writing',
-					target: { projectId, agentId: null },
-					source: 'ui',
-					createdById: null,
-				},
-				{
-					name: 'Writing',
-					description: 'Write notes',
-					instructions: 'Use short sentences',
-					frontmatter: null,
-					files: [],
-				},
-			);
+			await createSkill({ id: 'writing', projectId, content: writingSkill });
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
 				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
@@ -401,7 +416,7 @@ describe('AgentRepository', () => {
 				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
-			// The skill refs live in the dependency rows. The skill body stays in the hub.
+			// The skill refs live in the dependency rows. The skill body stays in the skills module.
 			const agentSkillRefs = Container.get(AgentSkillRefsService);
 			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 			const tasks = await taskRepo.findByAgentId(agent.id);
@@ -439,6 +454,7 @@ describe('AgentRepository', () => {
 				mock(),
 				transactionRunner,
 				Container.get(AgentSkillRefsService),
+				definitionService,
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
 			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {
@@ -459,7 +475,7 @@ describe('AgentRepository', () => {
 					'task-1',
 					{ name: 'Renamed task' },
 					{
-						user: mock<User>(),
+						user: mock<User>({ firstName: 'Test', lastName: 'User' }),
 						modifiedBy: 'user',
 					},
 				),

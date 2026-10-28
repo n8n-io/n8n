@@ -12,6 +12,7 @@ Scans repository files for structural and dependency-policy violations:
 - **Encryption boundary coverage** — every package that depends on `n8n-core` or `@n8n/db` composes the encryption-boundary ESLint config at `error` severity and contains no ESLint directive that silences it
 - **TypeORM persistence boundary** — business logic cannot import TypeORM directly or through guarded `@n8n/db` re-exports; entity and repository declarations can use any package layout
 - **Agents and Instance AI boundary** — Agents cannot depend on Instance AI. Instance AI uses a fixed set of Agent services and contracts, plus public SDK entry points for `@n8n/agents`. Repositories, entities, and runtime reconstruction services stay private.
+- **Skills module boundary** — code outside `packages/cli/src/modules/skills` imports only its public API (`@/modules/skills`, and `@/modules/skills/testing` from tests). The skills module imports only an allowlist from the rest of cli. The rule resolves relative and aliased imports to files, so a relative import cannot bypass it.
 
 ## Usage
 

@@ -45,6 +45,18 @@ describe('AgentChannelSlackSetup', () => {
 		expect(wrapper.vm.currentSettings).toEqual({ messagingExperience: 'agent' });
 	});
 
+	it('completes a draft channel with its saved settings', () => {
+		const savedSettings = {
+			messagingExperience: 'assistant',
+			onlyRespondWhenMentioned: true,
+		} as const;
+		const wrapper = shallowMount(AgentChannelSlackSetup, {
+			props: { setupMode: 'simple', savedSettings },
+		});
+
+		expect(wrapper.vm.currentSettings).toEqual(savedSettings);
+	});
+
 	it('hides manual configuration in simple setup mode', () => {
 		const { queryByTestId } = renderComponent({
 			props: {

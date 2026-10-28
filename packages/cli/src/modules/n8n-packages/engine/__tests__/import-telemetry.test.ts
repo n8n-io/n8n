@@ -109,7 +109,7 @@ const scope = (input: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
-			],
+			].map((name) => ({ name, scopes: ['global'] })),
 			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
 				(name) => ({ name }),

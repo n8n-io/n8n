@@ -46,6 +46,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
 	searxngSearch: vi.fn(),
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import type { PolicyCleared } from '@n8n/decorators';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -1983,6 +1987,7 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
+import { SkillsGate } from '@/modules/skills';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -2210,6 +2215,7 @@ describe('web-search provider selection', () => {
 			'BSA-key',
 			'quakes',
 			expect.objectContaining({ maxResults: 3 }),
+			expect.any(Function),
 		);
 		expect(searxngSearch).not.toHaveBeenCalled();
 	});
@@ -2232,7 +2238,12 @@ describe('web-search provider selection', () => {
 	it('falls back to SearXNG when only a URL is set', async () => {
 		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
 
-		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(searxngSearch).toHaveBeenCalledWith(
+			'http://searxng:8080',
+			'quakes',
+			expect.anything(),
+			expect.any(Function),
+		);
 		expect(braveSearch).not.toHaveBeenCalled();
 	});
 });
@@ -9145,31 +9156,32 @@ describe('createContext — skill service wiring', () => {
 
 	it.each([
 		{
-			name: 'wires skills when the agents module is active',
-			moduleActive: true,
+			name: 'wires skills when the skills gate is on',
+			skillsEnabled: true,
 			agentsEnabled: true,
 			expected: true,
 		},
 		{
 			name: 'wires skills when Settings > Agents is off',
-			moduleActive: true,
+			skillsEnabled: true,
 			agentsEnabled: false,
 			expected: true,
 		},
 		{
-			name: 'omits skills when the agents module is inactive',
-			moduleActive: false,
+			name: 'omits skills when the skills gate is off',
+			skillsEnabled: false,
 			agentsEnabled: true,
 			expected: false,
 		},
-	])('$name', ({ moduleActive, agentsEnabled, expected }) => {
+	])('$name', ({ skillsEnabled, agentsEnabled, expected }) => {
 		const skillService = mock<InstanceAiSkillService>();
 		const moduleRegistry = {
-			isActive: vi.fn().mockReturnValue(moduleActive),
+			isActive: vi.fn().mockReturnValue(true),
 			settings: new Map([['agents', { enabled: agentsEnabled }]]),
 		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === SkillsGate) return { isEnabled: skillsEnabled };
 			if (token === InstanceAiSkillsAdapterService) {
 				return { createService: vi.fn().mockReturnValue(skillService) };
 			}
@@ -9194,6 +9206,7 @@ describe('createContext — skill service wiring', () => {
 						settings: new Map([['agents', { enabled: true }]]),
 					};
 				}
+				if (token === SkillsGate) return { isEnabled: true };
 				if (token === InstanceAiSkillsAdapterService) return { createService };
 				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
 				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);

@@ -68,7 +68,11 @@ export class ModelCatalogService {
 	private snapshot?: CatalogSnapshot;
 	private refreshPromise?: Promise<void>;
 
-	async search(input: SearchModelsInput, abortSignal?: AbortSignal): Promise<SearchModelsResult> {
+	async search(
+		input: SearchModelsInput,
+		fetch: typeof globalThis.fetch,
+		abortSignal?: AbortSignal,
+	): Promise<SearchModelsResult> {
 		throwIfAborted(abortSignal);
 		const providerId = input.provider.trim().toLowerCase();
 		const query = input.query?.trim().toLowerCase();
@@ -83,7 +87,7 @@ export class ModelCatalogService {
 
 		if (!this.snapshot || Date.now() - this.snapshot.fetchedAt >= FRESH_TTL_MS) {
 			// Callers share public catalog data. Cancelling one caller must not cancel the refresh.
-			this.refreshPromise ??= this.refresh().finally(() => {
+			this.refreshPromise ??= this.refresh(fetch).finally(() => {
 				this.refreshPromise = undefined;
 			});
 			await raceWithAbort(this.refreshPromise, abortSignal);
@@ -131,12 +135,12 @@ export class ModelCatalogService {
 		};
 	}
 
-	private async refresh(): Promise<void> {
+	private async refresh(fetch: typeof globalThis.fetch): Promise<void> {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 		try {
 			const catalog = await raceWithAbort(
-				async () => await fetchProviderCatalog({ signal: controller.signal }),
+				async () => await fetchProviderCatalog({ signal: controller.signal, fetch }),
 				controller.signal,
 			);
 			// An empty parsed catalog may mean upstream data no longer matches the schema.

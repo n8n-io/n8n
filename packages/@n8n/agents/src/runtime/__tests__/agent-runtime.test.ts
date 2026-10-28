@@ -37,6 +37,7 @@ import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
 import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { StreamSink } from '../loop/stream-sink';
+import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -1324,6 +1325,46 @@ describe('AgentRuntime — execution counters', () => {
 		expect(resumed.finishReason).not.toBe('error');
 	});
 
+	it('resumes a suspended call of a split tool in the tool that owns its action', async () => {
+		const resumedBy: string[] = [];
+		const makeActionTool = (name: string, handlerLabel: string): BuiltTool => ({
+			...makeInterruptibleTool(),
+			name,
+			inputSchema: z.object({ question: z.string(), action: z.string().optional() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				resumedBy.push(handlerLabel);
+				return { approved: true };
+			},
+		});
+		const splitTool = makeActionTool('approve', 'delete handler');
+		const otherTool = makeActionTool('other', 'publish handler');
+		const { runtime } = createRuntimeWithTools([splitTool, otherTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: 'approve',
+					args: { question: 'continue?', action: 'publish' },
+				},
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(splitTool, { name: 'delete_item', legacyActions: { approve: ['delete'] } });
+		Object.assign(otherTool, { name: 'publish_item', legacyActions: { approve: ['publish'] } });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumedBy).toEqual(['publish handler']);
+	});
+
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
 		const suspendPayload = { question: 'approve?', marker: 'xyz' };
 		let observedCtx: InterruptibleToolContext | undefined;
@@ -1818,6 +1859,7 @@ describe('AgentRuntime — guardrails', () => {
 
 	it('prices a Foundry deployment by the model it serves', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const modelFetch = vi.fn<typeof fetch>();
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: {
@@ -1827,13 +1869,14 @@ describe('AgentRuntime — guardrails', () => {
 				endpointType: 'foundry',
 				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
 			},
+			modelFetch,
 			instructions: 'You are a test assistant.',
 			eventBus: new AgentEventBus(),
 		});
 
 		await runtime.generate('hi');
 
-		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1', modelFetch);
 	});
 
 	it('does not start the next model call after a turn spends the session cap', async () => {
@@ -7870,6 +7913,51 @@ describe('tool systemInstruction merging', () => {
 		expect(text).toContain('</built_in_rules>');
 		expect(text).toContain('You are a helpful assistant.');
 		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
+	});
+
+	it('adds episodic capture guidance to the flag_memory instruction and content field only when set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const runWith = async (guidance?: { include?: string[]; exclude?: string[] }) => {
+			generateText.mockClear();
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory: new InMemoryMemory(),
+				episodicMemory: { embedder: fakeEmbedder, guidance },
+			});
+			await runtime.generate('hello', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+			const callArgs = generateText.mock.calls[0][0] as {
+				tools: { flag_memory: { inputSchema: z.ZodObject<{ content: z.ZodString }> } };
+			};
+			const flagTool = callArgs.tools.flag_memory.inputSchema.shape.content.description ?? '';
+			return { text: getSystemMessageText(), flagTool };
+		};
+
+		const { text, flagTool } = await runWith({
+			include: ['timezone'],
+			exclude: ['client "names"'],
+		});
+		expect(text).toContain(
+			`${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n<capture_guidance>`,
+		);
+		expect(text).toContain('Prioritize: "timezone".');
+		expect(text).toContain(
+			'Exclude: "client \\"names\\"". This rule overrides every other flag_memory rule',
+		);
+		expect(flagTool).toContain('Must not contain details about:');
+
+		const empty = await runWith({ include: [], exclude: [] });
+		expect(empty.text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(empty.text).not.toContain('<capture_guidance>');
+		expect(empty.flagTool).not.toContain('Must not contain details about:');
+
+		const includeOnly = await runWith({ include: ['timezone'] });
+		expect(includeOnly.text).toContain('Prioritize: "timezone".');
+		expect(includeOnly.text).not.toContain('Exclude:');
 	});
 
 	it('joins multiple tools systemInstructions into a single block', async () => {

@@ -25,11 +25,6 @@ export function useMcpDiscovery() {
 				: 'experiments.mcpDiscovery.cta.build',
 		),
 	);
-	const entryDescription = computed(() =>
-		mcpDiscovery.ctaStage === 'build'
-			? i18n.baseText('experiments.mcpDiscovery.cta.connectToN8n')
-			: undefined,
-	);
 
 	function openEntry(placement: McpDiscoveryPlacement) {
 		mcpDiscovery.trackEntry(placement, 'clicked');
@@ -44,7 +39,6 @@ export function useMcpDiscovery() {
 		mcpDiscovery,
 		showMcpDiscovery,
 		entryLabel,
-		entryDescription,
 		openEntry,
 	};
 }
