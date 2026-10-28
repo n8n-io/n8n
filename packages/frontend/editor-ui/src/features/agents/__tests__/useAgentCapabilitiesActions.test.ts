@@ -13,7 +13,6 @@ import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
-	AgentJsonToolConfig,
 	AgentResource,
 	AgentSkill,
 } from '../types';
@@ -456,23 +455,6 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 
 		expect(createSkill).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Skill' }));
 		expect(createAgentSkill).not.toHaveBeenCalled();
-	});
-
-	it('drops allowedTools before persisting and offers no tool list', () => {
-		const { uiStore, actions, createSkill } = setupLocal({
-			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
-		});
-
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		expect(modalData).not.toHaveProperty('availableTools');
-		modalData.onConfirm({
-			skill: { ...triage, name: 'Second Skill', allowedTools: ['darwin'] },
-		});
-
-		expect(createSkill).toHaveBeenCalledWith(
-			expect.not.objectContaining({ allowedTools: expect.anything() }),
-		);
 	});
 
 	it('rejects an add whose name duplicates an applied skill (case-insensitive, trimmed)', () => {

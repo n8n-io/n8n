@@ -62,7 +62,7 @@ export interface UseAgentCapabilitiesActionsDeps {
 	scheduleConfigUpdate: (updates: Partial<AgentJsonConfig>) => void;
 	/**
 	 * Persists an edit to an *existing* skill's body (name/description/
-	 * instructions/allowedTools/references). Each host owns its own skill
+	 * instructions/references). Each host owns its own skill
 	 * autosave lifecycle (the builder + NDV each run a dedicated
 	 * `useAgentConfigAutosave`), so the seam is injected rather than the
 	 * builder's autosave being hard-wired here. Creating a *new* skill stays in
