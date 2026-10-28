@@ -9,6 +9,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '../../../../constants';
 import type { RuleRegistry } from '../../breaking-changes.rule-registry.service';
 import type {
 	BreakingChangeDetectionResult,
@@ -748,11 +749,11 @@ describe('MigrationFindingSyncService', () => {
 	});
 
 	describe('syncIfStale', () => {
-		function syncRecord(ruleIds: string[]): MigrationFindingSync {
+		function syncRecord(ruleIds: string[], n8nVersion?: string): MigrationFindingSync {
 			return {
 				targetVersion: TARGET_VERSION,
 				syncedAt: new Date(),
-				ruleSetFingerprint: computeRuleSetFingerprint(ruleIds),
+				ruleSetFingerprint: computeRuleSetFingerprint(ruleIds, n8nVersion),
 			} as MigrationFindingSync;
 		}
 
@@ -776,6 +777,21 @@ describe('MigrationFindingSyncService', () => {
 			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
 				expect.objectContaining({
 					ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('syncs when the stored fingerprint comes from an older n8n version', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a', 'rule-b'], '0.0.1'));
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b'], N8N_VERSION),
 				}),
 				expect.anything(),
 			);
