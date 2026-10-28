@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nText, N8nLoading, N8nIcon, N8nTooltip, N8nButton } from '@n8n/design-system';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
+import { formatPublicationDuration } from '@/app/utils/publicationHistoryUtils';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { formatTimestamp, generateVersionLabelFromId } from '../utils';
@@ -76,22 +77,6 @@ const formatShortDate = (date: Date) => {
 	if (isToday(date)) return dateformat(date, 'HH:MM');
 	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm';
 	return dateformat(date, format);
-};
-
-const formatDuration = (start: Date, end: Date | null) => {
-	const ms = (end ?? new Date()).getTime() - start.getTime();
-	const seconds = Math.floor(ms / 1000);
-	const minutes = Math.floor(seconds / 60);
-	const hours = Math.floor(minutes / 60);
-	const days = Math.floor(hours / 24);
-
-	if (days > 0) return `${days}d ${hours % 24}h`;
-	if (hours > 0) {
-		const remMin = minutes % 60;
-		return remMin > 0 ? `${hours}h ${remMin}m` : `${hours}h`;
-	}
-	if (minutes > 0) return `${minutes}m`;
-	return `${seconds}s`;
 };
 
 // ---- entry construction ------------------------------------------------
@@ -168,7 +153,7 @@ const buildEntry = (
 		isDeletedVersion: status === 'published' && !versionId,
 		title: titleFor(event),
 		durationLabel: i18n.baseText(durationKey, {
-			interpolate: { duration: formatDuration(startedAt, endedAt) },
+			interpolate: { duration: formatPublicationDuration(startedAt, endedAt ?? new Date()) },
 		}),
 		shortDate: formatShortDate(startedAt),
 		tooltipLabel: tooltipLabelFor(event),

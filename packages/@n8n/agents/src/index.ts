@@ -51,6 +51,7 @@ export type {
 	Thread,
 	EpisodicMemoryConfig,
 	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryCaptureKind,
 	EpisodicMemoryCaptureMethods,
 	EpisodicMemoryCaptureStatus,

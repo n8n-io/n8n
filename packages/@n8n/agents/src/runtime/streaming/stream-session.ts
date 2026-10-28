@@ -1,4 +1,5 @@
 import { StreamWriterGuard } from './stream-writer-guard';
+import { createAbortError } from '../../sdk/abort';
 import type { StreamChunk } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
@@ -112,7 +113,7 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			// a mid-run failure were already reported to the sink and must still be
 			// billed on the terminal chunk.
 			await guard.fail(
-				isAbort ? new Error('Agent run was aborted') : error,
+				isAbort ? createAbortError('Agent run was aborted') : error,
 				'error',
 				deps.getTerminalFinish?.(),
 			);

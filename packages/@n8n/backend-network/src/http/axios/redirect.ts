@@ -6,10 +6,12 @@ import { OperationalError } from 'n8n-workflow';
 import { invokeAxios } from './invoke';
 import {
 	buildTargetUrl,
+	CREDENTIAL_HEADER_PATTERN,
 	getRedirectLocation,
 	getUrlFromProxyConfig,
 	isProxyPotentiallyActive,
 	isRedirectStatus,
+	isSameHostHttpsUpgrade,
 	resolveProxyOption,
 	sniFor,
 	throwIfDomainNotAllowed,
@@ -100,7 +102,7 @@ function headerPatternsToDropOnRedirect(
 	return [
 		/^host$/i,
 		...(downgradeToGet ? [/^content-/i] : []),
-		...(stripCredentials ? [/^authorization$/i, /^proxy-authorization$/i, /^cookie$/i] : []),
+		...(stripCredentials ? [CREDENTIAL_HEADER_PATTERN] : []),
 	];
 }
 
@@ -157,7 +159,9 @@ function buildRedirectHopConfig(
 ): AxiosRequestConfig {
 	const downgradeToGet = redirectDowngradesToGet(prevConfig.method ?? 'GET', status);
 	const stripCredentials =
-		isCrossOrigin(originalUrl, nextUrl) && !policy.sendCredentialsOnCrossOriginRedirect;
+		isCrossOrigin(originalUrl, nextUrl) &&
+		!isSameHostHttpsUpgrade(originalUrl, nextUrl) &&
+		!policy.sendCredentialsOnCrossOriginRedirect;
 
 	return {
 		...prevConfig,

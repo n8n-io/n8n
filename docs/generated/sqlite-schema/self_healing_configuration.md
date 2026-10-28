@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "projectId" varchar(36) NOT NULL, "scope" varchar(16) NOT NULL, "enabled" boolean NOT NULL DEFAULT (false), "enabledById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_self_healing_configuration_scope" CHECK ("scope" IN ('all', 'selected')), CONSTRAINT "FK_0a8f9425ffdc01cce5876bc6247" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2b04620d7af4060ba89412123ea" FOREIGN KEY ("enabledById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "projectId" varchar(36) NOT NULL, "scope" varchar(16) NOT NULL, "enabled" boolean NOT NULL DEFAULT (false), "enabledById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "includeAllProjectMembers" BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT "CHK_self_healing_configuration_scope" CHECK ("scope" IN ('all', 'selected')), CONSTRAINT "FK_0a8f9425ffdc01cce5876bc6247" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2b04620d7af4060ba89412123ea" FOREIGN KEY ("enabledById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -19,6 +19,7 @@ CREATE TABLE "self_healing_configuration" ("id" integer PRIMARY KEY AUTOINCREMEN
 | enabled | boolean | false | false |  |  |  |
 | enabledById | varchar |  | true |  | [user](user.md) |  |
 | id | INTEGER |  | false | [self_healing_configuration_reviewer](self_healing_configuration_reviewer.md) [self_healing_configuration_workflow](self_healing_configuration_workflow.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) |  |  |
+| includeAllProjectMembers | BOOLEAN | FALSE | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | scope | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -57,6 +58,7 @@ erDiagram
   boolean enabled
   varchar enabledById FK
   INTEGER id
+  BOOLEAN includeAllProjectMembers
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt

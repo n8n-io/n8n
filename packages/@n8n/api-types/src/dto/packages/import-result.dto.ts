@@ -8,15 +8,21 @@ import { Z } from '../../zod-class';
 const importPackageSummarySchema = z.object({
 	sourceN8nVersion: z.string(),
 	sourceId: z.string(),
-	exportedAt: z.string().datetime(),
 });
+
+const publishingBlockedReasons = [
+	'stub-credential',
+	'incomplete-credential',
+	'missing-node-type',
+	'channel-setup-required',
+] as const;
 
 const publishingOutcomeSchema = z.object({
 	state: z.enum(['published', 'unpublished', 'unchanged', 'blocked', 'failed']).openapi({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
 			'(for example because the Agent or workflow uses an empty or incomplete credential, or a node type this ' +
-			'instance does not have). When a prior published version remains active, `state` is ' +
+			'instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
 	}),
@@ -25,7 +31,7 @@ const publishingOutcomeSchema = z.object({
 			'Present when `state` is `failed`. Explains why publish or unpublish could not be applied.',
 	}),
 	blockedReason: z
-		.enum(['stub-credential', 'incomplete-credential', 'missing-node-type'])
+		.enum(publishingBlockedReasons)
 		.optional()
 		.openapi({
 			description:
@@ -33,7 +39,7 @@ const publishingOutcomeSchema = z.object({
 				'version is active.',
 		}),
 	skippedPublishReason: z
-		.enum(['stub-credential', 'incomplete-credential', 'missing-node-type'])
+		.enum(publishingBlockedReasons)
 		.optional()
 		.openapi({
 			description:
@@ -76,6 +82,33 @@ const importedWorkflowSummarySchema = z.object({
 	}),
 });
 
+const importedAgentChannelSchema = z.discriminatedUnion('status', [
+	z.object({
+		type: z.string().openapi({ description: 'Channel type, for example `slack`.' }),
+		status: z.literal('reused').openapi({
+			description: 'The import kept the channel connection that the destination Agent already had.',
+		}),
+	}),
+	z.object({
+		type: z.string().openapi({ description: 'Channel type, for example `slack`.' }),
+		status: z.literal('setup-required').openapi({
+			description:
+				'The import saved the channel settings without a connection. Set up the channel in the ' +
+				'destination before the Agent can be published.',
+		}),
+		reason: z.enum(['new-channel', 'destination-draft']).openapi({
+			description:
+				'`new-channel`: the destination Agent had no connection for this channel. ' +
+				'`destination-draft`: the destination Agent has this channel, but its setup is not complete.',
+		}),
+		setupUrl: z.string().openapi({
+			description: 'Link to the destination Agent, where you can set up the channel.',
+		}),
+	}),
+]);
+
+export type ImportedAgentChannel = z.infer<typeof importedAgentChannelSchema>;
+
 const importedAgentSummarySchema = z.object({
 	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),
 	localId: z.string().openapi({
@@ -91,6 +124,11 @@ const importedAgentSummarySchema = z.object({
 	status: z.enum(['created', 'updated', 'skipped']),
 	publishing: publishingOutcomeSchema.openapi({
 		description: 'Publication outcome. A failed publication does not undo the definition import.',
+	}),
+	channels: z.array(importedAgentChannelSchema).openapi({
+		description:
+			'Channel outcome for each external channel in the imported definition. A credential from the ' +
+			'package never connects a channel. Empty for skipped Agents.',
 	}),
 });
 

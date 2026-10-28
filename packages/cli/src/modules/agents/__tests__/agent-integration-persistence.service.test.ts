@@ -1,3 +1,5 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import { TransactionRunner } from '@n8n/db';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
@@ -119,6 +121,8 @@ function setup(options: SetupOptions = {}) {
 			setupCompletionService,
 			createAgentSkillRefsService(),
 			new N8nChatFlagService(postHogClient),
+			mock<AgentDefinitionService>(),
+			historyTransactionRunner(),
 		),
 		agent,
 		row,
@@ -299,6 +303,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				[{ type: 'slack', credentialId: 'slack-1' }],
 				{ revision: 0, versionId: 'version-1', activeVersionId: 'version-1' },
 				expect.not.stringMatching('^version-1$'),
+				{},
 			);
 		});
 
@@ -939,3 +944,9 @@ describe('AgentIntegrationPersistenceService', () => {
 		});
 	});
 });
+
+function historyTransactionRunner() {
+	const runner = mock<TransactionRunner>();
+	runner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	return runner;
+}

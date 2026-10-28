@@ -4,10 +4,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
-import type { SkillAgentsProxy } from '../skill-agents-proxy.service';
-import type { Skill } from '../skill.entity';
-import type { SkillRepository } from '../skill.repository';
-import { SkillsTelemetry } from '../skills-telemetry';
+import type { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import type { Skill } from '../database/entities/skill.entity';
+import type { SkillRepository } from '../database/repositories/skill.repository';
+import { SkillsTelemetry } from '../services/skills-telemetry.service';
 
 function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
 	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
@@ -16,8 +16,8 @@ function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>>
 describe('SkillsTelemetry', () => {
 	const telemetry = mock<Telemetry>();
 	const repository = mock<SkillRepository>();
-	const skillAgents = mock<SkillAgentsProxy>();
-	const service = new SkillsTelemetry(telemetry, repository, mockLogger(), skillAgents);
+	const skillUsage = mock<SkillUsageProxy>();
+	const service = new SkillsTelemetry(telemetry, repository, mockLogger(), skillUsage);
 	const skills = [
 		skill('skill_instance'),
 		skill('skill_project', { projectId: 'project-1' }),
@@ -29,7 +29,7 @@ describe('SkillsTelemetry', () => {
 		repository.findByIds.mockImplementation(async (ids) =>
 			skills.filter((s) => ids.includes(s.id)),
 		);
-		skillAgents.findAgents.mockImplementation(
+		skillUsage.findAgents.mockImplementation(
 			async (ids) =>
 				new Map(
 					ids

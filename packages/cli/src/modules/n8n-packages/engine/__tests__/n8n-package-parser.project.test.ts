@@ -23,7 +23,6 @@ function makeReader(manifest: PackageManifest, files: Record<string, unknown>): 
 function baseManifest(): PackageManifest {
 	return {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: '2026-01-01T00:00:00.000Z',
 		sourceN8nVersion: '1.0.0',
 		sourceId: 'test-source',
 		projects: [{ id: 'proj-1', name: 'billing', target: 'projects/billing' }],

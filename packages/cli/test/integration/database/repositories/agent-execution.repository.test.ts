@@ -55,7 +55,7 @@ import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-att
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
 import { executionsToMessagesDto } from '@/modules/agents/utils/execution-to-message-mapper';
-import { formatPreviewSessionContext } from '@/modules/instance-ai/format-agent-session-context';
+import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
@@ -1690,6 +1690,63 @@ describe('AgentExecutionRepository', () => {
 			});
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
+
+		it('discards pending session input and keeps the active turn and other sessions', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			await enqueue(services, input(threadId, 'Active', 'new'));
+			const active = await claim(services, threadId);
+			const pendingInput = input(threadId, 'Pending');
+			pendingInput.payload.attachments = [
+				{ id: 'pending-file', fileName: 'pending.txt', mimeType: 'text/plain', sizeBytes: 1 },
+			];
+			const pending = await enqueue(services, pendingInput);
+			const steered = await enqueue(services, input(threadId, 'Steered'));
+			await services.queue.steer({
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview',
+				queueId: steered.id,
+				executionId: active.admission.executionId,
+			});
+			const hiddenInput = input(threadId, 'Hidden follow-up');
+			const hidden = await enqueue(services, {
+				...hiddenInput,
+				payload: {
+					kind: 'preview',
+					message: 'Hidden follow-up',
+					userId: owner.id,
+					resourceId: `draft-chat:${owner.id}`,
+					hidden: true,
+				},
+			});
+			const other = await enqueue(services, input(uuid(), 'Other session', 'new'));
+
+			const result = await services.queue.prepareSessionStop(threadId);
+
+			expect(result).toEqual({
+				executionIds: [active.admission.executionId],
+				queueIds: [pending.id, steered.id, hidden.id],
+				attachmentIds: ['pending-file'],
+			});
+			expect(await services.queueRepository.listPending(threadId)).toEqual([]);
+			expect(await services.queueRepository.findOneBy({ id: active.item.id })).not.toBeNull();
+			expect(await services.queueRepository.findOneBy({ id: other.id })).not.toBeNull();
+			for (const item of [pending, steered, hidden]) {
+				expect(await services.queueRepository.findOneBy({ id: item.id })).toBeNull();
+				expect(
+					await services.messageRepository.findOneByOrFail({ id: item.messageId }),
+				).toMatchObject({
+					content: { role: 'user', content: [] },
+					author: null,
+					modelContent: null,
+				});
+			}
+			await finish(services, active, 'cancelled');
+			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+		});
 
 		it.each([false, true])(
 			'finishes active work and cancels pending messages when Agents turns off (attachment cleanup fails: %s)',

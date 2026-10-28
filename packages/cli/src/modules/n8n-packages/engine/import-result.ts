@@ -35,7 +35,6 @@ export function toPackageSummary(manifest: PackageManifest): ImportPackageSummar
 	return {
 		sourceN8nVersion: manifest.sourceN8nVersion,
 		sourceId: manifest.sourceId,
-		exportedAt: manifest.exportedAt,
 	};
 }
 
@@ -152,6 +151,7 @@ function toImportedAgentSummary({
 	agent,
 	status,
 	publishing,
+	channels,
 }: AgentImportOutcome): ImportedAgentSummary {
 	return {
 		sourceAgentId,
@@ -161,6 +161,7 @@ function toImportedAgentSummary({
 		activeVersionId: agent.activeVersionId ?? null,
 		status,
 		publishing,
+		channels,
 	};
 }
 
