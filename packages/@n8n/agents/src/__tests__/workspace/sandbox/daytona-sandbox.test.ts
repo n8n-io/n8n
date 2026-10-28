@@ -832,6 +832,47 @@ describe('DaytonaSandbox (creation strategies)', () => {
 	});
 });
 
+describe('DaytonaSandbox (fresh creation)', () => {
+	function makeSandbox(): DaytonaSandbox {
+		return new DaytonaSandbox({ id: 'sandbox-id', name: 'sandbox-name', apiKey: 'api-key' });
+	}
+
+	it('reports a fresh sandbox when start() creates the remote', async () => {
+		queueNotFound('not found');
+		const sandbox = makeSandbox();
+
+		await sandbox.start();
+
+		expect(sandbox.createdFreshSandbox).toBe(true);
+	});
+
+	it('does not report a fresh sandbox when start() finds an existing remote', async () => {
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+		const sandbox = makeSandbox();
+
+		await sandbox.start();
+
+		expect(sandbox.createdFreshSandbox).toBe(false);
+	});
+
+	it('does not report a fresh sandbox when start() reattaches after a name conflict', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+		const sandbox = makeSandbox();
+
+		await sandbox.start();
+
+		expect(sandbox.createdFreshSandbox).toBe(false);
+	});
+
+	it('does not report a fresh sandbox before start()', () => {
+		expect(makeSandbox().createdFreshSandbox).toBe(false);
+	});
+});
+
 describe('DaytonaSandbox (destroy ownership)', () => {
 	it('does not delete a sandbox by name when start() never acquired one', async () => {
 		queuedGetErrors.push(

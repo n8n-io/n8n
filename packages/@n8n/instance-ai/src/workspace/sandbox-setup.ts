@@ -488,19 +488,18 @@ async function materializeKnowledgeBaseStep(
 
 const INITIALIZATION_MARKER = '.sandbox-initialized';
 
-async function readInitializationMarker(workspace: SandboxWorkspace): Promise<{
-	root: string;
-	marker: string | null;
-}> {
-	const root = await setupStep(
-		'resolve-workspace-root',
-		async () => await getWorkspaceRoot(workspace),
-	);
-	const marker = await setupStep(
+async function resolveWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
+	return await setupStep('resolve-workspace-root', async () => await getWorkspaceRoot(workspace));
+}
+
+async function readInitializationMarker(
+	workspace: SandboxWorkspace,
+	root: string,
+): Promise<string | null> {
+	return await setupStep(
 		'read-initialization-marker',
 		async () => await readWorkspaceFile(workspace, joinWorkspacePath(root, INITIALIZATION_MARKER)),
 	);
-	return { root, marker };
 }
 
 /**
@@ -508,7 +507,8 @@ async function readInitializationMarker(workspace: SandboxWorkspace): Promise<{
  * sandbox, so a sandbox that the provider recreated reports `false`.
  */
 export async function isSandboxWorkspaceInitialized(workspace: SandboxWorkspace): Promise<boolean> {
-	return (await readInitializationMarker(workspace)).marker !== null;
+	const root = await resolveWorkspaceRoot(workspace);
+	return (await readInitializationMarker(workspace, root)) !== null;
 }
 
 /**
@@ -528,8 +528,11 @@ export async function setupSandboxWorkspace(
 		'initialize-workspace',
 		{ processResult: (initialized) => ({ outputs: { initialized, reused: !initialized } }) },
 		async () => {
-			// Check marker file for idempotency
-			const { root, marker } = await readInitializationMarker(workspace);
+			// Check marker file for idempotency. A sandbox this process just created cannot have one.
+			const root = await resolveWorkspaceRoot(workspace);
+			const marker = workspace.sandbox?.createdFreshSandbox
+				? null
+				: await readInitializationMarker(workspace, root);
 			if (marker !== null) {
 				await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 				return false;

@@ -327,6 +327,33 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
+	it('skips the initialization marker read when the sandbox was just created', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const workspace = createFilesystemWorkspace(vi.fn(async () => {}));
+		workspace.sandbox = { ...workspace.sandbox, createdFreshSandbox: true };
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(true);
+
+		const readPaths = readFileViaSandbox.mock.calls.map(([, path]) => path);
+		expect(readPaths).not.toContain('/home/daytona/workspace/.sandbox-initialized');
+	});
+
+	it('reads the initialization marker when the sandbox was reattached', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue('2024-01-01T00:00:00.000Z');
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const workspace = createFilesystemWorkspace(vi.fn(async () => {}));
+		workspace.sandbox = { ...workspace.sandbox, createdFreshSandbox: false };
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(false);
+	});
+
 	it('always creates src/ and chunks/', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
