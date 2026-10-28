@@ -431,7 +431,7 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
-		// If registration crashes the process, this is the last line that names the workflow
+		// With the default batch size of 1, this is the last line before a crash during registration
 		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
 			workflowName: dbWorkflow.name,
 			workflowId: dbWorkflow.id,
