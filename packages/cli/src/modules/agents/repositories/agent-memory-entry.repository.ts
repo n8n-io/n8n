@@ -1,7 +1,13 @@
 import {
 	activeLifecycleState,
+	droppedLifecycleState,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
+	normalizeFlatReflectionActions,
+	supersededLifecycleState,
+	uniqueStrings,
+	type EpisodicMemoryReflectionApply,
+	type EpisodicMemoryReflectionApplyMerge,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySourceForEntry,
 } from '@n8n/agents';
@@ -53,6 +59,13 @@ const MESSAGE_JSON_PATHS = {
 } as const;
 
 type MessageJsonField = keyof typeof MESSAGE_JSON_PATHS;
+
+/** A merge or drop result, with the replacement entries as stored rows. */
+export interface AppliedMemoryReflection {
+	droppedIds: string[];
+	supersededIds: string[];
+	inserted: AgentMemoryEntryEntity[];
+}
 
 const userDeletedState = { status: 'deleted', supersededBy: null } as const;
 
@@ -145,6 +158,76 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 	}
 
 	/**
+	 * Adds sources to an active entry after it claims their capture candidates,
+	 * and sets `lastSeenAt`. Returns null when a user deleted a candidate or the
+	 * entry is not active.
+	 */
+	async addSources(
+		agentId: string,
+		entryId: string,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+		lastSeenAt: Date,
+		ctx: OperationContext,
+	): Promise<AgentMemoryEntryEntity | null> {
+		return await this.runInTransaction(ctx, async (manager, transactionCtx) => {
+			if (!(await this.claimCandidates(agentId, sources, transactionCtx))) return null;
+			const refreshed = await manager.update(
+				AgentMemoryEntryEntity,
+				{ agentId, id: entryId, status: 'active' },
+				{ lastSeenAt, updatedAt: new Date() },
+			);
+			if ((refreshed.affected ?? 0) === 0) return null;
+			const entry = await manager.findOneByOrFail(AgentMemoryEntryEntity, { agentId, id: entryId });
+			await this.saveSources(entry, sources, transactionCtx);
+			return entry;
+		});
+	}
+
+	/**
+	 * Drops and merges active entries of one scope. A merge first claims the
+	 * capture candidates of its sources and is skipped when a user deleted one.
+	 */
+	async applyReflection(
+		agentId: string,
+		resourceId: string,
+		reflection: EpisodicMemoryReflectionApply,
+		ctx: OperationContext,
+	): Promise<AppliedMemoryReflection> {
+		return await this.runInTransaction(ctx, async (manager, transactionCtx) => {
+			const actionIds = uniqueStrings([
+				...reflection.drop,
+				...reflection.merge.flatMap((merge) => merge.supersedes),
+			]);
+			if (actionIds.length === 0) return { droppedIds: [], supersededIds: [], inserted: [] };
+
+			const active = await manager.find(AgentMemoryEntryEntity, {
+				select: { id: true },
+				where: { agentId, resourceId, id: In(actionIds), status: 'active' },
+			});
+			const normalized = normalizeFlatReflectionActions({
+				activeIds: active.map((entry) => entry.id),
+				drop: reflection.drop,
+				merge: reflection.merge,
+				normalizeMerge: (merge, supersedes) => ({ ...merge, supersedes }),
+			});
+			const applied: AppliedMemoryReflection = { droppedIds: [], supersededIds: [], inserted: [] };
+			for (const merge of normalized.merge) {
+				await this.applyMerge(agentId, resourceId, merge, applied, transactionCtx);
+			}
+			const replacementIds = new Set(applied.inserted.map((entry) => entry.id));
+			applied.droppedIds = normalized.drop.filter((id) => !replacementIds.has(id));
+			await this.updateActive(
+				agentId,
+				resourceId,
+				applied.droppedIds,
+				droppedLifecycleState(),
+				transactionCtx,
+			);
+			return applied;
+		});
+	}
+
+	/**
 	 * Deletes a pending capture candidate, or the result of a completed one.
 	 * Returns false when the agent has no pending or completed candidate with this id.
 	 */
@@ -214,10 +297,76 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		return (claimed.affected ?? 0) > 0;
 	}
 
+	/** Writes the replacement, moves the sources to it, and supersedes the merged entries. */
+	private async applyMerge(
+		agentId: string,
+		resourceId: string,
+		merge: EpisodicMemoryReflectionApplyMerge,
+		applied: AppliedMemoryReflection,
+		ctx: OperationContext,
+	): Promise<void> {
+		const sources = merge.sources ?? [];
+		if (!(await this.claimCandidates(agentId, sources, ctx))) return;
+		const replacement = await this.upsertEntry(agentId, { ...merge.entry, resourceId }, ctx, {
+			replaceMetadata: true,
+		});
+		await this.saveSources(
+			replacement,
+			[...(await this.findSourcesToCopy(agentId, merge.supersedes, ctx)), ...sources],
+			ctx,
+		);
+		const supersededIds = merge.supersedes.filter((id) => id !== replacement.id);
+		await this.updateActive(
+			agentId,
+			resourceId,
+			supersededIds,
+			supersededLifecycleState(replacement.id),
+			ctx,
+		);
+		applied.inserted.push(replacement);
+		applied.supersededIds.push(...supersededIds);
+	}
+
+	/** The sources of the given entries, as new sources of a replacement. */
+	private async findSourcesToCopy(
+		agentId: string,
+		entryIds: string[],
+		ctx: OperationContext,
+	): Promise<NewEpisodicMemoryEntrySourceForEntry[]> {
+		const rows = await this.managerFor(ctx).find(AgentMemoryEntrySourceEntity, {
+			where: { agentId, memoryEntryId: In(entryIds) },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		const createdAt = new Date();
+		return rows.flatMap((row): NewEpisodicMemoryEntrySourceForEntry[] => {
+			const base = { threadId: row.threadId, evidenceText: row.evidenceText, createdAt };
+			if (row.observationId) return [{ ...base, observationId: row.observationId }];
+			if (row.candidateId) return [{ ...base, candidateId: row.candidateId }];
+			return [];
+		});
+	}
+
+	private async updateActive(
+		agentId: string,
+		resourceId: string,
+		ids: string[],
+		state: { status: 'dropped' | 'superseded'; supersededBy: string | null },
+		ctx: OperationContext,
+	): Promise<void> {
+		if (ids.length === 0) return;
+		await this.managerFor(ctx).update(
+			AgentMemoryEntryEntity,
+			{ agentId, resourceId, id: In(ids), status: 'active' },
+			state,
+		);
+	}
+
+	/** Capture keeps the metadata of a stored entry. A merge replaces it when it sets one. */
 	private async upsertEntry(
 		agentId: string,
 		entry: NewEpisodicMemoryEntry,
 		ctx: OperationContext,
+		{ replaceMetadata = false } = {},
 	): Promise<AgentMemoryEntryEntity> {
 		const repository = this.managerFor(ctx).getRepository(AgentMemoryEntryEntity);
 		const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
@@ -238,6 +387,7 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		const updateColumns = ['status', 'supersededBy', 'lastSeenAt', 'updatedAt'];
 		if (entry.embedding !== undefined) updateColumns.push('embedding');
 		if (entry.embeddingModel !== undefined) updateColumns.push('embeddingModel');
+		if (replaceMetadata && entry.metadata !== undefined) updateColumns.push('metadata');
 		await repository
 			.createQueryBuilder()
 			.insert()
