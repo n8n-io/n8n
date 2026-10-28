@@ -44,9 +44,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { SkillService } from '@/modules/skills/skill.service';
-import { SkillsApiService } from '@/modules/skills/skills-api.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillService, SkillsGate } from '@/modules/skills';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -255,7 +253,7 @@ describe('McpService scope enforcement', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockInstance(SkillAgentsProxy, { hasProvider: false });
+		mockInstance(SkillsGate, { isEnabled: false });
 	});
 
 	it.each([false, true])(
@@ -354,10 +352,10 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it.each([true, false])(
-		'registers the skill tools only with an agents provider: %s',
-		async (hasProvider) => {
-			mockInstance(SkillsApiService);
-			mockInstance(SkillAgentsProxy, { hasProvider });
+		'registers the skill tools only while the skills gate is on: %s',
+		async (skillsEnabled) => {
+			mockInstance(SkillService);
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({
 				builderEnabled: false,
 				agentsActive: true,
@@ -366,24 +364,23 @@ describe('McpService scope enforcement', () => {
 
 			expect(registered.has('mutate_agent')).toBe(false);
 			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
-				hasProvider ? [...SKILL_TOOLS] : [],
+				skillsEnabled ? [...SKILL_TOOLS] : [],
 			);
 		},
 	);
 
 	it.each([
-		['an agents provider and an API key', true, true, undefined, true],
-		['an agents provider and skill:read', true, true, ['skill:read'], true],
-		['an agents provider and skill:write', true, true, ['skill:write'], true],
-		['an agents provider and no skill scope', true, true, ['workflow:read'], false],
-		['no agents provider', false, true, undefined, false],
+		['skills on and an API key', true, true, undefined, true],
+		['skills on and skill:read', true, true, ['skill:read'], true],
+		['skills on and skill:write', true, true, ['skill:write'], true],
+		['skills on and no skill scope', true, true, ['workflow:read'], false],
+		['skills off', false, true, undefined, false],
 		['the feature flag off', true, false, undefined, false],
 	])(
 		'declares the skills extension with %s',
-		async (_, hasProvider, skillsExtensionEnabled, grantedScopes, declared) => {
-			mockInstance(SkillsApiService);
+		async (_, skillsEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
 			mockInstance(SkillService);
-			mockInstance(SkillAgentsProxy, { hasProvider });
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
 				mcpFeatureFlags({ skillsExtensionEnabled }),

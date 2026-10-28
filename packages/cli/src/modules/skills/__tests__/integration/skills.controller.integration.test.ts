@@ -13,15 +13,15 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { SkillService } from '@/modules/skills/skill.service';
+import { SkillsGate } from '../../services/skills-gate';
+import { SkillRepository } from '../../database/repositories/skill.repository';
+import { SkillService } from '../../services/skill.service';
 import { PostHogClient } from '@/posthog';
 
-import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
-import { createMember, createOwner, createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createMember, createOwner, createUser } from '@test-integration/db/users';
+import type { SuperAgentTest } from '@test-integration/types';
+import { setupTestServer } from '@test-integration/utils';
 
 const body = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
@@ -206,7 +206,7 @@ describe('SkillsController', () => {
 
 	it('hides the skills API while the agents module is off', async () => {
 		// As when the agents module never registered its provider.
-		vi.spyOn(Container.get(SkillAgentsProxy), 'hasProvider', 'get').mockReturnValue(false);
+		vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
 
 		await owner.get('/skills').expect(404);
 		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
@@ -217,7 +217,7 @@ describe('SkillsController', () => {
 
 	afterEach(async () => {
 		await Container.get(AgentRepository).delete({});
-		await Container.get(SkillRepository).delete({});
+		await Container.get(SkillRepository).deleteAll();
 	});
 
 	async function newAgent(name: string, projectId: string) {
@@ -682,7 +682,7 @@ describe('SkillsController', () => {
 		it('allows a rename that only changes case, even when another skill shares the name', async () => {
 			// The data migration can leave two skills with one name key in a scope.
 			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
-			await Container.get(SkillService).create({
+			await Container.get(SkillService).createTrusted({
 				target: { projectId: null, agentId: null },
 				skill: { ...body, name: 'brand voice' },
 				source: 'ui',

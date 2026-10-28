@@ -6,9 +6,9 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { Telemetry } from '@/telemetry';
 
-import { SkillAgentsProxy } from './skill-agents-proxy.service';
-import type { Skill, SkillSource } from './skill.entity';
-import { SkillRepository } from './skill.repository';
+import { SkillUsageProxy } from './skill-usage-proxy.service';
+import type { Skill, SkillSource } from '../database/entities/skill.entity';
+import { SkillRepository } from '../database/repositories/skill.repository';
 
 export type SkillTelemetrySource = SkillSource;
 
@@ -27,7 +27,7 @@ export type SkillTelemetryRef = SkillTelemetryTarget | string;
 
 /**
  * Skills telemetry. Callers emit only once the write commits, and only while the agents
- * module is on (`SkillAgentsProxy.hasProvider`). An emit never fails the write: an error is logged and dropped.
+ * module is on (`SkillsGate.isEnabled`). An emit never fails the write: an error is logged and dropped.
  */
 @Service()
 export class SkillsTelemetry {
@@ -35,7 +35,7 @@ export class SkillsTelemetry {
 		private readonly telemetry: Telemetry,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
-		private readonly skillAgents: SkillAgentsProxy,
+		private readonly skillUsage: SkillUsageProxy,
 	) {}
 
 	async created(
@@ -110,7 +110,7 @@ export class SkillsTelemetry {
 	private async placeResolver(
 		skills: SkillTelemetryTarget[],
 	): Promise<(skill: SkillTelemetryTarget) => SkillPlace> {
-		const agents = await this.skillAgents.findAgents(
+		const agents = await this.skillUsage.findAgents(
 			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
 		);
 		return (skill) => {
