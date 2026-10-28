@@ -226,6 +226,11 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 		if (response.statusCode >= 300) {
 			const { error } = this.parseErrorResponse(response.body);
+			// The engine refuses this plane's own identity with a 401 too. Only a
+			// refused resume token is an answer about the request.
+			if (response.statusCode === 401 && error !== 'invalid_token') {
+				throw this.toError(response.statusCode, response.body);
+			}
 			return { ok: false, status: response.statusCode, error: error ?? 'engine_error' };
 		}
 

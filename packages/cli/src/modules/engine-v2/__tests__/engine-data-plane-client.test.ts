@@ -416,6 +416,14 @@ describe('EngineDataPlaneClient', () => {
 			});
 		});
 
+		it("throws on a 401 for this plane's own identity, which is a failure and not a refusal", async () => {
+			respondWith(401, { error: 'unauthenticated' });
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).rejects.toThrow(
+				'Engine responded with 401',
+			);
+		});
+
 		it('throws on a 500, which is a failure and not a refusal', async () => {
 			respondWith(500, { error: 'internal' });
 
