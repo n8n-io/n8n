@@ -67,7 +67,7 @@ defineSlots<{
 }
 
 /** Use the message width so narrow panels keep compact text on large screens. */
-@container chat-message (min-width: 8rem) {
+@container chat-message (min-width: 28rem) {
 	.userBubble,
 	.assistantContent {
 		--n8n-markdown--font-size--base: var(--font-size--md);
