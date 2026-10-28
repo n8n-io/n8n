@@ -6,3 +6,6 @@ export const STATUS_CALLBACK_PATH = `${CONTROL_PLANE_PREFIX}/status-callback`;
 
 /** Where the data plane asks for the decrypted data of one credential. */
 export const CREDENTIALS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/credentials/resolve`;
+
+/** Where the data plane asks for the graph of a sub-workflow a step calls. */
+export const SUB_WORKFLOWS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/sub-workflows/resolve`;
