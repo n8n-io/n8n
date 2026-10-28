@@ -642,9 +642,8 @@ async function resolveEpisodicMemoryJsonConfig(
 		modelFetch,
 	}: Pick<BuildFromJsonOptions, 'resolveManagedEmbeddingProviderOptions' | 'modelFetch'>,
 ) {
-	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
-		'@n8n/agents'
-	);
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryConsolidateFn } =
+		await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const embeddingProviderOptions = await resolveEpisodicMemoryEmbeddingProviderOptions(
 		config.credential,
@@ -660,7 +659,7 @@ async function resolveEpisodicMemoryJsonConfig(
 	return {
 		enabled: true,
 		...(config.reflectorModel !== undefined && {
-			reflect: createEpisodicMemoryReflectFn(
+			consolidate: createEpisodicMemoryConsolidateFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
 			),
 		}),

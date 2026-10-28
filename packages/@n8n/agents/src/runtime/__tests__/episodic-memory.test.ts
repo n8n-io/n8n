@@ -2,6 +2,7 @@ import { embed, embedMany } from 'ai';
 
 import type {
 	BuiltTelemetry,
+	EpisodicMemoryConsolidateFn,
 	EpisodicMemoryEntry,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -94,7 +95,7 @@ async function enqueueCandidate(
 	memory: InMemoryMemory,
 	toolCallId = 'call-1',
 	runId = 'run-1',
-	overrides: Partial<{ content: string; replacesEarlier: boolean }> = {},
+	overrides: Partial<{ content: string }> = {},
 ): Promise<void> {
 	const tool = createFlagMemoryTool({
 		memory,
@@ -694,22 +695,16 @@ describe('agent-directed episodic capture', () => {
 		vi.useRealTimers();
 	});
 
-	it('stores a correction flag as the correction kind and any other flag as a fact', async () => {
+	it('stores every flag as a fact', async () => {
 		const memory = new InMemoryMemory();
-		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
-		await enqueueCandidate(memory, 'call-2', 'run-1');
+		await enqueueCandidate(memory, 'call-1', 'run-1');
 
 		const candidates = await memory.episodic.getPendingCaptureCandidates({
 			resourceId: 'user-1',
 			threadId: 'thread-1',
 		});
 
-		expect(candidates.map(({ toolCallId, kind }) => ({ toolCallId, kind }))).toEqual(
-			expect.arrayContaining([
-				{ toolCallId: 'call-1', kind: 'correction' },
-				{ toolCallId: 'call-2', kind: 'fact' },
-			]),
-		);
+		expect(candidates).toEqual([expect.objectContaining({ toolCallId: 'call-1', kind: 'fact' })]);
 	});
 
 	it('persists source evidence and deduplicates replayed tool calls within each run', async () => {
@@ -841,12 +836,12 @@ describe('agent-directed episodic capture', () => {
 	it('turns pending candidates into source-backed entries without observations', async () => {
 		const memory = new InMemoryMemory();
 		await enqueueCandidate(memory);
-		const reflect = vi.fn();
+		const consolidate = vi.fn();
 
 		await expect(
 			runEpisodicMemoryCandidateProcessor({
 				memory,
-				config: { embedder: fakeEmbedder, reflect },
+				config: { embedder: fakeEmbedder, consolidate },
 				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 				now: new Date('2026-05-12T11:00:00.000Z'),
 			}),
@@ -857,8 +852,8 @@ describe('agent-directed episodic capture', () => {
 			usageReports: expect.any(Array),
 		});
 
-		// Reflection only runs for corrections; a plain preference must not pay for it.
-		expect(reflect).not.toHaveBeenCalled();
+		// A fact without similar stored entries must not pay for a model call.
+		expect(consolidate).not.toHaveBeenCalled();
 		const entries = await memory.episodic.searchEntries(
 			{ resourceId: 'user-1', threadId: 'thread-1' },
 			'concise reports',
@@ -1234,151 +1229,6 @@ describe('agent-directed episodic capture', () => {
 		).resolves.toEqual([]);
 	});
 
-	it('reflects candidate entries with legacy observation-backed entries', async () => {
-		const memory = new InMemoryMemory();
-		const legacy = await saveEpisodicEntry(
-			memory,
-			{
-				resourceId: 'user-1',
-				content: 'User planned SQLite for local-first memory storage.',
-				embedding: [1, 0],
-			},
-			[
-				{
-					observationId: 'obs-old',
-					threadId: 'thread-old',
-					evidenceText: 'User planned SQLite',
-				},
-			],
-		);
-		await memory.episodic.enqueueCaptureCandidate({
-			resourceId: 'user-1',
-			threadId: 'thread-1',
-			sourceMessageId: null,
-			runId: 'run-correction',
-			toolCallId: 'call-correction',
-			content: 'User switched memory storage from SQLite to Postgres.',
-			evidenceText: 'I switched from SQLite to Postgres',
-			kind: 'correction',
-		});
-
-		await runEpisodicMemoryCandidateProcessor({
-			memory,
-			config: {
-				embedder: fakeEmbedder,
-				reflect: async ({ seedEntryIds }) =>
-					await Promise.resolve({
-						drop: [],
-						merge: [
-							{
-								supersedes: [legacy.id, seedEntryIds[0]],
-								content: 'User replaced the SQLite plan with Postgres.',
-							},
-						],
-					}),
-			},
-			scope: { resourceId: 'user-1', threadId: 'thread-1' },
-		});
-
-		const active = await memory.episodic.searchEntries(
-			{ resourceId: 'user-1', threadId: 'thread-1' },
-			'SQLite Postgres',
-			{ queryEmbedding: [1, 0], topK: 10 },
-		);
-		expect(active).toHaveLength(1);
-		const sources = await memory.episodic.getEntrySources([active[0].id]);
-		expect(sources).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ observationId: 'obs-old' }),
-				expect.objectContaining({ candidateId: expect.any(String) }),
-			]),
-		);
-	});
-
-	it('searches neighbours only for corrections, splits the cap per search, and keeps saved entries', async () => {
-		const memory = new InMemoryMemory();
-		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
-		await enqueueCandidate(memory, 'call-2', 'run-1', {
-			content: 'User moved to Berlin.',
-			replacesEarlier: true,
-		});
-		await enqueueCandidate(memory, 'call-3', 'run-1', { content: 'User works remotely.' });
-		mockedEmbedMany.mockResolvedValue({
-			embeddings: [
-				[1, 0],
-				[0, 1],
-				[1, 1],
-			],
-			usage: { tokens: 9 },
-		} as never);
-		const search = vi
-			.spyOn(memory.episodic, 'searchEntries')
-			.mockImplementation(async (_scope, query, options) => {
-				return await Promise.resolve(
-					Array.from({ length: options?.topK ?? 0 }, () => ({
-						...entry({ content: `Older entry related to ${query}` }),
-						vectorScore: 0.5,
-						finalScore: 0,
-					})),
-				);
-			});
-		const reflect = vi.fn().mockResolvedValue({ drop: [], merge: [] });
-
-		await runEpisodicMemoryCandidateProcessor({
-			memory,
-			config: { embedder: fakeEmbedder, reflect },
-			scope: { resourceId: 'user-1', threadId: 'thread-1' },
-		});
-
-		expect(search).toHaveBeenCalledTimes(2);
-		expect(search.mock.calls.map(([, query, options]) => [query, options?.topK])).toEqual([
-			['User prefers concise reports.', 10],
-			['User moved to Berlin.', 10],
-		]);
-		const { entries, seedEntryIds } = reflect.mock.calls[0][0];
-		expect(seedEntryIds).toHaveLength(3);
-		expect(entries).toHaveLength(23);
-		const ids = entries.map((e: EpisodicMemoryEntry) => e.id);
-		expect(ids).toEqual(expect.arrayContaining(seedEntryIds));
-		const relatedContents = entries
-			.filter((e: EpisodicMemoryEntry) => !seedEntryIds.includes(e.id))
-			.map((e: EpisodicMemoryEntry) => e.content);
-		expect(relatedContents).toEqual(
-			expect.arrayContaining([
-				'Older entry related to User prefers concise reports.',
-				'Older entry related to User moved to Berlin.',
-			]),
-		);
-	});
-
-	it('does not retry persisted candidates when reflection fails', async () => {
-		const memory = new InMemoryMemory();
-		await enqueueCandidate(memory, 'call-1', 'run-1', { replacesEarlier: true });
-		const reflectionError = new Error('reflection failed');
-
-		await expect(
-			runEpisodicMemoryCandidateProcessor({
-				memory,
-				config: {
-					embedder: fakeEmbedder,
-					reflect: async () => await Promise.reject(reflectionError),
-				},
-				scope: { resourceId: 'user-1', threadId: 'thread-1' },
-			}),
-		).rejects.toThrow(reflectionError);
-
-		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
-		).resolves.toEqual([]);
-		await expect(
-			memory.episodic.searchEntries(
-				{ resourceId: 'user-1', threadId: 'thread-1' },
-				'concise reports',
-				{ queryEmbedding: MATCH_ANY },
-			),
-		).resolves.toHaveLength(1);
-	});
-
 	it('never fails candidate processing when the embed onUsage throws or rejects', async () => {
 		// Pricing is best-effort: a misbehaving onUsage callback (sync throw or
 		// rejected promise) at the embed forwarding site must not abort
@@ -1417,63 +1267,283 @@ describe('agent-directed episodic capture', () => {
 			).resolves.toHaveLength(1);
 		}
 	});
+});
 
-	it('never fails reflection when the reflect onUsage throws or rejects', async () => {
-		// The reflect forwarding site must not abort reflection when onUsage
-		// throws or rejects. The reflection's merge still applies.
-		const syncThrow = vi.fn(() => {
-			throw new Error('pricing sync boom');
-		});
-		const rejecting = vi.fn(async () => {
-			throw new Error('pricing async boom');
-		});
+describe('episodic memory consolidation', () => {
+	const scope = { resourceId: 'user-1', threadId: 'thread-1' };
+	const now = new Date('2026-05-12T11:00:00.000Z');
+	const DUPLICATE = 'Invoices for Acme go to billing@acme.example.';
+	const UPDATE = 'Acme renewal moved to 15 March.';
+	const DIFFERENT = 'Acme uses Postgres 14 in eu-west-1.';
+	const MERGED = 'Acme renewal is on 15 March.';
+	const embeddings = new Map([
+		[DUPLICATE, [1, 0, 0]],
+		[UPDATE, [0, 1, 0]],
+		[DIFFERENT, [0, 0, 1]],
+		[MERGED, [0, 1, 0]],
+		['Acme renewal is still on 1 March.', [0, 0.9, 0.1]],
+	]);
 
-		for (const onUsage of [syncThrow, rejecting]) {
-			const memory = new InMemoryMemory();
-			const legacy = await saveEpisodicEntry(memory, {
-				resourceId: 'user-1',
-				content: 'User planned SQLite for local-first memory storage.',
-				embedding: [0, 1],
-				embeddingModel: 'openai/text-embedding-3-small',
-			});
-			await enqueueCandidate(memory, 'call-1', 'run-1', {
-				content: 'User switched memory storage from SQLite to Postgres.',
-				replacesEarlier: true,
-			});
-			mockedEmbedMany.mockResolvedValue({
-				embeddings: [
-					[1, 0],
-					[1, 1],
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockedEmbedMany.mockImplementation(
+			(async ({ values }: { values: string[] }) =>
+				await Promise.resolve({
+					embeddings: values.map((value) => embeddings.get(value) ?? [0, 0, 0]),
+					usage: { tokens: values.length },
+				})) as never,
+		);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	async function store(content: string, embedding: number[]): Promise<EpisodicMemoryEntry> {
+		return await saveEpisodicEntry(memory, { resourceId: scope.resourceId, content, embedding });
+	}
+
+	async function flag(content: string, toolCallId: string) {
+		return await memory.episodic.enqueueCaptureCandidate({
+			...scope,
+			sourceMessageId: null,
+			runId: 'run-1',
+			toolCallId,
+			content,
+			evidenceText: `I said: ${content}`,
+			kind: 'fact',
+		});
+	}
+
+	async function process(consolidate: EpisodicMemoryConsolidateFn, onUsage = vi.fn()) {
+		return await runEpisodicMemoryCandidateProcessor({
+			memory,
+			config: { embedder: fakeEmbedder, consolidate },
+			scope,
+			now,
+			onUsage,
+		});
+	}
+
+	async function entryWithContent(content: string): Promise<EpisodicMemoryEntry | undefined> {
+		const [found] = await memory.episodic.getEntriesByContentHashes(scope, [
+			hashEpisodicMemoryContent(content),
+		]);
+		return found;
+	}
+
+	let memory: InMemoryMemory;
+
+	beforeEach(() => {
+		memory = new InMemoryMemory();
+	});
+
+	it('applies duplicate, update, and different answers from one call per batch', async () => {
+		const invoices = await store('Acme invoices go to billing@acme.example.', [1, 0, 0]);
+		const renewal = await store('Acme renewal is on 1 March.', [0, 1, 0]);
+		const database = await store('Acme uses Postgres 14.', [0, 0, 1]);
+		const duplicate = await flag(DUPLICATE, 'call-1');
+		const update = await flag(UPDATE, 'call-2');
+		const different = await flag(DIFFERENT, 'call-3');
+		const consolidate = vi.fn<EpisodicMemoryConsolidateFn>().mockResolvedValue({
+			consolidation: {
+				facts: [
+					{
+						candidateId: duplicate.id,
+						relations: [{ entryId: invoices.id, relation: 'duplicate' }],
+					},
+					{
+						candidateId: update.id,
+						relations: [{ entryId: renewal.id, relation: 'update' }],
+						mergedContent: ` ${MERGED.replace(' 15', '\n15')} `,
+					},
+					{
+						// An unknown id and an update without merged content leave a new entry.
+						candidateId: different.id,
+						relations: [
+							{ entryId: 'unknown-entry', relation: 'duplicate' },
+							{ entryId: database.id, relation: 'update' },
+						],
+						mergedContent: null,
+					},
 				],
-				usage: { tokens: 6 },
-			} as never);
+			},
+			usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
+			model: 'openai/gpt-4o-mini',
+		});
+		// Pricing is best-effort: a failing callback must not fail the batch.
+		const onUsage = vi.fn(() => {
+			throw new Error('pricing failed');
+		});
 
-			const result = await runEpisodicMemoryCandidateProcessor({
-				memory,
-				config: {
-					embedder: fakeEmbedder,
-					reflect: async ({ seedEntryIds }) =>
-						await Promise.resolve({
-							reflection: {
-								drop: [],
-								merge: [
-									{
-										supersedes: [legacy.id, seedEntryIds[0]],
-										content: 'User replaced the SQLite plan with Postgres.',
-									},
-								],
-							},
-							usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
-							model: 'openai/gpt-4o-mini',
-						}),
+		const result = await process(consolidate, onUsage);
+
+		expect(result).toEqual({
+			status: 'ran',
+			entriesWritten: 3,
+			candidatesProcessed: 3,
+			usageReports: [
+				{
+					task: 'episodic',
+					model: 'custom',
+					usage: { promptTokens: 3, completionTokens: 0, totalTokens: 3 },
 				},
-				scope: { resourceId: 'user-1', threadId: 'thread-1' },
-				onUsage,
-			});
+				{
+					task: 'episodic',
+					model: 'openai/gpt-4o-mini',
+					usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
+				},
+				{
+					task: 'episodic',
+					model: 'custom',
+					usage: { promptTokens: 1, completionTokens: 0, totalTokens: 1 },
+				},
+			],
+		});
+		expect(onUsage).toHaveBeenCalledTimes(3);
+		expect(consolidate).toHaveBeenCalledOnce();
+		expect(consolidate.mock.calls[0][0].facts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					candidateId: duplicate.id,
+					content: DUPLICATE,
+					evidenceText: `I said: ${DUPLICATE}`,
+					neighbours: [
+						expect.objectContaining({ id: invoices.id, evidenceText: invoices.content }),
+					],
+				}),
+				expect.objectContaining({
+					candidateId: update.id,
+					neighbours: [expect.objectContaining({ id: renewal.id })],
+				}),
+				expect.objectContaining({
+					candidateId: different.id,
+					neighbours: [expect.objectContaining({ id: database.id })],
+				}),
+			]),
+		);
 
-			expect(result).toMatchObject({ status: 'ran' });
-			// Embed + reflect + merge-embed = three forwarding calls per run.
-			expect(onUsage).toHaveBeenCalledTimes(3);
-		}
+		await expect(entryWithContent(DUPLICATE)).resolves.toBeUndefined();
+		await expect(entryWithContent(invoices.content)).resolves.toMatchObject({
+			status: 'active',
+			lastSeenAt: now,
+		});
+		await expect(memory.episodic.getEntrySources([invoices.id])).resolves.toEqual([
+			expect.objectContaining({ candidateId: duplicate.id }),
+			expect.objectContaining({ observationId: expect.any(String) }),
+		]);
+
+		const merged = await entryWithContent(MERGED);
+		expect(merged).toMatchObject({ status: 'active', embedding: [0, 1, 0] });
+		await expect(entryWithContent(renewal.content)).resolves.toMatchObject({
+			status: 'superseded',
+			supersededBy: merged?.id,
+		});
+		await expect(memory.episodic.getEntrySources([merged!.id])).resolves.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ observationId: expect.any(String) }),
+				expect.objectContaining({ candidateId: update.id }),
+			]),
+		);
+
+		await expect(entryWithContent(DIFFERENT)).resolves.toMatchObject({ status: 'active' });
+		await expect(entryWithContent(database.content)).resolves.toMatchObject({ status: 'active' });
+		await expect(memory.episodic.getPendingCaptureCandidates(scope)).resolves.toEqual([]);
+	});
+
+	it('saves every fact as a new entry when the consolidation call fails', async () => {
+		const invoices = await store('Acme invoices go to billing@acme.example.', [1, 0, 0]);
+		await flag(DUPLICATE, 'call-1');
+		const consolidate = vi.fn<EpisodicMemoryConsolidateFn>().mockRejectedValue(new Error('down'));
+
+		await expect(process(consolidate)).resolves.toMatchObject({
+			status: 'ran',
+			entriesWritten: 1,
+		});
+
+		expect(consolidate).toHaveBeenCalledOnce();
+		await expect(entryWithContent(DUPLICATE)).resolves.toMatchObject({ status: 'active' });
+		await expect(memory.episodic.getEntrySources([invoices.id])).resolves.toHaveLength(1);
+		await expect(memory.episodic.getPendingCaptureCandidates(scope)).resolves.toEqual([]);
+	});
+
+	it('saves a fact as new when an earlier fact of the batch replaced its stored entry', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-05-12T10:00:00.000Z'));
+		const renewal = await store('Acme renewal is on 1 March.', [0, 1, 0]);
+		const update = await flag(UPDATE, 'call-1');
+		vi.setSystemTime(new Date('2026-05-12T10:01:00.000Z'));
+		const repeat = await flag('Acme renewal is still on 1 March.', 'call-2');
+		const consolidate = vi.fn<EpisodicMemoryConsolidateFn>().mockResolvedValue({
+			consolidation: {
+				facts: [
+					{
+						candidateId: update.id,
+						relations: [{ entryId: renewal.id, relation: 'update' }],
+						mergedContent: MERGED,
+					},
+					{
+						candidateId: repeat.id,
+						relations: [{ entryId: renewal.id, relation: 'duplicate' }],
+					},
+				],
+			},
+			model: 'openai/gpt-4o-mini',
+		});
+
+		await expect(process(consolidate)).resolves.toMatchObject({ entriesWritten: 2 });
+
+		await expect(entryWithContent(MERGED)).resolves.toMatchObject({ status: 'active' });
+		await expect(entryWithContent(repeat.content)).resolves.toMatchObject({ status: 'active' });
+		await expect(memory.episodic.getEntrySources([renewal.id])).resolves.toHaveLength(1);
+	});
+
+	it('writes nothing for a deleted candidate on the duplicate and update paths', async () => {
+		const invoices = await store('Acme invoices go to billing@acme.example.', [1, 0, 0]);
+		const renewal = await store('Acme renewal is on 1 March.', [0, 1, 0]);
+		const duplicate = await flag(DUPLICATE, 'call-1');
+		const update = await flag(UPDATE, 'call-2');
+		// A store returns these results when a user deleted the candidate.
+		const addSources = vi.spyOn(memory.episodic, 'addEntrySources').mockResolvedValue(null);
+		const merge = vi
+			.spyOn(memory.episodic, 'applyReflection')
+			.mockResolvedValue({ droppedIds: [], supersededIds: [], inserted: [] });
+		const save = vi.spyOn(memory.episodic, 'saveEntryWithSources').mockResolvedValue(null);
+		const consolidate = vi.fn<EpisodicMemoryConsolidateFn>().mockResolvedValue({
+			consolidation: {
+				facts: [
+					{
+						candidateId: duplicate.id,
+						relations: [{ entryId: invoices.id, relation: 'duplicate' }],
+					},
+					{
+						candidateId: update.id,
+						relations: [{ entryId: renewal.id, relation: 'update' }],
+						mergedContent: MERGED,
+					},
+				],
+			},
+			model: 'openai/gpt-4o-mini',
+		});
+
+		await expect(process(consolidate)).resolves.toMatchObject({
+			entriesWritten: 0,
+			candidatesProcessed: 2,
+		});
+
+		const candidateSource = (id: string) => [expect.objectContaining({ candidateId: id })];
+		expect(addSources).toHaveBeenCalledWith(invoices.id, candidateSource(duplicate.id), now);
+		expect(merge).toHaveBeenCalledWith(scope, {
+			drop: [],
+			merge: [
+				expect.objectContaining({
+					supersedes: [renewal.id],
+					entry: expect.objectContaining({ content: MERGED }),
+					sources: candidateSource(update.id),
+				}),
+			],
+		});
+		expect(save).toHaveBeenCalledTimes(2);
+		await expect(memory.episodic.getPendingCaptureCandidates(scope)).resolves.toEqual([]);
 	});
 });

@@ -806,6 +806,185 @@ describe('N8nMemoryImpl', () => {
 			},
 		);
 
+		describe('consolidation writes', () => {
+			async function enqueueSource(content: string, toolCallId: string) {
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId,
+					content,
+					evidenceText: content,
+					kind: 'fact',
+				});
+				const source: NewEpisodicMemoryEntrySourceForEntry = {
+					candidateId: candidate.id,
+					threadId: scope.threadId,
+					evidenceText: content,
+				};
+				return { candidate, source };
+			}
+
+			const deleteCandidate = async (candidateId: string) =>
+				await entryRepository.deleteCandidate(agentId, candidateId, {});
+
+			it('finds the closest active entries of the write scope for each embedding', async () => {
+				const { entry: near } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.', {
+					embedding: [1, 0],
+				});
+				const { entry: far } = await captureEntry(memory, scope, 'Acme uses Postgres.', {
+					embedding: [0.6, 0.8],
+				});
+				const { entry: inactive } = await captureEntry(memory, scope, 'Acme renewal is late.', {
+					embedding: [1, 0],
+				});
+				await entryRepository.update(inactive.id, { status: 'superseded' });
+				await captureEntry(otherMemory, scope, 'Acme renewal is on 2 March.');
+				const shared = {
+					...scope,
+					episodic: { writeScopeId: 'thread:thread-1', readScopeIds: [scope.resourceId] },
+				};
+
+				const similar = await memory.episodic.findSimilarEntries(
+					scope,
+					[
+						[1, 0],
+						[0, 1],
+					],
+					{
+						topK: 3,
+						minSimilarity: 0.5,
+					},
+				);
+
+				expect(similar.map((entries) => entries.map(({ id }) => id))).toEqual([
+					[near.id, far.id],
+					[far.id],
+				]);
+				await expect(
+					memory.episodic.findSimilarEntries(shared, [[1, 0]], { topK: 3, minSimilarity: 0.5 }),
+				).resolves.toEqual([[]]);
+			});
+
+			it('adds sources to an active entry and refreshes it', async () => {
+				const { entry } = await captureEntry(memory, scope);
+				const { source } = await enqueueSource('Keep reports concise.', 'call-2');
+				const lastSeenAt = new Date('2026-06-01T10:00:00.000Z');
+
+				const refreshed = await memory.episodic.addEntrySources(entry.id, [source], lastSeenAt);
+
+				expect(refreshed).toMatchObject({ id: entry.id, status: 'active', lastSeenAt });
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual(
+					expect.arrayContaining([expect.objectContaining({ candidateId: source.candidateId })]),
+				);
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toHaveLength(2);
+			});
+
+			it('adds no source to an inactive entry or for a deleted candidate', async () => {
+				const { entry } = await captureEntry(memory, scope);
+				const deleted = await enqueueSource('Keep reports concise.', 'call-2');
+				await deleteCandidate(deleted.candidate.id);
+
+				await expect(
+					memory.episodic.addEntrySources(entry.id, [deleted.source], new Date()),
+				).resolves.toBeNull();
+
+				const live = await enqueueSource('Keep every report concise.', 'call-3');
+				await entryRepository.update(entry.id, { status: 'superseded' });
+				await expect(
+					memory.episodic.addEntrySources(entry.id, [live.source], new Date()),
+				).resolves.toBeNull();
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toHaveLength(1);
+			});
+
+			it('merges entries with the sources of both the old entries and the new fact', async () => {
+				const { entry: old, source: oldSource } = await captureEntry(
+					memory,
+					scope,
+					'Acme renewal is on 1 March.',
+				);
+				const { source } = await enqueueSource('Acme renewal moved to 15 March.', 'call-2');
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: {
+								resourceId: scope.resourceId,
+								content: 'Acme renewal is on 15 March.',
+								embedding: [1, 0],
+								embeddingModel: 'test-model',
+							},
+							sources: [source],
+						},
+					],
+				});
+
+				const [merged] = result.inserted;
+				expect(result.supersededIds).toEqual([old.id]);
+				expect(merged).toMatchObject({ content: 'Acme renewal is on 15 March.', status: 'active' });
+				await expect(entryRepository.findOneByOrFail({ id: old.id })).resolves.toMatchObject({
+					status: 'superseded',
+					supersededBy: merged.id,
+				});
+				const sources = await memory.episodic.getEntrySources([merged.id]);
+				expect(sources.map(({ candidateId }) => candidateId).sort()).toEqual(
+					[oldSource.candidateId, source.candidateId].sort(),
+				);
+			});
+
+			it('reuses a stored entry with the merged content as the replacement', async () => {
+				const { entry: old } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.');
+				const { entry: existing } = await captureEntry(
+					memory,
+					scope,
+					'Acme renewal is on 15 March.',
+				);
+				await entryRepository.update(existing.id, { status: 'dropped' });
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: { resourceId: scope.resourceId, content: existing.content },
+						},
+					],
+				});
+
+				expect(result.inserted).toEqual([
+					expect.objectContaining({ id: existing.id, status: 'active' }),
+				]);
+				await expect(memory.episodic.getEntrySources([existing.id])).resolves.toHaveLength(2);
+			});
+
+			it('skips a merge when a user deleted the candidate of its sources', async () => {
+				const { entry: old } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.');
+				const { candidate, source } = await enqueueSource(
+					'Acme renewal moved to 15 March.',
+					'call-2',
+				);
+				await deleteCandidate(candidate.id);
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: { resourceId: scope.resourceId, content: 'Acme renewal is on 15 March.' },
+							sources: [source],
+						},
+					],
+				});
+
+				expect(result).toEqual({ droppedIds: [], supersededIds: [], inserted: [] });
+				await expect(entryRepository.findBy({ status: 'active' })).resolves.toEqual([
+					expect.objectContaining({ id: old.id }),
+				]);
+			});
+		});
+
 		describe('capture deletion', () => {
 			async function enqueue(content = 'User prefers concise reports.', toolCallId = 'call-1') {
 				await memory.saveThread({ id: scope.threadId, resourceId: scope.resourceId });

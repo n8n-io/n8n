@@ -55,10 +55,6 @@
 								"type": "string",
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
-							},
-							"replacesEarlier": {
-								"type": "boolean",
-								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
 						"required": ["content", "evidence"],
@@ -72,31 +68,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUh2tNYtWPtoWx72RVxt\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01MFdhfwf5UK9n3VqnzD6A5d\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.\",\"evidence\":\"Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1578,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":173,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUmyDKJfP1AdgJaBX27K\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01MiGEHHu7aoXDGaBKfNPWfT\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.\",\"evidence\":\"Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1546,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":173,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T13:10:54Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:15:39Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T13:10:55Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:15:40Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T13:10:54Z",
+			"anthropic-ratelimit-requests-reset": "2026-10-28T14:15:38Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T13:10:54Z",
+			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:15:39Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2eea1bd60388-VIE",
+			"cf-ray": "a51a8dbed929c219-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:10:55 GMT",
-			"request-id": "req_011CgUh2srHyzJqaLfhn7Svq",
+			"date": "Wed, 28 Oct 2026 14:15:40 GMT",
+			"request-id": "req_011CgUmyCrXA7BXTeV4wCqWv",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=1922",
+			"server-timing": "x-originResponse;dur=2771",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-40bdac7888cbc275a26a6bff3840ea32-2ed1a6326ecc3855-01",
+			"traceresponse": "00-2e498196e5cd2ac5e1c16aa83266d5cf-3bc7841b3f12952f-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -130,7 +126,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01MFdhfwf5UK9n3VqnzD6A5d",
+							"id": "toolu_01MiGEHHu7aoXDGaBKfNPWfT",
 							"name": "flag_memory",
 							"input": {
 								"content": "Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.",
@@ -147,7 +143,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01MFdhfwf5UK9n3VqnzD6A5d",
+							"tool_use_id": "toolu_01MiGEHHu7aoXDGaBKfNPWfT",
 							"content": "{\"status\":\"noted\"}"
 						}
 					]
@@ -185,10 +181,6 @@
 								"type": "string",
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
-							},
-							"replacesEarlier": {
-								"type": "boolean",
-								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
 						"required": ["content", "evidence"],
@@ -202,31 +194,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUh33M3zdaMDvra6q15v\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted for future conversations about Acme Harbor — tracker title **Acme Harbor Vendor Intake - Pilot**, Slack channel **#vendor-acme-harbor**, status **Waiting on Vendor Info** = vendor or requester owes missing details.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1768,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":60,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUmySEBffdZN2gYHN9nL\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted. The following identifiers are on file for future conversations about Acme Harbor:\\n\\n- **Tracker title:** Acme Harbor Vendor Intake - Pilot\\n- **Slack channel:** #vendor-acme-harbor\\n- **Status definition:** *Waiting on Vendor Info* = the vendor or requester owes missing details\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1736,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":78,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T13:10:56Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:15:46Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T13:10:57Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:15:47Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T13:10:56Z",
+			"anthropic-ratelimit-requests-reset": "2026-10-28T14:15:41Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T13:10:56Z",
+			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:15:46Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2ef7bfbd0388-VIE",
+			"cf-ray": "a51a8dd23b7dc219-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:10:57 GMT",
-			"request-id": "req_011CgUh338f233rB4YbB1HyZ",
+			"date": "Wed, 28 Oct 2026 14:15:47 GMT",
+			"request-id": "req_011CgUmyS2XD9jtTDzwD5W2t",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=1444",
+			"server-timing": "x-originResponse;dur=6440",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-fa248607d2b6ea6bee42869c84eab525-a206cf4b16dab17c-01",
+			"traceresponse": "00-c31952edad43c9ba46a24a0ddaf6955f-ec67fa071c9561fa-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -249,11 +241,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2f023b9d2693-VIE",
+			"cf-ray": "a51a8dfbe80b324f-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:10:57 GMT",
-			"openai-processing-ms": "75",
+			"date": "Wed, 28 Oct 2026 14:15:48 GMT",
+			"openai-processing-ms": "67",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -265,7 +257,7 @@
 			"x-ratelimit-remaining-tokens": "9999944",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_fb61702931e444c79f884088bc189881"
+			"x-request-id": "req_8f59219f90b5469fa7da9985156d72d4"
 		},
 		"responseIsBinary": false
 	},
@@ -284,11 +276,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2f074dfa2693-VIE",
+			"cf-ray": "a51a8e015c96324f-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:10:58 GMT",
-			"openai-processing-ms": "73",
+			"date": "Wed, 28 Oct 2026 14:15:49 GMT",
+			"openai-processing-ms": "80",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -300,7 +292,7 @@
 			"x-ratelimit-remaining-tokens": "9999981",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_3177ba8760d6437eb0ad370d53921f1d"
+			"x-request-id": "req_19c59ea27be9460c980f9ad54312897d"
 		},
 		"responseIsBinary": false
 	},
@@ -360,10 +352,6 @@
 								"type": "string",
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
-							},
-							"replacesEarlier": {
-								"type": "boolean",
-								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
 						"required": ["content", "evidence"],
@@ -377,31 +365,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUh3ErM4jJhNwS3qmnrT\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01ErRFLVY31MCwGg1KefGFYh\",\"name\":\"recall_memory\",\"input\":{\"query\":\"Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1556,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":77,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUmz3Xi5zDQm6FnPiDHk\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_011gbQn2qg7FsJxiXSCbddAo\",\"name\":\"recall_memory\",\"input\":{\"query\":\"Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1524,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":77,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T13:10:59Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:15:50Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T13:10:59Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:15:51Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T13:10:58Z",
+			"anthropic-ratelimit-requests-reset": "2026-10-28T14:15:49Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T13:10:59Z",
+			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:15:50Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2f089b120388-VIE",
+			"cf-ray": "a51a8e05aa36c219-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:10:59 GMT",
-			"request-id": "req_011CgUh3EeCRRziDnkVZuVDs",
+			"date": "Wed, 28 Oct 2026 14:15:51 GMT",
+			"request-id": "req_011CgUmz3Ebt3JU57zC5oEAE",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=903",
+			"server-timing": "x-originResponse;dur=1557",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-25f4dc4bfba541dc710beffe0ee78f4b-981a071ddb565605-01",
+			"traceresponse": "00-693e70cac3a3ec59bb410d41f7078c12-70db05e66860d0ee-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -422,11 +410,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2f0f2ab52693-VIE",
+			"cf-ray": "a51a8e106a8f324f-VIE",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:11:00 GMT",
-			"openai-processing-ms": "59",
+			"date": "Wed, 28 Oct 2026 14:15:51 GMT",
+			"openai-processing-ms": "56",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -438,7 +426,7 @@
 			"x-ratelimit-remaining-tokens": "9999981",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_685a36ce458d477ab0de21620dc4c6f0"
+			"x-request-id": "req_091727a644a84f0caf6a03cb898e0992"
 		},
 		"responseIsBinary": false
 	},
@@ -470,7 +458,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01ErRFLVY31MCwGg1KefGFYh",
+							"id": "toolu_011gbQn2qg7FsJxiXSCbddAo",
 							"name": "recall_memory",
 							"input": {
 								"query": "Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info"
@@ -486,7 +474,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01ErRFLVY31MCwGg1KefGFYh",
+							"tool_use_id": "toolu_011gbQn2qg7FsJxiXSCbddAo",
 							"content": "{\"entries\":[{\"content\":\"Prior/historical entry: Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.\",\"createdAt\":\"2026-06-01T12:00:00.000Z\"}]}"
 						}
 					]
@@ -524,10 +512,6 @@
 								"type": "string",
 								"minLength": 1,
 								"description": "One short contiguous quote copied exactly from a user or assistant message in this conversation, without surrounding quotation marks."
-							},
-							"replacesEarlier": {
-								"type": "boolean",
-								"description": "Set to true when this corrects or replaces something stated earlier."
 							}
 						},
 						"required": ["content", "evidence"],
@@ -541,31 +525,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUh3M8dC5X4ZEQXE9rjh\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Here's what was decided for **Acme Harbor** in our previous conversations:\\n\\n| Field | Decision |\\n|---|---|\\n| **Tracker Title** | `Acme Harbor Vendor Intake - Pilot` |\\n| **Slack Channel** | `#vendor-acme-harbor` |\\n| **\\\"Waiting on Vendor Info\\\" Meaning** | The vendor or requester owes missing details. |\\n\\nLet me know if you need to update or expand on any of these!\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1732,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":112,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUmzBkZSfiGu7bKjYzJ9\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Based on the recalled memory, here is exactly what was decided for **Acme Harbor**:\\n\\n| Field | Decided Value |\\n|---|---|\\n| **Tracker Title** | `Acme Harbor Vendor Intake - Pilot` |\\n| **Slack Channel** | `#vendor-acme-harbor` |\\n| **\\\"Waiting on Vendor Info\\\" Meaning** | The vendor or requester owes missing details. |\\n\\nThese three items were established in a prior session and are on record exactly as shown above.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1700,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":120,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "15000000",
 			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T13:11:00Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:15:52Z",
 			"anthropic-ratelimit-output-tokens-limit": "3000000",
 			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T13:11:02Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:15:54Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T13:11:00Z",
+			"anthropic-ratelimit-requests-reset": "2026-10-28T14:15:51Z",
 			"anthropic-ratelimit-tokens-limit": "18000000",
 			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T13:11:00Z",
+			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:15:52Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a2f11bb6c0388-VIE",
+			"cf-ray": "a51a8e11bd98c219-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 13:11:02 GMT",
-			"request-id": "req_011CgUh3LuybC6i3VGfM8t3c",
+			"date": "Wed, 28 Oct 2026 14:15:54 GMT",
+			"request-id": "req_011CgUmzBUhRjXxWLAteTz2F",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=1974",
+			"server-timing": "x-originResponse;dur=2806",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-9162aa065448f81e15a77ba9bd7accc6-f65521f646a0279d-01",
+			"traceresponse": "00-ea22e06e3f29c2b49b81f57eb696da3c-0d166127cc8cb078-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

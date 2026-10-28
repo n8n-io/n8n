@@ -34,7 +34,7 @@ const RRF_K = 60;
 const RECENCY_RRF_WEIGHT = 0.05;
 // In our retrieval eval, this floor cut unrelated recall results in small scopes from
 // about 4 of 5 to 0.4, kept every answer, and returned nothing for most questions
-// without a stored answer. Reflection searches without it.
+// without a stored answer. Consolidation uses its own floor.
 const RECALL_MIN_SIMILARITY = 0.4;
 const CAPTURE_STORE_METHODS = [
 	'getEntriesByContentHashes',
@@ -42,6 +42,8 @@ const CAPTURE_STORE_METHODS = [
 	'getPendingCaptureCandidates',
 	'completeCaptureCandidates',
 	'recordCaptureCandidateFailure',
+	'findSimilarEntries',
+	'addEntrySources',
 ] as const;
 
 const RecallMemoryInputSchema = z.object({
@@ -67,7 +69,7 @@ export interface NormalizedEpisodicMemoryConfig {
 	maxEntriesPerRun: number;
 	embedder: NonNullable<EpisodicMemoryConfig['embedder']>;
 	embeddingModel: string;
-	reflect: EpisodicMemoryConfig['reflect'];
+	consolidate: EpisodicMemoryConfig['consolidate'];
 	recallToolInstruction: string;
 }
 
@@ -109,7 +111,7 @@ export function withEpisodicMemoryDefaults(
 		maxEntriesPerRun: config.maxEntriesPerRun ?? DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 		embedder: config.embedder,
 		embeddingModel: config.embeddingModel ?? 'custom',
-		reflect: config.reflect,
+		consolidate: config.consolidate,
 		recallToolInstruction:
 			config.prompts?.recallToolInstruction ?? DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	};

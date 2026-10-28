@@ -137,7 +137,7 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						reflect?: unknown;
+						consolidate?: unknown;
 					};
 					titleGeneration?: {
 						sync?: boolean;
@@ -1438,7 +1438,7 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.consolidate).toBeUndefined();
 	});
 
 	it('sends credential episodic memory embeddings through the model fetch', async () => {
@@ -1514,8 +1514,8 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
-		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+	it('configures the episodic memory consolidator with a separate credential from embeddings', async () => {
+		const consolidateSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryConsolidateFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
@@ -1548,7 +1548,7 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(reflectSpy).toHaveBeenCalledWith({
+		expect(consolidateSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
 			baseURL: 'https://episodic-reflector-key.example/v1',
