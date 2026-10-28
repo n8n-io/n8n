@@ -26,6 +26,21 @@ export function jobTaskStatus(job: PlanJobState): AgentPlanStatus {
 	return job.status;
 }
 
+/**
+ * Derive plan group statuses from their children tasks
+ * For each group, it:
+ *
+ * 1. Accounts for successful fallbacks. If a fallback task is done, the original task
+ * and earlier tasks in that replacement chain no longer affects the group’s status.
+ *
+ * 2. Calculates status using this priority:
+ * in_progress → paused → pending → failed → cancelled → done.
+ * The first status present among the relevant children wins. An empty group stays pending.
+ *
+ * 3. Calculates timestamps:
+ * startedAt: the earliest child start time.
+ * endedAt: null for pending or in_progress; otherwise, the latest child end time.
+ */
 export function derivePlanGroups(document: AgentPlanDocument): AgentPlanDocument {
 	return {
 		...document,
@@ -68,6 +83,9 @@ export function derivePlanGroups(document: AgentPlanDocument): AgentPlanDocument
 	};
 }
 
+/**
+ * Combine the stored plan with current background-job states to produce a plan with calculated statuses.
+ */
 export function resolveAgentPlan(
 	document: StoredAgentPlanDocument,
 	jobs: PlanJobState[],

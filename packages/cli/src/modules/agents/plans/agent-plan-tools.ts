@@ -73,7 +73,7 @@ const writeInput = z
 
 type AgentPlanDocumentInput = z.infer<typeof documentInput>;
 
-function withoutTiming<Item extends AgentPlanItem>(item: Item) {
+function withoutManagedFields<Item extends AgentPlanItem>(item: Item) {
 	const { startedAt, endedAt, ...visible } = item;
 
 	if ('jobId' in visible) {
@@ -126,8 +126,8 @@ function mergeDocumentUpdate(
 			merged.set(
 				item.id,
 				item.kind === 'group'
-					? { ...withoutTiming(item), tasks: mergeItems(item.tasks, []) }
-					: withoutTiming(item),
+					? { ...withoutManagedFields(item), tasks: mergeItems(item.tasks, []) }
+					: withoutManagedFields(item),
 			);
 		}
 
@@ -155,7 +155,7 @@ function mergeDocumentUpdate(
 			}
 
 			const { tasks, ...fields } = change;
-			const item = { ...(current ? withoutTiming(current) : {}), ...fields };
+			const item = { ...(current ? withoutManagedFields(current) : {}), ...fields };
 
 			if (item.resultSummary === null) delete item.resultSummary;
 
@@ -304,7 +304,7 @@ export function presentPlan(plan: AgentPlanSnapshot | null) {
 			...plan.data,
 			items: plan.data.items.map((item) =>
 				item.kind === 'group'
-					? { ...withoutTiming(item), tasks: item.tasks.map(presentTask) }
+					? { ...withoutManagedFields(item), tasks: item.tasks.map(presentTask) }
 					: presentTask(item),
 			),
 		},
