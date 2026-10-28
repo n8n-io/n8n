@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-runner.ts
+  s_6766773bb82a48::t_3a46478378c188 439,444,459-460
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_6766773bb82a48::t_ae8438598cd412 189,1153-1160
+packages/@n8n/agents/src/types/runtime/delegation.ts
+  s_6766773bb82a48::t_3a46478378c188 42-51,73-78,114,241-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "266a063e197d2d23305af7f989c5381824fab609",
+  "prompts": {},
+  "sessions": {
+    "s_6766773bb82a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "823bd4ec-cb35-4791-a5bb-53cae1cb7ca3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
