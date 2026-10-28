@@ -461,10 +461,12 @@ const skipReasonKeys: Record<
 	| 'settings.migrationReport.detail.notify.skipped.noOwner'
 	| 'settings.migrationReport.detail.notify.skipped.noFinding'
 	| 'settings.migrationReport.detail.notify.skipped.sendFailed'
+	| 'settings.migrationReport.detail.notify.skipped.recentlyNotified'
 > = {
 	no_owner: 'settings.migrationReport.detail.notify.skipped.noOwner',
 	no_finding: 'settings.migrationReport.detail.notify.skipped.noFinding',
 	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
+	recently_notified: 'settings.migrationReport.detail.notify.skipped.recentlyNotified',
 };
 
 /**

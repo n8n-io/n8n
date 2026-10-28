@@ -15,7 +15,10 @@ import type {
 import type { MigrationWorkflowOwnerRepository } from '../../database/repositories/migration-workflow-owner.repository';
 import type { MigrationWorkflowOwner } from '../../database/entities/migration-workflow-owner.entity';
 import type { IBreakingChangeRule } from '../../types';
-import { MigrationFindingNotificationService } from '../migration-finding-notification.service';
+import {
+	MigrationFindingNotificationService,
+	REMINDER_COOLDOWN_MS,
+} from '../migration-finding-notification.service';
 
 const RULE_ID = 'removed-nodes-v3';
 const notifier = {
@@ -215,6 +218,37 @@ describe('MigrationFindingNotificationService', () => {
 			expect(result).toEqual({
 				notifiedWorkflowIds: [],
 				skipped: [{ workflowId: 'wf-1', reason: 'send_failed' }],
+			});
+		});
+
+		it('skips a finding notified within the cooldown and reminds one notified before it', async () => {
+			const now = Date.now();
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				{
+					...finding(1, 'wf-1', 'notified'),
+					notifiedAt: new Date(now - REMINDER_COOLDOWN_MS + 5_000),
+				},
+				{
+					...finding(2, 'wf-2', 'notified'),
+					notifiedAt: new Date(now - REMINDER_COOLDOWN_MS - 5_000),
+				},
+			]);
+			ownerRepository.findByWorkflowIds.mockResolvedValue([
+				ownerRow('wf-1', 'alice'),
+				ownerRow('wf-2', 'alice'),
+			]);
+			userRepository.findManyByIds.mockResolvedValue([user('alice')]);
+
+			const result = await service.notifyOwners(RULE_ID, ['wf-1', 'wf-2'], notifier);
+
+			expect(mailer.migrationFindings).toHaveBeenCalledTimes(1);
+			expect(mailer.migrationFindings).toHaveBeenCalledWith(
+				expect.objectContaining({ workflows: [{ id: 'wf-2', name: 'Flow wf-2' }] }),
+			);
+			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([2], expect.anything());
+			expect(result).toEqual({
+				notifiedWorkflowIds: ['wf-2'],
+				skipped: [{ workflowId: 'wf-1', reason: 'recently_notified' }],
 			});
 		});
 

@@ -5094,6 +5094,7 @@
 	"settings.migrationReport.detail.notify.skipped.noOwner": "The workflow has no owner with an email address",
 	"settings.migrationReport.detail.notify.skipped.noFinding": "The finding no longer needs a fix",
 	"settings.migrationReport.detail.notify.skipped.sendFailed": "The email could not be sent. Check the SMTP settings of the instance",
+	"settings.migrationReport.detail.notify.skipped.recentlyNotified": "The owner was notified less than a minute ago. Wait a minute before you send a reminder",
 	"settings.migrationReport.detail.bulk.wontFix": "Mark won't fix",
 	"settings.migrationReport.detail.bulk.reopen": "Reopen",
 	"settings.migrationReport.detail.bulk.migrate": "Migrate",

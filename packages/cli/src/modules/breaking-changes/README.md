@@ -180,6 +180,7 @@ Response:
 - `no_finding`: the workflow has no `open` or `notified` finding for the rule.
 - `no_owner`: the workflow has no owner, or the owner has no email.
 - `send_failed`: the email could not be sent. The finding stays as it is.
+- `recently_notified`: the owner was notified about the finding less than 60 seconds ago. The finding stays as it is.
 - The route returns 400 when SMTP is not set up on the instance, and 404 when the rule is unknown or is not a workflow rule.
 
 ## Rule Impact
