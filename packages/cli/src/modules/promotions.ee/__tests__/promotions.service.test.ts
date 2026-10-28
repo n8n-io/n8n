@@ -133,7 +133,9 @@ describe('PromotionsService', () => {
 		);
 		// An empty remote by default, so the promote check for moved workflows has nothing to read.
 		gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
-		// Branch mode resets to this base commit, which holds no package by default.
+		// The remote holds the base branch, so every promote resets the checkout to it.
+		gitService.hasRemoteBranch.mockResolvedValue(true);
+		// The base commit a promote resets to holds no package by default.
 		gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'b'.repeat(40) });
 		gitService.findPathsAtCommit.mockResolvedValue(new Set());
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
@@ -284,6 +286,7 @@ describe('PromotionsService', () => {
 			};
 
 			beforeEach(() => {
+				gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'a'.repeat(40) });
 				gitService.listBranchTree.mockResolvedValue({
 					commitSha: 'a'.repeat(40),
 					lsTreeOutput: 'n8n/manifest.json',
@@ -502,13 +505,15 @@ describe('PromotionsService', () => {
 					commitMessage: 'first promote',
 				});
 
+				expect(gitService.prepareCheckoutForPromotion).not.toHaveBeenCalled();
 				expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
 
 			it('refuses a promote when the branch exists but cannot be read', async () => {
 				const readFailure = new BadRequestError('Could not complete the Git operation');
-				gitService.listBranchTree.mockRejectedValue(readFailure);
+				// A direct promote reads the branch when it resets the checkout to it.
+				gitService.prepareCheckoutForPromotion.mockRejectedValue(readFailure);
 				gitService.hasRemoteBranch.mockResolvedValue(true);
 
 				await expect(
@@ -604,6 +609,13 @@ describe('PromotionsService', () => {
 					stagePathspec: 'n8n',
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 				}),
+			);
+			// A direct promote resets the checkout to the remote base branch before it exports.
+			expect(gitService.prepareCheckoutForPromotion).toHaveBeenCalledWith(
+				expect.objectContaining({ branchName: 'staging', environmentId: ENVIRONMENT_ID }),
+			);
+			expect(gitService.prepareCheckoutForPromotion.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
 			);
 			// The stale package is gone; only the freshly written one remains.
 			await expect(stat(path.join(packageFolder, 'stale.json'))).rejects.toThrow();
