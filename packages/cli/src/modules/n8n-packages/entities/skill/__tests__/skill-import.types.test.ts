@@ -47,4 +47,22 @@ describe('reconcileSharedWrites', () => {
 			],
 		]);
 	});
+
+	it('reports a project skill that two project scopes plan for their own projects', () => {
+		const plans = [plan('shared'), plan('shared')];
+		plans[0].shared[0].target = { projectId: 'project_1', agentId: null };
+		plans[1].shared[0].target = { projectId: 'project_2', agentId: null };
+		plans[1].shared[0].usedBy = ['agent_second'];
+		expect(reconcileSharedWrites(plans)).toEqual([
+			[],
+			[
+				expect.objectContaining({
+					sourceAgentId: 'agent_second',
+					path: 'skills.shared',
+					message: expect.stringContaining('belongs to another project of this package'),
+				}),
+			],
+		]);
+		expect(plans.map(({ shared }) => shared.length)).toEqual([1, 0]);
+	});
 });

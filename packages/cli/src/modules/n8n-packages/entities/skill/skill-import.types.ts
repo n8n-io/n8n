@@ -1,6 +1,6 @@
 import { skillNameKey } from '@n8n/api-types';
 
-import type { SkillTarget } from '@/modules/skills';
+import { isSameSkillTarget, type SkillTarget } from '@/modules/skills';
 
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import type { AgentImportIssue } from '../agent/agent-import.types';
@@ -42,18 +42,23 @@ export function skillIssue(
 
 /**
  * A project package plans each project on its own, so two projects can plan the same
- * instance skill, or two instance skills with names like each other. Keeps the first write
- * of each skill and returns, for each plan, the issues of the instance name clashes.
+ * skill, or two instance skills with names like each other. Keeps the first write of each
+ * skill. Returns, for each plan, the issues of a skill that another project of the package
+ * owns and of the instance name clashes.
  */
 export function reconcileSharedWrites(plans: SkillImportPlan[]): AgentImportIssue[][] {
-	const writtenIds = new Set<string>();
+	const firstWrites = new Map<string, SharedSkillWrite>();
 	const instanceNames = new Set<string>();
 	return plans.map((plan) => {
 		const kept: SharedSkillWrite[] = [];
 		const issues: AgentImportIssue[] = [];
 		for (const write of plan.shared) {
-			if (writtenIds.has(write.skill.id)) continue;
-			writtenIds.add(write.skill.id);
+			const first = firstWrites.get(write.skill.id);
+			if (first) {
+				if (!isSameSkillTarget(first.target, write.target)) issues.push(...foreignSkill(write));
+				continue;
+			}
+			firstWrites.set(write.skill.id, write);
 			kept.push(write);
 			if (write.target.projectId !== null) continue;
 			const key = skillNameKey(write.skill.skill.name);
@@ -63,6 +68,12 @@ export function reconcileSharedWrites(plans: SkillImportPlan[]): AgentImportIssu
 		plan.shared = kept;
 		return issues;
 	});
+}
+
+/** An Agent can use only the skills of its own project and instance skills. */
+function foreignSkill({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
+	const message = `Skill "${skill.skill.name}" belongs to another project of this package. An Agent can use only the skills of its own project and instance skills. Use an instance skill, or a copy of the skill in this project.`;
+	return usedBy.map((agentId) => skillIssue(agentId, skill.id, message));
 }
 
 function instanceNameClash({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
