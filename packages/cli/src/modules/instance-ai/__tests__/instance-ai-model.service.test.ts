@@ -22,6 +22,11 @@ vi.mock('@/utils/ai-proxy-language-model', () => ({
 	createProxyLanguageModel: (...args: unknown[]) => createProxyLanguageModel(...args),
 }));
 
+const createAnthropic = vi.hoisted(() => vi.fn());
+vi.mock('@ai-sdk/anthropic', () => ({
+	createAnthropic: (...args: unknown[]) => createAnthropic(...args),
+}));
+
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 
@@ -133,7 +138,7 @@ describe('InstanceAiModelService', () => {
 			return new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
 		}
 
-		it('sends no labels and no function id on the labeled transport', async () => {
+		it('sends no labels on the labeled transport', async () => {
 			const headers = await headersSentBy((s) =>
 				s.getLabeledModelFetch({ runId: 'run-1', threadId: 'thread-1' }),
 			);
@@ -147,6 +152,47 @@ describe('InstanceAiModelService', () => {
 			const baseFetch = vi.fn();
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
 			expect(service.getModelFetch()).toBe(baseFetch);
+		});
+	});
+
+	describe('HTTP(S)_PROXY with an Anthropic model', () => {
+		const savedProxy = process.env.HTTP_PROXY;
+
+		beforeEach(() => {
+			process.env.HTTP_PROXY = 'http://proxy.test:8080';
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude-x');
+			createAnthropic.mockReturnValue(() => ({}));
+		});
+
+		afterEach(() => {
+			if (savedProxy === undefined) delete process.env.HTTP_PROXY;
+			else process.env.HTTP_PROXY = savedProxy;
+		});
+
+		async function headersSentByAnthropicClient() {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+			await service.resolveAgentModelConfig(fakeUser, { runId: 'run-1', threadId: 'thread-1' });
+			const { fetch } = createAnthropic.mock.calls[0]?.[0] as { fetch: CustomFetchLike };
+			await fetch('https://api.anthropic.com/v1/messages', { method: 'POST' });
+			return new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+		}
+
+		it('sends the run labels when request labels are on', async () => {
+			const headers = await headersSentByAnthropicClient();
+			expect(headers.get('x-n8n-feature')).toBe('instance-ai');
+			expect(headers.get('x-n8n-run-id')).toBe('run-1');
+			expect(headers.get('x-n8n-thread-id')).toBe('thread-1');
+		});
+
+		it('sends no labels when request labels are off', async () => {
+			instanceAiConfig.modelRequestLabels = false;
+			const headers = await headersSentByAnthropicClient();
+			expect(headers.get('x-n8n-feature')).toBeNull();
 		});
 	});
 

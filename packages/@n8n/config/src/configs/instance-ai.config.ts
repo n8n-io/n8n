@@ -20,8 +20,12 @@ export class InstanceAiConfig {
 	modelUrl: string = '';
 
 	/**
-	 * Send `x-n8n-*` request labels (feature, version, run, thread, function id) to a directly
-	 * configured model provider. Off by default: only n8n's AI service gets them.
+	 * Add `x-n8n-*` request labels to the Assistant's model calls. When on, a directly
+	 * configured model provider gets `x-n8n-feature`, `x-n8n-version`, `x-n8n-run-id`,
+	 * `x-n8n-thread-id` and `x-n8n-function-id` (which part of the Assistant made the call),
+	 * and n8n's AI service also gets `x-n8n-function-id`. When off, a direct provider gets
+	 * no `x-n8n-*` headers, and n8n's AI service gets only the feature, version, run and
+	 * thread headers it always gets.
 	 */
 	@Env('N8N_INSTANCE_AI_MODEL_REQUEST_LABELS')
 	modelRequestLabels: boolean = false;

@@ -8,6 +8,7 @@ import {
 import { InMemoryMemory } from '../memory/memory-store';
 import { generateThreadTitle, generateTitleFromMessage } from '../memory/title-generation';
 import { AgentEventBus } from '../state/event-bus';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 
 vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: () => (model: string) => ({
@@ -124,6 +125,16 @@ describe('x-n8n-function-id header', () => {
 		});
 
 		expect(sentHeaders()).toEqual([{ 'x-n8n-function-id': 'feature.agent.title' }]);
+	});
+
+	it('rejects a functionId that is not a safe header value on every path', () => {
+		expect(() => buildFunctionIdHeaders('títle')).toThrow(/functionId must match/);
+		expect(() => buildFunctionIdHeaders('feature.agent', 'memory observer')).toThrow(
+			/functionId must match/,
+		);
+		expect(buildFunctionIdHeaders('feature.agent', 'title')).toEqual({
+			headers: { 'x-n8n-function-id': 'feature.agent.title' },
+		});
 	});
 
 	it('sends no header from memory tasks without a functionId', async () => {

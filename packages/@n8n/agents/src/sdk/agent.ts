@@ -24,6 +24,7 @@ import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { assertFunctionId } from '../runtime/telemetry/function-id';
 import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
 import {
 	LOAD_TOOL_TOOL_NAME,
@@ -299,9 +300,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * rejects a header value outside Latin-1 on every call.
 	 */
 	functionId(id: string): this {
-		if (!/^[A-Za-z0-9._-]+$/.test(id)) {
-			throw new Error(`functionId must match [A-Za-z0-9._-]+, got ${JSON.stringify(id)}`);
-		}
+		assertFunctionId(id);
 		this.functionIdValue = id;
 		return this;
 	}

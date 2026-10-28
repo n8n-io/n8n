@@ -150,6 +150,37 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 });
 
 describe('AssistantAgentFactory — model transport', () => {
+	it.each([true, false])('passes requestLabels %s from the config', async (modelRequestLabels) => {
+		createInstanceAgent.mockClear();
+		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			subscribeToAgentErrors: vi.fn(),
+			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels },
+			_mcpClientManager: {},
+			modelService: { getLabeledModelFetch: vi.fn() },
+		}) as unknown as AssistantAgentFactory;
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
+		);
+
+		expect(createInstanceAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ requestLabels: modelRequestLabels }),
+		);
+	});
+
 	it('passes the labeled model transport to the orchestrator agent', async () => {
 		const modelFetch = vi.fn();
 		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });

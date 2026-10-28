@@ -12,6 +12,7 @@ import {
 } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
+import { readFileSync } from 'node:fs';
 import { appendFile } from 'node:fs/promises';
 
 import { evalUsageGuardrail } from './eval-usage';
@@ -266,11 +267,19 @@ function usageLogHooks(
 	};
 }
 
-/** Same switch as `InstanceAiConfig.modelRequestLabels`, read here so harness callers share it. */
+/**
+ * Same switch as `InstanceAiConfig.modelRequestLabels`, read here so harness callers share it.
+ * Reads the `_FILE` form and strips quotes as `@n8n/config` does.
+ */
 function requestLabelsEnabled(): boolean {
-	return ['true', '1'].includes(
-		(process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS ?? '').toLowerCase(),
-	);
+	const name = 'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS';
+	const filePath = process.env[`${name}_FILE`];
+	const raw = process.env[name] ?? (filePath ? readFileSync(filePath, 'utf8') : '');
+	const value = raw
+		.trim()
+		.replace(/^(['"])(.*)\1$/, '$2')
+		.toLowerCase();
+	return value === 'true' || value === '1';
 }
 
 export function createEvalAgent(

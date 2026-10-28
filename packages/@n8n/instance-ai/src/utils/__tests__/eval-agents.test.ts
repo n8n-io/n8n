@@ -27,7 +27,7 @@ vi.mock('@n8n/agents', () => ({
 }));
 
 import type { GenerateResult } from '@n8n/agents';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -46,6 +46,7 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
+	'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS_FILE',
 	'N8N_INSTANCE_AI_EVAL_MODEL_URL',
 	'N8N_INSTANCE_AI_EVAL_MODEL_API_KEY',
 	'EVAL_MODAL_LLM_HEADERS',
@@ -159,6 +160,22 @@ describe('eval agent model config', () => {
 			createEvalAgent('test-agent', { instructions: 'Do the task.' });
 		} finally {
 			delete process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS;
+		}
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
+	});
+
+	it('reads the request labels switch from its _FILE form, as @n8n/config does', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		const dir = mkdtempSync(path.join(tmpdir(), 'labels-'));
+		const file = path.join(dir, 'flag');
+		writeFileSync(file, 'true\n');
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS_FILE = file;
+
+		try {
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+		} finally {
+			rmSync(dir, { recursive: true });
 		}
 
 		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
