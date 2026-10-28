@@ -64,14 +64,15 @@ export function buildResourceUrl(
 	buildAppHref?: (projectId: string, id: string) => string,
 	buildSkillHref?: (id: string) => string,
 ): string {
+	const encodedId = encodeURIComponent(id);
 	if (projectId) {
-		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
-		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
-		if (type === 'agent') return `/projects/${projectId}/agents/${id}`;
+		if (type === 'data-table') return `/projects/${projectId}/datatables/${encodedId}`;
+		if (type === 'credential') return `/projects/${projectId}/credentials/${encodedId}`;
+		if (type === 'agent') return `/projects/${projectId}/agents/${encodedId}`;
 		if (type === 'app' && buildAppHref) return buildAppHref(projectId, id);
 	}
-	if (type === 'workflow') return `/workflow/${id}`;
-	if (type === 'credential') return `/home/credentials/${id}`;
+	if (type === 'workflow') return `/workflow/${encodedId}`;
+	if (type === 'credential') return `/home/credentials/${encodedId}`;
 	if (type === 'data-table') return '/home/datatables';
 	if (type === 'agent') return '/home/agents';
 	if (type === 'skill' && buildSkillHref) return buildSkillHref(id);
