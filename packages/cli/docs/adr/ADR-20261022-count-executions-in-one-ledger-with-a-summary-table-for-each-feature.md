@@ -39,9 +39,7 @@ own summary table, and a fold step fills it from the ledger.
 5. One file in `@n8n/backend-services` holds every counting rule, for example
    `isBillableExecution`. Every fold step uses it. No fold step keeps its own copy of a rule.
 6. A feature that must decide at the moment of an event reads at record time, beside the ledger
-   insert. A feature that accepts about 5 s of delay reads its summary table. Execution limits v1
-   accept the delay (a soft limit), so they read their summary table. A run can pass a limit by the
-   runs since the last successful fold. A failing fold widens that gap.
+   insert. A feature that accepts about 5 s of delay reads its summary table.
 
 The main reason: one record of the facts lets every feature count the same runs. No feature needs
 its own write path, and no run waits on a shared row.
@@ -66,10 +64,11 @@ its own write path, and no run waits on a shared row.
 
 ## Consequences
 
-1. Counts are up to about 5 s late. An exact limit would need an atomic counter (Redis, or memory
-   on one main) beside the ledger insert. That counter only decides. It is not a record: if it is
-   lost, it is filled again from the limits summary table and the ledger rows that are not folded
-   yet.
+1. Counts are up to about 5 s late. A limit that reads its summary table can be passed by the runs
+   since the last successful fold, and a failing fold widens that gap. An exact limit would need an
+   atomic counter (Redis, or memory on one main) beside the ledger insert. That counter only
+   decides. It is not a record: if it is lost, it is filled again from the limits summary table
+   and the ledger rows that are not folded yet.
 2. A summary table that a feature adds later starts with no history, because the fold deletes the
    ledger rows.
 3. Every run writes two rows. In a prototype, the `started` row added about 300 B of WAL for each
