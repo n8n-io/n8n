@@ -213,7 +213,7 @@ export function toVariableSummary(
 	result: VariableApplyResult,
 ): ImportVariableSummary {
 	return reconcileVariableSummary({
-		matched: plan.matched,
+		matched: plan.matched.map(({ name }) => name),
 		missing: plan.missing.map(({ name }) => name),
 		created: result.created,
 		stubbed: result.stubbed,

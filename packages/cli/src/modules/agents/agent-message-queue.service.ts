@@ -200,6 +200,35 @@ export class AgentMessageQueueService {
 		return await this.repository.hasItems(threadId, ctx);
 	}
 
+	/** Call after authorizing session access. Clear future turns before aborting the current turn. */
+	async prepareSessionStop(threadId: string): Promise<{
+		executionIds: string[];
+		queueIds: string[];
+		attachmentIds: string[];
+	}> {
+		const result = await this.txRunner.run({}, async (ctx) => {
+			const thread = await this.threadRepository.lockById(threadId, ctx);
+			if (!thread) throw new NotFoundError('Session not found');
+			const running = await this.executionRepository.findRunningByThread(threadId, ctx);
+			const pending = await this.repository.listPending(threadId, ctx);
+			await this.repository.discardPendingForSession(threadId, ctx);
+			const attachmentIds: string[] = [];
+			for (const item of pending) {
+				attachmentIds.push(
+					...readInboundUserMessage(item.message.content).attachments.map(({ id }) => id),
+				);
+				await this.messages.clearPendingInput(item.messageId, ctx);
+			}
+			return {
+				executionIds: running.map(({ id }) => id),
+				queueIds: pending.map(({ id }) => id),
+				attachmentIds,
+			};
+		});
+		this.updates.notifyQueueUpdated(threadId);
+		return result;
+	}
+
 	async listPending(input: PendingMessageScope): Promise<AgentChatQueueResponse> {
 		const { kind } = input;
 		const thread = await this.threadRepository.findOneBy({ id: input.threadId });

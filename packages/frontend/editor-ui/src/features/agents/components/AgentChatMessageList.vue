@@ -55,6 +55,10 @@ import {
 	TOOL_CALL_STATE,
 } from '../constants';
 
+import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
+
+const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
+
 const props = defineProps<{
 	messages: ChatMessage[];
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
@@ -70,6 +74,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	openBuild: [];
 	retry: [messageId: string];
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
@@ -383,6 +388,21 @@ const changeRequestGroupId = computed(() =>
 
 function onEditWithAssistant(changeRequest: string) {
 	emit('sendToAssistant', { changeRequest });
+}
+
+function onBuildLink(edit: boolean, message: ChatMessage) {
+	if (!standaloneBuilder || !canSendToAssistant.value) return;
+	if (!edit) {
+		emit('openBuild');
+		return;
+	}
+	const index = props.messages.findIndex((entry) => entry.id === message.id);
+	const request =
+		index < 0
+			? undefined
+			: props.messages.slice(0, index).findLast((entry) => entry.role === CHAT_MESSAGE_ROLE.USER)
+					?.content;
+	emit('sendToAssistant', request ? { changeRequest: request } : undefined);
 }
 
 function isThinkingActive(message: ChatMessage): boolean {
@@ -708,7 +728,11 @@ watch(
 						]"
 					>
 						<div :class="$style.markdownContent">
-							<AgentMarkdownChunk :source="group.finalMessage.content" />
+							<AgentMarkdownChunk
+								:source="group.finalMessage.content"
+								:can-open-build="standaloneBuilder && canSendToAssistant"
+								@open-build="onBuildLink($event, group.finalMessage)"
+							/>
 						</div>
 					</div>
 					<AgentBudgetNoticeCard
@@ -853,7 +877,11 @@ watch(
 								]"
 							>
 								<div :class="$style.markdownContent">
-									<AgentMarkdownChunk :source="item.text" />
+									<AgentMarkdownChunk
+										:source="item.text"
+										:can-open-build="standaloneBuilder && canSendToAssistant"
+										@open-build="onBuildLink($event, group.message)"
+									/>
 								</div>
 							</div>
 							<div v-else :class="$style.interactives">
@@ -985,7 +1013,7 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
-	max-width: 800px;
+	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
 
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);

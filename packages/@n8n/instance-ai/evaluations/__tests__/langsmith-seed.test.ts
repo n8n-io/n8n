@@ -468,7 +468,7 @@ describe('reconstructSeedFromThread', () => {
 		const setupBlocks = result.seed.messages
 			.filter((m) => Array.isArray(m.content))
 			.flatMap((m) => m.content as Array<Record<string, unknown>>)
-			.filter((b) => b.type === 'tool-call' && b.toolName === 'workflow_builder_workflows[setup]');
+			.filter((b) => b.type === 'tool-call' && b.toolName === 'setup_workflow');
 		expect(setupBlocks).toHaveLength(1); // suspend dropped, resume kept
 	});
 

@@ -7,7 +7,7 @@ import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 const catalogService = new ModelCatalogService();
 
-export function createSearchModelsTool(service = catalogService) {
+export function createSearchModelsTool(fetch: typeof globalThis.fetch, service = catalogService) {
 	return new Tool(DOMAIN_TOOL_IDS.SEARCH_MODELS)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_MODELS))
 		.description(
@@ -22,6 +22,6 @@ export function createSearchModelsTool(service = catalogService) {
 		.input(searchModelsInputSchema)
 		.output(searchModelsOutputSchema)
 		.untrustedOutput()
-		.handler(async (input, ctx) => await service.search(input, ctx.abortSignal))
+		.handler(async (input, ctx) => await service.search(input, fetch, ctx.abortSignal))
 		.build();
 }

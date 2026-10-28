@@ -330,7 +330,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 	});
 
 	it('hides the full-width option when the host controls the width', () => {
-		const wrapper = mountMenu({ canToggleFullWidth: false });
+		const wrapper = mountMenu({ hideLayoutToggle: true });
 		expect(getMenuItem(wrapper, 'toggle-full-width')).toBeUndefined();
 		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
 		expect(wrapper.emitted('toggle-full-width')).toBeUndefined();

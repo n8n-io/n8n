@@ -52,6 +52,9 @@ const props = withDefaults(
 		connectedTriggers: string[];
 		isOpen: boolean;
 		overlay?: boolean;
+		inline?: boolean;
+		closable?: boolean;
+		placeholder?: string;
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
@@ -87,6 +90,7 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'message-sent': [];
 }>();
 
 const i18n = useI18n();
@@ -113,7 +117,7 @@ const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
 const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
 const layout = computed<PreviewLayout>(() =>
-	!props.overlay && storedLayout.value === PreviewLayout.Fullpage
+	!props.inline && !props.overlay && storedLayout.value === PreviewLayout.Fullpage
 		? PreviewLayout.Fullpage
 		: PreviewLayout.Docked,
 );
@@ -192,6 +196,7 @@ function handleEscapeKey(event: KeyboardEvent) {
 
 	if (
 		!props.isOpen ||
+		(props.inline && !props.closable) ||
 		dock.value?.contains(event.target as Node) !== true ||
 		(event.target instanceof Element && event.target.closest('[role="dialog"]') !== null)
 	) {
@@ -217,7 +222,14 @@ defineExpose({ clearBudgetStops });
 <template>
 	<aside
 		ref="dock"
-		:class="[$style.dock, { [$style.open]: props.isOpen, [$style.overlay]: props.overlay }]"
+		:class="[
+			$style.dock,
+			{
+				[$style.open]: props.isOpen,
+				[$style.inline]: props.inline,
+				[$style.overlay]: props.overlay,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
@@ -244,6 +256,7 @@ defineExpose({ clearBudgetStops });
 					</AgentSessionHistoryDropdown>
 				</div>
 				<div :class="$style.actions">
+					<slot name="header-actions" />
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
 						:content="i18n.baseText('agents.builder.preview.viewSession')"
@@ -286,7 +299,7 @@ defineExpose({ clearBudgetStops });
 						:can-delete-session="props.canDeleteSession"
 						:is-deleting-session="props.isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
-						:can-toggle-full-width="!props.overlay"
+						:hide-layout-toggle="props.inline || props.overlay"
 						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
 						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
@@ -296,6 +309,7 @@ defineExpose({ clearBudgetStops });
 						@delete-session="requestActiveSessionDeletion"
 					/>
 					<KeyboardShortcutTooltip
+						v-if="!props.inline || props.closable"
 						placement="bottom"
 						:label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
@@ -316,6 +330,8 @@ defineExpose({ clearBudgetStops });
 			<AgentPreviewChatPage
 				ref="previewChatPage"
 				:visible="props.isOpen"
+				:placeholder="props.placeholder"
+				:composer-height="props.inline ? 'var(--agent-builder-composer-height)' : undefined"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"
@@ -336,7 +352,15 @@ defineExpose({ clearBudgetStops });
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
-			/>
+				@message-sent="emit('message-sent')"
+			>
+				<template v-if="$slots['composer-start']" #composer-start>
+					<slot name="composer-start" />
+				</template>
+				<template v-if="$slots['composer-footer']" #composer-footer>
+					<slot name="composer-footer" />
+				</template>
+			</AgentPreviewChatPage>
 		</div>
 	</aside>
 </template>
@@ -382,6 +406,17 @@ defineExpose({ clearBudgetStops });
 		will-change: auto;
 	}
 }
+.inline {
+	.dockInner {
+		transform: none;
+		transition: none;
+		border-left: 0;
+	}
+	&:not(.open) {
+		visibility: hidden;
+	}
+}
+
 .fullpage {
 	width: 100%;
 	border-left: 0;

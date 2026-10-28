@@ -1,8 +1,7 @@
-import type { InstanceAiEnsureThreadResponse } from '@n8n/api-types';
-import { randomUUID } from 'crypto';
 import type { APIResponse } from '@playwright/test';
 
 import type { ApiHelpers } from './api-helper';
+import { TestError } from '../Types';
 
 /** A binary file attached to a chat message, as the chat endpoint expects it. */
 export interface InstanceAiFileAttachmentPayload {
@@ -19,29 +18,37 @@ export interface InstanceAiFileAttachmentPayload {
 export class InstanceAiApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
 
-	async createAgentThread(projectId: string, agentId: string, name: string): Promise<string> {
-		const threadId = randomUUID();
-		const response = await this.api.request.post('/rest/instance-ai/threads', {
-			data: { threadId, projectId, source: 'assistant_page' },
+	async createAgentArtifactThread(target: {
+		threadId: string;
+		projectId: string;
+		agentId: string;
+		name: string;
+	}): Promise<void> {
+		const path = `/rest/instance-ai/threads/${target.threadId}`;
+		const created = await this.api.request.post('/rest/instance-ai/threads', {
+			data: { threadId: target.threadId, projectId: target.projectId, source: 'playwright' },
 		});
-		if (!response.ok()) throw new Error(`Failed to create thread: ${await response.text()}`);
-		const body: { data: InstanceAiEnsureThreadResponse } = await response.json();
-		const metadataResponse = await this.api.request.patch(`/rest/instance-ai/threads/${threadId}`, {
-			data: { metadata: { instanceAiAgentBuilderTarget: { projectId, agentId, name } } },
+		if (!created.ok())
+			throw new TestError(`Failed to create Assistant thread: ${created.status()}`);
+		const updated = await this.api.request.patch(path, {
+			data: { metadata: { instanceAiAgentBuilderTarget: target } },
 		});
-		if (!metadataResponse.ok())
-			throw new Error(`Failed to set agent target: ${await metadataResponse.text()}`);
-		const tabsResponse = await this.api.request.put(`/rest/instance-ai/threads/${threadId}/tabs`, {
+		if (!updated.ok()) throw new TestError(`Failed to bind agent artifact: ${updated.status()}`);
+		const tab = {
+			type: 'agent',
+			id: target.agentId,
+			projectId: target.projectId,
+			name: target.name,
+		};
+		const tabs = await this.api.request.put(`${path}/tabs`, {
 			data: {
-				tabs: [{ type: 'agent', id: agentId, projectId, name }],
+				tabs: [tab],
 				closedTabs: [],
-				activeTab: { type: 'agent', id: agentId },
+				activeTab: { type: 'agent', id: target.agentId },
 				previewOpen: true,
 			},
 		});
-		if (!tabsResponse.ok())
-			throw new Error(`Failed to open agent tab: ${await tabsResponse.text()}`);
-		return body.data.thread.id;
+		if (!tabs.ok()) throw new TestError(`Failed to open agent artifact: ${tabs.status()}`);
 	}
 
 	/**

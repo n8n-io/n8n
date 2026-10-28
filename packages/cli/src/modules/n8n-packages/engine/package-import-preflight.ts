@@ -5,6 +5,7 @@ import { N8nPackageParser } from './n8n-package-parser';
 import { placeCredentialData } from './package-layout';
 import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
 import type { PackageReader } from '../io/package-reader';
+import type { BlockingIssue, ImportPlanMode } from '../n8n-packages.types';
 
 @Service()
 export class PackageImportPreflight {
@@ -17,6 +18,30 @@ export class PackageImportPreflight {
 		plans: ImportPlan[],
 		reader: PackageReader,
 		apiKeyScopes: string[] | undefined,
+	): Promise<ImportPlan[]> {
+		const prepared = await this.withCredentialData(plans, reader);
+		await this.importOrchestrator.assertNotBlocked(prepared, { apiKeyScopes });
+		return prepared;
+	}
+
+	/**
+	 * Like {@link prepare}, but returns the issues that block the import instead of throwing them.
+	 * It does not run the credential update dry run.
+	 */
+	async check(
+		plans: ImportPlan[],
+		reader: PackageReader,
+		apiKeyScopes: string[] | undefined,
+		mode: ImportPlanMode,
+	): Promise<{ plans: ImportPlan[]; issues: BlockingIssue[] }> {
+		const prepared = await this.withCredentialData(plans, reader);
+		const issues = await this.importOrchestrator.blockingIssues(prepared, { apiKeyScopes, mode });
+		return { plans: prepared, issues };
+	}
+
+	private async withCredentialData(
+		plans: ImportPlan[],
+		reader: PackageReader,
 	): Promise<ImportPlan[]> {
 		const missingCredentialIds = new Set(
 			plans.flatMap(({ input, credentialPlan }) =>
@@ -50,7 +75,6 @@ export class PackageImportPreflight {
 				};
 			});
 		}
-		await this.importOrchestrator.assertNotBlocked(plans, { apiKeyScopes });
 		return plans;
 	}
 }

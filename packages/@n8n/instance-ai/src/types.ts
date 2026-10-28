@@ -60,7 +60,6 @@ import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
-import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -905,7 +904,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
+ * the live record: `get_workflow` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -1672,7 +1671,7 @@ export interface InstanceAiContext {
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
-	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
+	 * is built. When true, `list_workflows` advertises folder fields
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
@@ -2221,8 +2220,6 @@ export interface OrchestrationContext {
 	currentUserMessage?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
-	/** Thread-scoped iteration log for accumulating attempt history across retries */
-	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
 	sendCorrectionToTask?: (
 		taskId: string,

@@ -17,6 +17,12 @@ import {
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
+// Experiment cleanup (133_agent_builder_experiment_cohort)
+import {
+	getAgentBuilderExperimentEnrollment,
+	isAgentBuilderExperiment,
+} from '@/experiments/agentBuilder/enrollment';
+// EOF Experiment cleanup
 // Experiment cleanup (119_surface_assistant_on_workflow_error)
 import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
 // EOF Experiment cleanup
@@ -185,6 +191,14 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		// Experiment cleanup (133_agent_builder_experiment_cohort)
+		if (
+			isAgentBuilderExperiment(name) &&
+			getAgentBuilderExperimentEnrollment((key) => overrides.value[key]?.value ?? featFlags[key])
+				?.name !== name
+		)
+			return;
+		// EOF Experiment cleanup
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		if (
 			CLOUD_ONLY &&

@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { randomUUID } from 'crypto';
 
 import { test, expect } from '../../../fixtures/base';
 
@@ -42,7 +43,13 @@ test.describe(
 				credential: credential.id,
 				instructions: 'Reply briefly.',
 			});
-			const threadId = await api.instanceAi.createAgentThread(project.id, agentId, name);
+			const threadId = randomUUID();
+			await api.instanceAi.createAgentArtifactThread({
+				threadId,
+				projectId: project.id,
+				agentId,
+				name,
+			});
 			await n8n.start.fromHome();
 			await n8n.instanceAi.gotoThread(threadId);
 			await n8n.instanceAi.getAgentTestButton().click();

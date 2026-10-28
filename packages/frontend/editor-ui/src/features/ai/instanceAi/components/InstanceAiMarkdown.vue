@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import {
 	buildAgentPreviewHref,
@@ -24,6 +25,7 @@ const props = defineProps<{
 }>();
 
 const thread = useThread();
+const i18n = useI18n();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
 
@@ -318,6 +320,13 @@ function enhanceResourceLinks(): void {
 		if (link.dataset.resourceChip || link.dataset.agentPreviewId) continue;
 
 		const href = link.getAttribute('href') ?? '';
+		if (
+			embedSubject?.value.type === 'agent' &&
+			resolveContextualAgentPreviewLink(href) &&
+			link.textContent === 'Preview'
+		) {
+			link.textContent = i18n.baseText('agents.builder.chatMode.test');
+		}
 
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table|agent)\/(.+)$/.exec(
@@ -391,6 +400,7 @@ function enhanceResourceLinks(): void {
  *
  * Click behavior:
  * - An agent Preview link opens the embedded agent chat.
+ * - Cmd/Ctrl+click preserves link navigation in the embedded builder.
  * - Cmd/Ctrl+click on other links opens a new tab.
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
@@ -403,6 +413,8 @@ function handleLinkClick(event: MouseEvent): void {
 
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
+
+	if (embedSubject?.value.type === 'agent' && (event.metaKey || event.ctrlKey)) return;
 
 	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
 	if (previewTarget && openAgentChatPreview) {

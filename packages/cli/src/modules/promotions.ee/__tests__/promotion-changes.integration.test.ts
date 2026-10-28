@@ -141,7 +141,7 @@ async function addEnvironment(providerId: string, direction: PromotionDirection)
 				}
 			: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
 	});
-	await Container.get(PromotionsService).clone(environment.id);
+	await Container.get(PromotionsService).clone(environment.id, { id: 'clone-actor' } as User);
 	return environment;
 }
 
@@ -172,7 +172,7 @@ it("previews against the project's environment, not the instance one", async () 
 		projectPromote.id,
 		'promote',
 	);
-	await Container.get(PromotionsService).clone(projectPromote.id);
+	await Container.get(PromotionsService).clone(projectPromote.id, owner);
 	const agent = server.authAgentFor(owner);
 
 	const linkedPreview = await agent.get(`/promotions/${linked.id}/changes/promote`).expect(200);

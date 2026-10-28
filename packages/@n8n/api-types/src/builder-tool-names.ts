@@ -8,7 +8,19 @@
 
 /** Tools that the Instance AI orchestrator uses to build workflows. */
 export const WORKFLOW_BUILDER_TOOL_NAMES = {
-	WORKFLOWS: 'workflow_builder_workflows',
+	LIST_WORKFLOWS: 'list_workflows',
+	GET_WORKFLOW_NODE_USAGE: 'get_workflow_node_usage',
+	GET_WORKFLOW: 'get_workflow',
+	GET_WORKFLOW_AS_CODE: 'get_workflow_as_code',
+	ARCHIVE_WORKFLOW: 'archive_workflow',
+	UNARCHIVE_WORKFLOW: 'unarchive_workflow',
+	SETUP_WORKFLOW: 'setup_workflow',
+	VALIDATE_WORKFLOW: 'validate_workflow',
+	PUBLISH_WORKFLOW: 'publish_workflow',
+	UNPUBLISH_WORKFLOW: 'unpublish_workflow',
+	LIST_WORKFLOW_VERSIONS: 'list_workflow_versions',
+	RESTORE_WORKFLOW_VERSION: 'restore_workflow_version',
+	UPDATE_WORKFLOW_VERSION: 'update_workflow_version',
 	NODES: 'workflow_builder_nodes',
 	EXECUTIONS: 'workflow_builder_executions',
 	ASK_USER: 'workflow_builder_ask_user',
@@ -86,7 +98,6 @@ export const REMOVED_BUILDER_TOOL_NAMES = {
 
 /** Former tool names mapped to their current names. Never remove an entry. */
 export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
-	workflows: WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
 	nodes: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
 	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
@@ -127,8 +138,11 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 interface SplitBuilderTool {
 	/** The current tool for each action of the former tool. */
 	actions: Readonly<Record<string, string>>;
-	/** The current tool that resumes persisted suspended calls of the former tool. */
-	resumedBy: string;
+	/**
+	 * The current tool that resumes every persisted suspended call of the former
+	 * tool. Omit it to resume each call in the tool that owns its action.
+	 */
+	resumedBy?: string;
 }
 
 const SPLIT_CREDENTIALS_TOOL: SplitBuilderTool = {
@@ -143,13 +157,46 @@ const SPLIT_CREDENTIALS_TOOL: SplitBuilderTool = {
 	resumedBy: SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
 };
 
+/** The tool that owns each action of the former multi-action workflows tool. */
+export const WORKFLOW_TOOL_NAME_BY_ACTION = {
+	list: WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS,
+	'node-usage': WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_NODE_USAGE,
+	get: WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW,
+	'get-as-code': WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE,
+	delete: WORKFLOW_BUILDER_TOOL_NAMES.ARCHIVE_WORKFLOW,
+	unarchive: WORKFLOW_BUILDER_TOOL_NAMES.UNARCHIVE_WORKFLOW,
+	setup: WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+	validate: WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
+	publish: WORKFLOW_BUILDER_TOOL_NAMES.PUBLISH_WORKFLOW,
+	unpublish: WORKFLOW_BUILDER_TOOL_NAMES.UNPUBLISH_WORKFLOW,
+	'list-versions': WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
+	'restore-version': WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	'update-version': WORKFLOW_BUILDER_TOOL_NAMES.UPDATE_WORKFLOW_VERSION,
+} as const;
+
+export const WORKFLOW_TOOL_NAMES: readonly string[] = Object.values(WORKFLOW_TOOL_NAME_BY_ACTION);
+
+const SPLIT_WORKFLOWS_TOOL: SplitBuilderTool = { actions: WORKFLOW_TOOL_NAME_BY_ACTION };
+
 /** Former multi-action tools that became one tool for each action. Never remove an entry. */
 export const SPLIT_BUILDER_TOOLS: Readonly<Record<string, SplitBuilderTool>> = {
 	credentials: SPLIT_CREDENTIALS_TOOL,
 	workflow_builder_credentials: SPLIT_CREDENTIALS_TOOL,
+	workflows: SPLIT_WORKFLOWS_TOOL,
+	workflow_builder_workflows: SPLIT_WORKFLOWS_TOOL,
 };
 
 const hasOwn = (record: object, key: string) => Object.prototype.hasOwnProperty.call(record, key);
+
+/**
+ * Whether a stored tool name is the former multi-action workflows tool. Its
+ * stored calls can carry an action that no tool owns now, such as `update`.
+ */
+export function isFormerWorkflowsTool(toolName: string): boolean {
+	return (
+		hasOwn(SPLIT_BUILDER_TOOLS, toolName) && SPLIT_BUILDER_TOOLS[toolName] === SPLIT_WORKFLOWS_TOOL
+	);
+}
 
 /**
  * Returns the current name for a former builder tool name, or the name unchanged.
@@ -174,4 +221,20 @@ export function getLegacyBuilderToolNames(toolName: string): string[] {
 		.filter(([, { resumedBy }]) => resumedBy === toolName)
 		.map(([legacy]) => legacy);
 	return [...renamed, ...split];
+}
+
+/**
+ * Former split tools whose calls of some actions resolve to this tool, as
+ * `[former name, actions]` pairs. Pass each pair to `Tool.legacyActions`.
+ */
+export function getLegacyBuilderToolActions(toolName: string): Array<[string, string[]]> {
+	return Object.entries(SPLIT_BUILDER_TOOLS)
+		.filter(([, { resumedBy }]) => resumedBy === undefined)
+		.map(([legacyName, { actions }]): [string, string[]] => [
+			legacyName,
+			Object.entries(actions)
+				.filter(([, current]) => current === toolName)
+				.map(([action]) => action),
+		])
+		.filter(([, actions]) => actions.length > 0);
 }
