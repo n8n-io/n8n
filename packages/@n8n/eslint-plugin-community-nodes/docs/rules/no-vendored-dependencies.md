@@ -6,11 +6,11 @@
 
 ## Rule Details
 
-Community nodes must not ship runtime dependencies. This rule warns when a leading block comment in a `.ts` or `.js` source file contains a third-party licence header. It also warns about non-empty `bundledDependencies` or `bundleDependencies` in `package.json`.
+Community nodes must not ship runtime dependencies. This rule warns when a leading block comment in a `.ts` or `.js` source file contains a third-party licence header. It also warns when `bundledDependencies` or `bundleDependencies` in `package.json` is a non-empty array or is set to `true`.
 
 The rule detects copyright notices, `@license`, `Licensed under the MIT`, Apache, BSD, or ISC, and `This file is part of` headers. It compares copyright holders with the package author. The author can use the npm string or object format.
 
-A warning asks a reviewer to check whether the author copied a library. It does not prove that the code contains a runtime dependency. The rule does not flag original implementations or files in `dist/`.
+A warning asks a reviewer to check whether the author copied a library. It does not prove that the code contains a runtime dependency. For source files, the rule ignores files without a matching header and files in `dist/`.
 
 ## Examples
 
