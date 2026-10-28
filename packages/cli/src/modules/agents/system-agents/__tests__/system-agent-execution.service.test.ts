@@ -1533,6 +1533,23 @@ describe('SystemAgentExecutionService', () => {
 				NotFoundError,
 			);
 		});
+
+		it('finds no thread for an id that the user has no thread with', async () => {
+			const { service, threadRepository, provider } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(null);
+
+			await expect(service.findUsableThread(AGENT_ID, user, 'new-thread')).resolves.toBeNull();
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('still runs the floor when it finds a thread', async () => {
+			const { service } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(service.findUsableThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
 	});
 
 	describe('prepareChatMessage', () => {

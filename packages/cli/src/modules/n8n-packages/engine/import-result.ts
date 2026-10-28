@@ -151,6 +151,7 @@ function toImportedAgentSummary({
 	agent,
 	status,
 	publishing,
+	channels,
 }: AgentImportOutcome): ImportedAgentSummary {
 	return {
 		sourceAgentId,
@@ -160,6 +161,7 @@ function toImportedAgentSummary({
 		activeVersionId: agent.activeVersionId ?? null,
 		status,
 		publishing,
+		channels,
 	};
 }
 

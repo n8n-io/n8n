@@ -7,11 +7,12 @@ describe('getSystemPrompt — read-only instance', () => {
 	});
 
 	it.each([undefined, false, true])(
-		'only mentions the skills hub when skill management is enabled: %s',
+		'only mentions skill changes when skill management is enabled: %s',
 		(skillManagementEnabled) => {
 			const prompt = getSystemPrompt({ branchReadOnly: true, skillManagementEnabled });
-			if (skillManagementEnabled) expect(prompt).toContain('skills in the skills hub');
-			else expect(prompt).not.toContain('skills hub');
+			if (skillManagementEnabled)
+				expect(prompt).toContain('Creating, editing, and deleting skills');
+			else expect(prompt).not.toContain('deleting skills');
 		},
 	);
 

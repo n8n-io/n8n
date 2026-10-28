@@ -1,5 +1,7 @@
 import FormData from 'form-data';
+import { IncomingMessage } from 'http';
 import { NodeHelpers } from 'n8n-workflow';
+import { Socket } from 'net';
 import type {
 	IExecuteFunctions,
 	INodeParameters,
@@ -1658,6 +1660,352 @@ describe('HttpRequestV3', () => {
 			expect(result[0][0].json.error).toBeDefined();
 			// Item 1 → valid response, no crash
 			expect(result[0][1].json.ok).toBe(true);
+		});
+	});
+
+	describe('Node context on manual runs', () => {
+		const REQUEST_HEADER = 'X-Custom-Header: custom-value';
+
+		// A response stream references its socket, and the socket references the raw request headers.
+		const createStreamWithRequestHeaders = () => {
+			const socket = new Socket();
+			Object.assign(socket, {
+				_httpMessage: { _header: `GET /photo/1 HTTP/1.1\r\n${REQUEST_HEADER}\r\n` },
+			});
+			return new IncomingMessage(socket);
+		};
+
+		let nodeContext: Record<string, unknown>;
+
+		const paginationOptions = {
+			paginationMode: 'responseContainsNextURL',
+			nextURL: '={{ $response.body.next }}',
+			paginationCompleteWhen: 'responseIsEmpty',
+			statusCodesWhenComplete: '',
+			completeExpression: '',
+			limitPagesFetched: false,
+			maxRequests: 10,
+			requestInterval: 0,
+		};
+
+		const setup = (responseOptions: Record<string, unknown>, pagination?: unknown) => {
+			nodeContext = {};
+			(executeFunctions.getMode as Mock).mockReturnValue('manual');
+			(executeFunctions.getContext as Mock).mockReturnValue(nodeContext);
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, fallback: unknown) => {
+					switch (paramName) {
+						case 'url':
+							return baseUrl;
+						case 'method':
+							return 'GET';
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: responseOptions } };
+						case 'options.pagination.pagination':
+							return pagination ?? fallback;
+						case 'options.response.response.responseFormat':
+							return responseOptions.responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return responseOptions.fullResponse ?? fallback;
+						default:
+							return fallback;
+					}
+				},
+			);
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue({
+				data: '',
+				mimeType: 'image/png',
+			});
+		};
+
+		it.each([false, true])(
+			'should not keep the response stream in the context for file format (fullResponse: %s)',
+			async (fullResponse) => {
+				setup({ responseFormat: 'file', fullResponse });
+				(executeFunctions.helpers.request as Mock).mockResolvedValue({
+					statusCode: 200,
+					statusMessage: 'OK',
+					headers: { 'content-type': 'image/png' },
+					body: createStreamWithRequestHeaders(),
+				});
+
+				await node.execute.call(executeFunctions);
+
+				expect(nodeContext.response).toEqual({
+					statusCode: 200,
+					statusMessage: 'OK',
+					headers: { 'content-type': 'image/png' },
+					body: expect.any(String),
+				});
+				expect(JSON.stringify(nodeContext)).not.toContain(REQUEST_HEADER);
+			},
+		);
+
+		it('should not keep the response stream in the context for an autodetected binary response', async () => {
+			setup({});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: createStreamWithRequestHeaders(),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(JSON.stringify(nodeContext)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should keep the resolved body in the context for an autodetected JSON response', async () => {
+			setup({});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ next: 'page-2' })),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(nodeContext.response).toMatchObject({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { next: 'page-2' },
+			});
+		});
+
+		it('should keep only the first page in the context for paginated requests', async () => {
+			setup({ responseFormat: 'json' }, paginationOptions);
+			const pages = [
+				{ statusCode: 200, headers: { 'content-type': 'application/json' }, body: { next: 'p2' } },
+				{ statusCode: 200, headers: { 'content-type': 'application/json' }, body: { next: '' } },
+			];
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue(
+				pages,
+			);
+
+			await node.execute.call(executeFunctions);
+
+			expect(Array.isArray(nodeContext.response)).toBe(false);
+			expect(nodeContext.response).toMatchObject(pages[0]);
+		});
+
+		it('should not keep the response stream in the context for paginated file requests', async () => {
+			setup({ responseFormat: 'file' }, paginationOptions);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					statusCode: 200,
+					headers: { 'content-type': 'image/png' },
+					body: createStreamWithRequestHeaders(),
+				},
+			]);
+
+			await node.execute.call(executeFunctions);
+
+			expect(nodeContext.response).toMatchObject({ statusCode: 200, body: expect.any(String) });
+			expect(JSON.stringify(nodeContext)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should not write to the context outside of manual runs', async () => {
+			setup({ responseFormat: 'file' });
+			(executeFunctions.getMode as Mock).mockReturnValue('trigger');
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: createStreamWithRequestHeaders(),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(nodeContext).toEqual({});
+		});
+	});
+
+	describe('Raw request body', () => {
+		const REQUEST_HEADER = 'X-Custom-Header: custom-value';
+
+		// A response stream references its socket, and the socket references the raw request headers.
+		const createStream = (content: string) => {
+			const socket = new Socket();
+			Object.assign(socket, {
+				_httpMessage: { _header: `POST / HTTP/1.1\r\n${REQUEST_HEADER}\r\n` },
+			});
+			const message = new IncomingMessage(socket);
+			message.push(content);
+			message.push(null);
+			return message;
+		};
+
+		const paginationOptions = {
+			paginationMode: 'responseContainsNextURL',
+			nextURL: '={{ $response.body.next }}',
+			paginationCompleteWhen: 'responseIsEmpty',
+			statusCodesWhenComplete: '',
+			completeExpression: '',
+			limitPagesFetched: false,
+			maxRequests: 10,
+			requestInterval: 0,
+		};
+
+		beforeEach(() => {
+			Object.assign(executeFunctions.helpers, {
+				binaryToBuffer: vi.fn(async (stream: AsyncIterable<Buffer | string>) => {
+					const chunks: Buffer[] = [];
+					for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+					return Buffer.concat(chunks);
+				}),
+				detectBinaryEncoding: vi.fn(() => 'utf-8'),
+			});
+		});
+
+		const setupRawBody = (responseFormat?: string, fullResponse = false, pagination?: unknown) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, fallback: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'sendBody':
+							return true;
+						case 'contentType':
+							return 'raw';
+						case 'rawContentType':
+							return 'application/json';
+						case 'body':
+							return '{"a":1}';
+						case 'options':
+							return { ...options, response: { response: { responseFormat, fullResponse } } };
+						case 'options.pagination.pagination':
+							return pagination ?? fallback;
+						case 'options.response.response.responseFormat':
+							return responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return fullResponse;
+						default:
+							return fallback;
+					}
+				},
+			);
+		};
+
+		const mockResponse = (body: unknown, contentType = 'application/json') => {
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': contentType },
+				body,
+			});
+		};
+
+		it.each(['json', 'text', undefined, 'file'])(
+			'should request a stream for the %s response format',
+			async (responseFormat) => {
+				setupRawBody(responseFormat);
+				mockResponse(createStream('{"a":1}'));
+				(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue({
+					data: '',
+					mimeType: 'application/json',
+				});
+
+				await node.execute.call(executeFunctions);
+
+				const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0] as {
+					useStream?: boolean;
+				};
+				expect(requestOptions.useStream).toBe(true);
+			},
+		);
+
+		it('should return the parsed body for the json response format', async () => {
+			setupRawBody('json');
+			mockResponse(createStream('{"a":1}'));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
+			expect(JSON.stringify(result)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should return the parsed body for the json response format with full response', async () => {
+			setupRawBody('json', true);
+			mockResponse(createStream('{"a":1}'));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toEqual({ a: 1 });
+			expect(JSON.stringify(result)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should return an empty object for the json response format with an empty body', async () => {
+			setupRawBody('json');
+			mockResponse(createStream(''));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should throw for the json response format with a body that is not json', async () => {
+			setupRawBody('json');
+			mockResponse(createStream('not json'));
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow('not valid JSON');
+		});
+
+		it.each([false, true])(
+			'should return the body as text for the text response format (fullResponse: %s)',
+			async (fullResponse) => {
+				setupRawBody('text', fullResponse);
+				mockResponse(createStream('{"a":1}'));
+
+				const result = await node.execute.call(executeFunctions);
+
+				expect(result[0][0].json.data).toBe('{"a":1}');
+				expect(JSON.stringify(result)).not.toContain(REQUEST_HEADER);
+			},
+		);
+
+		it('should keep the body that the pagination helper resolved', async () => {
+			setupRawBody('json', false, paginationOptions);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					statusCode: 200,
+					headers: { 'content-type': 'application/json' },
+					body: { a: 1 },
+					__bodyResolved: true,
+				},
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
+			const paginatedRequestOptions = (
+				executeFunctions.helpers.requestWithAuthenticationPaginated as Mock
+			).mock.calls[0][0] as { useStream?: boolean };
+			expect(paginatedRequestOptions.useStream).toBe(true);
+			expect(executeFunctions.helpers.binaryToBuffer).not.toHaveBeenCalled();
+		});
+
+		it('should keep the response stream for the file response format', async () => {
+			setupRawBody('file');
+			const stream = createStream('data');
+			mockResponse(stream, 'image/png');
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue({
+				data: '',
+				mimeType: 'image/png',
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				stream,
+				undefined,
+				'image/png',
+			);
+			expect(executeFunctions.helpers.binaryToBuffer).not.toHaveBeenCalled();
 		});
 	});
 });

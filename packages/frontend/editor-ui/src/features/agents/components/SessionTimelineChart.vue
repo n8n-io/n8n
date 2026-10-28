@@ -412,14 +412,12 @@ onBeforeUnmount(() => {
 <style module lang="scss">
 .carousel {
 	display: flex;
+	flex-shrink: 0;
 	align-items: center;
 	justify-content: flex-start;
 	gap: var(--spacing--4xs);
 	width: 100%;
 	min-width: 0;
-	overflow-x: auto;
-	scroll-snap-type: x mandatory;
-	height: var(--height--lg);
 	padding-block: var(--spacing--xs);
 	max-width: var(--n8n-session-panel--container-width, none);
 	margin: 0 auto;

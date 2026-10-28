@@ -6,6 +6,7 @@ import type {
 	AgentChatListItem,
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
+	SystemAgentThreadSummary,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
@@ -854,7 +855,7 @@ export const listAttachableSkills = async (
 	return data.sort(byTargetThenName);
 };
 
-export const getHubSkill = async (
+export const getSkillDetail = async (
 	context: IRestApiContext,
 	skillId: string,
 ): Promise<SkillDetail> => {
@@ -1012,6 +1013,18 @@ export const getChatMessages = async (
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
 	);
 };
+
+/** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */
+export const getSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+): Promise<SystemAgentThreadSummary> =>
+	await makeRestApiRequest<SystemAgentThreadSummary>(
+		context,
+		'GET',
+		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
+	);
 
 /** Builds the download/thumbnail URL for a chat attachment on either channel. */
 export const getChatAttachmentUrl = (

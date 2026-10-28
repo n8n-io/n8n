@@ -129,9 +129,29 @@ The API rejects the old workflow-specific and Agent-specific policy fields.
 
 Human and JSON results include `agents`, `bindings.agents`, and `counts.agents`.
 Each Agent summary reports its source and destination IDs, name, project,
-active version, import status, and separate `publishing` outcome.
+active version, import status, separate `publishing` outcome, and `channels`.
 Publication failures retain successfully imported definitions. The command
 returns success for these results and reports the publication failure separately.
+
+The import never connects a channel with a credential from the package. The
+external app of a channel, such as a Slack app, must send events to the
+destination Agent. Each entry in `channels` has one of these statuses:
+
+- `reused`: the destination Agent already had this channel. The import keeps
+  its connection and applies the package settings.
+- `setup-required`: the import saved the package settings without a
+  connection. Open `setupUrl` and set up the channel. `reason` is
+  `new-channel` or `destination-draft`.
+
+The import does not import or stub a credential that only a channel uses.
+When the publishing policy requests publication, a channel that needs setup
+blocks it with the reason `channel-setup-required`. The definition import stays
+saved. If no version of the Agent is active, `publishing.state` is `blocked`
+with `blockedReason`. If an earlier published version stays active,
+`publishing.state` is `unchanged` with `skippedPublishReason`.
+
+For created and updated Agents, the import removes destination channels that
+the package does not contain. Skipped Agents stay unchanged.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:

@@ -8,7 +8,14 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	IsNull,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -62,6 +69,18 @@ function ownedSessionWhere(agentId: string, ownerId: string, threadId: string) {
 	};
 }
 
+function accessibleSessionWhere(
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	userId: string,
+): Array<FindOptionsWhere<AgentExecutionThread>> {
+	return [
+		{ id: threadId, projectId, agentId, accessScope: 'project' },
+		{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+	];
+}
+
 interface AgentSessionDeletionRefs {
 	attachmentBinaryDataIds: string[];
 	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
@@ -80,6 +99,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});
+	}
+
+	async findAccessibleById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy(accessibleSessionWhere(projectId, agentId, threadId, userId));
 	}
 
 	/**
@@ -584,6 +612,28 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/**
+	 * The thread and the threads that delegated to it, from `threadId` up to
+	 * the root. A thread without a row (an inline agent, or a thread that is
+	 * not created yet) ends the chain with `agentId: null`.
+	 */
+	async findDelegationChain(
+		threadId: string,
+	): Promise<Array<{ id: string; agentId: string | null }>> {
+		const chain: Array<{ id: string; agentId: string | null }> = [];
+		const seen = new Set<string>();
+		let id: string | null = threadId;
+		// ponytail: one query per level; use a recursive CTE if delegation trees get deep.
+		while (id !== null && !seen.has(id)) {
+			seen.add(id);
+			const thread: Pick<AgentExecutionThread, 'agentId' | 'parentThreadId'> | null =
+				await this.findOne({ select: ['agentId', 'parentThreadId'], where: { id } });
+			chain.push({ id, agentId: thread?.agentId ?? null });
+			id = thread?.parentThreadId ?? null;
+		}
+		return chain;
+	}
+
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
 	async bumpUpdatedAt(threadId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });
@@ -629,10 +679,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
-			where: [
-				{ id: threadId, projectId, agentId, accessScope: 'project' },
-				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
-			],
+			where: accessibleSessionWhere(projectId, agentId, threadId, userId),
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});

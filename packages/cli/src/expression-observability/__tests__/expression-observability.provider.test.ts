@@ -94,6 +94,24 @@ describe('ExpressionObservabilityProvider', () => {
 			expect(output).toContain('n8n_expression_pool_acquired_total 2');
 		});
 
+		it('registers the native evaluation counter with result and reason labels', async () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+				otelService,
+			);
+			provider.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
+				result: 'fallback',
+				reason: 'too_large',
+			});
+
+			const output = await promClient.register.metrics();
+			expect(output).toContain(
+				'n8n_expression_native_evaluations_total{result="fallback",reason="too_large"} 1',
+			);
+		});
+
 		it('registers a prom gauge with the cleaned name', async () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig(),

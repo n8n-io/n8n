@@ -641,7 +641,7 @@ export interface IHttpRequestOptions {
 	abortSignal?: GenericAbortSignal;
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -700,7 +700,7 @@ export interface IRequestOptions {
 
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**

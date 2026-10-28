@@ -145,11 +145,13 @@ export function buildChatModelFailureGuidance(
 	}
 }
 
-async function loadCatalogWithTimeout(): Promise<ProviderCatalog | undefined> {
+async function loadCatalogWithTimeout(
+	fetch: InstanceAiContext['modelFetch'],
+): Promise<ProviderCatalog | undefined> {
 	let timer: NodeJS.Timeout | undefined;
 	try {
 		return await Promise.race([
-			getCachedCatalog(),
+			getCachedCatalog({ fetch }),
 			new Promise<undefined>((resolve) => {
 				timer = setTimeout(() => resolve(undefined), CATALOG_FETCH_TIMEOUT_MS);
 			}),
@@ -309,7 +311,7 @@ export async function computeChatModelValidationIssues(
 
 	const typeVersion = node.typeVersion ?? 1;
 	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
-	const catalog = await loadCatalogWithTimeout();
+	const catalog = await loadCatalogWithTimeout(context.modelFetch);
 	const issues = computeCatalogChatModelIssues(node.type, parameters, catalog);
 
 	const entry = resolveChatModelCatalogEntry(node.type);
@@ -390,7 +392,7 @@ export interface ChatModelRecoveryContext {
  * replacement suggestions per node, and n8n-credits availability.
  */
 export async function collectChatModelRecoveryContext(
-	context: Pick<InstanceAiContext, 'credentialService'>,
+	context: Pick<InstanceAiContext, 'credentialService' | 'modelFetch'>,
 	nodes: ReadonlyArray<{ name?: string; type?: string }>,
 	connections: IConnections | Record<string, unknown> | undefined,
 ): Promise<ChatModelRecoveryContext> {
@@ -401,7 +403,7 @@ export async function collectChatModelRecoveryContext(
 		return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
 	}
 
-	const catalog = await loadCatalogWithTimeout();
+	const catalog = await loadCatalogWithTimeout(context.modelFetch);
 	const gatewaySupportByCredType = new Map<string, boolean>();
 	for (const node of nodes) {
 		if (!node.name || !isChatModelNode(node.type)) continue;

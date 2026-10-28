@@ -54,6 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
+import { restoreRecordedRuns } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -1020,6 +1021,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				throw new Error(
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
+			}
+			// Recorded runs replay exact history, so a failed restore is a harness fault:
+			// flag it like a seeding failure instead of grading the agent without its premise.
+			if (config.seed?.mode === 'inline' && config.seed.recordedRuns?.length) {
+				try {
+					await restoreRecordedRuns({
+						client,
+						threadId,
+						recordedRuns: config.seed.recordedRuns,
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw new Error(
+						`Seeding failed: recorded run restore: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
 			}
 			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
 			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
