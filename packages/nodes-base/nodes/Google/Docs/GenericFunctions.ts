@@ -64,6 +64,7 @@ export async function googleApiRequest(
 		if (hasHtmlContentType || hasHtmlMessage) {
 			if (apiError.httpCode && apiError.httpCode !== '400') {
 				apiError.description = undefined;
+				apiError.cause = undefined;
 				throw apiError;
 			}
 

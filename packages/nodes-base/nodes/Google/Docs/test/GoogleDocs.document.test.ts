@@ -157,6 +157,18 @@ describe('Google Docs document input and errors', () => {
 		});
 	});
 
+	it('should provide document guidance for an HTML error without an HTTP status', async () => {
+		const context = setup('get', documentId);
+		const html = '<!DOCTYPE html><html><body>Document error</body></html>';
+		context.helpers.requestOAuth2.mockRejectedValue(new Error(html));
+
+		await expect(node.execute.call(context)).rejects.toMatchObject({
+			httpCode: null,
+			message: 'Google Docs could not process the request',
+			description: expect.stringContaining('Save as Google Docs'),
+		});
+	});
+
 	it.each([
 		[401, 'Authorization failed - please check your credentials'],
 		[403, 'Forbidden - perhaps check your credentials?'],
@@ -172,16 +184,21 @@ describe('Google Docs document input and errors', () => {
 	])('should retain status guidance for an HTML %s error', async (statusCode, message) => {
 		const context = setup('get', documentId);
 		const html = '<!DOCTYPE html><html><body>Request failed</body></html>';
-		context.helpers.requestOAuth2.mockRejectedValue({
-			statusCode,
-			error: html,
-			response: { headers: { 'content-type': 'text/html' } },
-		});
+		context.helpers.requestOAuth2.mockRejectedValue(
+			Object.assign(new Error(`${statusCode} - ${JSON.stringify(html)}`), {
+				statusCode,
+				error: html,
+				response: { headers: { 'content-type': 'text/html' } },
+			}),
+		);
+		const execution = node.execute.call(context);
 
-		await expect(node.execute.call(context)).rejects.toMatchObject({
+		await expect(execution).rejects.toMatchObject({
 			httpCode: String(statusCode),
 			message,
 			description: undefined,
 		});
+		const error: unknown = await execution.catch((error: unknown) => error);
+		expect(JSON.stringify(error)).not.toMatch(/<!doctype|<\/?(?:html|body)\b/i);
 	});
 });
