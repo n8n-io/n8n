@@ -17,6 +17,7 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentPlanRepository } from './repositories/agent-plan.repository';
+import type { AgentTaskStop } from './types/agent-task-stop';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
 @Service()
@@ -59,10 +60,7 @@ export class AgentTaskCancellationService {
 
 					const previous = await this.threads.findTaskStop(threadId, ctx);
 					const stop =
-						previous &&
-						!previous.pause.resumedAt &&
-						previous.planId === planId &&
-						!(previous.pause.reportedAt && previous.failures.length)
+						previous && this.canReuseStop(previous, planId)
 							? previous
 							: await this.threads.saveStop(
 									{
@@ -249,5 +247,22 @@ export class AgentTaskCancellationService {
 			failures: failures.map((failure) => outstanding.get(failure.jobId)!),
 			plan: plan ? presentPlan(plan) : null,
 		};
+	}
+
+	private canReuseStop(stop: AgentTaskStop, planId: string | null): boolean {
+		if (stop.pause.resumedAt) {
+			return false;
+		}
+
+		if (stop.planId !== planId) {
+			return false;
+		}
+
+		// A retry needs a new acknowledgement after failures were reported.
+		if (stop.pause.reportedAt && stop.failures.length > 0) {
+			return false;
+		}
+
+		return true;
 	}
 }
