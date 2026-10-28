@@ -283,7 +283,8 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 const urlValue = computedAsync(async () => {
 	if (isValueEmpty.value) return null;
 	if (isListMode.value && typeof props.modelValue === 'object') {
-		return props.modelValue?.cachedResultUrl ?? null;
+		const cachedResultUrl = props.modelValue?.cachedResultUrl;
+		if (cachedResultUrl || !isDataTableNode.value) return cachedResultUrl ?? null;
 	}
 
 	if (selectedMode.value === 'url') {
@@ -300,12 +301,12 @@ const urlValue = computedAsync(async () => {
 		}
 	}
 
-	// Data table nodes have no url template, so resolve a link from the id by
-	// looking the table up — only link it when it actually exists for the user.
-	if (isDataTableNode.value && selectedMode.value === 'id') {
+	// Look up data tables when the selection has no cached URL.
+	// Only show a link for an available table.
+	if (isDataTableNode.value && (selectedMode.value === 'id' || isListMode.value)) {
 		// Use the resolved value for expressions, but only if it's a concrete id —
 		// an unresolved template (still containing `{{ }}`) can't identify a table.
-		const raw = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		const raw = props.isValueExpression ? props.expressionComputedValue : resourceValue.value;
 		const id = typeof raw === 'string' ? raw.trim() : '';
 		if (!id || id.includes('{{') || id.includes('}}')) return null;
 		const table = await dataTableStore.fetchDataTableById(id);

@@ -2,6 +2,8 @@ import type { INodeListSearchResult } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -29,13 +31,24 @@ import {
 } from './ResourceLocator.test.constants';
 
 vi.mock('vue-router', async () => {
-	const actual = await vi.importActual('vue-router');
+	const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
 	const params = {};
 	const location = {};
+	const router = actual.createRouter({
+		history: actual.createMemoryHistory('/n8n/'),
+		routes: [
+			{
+				path: '/projects/:projectId/datatables/:id',
+				name: 'data-table-details',
+				component: {},
+			},
+		],
+	});
 	return {
 		...actual,
 		useRouter: () => ({
 			push: vi.fn(),
+			resolve: router.resolve,
 		}),
 		useRoute: () => ({
 			params,
@@ -636,6 +649,91 @@ describe('ResourceLocator', () => {
 		await userEvent.click(link);
 
 		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	describe('data table links', () => {
+		const table = {
+			id: 'table-123',
+			name: 'people',
+			projectId: 'table-project',
+			columns: [],
+			sizeBytes: 0,
+			createdAt: '2026-01-01',
+			updatedAt: '2026-01-01',
+		};
+		let dataTableStore: ReturnType<typeof mockedStore<typeof useDataTableStore>>;
+
+		beforeEach(() => {
+			vi.spyOn(window, 'open').mockImplementation(() => null);
+			dataTableStore = mockedStore(useDataTableStore);
+			dataTableStore.fetchDataTableById.mockResolvedValue(table);
+		});
+
+		it.each(DATA_TABLE_NODES)(
+			'opens the selected table for %s without a cached URL',
+			async (type) => {
+				const { getByTestId } = renderComponent({
+					props: {
+						node: { ...TEST_NODE_SINGLE_MODE, type },
+						modelValue: {
+							__rl: true,
+							mode: 'list',
+							value: table.id,
+							cachedResultName: table.name,
+						},
+					},
+				});
+
+				await userEvent.click(await waitFor(() => getByTestId('rlc-open-resource-link')));
+
+				expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(table.id);
+				expect(window.open).toHaveBeenCalledWith(
+					'/n8n/projects/table-project/datatables/table-123',
+					'_blank',
+					'noopener,noreferrer',
+				);
+			},
+		);
+
+		it('resolves a table link when the cached URL is empty', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					node: { ...TEST_NODE_SINGLE_MODE, type: DATA_TABLE_NODES[0] },
+					modelValue: { __rl: true, mode: 'list', value: table.id, cachedResultUrl: '' },
+				},
+			});
+
+			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+		});
+
+		it('does not show a link when the selected table is unavailable', async () => {
+			dataTableStore.fetchDataTableById.mockResolvedValue(null);
+			const { queryByTestId } = renderComponent({
+				props: {
+					node: { ...TEST_NODE_SINGLE_MODE, type: DATA_TABLE_NODES[0] },
+					modelValue: { __rl: true, mode: 'list', value: table.id },
+				},
+			});
+			await flushPromises();
+
+			expect(dataTableStore.fetchDataTableById).toHaveBeenCalledWith(table.id);
+			expect(queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+		});
+
+		it('uses a cached table URL without a lookup', async () => {
+			const { getByTestId } = renderComponent({
+				props: { node: { ...TEST_NODE_SINGLE_MODE, type: DATA_TABLE_NODES[0] } },
+			});
+
+			await userEvent.click(await waitFor(() => getByTestId('rlc-open-resource-link')));
+
+			expect(window.open).toHaveBeenCalledWith(
+				TEST_MODEL_VALUE.cachedResultUrl,
+				'_blank',
+				'noopener,noreferrer',
+			);
+			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
+		});
 	});
 
 	it('clears cached resources after URL redirect so fresh data is fetched on re-open', async () => {
