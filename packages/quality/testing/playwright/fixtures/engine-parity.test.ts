@@ -28,10 +28,23 @@ describe('workflowSettingsFor', () => {
 });
 
 describe('engineParityDisposition', () => {
-	test('runs every test as-is on the legacy engine, whatever its tag', () => {
-		for (const tag of Object.values(ENGINE_TAGS)) {
+	test('runs every parity test as-is on the legacy engine', () => {
+		for (const tag of [ENGINE_TAGS.supported, ENGINE_TAGS.unsupported, ENGINE_TAGS.pending]) {
 			expect(engineParityDisposition([tag], undefined)).toEqual({ action: 'run' });
 		}
+	});
+
+	test('skips a test about engine v2 behaviour on the legacy engine', () => {
+		expect(engineParityDisposition([ENGINE_TAGS.divergent], undefined)).toMatchObject({
+			action: 'skip',
+			reason: expect.stringContaining('legacy'),
+		});
+	});
+
+	test('runs a test about engine v2 behaviour on engine v2', () => {
+		expect(engineParityDisposition([ENGINE_TAGS.divergent], 'container')).toEqual({
+			action: 'run',
+		});
 	});
 
 	test('runs an untagged test on engine v2', () => {
