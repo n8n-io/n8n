@@ -10,6 +10,7 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
@@ -150,6 +151,7 @@ function validateQueryParameterValue(
 }
 
 function getQueryParameterValues(
+	this: IExecuteFunctions,
 	node: INode,
 	queryParameters: OperationOptions['queryParameters'],
 ): QueryParameterValue[] {
@@ -164,7 +166,12 @@ function getQueryParameterValues(
 		});
 	}
 
-	return queryParameters.split(',').map((entry) => parseQueryParameterValue(entry.trim()));
+	const values = resolveQueryReplacementSegments.call(this, 0, queryParameters, 'queryParameters');
+
+	return values.map((value, index) => {
+		const parsed = typeof value === 'string' ? parseQueryParameterValue(value) : value;
+		return validateQueryParameterValue(node, parsed, index);
+	});
 }
 
 async function executeSelectWithMappedPairedItems(
@@ -222,7 +229,7 @@ export async function execute(
 	}
 
 	// the value is resolved once, not on each execution, because merge mode runs once for all items
-	const parameters = getQueryParameterValues(node, options.queryParameters);
+	const parameters = getQueryParameterValues.call(this, node, options.queryParameters);
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =

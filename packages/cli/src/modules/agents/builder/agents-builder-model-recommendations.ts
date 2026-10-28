@@ -96,13 +96,15 @@ pending.
 ${rows.join('\n')}`;
 }
 
-async function fetchProviderCatalogWithTimeout(): Promise<ProviderCatalog | null> {
+async function fetchProviderCatalogWithTimeout(
+	fetch: typeof globalThis.fetch,
+): Promise<ProviderCatalog | null> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const timeoutPromise = new Promise<null>((resolve) => {
 		timeout = setTimeout(() => resolve(null), MODEL_RECOMMENDATION_FETCH_TIMEOUT_MS);
 	});
 
-	const catalogPromise = fetchProviderCatalog();
+	const catalogPromise = fetchProviderCatalog({ fetch });
 	void catalogPromise.catch(() => undefined);
 
 	const result = await Promise.race([catalogPromise, timeoutPromise]);
@@ -111,11 +113,13 @@ async function fetchProviderCatalogWithTimeout(): Promise<ProviderCatalog | null
 	return result;
 }
 
-export async function getModelRecommendationsSection(): Promise<string | null> {
+export async function getModelRecommendationsSection(
+	fetch: typeof globalThis.fetch,
+): Promise<string | null> {
 	if (modelRecommendationsSection !== undefined) return modelRecommendationsSection;
 	if (!modelRecommendationsPromise && Date.now() < modelRecommendationsRetryAt) return null;
 
-	modelRecommendationsPromise ??= fetchProviderCatalogWithTimeout()
+	modelRecommendationsPromise ??= fetchProviderCatalogWithTimeout(fetch)
 		.then((catalog) => (catalog ? buildModelRecommendationsSection(catalog) : null))
 		.catch(() => null)
 		.finally(() => {

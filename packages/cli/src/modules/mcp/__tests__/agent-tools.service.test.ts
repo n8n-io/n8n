@@ -1904,6 +1904,7 @@ describe('McpAgentToolsService', () => {
 
 	describe('discover_agent_assets', () => {
 		it('returns a provider summary for kind=models without a provider', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
 			const result = await callTool('discover_agent_assets', {
 				projectId: 'project-1',
 				kind: 'models',

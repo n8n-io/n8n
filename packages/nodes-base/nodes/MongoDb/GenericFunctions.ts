@@ -13,7 +13,7 @@ import type {
 import { createSecureContext } from 'tls';
 
 import { routeBinaryProperties } from '@utils/binary';
-import { isScalarValue } from '@utils/query-parameters';
+import { isScalarMatchValue } from '@utils/query-parameters';
 
 import type {
 	IMongoCredentials,
@@ -106,6 +106,62 @@ function describeUpdateKeyValueType(value: unknown): string {
 	return typeof value;
 }
 
+function invalidUpdateKeyValueError(
+	node: INode,
+	updateKey: string,
+	value: unknown,
+	itemIndex?: number,
+) {
+	return new NodeOperationError(
+		node,
+		`The value of "${updateKey}" must be a string, number, boolean, or date`,
+		{
+			itemIndex,
+			description: `Got ${describeUpdateKeyValueType(value)} instead. Objects, arrays, and null are not allowed as the match value.`,
+		},
+	);
+}
+
+export function buildUpdateFilter(
+	node: INode,
+	item: IDataObject,
+	updateKey: string,
+	itemIndex?: number,
+): IDataObject {
+	if (!updateKey) {
+		throw new NodeOperationError(node, 'The Update Key must not be empty', {
+			itemIndex,
+			description:
+				'Enter the name of the field that identifies the document. If you use an expression, check that it returns a value',
+		});
+	}
+
+	// A leading `$` makes the key a query operator (`$expr`, `$where`), not a field name
+	if (updateKey.startsWith('$')) {
+		throw new NodeOperationError(node, 'The Update Key must not start with "$"', {
+			itemIndex,
+			description: 'Enter the name of a document field, not a query operator',
+		});
+	}
+
+	const value = get(item, updateKey);
+
+	if (!isScalarMatchValue(value)) {
+		throw invalidUpdateKeyValueError(node, updateKey, value, itemIndex);
+	}
+
+	if (updateKey === '_id') {
+		if (typeof value !== 'string' || !ObjectId.isValid(value)) {
+			throw new NodeOperationError(node, 'The value of "_id" must be a valid ObjectId string', {
+				itemIndex,
+			});
+		}
+		return { _id: new ObjectId(value) };
+	}
+
+	return { [updateKey]: value };
+}
+
 export function prepareItems({
 	items,
 	fields,
@@ -148,15 +204,8 @@ export function prepareItems({
 				fieldData = new Date(fieldData as string);
 			}
 
-			if (field === updateKey && !isScalarValue(fieldData)) {
-				throw new NodeOperationError(
-					node,
-					`The value of "${updateKey}" must be a string, number, boolean, or date`,
-					{
-						itemIndex,
-						description: `Got ${describeUpdateKeyValueType(fieldData)} instead. Objects and arrays are not allowed as the match value.`,
-					},
-				);
+			if (field === updateKey && !isScalarMatchValue(fieldData)) {
+				throw invalidUpdateKeyValueError(node, updateKey, fieldData, itemIndex);
 			}
 
 			if (useDotNotation && !isUpdate) {
