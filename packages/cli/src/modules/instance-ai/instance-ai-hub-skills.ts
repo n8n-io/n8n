@@ -13,15 +13,15 @@ import {
 	skillNameKey,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { createHash } from 'node:crypto';
+
 import type {
 	AssistantSkillContent,
 	AssistantSkillContext,
 	AssistantSkillFileContent,
-	AssistantSkillProvider,
 	AssistantSkillSummary,
-} from '@n8n/backend-services';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import { createHash } from 'node:crypto';
+} from '@/modules/skills';
 
 import { createHubSkillDisplayMapper } from './instance-ai-skill-display';
 
@@ -35,11 +35,29 @@ export interface HubRunSkills {
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 }
 
+/** The skill reads of one Assistant run. Every read checks availability and the user's access. */
+export interface AssistantSkillReader {
+	isEnabled(): Promise<boolean>;
+	listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]>;
+	/** Reads the requested version, or the latest saved version when omitted. */
+	readSkill(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId?: string,
+	): Promise<AssistantSkillContent | null>;
+	readFile(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null>;
+}
+
 type LoadedHubSkill = RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'hash' | 'linkedFiles'>;
 
 export async function loadHubRunSkills(
 	builtIns: RuntimeSkillSource,
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 ): Promise<HubRunSkills> {
 	const enabled = await provider.isEnabled().catch(() => null);
@@ -51,7 +69,7 @@ export async function loadHubRunSkills(
 
 function createDeferredHubSource(
 	builtIns: RuntimeSkillSource,
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 	summaries: AssistantSkillSummary[] | null,
 ): HubRunSkills {
@@ -163,7 +181,7 @@ function createHubCatalog(builtIns: RuntimeSkillSource, summaries: AssistantSkil
 }
 
 async function readHubSkill(
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 	summary: AssistantSkillSummary,
 	entry: RuntimeSkillRegistryEntry,
@@ -192,7 +210,7 @@ async function readHubSkill(
 }
 
 async function readHubReference(
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 	summary: AssistantSkillSummary,
 	skillId: string,

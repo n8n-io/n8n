@@ -3,6 +3,7 @@ import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
 import {
 	buildParameterizedConnString,
+	buildUpdateFilter,
 	prepareItems,
 	sanitizeMongoUriInMessage,
 	serializeMongoItems,
@@ -220,15 +221,18 @@ describe('MongoDB Node: Generic Functions', () => {
 				expect(result).toEqual([{ id: '{"$regex":"^a"}', value: 'x' }]);
 			});
 
-			it('accepts number, boolean, and null updateKey values', () => {
-				const items = [
-					{ json: { id: 1, value: 'a' } },
-					{ json: { id: true, value: 'b' } },
-					{ json: { id: null, value: 'c' } },
-				];
+			it('accepts number and boolean updateKey values', () => {
+				const items = [{ json: { id: 1, value: 'a' } }, { json: { id: true, value: 'b' } }];
 				const args = { items, fields: ['value'], updateKey: 'id', node: mockNode };
 
 				expect(() => prepareItems(args)).not.toThrow();
+			});
+
+			it('throws when the updateKey value is null', () => {
+				const items = [{ json: { id: null, value: 'c' } }];
+				const args = { items, fields: ['value'], updateKey: 'id', node: mockNode };
+
+				expect(() => prepareItems(args)).toThrow(/must be a string, number, boolean, or date/);
 			});
 
 			it('accepts Date updateKey values', () => {
@@ -258,6 +262,89 @@ describe('MongoDB Node: Generic Functions', () => {
 				node: mockNode,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('buildUpdateFilter', () => {
+		it('filters on the update key value', () => {
+			expect(buildUpdateFilter(mockNode, { id: 'a-1', value: 'x' }, 'id')).toEqual({ id: 'a-1' });
+		});
+
+		it.each([
+			['a number', 5],
+			['a boolean', false],
+			['a date', new Date('2024-01-01')],
+		])('accepts %s as the match value', (_label, value) => {
+			expect(buildUpdateFilter(mockNode, { id: value }, 'id')).toEqual({ id: value });
+		});
+
+		it.each([
+			['null', null],
+			['undefined', undefined],
+			['an object', { $ne: 'x' }],
+			['an array', ['a']],
+		])('throws when the match value is %s', (_label, value) => {
+			expect(() => buildUpdateFilter(mockNode, { id: value }, 'id')).toThrow(
+				/must be a string, number, boolean, or date/,
+			);
+		});
+
+		it('throws when the update key is empty', () => {
+			expect(() => buildUpdateFilter(mockNode, { id: 'a-1' }, '')).toThrow(
+				'The Update Key must not be empty',
+			);
+		});
+
+		it.each(['$expr', '$comment', '$where', '$or'])(
+			'throws when the update key is the operator %s',
+			(updateKey) => {
+				expect(() => buildUpdateFilter(mockNode, { [updateKey]: true }, updateKey)).toThrow(
+					'The Update Key must not start with "$"',
+				);
+			},
+		);
+
+		it('allows a $ that is not at the start of the update key', () => {
+			expect(buildUpdateFilter(mockNode, { price$: 5 }, 'price$')).toEqual({ price$: 5 });
+		});
+
+		it('reads the value from the nested item that useDotNotation builds', () => {
+			expect(buildUpdateFilter(mockNode, { user: { id: 'u-1' } }, 'user.id')).toEqual({
+				'user.id': 'u-1',
+			});
+		});
+
+		it('reads the value from a flat dotted key', () => {
+			expect(buildUpdateFilter(mockNode, { 'user.id': 'u-1' }, 'user.id')).toEqual({
+				'user.id': 'u-1',
+			});
+		});
+
+		it('throws when a dotted update key resolves to nothing', () => {
+			expect(() => buildUpdateFilter(mockNode, { value: 'x' }, 'user.id')).toThrow(
+				/must be a string, number, boolean, or date/,
+			);
+		});
+
+		it('converts an _id string to an ObjectId', () => {
+			const id = '662a2b1a2f8b9c0d1e2f3a4b';
+
+			expect(buildUpdateFilter(mockNode, { _id: id }, '_id')).toEqual({ _id: new ObjectId(id) });
+		});
+
+		it.each([
+			['a number', 123],
+			['an invalid string', 'not-an-object-id'],
+		])('throws when the _id value is %s', (_label, value) => {
+			expect(() => buildUpdateFilter(mockNode, { _id: value }, '_id')).toThrow(
+				'The value of "_id" must be a valid ObjectId string',
+			);
+		});
+
+		it('throws when the update key names a prototype property', () => {
+			expect(() => buildUpdateFilter(mockNode, { value: 'x' }, '__proto__')).toThrow(
+				/must be a string, number, boolean, or date/,
+			);
 		});
 	});
 
