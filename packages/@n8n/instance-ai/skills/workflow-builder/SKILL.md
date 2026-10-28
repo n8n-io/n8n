@@ -21,7 +21,9 @@ recommended_tools:
   - edit_file
   - execute_command
   - workflow_builder_build_workflow
-  - workflow_builder_workflows
+  - list_workflows
+  - get_workflow_as_code
+  - setup_workflow
   - search_nodes
   - get_node_types
   - get_node_parameter_options
@@ -48,8 +50,7 @@ saved workflow changes.
 
 For a new workflow, write the complete TypeScript SDK source with
 `workspace_write_file` first, then call `workflow_builder_build_workflow({ filePath })`. For
-existing saved workflow edits, call `workflow_builder_workflows(action="get-as-code",
-workflowId)`: it writes the current source to a bound workspace file
+existing saved workflow edits, call `get_workflow_as_code(workflowId)`: it writes the current source to a bound workspace file
 (`src/workflows/<name>.workflow.ts`) and returns the `filePath` plus a `nodes`
 index with line numbers. Locate the target node from the index, read only the
 lines you need, apply the edit with `workspace_str_replace_file`, then call
@@ -88,7 +89,7 @@ editing anything — never guess at the cause or change the node on a hunch.
 
 When called with failure details for an existing workflow, start from the
 workspace source file if one is available in the conversation or tool output. If
-you only have a saved n8n workflow ID, use `workflow_builder_workflows(action="get-as-code")`:
+you only have a saved n8n workflow ID, use `get_workflow_as_code`:
 it writes the source to a bound `src/workflows/<name>.workflow.ts` file and
 returns its `filePath` with a node index. Make the smallest requested edit in
 that file with `workspace_str_replace_file`, then call `workflow_builder_build_workflow` with the
@@ -143,7 +144,7 @@ numbers, custom URLs, notification targets, chat IDs) and resource IDs where
 named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
 bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
 setup values before the first successful build — placeholders cover them, and
-`workflow_builder_workflows(action="setup")` opens an inline setup card in the n8n
+`setup_workflow` opens an inline setup card in the n8n
 Assistant panel afterwards for the user to fill in.
 Do not replace concrete user-provided or discoverable values with
 placeholders: if the prompt gives a real URL, channel name, table name, label,
@@ -236,7 +237,7 @@ workflow, load the `error-workflows` reference and follow its build → publish
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
    existing workflow with no source file in context, call
-   `workflow_builder_workflows(action="get-as-code", workflowId)` and use the `filePath` it
+   `get_workflow_as_code(workflowId)` and use the `filePath` it
    returns — the file is written and bound for you. Edit it in place; do not
    rewrite it.
 6. Produce complete TypeScript SDK code and write it with
@@ -298,12 +299,12 @@ workflow, load the `error-workflows` reference and follow its build → publish
    verification step.
 10. Modify existing workflows by editing the workspace `.workflow.ts` source
     file with scoped replacements. A file created by
-    `workflow_builder_workflows(action="get-as-code")` is already bound to the saved workflow;
+    `get_workflow_as_code` is already bound to the saved workflow;
     pass the real n8n `workflowId` on the first `workflow_builder_build_workflow` call only when
     you wrote the file yourself. Never pass local SDK workflow IDs as n8n
     workflow IDs.
     If you know the workflow's folder (from a `list` result's `folder`), call
-    `workflow_builder_workflows(action="list", folderPath)` to read its sibling workflows before
+    `list_workflows(folderPath)` to read its sibling workflows before
     editing. Match the project's existing naming, node choices, and structure.
 11. After a successful direct `workflow_builder_build_workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
@@ -329,7 +330,7 @@ Use the current turn's higher-priority instructions to decide who verifies:
 Build/save success is not workflow-quality evidence. When this turn is
 responsible for verification or repair, inspect the persisted workflow before
 reporting a verdict: read the bound workspace source file you just built, or call
-`workflow_builder_workflows(action="get-as-code", workflowId)` when the workflow may have changed
+`get_workflow_as_code(workflowId)` when the workflow may have changed
 outside this conversation (it reports whether the file is still current, refreshes
 it when the saved workflow changed, and returns `conflict` when the file holds
 unbuilt edits — build or discard those first). Judge the saved graph against the user's
@@ -347,7 +348,7 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflow_builder_workflows(action="setup")` has been routed or deferred,
+- Setup is required and `setup_workflow` has been routed or deferred,
   or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
@@ -391,7 +392,7 @@ decision after testing.
   the build would still attach their sole existing credential of that type, and
   setup would preselect their most recent one. Pass the credential type in
   `preferNewCredentials` on `workflow_builder_build_workflow` **and** on
-  `workflow_builder_workflows(action="setup")` (or `preferNew: true` on the entry of
+  `setup_workflow` (or `preferNew: true` on the entry of
   `setup_credentials`). The slot then stays unresolved through the build
   and the card opens on credential creation, with existing credentials still
   listed in case the user changes their mind. Pass it only on an explicit request,
@@ -651,13 +652,13 @@ every reported finding, then call `workflow_builder_build_workflow` again.
   `{{ }}`. `$json` is only the current item from the immediate predecessor.
 - Use string values directly for discriminator fields like `resource` and
   `operation`, for example `resource: 'message'`.
-- When editing a saved workflow, leave layout alone. The source `get-as-code`
+- When editing a saved workflow, leave layout alone. The source `get_workflow_as_code`
   writes carries no `position` arrays: the saved layout is restored on save by
   node `id`, and nodes you add are placed by the layout engine. Do not add a
   `position` to any node, and never run a whole-file substitution (for example
   `sed`) over the source to change layout.
 - When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
-  `get-as-code` produced it, on the node it came with. `id` is the node's
+  `get_workflow_as_code` produced it, on the node it came with. `id` is the node's
   permanent identity in n8n — execution logs, poll cursors, deduplication state
   and the version diff are all keyed on it. Rename a node freely; the `id` stays.
   Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,

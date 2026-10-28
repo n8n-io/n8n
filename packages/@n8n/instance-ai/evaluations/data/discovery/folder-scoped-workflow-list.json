@@ -5,8 +5,7 @@
 	"expectedToolInvocations": {
 		"allOfToolCalls": [
 			{
-				"toolName": "workflow_builder_workflows",
-				"args": { "action": "list" },
+				"toolName": "list_workflows",
 				"argsContainAny": ["folderPath"]
 			}
 		],
