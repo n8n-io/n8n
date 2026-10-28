@@ -60,4 +60,16 @@ describe('objectiveTemplateGaps', () => {
 
 		expect(objectiveTemplateGaps(objective)).toContain('Context missing');
 	});
+
+	it('reports a repeated section', () => {
+		const objective = objectiveWith([...complete, ['Steps', '3. Do it again.']]);
+
+		expect(objectiveTemplateGaps(objective)).toEqual(['Steps repeated']);
+	});
+
+	it('reports a section that the template does not have', () => {
+		const objective = objectiveWith([...complete, ['Notes', 'Extra notes.']]);
+
+		expect(objectiveTemplateGaps(objective)).toEqual(['unexpected section "Notes"']);
+	});
 });

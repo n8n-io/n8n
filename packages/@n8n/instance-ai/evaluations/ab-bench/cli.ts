@@ -21,9 +21,17 @@ import { parseArgs } from 'node:util';
 
 import { renderComparisonTable, summarizeRun, type CaseArmRuns } from './comparison-table';
 import { buildContextReport, type ContextReport } from './context-report';
+import { waitForNextRunStart } from './turn-wait';
 import { N8nClient } from '../clients/n8n-client';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
-import { recordUserTurn, startSseConnection, waitForAllActivity } from '../harness/chat-loop';
+import {
+	countEvents,
+	POLL_INTERVAL_MS,
+	recordUserTurn,
+	SSE_SETTLE_DELAY_MS,
+	startSseConnection,
+	waitForAllActivity,
+} from '../harness/chat-loop';
 import { createLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 
@@ -36,6 +44,7 @@ const DEFAULT_TESTMAX_DIR = path.resolve(
 	'.agents/skills/testmax-n8n-ai/scripts',
 );
 const MULTI_TURN_TIMEOUT_MS = 30 * 60_000;
+const RUN_START_TIMEOUT_MS = 60_000;
 
 const runJsonSchema = z.object({ threadId: z.string() });
 const turnsSchema = z.array(z.string()).min(1);
@@ -127,7 +136,11 @@ async function runCompare(options: RunOptions, caseName: string, runDir: string)
 		});
 		await new Promise<void>((resolve, reject) => {
 			child.on('error', reject);
-			child.on('close', () => resolve());
+			child.on('close', (code, signal) => {
+				if (code === 0) return resolve();
+				const by = signal ? ` (${signal})` : '';
+				reject(new Error(`compare.py exited with ${String(code)}${by}`));
+			});
 		});
 	} finally {
 		closeSync(log);
@@ -137,8 +150,8 @@ async function runCompare(options: RunOptions, caseName: string, runDir: string)
 async function runSingleTurn(options: RunOptions, caseName: string, rep: number): Promise<void> {
 	const runDir = path.join(options.runsDir, options.arm, `${caseName}-r${rep}`);
 	if (existsSync(runDir)) return logger.info(`skip ${options.arm} ${caseName} r${rep} (exists)`);
-	await runCompare(options, caseName, runDir);
 	try {
+		await runCompare(options, caseName, runDir);
 		await reportRunDir(runDir);
 		logger.success(`done ${options.arm} ${caseName} r${rep}`);
 	} catch (error) {
@@ -152,13 +165,20 @@ async function sendTurns(client: N8nClient, threadId: string, turns: string[], g
 	const events: CapturedEvent[] = [];
 	const abort = new AbortController();
 	void startSseConnection(client, threadId, events, abort.signal).catch(() => {});
+	// Connect the stream before the first send, or the first run's events can be missed.
+	await delay(SSE_SETTLE_DELAY_MS);
 	const startTime = Date.now();
 	const wait = { client, threadId, events, approvedRequests: new Set<string>(), startTime, logger };
 	try {
 		for (const [index, message] of turns.entries()) {
 			if (index > 0) await delay(gapMs);
+			const startsBefore = countEvents(events, 'run-start');
 			recordUserTurn(events, message);
 			await client.sendMessage(threadId, message);
+			await waitForNextRunStart(events, startsBefore, {
+				timeoutMs: RUN_START_TIMEOUT_MS,
+				pollMs: POLL_INTERVAL_MS,
+			});
 			await waitForAllActivity({ ...wait, timeoutMs: MULTI_TURN_TIMEOUT_MS });
 			logger.info(`  turn ${index + 1}/${turns.length} finished`);
 		}

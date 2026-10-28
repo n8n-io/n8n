@@ -555,11 +555,26 @@ function nextStepFor(result: Record<string, unknown>): string | undefined {
 	if (result.channels !== undefined) {
 		steps.push('Do not call agent_builder_configure_channel for these channels again.');
 	}
-	steps.push(
-		'Resolve only what is left: a model answer with agent_builder_resolve_llm, and MCP server ' +
-			'credentials with agent_builder_verify_mcp_server.',
+	if (Array.isArray(result.answers) && result.answers.length > 0) {
+		steps.push('If an answer picks the model, resolve it with agent_builder_resolve_llm.');
+	}
+	if (hasUnappliedCredential(result)) {
+		steps.push(
+			'For a credential that appliedToConfig does not list, such as an MCP server ' +
+				'credential, call agent_builder_verify_mcp_server.',
+		);
+	}
+	return steps.length > 0 ? steps.join(' ') : undefined;
+}
+
+/** A resolved credential whose slot the flow did not write into the config. */
+function hasUnappliedCredential(result: Record<string, unknown>): boolean {
+	if (!isRecord(result.credentials)) return false;
+	const applied = isRecord(result.appliedToConfig) ? result.appliedToConfig.credentialTypes : [];
+	const appliedTypes = new Set(Array.isArray(applied) ? applied : []);
+	return Object.entries(result.credentials).some(
+		([slot, outcome]) => outcome !== 'skipped' && !appliedTypes.has(slot),
 	);
-	return steps.join(' ');
 }
 
 function withNextStep(result: unknown): unknown {

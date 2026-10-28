@@ -5,7 +5,9 @@ import { collectValidationIssues, type ValidationWarning } from './workflow-vali
 /** Most host-only findings one build reports. The build result is model context. */
 export const MAX_HOST_SDK_FINDINGS = 5;
 
-const findingKey = (warning: ValidationWarning) => `${warning.code}|${warning.nodeName ?? ''}`;
+/** One finding per code, node and parameter, so two bad fields on one node both show. */
+const findingKey = (warning: ValidationWarning) =>
+	`${warning.code}|${warning.nodeName ?? ''}|${warning.parameterPath ?? ''}`;
 
 function runMonorepoValidators(
 	json: WorkflowJSON,

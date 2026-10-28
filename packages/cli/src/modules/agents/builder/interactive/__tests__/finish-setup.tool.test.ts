@@ -596,14 +596,38 @@ describe('agent_builder_finish_setup model output', () => {
 		expect(modelView({ questions: [] })).not.toHaveProperty('nextStep');
 	});
 
-	it('tells the model to resolve only what is left after the flow', () => {
-		const view = modelView({ completed: true, answers: [] });
+	it('adds no next step to an ordinary completed setup', () => {
+		expect(modelView({ completed: true, answers: [] })).not.toHaveProperty('nextStep');
+	});
+
+	it('points to agent_builder_resolve_llm when the flow returned answers', () => {
+		const view = modelView({
+			completed: true,
+			answers: [{ questionId: 'model', selectedOptions: ['gpt-5'] }],
+		});
 
 		expect(view.nextStep).toContain('agent_builder_resolve_llm');
+		expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
+	});
+
+	it('points to agent_builder_verify_mcp_server for a credential the flow did not apply', () => {
+		const view = modelView({
+			completed: true,
+			credentials: { linearMcp: { id: 'c1', name: 'Linear' } },
+		});
+
 		expect(view.nextStep).toContain('agent_builder_verify_mcp_server');
-		expect(view.nextStep).not.toContain('appliedToConfig');
-		expect(view.nextStep).not.toContain('configApplyErrors');
-		expect(view.nextStep).not.toContain('agent_builder_configure_channel');
+		expect(view.nextStep).not.toContain('agent_builder_resolve_llm');
+	});
+
+	it('adds no MCP step when the flow applied every credential', () => {
+		const view = modelView({
+			completed: true,
+			credentials: { gmailOAuth2: { id: 'c1', name: 'Gmail' } },
+			appliedToConfig: { credentialTypes: ['gmailOAuth2'], paths: [] },
+		});
+
+		expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
 	});
 
 	it('tells the model not to patch what the flow already wrote', () => {

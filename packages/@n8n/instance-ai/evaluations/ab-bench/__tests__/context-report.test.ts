@@ -85,6 +85,36 @@ describe('buildContextReport', () => {
 		expect(report.largestTools).toEqual([]);
 	});
 
+	// OpenAI reports cache hits only in providerMetadata and leaves the SDK cache fields at zero.
+	it('reads the OpenAI cache split from the provider metadata', () => {
+		const openAiStep: InstanceAiRunDebugStep = {
+			stepNumber: 0,
+			output: {
+				usage: { inputTokens: 1000, outputTokens: 10, inputTokenDetails: { noCacheTokens: 1000 } },
+				providerMetadata: { openai: { cachedPromptTokens: 800 } },
+			},
+		};
+
+		const report = buildContextReport('thread-1', [run('run-1', [openAiStep])]);
+
+		expect(report).toMatchObject({ inputTokens: 1000, cacheReadTokens: 800, uncachedTokens: 200 });
+	});
+
+	// The debug buffer keeps the tool set as a map when the SDK does not report stepTools.
+	it('reads the tools from the tool map when the step has no stepTools', () => {
+		const mapStep: InstanceAiRunDebugStep = {
+			stepNumber: 0,
+			input: {
+				tools: { small: { description: 'x' }, large: { description: 'x'.repeat(200) } },
+			},
+		};
+
+		const report = buildContextReport('thread-1', [run('run-1', [mapStep])]);
+
+		expect(report.firstCallToolCount).toBe(2);
+		expect(report.largestTools.map((tool) => tool.name)).toEqual(['large', 'small']);
+	});
+
 	it('treats a step without usage as zero tokens', () => {
 		const report = buildContextReport('thread-1', [run('run-1', [{ stepNumber: 0 }])]);
 

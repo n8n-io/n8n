@@ -9,7 +9,9 @@ const autoChecksSchema = z.object({
 	groups: z.array(
 		z.object({
 			title: z.string().catch(''),
-			checks: z.array(z.object({ ok: z.boolean().nullable().optional() })).catch([]),
+			checks: z
+				.array(z.object({ ok: z.boolean().nullable().optional(), level: z.string().optional() }))
+				.catch([]),
 		}),
 	),
 });
@@ -46,7 +48,9 @@ function gatingChecks(autoChecks: unknown): { passed: number; total: number } {
 	if (!parsed.success) return { passed: 0, total: 0 };
 	const results = parsed.data.groups
 		.filter((group) => GATING_GROUP_PREFIXES.some((prefix) => group.title.startsWith(prefix)))
-		.flatMap((group) => group.checks.map((check) => check.ok))
+		// testmax leaves informational checks out of the verdict.
+		.flatMap((group) => group.checks.filter((check) => check.level !== 'info'))
+		.map((check) => check.ok)
 		.filter((ok) => typeof ok === 'boolean');
 	return { passed: results.filter(Boolean).length, total: results.length };
 }

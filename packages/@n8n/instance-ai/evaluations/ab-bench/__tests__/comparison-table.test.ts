@@ -26,6 +26,15 @@ describe('summarizeRun', () => {
 		expect(summary).toMatchObject({ checksPassed: 2, checksTotal: 3 });
 	});
 
+	// testmax leaves informational checks (for example C2s, setup left for the user) out of the verdict.
+	it('does not count informational checks', () => {
+		const summary = summarizeRun(report, {
+			groups: [{ title: 'Correctness', checks: [{ ok: true }, { ok: true, level: 'info' }] }],
+		});
+
+		expect(summary).toMatchObject({ checksPassed: 1, checksTotal: 1 });
+	});
+
 	it('copies the token figures from the context report', () => {
 		const summary = summarizeRun(report, undefined);
 

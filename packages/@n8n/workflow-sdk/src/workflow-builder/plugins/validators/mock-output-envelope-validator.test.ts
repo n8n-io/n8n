@@ -86,4 +86,60 @@ describe('mockOutputEnvelopeValidator', () => {
 		expect(warnings).toHaveLength(1);
 		expect(warnings[0].nodeName).toBe('Fetch Orders');
 	});
+
+	function readerWorkflow(readerParameters: IDataObject, readerDownstream: boolean) {
+		const reader = node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { name: 'Reader', parameters: readerParameters },
+		});
+		const mocked = node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.3,
+			config: {
+				name: 'Fetch Orders',
+				parameters: { url: 'https://example.com' },
+				output: [{ json: { orderId: 'ord_1' } }],
+			},
+		});
+		const start = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		if (readerDownstream) return workflow('wf-1', 'Mocks').add(start.to(mocked.to(reader)));
+		const other = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Other Start' },
+		});
+		return workflow('wf-1', 'Mocks').add(start.to(mocked)).add(other.to(reader));
+	}
+
+	const warningsOf = (wf: ReturnType<typeof readerWorkflow>) =>
+		wf.validate().warnings.filter((w) => w.code === 'MOCK_OUTPUT_JSON_ENVELOPE');
+
+	it('still warns when a downstream field only starts with json', () => {
+		const wf = readerWorkflow({ value: '={{ $json.jsonField }}' }, true);
+
+		expect(warningsOf(wf)).toHaveLength(1);
+	});
+
+	it('still warns when only an unrelated branch reads $json.json', () => {
+		const wf = readerWorkflow({ value: '={{ $json.json.orderId }}' }, false);
+
+		expect(warningsOf(wf)).toHaveLength(1);
+	});
+
+	it('imports a node named like an object prototype key without a declared output', () => {
+		const wf = workflow('wf-1', 'Mocks').add(
+			trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'constructor' },
+			}),
+		);
+
+		expect(() => workflow.fromJSON(wf.toJSON(), { declaredOutputs: {} }).validate()).not.toThrow();
+	});
 });

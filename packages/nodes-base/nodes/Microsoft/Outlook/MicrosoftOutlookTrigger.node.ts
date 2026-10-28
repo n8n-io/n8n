@@ -32,7 +32,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 				{
 					nodeType: 'n8n-nodes-base.microsoftOutlook',
 					relationHint:
-						'Mark polled emails as handled after processing (message update with isRead: true, or message move to a folder) so they are not picked up again',
+						'Mark polled emails as handled after processing (message update with isRead: true, or message move to a folder when Folders to Include limits the trigger) so they are not picked up again',
 				},
 				{
 					nodeType: 'n8n-nodes-base.dataTable',
@@ -43,7 +43,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 				{
 					content: `<patterns>
 <pattern title="Do not reprocess the same email">
-When this trigger feeds an action that creates records (tasks, rows, tickets, messages), ensure each email is handled once: filter to unread emails AND add an Outlook step that marks each email handled — message \`update\` with \`isRead: true\`, or message \`move\` to a processed folder — or record handled message ids in a Data Table — look the id up before creating the record, skip ids already seen, insert it after the create succeeds. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
+When this trigger feeds an action that creates records (tasks, rows, tickets, messages), ensure each email is handled once: filter to unread emails AND add an Outlook step that marks each email handled — message \`update\` with \`isRead: true\`, or message \`move\` to a processed folder, which works only when Folders to Include limits the trigger to the watched folder — or record handled message ids in a Data Table — look the id up before creating the record, skip ids already seen, insert it after the create succeeds. The unread filter alone changes nothing if no step ever marks the email read. Wire the mark-as-handled step AFTER the record-creating node, so a mid-run failure cannot consume an email without producing its record.
 </pattern>
 </patterns>`,
 				},

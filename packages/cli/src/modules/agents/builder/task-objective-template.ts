@@ -44,14 +44,21 @@ export const TASK_OBJECTIVE_SECTIONS = [...TASK_OBJECTIVE_TEMPLATE.matchAll(/^##
 	(match) => match[1],
 );
 
-type ObjectiveSection = { heading: string; body: string };
+type ObjectiveSection = { title: string; templateIndex: number; body: string };
+
+const templateIndexOf = (title: string) =>
+	TASK_OBJECTIVE_SECTIONS.findIndex((section) => section.toLowerCase() === title.toLowerCase());
 
 /** Splits an objective into `## ` sections. A heading line may end with a colon. */
 function parseSections(objective: string): ObjectiveSection[] {
 	const parts = objective.split(/^##[ \t]+(.+?)[ \t:]*$/m);
 	const sections: ObjectiveSection[] = [];
 	for (let i = 1; i < parts.length; i += 2) {
-		sections.push({ heading: parts[i].toLowerCase(), body: parts[i + 1].trim() });
+		sections.push({
+			title: parts[i],
+			templateIndex: templateIndexOf(parts[i]),
+			body: parts[i + 1].trim(),
+		});
 	}
 	return sections;
 }
@@ -63,19 +70,31 @@ function sectionGap(section: string, found: ObjectiveSection | undefined): strin
 	return undefined;
 }
 
-/** How an objective departs from the template: missing, empty, or placeholder sections, and order. */
-export function objectiveTemplateGaps(objective: string): string[] {
-	const sections = parseSections(objective);
-	const gaps = TASK_OBJECTIVE_SECTIONS.flatMap((section) => {
-		const gap = sectionGap(
-			section,
-			sections.find((s) => s.heading === section.toLowerCase()),
-		);
-		return gap ? [gap] : [];
+/** Template sections that are missing, empty, still placeholders, or repeated. */
+function templateSectionGaps(sections: ObjectiveSection[]): string[] {
+	return TASK_OBJECTIVE_SECTIONS.flatMap((section, index) => {
+		const matches = sections.filter((s) => s.templateIndex === index);
+		const gap = sectionGap(section, matches[0]);
+		if (gap) return [gap];
+		return matches.length > 1 ? [`${section} repeated`] : [];
 	});
-	const order = sections
-		.map(({ heading }) => TASK_OBJECTIVE_SECTIONS.findIndex((s) => s.toLowerCase() === heading))
-		.filter((index) => index >= 0);
+}
+
+/** Sections the template does not have, and template sections out of order. */
+function structureGaps(sections: ObjectiveSection[]): string[] {
+	const gaps = sections
+		.filter(({ templateIndex }) => templateIndex < 0)
+		.map(({ title }) => `unexpected section "${title}"`);
+	// First occurrences only: a repeat is reported as repeated, not as out of order.
+	const order = [...new Set(sections.map(({ templateIndex }) => templateIndex))].filter(
+		(index) => index >= 0,
+	);
 	if (order.some((index, i) => i > 0 && index < order[i - 1])) gaps.push('sections out of order');
 	return gaps;
+}
+
+/** How an objective departs from the template. An empty list means it follows the template. */
+export function objectiveTemplateGaps(objective: string): string[] {
+	const sections = parseSections(objective);
+	return [...templateSectionGaps(sections), ...structureGaps(sections)];
 }

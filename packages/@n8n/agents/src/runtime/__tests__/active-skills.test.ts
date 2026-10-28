@@ -123,9 +123,9 @@ describe('skill lifetime', () => {
 		await active.restore(list, scope, freshRun());
 
 		expect(list.activeSkillIds).not.toContain('router');
-		expect(list.activeSkillVersions?.router).not.toBeNull();
+		expect(list.activeSkillVersions).toEqual({ router: routerHash });
 		const stored = await memory.skillState.load({ ...scope, agentName: 'assistant' });
-		expect(stored?.versions?.router).not.toBeNull();
+		expect(stored?.versions).toEqual({ router: routerHash });
 	});
 
 	// Collapsing the early load rewrites every cached message after it. While the
@@ -147,8 +147,8 @@ describe('skill lifetime', () => {
 
 		await active.restore(list, scope, freshRun());
 
-		expect(list.activeSkillIds).not.toContain('router');
-		expect(active.instructions() ?? '').not.toContain('Pick a route.');
+		expect(list.activeSkillIds).toEqual([]);
+		expect(active.instructions()).toBeUndefined();
 	});
 
 	// The skill already rides in the system block, so dropping it would rewrite the warm cache.

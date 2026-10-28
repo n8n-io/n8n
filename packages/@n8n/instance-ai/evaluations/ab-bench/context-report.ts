@@ -1,5 +1,8 @@
 import type { InstanceAiRunDebugResponse, InstanceAiRunDebugStep } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+
+import { usageTokens } from '../utils/conversation-text';
 
 /** Number of tools the report lists from the first LLM call. */
 const LARGEST_TOOLS_LIMIT = 12;
@@ -60,9 +63,28 @@ function jsonSize(value: unknown): number {
 	return JSON.stringify(value ?? null).length;
 }
 
+/** `stepTools` has the schemas the model received; without it the debug buffer keeps a name-keyed map. */
 function stepTools(step: InstanceAiRunDebugStep): unknown[] {
 	const tools = step.input?.stepTools;
-	return Array.isArray(tools) ? tools : [];
+	if (Array.isArray(tools)) return tools;
+	const toolMap = step.input?.tools;
+	if (!isRecord(toolMap)) return [];
+	return Object.entries(toolMap).map(([name, tool]) => ({ name, ...(isRecord(tool) ? tool : {}) }));
+}
+
+/** Token split of one call. OpenAI reports cache hits only in `providerMetadata`. */
+function tokenSplit(step: InstanceAiRunDebugStep) {
+	const usage = usageSchema.parse(step.output?.usage);
+	const details = usage.inputTokenDetails ?? {};
+	const tokens = usageTokens(step.output?.usage, step.output?.providerMetadata);
+	const providerCacheRead = tokens.cacheRead - (details.cacheReadTokens ?? 0);
+	return {
+		input: tokens.input,
+		uncached: Math.max(0, (details.noCacheTokens ?? 0) - providerCacheRead),
+		cacheRead: tokens.cacheRead,
+		cacheWrite: tokens.cacheWrite,
+		output: tokens.output,
+	};
 }
 
 /** v7 of the AI SDK names the system prompt `instructions`; older records use `system`. */
@@ -71,16 +93,10 @@ function systemPrompt(step: InstanceAiRunDebugStep): unknown {
 }
 
 function toStepRow(step: InstanceAiRunDebugStep, run: number): ContextStepRow {
-	const usage = usageSchema.parse(step.output?.usage);
-	const details = usage.inputTokenDetails ?? {};
 	const tools = stepTools(step);
 	return {
 		run,
-		input: usage.inputTokens ?? 0,
-		uncached: details.noCacheTokens ?? 0,
-		cacheRead: details.cacheReadTokens ?? 0,
-		cacheWrite: details.cacheWriteTokens ?? 0,
-		output: usage.outputTokens ?? 0,
+		...tokenSplit(step),
 		systemChars: jsonSize(systemPrompt(step)),
 		toolChars: jsonSize(tools),
 		toolCount: tools.length,

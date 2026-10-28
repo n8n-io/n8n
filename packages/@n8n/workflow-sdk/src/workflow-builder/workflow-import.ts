@@ -68,7 +68,12 @@ export function parseWorkflowJSON(json: WorkflowJSON, options?: FromJSONOptions)
 
 		// For nodes without a name (like sticky notes), use the id as the internal name
 		const nodeName = n8nNode.name ?? n8nNode.id;
-		const output = n8nNode.name ? options?.declaredOutputs?.[n8nNode.name] : undefined;
+		const declaredOutputs = options?.declaredOutputs;
+		// Own keys only: a node named like a prototype key (`constructor`) has no output.
+		const output =
+			n8nNode.name && declaredOutputs && Object.hasOwn(declaredOutputs, n8nNode.name)
+				? declaredOutputs[n8nNode.name]
+				: undefined;
 		// An imported handle builds no connections of its own — the builder wires the graph.
 		// An error route is the exception: recording it like an authored node does is what
 		// gives the handler's chain or composite the usual expansion.
