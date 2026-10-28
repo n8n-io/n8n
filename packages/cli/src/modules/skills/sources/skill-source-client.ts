@@ -56,7 +56,7 @@ export type FetchedSkill = {
  * builds diffs and writes through `SkillService`.
  *
  * No source SDK type and no TypeORM type crosses this class. `describeSkillSourceClientContract`
- * in `testing/` holds the cases that every client passes.
+ * in `__tests__/test-utils/` holds the cases that every client passes.
  */
 export abstract class SkillSourceClient {
 	/** The value of `skill_source.type`, such as `github`. */
