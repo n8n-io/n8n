@@ -15,6 +15,7 @@ import {
 import {
 	resolveInputReads,
 	StepReadyHandler,
+	type SubExecutionCanceller,
 	type SubExecutionStarter,
 } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
@@ -68,6 +69,7 @@ function makeHandler(
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
 	onStepSuspended?: () => void,
 	subExecutionStarter: SubExecutionStarter = makeSubExecutionStarter(),
+	subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() },
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -77,6 +79,7 @@ function makeHandler(
 		lifecycleEventPublisher,
 		responseSender,
 		subExecutionStarter,
+		subExecutionCanceller,
 		onStepSuspended,
 	);
 }
@@ -106,6 +109,7 @@ function makeExecutionStore(
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 	};
 }
 
@@ -1182,6 +1186,49 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
+	it('cancels the sub-execution it started when the parent ended in the meantime', async () => {
+		// Running at the liveness check, cancelled by the time the sub-execution exists.
+		const executionStore = makeExecutionStore();
+		const live = await executionStore.loadExecution('exec-1');
+		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
+		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
+		const subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() };
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			undefined,
+			undefined,
+			undefined,
+			makeSubExecutionStarter(),
+			subExecutionCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('leaves the sub-execution alone when the parent is still live after the start', async () => {
+		const subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() };
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			undefined,
+			undefined,
+			undefined,
+			makeSubExecutionStarter(),
+			subExecutionCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
+	});
+
 	it('starts no sub-execution when another owner took the step over', async () => {
 		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
 		const subExecutionStarter = makeSubExecutionStarter();
@@ -1287,6 +1334,29 @@ describe('StepReadyHandler sub-executions', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('cancels the detached sub-executions it started when the parent ended in the meantime', async () => {
+		const executionStore = makeExecutionStore();
+		const live = await executionStore.loadExecution('exec-1');
+		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
+		executionStore.loadExecution = vi.fn().mockResolvedValueOnce(live).mockResolvedValueOnce(ended);
+		const subExecutionCanceller: SubExecutionCanceller = { cancelSubExecutions: vi.fn() };
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
+			undefined,
+			undefined,
+			undefined,
+			makeSubExecutionStarter(),
+			subExecutionCanceller,
+		);
+
+		await handler.handle(event);
+
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('starts no detached sub-execution when another owner took the step over', async () => {

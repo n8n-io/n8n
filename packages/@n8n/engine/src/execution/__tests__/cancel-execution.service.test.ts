@@ -39,6 +39,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 }
@@ -133,6 +134,54 @@ describe('CancelExecutionService', () => {
 		},
 	);
 
+	it('cancels every live sub-execution of the execution, and their sub-executions, after it', async () => {
+		const subExecutions: Record<string, string[]> = {
+			'exec-1': ['sub-1', 'sub-2'],
+			'sub-1': ['sub-sub'],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve({
+					...execution,
+					id,
+					status: 'cancelled',
+					finishedAt: new Date(),
+				});
+			}),
+			loadLiveSubExecutionIds: vi.fn().mockImplementation(async (id: string) => {
+				return await Promise.resolve(subExecutions[id] ?? []);
+			}),
+		});
+		const { service, stepStore } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(vi.mocked(executionStore.cancelExecution).mock.calls.map(([id]) => id)).toEqual([
+			'exec-1',
+			'sub-1',
+			'sub-sub',
+			'sub-2',
+		]);
+		expect(vi.mocked(stepStore.cancelPendingSteps).mock.calls.map(([id]) => id)).toEqual([
+			'exec-1',
+			'sub-1',
+			'sub-sub',
+			'sub-2',
+		]);
+	});
+
+	it('cancels no sub-execution when the execution had already ended', async () => {
+		const executionStore = makeExecutionStore({
+			cancelExecution: vi.fn().mockResolvedValue(null),
+			loadExecution: vi.fn().mockResolvedValue({ ...execution, status: 'completed' }),
+		});
+		const { service } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(executionStore.loadLiveSubExecutionIds).not.toHaveBeenCalled();
+	});
+
 	it('resumes the awaiting parent step with a cancelled cause when a sub-execution is cancelled on its own', async () => {
 		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
 		const executionStore = makeExecutionStore({
@@ -174,7 +223,7 @@ describe('CancelExecutionService', () => {
 	});
 
 	it('announces no resume when the parent step no longer waits', async () => {
-		// The parent ended first, and its waiting step was cancelled with it.
+		// The parent was cancelled first, and its cascade is what cancels this sub-execution.
 		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
 		const executionStore = makeExecutionStore({
 			loadExecution: vi

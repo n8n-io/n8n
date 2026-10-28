@@ -946,6 +946,41 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 		});
 	});
 
+	it('cancels the live sub-executions of the execution, and their sub-executions', async () => {
+		const executionId = await start();
+		const { executionStore } = createStores(dataSource);
+		const subExecution = generateId();
+		const subSubExecution = generateId();
+		const ended = generateId();
+		await executionStore.createExecution({
+			...subExecutionRecord(subExecution, { executionId, stepId: generateId(), awaited: false }),
+			status: 'running',
+		});
+		await executionStore.createExecution({
+			...subExecutionRecord(subSubExecution, {
+				executionId: subExecution,
+				stepId: generateId(),
+				awaited: true,
+			}),
+			status: 'waiting',
+		});
+		await executionStore.createExecution({
+			...subExecutionRecord(ended, { executionId, stepId: generateId(), awaited: true }),
+			status: 'completed',
+		});
+
+		await cancel(executionId).expect(200);
+
+		const repo = dataSource.getRepository(WorkflowExecution);
+		for (const id of [executionId, subExecution, subSubExecution]) {
+			expect((await repo.findOneOrFail({ where: { id } })).status).toBe('cancelled');
+		}
+		expect((await repo.findOneOrFail({ where: { id: ended } })).status).toBe('completed');
+		expect(
+			vi.mocked(lifecycleEventPublisher.publish).mock.calls.map(([event]) => event.executionId),
+		).toEqual([executionId, subExecution, subSubExecution]);
+	});
+
 	it('resumes the parent step with a cancelled cause when a sub-execution is cancelled on its own', async () => {
 		const parentId = await start();
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);

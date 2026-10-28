@@ -844,6 +844,7 @@ describe('step execution (integration)', () => {
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
 			{ start: vi.fn() },
+			{ cancelSubExecutions: vi.fn() },
 		);
 
 		const executionId = generateId();

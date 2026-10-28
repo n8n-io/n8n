@@ -44,6 +44,11 @@ export interface SubExecutionStarter {
 	start(request: StartExecutionRequest): Promise<StartExecutionResult>;
 }
 
+/** Cancels the sub-executions of an execution. `CancelExecutionService` implements it. */
+export interface SubExecutionCanceller {
+	cancelSubExecutions(parentExecutionId: string): Promise<void>;
+}
+
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
  * runs it through the executor for its step type, records what came back, and
@@ -67,6 +72,7 @@ export class StepReadyHandler {
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly subExecutionStarter: SubExecutionStarter,
+		private readonly subExecutionCanceller: SubExecutionCanceller,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -266,10 +272,18 @@ export class StepReadyHandler {
 				callerContext: execution.callerContext,
 				parent: { executionId: execution.id, stepId: step.id, awaited },
 			});
-			return { kind: 'started' };
 		} catch (error) {
 			return { kind: 'error', error };
 		}
+
+		// A cancel that ran between the liveness check above and this start
+		// found no sub-execution to cascade to. Read the parent again, so a sub-execution of an
+		// ended parent is cancelled here instead of running on.
+		const parent = await this.executionStore.loadExecution(execution.id);
+		if (!isLiveExecutionStatus(parent.status)) {
+			await this.subExecutionCanceller.cancelSubExecutions(execution.id);
+		}
+		return { kind: 'started' };
 	}
 
 	private async runStep(

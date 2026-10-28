@@ -24,6 +24,7 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
+import type { SubExecutionCanceller } from './step-ready-handler';
 import type { StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
@@ -47,6 +48,7 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly subExecutionCanceller: SubExecutionCanceller,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -111,10 +113,11 @@ export class StepSettledHandler {
 	}
 
 	/**
-	 * What a failed execution owes beyond its own rows: a parent step that
-	 * waits for it fails with the error.
+	 * What a failed execution owes beyond its own rows: its sub-executions end with
+	 * it, and a parent step that waits for it fails with the error.
 	 */
 	private async endedAsFailed(execution: ExecutionRecord, step: StepRecord): Promise<void> {
+		await this.subExecutionCanceller.cancelSubExecutions(execution.id);
 		await this.resumeAwaitingParent(execution, {
 			status: 'failed',
 			error: await this.failureOf(execution, step),

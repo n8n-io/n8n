@@ -76,6 +76,7 @@ describe('execution start (integration)', () => {
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
 				noopExecutionResponseSender,
+				{ cancelSubExecutions: vi.fn() },
 			),
 		);
 		worker.start();
