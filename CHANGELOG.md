@@ -1,3 +1,12 @@
+## [1.123.89](https://github.com/n8n-io/n8n/compare/n8n@1.123.88...n8n@1.123.89) (2026-10-28)
+
+
+### Bug Fixes
+
+* **Google Drive Node:** Fix infinite pagination loop in v1 API request ([#42124](https://github.com/n8n-io/n8n/issues/42124)) ([3faa762](https://github.com/n8n-io/n8n/commit/3faa762983773a0967ef25f841ee6f0f3784c70b))
+* **MCP Server Trigger Node:** Evict idle sessions to prevent memory leak ([#42120](https://github.com/n8n-io/n8n/issues/42120)) ([54eaf65](https://github.com/n8n-io/n8n/commit/54eaf65b4e48a26f29f441fc8b091575456b6da3))
+
+
 ## [1.123.88](https://github.com/n8n-io/n8n/compare/n8n@1.123.87...n8n@1.123.88) (2026-10-26)
 
 
