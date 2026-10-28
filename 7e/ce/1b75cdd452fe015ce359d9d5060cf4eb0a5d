@@ -1,0 +1,37 @@
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_c783295548c782::t_c22b5c905aa81a 95
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  s_c783295548c782::t_b4d7df614fe60c 1,137,426-430
+  s_c783295548c782::t_d493d9bfb5a95e 47
+  s_c783295548c782::t_7ddda71025adf6 423
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_c783295548c782::t_1d044b36930b05 2165,2818
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-runtime.ts
+  s_c783295548c782::t_fa5c8e9ee6ec69 1,20-21
+  s_c783295548c782::t_b4d7df614fe60c 57-58
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_c783295548c782::t_0c1a0e90ea6df7 134-158,222-226
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_c783295548c782::t_a4dc093d9c9152 4,221-232,234,236-269
+  s_c783295548c782::t_a70ca4b06fce1a 233,235
+packages/@n8n/agents/src/index.ts
+  s_c783295548c782::t_a4dc093d9c9152 433
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-input.builder.test.ts
+  ai_agent 1,10-44,57,63,84,203,210,223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ece1b75cdd452fe015ce359d9d5060cf4eb0a5d",
+  "prompts": {},
+  "sessions": {
+    "s_c783295548c782": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f156e56-ccc7-4bb1-820b-f54bd9c82498",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

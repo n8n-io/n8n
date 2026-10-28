@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_eba0a2f51f2389::t_501baa341feaba 43-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c822d4d67d4081ac0dbdf0d66d32cf75b6d1872",
+  "prompts": {},
+  "sessions": {
+    "s_eba0a2f51f2389": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "704e5d0f-3fbb-46c8-b7b5-bdf63489af26",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
