@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_ce2d87572e1814::t_4baf28525a5e89 183
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_ce2d87572e1814::t_4baf28525a5e89 380-383
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  s_ce2d87572e1814::t_f5bd3053c52cd9 423-426,431
+  s_ce2d87572e1814::t_a573b58b30e409 415-422,427-430,432-442
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ce2d87572e1814::t_4baf28525a5e89 3405-3408
+packages/quality/testing/playwright/services/instance-ai-api-helper.ts
+  s_ce2d87572e1814::t_a573b58b30e409 1-2,22-45
+  s_ce2d87572e1814::t_9bb54135b83fb7 46
+packages/quality/testing/playwright/tests/e2e/instance-ai/instance-ai-agent-preview-layout.spec.ts
+  s_ce2d87572e1814::t_d2da253d225b6a 60-62
+  s_ce2d87572e1814::t_a573b58b30e409 1-59,63-65
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ce2d87572e1814::t_4baf28525a5e89 2410-2428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12eb12dc5e23f3c7f7b4d341c730b351240a56ab",
+  "prompts": {},
+  "sessions": {
+    "s_ce2d87572e1814": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17e45-49e1-79f1-94ce-d469e4a0f0de",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
