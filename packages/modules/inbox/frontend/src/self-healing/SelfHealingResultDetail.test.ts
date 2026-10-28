@@ -2,12 +2,9 @@ import type {
 	SelfHealingResultActionResponse,
 	SelfHealingResultDetail as ResultDetail,
 } from '@n8n/api-types';
-import {
-	capabilities,
-	capabilityRegistry,
-	type ProjectPermissions,
-} from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
+import type { Scope } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -33,7 +30,7 @@ vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, show
 
 const onItemChange = vi.fn();
 const chatAvailable = ref(true);
-const projectScopes = ref<ReturnType<ProjectPermissions['scopesFor']>>(['project:read']);
+const projectScopes = ref<Scope[]>(['project:read']);
 let selectedId: string | null;
 const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	props: {
