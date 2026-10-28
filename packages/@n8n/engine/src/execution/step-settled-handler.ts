@@ -15,6 +15,9 @@ import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type SubExecutionOutcome,
+	type SubExecutionResult,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -103,6 +106,28 @@ export class StepSettledHandler {
 		}
 
 		await this.stepStore.cancelPendingSteps(execution.id);
+
+		if (finished) await this.endedAsFailed(execution, step);
+	}
+
+	/**
+	 * What a failed execution owes beyond its own rows: a parent step that
+	 * waits for it fails with the error.
+	 */
+	private async endedAsFailed(execution: ExecutionRecord, step: StepRecord): Promise<void> {
+		await this.resumeAwaitingParent(execution, {
+			status: 'failed',
+			error: await this.failureOf(execution, step),
+		});
+	}
+
+	/** The error of the step that failed the execution: this one, or the one the count found. */
+	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
+		if (step.status === 'failed' && step.error) return step.error;
+		const failed = (await this.stepStore.loadAllSteps(execution.id)).find(
+			(row) => row.status === 'failed' && row.error,
+		);
+		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -220,7 +245,71 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			if (failed) {
+				await this.endedAsFailed(execution, step);
+			} else {
+				await this.resumeAwaitingParent(execution, {
+					status: 'completed',
+					result: await this.collectResult(execution),
+				});
+			}
 		}
+	}
+
+	/**
+	 * Resumes the parent step that waits for this execution, with its outcome.
+	 * Only the branch that won `finishExecution` gets here, so the parent is
+	 * resumed once. Resume first, announce second, as the wait sweep does: the
+	 * row is `queued` before any worker can hear of it.
+	 *
+	 * TODO(CET-342): a crash between the finish and the resume leaves a parent
+	 * step waiting on a sub-execution that has ended. The rows say so, and a redelivery
+	 * cannot repeat a finish it lost, so reconciliation re-issues the resume.
+	 */
+	private async resumeAwaitingParent(
+		execution: ExecutionRecord,
+		outcome: SubExecutionOutcome,
+	): Promise<void> {
+		const { parent } = execution;
+		if (!parent?.awaited) return;
+
+		const resumed = await this.stepStore.resumeStep(parent.stepId, {
+			kind: 'subExecution',
+			executionId: execution.id,
+			...outcome,
+		});
+		// A parent step that is not waiting any more was cancelled with its
+		// execution, and nothing is owed to it.
+		if (!resumed) return;
+
+		await this.stepQueue.publish({
+			type: 'step:ready',
+			executionId: parent.executionId,
+			stepId: parent.stepId,
+		});
+		await this.executionStore.refreshLiveStatus(parent.executionId);
+	}
+
+	/**
+	 * The outputs of every completed terminal step, in graph order and then by
+	 * pass. A terminal step is one whose node has no outgoing edge. Several
+	 * terminal branches all contribute, which is where engine v1 reports the
+	 * last node that ran instead.
+	 */
+	private async collectResult(execution: ExecutionRecord): Promise<SubExecutionResult> {
+		const { graph } = execution;
+		const sources = new Set(graph.edges.map((edge) => edge.from));
+		const terminalOrder = new Map(
+			graph.nodes.filter((node) => !sources.has(node.id)).map((node, index) => [node.id, index]),
+		);
+		const steps = await this.stepStore.loadAllSteps(execution.id);
+		return steps
+			.filter((step) => step.status === 'completed' && terminalOrder.has(step.nodeId))
+			.sort(
+				(a, b) =>
+					terminalOrder.get(a.nodeId)! - terminalOrder.get(b.nodeId)! || a.iteration - b.iteration,
+			)
+			.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs: outputs ?? [] }));
 	}
 
 	/**
