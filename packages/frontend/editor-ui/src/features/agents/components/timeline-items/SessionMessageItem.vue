@@ -1,11 +1,19 @@
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { useI18n } from '@n8n/i18n';
 import { formatTimelineTime } from '../../utils/timeline-time';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText, N8nMarkdown, N8nTooltip } from '@n8n/design-system';
+import {
+	CollapsibleContent,
+	CollapsibleRoot,
+	CollapsibleTrigger,
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nMarkdown,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { TimelineItem } from '../../session-timeline.types';
 import AgentPersonalisationIcon from '../AgentPersonalisationIcon.vue';
 import AgentChatMessageAttachments from '../AgentChatMessageAttachments.vue';

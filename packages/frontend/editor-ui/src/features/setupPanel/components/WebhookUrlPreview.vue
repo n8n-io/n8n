@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import {
-	CollapsibleRoot,
-	N8nAnimatedCollapsibleContent,
-	N8nIcon,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { CollapsibleContent, CollapsibleRoot, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
@@ -43,7 +38,7 @@ function copyUrl(url: string) {
 			</span>
 		</div>
 		<CollapsibleRoot :open="!isCollapsed">
-			<N8nAnimatedCollapsibleContent>
+			<CollapsibleContent>
 				<div :class="$style['url-list']">
 					<N8nTooltip
 						v-for="(item, index) in urls"
@@ -63,7 +58,7 @@ function copyUrl(url: string) {
 						</div>
 					</N8nTooltip>
 				</div>
-			</N8nAnimatedCollapsibleContent>
+			</CollapsibleContent>
 		</CollapsibleRoot>
 	</div>
 </template>

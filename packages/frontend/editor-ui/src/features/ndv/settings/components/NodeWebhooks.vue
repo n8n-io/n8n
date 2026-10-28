@@ -18,8 +18,8 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { ElCol, ElRow } from 'element-plus';
 import {
+	CollapsibleContent,
 	CollapsibleRoot,
-	N8nAnimatedCollapsibleContent,
 	N8nIcon,
 	N8nSegmentControl,
 	N8nTooltip,
@@ -213,11 +213,11 @@ watch(
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
 		>
-			<N8nIcon icon="chevron-right" class="minimize-button minimize-icon" />
+			<N8nIcon icon="chevron-right" size="small" class="chevron" />
 			{{ baseText.toggleTitle }}
 		</div>
 		<CollapsibleRoot :open="!isMinimized">
-			<N8nAnimatedCollapsibleContent>
+			<CollapsibleContent>
 				<div class="node-webhooks">
 					<div v-if="!isProductionOnly" class="url-selection">
 						<ElRow>
@@ -246,7 +246,7 @@ watch(
 						</div>
 					</N8nTooltip>
 				</div>
-			</N8nAnimatedCollapsibleContent>
+			</CollapsibleContent>
 		</CollapsibleRoot>
 	</div>
 </template>
@@ -260,7 +260,9 @@ watch(
 	border-bottom: 1px solid var(--color--text--tint-2);
 
 	.headline {
-		color: $color-primary;
+		display: flex;
+		align-items: center;
+		gap: var(--spacing--4xs);
 		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
@@ -281,11 +283,6 @@ watch(
 	color: var(--color--foreground--tint-2);
 }
 
-.minimize-icon {
-	font-size: 1.3em;
-	margin-right: 0.5em;
-}
-
 .mode-selection-headline {
 	line-height: 1.8em;
 }
@@ -303,22 +300,11 @@ watch(
 	margin-top: var(--spacing--xs);
 }
 
-.minimize-button {
-	display: inline-block;
-	-webkit-transition-duration: 0.5s;
-	-moz-transition-duration: 0.5s;
-	-o-transition-duration: 0.5s;
-	transition-duration: 0.5s;
-
-	-webkit-transition-property: -webkit-transform;
-	-moz-transition-property: -moz-transform;
-	-o-transition-property: -o-transform;
-	transition-property: transform;
+.chevron {
+	flex-shrink: 0;
 }
-.expanded .minimize-button {
-	-webkit-transform: rotate(90deg);
-	-moz-transform: rotate(90deg);
-	-o-transform: rotate(90deg);
+
+.expanded .chevron {
 	transform: rotate(90deg);
 }
 
