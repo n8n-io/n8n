@@ -96,37 +96,41 @@ function onOperation(value: string) {
 							<N8nText color="text-dark">{{
 								locale.baseText('projects.settings.delete.question.transfer.label')
 							}}</N8nText>
+							<div v-if="operation === 'transfer'" class="pt-2xs" @mousedown.stop @click.stop>
+								<N8nText color="text-dark">{{
+									locale.baseText('projects.settings.delete.question.transfer.title')
+								}}</N8nText>
+								<ProjectSharing
+									v-model="selectedProject"
+									class="pt-2xs"
+									:search-fn="resolvedSearchFn"
+									:filter-fn="filterFn"
+									:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
+								/>
+							</div>
 						</template>
 					</N8nRadioGroupItem>
-					<div v-if="operation === 'transfer'" :class="$style.operation">
-						<N8nText color="text-dark">{{
-							locale.baseText('projects.settings.delete.question.transfer.title')
-						}}</N8nText>
-						<ProjectSharing
-							v-model="selectedProject"
-							class="pt-2xs"
-							:search-fn="resolvedSearchFn"
-							:filter-fn="filterFn"
-							:empty-options-text="locale.baseText('projects.sharing.noMatchingProjects')"
-						/>
-					</div>
 
 					<N8nRadioGroupItem value="wipe">
 						<template #label>
 							<N8nText color="text-dark">{{
 								locale.baseText('projects.settings.delete.question.wipe.label')
 							}}</N8nText>
+							<div v-if="operation === 'wipe'" class="pt-2xs" @mousedown.stop @click.stop>
+								<N8nInputLabel
+									:label="locale.baseText('projects.settings.delete.question.wipe.title')"
+								>
+									<N8nInput
+										v-model="wipeConfirmText"
+										data-test-id="project-delete-confirm-input"
+										:placeholder="
+											locale.baseText('projects.settings.delete.question.wipe.placeholder')
+										"
+									/>
+								</N8nInputLabel>
+							</div>
 						</template>
 					</N8nRadioGroupItem>
-					<div v-if="operation === 'wipe'" :class="$style.operation">
-						<N8nInputLabel :label="locale.baseText('projects.settings.delete.question.wipe.title')">
-							<N8nInput
-								v-model="wipeConfirmText"
-								data-test-id="project-delete-confirm-input"
-								:placeholder="locale.baseText('projects.settings.delete.question.wipe.placeholder')"
-							/>
-						</N8nInputLabel>
-					</div>
 				</N8nRadioGroup>
 			</div>
 		</div>
@@ -144,12 +148,3 @@ function onOperation(value: string) {
 		</template>
 	</ElDialog>
 </template>
-
-<style lang="scss" module>
-.operation {
-	// The radio group aligns its children to the start.
-	// Stretch this block so the fields use the full width.
-	align-self: stretch;
-	padding: 0 0 var(--spacing--lg) var(--spacing--lg);
-}
-</style>

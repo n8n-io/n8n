@@ -77,6 +77,7 @@ function onItemFocusIn(event: FocusEvent) {
 
 .itemVertical {
 	width: 100%;
+	align-items: flex-start;
 }
 
 .control {
@@ -135,6 +136,10 @@ function onItemFocusIn(event: FocusEvent) {
 	gap: var(--spacing--5xs);
 	cursor: inherit;
 	color: var(--text-color);
+
+	.itemVertical & {
+		flex: 1;
+	}
 
 	.item:has(.control[data-disabled]) & {
 		cursor: not-allowed;
