@@ -110,6 +110,21 @@ describe('StoreAgentMemoryEmbeddingsAsBinary migration', () => {
 		return rows.map(({ id }) => id);
 	}
 
+	async function embeddingColumnType(context: TestMigrationContext): Promise<string> {
+		if (context.isPostgres) {
+			const [column] = await context.queryRunner.query(
+				`SELECT data_type FROM information_schema.columns
+				 WHERE table_name = $1 AND column_name = 'embedding'`,
+				[`${context.tablePrefix}agents_memory_entries`],
+			);
+			return column?.data_type;
+		}
+		const columns: Array<{ name: string; type: string }> = await context.queryRunner.query(
+			`PRAGMA table_info(${context.escape.tableName('agents_memory_entries')})`,
+		);
+		return columns.find(({ name }) => name === 'embedding')?.type ?? 'unknown';
+	}
+
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
 		await withContext(async ({ queryRunner }) => await queryRunner.clearDatabase());
@@ -125,6 +140,7 @@ describe('StoreAgentMemoryEmbeddingsAsBinary migration', () => {
 
 		await runSingleMigration(MIGRATION_NAME);
 		await withContext(async (context) => {
+			expect(await embeddingColumnType(context)).toBe(context.isPostgres ? 'bytea' : 'BLOB');
 			expect(await readEntry(context)).toEqual({ content: 'Fact', embedding: null });
 			expect(await sourceIds(context)).toEqual([ids.source]);
 
@@ -136,6 +152,7 @@ describe('StoreAgentMemoryEmbeddingsAsBinary migration', () => {
 
 		await undoLastSingleMigration();
 		await withContext(async (context) => {
+			expect(await embeddingColumnType(context)).toBe(context.isPostgres ? 'json' : 'TEXT');
 			expect(await readEntry(context)).toEqual({ content: 'Fact', embedding: null });
 			expect(await sourceIds(context)).toEqual([ids.source]);
 			await writeEmbedding(context, '[0.5]');

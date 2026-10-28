@@ -1383,6 +1383,7 @@ describe('N8nMemory', () => {
 				makeMemoryEntryEntity({
 					id: 'memory-2',
 					content: 'User investigated a webhook timeout.',
+					contentHash: 'hash-2',
 					embedding: new Float32Array([0, 1]),
 				}),
 			];
@@ -1405,6 +1406,7 @@ describe('N8nMemory', () => {
 			);
 			expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
 			expect(results.map((result) => result.id)).toEqual(['memory-1']);
+			expect(memoryEntryRepository.findInAnyStatus).toHaveBeenCalledWith('agent-1', ['memory-1']);
 		});
 
 		it('limits write-scope searches to the resolved write scope', async () => {
