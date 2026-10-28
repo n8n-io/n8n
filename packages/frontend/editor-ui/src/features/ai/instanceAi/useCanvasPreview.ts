@@ -529,10 +529,9 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		},
 	);
 
-	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
-	// The `workflows` tool's update / restore-version / setup actions mutate the
-	// workflow definition but surface under tool name 'workflows', so
-	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// --- Refresh preview when `restore_workflow_version` or `setup_workflow` completes ---
+	// These tools mutate the workflow definition, but getLatestBuildResult
+	// doesn't detect them. Refresh the preview so the canvas
 	// shows the latest state.
 
 	const latestUpdateResult = computed(() => {

@@ -12,7 +12,7 @@ import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { DataSource, IsNull } from '@n8n/typeorm';
 
-import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
+import { whereReviewer } from './self-healing-configuration.repository';
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 import { SelfHealingResult } from './self-healing-result.entity';
 
@@ -73,7 +73,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
 		const accessible = this.sharedWorkflows.buildSharedWorkflowIdsSubquery(user, roles);
-		return this.createQueryBuilder('result')
+		const query = this.createQueryBuilder('result')
 			.leftJoin('result.suggestion', 'suggestion')
 			.innerJoin(
 				SharedWorkflow,
@@ -82,14 +82,10 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				{ resultOwnerRole: 'workflow:owner' },
 			)
 			.innerJoin('result.configuration', 'configuration')
-			.innerJoin(
-				SelfHealingConfigurationReviewer,
-				'reviewer',
-				'reviewer.configurationId = configuration.id AND reviewer.userId = :reviewerId',
-				{ reviewerId: user.id },
-			)
 			.where(`result.workflowId IN (${accessible.getQuery()})`)
-			.setParameters(accessible.getParameters());
+			.setParameters(accessible.getParameters())
+			.setParameter('reviewerId', user.id);
+		return whereReviewer(query, 'configuration', ':reviewerId');
 	}
 
 	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {

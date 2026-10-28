@@ -578,13 +578,13 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// TRUST-349 — workflow_builder_workflows(action='setup') wizard: credential slots via
+	// TRUST-349 — setup_workflow wizard: credential slots via
 	// apply_setup_wizard's nodeCredentialsJson. This is the tool the builder
 	// actually reaches for during a normal build ("the setup card" a real user
 	// sees); NOT the standalone setup_credentials tool below.
 	// -------------------------------------------------------------------------
 
-	it("workflow_builder_workflows(action='setup'): fills both parameters and a credential slot on a mixed wizard card when engaged", async () => {
+	it('setup_workflow: fills both parameters and a credential slot on a mixed wizard card when engaged', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -632,7 +632,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): routes a credential-only wizard card to the agent when engaged, instead of auto-declining", async () => {
+	it('setup_workflow: routes a credential-only wizard card to the agent when engaged, instead of auto-declining', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -665,7 +665,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): still auto-declines a credential-only wizard card with no governing stage direction", async () => {
+	it('setup_workflow: still auto-declines a credential-only wizard card with no governing stage direction', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
@@ -690,7 +690,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): maps different credential types for two different nodes on the same wizard card", async () => {
+	it('setup_workflow: maps different credential types for two different nodes on the same wizard card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -734,7 +734,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): drops a nodeCredentialsJson entry naming a node not on the setup card", async () => {
+	it('setup_workflow: drops a nodeCredentialsJson entry naming a node not on the setup card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -769,7 +769,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflow_builder_workflows(action='setup'): auto-accepts the sole existing credential regardless of the id string given, when there's only one candidate", async () => {
+	it("setup_workflow: auto-accepts the sole existing credential regardless of the id string given, when there's only one candidate", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -804,7 +804,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): drops a nodeCredentialsJson entry naming a credential id that matches none of several existing candidates", async () => {
+	it('setup_workflow: drops a nodeCredentialsJson entry naming a credential id that matches none of several existing candidates', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -842,7 +842,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflow_builder_workflows(action='setup'): fills a wizard credential slot when the model picks the standalone manual action", async () => {
+	it('setup_workflow: fills a wizard credential slot when the model picks the standalone manual action', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -896,7 +896,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): creates a real credential when the resolved slot has zero existing candidates", async () => {
+	it('setup_workflow: creates a real credential when the resolved slot has zero existing candidates', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -945,7 +945,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflow_builder_workflows(action='setup'): registers a mid-run-created credential id for cleanup when configured", async () => {
+	it('setup_workflow: registers a mid-run-created credential id for cleanup when configured', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -982,7 +982,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(createdCredentialIds.has('cred-fresh')).toBe(true);
 	});
 
-	it("workflow_builder_workflows(action='setup'): registers the created credential for test bypass when the direction says it works", async () => {
+	it('setup_workflow: registers the created credential for test bypass when the direction says it works', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1021,7 +1021,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
 	});
 
-	it("workflow_builder_workflows(action='setup'): bypasses only the credential types the direction says work, on a two-credential card", async () => {
+	it('setup_workflow: bypasses only the credential types the direction says work, on a two-credential card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1079,7 +1079,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
 	});
 
-	it("workflow_builder_workflows(action='setup'): leaves the credential test alone when the direction says nothing about validity", async () => {
+	it('setup_workflow: leaves the credential test alone when the direction says nothing about validity', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1112,7 +1112,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
 	});
 
-	it("workflow_builder_workflows(action='setup'): creates the credential in the build's project", async () => {
+	it("setup_workflow: creates the credential in the build's project", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1148,7 +1148,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(createCredential.mock.calls[0]?.[4]).toBe('build-project');
 	});
 
-	it("workflow_builder_workflows(action='setup'): keeps the seeded credentials bypassed when it creates another", async () => {
+	it('setup_workflow: keeps the seeded credentials bypassed when it creates another', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1191,7 +1191,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 	});
 
-	it("workflow_builder_workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {
+	it('setup_workflow: declines a zero-candidate credential slot when no credentialCreation is configured', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1226,7 +1226,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflow_builder_workflows(action='setup'): threads a valid setupHint through to credential creation for httpTemplatedCustomAuth", async () => {
+	it('setup_workflow: threads a valid setupHint through to credential creation for httpTemplatedCustomAuth', async () => {
 		const setupHint: InstanceAiCredentialSetupHint = {
 			template: { headers: { Authorization: '{{apiKey}}' } },
 			placeholders: [{ name: 'apiKey', title: 'API Key', optional: false }],
@@ -1268,7 +1268,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 	});
 
-	it("workflow_builder_workflows(action='setup'): drops a malformed setupHint instead of forwarding a garbage partial object", async () => {
+	it('setup_workflow: drops a malformed setupHint instead of forwarding a garbage partial object', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1325,7 +1325,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	// -------------------------------------------------------------------------
 	// TRUST-349 — setup_credentials standalone tool: choose_credential_setup_option.
-	// This is the "auto | manual | skip" card — NOT the workflow_builder_workflows(action='setup')
+	// This is the "auto | manual | skip" card — NOT the setup_workflow
 	// wizard above. Live testing (see PR description) found the builder doesn't
 	// actually reach for this tool during a normal build; kept per explicit
 	// decision to retain it in case some other flow (OAuth-specific, or a
@@ -1819,7 +1819,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
-	it("workflow_builder_workflows(action='setup'): routes to the agent even when the payload also includes credentialRequests (setupRequests takes priority)", async () => {
+	it('setup_workflow: routes to the agent even when the payload also includes credentialRequests (setupRequests takes priority)', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',

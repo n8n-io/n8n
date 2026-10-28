@@ -1,10 +1,11 @@
 /**
- * Consolidated workflow_builder_workflows tool — list, get, get-as-code, delete/archive,
- * unarchive, setup, publish, unpublish, list-versions, restore-version,
- * update-version.
+ * Workflow tools, one for each action of the former multi-action workflows tool:
+ * list, node usage, get, get as code, archive, unarchive, setup, validate,
+ * publish, unpublish, and version history.
  */
 import {
-	getLegacyBuilderToolNames,
+	getLegacyBuilderToolActions,
+	WORKFLOW_TOOL_NAME_BY_ACTION,
 	instanceAiApprovalDetailsSchema,
 	buildCredentialDestinationGrantKey,
 	credentialDestinationSchema,
@@ -55,6 +56,10 @@ import {
 	SKIPPED_SETUP_GUIDANCE,
 } from './workflows/setup-skip-state';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
+import {
+	getSupportedWorkflowActions,
+	type WorkflowAction,
+} from './workflows/workflow-tool-actions';
 import type { SetupRequest } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
@@ -82,15 +87,15 @@ import {
 	materializeWorkflowSource,
 	type MaterializedSourceStatus,
 } from './workflows/workflow-source-materializer';
-import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
-// `list`, `node-usage` and `setup` share these fields, and the schema sanitizer rejects
-// conflicting descriptions for one field name across the union, so each has to read correctly
-// for every action that uses it.
+// `list` and `node-usage` share these fields, so each has to read correctly for both tools.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. For `list` and `node-usage`: read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+	'Project ID, obtainable from `workspace(action="list-projects")`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
+
+const SETUP_PROJECT_ID_FIELD_DESCRIPTION =
+	'Project ID, obtainable from `workspace(action="list-projects")`. Scope credential creation to that project.';
 
 const SCOPE_FIELD_DESCRIPTION =
 	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
@@ -231,7 +236,7 @@ const getAsCodeAction = z.object({
 const deleteAction = z.object({
 	action: z
 		.literal('delete')
-		.describe('Archive a workflow by ID. This is reversible with the unarchive action.'),
+		.describe('Archive a workflow by ID. This is reversible with `unarchive_workflow`.'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -249,7 +254,7 @@ const setupAction = z.object({
 			'Configure workflow credentials and parameters after a build. Follow the returned guidance for a setup panel announcement, selection card, or approval.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
-	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+	projectId: z.string().optional().describe(SETUP_PROJECT_ID_FIELD_DESCRIPTION),
 	credentialHints: z
 		.array(
 			setupHintField.extend({
@@ -423,27 +428,10 @@ type PublishRollbackResult = {
 	rolledBackWorkflowIds: string[];
 	rollbackErrors: Array<{ workflowId: string; error: string }>;
 };
-export type WorkflowAction =
-	| 'list'
-	| 'node-usage'
-	| 'get'
-	| 'get-as-code'
-	| 'delete'
-	| 'unarchive'
-	| 'setup'
-	| 'validate'
-	| 'publish'
-	| 'unpublish'
-	| 'list-versions'
-	| 'restore-version'
-	| 'update-version';
-
 type WorkflowActionSchema = z.ZodDiscriminatedUnionOption<'action'>;
 
 export interface WorkflowsToolOptions {
 	allowedActions?: readonly WorkflowAction[];
-	descriptionPrefix?: string;
-	descriptionSuffix?: string;
 	surface?: 'full' | 'orchestrator';
 	/** Override source-edit instructions for a caller with its own candidate lifecycle. */
 	sourceGuidance?: string;
@@ -451,116 +439,68 @@ export interface WorkflowsToolOptions {
 
 type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
 
-const WORKFLOW_ACTION_ORDER = [
-	'list',
-	// Directly after `list`: it answers the same discovery question far more cheaply, and this
-	// ordering is what the agent reads first in the tool schema.
-	'node-usage',
-	'get',
-	'get-as-code',
+/** Actions that ask the user before they act, so their tool suspends. */
+const SUSPENDING_ACTIONS = new Set<WorkflowAction>([
 	'delete',
 	'unarchive',
 	'setup',
-	'validate',
 	'publish',
 	'unpublish',
-	'list-versions',
 	'restore-version',
 	'update-version',
-] as const satisfies readonly WorkflowAction[];
+]);
 
-const WORKFLOW_ACTION_LABELS = {
-	list: 'list',
-	'node-usage': 'summarize which node types are in use',
-	get: 'inspect',
-	'get-as-code': 'convert existing workflows to TypeScript SDK code',
-	delete: 'archive',
-	unarchive: 'restore archived workflows',
-	setup: 'set up credentials and parameters',
-	validate: 'validate configuration',
-	publish: 'publish',
-	unpublish: 'unpublish',
-	'list-versions': 'list versions',
-	'restore-version': 'restore versions',
-	'update-version': 'update version metadata',
-} satisfies Record<WorkflowAction, string>;
+const UNPUBLISHED_NOTE = 'Workflow results use activeVersionId: null for unpublished workflows.';
 
 function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToolOptions {
 	return typeof options === 'string' ? { surface: options } : options;
 }
 
-function getSupportedWorkflowActionSchemas(
+function getActionSchema(
 	context: InstanceAiContext,
+	action: WorkflowAction,
 	options: WorkflowsToolOptions,
-): Partial<Record<WorkflowAction, WorkflowActionSchema>> {
+): WorkflowActionSchema {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
-	const hasVersions = !!context.workflowService.listVersions;
-	// One gate for both halves of the surface: the host attaches `nodeUsage` only when the
-	// dependency index is wired and the capability is on, so the agent is never offered an
-	// action or a filter it would get an error from.
 	const hasNodeUsage = !!context.workflowService.nodeUsage;
 
-	return {
-		list: pickListAction(context, hasNodeUsage),
-		...(hasNodeUsage ? { 'node-usage': nodeUsageAction } : {}),
-		get: getAction,
-		'get-as-code': options.sourceGuidance
-			? getAsCodeAction.extend({
-					action: z.literal('get-as-code').describe(options.sourceGuidance),
-				})
-			: getAsCodeAction,
-		delete: deleteAction,
-		unarchive: unarchiveAction,
-		setup: setupAction,
-		validate: validateAction,
-		publish: hasNamedVersions ? publishExtendedAction : publishBaseAction,
-		unpublish: unpublishAction,
-		...(hasVersions
-			? {
-					'list-versions': listVersionsAction,
-					'restore-version': restoreVersionAction,
-				}
-			: {}),
-		...(hasNamedVersions ? { 'update-version': updateVersionAction } : {}),
-	};
+	switch (action) {
+		case 'list':
+			return pickListAction(context, hasNodeUsage);
+		case 'node-usage':
+			return nodeUsageAction;
+		case 'get':
+			return getAction;
+		case 'get-as-code':
+			return options.sourceGuidance
+				? getAsCodeAction.extend({
+						action: z.literal('get-as-code').describe(options.sourceGuidance),
+					})
+				: getAsCodeAction;
+		case 'delete':
+			return deleteAction;
+		case 'unarchive':
+			return unarchiveAction;
+		case 'setup':
+			return setupAction;
+		case 'validate':
+			return validateAction;
+		case 'publish':
+			return hasNamedVersions ? publishExtendedAction : publishBaseAction;
+		case 'unpublish':
+			return unpublishAction;
+		case 'list-versions':
+			return listVersionsAction;
+		case 'restore-version':
+			return restoreVersionAction;
+		case 'update-version':
+			return updateVersionAction;
+	}
 }
 
-function getWorkflowActions(
-	supportedSchemas: Partial<Record<WorkflowAction, WorkflowActionSchema>>,
-	options: WorkflowsToolOptions,
-): WorkflowAction[] {
-	const allowedActions = new Set(options.allowedActions ?? WORKFLOW_ACTION_ORDER);
-	return WORKFLOW_ACTION_ORDER.filter(
-		(action) => supportedSchemas[action] !== undefined && allowedActions.has(action),
-	);
-}
-
-function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOptions) {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
-	const actionSchemas: WorkflowActionSchema[] = [];
-	for (const action of getWorkflowActions(supportedSchemas, options)) {
-		const schema = supportedSchemas[action];
-		if (schema) actionSchemas.push(schema);
-	}
-
-	if (actionSchemas.length === 0) {
-		throw new Error('Workflows tool requires at least one allowed action');
-	}
-
-	if (actionSchemas.length === 1) {
-		return sanitizeInputSchema(actionSchemas[0]);
-	}
-
-	return sanitizeInputSchema(
-		z.discriminatedUnion(
-			'action',
-			actionSchemas as unknown as [
-				WorkflowActionSchema,
-				WorkflowActionSchema,
-				...WorkflowActionSchema[],
-			],
-		),
-	);
+function getActionDescription(action: WorkflowAction, schema: WorkflowActionSchema): string {
+	const description = schema.shape.action.description ?? '';
+	return action === 'list' || action === 'get' ? `${description} ${UNPUBLISHED_NOTE}` : description;
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -763,7 +703,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			error: message,
 			availableWorkflows: available,
 			hint:
-				'No workflow exists with that id. Pick one from `availableWorkflows` or call `workflow_builder_workflows(action="list")` for the current set. ' +
+				'No workflow exists with that id. Pick one from `availableWorkflows` or call `list_workflows` for the current set. ' +
 				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
 		};
 	}
@@ -805,7 +745,7 @@ const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	current:
 		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and call workflow_builder_build_workflow with this filePath.',
 	conflict:
-		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get-as-code again to start from the saved workflow.',
+		'The file has edits that were never built, so it was left untouched. Build it with workflow_builder_build_workflow to save them, or delete the file and call get_workflow_as_code again to start from the saved workflow.',
 };
 
 /**
@@ -2309,94 +2249,125 @@ function formatFieldValue(value: string | null): string {
 	return `"${value}"`;
 }
 
-function formatWorkflowActionList(actions: readonly WorkflowAction[]): string {
-	const labels = actions.map((action) => WORKFLOW_ACTION_LABELS[action]);
-	if (labels.length <= 2) return labels.join(' and ');
+// ── Tool factories ──────────────────────────────────────────────────────────
 
-	const lastLabel = labels[labels.length - 1];
-	return `${labels.slice(0, -1).join(', ')}, and ${lastLabel}`;
-}
-
-function getToolDescription(context: InstanceAiContext, options: WorkflowsToolOptions): string {
-	const supportedSchemas = getSupportedWorkflowActionSchemas(context, options);
-	const actionList = formatWorkflowActionList(getWorkflowActions(supportedSchemas, options));
-	const description = `${options.descriptionPrefix ?? 'Manage workflows'} — ${actionList}.`;
-	const suffix =
-		options.descriptionSuffix ??
-		(options.descriptionPrefix
-			? undefined
-			: 'Workflow results use activeVersionId: null for unpublished workflows.');
-
-	return suffix ? `${description} ${suffix}` : description;
-}
-
-// ── Tool factory ────────────────────────────────────────────────────────────
-
-export function createWorkflowsTool(
+/**
+ * Build the tool that owns one workflow action. A suspended call of the former
+ * multi-action tool resumes here through its legacy action mapping.
+ */
+export function createWorkflowTool(
 	context: InstanceAiContext,
+	action: WorkflowAction,
 	optionsInput: WorkflowsToolOptionsInput = {},
 ) {
 	const options = normalizeOptions(optionsInput);
-	// Closure state for the setup action's suspend/resume cycle
+	// Closure state for the setup suspend/resume cycle
 	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
 		currentRequestId: null,
 		preTestSnapshot: null,
 	};
+	const name = WORKFLOW_TOOL_NAME_BY_ACTION[action];
+	const schema = getActionSchema(context, action, options);
 
-	const inputSchema = buildInputSchema(context, options);
+	const tool = new Tool(name)
+		.description(getActionDescription(action, schema))
+		.input(sanitizeInputSchema(schema.omit({ action: true })));
+	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
+		tool.legacyActions(legacyName, ...actions);
+	}
+	// The input schema omits `action`, so restore it for the shared handlers.
+	const withAction = (input: unknown) => ({ ...(isRecord(input) ? input : {}), action }) as Input;
 
-	return new Tool(DOMAIN_TOOL_IDS.WORKFLOWS)
-		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.WORKFLOWS))
-		.description(getToolDescription(context, options))
-		.input(inputSchema)
+	if (!SUSPENDING_ACTIONS.has(action)) {
+		return tool
+			.handler(
+				async (input) =>
+					await runWorkflowAction(
+						context,
+						options,
+						withAction(input),
+						NON_SUSPENDING_CONTEXT,
+						setupState,
+					),
+			)
+			.build();
+	}
+
+	return tool
 		.suspend(suspendSchema)
 		.resume(workflowsResumeSchema)
-		.handler(async (input, ctx) => {
-			const workflowInput = input as Input;
-
-			switch (workflowInput.action) {
-				case 'list':
-					return await handleList(context, workflowInput);
-				case 'node-usage':
-					return await handleNodeUsage(context, workflowInput);
-				case 'get':
-					return await handleGet(context, workflowInput);
-				case 'get-as-code': {
-					const result = await handleGetAsCode(context, workflowInput);
-
-					if (!options.sourceGuidance) return result;
-
-					const conflictNote =
-						'status' in result && result.status === 'conflict'
-							? 'The source file contains unbuilt edits and was left untouched. '
-							: '';
-					return { ...result, note: conflictNote + options.sourceGuidance };
-				}
-				case 'delete':
-					return await handleDelete(context, workflowInput, ctx);
-				case 'unarchive':
-					return await handleUnarchive(context, workflowInput, ctx);
-				case 'setup': {
-					const result = await handleSetup(context, workflowInput, ctx, setupState);
-					return await reportWorkflowChange(context, workflowInput.workflowId, result);
-				}
-				case 'validate':
-					return await handleValidate(context, workflowInput);
-				case 'publish':
-					return await handlePublish(context, workflowInput, ctx);
-				case 'unpublish':
-					return await handleUnpublish(context, workflowInput, ctx);
-				case 'list-versions':
-					return await handleListVersions(context, workflowInput);
-				case 'restore-version': {
-					const result = await handleRestoreVersion(context, workflowInput, ctx);
-					return await reportWorkflowChange(context, workflowInput.workflowId, result);
-				}
-				case 'update-version':
-					return await handleUpdateVersion(context, workflowInput, ctx);
-				default:
-					return { error: `Unknown action: ${(workflowInput as { action: string }).action}` };
-			}
-		})
+		.handler(
+			async (input, ctx) =>
+				await runWorkflowAction(context, options, withAction(input), ctx, setupState),
+		)
 		.build();
 }
+
+const NON_SUSPENDING_CONTEXT: WorkflowToolContext = {
+	resumeData: undefined,
+	suspend: async () => {
+		throw new Error('This workflow tool cannot suspend');
+	},
+};
+
+/** Build one tool for each workflow action the host supports and the caller allows. */
+export function createWorkflowTools(
+	context: InstanceAiContext,
+	optionsInput: WorkflowsToolOptionsInput = {},
+) {
+	const options = normalizeOptions(optionsInput);
+	return getSupportedWorkflowActions(context, options.allowedActions).map((action) =>
+		createWorkflowTool(context, action, options),
+	);
+}
+
+async function runWorkflowAction(
+	context: InstanceAiContext,
+	options: WorkflowsToolOptions,
+	workflowInput: Input,
+	ctx: WorkflowToolContext,
+	setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null },
+) {
+	switch (workflowInput.action) {
+		case 'list':
+			return await handleList(context, workflowInput);
+		case 'node-usage':
+			return await handleNodeUsage(context, workflowInput);
+		case 'get':
+			return await handleGet(context, workflowInput);
+		case 'get-as-code': {
+			const result = await handleGetAsCode(context, workflowInput);
+
+			if (!options.sourceGuidance) return result;
+
+			const conflictNote =
+				'status' in result && result.status === 'conflict'
+					? 'The source file contains unbuilt edits and was left untouched. '
+					: '';
+			return { ...result, note: conflictNote + options.sourceGuidance };
+		}
+		case 'delete':
+			return await handleDelete(context, workflowInput, ctx);
+		case 'unarchive':
+			return await handleUnarchive(context, workflowInput, ctx);
+		case 'setup': {
+			const result = await handleSetup(context, workflowInput, ctx, setupState);
+			return await reportWorkflowChange(context, workflowInput.workflowId, result);
+		}
+		case 'validate':
+			return await handleValidate(context, workflowInput);
+		case 'publish':
+			return await handlePublish(context, workflowInput, ctx);
+		case 'unpublish':
+			return await handleUnpublish(context, workflowInput, ctx);
+		case 'list-versions':
+			return await handleListVersions(context, workflowInput);
+		case 'restore-version': {
+			const result = await handleRestoreVersion(context, workflowInput, ctx);
+			return await reportWorkflowChange(context, workflowInput.workflowId, result);
+		}
+		case 'update-version':
+			return await handleUpdateVersion(context, workflowInput, ctx);
+	}
+}
+export type { WorkflowAction } from './workflows/workflow-tool-actions';

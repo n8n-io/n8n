@@ -18,6 +18,7 @@ import {
 	McpBrowserError,
 	PageNotFoundError,
 	StaleRefError,
+	UnsupportedOperationError,
 	type ConnectionLostReason,
 	type UnactionableReason,
 } from '../errors';
@@ -142,6 +143,11 @@ export class PlaywrightAdapter {
 	/** Remote mode without a relay connects straight to `cdpEndpoint`, for example a cloud browser. */
 	private get isDirectCdp(): boolean {
 		return this.resolvedConfig.mode === 'remote' && !this.externalRelay;
+	}
+
+	/** The browser runs on another host whenever an external relay is in use. */
+	private get isRemote(): boolean {
+		return this.resolvedConfig.mode === 'remote' || this.externalRelay !== undefined;
 	}
 
 	// =========================================================================
@@ -553,6 +559,9 @@ export class PlaywrightAdapter {
 	}
 
 	async upload(pageId: string, target: ElementTarget | undefined, files: string[]): Promise<void> {
+		if (this.isRemote) {
+			throw new UnsupportedOperationError('upload', 'remote');
+		}
 		const state = await this.ensurePage(pageId);
 
 		// If a file chooser dialog is pending, use it directly
@@ -1175,10 +1184,12 @@ export class PlaywrightAdapter {
 			state.pendingDialog = dlg;
 		});
 
-		// File chooser listener — capture pending file choosers
-		page.on('filechooser', (chooser: FileChooser) => {
-			state.pendingFileChooser = chooser;
-		});
+		// A listener stops the native dialog, so remote sessions skip it and the user picks the file.
+		if (!this.isRemote) {
+			page.on('filechooser', (chooser: FileChooser) => {
+				state.pendingFileChooser = chooser;
+			});
+		}
 
 		// Clean up on page close — also clear relay activation so re-activation works
 		page.on('close', () => {

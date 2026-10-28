@@ -509,32 +509,115 @@ describe('GET /mcp-oauth/authorize', () => {
 		expect(response.statusCode).not.toBe(403);
 		expect([302, 400, 401]).toContain(response.statusCode);
 	});
+});
 
-	// RFC 9207: `iss` is required on every authorization response — including
-	// the SDK's own request-validation error redirects — because the metadata
-	// advertises `authorization_response_iss_parameter_supported`.
-	test('should include the iss parameter on error redirects', async () => {
-		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
-			client_name: 'Error Redirect Client',
-			redirect_uris: ['https://example.com/callback'],
-			grant_types: ['authorization_code'],
-			token_endpoint_auth_method: 'none',
-		});
+describe.each(['/mcp-oauth', '/oauth'])('%s/authorize request validation', (basePath) => {
+	const redirectUri = 'https://example.com/callback';
+	let clientId: string;
 
-		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
-			client_id: registerResponse.body.client_id,
-			redirect_uri: 'https://example.com/callback',
-			response_type: 'code',
-			// missing code_challenge → SDK redirects back with an error
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+
+		// Inserted directly: registering through the endpoint for every test
+		// would exhaust its per-IP rate limit.
+		clientId = randomUUID();
+		await Container.get(OAuthClientRepository).insert({
+			id: clientId,
+			name: 'Validation Client',
+			redirectUris: [redirectUri],
+			grantTypes: ['authorization_code'],
 		});
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+		await mcpSettingsService.setAllowedRedirectUris([]);
+	});
+
+	const buildParams = (overrides: Record<string, string | undefined> = {}) =>
+		Object.fromEntries(
+			Object.entries({
+				client_id: clientId,
+				redirect_uri: redirectUri,
+				response_type: 'code',
+				code_challenge: 'test-challenge-string-must-be-long-enough-for-validation',
+				code_challenge_method: 'S256',
+				state: 'random-state',
+				...overrides,
+			}).filter(([, value]) => value !== undefined),
+		);
+
+	test('should redirect a valid request to the consent screen', async () => {
+		const response = await testServer.restlessAgent
+			.get(`${basePath}/authorize`)
+			.query(buildParams());
 
 		expect(response.statusCode).toBe(302);
-		const redirectUrl = new URL(response.headers.location);
-		expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://example.com/callback');
-		expect(redirectUrl.searchParams.get('error')).toBe('invalid_request');
-		expect(redirectUrl.searchParams.get('iss')).toBe(
-			Container.get(UrlService).getInstanceBaseUrl(),
-		);
+		const { flowId } = pendingFlowFrom(response);
+		expect(flowId).not.toBe('');
+		expect(response.headers.location).toBe(`/oauth/consent?flow=${flowId}`);
+	});
+
+	test('should redirect a valid POST request to the consent screen', async () => {
+		const response = await testServer.restlessAgent
+			.post(`${basePath}/authorize`)
+			.type('form')
+			.send(buildParams());
+
+		expect(response.statusCode).toBe(302);
+		const { flowId } = pendingFlowFrom(response);
+		expect(flowId).not.toBe('');
+		expect(response.headers.location).toBe(`/oauth/consent?flow=${flowId}`);
+	});
+
+	test.each<[string, Record<string, string | undefined>]>([
+		['response_type is missing', { response_type: undefined }],
+		['response_type is not code', { response_type: 'token' }],
+		['code_challenge is missing', { code_challenge: undefined }],
+		['code_challenge_method is missing', { code_challenge_method: undefined }],
+		['code_challenge_method is not S256', { code_challenge_method: 'plain' }],
+		['resource is not a URL', { resource: 'not-a-url' }],
+	])('should answer with 400 when %s', async (_case, overrides) => {
+		const response = await testServer.restlessAgent
+			.get(`${basePath}/authorize`)
+			.query(buildParams(overrides));
+
+		expect(response.headers.location).toBeUndefined();
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_request');
+	});
+
+	test('should answer an invalid POST request with 400', async () => {
+		const response = await testServer.restlessAgent
+			.post(`${basePath}/authorize`)
+			.type('form')
+			.send(buildParams({ response_type: undefined }));
+
+		expect(response.headers.location).toBeUndefined();
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should answer an invalid request with 400 when redirect URIs are restricted', async () => {
+		await mcpSettingsService.setAllowedRedirectUris(['https://trusted.example.com/callback']);
+
+		const response = await testServer.restlessAgent
+			.get(`${basePath}/authorize`)
+			.query(buildParams({ response_type: undefined }));
+
+		expect(response.headers.location).toBeUndefined();
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject a redirect URI outside the allowlist', async () => {
+		await mcpSettingsService.setAllowedRedirectUris(['https://trusted.example.com/callback']);
+
+		const response = await testServer.restlessAgent
+			.get(`${basePath}/authorize`)
+			.query(buildParams());
+
+		expect(response.headers.location).toBeUndefined();
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error_description).toBe('Redirect URI not in allowed list');
 	});
 });
 
@@ -1100,6 +1183,14 @@ describe('IP rate limit configuration', () => {
 		}
 	});
 
+	// Without these parameters, the request validator answers before the SDK
+	// handler and its rate limiter run.
+	const authorizeParams = {
+		response_type: 'code',
+		code_challenge: 'test-challenge',
+		code_challenge_method: 'S256',
+	};
+
 	test.each([
 		['GET', '/mcp-oauth/authorize'],
 		['POST', '/mcp-oauth/token'],
@@ -1112,7 +1203,7 @@ describe('IP rate limit configuration', () => {
 	])('does not apply an SDK rate limit to %s %s', async (method, path) => {
 		const response =
 			method === 'GET'
-				? await testServer.restlessAgent.get(path)
+				? await testServer.restlessAgent.get(path).query(authorizeParams)
 				: await testServer.restlessAgent.post(path).send({});
 
 		expect(response.statusCode).not.toBe(404);
@@ -1121,7 +1212,9 @@ describe('IP rate limit configuration', () => {
 
 	test('does not cap authorization requests at the SDK default of 100', async () => {
 		for (let attempt = 0; attempt <= 100; attempt++) {
-			const response = await testServer.restlessAgent.get('/mcp-oauth/authorize');
+			const response = await testServer.restlessAgent
+				.get('/mcp-oauth/authorize')
+				.query(authorizeParams);
 			expect(response.statusCode).toBe(400);
 		}
 	});

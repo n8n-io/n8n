@@ -11,6 +11,7 @@ import { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 import { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
+import { SkillsModuleBoundaryRule } from './rules/skills-module-boundary.rule.js';
 import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 import { TypeormPersistenceBoundaryRule } from './rules/typeorm-persistence-boundary.rule.js';
@@ -26,6 +27,7 @@ export { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 export { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 export { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
+export { SkillsModuleBoundaryRule } from './rules/skills-module-boundary.rule.js';
 export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 export type { SubpathSpec } from './rules/subpath-purity.rule.js';
@@ -38,10 +40,18 @@ const defaultRuleSettings: RuleSettingsMap = {
 		severity: 'error',
 		options: {},
 	},
+	'skills-module-boundary': {
+		enabled: true,
+		severity: 'error',
+		options: {},
+	},
 	'adr-conventions': {
 		enabled: true,
 		severity: 'error',
-		options: { allowedOwners: ['API & OEM', 'Assistant', 'Catalysts'] },
+		options: {
+			// Catalysts stays for the ADRs written before it split into Core Application and Core Execution.
+			allowedOwners: ['API & OEM', 'Assistant', 'Catalysts', 'Core Application', 'Core Execution'],
+		},
 	},
 	'catalog-violations': {
 		enabled: true,
@@ -162,6 +172,7 @@ function mergeSettings(defaults: RuleSettingsMap, overrides?: RuleSettingsMap): 
 export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<CodeHealthContext> {
 	const runner = new RuleRunner<CodeHealthContext>();
 	runner.registerRule(new AgentsInstanceAiBoundaryRule());
+	runner.registerRule(new SkillsModuleBoundaryRule());
 	runner.registerRule(new AdrConventionsRule());
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());

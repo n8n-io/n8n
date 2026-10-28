@@ -11,7 +11,10 @@ vi.mock('@n8n/agents', () => ({ createModel: vi.fn(), raceWithAbort: raceWithAbo
 vi.mock('ai', () => ({ generateText: vi.fn() }));
 vi.mock('@n8n/instance-ai', () => ({ createSandbox: vi.fn(), createWorkspace: vi.fn() }));
 vi.mock('@n8n/ai-utilities', () => ({ braveSearch: vi.fn(), searxngSearch: vi.fn() }));
-vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
 import { createModel } from '@n8n/agents';
@@ -381,6 +384,7 @@ describe('InstanceAiVerificationService', () => {
 				'saved-key',
 				'n8n workflow automation',
 				expect.objectContaining({ maxResults: 10 }),
+				expect.any(Function),
 			);
 			expect(searxngSearchMock).not.toHaveBeenCalled();
 		});
@@ -397,6 +401,7 @@ describe('InstanceAiVerificationService', () => {
 				'https://saved.searxng',
 				'n8n workflow automation',
 				expect.objectContaining({ maxResults: 10 }),
+				expect.any(Function),
 			);
 		});
 
