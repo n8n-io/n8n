@@ -19,6 +19,7 @@ import type { AINodeConnectionType, IDisplayOptions } from 'n8n-workflow';
 export const AI_CONNECTION_TYPES = [
 	'ai_agent',
 	'ai_chain',
+	'ai_decisionModel',
 	'ai_document',
 	'ai_embedding',
 	'ai_languageModel',

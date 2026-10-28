@@ -37,6 +37,11 @@ const SUBNODE_TYPE_PATTERNS: Array<{
 	{ prefix: 'document', connectionType: 'ai_document', subnodeField: 'documentLoader' },
 	{ prefix: 'textSplitter', connectionType: 'ai_textSplitter', subnodeField: 'textSplitter' },
 	{ prefix: 'reranker', connectionType: 'ai_reranker', subnodeField: 'reranker' },
+	{
+		prefix: 'decisionModel',
+		connectionType: 'ai_decisionModel',
+		subnodeField: 'decisionModel',
+	},
 ];
 
 /**

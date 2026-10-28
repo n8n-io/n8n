@@ -22,6 +22,25 @@ export type { ChatModel, ChatModelConfig } from '@n8n/ai-utilities';
 // Chat model base classes
 export { BaseChatModel } from '@n8n/ai-utilities';
 
+// Decision model types
+export type {
+	BooleanProbabilityAnswer,
+	BooleanProbabilityQuestion,
+	ChoiceAnswer,
+	ChoiceQuestion,
+	DecisionAnswer,
+	DecisionChoiceOption,
+	DecisionModel,
+	DecisionQuestion,
+	DecisionQuestionType,
+	DecisionRequest,
+	DecisionResponse,
+	DecisionState,
+	DecisionUsage,
+	ScoreAnswer,
+	ScoreQuestion,
+} from '@n8n/ai-utilities';
+
 // Memory types
 export type { ChatHistory, ChatMemory } from '@n8n/ai-utilities';
 
@@ -33,5 +52,6 @@ export { BaseChatMemory } from '@n8n/ai-utilities';
 export { WindowedChatMemory, type WindowedChatMemoryConfig } from '@n8n/ai-utilities';
 
 // Suppliers
+export { supplyDecisionModel, type SupplyDecisionModelOptions } from '@n8n/ai-utilities';
 export { supplyMemory, type SupplyMemoryOptions } from '@n8n/ai-utilities';
 export { supplyModel, type SupplyModelOptions, type OpenAiModel } from '@n8n/ai-utilities';

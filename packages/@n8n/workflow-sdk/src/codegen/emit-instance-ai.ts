@@ -53,6 +53,7 @@ export const SDK_FUNCTIONS = [
 	'retriever',
 	'documentLoader',
 	'textSplitter',
+	'decisionModel',
 	'fromAi',
 	'splitInBatches',
 	'nextBatch',
