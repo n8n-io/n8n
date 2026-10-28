@@ -50,10 +50,7 @@ export class ExecutionStopService {
 
 	@OnPubSubEvent('stop-execution', { instanceType: 'worker' })
 	handleStopExecution({ executionId }: { executionId: string }) {
-		if (this.jobProcessor.stopJobByExecutionId(executionId)) {
-			this.logger.debug('Stopped job on worker after stop-execution command', { executionId });
-			return;
-		}
+		if (this.jobProcessor.stopJobByExecutionId(executionId)) return;
 
 		if (!this.activeExecutions.has(executionId)) return;
 

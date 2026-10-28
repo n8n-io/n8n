@@ -594,7 +594,9 @@ export class JobProcessor {
 		);
 		if (!entry) return false;
 
-		this.cancelJob(entry[0], 'manual');
+		const [jobId] = entry;
+		this.cancelJob(jobId, 'manual');
+		this.logger.debug('Stopped running job by execution id', { executionId, jobId });
 		return true;
 	}
 
