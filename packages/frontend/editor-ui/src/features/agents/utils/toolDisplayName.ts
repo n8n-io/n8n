@@ -11,8 +11,11 @@ export const FIND_FILE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.findF
 export const SEARCH_TEXT_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.searchText';
 export const READ_FILE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.readFile';
 export const FLAG_MEMORY_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.flagMemory';
+export const TOOL_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.toolSearch';
 
 const WEB_SEARCH_TOOL_NAME_PATTERN = /^(?:web_search|(?:anthropic|openai)\.web_search(?:_\d{8})?)$/;
+// Native tool search is registered as `<provider>.tool_search`, with `_N` added on a name collision.
+const TOOL_SEARCH_TOOL_NAME_PATTERN = /^(?:anthropic|openai)\.tool_search(?:_\d+)?$/;
 const FIND_FILE_TOOL_NAME = 'find_file';
 const SEARCH_TEXT_TOOL_NAME = 'search_text';
 const READ_FILE_TOOL_NAME = 'read_file';
@@ -89,6 +92,7 @@ export function getToolNameTranslationKey(
 	if (Object.prototype.hasOwnProperty.call(BUILDER_TOOL_TRANSLATION_KEYS, name)) {
 		return BUILDER_TOOL_TRANSLATION_KEYS[name];
 	}
+	if (TOOL_SEARCH_TOOL_NAME_PATTERN.test(name)) return TOOL_SEARCH_TOOL_NAME_KEY;
 
 	return WEB_SEARCH_TOOL_NAME_PATTERN.test(name) ? WEB_SEARCH_TOOL_NAME_KEY : undefined;
 }
