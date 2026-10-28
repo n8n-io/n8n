@@ -89,9 +89,9 @@ export class AppAuthService {
 			nonceHash: this.hash(nonce),
 		});
 		const state = new URL(url).searchParams.get('state');
-		if (!state || !/^[a-f0-9]{64}$/.test(state)) throw new AuthError('Invalid app sign-in state.');
+		if (!state) throw new AuthError('Invalid app sign-in state.');
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-		res.cookie(this.cookieName(`flow-${state}`), nonce, {
+		res.cookie(this.flowCookieName(state), nonce, {
 			...this.cookieOptions(),
 			maxAge: 5 * 60 * 1000,
 		});
@@ -102,14 +102,10 @@ export class AppAuthService {
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
 		const app = await this.requireApp(req, appId);
 		const { code, state, iss, error } = req.query;
-		if (
-			typeof state !== 'string' ||
-			!/^[a-f0-9]{64}$/.test(state) ||
-			iss !== this.urls.getInstanceBaseUrl()
-		) {
+		if (typeof state !== 'string' || !state || iss !== this.urls.getInstanceBaseUrl()) {
 			throw new BadRequestError('Invalid app sign-in callback.');
 		}
-		const name = this.cookieName(`flow-${state}`);
+		const name = this.flowCookieName(state);
 		const nonce = this.cookie(req, name);
 		res.clearCookie(name, this.cookieOptions());
 		if (!nonce) throw new AuthError('Restart app sign-in in this browser.');
@@ -168,6 +164,10 @@ export class AppAuthService {
 
 	private cookieName(suffix: string): string {
 		return `${this.hosts.baseUrl.protocol === 'https:' ? '__Host-' : ''}n8n-app-${suffix}`;
+	}
+
+	private flowCookieName(state: string): string {
+		return this.cookieName(`flow-${this.hash(state)}`);
 	}
 
 	private cookieOptions(): CookieOptions {

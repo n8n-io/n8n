@@ -3,6 +3,7 @@ import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { ResourceAdmission, type ProtectedResource } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
+import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { AppAuthService, type AppRequest } from '../app-auth.service';
@@ -12,7 +13,8 @@ import { AppRepository } from '../../app.repository';
 import { AppHostService } from '../../serving/app-host.service';
 
 const issuer = 'https://n8n.example.net';
-const state = 'a'.repeat(64);
+const state = 'opaque.State_~-1';
+const flowCookieName = `__Host-n8n-app-flow-${createHash('sha256').update(state).digest('hex')}`;
 const appId = '11111111-1111-4111-8111-111111111111';
 
 function setup(visibility: App['visibility'] = 'project') {
@@ -138,6 +140,7 @@ describe('AppAuthService', () => {
 		const { service, app, req, res, flow } = setup();
 		await service.begin(app, '/orders/123?view=all', res);
 		const [name, nonce] = res.cookie.mock.calls[0];
+		expect(name).toBe(flowCookieName);
 		req.cookies = { [name]: nonce };
 		await service.complete(req, res, appId);
 		expect(flow.complete).toHaveBeenCalledWith(
@@ -189,14 +192,15 @@ describe('AppAuthService', () => {
 	});
 
 	it.each([
-		{ name: 'an invalid state', query: { state: 'invalid' } },
+		{ name: 'an empty state', query: { state: '' } },
+		{ name: 'a repeated state', query: { state: [state, state] } },
 		{ name: 'another issuer', query: { iss: 'https://other.example' } },
 		{ name: 'an empty OAuth error', query: { error: '' } },
 		{ name: 'a repeated OAuth error', query: { error: ['access_denied', 'server_error'] } },
 		{ name: 'no code or OAuth error', query: { error: undefined } },
 	])('rejects callbacks with $name', async ({ query }) => {
 		const { service, req, res, flow } = setup();
-		req.cookies = { [`__Host-n8n-app-flow-${state}`]: 'nonce' };
+		req.cookies = { [flowCookieName]: 'nonce' };
 		req.query = { error: 'access_denied', state, iss: issuer, ...query };
 
 		await expect(service.complete(req, res, appId)).rejects.toThrow('Invalid app sign-in callback');
