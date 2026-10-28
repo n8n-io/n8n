@@ -25,7 +25,10 @@ export function getContainerLimit(): number | undefined {
 	return limit > 0 && limit <= totalmem() ? limit : undefined;
 }
 
-/** The last value of a flag. Node reads `NODE_OPTIONS` first, so the command line wins. */
+/**
+ * The last value of a flag. Node reads `NODE_OPTIONS` first, so the command line wins.
+ * A value of 0 resets the flag to the default.
+ */
 function readFlag(name: string): number | undefined {
 	const spellings = [`--${name}`, `--${name.replaceAll('-', '_')}`];
 	const args = [...(process.env.NODE_OPTIONS?.split(/\s+/) ?? []), ...process.execArgv];
@@ -34,7 +37,7 @@ function readFlag(name: string): number | undefined {
 		const [flag, inlineValue] = arg.split('=');
 		if (!spellings.includes(flag)) continue;
 		const parsed = Number(inlineValue ?? args[i + 1]);
-		if (parsed > 0) value = parsed;
+		if (parsed >= 0) value = parsed > 0 ? parsed : undefined;
 	}
 	return value;
 }

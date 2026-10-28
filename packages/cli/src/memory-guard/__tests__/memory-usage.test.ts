@@ -84,6 +84,14 @@ describe('memory usage', () => {
 			expect(getOldGenerationLimit(undefined)).toBe(512 * MB);
 		});
 
+		it('should compute the default when a later flag is 0', () => {
+			vi.stubEnv('NODE_OPTIONS', '--max-old-space-size=512');
+			process.execArgv = ['--max-old-space-size=0'];
+			setHeapLimit(4192);
+
+			expect(getOldGenerationLimit(undefined)).toBe(4096 * MB);
+		});
+
 		it('should compute the limit from --max-old-space-size-percentage', () => {
 			process.execArgv = ['--max-old-space-size=512', '--max-old-space-size-percentage=40'];
 			setHeapLimit(867);
