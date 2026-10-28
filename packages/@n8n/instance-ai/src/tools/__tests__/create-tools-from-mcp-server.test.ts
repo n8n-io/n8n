@@ -261,19 +261,11 @@ describe('createToolsFromLocalMcpServer', () => {
 	});
 
 	describe('media output', () => {
-		it('returns native file parts from toMessage for MCP image results', () => {
+		it('does not create an extra message for MCP image results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
-			const message = tool?.toMessage?.(SCREENSHOT_RESULT);
-
-			expect(message).toEqual({
-				role: 'assistant',
-				content: [
-					{ type: 'text', text: 'current browser screenshot' },
-					{ type: 'file', data: 'base64-screenshot', mediaType: 'image/png' },
-				],
-			});
+			expect(tool?.toMessage?.(SCREENSHOT_RESULT)).toBeUndefined();
 		});
 
 		it('does not create an extra message for text-only results', () => {
@@ -300,14 +292,11 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('returns a native file part from toMessage for MCP resource results', () => {
+		it('does not create an extra message for MCP resource results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
-			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
-				role: 'assistant',
-				content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
-			});
+			expect(tool?.toMessage?.(PDF_RESULT)).toBeUndefined();
 		});
 
 		it('falls back to application/octet-stream when resource has no mimeType', () => {
@@ -318,9 +307,15 @@ describe('createToolsFromLocalMcpServer', () => {
 				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
 			};
 
-			expect(tool?.toMessage?.(result)).toEqual({
-				role: 'assistant',
-				content: [{ type: 'file', data: 'base64-bytes', mediaType: 'application/octet-stream' }],
+			expect(tool?.toModelOutput?.(result)).toEqual({
+				type: 'content',
+				value: [
+					{
+						type: 'file',
+						data: { type: 'data', data: 'base64-bytes' },
+						mediaType: 'application/octet-stream',
+					},
+				],
 			});
 		});
 
