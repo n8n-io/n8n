@@ -1975,6 +1975,71 @@ describe('CredentialsService', () => {
 
 			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
 		});
+
+		describe('credential descriptions', () => {
+			const storedDescription = 'Read-only reporting account';
+
+			const setUpUpdate = () => {
+				const stored = Object.assign(new CredentialsEntity(), {
+					id: 'project-credential',
+					name: 'Project credential',
+					type: 'apiKey',
+					description: storedDescription,
+				});
+				storeCredential(stored);
+				const transactionManager = mock<EntityManager>();
+				transactionManager.findOneBy.mockResolvedValue(stored);
+				setRepositoryTransaction(transactionManager);
+				return stored;
+			};
+
+			it('resolves the flag once and keeps descriptions out when disabled', async () => {
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+				const stored = setUpUpdate();
+				const payload: ICredentialsDb = {
+					id: stored.id,
+					name: stored.name,
+					type: stored.type,
+					data: 'encrypted',
+					description: 'Payload description',
+				} as ICredentialsDb;
+				externalHooks.run.mockImplementation(async (_hookName, [data]) => {
+					(data as ICredentialsDb).description = 'Hook description';
+				});
+
+				const result = await service.update(stored.id, payload, ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.not.objectContaining({ description: expect.anything() }),
+					expect.anything(),
+				);
+				expect(result).not.toHaveProperty('description');
+				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);
+			});
+
+			it('resolves the flag once and keeps descriptions when enabled', async () => {
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+				const stored = setUpUpdate();
+				const payload: ICredentialsDb = {
+					id: stored.id,
+					name: stored.name,
+					type: stored.type,
+					data: 'encrypted',
+					description: storedDescription,
+				} as ICredentialsDb;
+
+				const result = await service.update(stored.id, payload, ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: storedDescription }),
+					expect.anything(),
+				);
+				expect(result?.description).toBe(storedDescription);
+				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledTimes(1);
+			});
+		});
 	});
 
 	describe('updateInstanceCredential', () => {
