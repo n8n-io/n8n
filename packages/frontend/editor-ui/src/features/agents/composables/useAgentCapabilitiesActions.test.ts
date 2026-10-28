@@ -30,7 +30,8 @@ vi.mock('./useAgentApi', async (importOriginal) => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openModalWithData }),
+	// The skill editor is open, as the tests open it before they change a version.
+	useUIStore: () => ({ openModalWithData, modalsById: { agentSkillModal: { open: true } } }),
 }));
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
