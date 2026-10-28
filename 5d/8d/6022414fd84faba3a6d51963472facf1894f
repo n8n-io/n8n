@@ -1,0 +1,28 @@
+packages/cli/src/modules/ldap.ee/helpers.ee.ts
+  s_8b96db947cd596::t_ceb4d7f19c3351 246
+packages/nodes-base/nodes/Databricks/actions/lakebase/helpers.ts
+  s_8b96db947cd596::t_ceb4d7f19c3351 1
+packages/nodes-base/nodes/HttpRequest/GenericFunctions.ts
+  s_8b96db947cd596::t_4f186c1f7c79f8 318
+  s_8b96db947cd596::t_ce4e34e3cdcf41 300,307,315-317,319
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_8b96db947cd596::t_ce4e34e3cdcf41 7
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_8b96db947cd596::t_ceb4d7f19c3351 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d8d6022414fd84faba3a6d51963472facf1894f",
+  "prompts": {},
+  "sessions": {
+    "s_8b96db947cd596": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e7ef44b20ffetwQ9oiPuPI6Cr5",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

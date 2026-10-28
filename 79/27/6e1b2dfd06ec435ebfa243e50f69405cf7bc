@@ -1,0 +1,55 @@
+packages/core/src/execution-engine/post-receive.ts
+  s_46d507696ec517::t_753b15009b9b78 118-119
+  s_46d507696ec517::t_cb57f06a601df0 1-116,120,123-139,141,143-152,154-190
+  s_46d507696ec517::t_f6085b6555e94c 153
+  s_46d507696ec517::t_78233ee68da5f0 117
+  s_46d507696ec517::t_a758599d36324d 121-122
+  s_46d507696ec517::t_c6390f66b2ed2e 140,142
+packages/core/src/execution-engine/routing-node.ts
+  s_46d507696ec517::t_8a10252a581f98 62
+  s_46d507696ec517::t_261a5e1adb0f14 45
+  s_99ec3ba1bd6273::t_5a55494c55446b 61
+  s_46d507696ec517::t_513c3d94cdb9fb 400,408-413
+  s_46d507696ec517::t_5cbb293c600b1d 677
+packages/core/src/execution-engine/__tests__/standalone-routing.test.ts
+  s_46d507696ec517::t_47cb54c2b0cee1 1-99,101-158
+  s_46d507696ec517::t_31eeda6ac21b93 100
+packages/core/src/execution-engine/__tests__/post-receive.test.ts
+  s_46d507696ec517::t_0c78d738e5383d 41
+  s_46d507696ec517::t_105bac55a651bf 1-4,6-40,42-117,124-142,144-146,154-192
+  s_46d507696ec517::t_cf1e1b60e4d247 143,147-153
+  s_46d507696ec517::t_94c55a95e68b03 5
+  s_46d507696ec517::t_bee2603cdf8263 118-123
+packages/core/src/execution-engine/standalone-routing.ts
+  s_46d507696ec517::t_3edb0372166399 9-10
+  s_46d507696ec517::t_27722bd113888e 1-8,11-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79276e1b2dfd06ec435ebfa243e50f69405cf7bc",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_46d507696ec517": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c3adea2-f67b-4aaf-9e0a-0e10d94fab1b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    },
+    "s_99ec3ba1bd6273": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c504aa3f-87c3-4f18-a1fa-c7dc481555a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

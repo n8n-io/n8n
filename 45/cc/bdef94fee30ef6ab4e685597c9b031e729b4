@@ -1,0 +1,44 @@
+packages/cli/test/integration/database/repositories/scheduled-job.repository.test.ts
+  s_e33c697cb16d0a::t_413970ae947b68 1-3,5-8,10-13,15-42,56-69,92-93
+  s_e33c697cb16d0a::t_2ca616248995b5 43-55
+  s_e33c697cb16d0a::t_152281a023a051 4,9,14
+  s_e33c697cb16d0a::t_dd741dfde68584 70-91
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_e33c697cb16d0a::t_cb51c85889149c 637
+  s_c32ac2cf3a1c3f::t_e08ca0b6b414a1 387-388,390-395,400,407,410-442,499,514-522,527,529,539-544,591,607-636
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_e33c697cb16d0a::t_30deed9ea4cdc0 20-27
+  s_e33c697cb16d0a::t_6f71f5d75a4973 173
+  s_e33c697cb16d0a::t_a56791b313d4d6 188
+  s_e33c697cb16d0a::t_739ef9106d8d81 179,182-184
+  s_c32ac2cf3a1c3f::t_5f05ad2ec2f1d4 174-178,180-181,185-187,189-199
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_e33c697cb16d0a::t_040fb1c6cd74f9 272
+  s_c32ac2cf3a1c3f::t_978ba794ace308 33-35,70,72,99-105,208,241-243,250,270-271
+packages/cli/src/metrics/prometheus/database-metric-query.service.ts
+  s_c32ac2cf3a1c3f::t_5fe37c48c3c85c 28,92,98,103-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45ccbdef94fee30ef6ab4e685597c9b031e729b4",
+  "prompts": {},
+  "sessions": {
+    "s_c32ac2cf3a1c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fa22ee8-4dd2-47ed-a525-9430c1f08152",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_e33c697cb16d0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "374d5610-1ad0-45c7-94a8-3ca730f4d487",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

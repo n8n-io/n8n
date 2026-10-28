@@ -1,0 +1,22 @@
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_f6f692d977695c::t_f3267c5583b9a5 1109-1114
+  s_f6f692d977695c::t_1bddba96f8d9ea 1096-1108,1115
+packages/cli/src/workflows/workflow.service.ts
+  s_f6f692d977695c::t_330eeb5cfc9086 1844-1845
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "759dc33df31a252c2a7e989b0016e87f8f0e879b",
+  "prompts": {},
+  "sessions": {
+    "s_f6f692d977695c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bb18a7f-6c77-4b3f-87e7-00b366dba725",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
