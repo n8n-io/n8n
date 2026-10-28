@@ -3528,7 +3528,7 @@ export interface IRun {
 	/** ID of the job this execution belongs to. Only in scaling mode. */
 	jobId?: string;
 
-	/** Minutes of time saved reported by nodes. Only in scaling mode. */
+	/** Total minutes of time saved that nodes report. Only in scaling mode. */
 	nodeTimeSavedMinutes?: number;
 }
 

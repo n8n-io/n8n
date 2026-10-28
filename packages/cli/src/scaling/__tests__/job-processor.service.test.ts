@@ -2772,12 +2772,8 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 			const runData = {
-				'Track Time Saved': [
-					{ metadata: { timeSaved: { minutes: 10 } } },
-					{ metadata: { timeSaved: { minutes: 20 } } },
-				],
-				'Track Time Saved 2': [{ metadata: { timeSaved: { minutes: 30 } } }],
-				'Set Fields': [{}],
+				'Track Time Saved': [{ metadata: { timeSaved: { minutes: 20 } } }],
+				'Track Time Saved 2': [{ metadata: { timeSaved: { minutes: 40 } } }],
 			} as unknown as IRunData;
 			const run = mock<IRun>({
 				status: 'success',
