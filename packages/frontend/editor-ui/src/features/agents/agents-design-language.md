@@ -49,11 +49,11 @@ Reduce the editor column side padding when the column is narrow.
 
 ## Builder Assistant default
 
-Open the Assistant on each visit to an unpublished Agent when Assistant setup
-is complete. Let users close it during the visit. Keep the panel state when
-the Agent is saved or published. For published Agents, use the saved panel
-preference. Apply these defaults in the control layout. Keep the experiment
-layouts unchanged.
+Open the Assistant on each visit to an unpublished Agent when the user can edit
+the Agent and Assistant setup is complete. Let users close it during the visit.
+Keep the panel state when the Agent is saved or published. For published or
+read-only Agents, use the saved panel preference. Apply these defaults in the
+control layout. Keep the experiment layouts unchanged.
 
 ## Builder side panel widths
 

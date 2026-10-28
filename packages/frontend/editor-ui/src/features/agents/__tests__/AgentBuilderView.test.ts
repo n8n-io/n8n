@@ -4262,6 +4262,27 @@ describe('AgentBuilderView — three-column shell', () => {
 		},
 	);
 
+	it.each([null, 'false', 'true'])(
+		'uses saved AI panel preference %s for an unpublished agent without edit permission',
+		async (savedPreference) => {
+			const canUpdate = agentPermissionsMock.canUpdate.value;
+			agentPermissionsMock.canUpdate.value = false;
+			try {
+				if (savedPreference !== null) {
+					localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', savedPreference);
+				}
+				const wrapper = await renderView();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(
+					savedPreference === 'true',
+				);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe(savedPreference);
+			} finally {
+				agentPermissionsMock.canUpdate.value = canUpdate;
+			}
+		},
+	);
+
 	it('lets an unpublished agent close the AI panel until the next visit', async () => {
 		const wrapper = await renderView();
 		await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');

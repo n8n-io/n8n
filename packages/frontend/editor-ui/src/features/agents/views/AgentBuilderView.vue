@@ -455,8 +455,8 @@ const isPreviewActive = computed(function isPreviewActive() {
 });
 
 // Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
-// Open unpublished agents with the assistant on each visit. Published agents
-// use their saved panel preference, like the preview dock.
+// Open editable unpublished agents with the assistant on each visit.
+// Other agents use their saved panel preference, like the preview dock.
 // null = no preference yet, so the default is derived instead of stored.
 const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
 	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
@@ -3125,7 +3125,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
-		if (!preserveState && agent.value?.activeVersionId === null) {
+		if (!preserveState && canEditAgent.value && agent.value?.activeVersionId === null) {
 			aiPanelOpenForVisit.value = true;
 		}
 		// The tools picker and tool icons read the node types store, which stays
