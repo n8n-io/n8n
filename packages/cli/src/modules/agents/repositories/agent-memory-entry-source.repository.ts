@@ -21,11 +21,15 @@ export class AgentMemoryEntrySourceRepository extends Repository<AgentMemoryEntr
 		});
 	}
 
+	/** Oldest first. */
 	async findByCandidateIds(
 		agentId: string,
 		candidateIds: string[],
 	): Promise<AgentMemoryEntrySourceEntity[]> {
 		if (candidateIds.length === 0) return [];
-		return await this.findBy({ agentId, candidateId: In(candidateIds) });
+		return await this.find({
+			where: { agentId, candidateId: In(candidateIds) },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
 	}
 }

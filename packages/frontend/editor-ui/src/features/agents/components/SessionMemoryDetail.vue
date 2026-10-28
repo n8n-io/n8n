@@ -183,7 +183,7 @@ async function onDelete(card: SessionMemoryCard) {
 	padding: var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	background-color: var(--color--background--light-3);
+	background-color: var(--background--surface);
 }
 
 .deleted {

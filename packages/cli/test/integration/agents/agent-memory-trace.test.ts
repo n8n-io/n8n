@@ -163,4 +163,33 @@ describe('AgentMemoryTraceService', () => {
 			}),
 		});
 	});
+
+	it('reports a flag as stored when a merge moved its entry to a replacement', async () => {
+		const threadId = await createThread(viewerId);
+		const { candidate, entry } = await store(threadId, 'flag-merged', 'Deploys run on Fridays.');
+		await memory.episodic.applyReflection(
+			{ resourceId, threadId },
+			{
+				drop: [],
+				merge: [
+					{
+						supersedes: [entry.id],
+						entry: { resourceId, content: 'Deploys run on Friday mornings.' },
+					},
+				],
+			},
+		);
+
+		const result = await Container.get(AgentMemoryTraceService).getThreadMemory({
+			agentId,
+			projectId,
+			userId: viewerId,
+			threadId,
+			executions: [{ timeline: [toolCall('flag_memory', 'flag-merged')] } as AgentExecution],
+		});
+
+		expect(result.flags).toEqual({
+			'flag-merged': expect.objectContaining({ captureId: candidate.id, status: 'stored' }),
+		});
+	});
 });

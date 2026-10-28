@@ -464,15 +464,20 @@ export class ToolCallRunner {
 		// or truncated copy stays protected while the guard's own envelope
 		// remains plain runtime text.
 		let modelResult: unknown;
-		let traceOutput: unknown;
 		try {
 			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
-			traceOutput = builtTool.toTraceOutput?.(toolResult);
 			if (builtTool.outputTrust === 'untrusted') {
 				modelResult = protectUntrustedToolResult(modelResult, builtTool);
 			}
 		} catch (error) {
 			return await this.toolError(params, error, builtTool);
+		}
+		// Trace output is host-only, so a failing hook must not fail the tool call.
+		let traceOutput: unknown;
+		try {
+			traceOutput = builtTool.toTraceOutput?.(toolResult);
+		} catch {
+			traceOutput = undefined;
 		}
 		const storage = this.getResultStorage(params);
 		const guardedResult = await guardToolResultForModel(

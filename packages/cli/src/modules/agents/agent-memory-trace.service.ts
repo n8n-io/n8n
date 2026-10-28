@@ -74,6 +74,27 @@ function newestSourceByEntry(
 }
 
 /**
+ * A merge copies a candidate's sources to the replacement entry, so a candidate
+ * can point at several entries. An active entry wins. Otherwise the newest
+ * source wins, because sources come oldest first. Ordering alone is not enough:
+ * a merge skips a copy when the replacement already has a matching source.
+ */
+function currentEntryByCandidate(
+	sources: AgentMemoryEntrySourceEntity[],
+	entries: AgentMemoryEntryEntity[],
+): Map<string, AgentMemoryEntryEntity> {
+	const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
+	const result = new Map<string, AgentMemoryEntryEntity>();
+	for (const source of sources) {
+		const entry = entriesById.get(source.memoryEntryId);
+		if (!entry || !source.candidateId) continue;
+		if (result.get(source.candidateId)?.status === 'active') continue;
+		result.set(source.candidateId, entry);
+	}
+	return result;
+}
+
+/**
  * Resolves the recall_memory and flag_memory calls of a session trace to the
  * stored entries and capture candidates they returned or enqueued.
  */
@@ -155,10 +176,7 @@ export class AgentMemoryTraceService {
 			request.agentId,
 			sources.map(({ memoryEntryId }) => memoryEntryId),
 		);
-		const entriesById = new Map(entries.map((entry) => [entry.id, entry]));
-		const entryByCandidate = new Map(
-			sources.map((source) => [source.candidateId, entriesById.get(source.memoryEntryId)]),
-		);
+		const entryByCandidate = currentEntryByCandidate(sources, entries);
 
 		const result: AgentThreadMemoryDto['flags'] = {};
 		for (const candidate of candidates) {

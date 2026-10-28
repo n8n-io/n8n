@@ -533,9 +533,9 @@ function isSkillToolCall(event: RawToolCallEvent): boolean {
 	return event.kind === 'skill' || event.name === LOAD_SKILL_TOOL_NAME;
 }
 
-/** A failed memory call stays a plain tool row with its error. */
+/** Only a completed, successful memory call becomes a memory row; others stay tool rows. */
 function memoryActionOf(event: RawToolCallEvent): MemoryAction | undefined {
-	if (toolCallOutcome(event) === 'error') return undefined;
+	if (toolCallOutcome(event) !== 'success') return undefined;
 	return MEMORY_ACTIONS[event.name];
 }
 
