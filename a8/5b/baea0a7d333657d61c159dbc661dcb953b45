@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/agent-memory-trace.test.ts
+  s_7a118b07ee147d::t_fdef3eadd64beb 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a85bbaea0a7d333657d61c159dbc661dcb953b45",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
