@@ -22,6 +22,8 @@ import {
 	N8nCallout,
 	N8nFormInput,
 	N8nIcon,
+	N8nOption,
+	N8nSelect,
 	N8nSwitch,
 	N8nText,
 	N8nTooltip,
@@ -53,6 +55,7 @@ import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import SkillVersionDiff from './skillVersions/SkillVersionDiff.vue';
 import SkillVersionTimeline from './skillVersions/SkillVersionTimeline.vue';
 
 const SKILL_FILE = 'SKILL.md';
@@ -120,6 +123,8 @@ export type AgentSkillModalData = {
 	latestVersion?: number;
 	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
 	initialVersionsOpen?: boolean;
+	/** Opens the editor comparing the latest version with the one before it. */
+	initialCompare?: boolean;
 	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
 	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
@@ -745,12 +750,22 @@ const showAssistantToggle = computed(
 
 const latestVersion = computed(() => (props.data.skillId ? props.data.latestVersion : undefined));
 const versionsOpen = ref(!!props.data.initialVersionsOpen);
-const { versions, viewedVersion, loadVersions, fetchVersion, openVersion } = useSkillVersions(
-	() => props.data.skillId,
-);
-/** The Versions panel shows beside the editor once its list has loaded. */
+const {
+	versions,
+	viewedVersion,
+	loadVersions,
+	fetchVersion,
+	openVersion,
+	comparison,
+	diffSections,
+	diffCounts,
+	comparedSkill,
+	compareVersions,
+	compareLatestTwo,
+} = useSkillVersions(() => props.data.skillId);
+/** The Versions panel shows beside the editor once its list has loaded. Compare mode hides it. */
 const showVersionsPanel = computed(
-	() => isFormStep.value && versionsOpen.value && !!versions.value,
+	() => isFormStep.value && versionsOpen.value && !!versions.value && !comparison.value,
 );
 // The list loads the first time the panel opens.
 watch(
@@ -782,6 +797,28 @@ async function onOpenVersion(version: number) {
 	selectedPath.value = SKILL_FILE;
 	await openVersion(version);
 }
+
+const versionOptions = computed(() =>
+	(versions.value ?? []).map(({ version }) => ({
+		value: version,
+		label: i18n.baseText('agents.builder.skills.versions.number', { interpolate: { version } }),
+	})),
+);
+
+async function onCompare(a: number, b: number) {
+	selectedPath.value = SKILL_FILE;
+	await compareVersions(a, b);
+}
+
+/** Done leaves compare mode for the latest version, which the user can edit. */
+function leaveCompare() {
+	comparison.value = null;
+	viewedVersion.value = null;
+}
+
+onMounted(() => {
+	if (props.data.initialCompare) void compareLatestTwo();
+});
 
 /** Saves the content of an older version as the next version, like any other save. */
 async function restoreVersion(version: number) {
@@ -974,7 +1011,10 @@ function onRemove() {
 		:step="step"
 		:title="modalTitle"
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
-		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
+		:show-footer="
+			!comparison &&
+			(step === 'select' || step === 'manual' || step === 'edit' || step === 'preview')
+		"
 		:show-cancel="step !== 'select' && !viewedVersion"
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
 		:header-divider="isFormStep"
@@ -1131,8 +1171,56 @@ function onRemove() {
 			>
 				{{ accessWarning }}
 			</N8nCallout>
+			<div v-if="comparison" :class="$style.compareBar" data-testid="agent-skill-compare-bar">
+				<N8nIcon icon="file-diff" :size="14" />
+				<N8nText size="small">
+					{{ i18n.baseText('agents.builder.skills.versions.compare.from') }}
+				</N8nText>
+				<N8nSelect
+					:model-value="comparison.from"
+					size="small"
+					:teleported="false"
+					:class="$style.compareSelect"
+					data-testid="agent-skill-compare-from"
+					@update:model-value="onCompare(Number($event), comparison.to)"
+				>
+					<N8nOption
+						v-for="option in versionOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+				<N8nText size="small">
+					{{ i18n.baseText('agents.builder.skills.versions.compare.to') }}
+				</N8nText>
+				<N8nSelect
+					:model-value="comparison.to"
+					size="small"
+					:teleported="false"
+					:class="$style.compareSelect"
+					data-testid="agent-skill-compare-to"
+					@update:model-value="onCompare(comparison.from, Number($event))"
+				>
+					<N8nOption
+						v-for="option in versionOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+				<N8nButton
+					variant="outline"
+					size="small"
+					:class="$style.compareDone"
+					data-testid="agent-skill-compare-done"
+					@click="leaveCompare"
+				>
+					{{ i18n.baseText('agents.builder.skills.versions.done') }}
+				</N8nButton>
+			</div>
 			<div
-				v-if="viewedVersion"
+				v-else-if="viewedVersion"
 				:class="$style.viewingBar"
 				data-testid="agent-skill-viewing-version"
 			>
@@ -1153,6 +1241,21 @@ function onRemove() {
 					@add-manually="onAddManually"
 					@import:skill="onImportSkill"
 				/>
+				<template v-else-if="comparison && comparedSkill">
+					<AgentSkillFileNav
+						:class="$style.fileColumn"
+						:skill="comparedSkill"
+						:selected-path="selectedPath"
+						:change-counts="diffCounts"
+						read-only
+						@select="selectedPath = $event"
+					/>
+					<SkillVersionDiff
+						:class="$style.formColumn"
+						:sections="diffSections"
+						:selected-path="selectedPath"
+					/>
+				</template>
 				<template v-else>
 					<AgentSkillFileNav
 						:class="isFormStep && $style.fileColumn"
@@ -1214,6 +1317,7 @@ function onRemove() {
 				:can-restore="canRestore"
 				@open="onOpenVersion"
 				@restore="restoreVersion"
+				@compare="onCompare($event, viewedVersion?.version ?? versionOptions[0].value)"
 			/>
 		</template>
 
@@ -1316,6 +1420,23 @@ function onRemove() {
 	border-bottom: var(--border);
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--shade-1);
+}
+
+.compareBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--lg);
+	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+}
+
+.compareSelect {
+	width: calc(var(--spacing--3xl) + var(--spacing--xs));
+}
+
+.compareDone {
+	margin-left: auto;
 }
 
 .versionsButtonActive {
