@@ -178,50 +178,52 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 								<N8nText v-else color="text-dark">{{
 									i18n.baseText('folders.transfer.action.noProject')
 								}}</N8nText>
+								<div v-if="operation === 'transfer'" class="pt-2xs" @mousedown.stop @click.stop>
+									<N8nText color="text-dark">{{
+										i18n.baseText('folders.transfer.selectFolder')
+									}}</N8nText>
+									<MoveToFolderDropdown
+										v-if="projectsStore.currentProject"
+										:selected-location="selectedFolder"
+										:selected-project-id="projectsStore.currentProject?.id"
+										:current-project-id="projectsStore.currentProject?.id"
+										:current-folder-id="props.activeId"
+										:parent-folder-id="folderToDelete?.parentFolder"
+										@location:selected="onFolderSelected"
+									/>
+								</div>
 							</template>
 						</N8nRadioGroupItem>
-						<div v-if="operation === 'transfer'" :class="$style.optionInput">
-							<N8nText color="text-dark">{{
-								i18n.baseText('folders.transfer.selectFolder')
-							}}</N8nText>
-							<MoveToFolderDropdown
-								v-if="projectsStore.currentProject"
-								:selected-location="selectedFolder"
-								:selected-project-id="projectsStore.currentProject?.id"
-								:current-project-id="projectsStore.currentProject?.id"
-								:current-folder-id="props.activeId"
-								:parent-folder-id="folderToDelete?.parentFolder"
-								@location:selected="onFolderSelected"
-							/>
-						</div>
 						<N8nRadioGroupItem value="delete" data-test-id="delete-content-radio">
 							<template #label>
 								<N8nText color="text-dark">{{ i18n.baseText('folders.delete.action') }}</N8nText>
+								<div
+									v-if="operation === 'delete'"
+									class="pt-2xs"
+									data-test-id="delete-data-input"
+									@mousedown.stop
+									@click.stop
+								>
+									<N8nInputLabel
+										:label="
+											i18n.baseText('folders.delete.confirmation.message', {
+												interpolate: { folderName: folderToDelete?.name ?? '' },
+											})
+										"
+									>
+										<N8nInput
+											v-model="deleteConfirmText"
+											data-test-id="delete-data-input"
+											:placeholder="
+												i18n.baseText('folders.delete.typeToConfirm', {
+													interpolate: { folderName: folderToDelete?.name ?? '' },
+												})
+											"
+										/>
+									</N8nInputLabel>
+								</div>
 							</template>
 						</N8nRadioGroupItem>
-						<div
-							v-if="operation === 'delete'"
-							:class="$style.optionInput"
-							data-test-id="delete-data-input"
-						>
-							<N8nInputLabel
-								:label="
-									i18n.baseText('folders.delete.confirmation.message', {
-										interpolate: { folderName: folderToDelete?.name ?? '' },
-									})
-								"
-							>
-								<N8nInput
-									v-model="deleteConfirmText"
-									data-test-id="delete-data-input"
-									:placeholder="
-										i18n.baseText('folders.delete.typeToConfirm', {
-											interpolate: { folderName: folderToDelete?.name ?? '' },
-										})
-									"
-								/>
-							</N8nInputLabel>
-						</div>
 					</N8nRadioGroup>
 				</div>
 			</div>
@@ -250,12 +252,6 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 	> * {
 		margin-bottom: var(--spacing--2xs);
 	}
-}
-.optionInput {
-	// The radio group aligns its children to the start.
-	// Stretch this block so the fields use the full width.
-	align-self: stretch;
-	padding-left: var(--spacing--lg);
 }
 
 .folder-select-item {
