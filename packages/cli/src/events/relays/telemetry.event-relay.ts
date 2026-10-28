@@ -353,6 +353,17 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
 			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
 			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
+			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
+			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
+			'promotion-provider-updated': (event) => this.promotionProviderUpdated(event),
+			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
+			'promotion-environment-updated': (event) => this.promotionEnvironmentUpdated(event),
+			'promotion-environment-deleted': (event) => this.promotionEnvironmentDeleted(event),
+			'promotion-environment-connected': (event) => this.promotionEnvironmentConnected(event),
+			'promotion-promoted': (event) => this.promotionPromoted(event),
+			'promotion-applied': (event) => this.promotionApplied(event),
+			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
+			'promotion-review-approved': (event) => this.promotionReviewApproved(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -2679,6 +2690,217 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW, {
 			user_id: user.id,
 			workflow_review_request_id: workflowReviewRequestId,
+		});
+	}
+
+	// #endregion
+
+	// #region Promotions
+
+	private promotionProviderCreated({
+		user,
+		providerId,
+		providerType,
+		authType,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-provider-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+			auth_type: authType,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionEnvironmentCreated({
+		user,
+		environmentId,
+		providerType,
+		direction,
+		environmentScope,
+		createBranchOnPromotion,
+	}: RelayEventMap['promotion-environment-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			provider_type: providerType,
+			direction,
+			environment_scope: environmentScope,
+			create_branch_on_promotion: createBranchOnPromotion,
+		});
+	}
+
+	private promotionProviderUpdated({
+		user,
+		providerId,
+		providerType,
+		changedFields,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-provider-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+			changed_fields: changedFields,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionProviderDeleted({
+		user,
+		providerId,
+		providerType,
+	}: RelayEventMap['promotion-provider-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+		});
+	}
+
+	private promotionEnvironmentUpdated({
+		user,
+		environmentId,
+		direction,
+		changedFields,
+	}: RelayEventMap['promotion-environment-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			changed_fields: changedFields,
+		});
+	}
+
+	private promotionEnvironmentDeleted({
+		user,
+		environmentId,
+		direction,
+		environmentScope,
+	}: RelayEventMap['promotion-environment-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			environment_scope: environmentScope,
+		});
+	}
+
+	private promotionEnvironmentConnected({
+		user,
+		environmentId,
+		direction,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-environment-connected']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CONNECTED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionPromoted({
+		user,
+		environmentId,
+		scope,
+		projectId,
+		outcome,
+		failureKind,
+		durationMs,
+		counts,
+		selectedWorkflowCount,
+		openedReview,
+	}: RelayEventMap['promotion-promoted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
+			user_id: user.id,
+			environment_id: environmentId,
+			scope,
+			project_id: projectId,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+			workflow_count: counts?.workflows,
+			folder_count: counts?.folders,
+			credential_count: counts?.credentials,
+			data_table_count: counts?.dataTables,
+			variable_count: counts?.variables,
+			tag_count: counts?.tags,
+			selected_workflow_count: selectedWorkflowCount,
+			opened_review: openedReview,
+		});
+	}
+
+	private promotionApplied({
+		user,
+		environmentId,
+		scope,
+		projectId,
+		outcome,
+		failureKind,
+		durationMs,
+		workflowsChanged,
+		workflowsFailedToPublish,
+	}: RelayEventMap['promotion-applied']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
+			user_id: user.id,
+			environment_id: environmentId,
+			scope,
+			project_id: projectId,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+			workflows_changed: workflowsChanged,
+			workflows_failed_to_publish: workflowsFailedToPublish,
+		});
+	}
+
+	private promotionMergeRequestOpened({
+		user,
+		environmentId,
+		reviewType,
+		hasConflicts,
+	}: RelayEventMap['promotion-merge-request-opened']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST, {
+			user_id: user.id,
+			environment_id: environmentId,
+			review_type: reviewType,
+			has_conflicts: hasConflicts,
+		});
+	}
+
+	private promotionReviewApproved({
+		user,
+		reviewId,
+		environmentId,
+		reviewType,
+		reviewAgeMs,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-review-approved']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPROVED_PROMOTION_REVIEW, {
+			user_id: user.id,
+			promotion_review_id: reviewId,
+			environment_id: environmentId,
+			review_type: reviewType,
+			review_age_ms: reviewAgeMs,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
 		});
 	}
 

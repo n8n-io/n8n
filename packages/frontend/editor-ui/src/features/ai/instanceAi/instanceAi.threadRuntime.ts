@@ -12,6 +12,7 @@ import {
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
@@ -981,12 +982,12 @@ export function createThreadRuntime(
 			if (!workflowId || !nodeName) return null;
 			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
-		// Editing a workflow (workflow_builder_build_workflow save or workflows update) is also per-workflow,
+		// Editing a workflow (workflow_builder_build_workflow save, or an update of the former workflows tool) is also per-workflow,
 		// matching the backend `workflows:update:<id>` thread grant. Bound workflow_builder_build_workflow
 		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
 		// payload instead. Without either ID, refuse to store a key (fail closed).
 		if (
-			(toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && action === 'update') ||
+			(isFormerWorkflowsTool(toolName) && action === 'update') ||
 			toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW
 		) {
 			if (!workflowId) return null;

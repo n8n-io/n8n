@@ -127,7 +127,7 @@ beforeEach(async () => {
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 	});
 	environmentId = environment.id;
-	await Container.get(PromotionsService).clone(environmentId);
+	await Container.get(PromotionsService).clone(environmentId, owner);
 });
 
 afterEach(async () => {
@@ -351,7 +351,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
 		await dropReviewRefs(review.iid, review.branchName);
 		// A fresh checkout has none of the review commits, as after a reconnect.
-		await Container.get(PromotionsService).clone(environmentId);
+		await Container.get(PromotionsService).clone(environmentId, owner);
 		return { review, headSha, baseSha };
 	}
 
@@ -498,6 +498,20 @@ it('lists a workflow that moves to another project without other changes', async
 			}),
 		]),
 	);
+}, 60_000);
+
+it('lists a workflow that the review archives', async () => {
+	const sales = await createTeamProject('Sales', owner);
+	const quote = await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, sales);
+	const first = await promote('Baseline');
+	await mergeOnHost(first.iid, first.commitSha);
+
+	await Container.get(WorkflowRepository).update(quote.id, { isArchived: true });
+	const review = await promote('Archive');
+
+	expect(changed((await changesOf(review.reviewId)).resources)).toEqual([
+		[`workflow:${quote.id}`, 'archived'],
+	]);
 }, 60_000);
 
 it('reads a merged review from the target branch after the host deleted its head ref', async () => {

@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type {
 	InstanceAiConfirmation,
@@ -34,14 +35,12 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.confirmation.details': 'Approval details',
 				'instanceAi.approval.deleteTable': 'Eliminar la tabla y todas sus filas',
 				'instanceAi.confirmation.resourcePrompt': 'Assistant wants to {action} {name}',
-				'instanceAi.tools.workflow_builder_workflows.delete.imperative': 'archive workflow',
-				'instanceAi.tools.workflow_builder_workflows.restore-version.imperativeWithResource':
-					'restore a version of',
-				'instanceAi.tools.workflow_builder_workflows.update-version.imperativeWithResource':
-					'update a version of',
-				'instanceAi.tools.workflow_builder_workflows.unpublish.imperativeWithResource': 'unpublish',
-				'instanceAi.tools.workflow_builder_workflows.unarchive.imperativeWithResource': 'restore',
-				'instanceAi.tools.workflow_builder_workflows.delete.imperativeWithResource': 'archive',
+				'instanceAi.tools.archive_workflow.imperative': 'archive workflow',
+				'instanceAi.tools.restore_workflow_version.imperativeWithResource': 'restore a version of',
+				'instanceAi.tools.update_workflow_version.imperativeWithResource': 'update a version of',
+				'instanceAi.tools.unpublish_workflow.imperativeWithResource': 'unpublish',
+				'instanceAi.tools.unarchive_workflow.imperativeWithResource': 'restore',
+				'instanceAi.tools.archive_workflow.imperativeWithResource': 'archive',
 				'instanceAi.tools.workflow_builder_build_workflow.imperative': 'edit workflow',
 				'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource': 'edit',
 				'instanceAi.tools.data_tables.add-column.imperative': 'add column',
@@ -325,6 +324,8 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			});
 
 			expect(description.textContent).toBe(message);
+			await waitFor(() => expect(getByTestId('approval-card-always-allow')).toHaveFocus());
+			getByRole('button', { expanded: true }).focus();
 			await userEvent.tab();
 			expect(description).toHaveFocus();
 			expect(getByTestId('approval-card-allow-once')).toBeVisible();

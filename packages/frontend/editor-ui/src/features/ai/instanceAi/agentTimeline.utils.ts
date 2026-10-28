@@ -212,7 +212,7 @@ export function buildTimelineBlocks(
 		}
 
 		// Keep the context summary inside the trace, not in a separate message.
-		if (entry.type === 'instance-context') {
+		if (entry.type === 'instance-context' || entry.type === 'skill-update') {
 			pushTrace(entry, idx);
 			return;
 		}

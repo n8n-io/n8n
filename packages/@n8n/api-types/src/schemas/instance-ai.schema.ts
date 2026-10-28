@@ -244,6 +244,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'instance-context',
+	'skill-update',
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
@@ -1123,6 +1124,13 @@ export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
 });
 
+/** Host event of an Assistant agent turn with the temporary workflows that the turn end archived. */
+export const ASSISTANT_WORKFLOWS_ARCHIVED_EVENT = 'workflows-archived';
+
+export const workflowsArchivedPayloadSchema = z.object({
+	workflowIds: z.array(z.string()),
+});
+
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
  * credential type, fanned out to all nodes that use it via `nodeBindings`),
@@ -1236,6 +1244,16 @@ export const aiPreferencesAppliedPayloadSchema = z.object({
 
 export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
 
+export const skillUpdatePayloadSchema = z.object({
+	skillId: z.string(),
+	name: z.string().optional(),
+	version: z.string().nullable(),
+	change: z.enum(['updated', 'restored', 'unavailable']),
+	/** The content delivered for this response. Older events contain metadata only. */
+	content: z.string().optional(),
+});
+export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -1302,6 +1320,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: instanceContextPayloadSchema,
 	}),
+	z.object({ type: z.literal('skill-update'), ...eventBase, payload: skillUpdatePayloadSchema }),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
@@ -1983,6 +2002,7 @@ export type InstanceAiTimelineEntry =
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string }
+	| ({ type: 'skill-update'; runId: string; responseId?: string } & InstanceAiSkillUpdatePayload)
 	/** Store the context summary in the timeline so normal history replay restores it. */
 	| {
 			type: 'instance-context';
@@ -2325,6 +2345,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 
 /**
  * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * These overrides control assistant permissions, not backend authorization.
+ * Backend entry points must enforce instance protection separately. The instance
+ * MCP server permits only reads and production workflow executions on protected instances.
  *
  * This set mirrors n8n's own backend permission model for protected branches:
  * publish/unpublish, credential delete/update, and workflow update have no
@@ -2797,12 +2821,12 @@ export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
- *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+ *  action and the `nodeTypes` filter on `list_workflows`. */
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
 /**
  * Rollout flag for folder exploration in Instance AI: folder attribution on
- * `workflows(action="list")` rows plus `folderPath` / `folderId` / `recursive`
+ * `list_workflows` rows plus `folderPath` / `folderId` / `recursive`
  * on that action. Off by default. PostHog owns cohort rollout;
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */

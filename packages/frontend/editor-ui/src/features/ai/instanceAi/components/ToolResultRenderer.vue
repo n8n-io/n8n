@@ -25,6 +25,10 @@ const props = defineProps<{
 type ResultType = 'content' | 'code' | 'table' | 'json';
 type McpContentItem = McpToolCallResult['content'][number];
 
+function resolvedToolName(): string {
+	return resolveBuilderToolName(props.toolName, props.toolArgs?.action);
+}
+
 function isAction(family: string, action: string): boolean {
 	return resolveBuilderToolName(props.toolName) === family && props.toolArgs?.action === action;
 }
@@ -100,7 +104,7 @@ function normalizeContentItems(items: unknown[]): McpContentItem[] | null {
 
 function isCodeTool(): boolean {
 	return (
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'get-as-code') ||
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'type-definition') ||
 		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	);
@@ -109,7 +113,7 @@ function isCodeTool(): boolean {
 function isTableTool(): boolean {
 	return (
 		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'list') ||
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS, 'list') ||
 		resolveBuilderToolName(props.toolName, props.toolArgs?.action) ===
 			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS ||
@@ -148,7 +152,7 @@ function extractCode(result: unknown): string | null {
 	const obj = result as Record<string, unknown>;
 
 	if (
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS, 'get-as-code') &&
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE &&
 		typeof obj.code === 'string'
 	) {
 		return obj.code;

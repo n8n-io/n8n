@@ -682,7 +682,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	BUILDER_LISTED_WORKFLOWS: {
 		name: 'Builder listed workflows',
 		description:
-			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+			'Instance AI called list_workflows. Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),

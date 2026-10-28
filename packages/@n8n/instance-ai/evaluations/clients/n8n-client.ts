@@ -6,27 +6,29 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiSendMessageRequest,
-	AgentConfigResponse,
-	InstanceAiBuildMode,
-	InstanceAiConfirmRequest,
-	InstanceAiRichMessagesResponse,
-	InstanceAiEvalAgentExecutionResult,
-	InstanceAiEvalExecutionResult,
-	InstanceAiRunDebugResponse,
-	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiEvalSeedAgent,
-	InstanceAiEvalSeedDataTable,
-	InstanceAiEvalSeedFolder,
-	InstanceAiEvalSeedWorkflow,
-	InstanceAiResourceAttachment,
-	AgentJsonConfig,
-	AgentSkill,
-	EvaluationConfigDto,
+import {
+	type InstanceAiHandoffContext,
+	type InstanceAiSendMessageRequest,
+	type AgentConfigResponse,
+	type InstanceAiBuildMode,
+	type InstanceAiConfirmRequest,
+	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalExecutionResult,
+	type InstanceAiRunDebugResponse,
+	type InstanceAiEvalThreadMemoryResponse,
+	type InstanceAiThreadDebugRunsResponse,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
+	type InstanceAiEvalSeedWorkflow,
+	type InstanceAiResourceAttachment,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type EvaluationConfigDto,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
 } from '@n8n/api-types';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
@@ -72,6 +74,14 @@ const InvitedUsersEnvelope = z.object({
 });
 
 // -- Conversation seeding response shapes -------------------------------------
+
+const ExportExecutionEnvelope = z.object({
+	data: z.object({ envelope: instanceAiEvalFailedExecutionEnvelopeSchema }),
+});
+
+const RestoreExecutionEnvelope = z.object({
+	data: z.object({ ok: z.literal(true), executionId: z.string().min(1) }),
+});
 
 const RestoreThreadEnvelope = z.object({
 	data: z.object({
@@ -1031,6 +1041,31 @@ export class N8nClient {
 			);
 		}
 		return restored;
+	}
+
+	/** Export one failed execution of the thread's project as a portable envelope. */
+	async exportExecution(
+		threadId: string,
+		executionId: string,
+	): Promise<{ envelope: InstanceAiEvalFailedExecutionEnvelope }> {
+		const result = await this.fetch('/rest/instance-ai/eval/export-execution', {
+			method: 'POST',
+			body: { threadId, executionId },
+		});
+		return ExportExecutionEnvelope.parse(result).data;
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow; returns the new execution id. */
+	async restoreExecution(
+		threadId: string,
+		workflowId: string,
+		envelope: InstanceAiEvalFailedExecutionEnvelope,
+	): Promise<{ executionId: string }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-execution', {
+			method: 'POST',
+			body: { threadId, workflowId, envelope },
+		});
+		return RestoreExecutionEnvelope.parse(result).data;
 	}
 
 	/**

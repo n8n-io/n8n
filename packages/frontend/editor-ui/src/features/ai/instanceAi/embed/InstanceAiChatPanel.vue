@@ -15,6 +15,7 @@ import {
 	computed,
 	defineComponent,
 	h,
+	nextTick,
 	onBeforeUnmount,
 	onMounted,
 	onUnmounted,
@@ -38,6 +39,7 @@ import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	provisionSubjectThread,
@@ -56,25 +58,37 @@ import {
 	type InstanceAiEmbedSubject,
 } from './instanceAiEmbed.types';
 
-const props = defineProps<{
-	subject: InstanceAiEmbedSubject;
-	launch: InstanceAiThreadLaunch;
-	threadId?: string;
-	/** Runs before a new thread is minted (e.g. flush a pending autosave). */
-	beforeNewThread?: () => Promise<void>;
-	/** Runs before every message send (e.g. flush a pending autosave). */
-	beforeSend?: () => Promise<void>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		subject: InstanceAiEmbedSubject;
+		launch: InstanceAiThreadLaunch;
+		threadId?: string;
+		visible?: boolean;
+		closable?: boolean;
+		showOpenFullAssistant?: boolean;
+		placeholder?: string;
+		composerHeight?: string;
+		/** Runs before a new thread is minted (e.g. flush a pending autosave). */
+		beforeNewThread?: () => Promise<void>;
+		/** Runs before every message send (e.g. flush a pending autosave). */
+		beforeSend?: () => Promise<void>;
+	}>(),
+	{ visible: true, closable: true, showOpenFullAssistant: true },
+);
 
 const emit = defineEmits<{
 	'update:threadId': [threadId: string];
 	'update:building': [building: boolean];
+	'update:working': [working: boolean];
 	close: [];
+	'message-sent': [];
 }>();
 
 const slots = defineSlots<{
 	/** A host's welcome state, rendered by the conversation until the thread has its first message. */
 	empty?: () => unknown;
+	'composer-start'?: () => unknown;
+	'composer-footer'?: () => unknown;
 }>();
 
 const i18n = useI18n();
@@ -106,6 +120,15 @@ function threadFilter(thread: InstanceAiThreadSummary): boolean {
  * `ThreadScope`'s render (it's created with `h()`, so the ref is passed as a
  * vnode prop rather than a template attribute), null while no thread is mounted. */
 const conversationRef = ref<InstanceType<typeof InstanceAiConversation> | null>(null);
+watch(
+	() => props.visible,
+	async (visible, wasVisible) => {
+		if (!visible || wasVisible !== false) return;
+		await nextTick();
+		conversationRef.value?.focus();
+	},
+	{ flush: 'post' },
+);
 
 /**
  * A hand-off requested before the conversation for the target thread exists
@@ -361,6 +384,7 @@ watch(
 onUnmounted(() => {
 	// A host closing the panel mid-build must not stay locked forever.
 	emit('update:building', false);
+	emit('update:working', false);
 	if (props.threadId && props.threadId !== handedOffThreadId) store.disposeRuntime(props.threadId);
 });
 
@@ -425,6 +449,8 @@ const ThreadScope = defineComponent({
 	emits: ['thread-missing', 'update:building'],
 	setup(scopeProps, { emit: scopeEmit }) {
 		const runtime = provideThread(scopeProps.threadId);
+		const working = useIsAgentWorking(runtime);
+		watch(working, (value) => emit('update:working', value), { immediate: true });
 		useAgentMutationRefresh(runtime);
 		const buildingArtifactIds = useBuildingArtifactIds(runtime);
 		watch(
@@ -444,15 +470,23 @@ const ThreadScope = defineComponent({
 					// host rename instead of the snapshot stashed at thread mint.
 					subject: props.subject,
 					beforeSend: props.beforeSend,
+					placeholder: props.placeholder,
+					composerHeight: props.composerHeight,
+					onMessageSent: () => emit('message-sent'),
 					onThreadMissing: () => scopeEmit('thread-missing'),
 				},
-				slots.empty ? { empty: slots.empty } : undefined,
+				{
+					...(slots.empty ? { empty: slots.empty } : {}),
+					...(slots['composer-start'] ? { 'composer-start': slots['composer-start'] } : {}),
+					...(slots['composer-footer'] ? { 'composer-footer': slots['composer-footer'] } : {}),
+				},
 			);
 	},
 });
 
 /** Handle shortcuts locally instead of useKeybindings because ChatInput has canvas paste protection. */
 function handleCloseShortcut(event: KeyboardEvent) {
+	if (props.closable === false) return;
 	if (
 		event.defaultPrevented ||
 		event.isComposing ||
@@ -502,6 +536,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 					/>
 				</N8nTooltip>
 				<N8nTooltip
+					v-if="props.showOpenFullAssistant"
 					:content="i18n.baseText('instanceAi.embed.openFullAssistant')"
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
@@ -517,6 +552,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 					/>
 				</N8nTooltip>
 				<KeyboardShortcutTooltip
+					v-if="props.closable !== false"
 					placement="bottom"
 					:label="i18n.baseText('generic.close')"
 					:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"

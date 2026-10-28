@@ -20,6 +20,7 @@ import {
 	folderRemovalForbiddenIssueOpenApi,
 	missingNodeTypeFieldDocs,
 	missingNodeTypeIssueOpenApi,
+	policyCheckFailedIssueOpenApi,
 	policyViolationFieldDocs,
 	policyViolationIssueOpenApi,
 	projectConflictFieldDocs,
@@ -130,6 +131,10 @@ const credentialUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('credential-unresolved'),
 		kind: z.enum(['not_found', 'unknown_type', 'source_not_found', 'type_mismatch']),
+		reason: z
+			.enum(['not-on-instance', 'access-required', 'incompatible-usage-scope'])
+			.optional()
+			.openapi(credentialUnresolvedFieldDocs.reason),
 		sourceId: z.string(),
 		targetId: z.string().optional().openapi(credentialUnresolvedFieldDocs.targetId),
 		expectedType: z.string().optional().openapi(credentialUnresolvedFieldDocs.expectedType),
@@ -164,7 +169,9 @@ const credentialUpdateForbiddenIssueSchema = z
 const projectConflictIssueSchema = z
 	.object({
 		type: z.literal('project-conflict'),
-		kind: z.literal('fail-policy'),
+		kind: z
+			.enum(['fail-policy', 'not-team', 'update-forbidden', 'create-forbidden', 'license'])
+			.openapi(projectConflictFieldDocs.kind),
 		sourceProjectId: z.string(),
 		name: z.string().openapi(projectConflictFieldDocs.name),
 	})
@@ -272,6 +279,7 @@ const dataTableUnresolvedIssueSchema = z
 			'schema-incompatible',
 			'module-disabled',
 			'permission-denied',
+			'column-id-conflict',
 		]),
 		sourceId: z.string().optional().openapi(dataTableUnresolvedFieldDocs.sourceId),
 		name: z.string().optional(),
@@ -307,6 +315,10 @@ const dataTableUnresolvedIssueSchema = z
 			.optional()
 			.openapi(dataTableUnresolvedFieldDocs.conflictingTableId),
 		currentName: z.string().optional().openapi(dataTableUnresolvedFieldDocs.currentName),
+		column: z
+			.object({ id: z.string(), name: z.string() })
+			.optional()
+			.openapi(dataTableUnresolvedFieldDocs.column),
 		usedBy: z.array(packageRequirementConsumerSchema),
 	})
 	.openapi(dataTableUnresolvedIssueOpenApi);
@@ -382,6 +394,13 @@ const policyViolationIssueSchema = z
 	})
 	.openapi(policyViolationIssueOpenApi);
 
+const policyCheckFailedIssueSchema = z
+	.object({
+		type: z.literal('policy-check-failed'),
+		point: z.enum(['contentImport', 'credentialSave']),
+	})
+	.openapi(policyCheckFailedIssueOpenApi);
+
 const credentialPolicyViolationIssueSchema = z
 	.object({
 		type: z.literal('credential-policy-violation'),
@@ -447,6 +466,7 @@ export const importBlockingIssueSchema = z
 		variableLimitExceededIssueSchema,
 		missingNodeTypeIssueSchema,
 		policyViolationIssueSchema,
+		policyCheckFailedIssueSchema,
 		credentialPolicyViolationIssueSchema,
 	])
 	.refine(

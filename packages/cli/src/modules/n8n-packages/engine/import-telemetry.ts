@@ -86,7 +86,9 @@ export function emitPackageImportedEvent(
 	// Reconciled once across every scope, by the same helper the API response uses, so a name one
 	// scope stubbed and another found occupied is not also reported as pre-existing.
 	const variableSummary = reconcileVariableSummary({
-		matched: scopes.flatMap(({ imported }) => imported.variablePlan.matched),
+		matched: scopes.flatMap(({ imported }) =>
+			imported.variablePlan.matched.map(({ name }) => name),
+		),
 		missing: scopes.flatMap(({ imported }) =>
 			imported.variablePlan.missing.map(({ name }) => name),
 		),

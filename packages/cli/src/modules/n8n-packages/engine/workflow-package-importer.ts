@@ -87,6 +87,7 @@ export class WorkflowPackageImporter {
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: needsBundledCredentialFiles(
 				request,
 				(credentialRequirements?.length ?? 0) > 0,

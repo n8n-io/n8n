@@ -7,8 +7,10 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
+	CHAT_NODE_TYPE,
 	Expression,
 	ExpressionError,
+	UserError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
@@ -94,6 +96,34 @@ describe('V1StepExecutor', () => {
 		} finally {
 			vi.restoreAllMocks();
 		}
+	});
+
+	it('signs the resume URLs with the token the host mints for the execution', async () => {
+		const graph = graphWith('test.echoParam', {
+			message: '={{ $execution.resumeUrl }} {{ $execution.resumeFormUrl }}',
+		});
+		const resumeToken = vi.fn(() => 'minted');
+		const executor = new V1StepExecutor({
+			nodeTypes: testNodeTypes,
+			resumeToken,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+		const request = stepRequest(graph, 'n', items({}));
+		const { executionId } = request.context;
+
+		const result = await executor.execute(request);
+
+		expect(resumeToken).toHaveBeenCalledExactlyOnceWith({ executionId });
+		expect(result.outputs).toEqual([
+			[
+				{
+					json: {
+						message: `http://localhost:5678/webhook-waiting/${executionId}?signature=minted http://localhost:5678/form-waiting/${executionId}?signature=minted`,
+					},
+				},
+			],
+		]);
 	});
 
 	it('builds the additional data from the execution context of the step', async () => {
@@ -519,23 +549,63 @@ describe('V1StepExecutor', () => {
 			expect(resumeAt).toBeLessThanOrEqual(after + 2000);
 		});
 
-		// Nothing can deliver a resume request yet and sub-workflow steps do not
-		// exist, so completing the step would report a wait that never happened.
-		it.each([
-			[
-				'WAIT_INDEFINITELY',
-				WAIT_INDEFINITELY,
-				'Node "Subject" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.',
-			],
-			[
-				'WAIT_FOR_SUB_EXECUTION',
-				WAIT_FOR_SUB_EXECUTION,
-				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
-			],
-		])('fails the step for the %s sentinel', async (_, sentinel, message) => {
-			const graph = graphWith('test.waitsUntil', { waitTill: sentinel.toISOString() });
+		it('declares a wait with no deadline', async () => {
+			const graph = graphWith('test.waitsUntil', { waitTill: WAIT_INDEFINITELY.toISOString() });
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			expect(result).toEqual({ wait: { resumeBinding: 'execution' } });
+		});
+
+		it('fails the step when a wait with no deadline refuses resume requests', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_INDEFINITELY.toISOString(),
+				acceptsResumeRequest: 'false',
+			});
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
-			await expect(execution).rejects.toThrow(message);
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits with no time limit and does not accept a resume request, so nothing can end the wait',
+			);
+			await expect(execution).rejects.toBeInstanceOf(UserError);
+		});
+
+		it('fails a send-and-wait step before the node sends its message', async () => {
+			const graph = graphWith('test.echoParam', { operation: 'sendAndWait' });
+			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
+			const execute = vi.spyOn(echo, 'execute');
+
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
+			);
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		it('fails a Chat node step before the node sends its message', async () => {
+			const graph = graphWith(CHAT_NODE_TYPE, { operation: 'send' });
+			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
+			const execute = vi.spyOn(echo, 'execute');
+			const executor = new V1StepExecutor({
+				nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => echo },
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const execution = executor.execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
+			);
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
+			const graph = graphWith('test.waitsUntil', {
+				waitTill: WAIT_FOR_SUB_EXECUTION.toISOString(),
+			});
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
+			);
 		});
 	});
 
