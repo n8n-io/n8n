@@ -254,6 +254,10 @@ export class CredentialsPublicController {
 			projectType: project?.type,
 			isDynamic: credential.isResolvable ?? false,
 			jweEnabled: body.data.jweEnabled === true,
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				body.data,
+			),
 		});
 
 		return toCredentialPublicDto(credential, includeDescription);

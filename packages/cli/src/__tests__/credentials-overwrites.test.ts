@@ -1635,6 +1635,7 @@ describe('CredentialsOverwrites', () => {
 					instance.getManagedAppVersion('notionOAuth2Api', {
 						clientId: 'own-id',
 						clientSecret: 'own-secret',
+						oauthTokenData: { ...tokens, [MANAGED_VERSION_KEY]: 2 },
 					}),
 				).toBeUndefined();
 			});
