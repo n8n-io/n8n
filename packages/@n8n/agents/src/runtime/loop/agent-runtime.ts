@@ -1021,6 +1021,10 @@ export class AgentRuntime {
 	): Promise<ToolBatchSettlement<T>> {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
+		// Load the files of tool results from the last step.
+		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
+			threadId: ctx.options?.persistence?.threadId,
+		});
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		for (const update of this.activeSkills?.takeUpdates() ?? []) {
 			await sink.emitMessage?.(update);
