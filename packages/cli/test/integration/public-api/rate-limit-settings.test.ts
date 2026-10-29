@@ -237,22 +237,16 @@ describe('Public API rate-limit settings', () => {
 	});
 
 	describe('rate limits and recovery', () => {
-		it('limits settings writes and allows session recovery', async () => {
+		it('limits settings writes and lets a session raise the limits at once', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
-			await agent.put(endpoint).send(updatedSettings).expect(200);
-			const response = await agent
-				.put(endpoint)
-				.send({ ...updatedSettings, enabled: false })
-				.expect(429);
+			await agent.put(endpoint).send(initialSettings).expect(200);
+			const response = await agent.put(endpoint).send(initialSettings).expect(429);
 			expect(response.headers['x-ratelimit-limit']).toBe('1');
 
 			const sessionAgent = testServer.publicApiAgentWithCookie(owner);
-			await sessionAgent.get(endpoint).expect(200);
-			await sessionAgent
-				.put(endpoint)
-				.send({ ...updatedSettings, enabled: false })
-				.expect(200);
 			await sessionAgent.put(endpoint).send(updatedSettings).expect(200);
+
+			await agent.put(endpoint).send(updatedSettings).expect(200);
 		});
 	});
 });
