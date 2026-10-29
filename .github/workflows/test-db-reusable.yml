@@ -27,16 +27,19 @@ env:
 
 jobs:
   integration:
-    name: ${{ matrix.name }} Integration
-    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.leg.name }} Integration (${{ matrix.shard }}/2)
+    runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
+      # Split each leg across two runners. On one runner, a leg takes more
+      # than 10 minutes.
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        leg: ${{ fromJSON(inputs.matrix) }}
+        shard: [1, 2]
     env:
-      TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
-      COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
+      TEST_IMAGE_POSTGRES: ${{ matrix.leg.TEST_IMAGE_POSTGRES }}
+      COVERAGE_ENABLED: ${{ matrix.leg.collectCoverage }}
       # With a change signal, the shared vitest config measures only the changed files.
       COVERAGE_SCOPE: ${{ inputs.changed-files != '' && 'changed-files' || 'all' }}
       CHANGED_FILES: ${{ inputs.changed-files }}
@@ -53,11 +56,12 @@ jobs:
 
       - name: Run Integration Tests
         working-directory: packages/cli
-        run: ${{ matrix.test-cmd }}
+        run: ${{ matrix.leg.test-cmd }} --shard=${{ matrix.shard }}/2
 
+      # The steps below are not sharded, so only the first shard runs them.
       # A packaged backend module opts in by defining `test:postgres`.
       - name: Run packaged backend module PostgreSQL tests
-        if: matrix.TEST_IMAGE_POSTGRES != ''
+        if: matrix.shard == 1 && matrix.leg.TEST_IMAGE_POSTGRES != ''
         env:
           COVERAGE_ENABLED: 'false'
         run: pnpm --filter './packages/modules/*/backend' --if-present run test:postgres --maxWorkers=100%
@@ -66,8 +70,8 @@ jobs:
       # postgres testcontainer) and fails if they differ from what's committed.
       # tbls runs as a Docker image in CI.
       - name: Verify schema docs are up to date
-        if: matrix.schema-check-cmd != ''
-        run: ${{ matrix.schema-check-cmd }}
+        if: matrix.shard == 1 && matrix.leg.schema-check-cmd != ''
+        run: ${{ matrix.leg.schema-check-cmd }}
 
       # No report exists when the PR changes no cli source files.
       - name: Upload coverage to Codecov

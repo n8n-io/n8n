@@ -12,8 +12,8 @@ export const POSTGRES_VERSIONS_PATH = 'packages/quality/environments/containers/
 /** The matrix wall is bounded by its slowest leg, so a larger runner buys nothing. */
 const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
 
-// Each leg runs one suite on its own runner, so use every CPU. The CI default
-// (half the CPUs) is for jobs that run many suites at once. Every test file
+// Each shard of a leg runs one suite on its own runner, so use every CPU. The CI
+// default (half the CPUs) is for jobs that run many suites at once. Every test file
 // gets its own database, so more workers do not share state.
 const MAX_WORKERS = '--maxWorkers=100%';
 
