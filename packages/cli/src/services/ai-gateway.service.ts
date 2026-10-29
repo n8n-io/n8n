@@ -182,6 +182,7 @@ export class AiGatewayService {
 			/** Returns the error to throw for a response with a status that is not 2xx. */
 			mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
 			signal?: AbortSignal;
+			timeoutMs?: number;
 		},
 		errorMessage = 'Gateway credits request failed',
 	): Promise<T> {
@@ -196,6 +197,7 @@ export class AiGatewayService {
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
 				...(options.disableFollowRedirect ? { disableFollowRedirect: true } : {}),
 				...(options.signal ? { abortSignal: options.signal } : {}),
+				...(options.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as an error below
 			});
@@ -354,6 +356,7 @@ export class AiGatewayService {
 		userId,
 		attribution,
 		mapErrorResponse,
+		timeoutMs,
 	}: {
 		/** The gateway provider name, for example `browserbaseBrowserUse`. */
 		provider: string;
@@ -365,6 +368,8 @@ export class AiGatewayService {
 		userId: string;
 		attribution: AiGatewayRequestAttribution;
 		mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
+		/** The request fails when no response arrives within this time. */
+		timeoutMs?: number;
 	}): Promise<T> {
 		if (!AiGatewayService.PROVIDER_NAME_PATTERN.test(provider)) {
 			throw new UnexpectedError('Invalid gateway provider name', { extra: { provider } });
@@ -381,6 +386,7 @@ export class AiGatewayService {
 			body,
 			disableFollowRedirect: true,
 			mapErrorResponse,
+			timeoutMs,
 		});
 	}
 

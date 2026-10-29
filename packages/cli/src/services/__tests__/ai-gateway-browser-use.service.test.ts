@@ -31,6 +31,7 @@ describe('AiGatewayBrowserUseService', () => {
 		userId: 'user-1',
 		attribution,
 		mapErrorResponse: toGatewayError,
+		timeoutMs: 30_000,
 	};
 
 	describe('createSession()', () => {

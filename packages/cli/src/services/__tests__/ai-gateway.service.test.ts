@@ -880,6 +880,17 @@ describe('AiGatewayService', () => {
 			);
 		});
 
+		it('sends the timeout with the provider request', async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			await makeService().sendProviderRequest({ ...providerRequest, timeoutMs: 30_000 });
+
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ url: PROVIDER_URL, timeout: 30_000 }),
+			);
+		});
+
 		it('throws a UserError with the status code for a failed response', async () => {
 			mockTokenThen(fail(503));
 
