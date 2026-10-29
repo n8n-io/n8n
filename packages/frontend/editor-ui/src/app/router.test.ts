@@ -410,7 +410,6 @@ describe('router', () => {
 			});
 			useRBACStore().setGlobalScopes(['sourceControl:manage']);
 			settingsStore.settings.activeModules = ['promotions'];
-			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: 'true' };
 			useSourceControlStore().preferences.environmentsVersion = 'v2';
 		});
 

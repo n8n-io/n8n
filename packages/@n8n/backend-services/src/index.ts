@@ -1,5 +1,6 @@
 export { EventService, type EventMap } from './events/event.service';
 export { isBillableExecution } from './executions/is-billable-execution';
+export { sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
@@ -105,7 +106,6 @@ export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
 } from './workflows/restricted-node-types-provider-proxy.service';
-export * from './services/assistant-skill-provider-proxy.service';
 export {
 	InstalledTypeRestrictionsProxy,
 	type InstalledTypeRestrictionsProvider,

@@ -97,8 +97,12 @@ export interface Lane {
 	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
 	 *  deleting them via another lane's client would 404. */
 	workflowIdsToDelete: Set<string>;
-	/** Invited members, one per build: MCP builds act as it, orchestrator builds use its project. */
+	/** Invited members, one per build: MCP builds act as it, and orchestrator builds use
+	 *  its project when the lane has no team projects. */
 	buildUserPool?: LaneUserPool;
+	/** The license allows team projects, so each orchestrator build gets one the owner
+	 *  administers. Without them, n8n hides execution output from the owner. */
+	teamBuildProjects?: boolean;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors

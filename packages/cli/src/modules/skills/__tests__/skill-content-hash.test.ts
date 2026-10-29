@@ -1,4 +1,4 @@
-import { skillContentHash, type SkillContent } from '../skill-content-hash';
+import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 
 const content: SkillContent = {
 	name: 'Brand voice',

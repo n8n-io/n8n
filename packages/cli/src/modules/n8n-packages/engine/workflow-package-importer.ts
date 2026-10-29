@@ -87,6 +87,7 @@ export class WorkflowPackageImporter {
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: needsBundledCredentialFiles(
 				request,
 				(credentialRequirements?.length ?? 0) > 0,
@@ -150,6 +151,7 @@ export class WorkflowPackageImporter {
 			workflows,
 			credentialRequest,
 			agents,
+			skills: agents.length > 0 ? await this.packageParser.getSkills(reader) : [],
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			dataTableRequest,
 			variableRequest,

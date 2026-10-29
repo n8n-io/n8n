@@ -11,6 +11,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
+export * from './skills/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
 export * from './schemas/mcp-tool-permissions.schema';
@@ -411,6 +412,9 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildWorkflowActionSessionGrantKey,
+	buildWorkspaceSessionGrantKey,
+	buildCleanupTestExecutionsSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
@@ -427,6 +431,7 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
+	tasksUpdatePayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
@@ -1030,3 +1035,11 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export {
+	scimDeprovisioningPolicySchema,
+	type ScimConfigResponse,
+	type ScimDeprovisioningPolicy,
+	type ScimTransferTargetPerson,
+	type ScimTransferTargetProject,
+	type ScimTransferTargetsResponse,
+} from './schemas/scim-config.schema';

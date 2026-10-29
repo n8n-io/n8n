@@ -155,6 +155,7 @@ erDiagram
   varchar_36_ agentId FK
   TEXT binaryDataId
   datetime_3_ createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
@@ -277,7 +278,7 @@ erDiagram
   TEXT content
   varchar_64_ contentHash
   datetime_3_ createdAt
-  TEXT embedding
+  BLOB embedding
   varchar_128_ embeddingModel
   varchar_36_ id PK
   datetime_3_ lastSeenAt

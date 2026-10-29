@@ -1,11 +1,13 @@
 import { ApplyPackageResultDto, type ContinueApplyPackageDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/backend-network';
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Cipher } from 'n8n-core';
 import nock from 'nock';
@@ -1918,6 +1920,8 @@ describe('Promotions in Public API', () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
 		const environmentId = await createEnvironment(agent, { providerId });
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		onTestFinished(() => emit.mockRestore());
 
 		const inUse = await agent.delete(`/promotions/providers/${providerId}`);
 		await agent.delete(`/promotions/environments/${environmentId}`);
@@ -1928,6 +1932,14 @@ describe('Promotions in Public API', () => {
 		expect(
 			await Container.get(PromotionProviderRepository).findOneBy({ id: providerId }),
 		).toBeNull();
+		// The database reports the deleted rows, so each delete emits once and the refused one not at all.
+		const deletes = emit.mock.calls.filter(([name]) =>
+			['promotion-provider-deleted', 'promotion-environment-deleted'].includes(name),
+		);
+		expect(deletes.map(([name]) => name)).toEqual([
+			'promotion-environment-deleted',
+			'promotion-provider-deleted',
+		]);
 	});
 
 	it('stores nothing when the environment names an unknown provider', async () => {
@@ -2540,7 +2552,7 @@ describe('Promotions in Public API', () => {
 					status,
 					environmentId: selectionBody.expectedSource.environmentId,
 					git: { branchName: 'main', commitSha: selectionBody.expectedSource.commitSha },
-					preflight: {
+					check: {
 						missingProjects: [],
 						missingBindings: [
 							{
@@ -2727,7 +2739,7 @@ describe('Promotions in Public API', () => {
 					status,
 					environmentId: id,
 					git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
-					preflight: {
+					check: {
 						missingProjects: [],
 						missingBindings: [
 							{

@@ -23,87 +23,128 @@ servers:
       url:
         default: https://example.com
 tags:
+  # Child tags (alphabetically sorted)
   - name: Audit
     x-displayName: Audit
+    x-parent: InstanceOperations
     description: Operations about security audit
   - name: CommunityPackage
-    x-displayName: Community Package
+    x-displayName: Community Packages
+    x-parent: InstanceOperations
     description: Operations about community packages
   - name: Credential
-    x-displayName: Credential
+    x-displayName: Credentials
+    x-parent: BuildAndRun
     description: Operations about credentials
   - name: CredentialTypePolicy
     x-displayName: Credential Type Policy
+    x-parent: InstanceSettings
     description: Preview — breaking changes may still occur without major version bump.
   - name: DataTable
-    x-displayName: Data Table
+    x-displayName: Data Tables
+    x-parent: BuildAndRun
     description: Operations about data tables and their rows
   - name: Discover
     x-displayName: Discover
+    x-parent: InstanceOperations
     description: API capability discovery
   - name: Evaluation
-    x-displayName: Evaluation
+    x-displayName: Evaluations
+    x-parent: BuildAndRun
     description: Operations about evaluation test runs
   - name: Executions
     x-displayName: Executions
+    x-parent: BuildAndRun
     description: Operations about executions
   - name: Folders
     x-displayName: Folders
+    x-parent: BuildAndRun
     description: Operations about folders
   - name: Insights
     x-displayName: Insights
+    x-parent: InstanceOperations
     description: Operations about insights
   - name: LogStreaming
     x-displayName: Log Streaming
+    x-parent: InstanceSettings
     description: Operations about log streaming destinations
   - name: N8nPackage
-    x-displayName: n8n Package
+    x-displayName: n8n Packages
+    x-parent: InstanceOperations
     description: Beta — breaking changes may still occur without major version bump.
   - name: NodeTypePolicy
     x-displayName: Node Type Policy
+    x-parent: InstanceSettings
     description: Preview — breaking changes may still occur without major version bump.
   - name: Projects
     x-displayName: Projects
+    x-parent: AccessAndOrganization
     description: Operations about projects
   - name: Promotions
     x-displayName: Promotions
+    x-parent: InstanceOperations
     description: Operations about promotion providers, environments, and package operations
   - name: Role
-    x-displayName: Role
+    x-displayName: Roles
+    x-parent: AccessAndOrganization
     description: Operations about roles
   - name: RoleMappingRule
-    x-displayName: Role Mapping Rule
+    x-displayName: Role Mapping Rules
+    x-parent: AccessAndOrganization
     description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
     x-displayName: Security Policy
+    x-parent: InstanceSettings
     description: Operations about the instance security policy settings
   - name: SettingsLdap
     x-displayName: Settings LDAP
+    x-parent: InstanceSettings
     description: Operations about LDAP settings
   - name: SettingsOtel
     x-displayName: Settings OTel
+    x-parent: InstanceSettings
     description: Operations about OpenTelemetry settings
   - name: SettingsSsoOidc
     x-displayName: Settings SSO OIDC
+    x-parent: InstanceSettings
     description: Operations about OIDC SSO settings
   - name: SettingsSsoSaml
     x-displayName: Settings SSO SAML
+    x-parent: InstanceSettings
     description: Operations about SAML SSO settings
   - name: SourceControl
     x-displayName: Source Control
+    x-parent: InstanceOperations
     description: Operations about source control
   - name: Tags
     x-displayName: Tags
+    x-parent: BuildAndRun
     description: Operations about tags
   - name: User
-    x-displayName: User
+    x-displayName: Users
+    x-parent: AccessAndOrganization
     description: Operations about users
   - name: Variables
     x-displayName: Variables
+    x-parent: BuildAndRun
     description: Operations about variables
   - name: Workflow
-    x-displayName: Workflow
+    x-displayName: Workflows
+    x-parent: BuildAndRun
     description: Operations about workflows
+  # Parent tags (alphabetically sorted)
+  - name: AccessAndOrganization
+    x-displayName: Access and organization
+    description: Manage projects, users, roles, and role-mapping rules
+  - name: BuildAndRun
+    x-displayName: Build and run
+    description: Build, run, and test workflows, and manage the resources that they use
+  - name: InstanceOperations
+    x-displayName: Instance operations
+    description: Audit, extend, version, promote, and monitor the instance
+  - name: InstanceSettings
+    x-displayName: Instance settings
+    description: Configure sign-in, security, type policies, log streaming, and telemetry for the instance
 
 # Paths and components are generated from @PublicApiController routes. See openapi-gen/generate.ts.
 paths: {}

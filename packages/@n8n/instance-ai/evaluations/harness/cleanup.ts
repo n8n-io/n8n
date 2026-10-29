@@ -239,11 +239,16 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Last, and only once the rest is gone: the user's delete takes its project, so a
-	// retry of a failed delete needs the project to still exist.
-	if (build.buildUserId && clean) {
+	// Last, and only once the rest is gone: a retry of a failed delete needs the
+	// project to still exist. A member's delete takes their personal project; a team
+	// build project (no user) is deleted directly.
+	if (build.buildProjectId && clean) {
 		try {
-			await client.deleteUser(build.buildUserId);
+			if (build.buildUserId) {
+				await client.deleteUser(build.buildUserId);
+			} else {
+				await client.deleteProject(build.buildProjectId);
+			}
 		} catch (error: unknown) {
 			if (!(error instanceof N8nApiError && error.status === 404)) clean = false;
 		}
