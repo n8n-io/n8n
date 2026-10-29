@@ -17,6 +17,8 @@ export interface AgentBackgroundJobDto {
 	startedAt: string;
 	/** ISO timestamp when the background job reached a terminal status. */
 	settledAt?: string;
+	/** Files that the job returned. The session log shows them as thumbnails. */
+	files?: AgentToolOutputFile[];
 }
 
 export interface AgentBackgroundJobSignal {

@@ -801,6 +801,14 @@ export class AgentChatController {
 					: {}),
 				startedAt: job.createdAt.toISOString(),
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
+				...(job.files?.length
+					? {
+							files: job.files.map((file) => ({
+								...file,
+								fileName: scrubSecretsInText(file.fileName),
+							})),
+						}
+					: {}),
 			})),
 		};
 	}

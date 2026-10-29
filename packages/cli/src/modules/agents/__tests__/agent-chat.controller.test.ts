@@ -359,6 +359,39 @@ describe('AgentChatController background tasks', () => {
 		expect(response.tasks[0].title).toBe('Check [REDACTED]');
 	});
 
+	it('returns the files of a job with scrubbed file names', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-1',
+				title: 'Make report',
+				kind: 'subagent',
+				status: 'completed',
+				createdAt: new Date(),
+				files: [
+					{
+						fileId: 'file-1',
+						fileName: 'api_key=example-value.pdf',
+						mimeType: 'application/pdf',
+						sizeBytes: 3,
+					},
+				],
+			},
+		] as never);
+		const response = await controller.getBackgroundJobs(request as never);
+		expect(response.tasks[0].files).toEqual([
+			{
+				fileId: 'file-1',
+				fileName: '[REDACTED]',
+				mimeType: 'application/pdf',
+				sizeBytes: 3,
+			},
+		]);
+	});
+
 	it('returns current group statuses without consuming results', async () => {
 		const { controller, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();

@@ -66,6 +66,7 @@ export type BackgroundJobGroupItem = Pick<
 	| 'pauseRequestId'
 	| 'planId'
 	| 'planTaskId'
+	| 'files'
 >;
 
 @Service()
@@ -178,6 +179,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				'pauseRequestId',
 				'planId',
 				'planTaskId',
+				'files',
 			],
 			order: { createdAt: 'ASC' },
 		});
