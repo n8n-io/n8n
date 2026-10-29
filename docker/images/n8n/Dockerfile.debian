@@ -62,6 +62,9 @@ ARG IMAGE_DESCRIPTION="Workflow Automation Tool (Debian glibc variant)"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
+# Restrict GraphicsMagick to its commonly used coder set. Debian builds the
+# coders into the library, so this setting is the only control.
+ENV MAGICK_CODER_STABILITY=PRIMARY
 
 WORKDIR /home/node
 
