@@ -5334,7 +5334,7 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		const source = InstanceAiService.toString();
 
 		// The shared trace input records the resources; the wiring is what matters here.
-		expect(source).toMatch(/buildAssistantTurnTraceInput\)?\(\{[^}]*contextAttachments/);
+		expect(source).toMatch(/buildAssistantTurnTraceInput\)?\(\{[^}]*\bcontextAttachments\s*,/);
 	});
 });
 

@@ -679,7 +679,7 @@ describe('SystemAgentExecutionService', () => {
 			expect(seen).toEqual(['turn-span', 'turn-span']);
 		});
 
-		it('settles as errored and rethrows when the turn throws inside the turn context', async () => {
+		it('settles as errored and rethrows when the turn throws through withTurnContext', async () => {
 			const { service, handle, onSettled, turnExecutionService } = setup();
 			handle.withTurnContext = async <T>(run: () => Promise<T>) => await run();
 			const failure = new Error('stream broke');
