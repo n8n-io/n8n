@@ -123,7 +123,7 @@ export class InsightsCollectionService {
 			return;
 		}
 
-		const status = ctx.runData.status === 'success' ? 'success' : 'failure';
+		const status = fact.outcome === 'success' ? 'success' : 'failure';
 
 		const commonWorkflowData = {
 			workflowId: ctx.workflow.id,
@@ -161,9 +161,8 @@ export class InsightsCollectionService {
 		}
 
 		const timeSaved = computeTimeSavedMinutes({
+			fact,
 			settings: ctx.workflow.settings,
-			mode: ctx.runData.mode,
-			outcome: fact.outcome,
 			nodeTimeSavedMinutes: ctx.runData.nodeTimeSavedMinutes,
 			runData: ctx.runData.data.resultData?.runData,
 		});

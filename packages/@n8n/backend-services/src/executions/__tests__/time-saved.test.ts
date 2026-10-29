@@ -1,6 +1,6 @@
 import type { IRunData } from 'n8n-workflow';
 
-import type { LedgerOutcome } from '../counting-rules';
+import type { LedgerFact, LedgerOutcome } from '../counting-rules';
 import { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from '../time-saved';
 
 describe('sumNodeTimeSavedMinutes', () => {
@@ -48,7 +48,15 @@ describe('computeTimeSavedMinutes', () => {
 		'Track Time Saved 2': [{ metadata: { timeSaved: { minutes: 30 } } }],
 	} as unknown as IRunData;
 
-	const base = { mode: 'webhook', outcome: 'success' } as const;
+	const fact = (overrides: Partial<LedgerFact> = {}): LedgerFact => ({
+		entityType: 'workflow',
+		mode: 'webhook',
+		source: 'none',
+		event: 'ended',
+		outcome: 'success',
+		...overrides,
+	});
+	const base = { fact: fact() };
 
 	test('uses timeSavedPerExecution in fixed mode', () => {
 		const settings = { timeSavedMode: 'fixed', timeSavedPerExecution: 15 } as const;
@@ -89,14 +97,12 @@ describe('computeTimeSavedMinutes', () => {
 		'returns undefined for outcome %s',
 		(outcome) => {
 			const settings = { timeSavedMode: 'fixed', timeSavedPerExecution: 15 } as const;
-			expect(computeTimeSavedMinutes({ mode: 'webhook', outcome, settings })).toBeUndefined();
+			expect(computeTimeSavedMinutes({ fact: fact({ outcome }), settings })).toBeUndefined();
 		},
 	);
 
 	test('returns undefined for an error workflow even on success', () => {
 		const settings = { timeSavedMode: 'fixed', timeSavedPerExecution: 15 } as const;
-		expect(
-			computeTimeSavedMinutes({ mode: 'error', outcome: 'success', settings }),
-		).toBeUndefined();
+		expect(computeTimeSavedMinutes({ fact: fact({ mode: 'error' }), settings })).toBeUndefined();
 	});
 });

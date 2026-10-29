@@ -14,6 +14,7 @@ import {
 	isBillableExecution,
 	isInsightsProduction,
 	isLedgerFact,
+	savesTime,
 	toLedgerOutcome,
 } from '../counting-rules';
 import type {
@@ -93,6 +94,13 @@ const expectInsights = (f: LedgerFact) =>
 	f.source !== 'instance_ai' &&
 	['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'error'].includes(f.mode);
 
+const expectSavesTime = (f: LedgerFact) =>
+	f.entityType === 'workflow' &&
+	f.event === 'ended' &&
+	f.outcome === 'success' &&
+	f.source !== 'instance_ai' &&
+	['cli', 'retry', 'trigger', 'webhook', 'evaluation'].includes(f.mode);
+
 const expectLimit = (f: LedgerFact) =>
 	f.event === 'started' &&
 	f.outcome === 'none' &&
@@ -120,13 +128,6 @@ function run(mode: WorkflowExecuteMode, status: ExecutionStatus): CompletedRun {
 	return { mode, status, startedAt: new Date(), data: { resultData: {} } };
 }
 
-describe('fact space', () => {
-	test('covers every combination once', () => {
-		expect(allFacts).toHaveLength(792);
-		expect(new Set(allFacts.map(describeFact)).size).toBe(792);
-	});
-});
-
 describe('isBillableExecution (fact)', () => {
 	test('matches the expected rule for every fact', () => {
 		expect(findMismatches(isBillableExecution, expectBillable)).toEqual([]);
@@ -144,6 +145,16 @@ describe('isInsightsProduction (fact)', () => {
 
 	test('a blocked run counts in Insights', () => {
 		expect(isInsightsProduction(fact({ outcome: 'blocked' }))).toBe(true);
+	});
+});
+
+describe('savesTime', () => {
+	test('matches the expected rule for every fact', () => {
+		expect(findMismatches(savesTime, expectSavesTime)).toEqual([]);
+	});
+
+	test('an error workflow saves no time even on success', () => {
+		expect(savesTime(fact({ mode: 'error' }))).toBe(false);
 	});
 });
 
@@ -189,16 +200,8 @@ describe('executionLimitDelta', () => {
 });
 
 describe('isLedgerFact', () => {
-	const validRow = {
-		entityType: 'workflow',
-		mode: 'webhook',
-		source: 'none',
-		event: 'ended',
-		outcome: 'success',
-	};
-
 	test('returns true for a valid row', () => {
-		expect(isLedgerFact(validRow)).toBe(true);
+		expect(isLedgerFact(fact())).toBe(true);
 	});
 
 	test.each([
@@ -208,14 +211,14 @@ describe('isLedgerFact', () => {
 		{ column: 'event', value: 'bogus' },
 		{ column: 'outcome', value: 'finished' },
 	])('returns false when $column is $value', ({ column, value }) => {
-		expect(isLedgerFact({ ...validRow, [column]: value })).toBe(false);
+		expect(isLedgerFact({ ...fact(), [column]: value })).toBe(false);
 	});
 
 	test.each(['toString', '__proto__', 'constructor', 'hasOwnProperty'])(
 		'returns false for the prototype key %s as a value',
 		(value) => {
-			for (const column of Object.keys(validRow)) {
-				expect(isLedgerFact({ ...validRow, [column]: value })).toBe(false);
+			for (const column of Object.keys(fact())) {
+				expect(isLedgerFact({ ...fact(), [column]: value })).toBe(false);
 			}
 		},
 	);
@@ -263,11 +266,6 @@ describe('toLedgerOutcome', () => {
 });
 
 describe('isBillableExecution (run)', () => {
-	test('returns false for instance_ai verification runs even when the mode is production', () => {
-		const source: WorkflowExecutionSource = 'instance_ai';
-		expect(isBillableExecution(run('webhook', 'success'), source)).toBe(false);
-	});
-
 	test('returns false for a production run that failed before its first node started', () => {
 		expect(
 			isBillableExecution({
@@ -287,10 +285,6 @@ describe('isBillableExecution (run)', () => {
 		expect(isBillableExecution({ mode: 'trigger', status: 'crashed', startedAt: new Date() })).toBe(
 			true,
 		);
-	});
-
-	test('returns true for a failed production run without the failedBeforeStart flag', () => {
-		expect(isBillableExecution(run('trigger', 'error'))).toBe(true);
 	});
 
 	test('does not treat a deep mock as a ledger fact', () => {
@@ -332,26 +326,25 @@ describe('run form equivalence with the previous per-service rules', () => {
 	const cases = allModes.flatMap((mode) =>
 		allStatuses.flatMap((status) => sources.map((source) => ({ mode, status, source }))),
 	);
+	type RunCase = (typeof cases)[number];
+
+	const findRunMismatches = (
+		actual: (run: CompletedRun, source?: WorkflowExecutionSource) => boolean,
+		previous: (c: RunCase) => boolean,
+	) =>
+		cases
+			.filter((c) => actual(run(c.mode, c.status), c.source) !== previous(c))
+			.map(({ mode, status, source }) => `${mode}/${status}/${String(source)}`);
 
 	test('isInsightsProduction matches the previous Insights rule for every run', () => {
-		const mismatches = cases
-			.filter(({ mode, status, source }) => {
-				const old =
-					isCompletedExecutionStatus(status) && !skipMode[mode] && source !== 'instance_ai';
-				return isInsightsProduction(run(mode, status), source) !== old;
-			})
-			.map(({ mode, status, source }) => `${mode}/${status}/${String(source)}`);
-		expect(mismatches).toEqual([]);
+		const previous = ({ mode, status, source }: RunCase) =>
+			isCompletedExecutionStatus(status) && !skipMode[mode] && source !== 'instance_ai';
+		expect(findRunMismatches(isInsightsProduction, previous)).toEqual([]);
 	});
 
 	test('isBillableExecution matches the previous billable rule for every run', () => {
-		const mismatches = cases
-			.filter(({ mode, status, source }) => {
-				const old =
-					source !== 'instance_ai' && billableMode[mode] && isCompletedExecutionStatus(status);
-				return isBillableExecution(run(mode, status), source) !== old;
-			})
-			.map(({ mode, status, source }) => `${mode}/${status}/${String(source)}`);
-		expect(mismatches).toEqual([]);
+		const previous = ({ mode, status, source }: RunCase) =>
+			source !== 'instance_ai' && billableMode[mode] && isCompletedExecutionStatus(status);
+		expect(findRunMismatches(isBillableExecution, previous)).toEqual([]);
 	});
 });

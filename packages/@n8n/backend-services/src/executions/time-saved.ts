@@ -1,6 +1,6 @@
-import type { IRunData, IWorkflowSettings, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IRunData, IWorkflowSettings } from 'n8n-workflow';
 
-import type { LedgerOutcome } from './counting-rules';
+import { savesTime, type LedgerFact } from './counting-rules';
 
 export function sumNodeTimeSavedMinutes(runData: IRunData | undefined): number {
 	let totalMinutes = 0;
@@ -12,19 +12,15 @@ export function sumNodeTimeSavedMinutes(runData: IRunData | undefined): number {
 	return totalMinutes;
 }
 
-/**
- * Minutes a finished run saved. Undefined when the run cannot save time:
- * it did not succeed, or it is an error workflow (operational, not productive work).
- */
+/** Minutes a finished run saved. Undefined when `savesTime` excludes the run. */
 export function computeTimeSavedMinutes(run: {
+	fact: LedgerFact;
 	settings?: Pick<IWorkflowSettings, 'timeSavedMode' | 'timeSavedPerExecution'>;
-	mode: WorkflowExecuteMode;
-	outcome: LedgerOutcome;
 	/** Sum the queue worker already took from the run data. */
 	nodeTimeSavedMinutes?: number;
 	runData?: IRunData;
 }): number | undefined {
-	if (run.outcome !== 'success' || run.mode === 'error') return undefined;
+	if (!savesTime(run.fact)) return undefined;
 
 	// Legacy workflows have no time saved mode and use the fixed value.
 	if (run.settings?.timeSavedMode !== 'dynamic') {

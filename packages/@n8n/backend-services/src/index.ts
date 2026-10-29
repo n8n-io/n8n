@@ -5,6 +5,7 @@ export {
 	isBillableExecution,
 	isInsightsProduction,
 	isLedgerFact,
+	savesTime,
 	toLedgerFact,
 	toLedgerOutcome,
 	type CompletedRun,

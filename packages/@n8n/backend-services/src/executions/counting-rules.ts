@@ -96,6 +96,36 @@ const insightsProduction = {
 	},
 } satisfies CountingRule;
 
+// Error workflows are operational, not productive work.
+const timeSaved = {
+	entityType: { workflow: true, agent: false },
+	event: { started: false, ended: true },
+	outcome: {
+		success: true,
+
+		error: false,
+		crashed: false,
+		blocked: false,
+		canceled: false,
+		none: false,
+	},
+	source: { none: true, user: true, instance_ai: false },
+	mode: {
+		cli: true,
+		retry: true,
+		trigger: true,
+		webhook: true,
+		evaluation: true,
+
+		error: false,
+		integrated: false,
+		internal: false,
+		manual: false,
+		chat: false,
+		agent: false,
+	},
+} satisfies CountingRule;
+
 // A run counts once, at its start. A blocked run gives its slot back: see executionLimitDelta.
 const executionLimit = {
 	entityType: { workflow: true, agent: true },
@@ -191,6 +221,10 @@ export function isInsightsProduction(
 	source?: WorkflowExecutionSource,
 ): boolean {
 	return matches(insightsProduction, isFact(input) ? input : toLedgerFact(input, source));
+}
+
+export function savesTime(fact: LedgerFact): boolean {
+	return matches(timeSaved, fact);
 }
 
 export function countsTowardExecutionLimit(fact: LedgerFact): boolean {
