@@ -16,6 +16,7 @@ import { computeSideCallCost } from '../loop/side-call-cost';
 import { loadAi } from '../model/lazy-ai';
 import { createModel, type FetchFn } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 const logger = createFilteredLogger();
@@ -63,6 +64,8 @@ interface GenerateTitleFromMessageOptions {
 	instructions?: string;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	/** Sent verbatim as the `x-n8n-function-id` header. */
+	functionId?: string;
 }
 
 /**
@@ -135,6 +138,7 @@ export async function generateTitleFromMessage(
 				content: `Generate a title for the following first message of a conversation. Do not answer the message — only produce the title.\n\n<message>\n${trimmed}\n</message>`,
 			},
 		],
+		...buildFunctionIdHeaders(opts?.functionId),
 		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
@@ -180,6 +184,7 @@ ${trimmed}
 		model,
 		instructions: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
 		messages: [{ role: 'user', content: wrappedMessage }],
+		...buildFunctionIdHeaders(opts?.functionId),
 		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
@@ -241,6 +246,8 @@ export async function generateThreadTitle(opts: {
 	agentModel: ModelConfig;
 	/** Proxy/SSRF-aware `fetch` for the title model call (see {@link AgentRuntimeConfig.modelFetch}). */
 	modelFetch?: FetchFn;
+	/** The owning runtime's `functionId`; the title call sends `<functionId>.title`. */
+	functionId?: string;
 	telemetry?: BuiltTelemetry;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
@@ -268,6 +275,7 @@ export async function generateThreadTitle(opts: {
 			instructions: opts.titleConfig.instructions,
 			telemetry: opts.telemetry,
 			executionCounter: opts.executionCounter,
+			...(opts.functionId ? { functionId: `${opts.functionId}.title` } : {}),
 		});
 		if (!generated) return;
 
