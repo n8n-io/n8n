@@ -115,10 +115,7 @@ export class AppPreviewService {
 			{ sub, appId, versionId },
 			{ expiresIn: SESSION_TTL_SECONDS },
 		);
-		res.cookie(this.cookieName(), token, {
-			...embeddedAppCookieOptions(this.hosts.baseUrl),
-			maxAge: SESSION_TTL_SECONDS * 1000,
-		});
+		res.cookie(this.cookieName(), token, embeddedAppCookieOptions(this.hosts.baseUrl));
 	}
 
 	private verifySession(token: string | undefined): PreviewSession | undefined {

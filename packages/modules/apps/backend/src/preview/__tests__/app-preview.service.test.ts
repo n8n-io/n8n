@@ -167,7 +167,6 @@ describe('AppPreviewService', () => {
 				sameSite: 'none',
 				partitioned: true,
 				path: '/',
-				maxAge: 3600 * 1000,
 			});
 			expect(res.set).toHaveBeenCalledWith({
 				'Cache-Control': 'no-store',
@@ -189,7 +188,6 @@ describe('AppPreviewService', () => {
 				secure: false,
 				sameSite: 'lax',
 				path: '/',
-				maxAge: 3600 * 1000,
 			});
 		});
 
