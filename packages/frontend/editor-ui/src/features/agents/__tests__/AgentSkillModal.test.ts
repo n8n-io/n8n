@@ -1933,7 +1933,10 @@ describe('Assistant availability', () => {
 
 	const selectScope = chooseScopeOption;
 
-	it('sends the toggle with a move to a project', async () => {
+	it.each([
+		['instance', 'Marketing', 'project:p1'],
+		['project:p1', 'Global', 'instance'],
+	])('sends the toggle with a move from %s to %s', async (initialScope, label, scope) => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({
 			skill: savedSkill,
@@ -1944,20 +1947,16 @@ describe('Assistant availability', () => {
 					{ value: 'instance', label: 'Global', icon: 'globe' as const },
 					{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
 				],
-				initialScope: 'instance',
+				initialScope,
 				availableToAssistant: false,
 			},
 		});
-		await selectScope('Marketing');
+		await selectScope(label);
 		await userEvent.click(getByTestId('skill-assistant-availability'));
 		await userEvent.click(getByTestId('agent-skill-create-save'));
 		await waitFor(() =>
 			expect(onConfirm).toHaveBeenCalledWith(
-				expect.objectContaining({
-					scope: 'project:p1',
-					availableToAssistant: true,
-					skill: savedSkill,
-				}),
+				expect.objectContaining({ scope, availableToAssistant: true, skill: savedSkill }),
 			),
 		);
 	});

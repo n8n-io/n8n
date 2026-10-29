@@ -795,6 +795,7 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 		if (action === 'update' || action === 'unpublish') {
 			expect((await upload(archive, { publishingPolicy: 'publish-all' })).statusCode).toBe(200);
 		}
+		// The skill grants stay, so only the missing Agent grant can refuse the import.
 		const scopes: ApiKeyScope[] = [
 			'agent:import',
 			'agent:read',
@@ -802,6 +803,8 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 			'agent:update',
 			'agent:publish',
 			'agent:unpublish',
+			'skill:create',
+			'skill:update',
 		];
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== `agent:${action}`),
@@ -820,8 +823,9 @@ it.each(['project:viewer', 'project:chatUser'] as const)(
 		const archive = await download();
 		await agents.delete({ projectId: sourceProject.id });
 		await deleteSourceSkills();
+		// With every grant, only the project role can refuse the import.
 		const member = await createMemberWithApiKey({
-			scopes: ['agent:import', 'agent:read', 'agent:create'],
+			scopes: ['agent:import', 'agent:read', 'agent:create', 'skill:create'],
 		});
 		await linkUserToProject(member, destination, role);
 		const before = await records();
@@ -835,7 +839,13 @@ it.each(['agent:import', 'workflow:import'] as const)(
 	async (missing) => {
 		await addWorkflowDependency();
 		const archive = await download();
-		const scopes: ApiKeyScope[] = ['agent:import', 'workflow:import', 'agent:read', 'agent:create'];
+		const scopes: ApiKeyScope[] = [
+			'agent:import',
+			'workflow:import',
+			'agent:read',
+			'agent:create',
+			'skill:create',
+		];
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== missing),
 		});
