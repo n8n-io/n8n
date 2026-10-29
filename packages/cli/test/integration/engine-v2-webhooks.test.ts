@@ -19,7 +19,7 @@ import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@n8n/backend-services';
 import { ActiveExecutions } from '@/active-executions';
-import { ExecutionResponseChannelReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import { ExecutionResponseChannelReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
 import { ExecutionResponseChannelSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
 import { createInMemoryExecutionChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
