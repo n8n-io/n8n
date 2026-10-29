@@ -18,6 +18,10 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { restrictToolActions } from './restrict-tool-actions';
+import {
+	TRIGGER_INPUT_DATA_DESCRIPTION,
+	TRIGGER_NODE_NAME_DESCRIPTION,
+} from './shared/trigger-input-descriptions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -70,29 +74,8 @@ const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
 	approvalSummary: approvalSummarySchema,
 	workflowId: z.string().describe('Workflow ID'),
-	inputData: z
-		.record(z.unknown())
-		.optional()
-		.describe(
-			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
-				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
-				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
-				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
-				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
-		),
-	triggerNodeName: z
-		.string()
-		.optional()
-		.describe(
-			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
-				'more than one trigger: without it a single trigger is auto-detected and the other ' +
-				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
-				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
-				'workflow to reach a branch — use this instead.',
-		),
+	inputData: z.record(z.unknown()).optional().describe(TRIGGER_INPUT_DATA_DESCRIPTION),
+	triggerNodeName: z.string().optional().describe(TRIGGER_NODE_NAME_DESCRIPTION),
 	timeout: z
 		.number()
 		.int()
@@ -298,39 +281,6 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	return await context.executionService.getStatus(input.executionId);
 }
 
-function normalizeWorkflowName(name: string): string {
-	return name.trim().toLowerCase();
-}
-
-function hasWorkflowName(
-	allowList: ReadonlySet<string>,
-	workflowName: string | undefined,
-): boolean {
-	if (!workflowName) return false;
-
-	const normalizedWorkflowName = normalizeWorkflowName(workflowName);
-	for (const allowedName of allowList) {
-		if (normalizeWorkflowName(allowedName) === normalizedWorkflowName) return true;
-	}
-
-	return false;
-}
-
-async function findAllowedWorkflowByName(
-	context: InstanceAiContext,
-	allowList: ReadonlySet<string> | undefined,
-): Promise<{ id: string; name: string } | undefined> {
-	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
-
-	for (const allowedName of allowList) {
-		const { workflows } = await context.workflowService.list({ query: allowedName, limit: 10 });
-		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
-		if (match) return { id: match.id, name: match.name };
-	}
-
-	return undefined;
-}
-
 async function handleRun(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'run' }>,
@@ -347,56 +297,22 @@ async function handleRun(
 		};
 	}
 
-	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
-	// Checkpoint follow-ups pass an explicit allow-list (the workflows the checkpoint is
-	// verifying). When the allow-list is unset (e.g. planned-build follow-ups, which grant
-	// `runWorkflow: 'always_allow'` without one), the bypass is scoped to the workflows the
-	// agent created during the active plan cycle. Running any other pre-existing workflow
-	// still requires HITL approval, so a prompt injection can't silently run arbitrary
-	// workflows under the user's authority.
-	const allowList = context.allowedRunWorkflowIds;
-	const workflowNameAllowList = context.allowedRunWorkflowNames;
-	let workflowName: string | undefined;
-	let workflowId = input.workflowId;
-	const getWorkflowName = async () => {
-		workflowName ??= await context.workflowService
+	// `always_allow` is only honored for workflows the agent created in this thread.
+	// Running any other workflow still requires HITL approval, so a prompt injection
+	// can't silently run arbitrary workflows under the user's authority.
+	const workflowId = input.workflowId;
+	const getWorkflowName = async () =>
+		await context.workflowService
 			.get(workflowId)
 			.then((wf) => wf.name)
 			.catch(() => undefined);
-		return workflowName;
-	};
-	let allowedByName =
-		context.permissions?.runWorkflow === 'always_allow' &&
-		workflowNameAllowList !== undefined &&
-		hasWorkflowName(workflowNameAllowList, await getWorkflowName());
-	if (
-		context.permissions?.runWorkflow === 'always_allow' &&
-		workflowNameAllowList !== undefined &&
-		!allowedByName &&
-		workflowName === undefined
-	) {
-		const fallbackWorkflow = await findAllowedWorkflowByName(context, workflowNameAllowList);
-		if (fallbackWorkflow) {
-			workflowId = fallbackWorkflow.id;
-			workflowName = fallbackWorkflow.name;
-			allowedByName = true;
-		}
-	}
-	const allowedByList =
-		allowList !== undefined
-			? allowList.has(workflowId)
-			: (context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 	const allowedByScope =
-		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowedByList || allowedByName);
+		(context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 
-	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
-	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
+	// A per-workflow "always allow" grant skips HITL for the rest of the session.
 	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
-	const allowedBySessionGrant =
-		context.requireRunWorkflowApproval !== true &&
-		context.sessionApprovedToolKeys?.has(grantKey) === true;
+	const allowedBySessionGrant = context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
@@ -485,26 +401,18 @@ async function handleRunStep(
 		};
 	}
 
-	// Same pre-authorization the full run uses: the checkpoint's allow-list when
-	// there is one, otherwise the workflows this plan cycle created.
-	const allowList = context.allowedRunWorkflowIds;
-	const allowedByList =
-		allowList !== undefined
-			? allowList.has(input.workflowId)
-			: (context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
+	// Same pre-authorization the full run uses: workflows the agent created in this thread.
 	const allowedByScope =
-		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		allowedByList;
+		(context.aiCreatedWorkflowIds?.has(input.workflowId) ?? false);
 
 	// A per-node grant keeps a debug loop from re-prompting on every attempt. A
 	// whole-workflow run grant also covers a single node of that workflow.
 	const stepGrantKey = buildRunStepSessionGrantKey(input.workflowId, input.nodeName);
 	const allowedBySessionGrant =
-		context.requireRunWorkflowApproval !== true &&
-		(context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
-			context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
-				true);
+		context.sessionApprovedToolKeys?.has(stepGrantKey) === true ||
+		context.sessionApprovedToolKeys?.has(buildRunWorkflowSessionGrantKey(input.workflowId)) ===
+			true;
 
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
@@ -589,6 +497,17 @@ const REDACTED_RESULT_GUIDANCE =
 	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
 	'and do not try to get the data another way.';
 
+/**
+ * Appended to every description: the user's own canvas runs are often not
+ * saved, and `list` does not show them.
+ */
+const UNSAVED_EXECUTION_GUIDANCE =
+	' When saving manual executions is turned off, n8n can keep a finished manual run ' +
+	'for a short time, only for the user who ran it, and `list` does not show it. ' +
+	'Read such a run by its execution id. When the execution the user means is not ' +
+	'found, tell the user that you cannot read that run. Do not debug a different ' +
+	'execution from `list` in its place.';
+
 export function createExecutionsTool(
 	context: InstanceAiContext,
 	options: ExecutionsToolOptions = {},
@@ -602,7 +521,7 @@ export function createExecutionsTool(
 				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 					'get node output, get resolved node parameters for a past run, and stop. ' +
 					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					"list_workflows, then run it here with the user's values as inputData — " +
 					'do not treat such a request as a request to build something. ' +
 					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
 					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
@@ -610,7 +529,9 @@ export function createExecutionsTool(
 					'"Execute step" button. Use it to see what one node really returns — when ' +
 					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
 					'the node re-runs on the data it actually received. It runs for real, so do ' +
-					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
+					'not point it at a node that writes.') +
+				REDACTED_RESULT_GUIDANCE +
+				UNSAVED_EXECUTION_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

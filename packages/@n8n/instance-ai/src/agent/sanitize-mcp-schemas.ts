@@ -446,7 +446,7 @@ function assertNoEnumConflict(fieldName: string, entries: DiscriminatedFieldEntr
 function buildMergedDiscriminatedField(
 	fieldName: string,
 	entries: DiscriminatedFieldEntry[],
-	actionCount: number,
+	allActions: string[],
 	context: SanitizeContext,
 	sanitizeChild: SanitizeChild,
 ): z.ZodTypeAny {
@@ -476,13 +476,20 @@ function buildMergedDiscriminatedField(
 		return sanitizedField.describe(boundDescription(combined, context, fieldPath));
 	}
 
-	if (entries.length < actionCount) {
+	if (entries.length < allActions.length) {
 		// Field appears in a subset of variants. Annotate with an action hint so
 		// the model binds the (now-flattened-optional) field to the right actions
-		// and stops cross-mixing fields between sibling actions.
-		const actionList = entries.map((e) => `"${e.action}"`).join(', ');
+		// and stops cross-mixing fields between sibling actions. Name whichever
+		// side is shorter: the actions that use the field, or the ones that don't.
+		const used = new Set(entries.map((e) => e.action));
+		const excluded = allActions.filter((action) => !used.has(action));
+		const quote = (actions: string[]) => actions.map((action) => `"${action}"`).join(', ');
+		const hint =
+			excluded.length < entries.length
+				? `Not for ${quote(excluded)}`
+				: `${withDesc[0]?.description ? 'For' : 'Only for'} ${quote([...used])}`;
 		const baseDesc = withDesc[0]?.description;
-		const merged = baseDesc ? `For ${actionList}: ${baseDesc}` : `Only for ${actionList}`;
+		const merged = baseDesc ? `${hint}: ${baseDesc}` : hint;
 		return sanitizedField.describe(boundDescription(merged, context, fieldPath));
 	}
 
@@ -543,7 +550,7 @@ function sanitizeDiscriminatedUnion(
 		mergedShape[fieldName] = buildMergedDiscriminatedField(
 			fieldName,
 			entries,
-			actionMeta.length,
+			actionMeta.map((a) => a.value),
 			context,
 			sanitizeChild,
 		);

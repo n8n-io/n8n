@@ -49,6 +49,18 @@ export interface CallerContext {
 }
 
 /**
+ * The execution that started this one, and the step that asked for it. Only
+ * the engine's own start path sets it: a caller over HTTP cannot claim a
+ * parent.
+ */
+export interface ParentLink {
+	executionId: string;
+	stepId: string;
+	/** Whether the parent step waits for this execution to end. */
+	awaited: boolean;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs. `waiting` is the other extreme: the step ran, but it produced no
@@ -137,15 +149,18 @@ export type WaitDeclaration =
 			resumeAt: string;
 			/** The slots the step emits when the deadline fires. */
 			outputsAtDeadline: StepSlots;
-			/** Whether a resume request may end the wait early. */
-			acceptsResumeRequest: boolean;
+			/** Which resume request may end the wait early. If absent, none can. */
+			resumeBinding?: ResumeBinding;
 	  }
 	| {
 			/** No deadline, so only a resume request ends this wait. */
 			resumeAt?: never;
 			outputsAtDeadline?: never;
-			acceptsResumeRequest: true;
+			resumeBinding: ResumeBinding;
 	  };
+
+/** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
+export type ResumeBinding = 'execution' | 'step';
 
 /**
  * What ended a step's wait, recorded on the row when it resumed. No node code
@@ -162,7 +177,11 @@ export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: Ste
  * system, as `assertCreatableRecord` does for step creation.
  */
 export function hasResumeCondition(wait: WaitDeclaration): boolean {
-	return wait.acceptsResumeRequest || wait.resumeAt !== undefined;
+	return (
+		wait.resumeBinding === 'execution' ||
+		wait.resumeBinding === 'step' ||
+		wait.resumeAt !== undefined
+	);
 }
 
 /**

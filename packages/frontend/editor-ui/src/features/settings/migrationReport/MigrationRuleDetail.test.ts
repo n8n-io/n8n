@@ -219,8 +219,68 @@ describe('MigrationRuleDetail', () => {
 					.getAllByRole('columnheader')
 					.map((th) => th.textContent?.replace(/[↑↓]/g, '').trim());
 				// The first column holds the select-all checkbox.
-				expect(titles).toEqual(['', 'Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
+				expect(titles).toEqual([
+					'',
+					'Name',
+					'Project',
+					'Nodes affected',
+					'Usage',
+					'Owner',
+					'State',
+					'',
+				]);
 			});
+		});
+	});
+
+	describe('how to fix panel', () => {
+		it('renders the recommendations as resolution steps', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const panel = await screen.findByTestId('migration-rule-how-to-fix');
+			expect(panel).toHaveTextContent('How to fix');
+			expect(panel).toHaveTextContent('Update the node');
+			expect(panel).toHaveTextContent('Please update to the latest version');
+			expect(screen.queryByTestId('migration-rule-how-to-fix-docs-link')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('migration-rule-how-to-fix-migratable')).not.toBeInTheDocument();
+		});
+
+		it('links to the rule documentation when there are no recommendations', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', 'https://docs.example.com/rule-1');
+			expect(link).toHaveTextContent('documentation');
+			expect(screen.getByTestId('migration-rule-how-to-fix')).toHaveTextContent(
+				'Follow the steps in the documentation to resolve this change.',
+			);
+		});
+
+		it('links to the general breaking-changes docs when the rule has no documentation', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [], ruleDocumentationUrl: undefined }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', expect.stringContaining('breaking-changes'));
+		});
+
+		it('mentions the Migrate action when the rule is migratable', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('migration-rule-how-to-fix-migratable')).toHaveTextContent(
+				'Use the Migrate action in the table',
+			);
 		});
 	});
 
@@ -1548,6 +1608,41 @@ describe('MigrationRuleDetail', () => {
 				return await screen.findAllByTestId('migration-rule-filter-project-item');
 			};
 
+			it('should show the project of each workflow, and Personal for a personal project', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await waitFor(() => expect(screen.getByText('My draft')).toBeInTheDocument());
+
+				const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement;
+				const projectIn = (name: string) =>
+					within(rowOf(name)).getByTestId('migration-workflow-project').textContent?.trim();
+				expect(projectIn('Lead import')).toBe('Finance');
+				expect(projectIn('My draft')).toBe('Personal');
+			});
+
+			it('should show a dash when the project of a workflow is unknown', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							{
+								...mockWorkflowWithIssue,
+								id: 'wf-4',
+								name: 'No project',
+								homeProjectId: undefined,
+								homeProjectName: undefined,
+								homeProjectType: undefined,
+							},
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				const row = (await screen.findByText('No project')).closest('tr') as HTMLElement;
+
+				expect(within(row).getByTestId('migration-workflow-project').textContent?.trim()).toBe('—');
+			});
+
 			it('should list Personal first and the team projects by name', async () => {
 				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 					createMockRuleResult({ affectedWorkflows: projectWorkflows }),
@@ -1774,6 +1869,9 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByTestId('migration-bulk-notify-no-owner')).toHaveTextContent(
 					'1 without an owner',
 				);
+				expect(screen.getByTestId('migration-bulk-notify-button')).toHaveTextContent(
+					'Notify 1 owner',
+				);
 				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
 
 				await waitFor(() => {
@@ -1825,7 +1923,45 @@ describe('MigrationRuleDetail', () => {
 
 				await selectRow('Test Workflow 2');
 
-				expect(screen.getByTestId('migration-bulk-notify-button')).toBeDisabled();
+				const button = screen.getByTestId('migration-bulk-notify-button');
+				expect(button).toBeDisabled();
+				expect(button).toHaveTextContent('Notify owners');
+			});
+
+			it('should count distinct owners, not workflows, in the action label', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							mockWorkflowWithIssue,
+							{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+							{
+								...mockWorkflowWithIssue,
+								id: 'workflow-3',
+								name: 'Test Workflow 3',
+								owner: { ...grace, source: 'assigned' as const },
+							},
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('3 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 2');
+				expect(screen.getByTestId('migration-bulk-notify-button')).toHaveTextContent(
+					'Notify 1 owner',
+				);
+
+				await selectRow('Test Workflow 3');
+				const button = screen.getByTestId('migration-bulk-notify-button');
+				expect(button).toHaveTextContent('Notify 2 owners');
+
+				await userEvent.hover(button);
+				expect(
+					await screen.findByText(
+						'Each owner gets one email that lists all of their selected workflows',
+					),
+				).toBeInTheDocument();
 			});
 
 			it('should leave a skipped row open and warn with the reason', async () => {

@@ -24,12 +24,3 @@ export function fromAgentDocument(document: AgentJsonConfig): {
 	const { skills, ...config } = document;
 	return { config, skillRefs: skills };
 }
-
-/**
- * A stored config without the legacy `skills` key. Configs written before the
- * skills hub can still hold it. Nothing reads it, so do not copy it on.
- */
-export function withoutLegacySkillRefs(config: StoredAgentConfig): StoredAgentConfig {
-	const { skills: _legacy, ...rest } = config;
-	return rest;
-}

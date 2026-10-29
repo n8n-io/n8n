@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+/** The `kind` values n8n emits today. The schema stays open to others. */
+export const POLICY_VIOLATION_KIND = {
+	nodeTypeUnavailable: 'node-type-unavailable',
+	credentialTypeUnavailable: 'credential-type-unavailable',
+	nodeTypeDeprecated: 'node-type-deprecated',
+} as const;
+
+/** The `subjectType` values n8n emits today. The schema stays open to others. */
+export const POLICY_VIOLATION_SUBJECT_TYPE = {
+	nodeType: 'nodeType',
+	credentialType: 'credentialType',
+} as const;
+
 /**
  * One reason something was blocked by a policy check.
  *

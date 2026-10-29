@@ -1,74 +1,4 @@
-import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
-import type { WorkflowEntity } from '@n8n/db';
-import { BreakingChangeRule } from '@n8n/decorators';
-import type { INode } from 'n8n-workflow';
-
-import type {
-	BreakingChangeRuleMetadata,
-	IBreakingChangeWorkflowRule,
-	WorkflowDetectionReport,
-} from '../../types';
-import { BreakingChangeCategory } from '../../types';
-
-type NodeReplacement = {
-	id: string;
-	removedNodeName: string;
-	removedNodeType: string;
-	recommendations: BreakingChangeRecommendation[];
-};
-
-function createNodeReplacementRule({
-	id,
-	removedNodeName,
-	removedNodeType,
-	recommendations,
-}: NodeReplacement) {
-	@BreakingChangeRule({ version: 'v3' })
-	class NodeReplacementRule implements IBreakingChangeWorkflowRule {
-		id = `${id}-v3`;
-
-		getMetadata(): BreakingChangeRuleMetadata {
-			return {
-				version: 'v3',
-				title: `${removedNodeName} node removed`,
-				description: `The ${removedNodeName} node is no longer supported. ${recommendations.map(({ description }) => description).join(' ')}`,
-				category: BreakingChangeCategory.workflow,
-				impact: 'executionsFail',
-			};
-		}
-
-		async getRecommendations(
-			_workflowResults: BreakingChangeAffectedWorkflow[],
-		): Promise<BreakingChangeRecommendation[]> {
-			await Promise.resolve();
-			return recommendations;
-		}
-
-		async detectWorkflow(
-			_workflow: WorkflowEntity,
-			nodesGroupedByType: Map<string, INode[]>,
-		): Promise<WorkflowDetectionReport> {
-			const removedNodes = nodesGroupedByType.get(removedNodeType) ?? [];
-			if (removedNodes.length === 0) return { isAffected: false, issues: [] };
-
-			await Promise.resolve();
-			return {
-				isAffected: true,
-				issues: removedNodes.map((node) => ({
-					title: `${removedNodeName} node '${node.name}' is no longer supported`,
-					description: recommendations
-						.map((recommendation) => recommendation.description)
-						.join(' '),
-					level: 'error',
-					nodeId: node.id,
-					nodeName: node.name,
-				})),
-			};
-		}
-	}
-
-	return NodeReplacementRule;
-}
+import { createNodeReplacementRule } from './node-replacement-rule';
 
 export const BinaryInputLoaderRemovedRule = createNodeReplacementRule({
 	id: 'binary-input-loader-removed',
@@ -168,7 +98,8 @@ export const HttpRequestToolRemovedRule = createNodeReplacementRule({
 	recommendations: [
 		{
 			action: 'Replace with HTTP Request',
-			description: 'Replace this node with HTTP Request and configure it for AI tool use.',
+			description:
+				'Replace this node with HTTP Request and connect it to the Tool input of the AI Agent.',
 		},
 	],
 });
@@ -248,7 +179,8 @@ export const IntervalRemovedRule = createNodeReplacementRule({
 	recommendations: [
 		{
 			action: 'Replace with Schedule Trigger',
-			description: 'Replace this node with Schedule Trigger and recreate its interval.',
+			description:
+				'Replace this node with Schedule Trigger and set the interval again. Schedule Trigger runs at fixed clock times and supports 1–59 seconds, 1–59 minutes, 1–23 hours, or 1-31 days. For an even gap in seconds, use a value that divides 60, such as 5, 15, or 30.',
 		},
 	],
 });

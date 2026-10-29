@@ -112,7 +112,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 	return new Tool(ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT))
 		.description(
-			'Report the result of verifying a workflow after building it. Only call in checkpoint follow-up turns. ' +
+			'Report the result of verifying a workflow after building it. ' +
 				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +
 				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
 		)

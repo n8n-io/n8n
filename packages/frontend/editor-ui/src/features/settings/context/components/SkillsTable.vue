@@ -9,7 +9,7 @@ import {
 	N8nTooltip,
 	N8nUserInfo,
 } from '@n8n/design-system';
-import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { IconName, TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 
@@ -18,13 +18,15 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
+import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'download' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
 	value: SkillAction;
 	label: string;
+	icon: IconName;
 	disabled?: boolean;
 	tooltip?: string;
 	destructive?: boolean;
@@ -41,7 +43,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	open: [skill: SkillListItem];
+	timeline: [skill: SkillListItem];
+	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
+	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
@@ -49,23 +54,11 @@ const emit = defineEmits<{
 const tableOptions = defineModel<TableOptions>('tableOptions', { default: () => ({}) });
 
 const i18n = useI18n();
+const { deleteBlockedReason } = useSkillDeleteRule();
 const usersStore = useUsersStore();
 
-/** The backend refuses to delete a skill that an agent uses, so the action is off before the user tries. */
-function canDeleteNow(skill: SkillListItem) {
-	return skill.canDelete && skill.usedByAgents === 0;
-}
-
-function deleteHint(skill: SkillListItem): string | undefined {
-	if (canDeleteNow(skill)) return undefined;
-	if (!skill.canDelete) return i18n.baseText('settings.context.skills.readOnly');
-	return i18n.baseText('settings.context.skills.delete.inUse', {
-		interpolate: { count: skill.usedByAgents },
-		adjustToNumber: skill.usedByAgents,
-	});
-}
-
 function actionsFor(skill: SkillListItem): SkillActionItem[] {
+	const deleteBlocked = deleteBlockedReason(skill);
 	return [
 		{
 			value: 'edit',
@@ -75,16 +68,41 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 					? 'settings.context.skills.actions.edit'
 					: 'settings.context.skills.actions.view',
 			),
+			icon: skill.canEdit ? 'pencil' : 'eye',
+		},
+		{
+			value: 'timeline',
+			label: i18n.baseText('settings.context.skills.actions.timeline'),
+			icon: 'history',
+		},
+		{
+			value: 'compare',
+			label: i18n.baseText('settings.context.skills.actions.compare'),
+			icon: 'file-diff',
+			// A skill with one version has nothing to compare.
+			disabled: skill.latestVersion < 2,
 		},
 		{
 			value: 'download',
 			label: i18n.baseText('settings.context.skills.actions.download'),
+			icon: 'download',
 		},
+		// Only a synced skill that the user may stop syncing.
+		...(skill.canStopSyncing
+			? [
+					{
+						value: 'stopSyncing' as const,
+						label: i18n.baseText('settings.context.skills.stopSyncing.action'),
+						icon: 'unlink' as const,
+					},
+				]
+			: []),
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
-			disabled: !canDeleteNow(skill),
-			tooltip: deleteHint(skill),
+			icon: 'trash-2',
+			disabled: deleteBlocked !== undefined,
+			tooltip: deleteBlocked,
 			destructive: true,
 		},
 	];
@@ -92,7 +110,10 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
+	else if (action === 'timeline') emit('timeline', skill);
+	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
+	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
 
@@ -100,43 +121,36 @@ function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 	emit('open', payload.item);
 }
 
-// Sorting is off until the endpoint supports ORDER BY. Pixel widths sum to the table's
-// minimum width, so a new column takes its room from the others, not from the page.
+// The endpoint sorts by name and by last update only. Pixel widths are the starting
+// sizes; the user can resize each column, as in the users table. The actions column stays fixed.
 const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
 		width: 300,
-		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
 		width: 220,
 		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.agents'),
 		key: 'usedByAgents',
 		width: 110,
 		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.createdBy'),
 		key: 'createdBy',
 		width: 220,
 		disableSort: true,
-		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
 		width: 130,
-		disableSort: true,
-		resize: false,
 	},
 	{
 		title: '',
@@ -155,6 +169,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 		<N8nDataTableServer
 			v-model:page="tableOptions.page"
 			v-model:items-per-page="tableOptions.itemsPerPage"
+			:sort-by="tableOptions.sortBy"
 			:headers="headers"
 			:items="props.skills"
 			:items-length="props.itemsLength"

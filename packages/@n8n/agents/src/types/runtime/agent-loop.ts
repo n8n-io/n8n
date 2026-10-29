@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type {
 	LanguageModel,
 	LanguageModelCallOptions,
@@ -13,7 +14,6 @@ import type { FinishReason, SerializableAgentState, TokenUsage } from '../index'
 import type { GuardrailStop } from '../sdk/guardrail';
 import type { ExecutionOptions, RunOptions } from '../sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../sdk/message';
-import type { JSONObject } from '../utils/json';
 import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { ToolCallBatchResult, ToolCallInput, ToolCallSuspension } from './tool-execution';
 
@@ -63,7 +63,7 @@ export interface ModelCallContext {
 	hasTools: boolean;
 	aiTools: ToolSet;
 	reasoning?: LanguageModelCallOptions['reasoning'];
-	providerOptions?: Record<string, JSONObject>;
+	providerOptions?: ProviderOptions;
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
 	onInputRejected?: (error: unknown) => Promise<void>;
@@ -119,6 +119,8 @@ export interface RunOutputSink<TResult> {
 	/** Wait until the host has recorded preceding output before it commits input. */
 	inputBoundary?(signal: AbortSignal): Promise<void>;
 	emitInput?(message: AgentDbMessage): Promise<void>;
+	/** Emit runtime-generated context without treating it as user input. */
+	emitMessage?(message: AgentMessage): Promise<void>;
 	/** Run one LLM turn. Streaming implementations also emit text/tool chunks here. */
 	callModel(ctx: ModelCallContext): Promise<ModelTurnResult>;
 	/**
@@ -126,7 +128,7 @@ export interface RunOutputSink<TResult> {
 	 * implementations keep it so an aborted run can still emit a terminal
 	 * finish chunk carrying the tokens consumed before the stop.
 	 */
-	reportUsage(usage: TokenUsage | undefined): void;
+	reportUsage(usage: TokenUsage | undefined): void | Promise<void>;
 	/**
 	 * Signal that the just-returned turn's messages have been folded into the list.
 	 * Streaming implementations drop the retained streamed text here so a later abort

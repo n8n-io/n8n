@@ -9,10 +9,12 @@ import {
 } from '@n8n/ai-utilities/model-discovery';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { isRecord } from '@n8n/utils/is-record';
+import type * as AiSdk from 'ai';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
+import { loadAi } from './lazy-ai';
 import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
@@ -220,6 +222,24 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
+/**
+ * Defaults a custom endpoint's Responses calls to `store: false`. The runtime
+ * replays the whole history each turn, but with the SDK default (`store: true`)
+ * earlier output goes out as `item_reference` items. Proxies such as LiteLLM
+ * serve /responses without storing them, so every turn after the first fails.
+ */
+function statelessResponses(
+	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	const { wrapLanguageModel, defaultSettingsMiddleware } = loadAi();
+	return wrapLanguageModel({
+		model,
+		middleware: defaultSettingsMiddleware({
+			settings: { providerOptions: { openai: { store: false } } },
+		}),
+	});
+}
+
 type OpenAiCompatibleProviderId = 'nvidia';
 
 export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
@@ -367,7 +387,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// transport and the first answer decides.
 			return withChatCompletionsFallback(
 				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
-				guarded(model),
+				statelessResponses(guarded(model)),
 				guarded.chat(model),
 			);
 		},
@@ -556,6 +576,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createAmazonBedrock } =
 				require('@ai-sdk/amazon-bedrock') as typeof import('@ai-sdk/amazon-bedrock');
 			return createAmazonBedrock({
+				// An empty key stops the SDK from reading AWS_BEARER_TOKEN_BEDROCK from the process env.
+				apiKey: '',
 				region: creds.region,
 				accessKeyId: creds.accessKeyId,
 				secretAccessKey: creds.secretAccessKey,

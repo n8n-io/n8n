@@ -252,13 +252,13 @@ export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 		name: 'search_users',
 		inputSchema: searchUsersInputSchema,
 		description:
-			'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
+			'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. Prefer get_user when the user ID is known. Use input.email for an exact email lookup. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Never conclude that a user does not exist from an incomplete search. Stop when the required person is found.',
 	},
 	{
 		name: 'search_channels',
 		inputSchema: searchChannelsInputSchema,
 		description:
-			'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
+			'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Never conclude that a channel does not exist from an incomplete search. Stop when the required channel is found.',
 	},
 ] satisfies IntegrationContextQueryDefinition[];
 

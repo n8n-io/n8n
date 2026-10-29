@@ -347,6 +347,10 @@ onMounted(() => {
 		void loadRegistryCatalog();
 		void loadCredentials();
 	}
+	// The builder loads the policy once and keeps it, so a policy that changed since then would
+	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
+	// one place where the verdicts decide what the user may pick.
+	void typeAvailabilityPoliciesStore.reload();
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the

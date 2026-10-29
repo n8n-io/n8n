@@ -183,6 +183,52 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('lets a slow Slack message finish after the context query deadline', async () => {
+		vi.useFakeTimers();
+		try {
+			const sentMessage = { id: '123.456', threadId: 'slack:C123:123.456' };
+			const channel = {
+				post: vi.fn().mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							setTimeout(() => resolve(sentMessage), 35_000);
+						}),
+				),
+			};
+			const chat = mock<ChatInstance>();
+			chat.channel.mockReturnValue(channel as never);
+			chat.thread.mockReturnValue({ subscribe: vi.fn().mockResolvedValue(undefined) } as never);
+			const service = mock<ChatIntegrationService>();
+			service.getChatInstanceForTools.mockResolvedValue(chat);
+			const executor = new ChatIntegrationActionExecutor(
+				service,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
+			const settled = vi.fn();
+			const result = executor.execute({
+				descriptor: getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0],
+				action: 'send_channel_message',
+				input: { channelId: 'C123', message: { text: 'Hello channel' } },
+				awaitResponse: false,
+			});
+			void result.then(settled, settled);
+
+			await vi.advanceTimersByTimeAsync(31_000);
+			expect(channel.post).toHaveBeenCalledTimes(1);
+			expect(settled).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(4_000);
+			await expect(result).resolves.toMatchObject({
+				ok: true,
+				messageContext: { messageId: sentMessage.id },
+			});
+			expect(channel.post).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not subscribe channel message threads for non-Slack integrations', async () => {
 		const sentMessage = {
 			id: 'linear-message-1',

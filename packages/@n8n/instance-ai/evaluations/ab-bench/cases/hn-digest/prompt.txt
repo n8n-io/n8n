@@ -1,0 +1,1 @@
+Every morning at 8am, get the top 5 Hacker News stories and post them to the #news channel in Slack, with the title and link of each story.

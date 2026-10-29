@@ -54,6 +54,15 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 - Attach condition: Always attached.
 - Source: [`tools/environment-tool.ts`](./tools/environment-tool.ts).
 
+### `read_binary_data`
+
+- Purpose: Reads a file by its fileId. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
+  - Images and PDFs go to the model as file parts. The model must support the type: PNG, JPEG, GIF and WebP for images. The limit is the chat attachment size (10 MB). The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows the text `[File "<name>" (fileId: <id>) is not attached now.]`.
+  - The tool description tells the model to read a file that is not attached now again, and not to read a file that is already attached.
+  - Text files (up to 200 KB) go into the tool result as text, one time. The tool result size guard applies to them, and later model calls do not load them again.
+- Attach condition: The agent is not an inline agent.
+- Source: [`tools/read-binary-data.tool.ts`](./tools/read-binary-data.tool.ts).
+
 ## Workspace and knowledge tools
 
 Attach condition: The sandbox is on and the agent is not an inline agent. The runtime attaches them through `agent.workspace(...)` in `attachWorkspaceAndKnowledge`. A delegated sub-agent gets the same tools scoped to its own folder in the parent workspace.
@@ -90,6 +99,11 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 - Purpose: For each configured chat integration, the runtime attaches a context tool and an action tool. The context tool reads message context from the platform. The action tool acts on the platform, for example to send a message. The tool names use the integration type: `<type>_context` and `<type>_action`, for example `slack_context` and `slack_action`. A second connection of the same type gets a numeric suffix. n8n Chat adds `chat_context` and `chat_action`.
 - Attach condition: Top-level agent with at least one configured chat integration, or a run through n8n Chat.
+- Read-only platform queries return `CONTEXT_QUERY_TIMEOUT` after 30 seconds. The agent can then explain the delay or use a more specific lookup. Cancellation stops the wait. A platform request can continue if its SDK does not support cancellation. This deadline does not apply to actions or normal replies. Slack keeps its default request timeout, retry, and rate-limit handling.
+- Use `get_user` for a known platform user ID. Use `search_users` with `email` for an exact email address. Slack also recognizes an email or user ID in `query`. If Slack email lookup lacks `users:read.email`, the tool reports the missing permission. It does not scan the directory for an unavailable email field.
+- Slack user and channel searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty list.
+- Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page and binds the search criteria and filters. Keep the same search inputs when you continue. Use `get_channel_info` when the channel ID is known.
+- Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
 
 ### `delegate_subagent`

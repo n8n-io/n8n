@@ -47,6 +47,15 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 		return await this.find({ where: { state: In(OPEN_STATES) }, relations: { environment: true } });
 	}
 
+	/** Reviews of one environment that still wait on the host. The promote gate reads these. */
+	async findOpenByEnvironmentId(environmentId: string): Promise<PromotionReview[]> {
+		return await this.find({
+			where: { environmentId, state: In(OPEN_STATES) },
+			relations: { environment: true },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	/** Writes a host state only while the row is open, so a terminal row never changes. */
 	async recordHostState(id: string, state: PromotionReviewState, at: Date): Promise<boolean> {
 		const result = await this.update(

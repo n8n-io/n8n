@@ -174,6 +174,7 @@ export interface SessionBinding {
 }
 
 export interface IntegrationContextQueryParams {
+	abortSignal?: AbortSignal;
 	descriptor: IntegrationToolConnectionDescriptor;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;

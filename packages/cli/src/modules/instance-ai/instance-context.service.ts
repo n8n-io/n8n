@@ -237,7 +237,6 @@ const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
 	failed: true,
 	empty: false,
 	disabled: false,
-	'machine-follow-up': false,
 };
 
 export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
@@ -286,18 +285,11 @@ export class InstanceContextService {
 		 */
 		scope: InstanceContextScope;
 		cursor: InstanceContextCursor | null;
-		/**
-		 * The agent continuing its own task — a checkpoint or a planned build — rather than a
-		 * person saying something. Nobody is reading intent on those turns, so the block would be
-		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
-		 */
-		isMachineFollowUp?: boolean;
 		/** Instance gate result shared with the activity tool for this turn. */
 		enabled: boolean;
 		now?: Date;
 	}): Promise<InstanceContextResult> {
 		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
-		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
@@ -910,7 +902,7 @@ const toolNames = {
 	conversation: {
 		expand: '`activity(action="expand", id=N)`',
 		list: '`activity(action="list")`',
-		workflows: '`workflow_builder_workflows(action="list")`',
+		workflows: '`list_workflows`',
 	},
 	mcp: {
 		expand: '`expand_instance_activity(id=N)`',
@@ -1067,7 +1059,7 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  *
  * Named in the caller's own vocabulary,
- * because the two surfaces do not share tool names. An MCP client handed `workflow_builder_workflows(action="get")`
+ * because the two surfaces do not share tool names. An MCP client handed `get_workflow`
  * would be told to call a tool its server does not expose.
  */
 function liveRecordHint(
@@ -1079,10 +1071,10 @@ function liveRecordHint(
 		Record<ActivityResourceType, string | undefined>
 	> = {
 		conversation: {
-			workflow: row.resourceId
-				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
-				: undefined,
-			credential: 'workflow_builder_credentials(action="list")',
+			workflow: row.resourceId ? `get_workflow(workflowId="${row.resourceId}")` : undefined,
+			credential: row.resourceId
+				? `list_credentials(ids=["${row.resourceId}"])`
+				: 'list_credentials()',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,

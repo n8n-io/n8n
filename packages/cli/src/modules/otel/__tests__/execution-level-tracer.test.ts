@@ -14,7 +14,6 @@ import {
 	type OtelConfig,
 	OtelCustomAttributesConfig,
 } from '../otel.config';
-import type { OtelService } from '../otel.service';
 import { OtelTestProvider } from './support/otel-test-provider';
 
 describe('ExecutionLevelTracer', () => {
@@ -30,18 +29,15 @@ describe('ExecutionLevelTracer', () => {
 	};
 
 	const makeTracer = ({
-		otelService = otel.asOtelService(),
 		settings,
 		prefixes,
 	}: {
-		otelService?: OtelService;
 		settings?: Partial<OtelConfig>;
 		prefixes?: CustomAttributePrefixes;
 	} = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
 		return new ExecutionLevelTracer(
-			otelService,
 			makeOtelSettingsService(settings),
 			logger,
 			customAttributesConfig,
@@ -685,7 +681,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(spans[0].name).toBe('workflow.execute');
 		});
 
-		it('should add custom attributes from tracing metadata', () => {
+		it('should add prefixed custom attributes and unprefixed GenAI attributes', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-7',
 				tracingContext: inboundTracingContext,
@@ -702,6 +698,7 @@ describe('ExecutionLevelTracer', () => {
 				inputItemCount: 1,
 				outputItemCount: 1,
 				customAttributes: { 'llm.model': 'gpt-4o', 'llm.tokens': '500' },
+				genAiAttributes: { 'gen_ai.operation.name': 'chat', 'gen_ai.usage.input_tokens': 5 },
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-7',
@@ -713,6 +710,8 @@ describe('ExecutionLevelTracer', () => {
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
+			expect(nodeSpan.attributes['gen_ai.operation.name']).toBe('chat');
+			expect(nodeSpan.attributes['gen_ai.usage.input_tokens']).toBe(5);
 		});
 
 		it('should not apply workflow custom attributes to node spans', () => {
@@ -951,6 +950,28 @@ describe('ExecutionLevelTracer', () => {
 			tracer.injectTraceHeaders('non-existent', 'Node', headers);
 
 			expect(headers.traceparent).toBeUndefined();
+		});
+
+		it('should not throw when injection fails, so telemetry never stops the request', () => {
+			const failingSettings = {
+				getSettings: () => {
+					throw new Error('settings unavailable');
+				},
+			} as unknown as OtelSettingsService;
+			const failingTracer = new ExecutionLevelTracer(
+				failingSettings,
+				logger,
+				new OtelCustomAttributesConfig(),
+			);
+
+			const headers: Record<string, string> = {};
+			expect(() => failingTracer.injectTraceHeaders('exec-fail', 'HTTP', headers)).not.toThrow();
+
+			expect(headers).toEqual({});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to inject trace headers',
+				expect.objectContaining({ executionId: 'exec-fail' }),
+			);
 		});
 
 		it('should no-op when injectOutbound is false', () => {
@@ -1462,18 +1483,15 @@ describe('ExecutionLevelTracer', () => {
 		});
 
 		it('should keep the real spans and only warn when a marker fails', () => {
-			const failingMarkers = mock<OtelService>({
-				getTracer: (name: string) => {
-					const real = otel.provider.getTracer(name);
-					return {
-						startSpan: (spanName, options, ctx) => {
-							if (spanName.endsWith('.started')) throw new Error('marker failed');
-							return real.startSpan(spanName, options, ctx);
-						},
-					} as Tracer;
-				},
+			vi.spyOn(trace, 'getTracer').mockImplementation((name) => {
+				const real = otel.provider.getTracer(name);
+				return {
+					startSpan: (spanName, options, ctx) => {
+						if (spanName.endsWith('.started')) throw new Error('marker failed');
+						return real.startSpan(spanName, options, ctx);
+					},
+				} as Tracer;
 			});
-			tracer = makeTracer({ otelService: failingMarkers });
 
 			expect(() => runSegment(true)).not.toThrow();
 

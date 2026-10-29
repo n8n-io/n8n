@@ -1,15 +1,23 @@
 import type {
+	ConnectSkillSourceDto,
 	CreateSkillDto,
+	DiscoverSkillSourceDto,
 	SaveSkillDto,
+	SkillAgentOption,
 	SkillDetail,
 	SkillListResponse,
 	SkillNewNameResponse,
 	SkillSaveResponse,
+	SkillSortOption,
+	SkillSourceConnectResponse,
+	SkillSourceDiscovery,
+	SkillUserDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 const ENDPOINT = '/skills';
+const SOURCES_ENDPOINT = '/skill-sources';
 
 /** The request side of `ListSkillsQueryDto`, with numbers as the client holds them. */
 export type SkillListQuery = {
@@ -18,6 +26,9 @@ export type SkillListQuery = {
 	search?: string;
 	scope?: CreateSkillDto['scope'];
 	projectId?: string;
+	agentId?: string;
+	createdById?: string;
+	sortBy?: SkillSortOption;
 };
 
 export async function getSkills(
@@ -25,6 +36,21 @@ export async function getSkills(
 	query: SkillListQuery = {},
 ): Promise<SkillListResponse> {
 	return await makeRestApiRequest<SkillListResponse>(context, 'GET', ENDPOINT, { ...query });
+}
+
+/** The users who created a skill that the current user can see. */
+export async function getSkillCreators(context: IRestApiContext): Promise<SkillUserDto[]> {
+	return await makeRestApiRequest<SkillUserDto[]>(context, 'GET', `${ENDPOINT}/creators`);
+}
+
+/** The agents the current user can read, searched by name, for the agent filter. */
+export async function getSkillAgents(
+	context: IRestApiContext,
+	query: { search?: string; take?: number } = {},
+): Promise<SkillAgentOption[]> {
+	return await makeRestApiRequest<SkillAgentOption[]>(context, 'GET', `${ENDPOINT}/agents`, {
+		...query,
+	});
 }
 
 /** A name that no skill in the scope has yet: the requested name, or the name with a number. */
@@ -73,4 +99,39 @@ export async function saveSkill(
 
 export async function deleteSkill(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
+}
+
+/** Reads a public link and lists the skills in it. Writes nothing. */
+export async function discoverSkillSource(
+	context: IRestApiContext,
+	payload: DiscoverSkillSourceDto,
+): Promise<SkillSourceDiscovery> {
+	return await makeRestApiRequest<SkillSourceDiscovery>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/discover`,
+		payload,
+	);
+}
+
+/** Connects the source in the scope and imports the picked skills as synced skills. */
+export async function connectSkillSource(
+	context: IRestApiContext,
+	payload: ConnectSkillSourceDto,
+): Promise<SkillSourceConnectResponse> {
+	return await makeRestApiRequest<SkillSourceConnectResponse>(
+		context,
+		'POST',
+		SOURCES_ENDPOINT,
+		payload,
+	);
+}
+
+/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
+export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
+	await makeRestApiRequest<{ ok: true }>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
+	);
 }

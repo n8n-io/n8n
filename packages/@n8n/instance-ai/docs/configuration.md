@@ -44,7 +44,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
 | `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED` | boolean | `false` | Enable workflow suggestions, internal self-healing investigations, and result review routes. Restart n8n after changing this setting. Investigations require a backend caller. This does not add automatic triggers. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflow_builder_workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `list_workflows`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Browser Use tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 
@@ -63,6 +63,8 @@ the wizard.
 | `N8N_INSTANCE_AI_TRACE_INTERNAL` / `N8N_INSTANCE_AI_TRACE_INCLUDE_INTERNAL` | boolean | `false` | Include internal orchestration data in trace inputs. Either variable enables it. |
 | `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
 | `N8N_INSTANCE_AI_EVAL_MODEL` | string | unset | Optional model override for evaluation helper agents. Falls back to `N8N_INSTANCE_AI_MODEL`. |
+| `N8N_INSTANCE_AI_EVAL_MODEL_URL` | string | unset | Base URL for `N8N_INSTANCE_AI_EVAL_MODEL` when it differs from the builder model, for example a `custom/*` OpenAI-compatible endpoint. A judge or helper with a fixed model id uses this URL only when its id equals `N8N_INSTANCE_AI_EVAL_MODEL`. |
+| `N8N_INSTANCE_AI_EVAL_MODEL_API_KEY` | string | unset | API key for `N8N_INSTANCE_AI_EVAL_MODEL_URL`. A `custom/*` eval model may omit it. Other keys are never sent to that URL. |
 | `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Used by eval helpers (`createEvalAgent`, mock generation, verification) with `N8N_INSTANCE_AI_MODEL_URL`. |
 
 ### Web Research

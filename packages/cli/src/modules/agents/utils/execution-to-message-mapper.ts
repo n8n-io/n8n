@@ -247,7 +247,12 @@ function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPer
 		!isFatalSessionOutcomeError(execution.error, execution.timeline)
 			? execution.error
 			: undefined;
-	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
+	if (
+		backgroundJobSignal ||
+		assistantContent.length > 0 ||
+		executionError !== undefined ||
+		execution.status === 'cancelled'
+	) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
@@ -306,6 +311,7 @@ export function executionsToMessagesDto(
 		(message) =>
 			message.backgroundTaskSignal ||
 			message.content.length > 0 ||
-			message.executionError !== undefined,
+			message.executionError !== undefined ||
+			message.executionStatus === 'cancelled',
 	);
 }

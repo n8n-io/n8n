@@ -110,6 +110,7 @@ export class MyVectorStoreNode {
 Defines the configuration and callbacks that specific vector store implementations must provide:
 
 > **Note:** In node version 1.1+, the `populateVectorStore` function must handle receiving multiple documents at once for batch processing.
+> It also receives an optional fifth argument, `allDocuments`, that holds every document of the insert. Use it when you need to see all batches, for example to derive an index schema.
 
 ```typescript
 interface VectorStoreNodeConstructorArgs<T extends VectorStore> {

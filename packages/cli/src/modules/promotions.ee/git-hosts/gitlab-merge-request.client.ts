@@ -67,6 +67,7 @@ type ApiRequest = {
 	path: string;
 	qs?: IDataObject;
 	body?: IDataObject;
+	timeoutMs?: number;
 };
 
 /** Stores one merge request as `<projectId>!<iid>`. The id stays valid after a rename. */
@@ -123,10 +124,12 @@ export class GitLabMergeRequestClient {
 	async getMergeRequest(
 		access: GitHostAccess,
 		{ projectId, iid }: MergeRequestRef,
+		{ timeoutMs }: { timeoutMs?: number } = {},
 	): Promise<GitLabMergeRequest> {
 		const { body } = await this.request(access, {
 			method: 'GET',
 			path: `projects/${projectId}/merge_requests/${iid}`,
+			timeoutMs,
 		});
 		return this.parse(body);
 	}
@@ -173,7 +176,7 @@ export class GitLabMergeRequestClient {
 
 	private async request(
 		access: GitHostAccess,
-		{ method, path, qs, body }: ApiRequest,
+		{ method, path, qs, body, timeoutMs }: ApiRequest,
 	): Promise<TypedHttpFullResponse<unknown>> {
 		let response: TypedHttpFullResponse<unknown>;
 		try {
@@ -187,7 +190,7 @@ export class GitLabMergeRequestClient {
 				body,
 				headers: { 'PRIVATE-TOKEN': access.accessToken },
 				json: true,
-				timeout: requestTimeoutMs,
+				timeout: timeoutMs ?? requestTimeoutMs,
 				maxResponseBodyBytes,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,

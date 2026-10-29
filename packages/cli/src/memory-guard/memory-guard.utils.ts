@@ -1,5 +1,5 @@
 import { formatBytes } from '@n8n/utils/number/bytes';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 import { WorkflowOperationError } from 'n8n-workflow';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
@@ -35,12 +35,16 @@ export function buildStopError(
 	return new WorkflowOperationError(sentences.join(' '), node, description);
 }
 
-function largestNode(estimate: RunDataEstimate | undefined) {
+export function largestNode(estimate: RunDataEstimate | undefined) {
 	let largest: { name: string; bytes: number } | undefined;
 	for (const [name, bytes] of estimate?.bytesByNode ?? []) {
 		if (!largest || bytes > largest.bytes) largest = { name, bytes };
 	}
 	return largest;
+}
+
+export function nodeType(workflow: IWorkflowBase, nodeName: string | undefined) {
+	return workflow.nodes.find((n) => n.name === nodeName)?.type;
 }
 
 export async function settleWithin(promises: Array<Promise<void>>, timeoutMs: number) {
@@ -79,4 +83,8 @@ export function exposeGc(): (() => void) | undefined {
 	} finally {
 		setFlagsFromString('--no-expose-gc');
 	}
+}
+
+export function isProductionMode(mode: WorkflowExecuteMode) {
+	return mode === 'webhook' || mode === 'trigger' || mode === 'chat';
 }
