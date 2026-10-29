@@ -303,6 +303,28 @@ describe('Skill source checks', () => {
 			expect(await linkOf(xlsx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
 		});
 
+		it('blocks an update whose SKILL.md n8n cannot parse, and reports it once', async () => {
+			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+			const { docx } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': 'no frontmatter here\n' });
+
+			await sync().checkAll();
+			pushChange({ 'README.md': '# Other\n' });
+			await sync().checkAll();
+
+			const link = await linkOf(docx);
+			expect(link).toMatchObject({ state: 'update_blocked', pendingContent: null });
+			expect(link.pendingScan).toMatchObject({ verdict: 'blocked' });
+			expect(flaggedSkill).toHaveBeenCalledTimes(1);
+			expect(flaggedSkill).toHaveBeenCalledWith(
+				expect.objectContaining({
+					stage: 'update',
+					verdict: 'blocked',
+					rule_codes: ['invalid_skill'],
+				}),
+			);
+		});
+
 		it('stores each update once when two checks of a source run at the same time', async () => {
 			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
 			const { sourceId, docx } = await importAll();
@@ -387,6 +409,96 @@ describe('Skill source checks', () => {
 			fetchLatest.mockRestore();
 			await sync().checkAll();
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
+		});
+
+		describe('writes that another check, also on another main, got to first', () => {
+			const repository = () => Container.get(SkillSourceRepository);
+			const pending = (contentHash: string) => ({
+				content: { name: 'docx' },
+				contentHash,
+				scan: { verdict: 'pass', findings: [] },
+				revision: 'b'.repeat(40),
+				state: 'update_available' as const,
+			});
+
+			it('stores a pending update only over the one that the check read', async () => {
+				const { docx } = await importAll();
+
+				expect(await repository().storePending(docx, pending('hash-1'), null)).toBe(true);
+				// A slower check read the link before hash-1 was stored.
+				expect(await repository().storePending(docx, pending('hash-0'), null)).toBe(false);
+				expect(await repository().storePending(docx, pending('hash-2'), 'hash-1')).toBe(true);
+
+				expect((await linkOf(docx)).pendingContentHash).toBe('hash-2');
+			});
+
+			it('moves the base only when the pending update is the one that the check read', async () => {
+				const { docx } = await importAll();
+				await repository().storePending(docx, pending('hash-1'), null);
+
+				expect(await repository().moveBase(docx, 'c'.repeat(40), null)).toBe(false);
+				expect((await linkOf(docx)).pendingContentHash).toBe('hash-1');
+				expect(await repository().moveBase(docx, 'c'.repeat(40), 'hash-1')).toBe(true);
+				expect(await linkOf(docx)).toMatchObject({
+					pendingContentHash: null,
+					baseRevision: 'c'.repeat(40),
+				});
+			});
+
+			it('keeps the result of a check that started later', async () => {
+				const { sourceId } = await importAll();
+				const later = new Date(Date.now() + 60_000);
+				await repository().recordCheck(sourceId, { checkedAt: later, errorReason: null });
+
+				await repository().recordCheck(sourceId, {
+					checkedAt: new Date(),
+					errorReason: 'unreachable',
+				});
+
+				expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: null });
+				expect((await sourceOf(sourceId)).lastCheckedAt?.getTime()).toBe(later.getTime());
+			});
+
+			it('lets one Check now claim the minute', async () => {
+				const { sourceId } = await importAll();
+				await age(sourceId);
+				const now = new Date();
+
+				const claims = await Promise.all([
+					repository().claimCheckNow(sourceId, now, 60_000),
+					repository().claimCheckNow(sourceId, now, 60_000),
+				]);
+
+				expect(claims.filter(Boolean)).toHaveLength(1);
+			});
+
+			it('checks once for two Check now clicks at the same time', async () => {
+				const { sourceId, docx, xlsx } = await importAll();
+				await age(sourceId);
+
+				const [first, second] = await Promise.all([checkNow(editor, docx), checkNow(editor, xlsx)]);
+
+				expect([first.data.throttled, second.data.throttled].sort()).toEqual([false, true]);
+				expect(github.requests.refs).toBe(1);
+			});
+
+			it('clears the cursor when a link write lost to another check', async () => {
+				const { sourceId, docx } = await importAll();
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+				// Another check stores other content after this check read the link.
+				const findLinks = repository().findLinksBySource.bind(repository());
+				vi.spyOn(repository(), 'findLinksBySource').mockImplementationOnce(async (id) => {
+					const links = await findLinks(id);
+					await repository().storePending(docx, pending('from-another-main'), null);
+					return links;
+				});
+
+				await sync().checkAll();
+
+				expect((await sourceOf(sourceId)).probeCursor).toBeNull();
+				await sync().checkAll();
+				expect((await linkOf(docx)).pendingContent).toMatchObject({ instructions: 'v2' });
+			});
 		});
 
 		it('clears the cursor when another check moved it first, so the next check reads again', async () => {

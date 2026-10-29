@@ -6,7 +6,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import {
@@ -39,7 +39,8 @@ export type SyncedFromRow = Pick<SkillSourceConnection, 'type' | 'locator' | 'pr
 
 /** An update from the source that waits for review on one link. */
 export type PendingUpdate = {
-	content: Record<string, unknown>;
+	/** Null when n8n cannot parse the SKILL.md: the update is blocked and has nothing to accept. */
+	content: Record<string, unknown> | null;
 	contentHash: string;
 	scan: Record<string, unknown>;
 	revision: string;
@@ -221,30 +222,49 @@ export class SkillSourceRepository {
 	}
 
 	/**
-	 * The result of one check of a source. `probeCursor` moves only from the cursor that the
-	 * check started from. When another check, such as one on another main, moved it first, the
-	 * cursor is cleared instead, so the next check reads every skill again and fixes a link
-	 * that the slower check wrote last.
+	 * Claims Check now for a source: sets `lastCheckedAt` to `now` only when the last check is
+	 * older than `intervalMs`, in one conditional update. Answers false when another click or
+	 * a check, also on another main, came first.
+	 */
+	async claimCheckNow(sourceId: string, now: Date, intervalMs: number): Promise<boolean> {
+		const result = await this.sources.managerFor({}).update(
+			SkillSourceConnection,
+			{
+				id: sourceId,
+				lastCheckedAt: Or(IsNull(), LessThan(new Date(now.getTime() - intervalMs))),
+			},
+			{ lastCheckedAt: now },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * The result of one check of a source. `lastCheckedAt` and `lastErrorReason` change only
+	 * when no check that started later wrote them first, so a slow check never hides a newer
+	 * result. `probeCursor` moves only from the cursor that the check started from. When
+	 * another check moved it first, the cursor is cleared instead, so the next check reads
+	 * every skill again and fixes a link that the slower check could not write.
 	 */
 	async recordCheck(
 		sourceId: string,
 		result: {
 			checkedAt: Date;
 			errorReason: string | null;
-			probeCursor?: { from: string | null; to: string };
+			/** `to` null clears the cursor, so the next check reads every skill again. */
+			probeCursor?: { from: string | null; to: string | null };
 		},
 	): Promise<void> {
 		const manager = this.sources.managerFor({});
 		const { checkedAt, errorReason, probeCursor } = result;
 		await manager.update(
 			SkillSourceConnection,
-			{ id: sourceId },
+			{ id: sourceId, lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)) },
 			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
 		);
 		if (!probeCursor) return;
 		const moved = await manager.update(
 			SkillSourceConnection,
-			{ id: sourceId, probeCursor: probeCursor.from === null ? IsNull() : probeCursor.from },
+			{ id: sourceId, probeCursor: probeCursor.from ?? IsNull() },
 			{ probeCursor: probeCursor.to },
 		);
 		if ((moved.affected ?? 0) === 0) {
@@ -254,12 +274,18 @@ export class SkillSourceRepository {
 
 	/**
 	 * The source has the base content at this revision: the base moves to it, and an update
-	 * that waited for review is dropped, as the source reverted it.
+	 * that waited for review is dropped, as the source reverted it. `readPendingHash` is the
+	 * pending hash that the check read. Answers false, and writes nothing, when another check
+	 * changed the link since: the check then clears the cursor, so the next one reads again.
 	 */
-	async moveBase(skillId: string, revision: string): Promise<void> {
-		await this.links.managerFor({}).update(
+	async moveBase(
+		skillId: string,
+		revision: string,
+		readPendingHash: string | null,
+	): Promise<boolean> {
+		const result = await this.links.managerFor({}).update(
 			SkillSourceLink,
-			{ skillId },
+			{ skillId, pendingContentHash: readPendingHash ?? IsNull() },
 			{
 				baseRevision: revision,
 				pendingContent: null,
@@ -269,35 +295,32 @@ export class SkillSourceRepository {
 				state: 'up_to_date',
 			},
 		);
+		return (result.affected ?? 0) > 0;
 	}
 
 	/**
-	 * Stores an update that waits for review, in place of an older one. Answers false when the
-	 * link already holds this content, such as after a check on another main with the same
-	 * content, so the caller reports each update once, or when the link is gone.
+	 * Stores an update that waits for review, in place of the one that the check read
+	 * (`readPendingHash`). Answers false, and writes nothing, when another check changed the
+	 * link since, such as a check on another main: with the same content the update is
+	 * reported once, and with other content the cleared cursor makes the next check read the
+	 * skill again. Also false when the link is gone.
 	 */
-	async storePending(skillId: string, pending: PendingUpdate): Promise<boolean> {
-		const manager = this.links.managerFor({});
-		// The partial-entity type of `update` rejects free-form JSON, as for `insert` above.
-		const set = {
-			pendingContent: pending.content,
-			pendingContentHash: pending.contentHash,
-			pendingScan: pending.scan,
-			pendingRevision: pending.revision,
-			state: pending.state,
-		} as QueryDeepPartialEntity<SkillSourceLink>;
-		// Two conditional updates in place of one with OR: the first that matches sets the hash,
-		// so the other one, and a check with the same content, match nothing.
-		const first = await manager.update(
+	async storePending(
+		skillId: string,
+		pending: PendingUpdate,
+		readPendingHash: string | null,
+	): Promise<boolean> {
+		const result = await this.links.managerFor({}).update(
 			SkillSourceLink,
-			{ skillId, pendingContentHash: IsNull() },
-			set,
-		);
-		if ((first.affected ?? 0) > 0) return true;
-		const result = await manager.update(
-			SkillSourceLink,
-			{ skillId, pendingContentHash: Not(pending.contentHash) },
-			set,
+			{ skillId, pendingContentHash: readPendingHash ?? IsNull() },
+			// The partial-entity type of `update` rejects free-form JSON, as for `insert` above.
+			{
+				pendingContent: pending.content,
+				pendingContentHash: pending.contentHash,
+				pendingScan: pending.scan,
+				pendingRevision: pending.revision,
+				state: pending.state,
+			} as QueryDeepPartialEntity<SkillSourceLink>,
 		);
 		return (result.affected ?? 0) > 0;
 	}

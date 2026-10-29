@@ -1,5 +1,6 @@
 import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { createHash } from 'node:crypto';
 import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -27,7 +28,7 @@ import type {
 	SkillSourceClient,
 } from '../sources/skill-source-client';
 import { rowContent, storedContentOf } from '../utils/skill-content';
-import { skillContentHash } from '../utils/skill-content-hash';
+import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
@@ -47,6 +48,9 @@ const FETCH_CONCURRENCY = 8;
 type CheckTrigger = 'background' | 'manual';
 
 type VerdictCounts = Record<SkillScanResult['verdict'], number>;
+
+/** A skill read at a revision, or the parse error of a SKILL.md that n8n cannot read. */
+type Fetched = FetchedSkill | { unreadable: SkillParseError; revision: string };
 
 /**
  * What happens to synced skills after the import: the checks for updates, stop syncing, and
@@ -122,11 +126,24 @@ export class SkillSyncService {
 				user.id,
 			);
 
-		const { lastCheckedAt } = source;
-		if (lastCheckedAt && Date.now() - lastCheckedAt.getTime() < CHECK_NOW_INTERVAL_MS) {
-			const updatesFound = await this.sourceRepository.countPendingUpdates(source.id);
+		// A check of the source that runs on this main is joined. Else the click claims the
+		// minute in one conditional update, so two clicks, also on two mains, check once.
+		const joined = this.running.has(source.id);
+		if (
+			!joined &&
+			!(await this.sourceRepository.claimCheckNow(source.id, new Date(), CHECK_NOW_INTERVAL_MS))
+		) {
+			const [updatesFound, current] = await Promise.all([
+				this.sourceRepository.countPendingUpdates(source.id),
+				this.sourceRepository.findById(source.id),
+			]);
 			await track({ updatesFound, throttled: true });
-			return { label, updatesFound, throttled: true, lastCheckedAt: lastCheckedAt.toISOString() };
+			return {
+				label,
+				updatesFound,
+				throttled: true,
+				lastCheckedAt: current?.lastCheckedAt?.toISOString() ?? null,
+			};
 		}
 
 		try {
@@ -224,11 +241,14 @@ export class SkillSyncService {
 				return;
 			}
 			const links = await this.sourceRepository.findLinksBySource(source.id);
-			const counts = await this.compareAll(source, client, links, auth, cursor);
+			const { counts, conflict } = await this.compareAll(source, client, links, auth, cursor);
+			// A link that another check changed meanwhile was not written: no cursor, so the next
+			// check reads every skill again.
+			const next = conflict ? null : cursor;
 			await this.sourceRepository.recordCheck(source.id, {
 				checkedAt,
 				errorReason: null,
-				...(cursor !== undefined ? { probeCursor: { from: source.probeCursor, to: cursor } } : {}),
+				...(next !== undefined ? { probeCursor: { from: source.probeCursor, to: next } } : {}),
 			});
 			const found = counts.pass + counts.needs_review + counts.blocked;
 			if (found > 0) {
@@ -289,16 +309,20 @@ export class SkillSyncService {
 		return client.authFrom(credential);
 	}
 
-	/** Compares each synced skill with the source, and counts the new updates by verdict. */
+	/**
+	 * Compares each synced skill with the source, and counts the new updates by verdict.
+	 * `conflict` is true when another check changed a link meanwhile, so a write was skipped.
+	 */
 	private async compareAll(
 		source: SkillSourceConnection,
 		client: SkillSourceClient,
 		links: SkillSourceLink[],
 		auth: SkillSourceAuth | undefined,
 		revision: string | undefined,
-	): Promise<VerdictCounts> {
+	): Promise<{ counts: VerdictCounts; conflict: boolean }> {
 		const counts: VerdictCounts = { pass: 0, needs_review: 0, blocked: 0 };
-		if (links.length === 0) return counts;
+		let conflict = false;
+		if (links.length === 0) return { counts, conflict };
 		for (let start = 0; start < links.length; start += FETCH_CONCURRENCY) {
 			const batch = links.slice(start, start + FETCH_CONCURRENCY);
 			// Per batch, so a source with many large skills never holds all of them at once.
@@ -311,16 +335,20 @@ export class SkillSyncService {
 					return await this.compare(source.type, link, fetched, rowContent(row));
 				}),
 			);
-			for (const verdict of verdicts) if (verdict) counts[verdict] += 1;
+			for (const result of verdicts) {
+				if (result === 'conflict') conflict = true;
+				else if (result) counts[result] += 1;
+			}
 		}
-		return counts;
+		return { counts, conflict };
 	}
 
 	/**
-	 * The skill at the revision. Undefined when its folder is gone from the source or n8n
-	 * cannot parse it: the skill keeps its version, and the health of missing skills comes
-	 * later. A source that refuses the read, such as a tarball that answers 403, fails the
-	 * whole check, so the cursor stays and the next check reads the source again.
+	 * The skill at the revision. Undefined when its folder is gone from the source: the skill
+	 * keeps its version, and the health of missing skills comes later. A SKILL.md that n8n
+	 * cannot parse comes back as `unreadable`, so it becomes a blocked update, as at import. A
+	 * source that refuses the read, such as a tarball that answers 403, fails the whole check,
+	 * so the cursor stays and the next check reads the source again.
 	 */
 	private async fetch(
 		source: SkillSourceConnection,
@@ -328,57 +356,64 @@ export class SkillSyncService {
 		link: SkillSourceLink,
 		auth: SkillSourceAuth | undefined,
 		revision: string | undefined,
-	): Promise<FetchedSkill | undefined> {
+	): Promise<Fetched | undefined> {
 		try {
 			return await client.fetchLatest(source.locator, link.remoteRef, auth, revision);
 		} catch (error) {
 			if (error instanceof SkillSourceNotFoundError && error.skill) return undefined;
-			if (error instanceof SkillParseError) return undefined;
+			if (error instanceof SkillParseError) {
+				return { unreadable: error, revision: revision ?? link.baseRevision };
+			}
 			throw error;
 		}
 	}
 
 	/**
-	 * Stores what changed for one skill, and answers the verdict of a new update. It compares
+	 * Stores what changed for one skill, and answers the verdict of a new update, or
+	 * `conflict` when another check changed the link since this check read it. It compares
 	 * with `baseContentHash`, the content of the latest version, as a synced skill changes only
 	 * when Skill Sync accepts an update, and accept moves the base:
 	 * - the base content: the base moves, and a pending update is dropped;
 	 * - the content of the pending update: nothing changes;
 	 * - the content of an update the user skipped: a newer pending update is dropped;
 	 * - other content: the security check rates it against the latest version, and it waits
-	 *   for review in place of an older update.
+	 *   for review in place of an older update. A SKILL.md that n8n cannot parse is blocked.
 	 */
 	private async compare(
 		provider: SkillSourceType,
 		link: SkillSourceLink,
-		fetched: FetchedSkill,
+		fetched: Fetched,
 		previous: ReturnType<typeof rowContent>,
-	): Promise<SkillScanResult['verdict'] | undefined> {
-		const content = storedContentOf(fetched.content);
-		const hash = skillContentHash(content);
+	): Promise<SkillScanResult['verdict'] | 'conflict' | undefined> {
+		const { content, hash, rate } = this.candidateOf(fetched, previous);
+		const read = link.pendingContentHash;
 		if (hash === link.baseContentHash) {
-			if (link.pendingContentHash !== null || link.baseRevision !== fetched.revision) {
-				await this.sourceRepository.moveBase(link.skillId, fetched.revision);
-			}
-			return undefined;
+			if (read === null && link.baseRevision === fetched.revision) return undefined;
+			return (await this.sourceRepository.moveBase(link.skillId, fetched.revision, read))
+				? undefined
+				: 'conflict';
 		}
-		if (hash === link.pendingContentHash) return undefined;
+		if (hash === read) return undefined;
 		if (hash === link.skippedContentHash) {
 			// The source went back to the content that the user skipped: a newer update is gone.
-			if (link.pendingContentHash !== null) {
-				await this.sourceRepository.moveBase(link.skillId, link.baseRevision);
-			}
-			return undefined;
+			if (read === null) return undefined;
+			return (await this.sourceRepository.moveBase(link.skillId, link.baseRevision, read))
+				? undefined
+				: 'conflict';
 		}
-		const scan = this.scanner.scan({ ...fetched, content }, previous);
-		const stored = await this.sourceRepository.storePending(link.skillId, {
-			content,
-			contentHash: hash,
-			scan,
-			revision: fetched.revision,
-			state: scan.verdict === 'blocked' ? 'update_blocked' : 'update_available',
-		});
-		if (!stored) return undefined;
+		const scan = rate();
+		const stored = await this.sourceRepository.storePending(
+			link.skillId,
+			{
+				content,
+				contentHash: hash,
+				scan,
+				revision: fetched.revision,
+				state: scan.verdict === 'blocked' ? 'update_blocked' : 'update_available',
+			},
+			read,
+		);
+		if (!stored) return 'conflict';
 		if (scan.verdict !== 'pass') {
 			// No user: the event reaches BigQuery only, as for every background check.
 			await this.skillsTelemetry.flaggedSkill({
@@ -395,6 +430,31 @@ export class SkillSyncService {
 			});
 		}
 		return scan.verdict;
+	}
+
+	/**
+	 * The content and hash that a check compares, and how the security check rates it. A
+	 * SKILL.md that n8n cannot parse has no content: its parse error stands for it, so the same
+	 * broken file is reported once, and the check blocks it, as at import.
+	 */
+	private candidateOf(
+		fetched: Fetched,
+		previous: ReturnType<typeof rowContent>,
+	): { content: SkillContent | null; hash: string; rate: () => SkillScanResult } {
+		if ('unreadable' in fetched) {
+			const { unreadable } = fetched;
+			return {
+				content: null,
+				hash: createHash('sha256').update(`unreadable\n${unreadable.message}`).digest('hex'),
+				rate: () => this.scanner.scanUnreadable(unreadable),
+			};
+		}
+		const content = storedContentOf(fetched.content);
+		return {
+			content,
+			hash: skillContentHash(content),
+			rate: () => this.scanner.scan({ ...fetched, content }, previous),
+		};
 	}
 
 	// ---------------------------------------------------------------- access
