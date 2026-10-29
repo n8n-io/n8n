@@ -12,7 +12,7 @@
 | id | integer | nextval('execution_entity_id_seq'::regclass) | false | [public.chat_hub_messages](public.chat_hub_messages.md) [public.execution_annotations](public.execution_annotations.md) [public.execution_data](public.execution_data.md) [public.execution_metadata](public.execution_metadata.md) [public.test_case_execution](public.test_case_execution.md) |  |  |
 | jsonSizeBytes | bigint | 0 | false |  |  | Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown. |
 | mode | varchar |  | false |  |  |  |
-| resumeAttempts | smallint | 0 | false |  |  | How many times n8n has loaded this execution into memory to resume it from waiting or to start it from new since it last entered that status. Reset to 0 when the execution starts running. |
+| resumeAttempts | smallint | 0 | false |  |  | Resume attempts since the execution last entered waiting or new. Reset to 0 once the execution runs. |
 | retryOf | varchar |  | true |  |  |  |
 | retrySuccessId | varchar |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
