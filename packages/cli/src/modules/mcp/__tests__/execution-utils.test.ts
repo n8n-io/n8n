@@ -186,4 +186,60 @@ describe('MCP execution error redaction', () => {
 
 		expect(error).toBe(original);
 	});
+
+	test('keeps the HTTP status code of a start error when it hides the details', async () => {
+		const error = await redactRunStartError(
+			proxy,
+			user,
+			{
+				executionMode: 'manual',
+				workflowData: {
+					id: 'wf-1',
+					name: 'Workflow',
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					nodes: [node],
+					connections: {},
+					settings: { redactionPolicy: 'all' },
+				},
+			},
+			makeError(),
+		);
+
+		expect(error.message).toBe(
+			'Error details hidden by execution data redaction (NodeApiError, HTTP 401)',
+		);
+	});
+
+	test('hides the start error details when the established context uses dynamic credentials', async () => {
+		const original = new Error('start failed with sk-secret-123');
+
+		const error = await redactRunStartError(
+			proxy,
+			user,
+			{
+				executionMode: 'manual',
+				workflowData: {
+					id: 'wf-1',
+					name: 'Workflow',
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					nodes: [node],
+					connections: {},
+					settings: { redactionPolicy: 'none' },
+				},
+				executionData: { ...makeRunData(), startData: {} } as IRunExecutionData,
+			},
+			original,
+		);
+
+		expect(error).not.toBe(original);
+		expect(error.message).toBe('Error details hidden by execution data redaction (Error)');
+	});
 });

@@ -94,7 +94,7 @@ type RunErrorSource = {
 	mode: WorkflowExecuteMode;
 	workflowId: string;
 	workflowData: Pick<IWorkflowBase, 'settings' | 'nodes'>;
-	/** Run data of the execution. Omit it when the execution did not start. */
+	/** Run data of the execution. Omit it when no run data exists. */
 	data?: Pick<IRunExecutionData, 'resultData' | 'executionData'>;
 	error: ExecutionError;
 };
@@ -153,11 +153,18 @@ export async function redactRunStartError(
 	const original = ensureError(error);
 	const executionError = new WorkflowOperationError(original.message);
 	executionError.name = original.name;
+	// Redaction keeps the HTTP status code of a `NodeApiError`.
+	if ('httpCode' in original) {
+		Object.assign(executionError, { httpCode: original.httpCode });
+	}
 
 	const redactedMessage = await getRedactedRunErrorMessage(executionRedactionServiceProxy, user, {
 		mode: runData.executionMode,
 		workflowId: runData.workflowData.id,
 		workflowData: runData.workflowData,
+		// The run can fail after it established the execution context. That
+		// context holds the redaction snapshot and the dynamic credential flag.
+		data: runData.executionData,
 		error: executionError,
 	});
 
