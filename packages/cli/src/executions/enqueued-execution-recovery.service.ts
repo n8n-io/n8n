@@ -2,14 +2,18 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
@@ -20,6 +24,9 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 /** How often the recovery checks whether an execution still waiting for admission is still `new`. */
 const ADMISSION_CHECK_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
+
+const ID_QUERY_ATTEMPTS = 3;
+const ID_QUERY_RETRY_DELAY_MS = 1 * Time.seconds.toMilliseconds;
 
 /**
  * Recovers executions left in the `new` (enqueued) status by a shutdown, so they do
@@ -59,7 +66,7 @@ export class EnqueuedExecutionRecoveryService {
 			'Enqueued execution recovery must not run in queue mode',
 		);
 
-		const executionIds = await this.executionService.findEnqueuedExecutionIds();
+		const executionIds = await this.findEnqueuedExecutionIds();
 
 		if (executionIds.length === 0) return;
 
@@ -74,23 +81,32 @@ export class EnqueuedExecutionRecoveryService {
 		}
 	}
 
+	/**
+	 * Nothing scans for `new` rows after startup, so a query that fails once would leave
+	 * them queued until the next restart. Hence a few attempts before giving up.
+	 */
+	private async findEnqueuedExecutionIds() {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				return await this.executionService.findEnqueuedExecutionIds();
+			} catch (error) {
+				if (attempt >= ID_QUERY_ATTEMPTS) throw error;
+				this.logger.warn('Failed to query enqueued executions, retrying', {
+					attempt,
+					error: ensureError(error).message,
+				});
+				await sleep(ID_QUERY_RETRY_DELAY_MS * attempt);
+			}
+		}
+	}
+
 	private async recoverEnqueuedExecution(executionId: string) {
 		// Claimed before the load, so a load that kills the process cannot repeat without limit
 		const claim = await this.resumeAttemptService.claim(executionId, 'new');
 		if (!claim.granted) return;
 
-		const execution = await this.executionPersistence.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		// An enqueued execution whose data is gone can never run. Left at `new` it sits at
-		// "Queued" forever and is re-read on every restart.
-		if (!execution) {
-			this.logger.warn('Crashing enqueued execution with unreadable data', { executionId });
-			await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
-			return;
-		}
+		const execution = await this.loadEnqueuedExecution(executionId, claim.attempt);
+		if (!execution) return;
 
 		const project = await this.ownershipService.getWorkflowProjectCached(execution.workflowId);
 
@@ -160,6 +176,40 @@ export class EnqueuedExecutionRecoveryService {
 		} finally {
 			clearTimeout(timer);
 		}
+	}
+
+	/**
+	 * Loads the execution, or returns `undefined` when it must not start now. An execution
+	 * whose data is gone for good can never run: left at `new` it sits at "Queued" forever
+	 * and is re-read on every restart, so it is crashed. A read that failed for a reason
+	 * that can pass leaves the row `new` for the next start, with its attempt given back.
+	 */
+	private async loadEnqueuedExecution(executionId: string, attempt: number) {
+		let execution: IExecutionResponse | undefined;
+		try {
+			execution = await this.executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+		} catch (error) {
+			const isDataGone =
+				error instanceof MissingExecutionDataError || error instanceof CorruptedExecutionDataError;
+			if (!isDataGone) {
+				await this.resumeAttemptService.release(executionId, 'new', attempt);
+				this.errorReporter.error(error, { executionId, shouldBeLogged: false });
+				this.logger.warn('Failed to load enqueued execution, leaving it for the next start', {
+					executionId,
+					error: ensureError(error).message,
+				});
+				return undefined;
+			}
+		}
+
+		if (execution) return execution;
+
+		this.logger.warn('Crashing enqueued execution with unreadable data', { executionId });
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
+		return undefined;
 	}
 
 	/** An enqueued execution we cannot start would otherwise stay at `new` indefinitely. */

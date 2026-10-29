@@ -41,6 +41,8 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
 @Config
 class RecoveryConfig {
 	/**
@@ -62,11 +64,9 @@ class RecoveryConfig {
 	 * can't restart n8n in a loop. The count resets when the execution starts running. Set to
 	 * 0 to remove the limit.
 	 */
-	@Env('N8N_EXECUTIONS_MAX_RESUME_ATTEMPTS')
+	@Env('N8N_EXECUTIONS_MAX_RESUME_ATTEMPTS', nonNegativeIntSchema)
 	maxResumeAttempts: number = 2;
 }
-
-const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
 
 @Config
 class QueueRetentionConfig {

@@ -247,6 +247,22 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		// The attempt is for a load that kills the process. A load that throws is retried by
+		// the next sweep, so it must not count toward the limit.
+		it('gives the attempt back when the load throws', async () => {
+			executionPersistence.findSingleExecution
+				.calledWith(execution.id)
+				.mockRejectedValueOnce(new Error('database is locked'));
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow('database is locked');
+
+			expect(resumeAttemptService.release).toHaveBeenCalledExactlyOnceWith(
+				execution.id,
+				'waiting',
+				1,
+			);
+		});
+
 		// A sweep that runs while the first load is in progress used to load the data a
 		// second time, because the row is still `waiting` until the load completes.
 		it('rejects a second resume while the first one is still loading', async () => {

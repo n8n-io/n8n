@@ -85,7 +85,7 @@ describe('Start system task metrics', () => {
 		mockInstance(TestWebhooks);
 		mockInstance(ExecutionsPruningService);
 		mockInstance(WorkflowHistoryCompactionService);
-		mockInstance(EnqueuedExecutionRecoveryService);
+		mockInstance(EnqueuedExecutionRecoveryService).recoverEnqueuedExecutions.mockResolvedValue();
 		mockInstance(DurableScheduler);
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);

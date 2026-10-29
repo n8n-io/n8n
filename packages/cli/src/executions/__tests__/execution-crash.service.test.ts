@@ -190,6 +190,26 @@ describe('ExecutionCrashService', () => {
 		]);
 	});
 
+	test('counts and announces a parked execution it transitioned', async () => {
+		const parked = crashedExecution('1', { mode: 'webhook' });
+		executionRepository.markParkedAsCrashed.mockImplementation(async (_id, _status, options) => {
+			options?.onTransitioned?.([parked]);
+
+			return await Promise.resolve([parked]);
+		});
+
+		const crashed = await crashService.markParkedAsCrashed('1', 'waiting', 'resume-limit', 2);
+
+		expect(crashed).toEqual([parked]);
+		expect(executionRepository.markParkedAsCrashed).toHaveBeenCalledWith(
+			'1',
+			'waiting',
+			expect.objectContaining({ expectedAttempts: 2 }),
+		);
+		expect(emitted()).toEqual([['executionsCrashed', { executions: [parked] }]]);
+		expect(announced()).toEqual([announcementOf(parked, 'resume-limit')]);
+	});
+
 	test('reports the executions it transitioned for a whole workflow', async () => {
 		const first = crashedExecution('1');
 		const second = crashedExecution('2');

@@ -7,6 +7,7 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -262,6 +263,57 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			false,
 			{ executionId: '1', expectedStatus: 'new', storedAt: 'fs' },
 		);
+	});
+
+	test('crashes an execution whose data bundle is gone for good', async () => {
+		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
+		executionPersistence.findSingleExecution.mockRejectedValueOnce(
+			new MissingExecutionDataError({ executionId: '1', workflowId: 'workflow-for-1' }),
+		);
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
+		expect(resumeAttemptService.release).not.toHaveBeenCalled();
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+	});
+
+	// A read that fails for a reason that can pass must not take the execution out of the
+	// queue for good, and must not count as a load that killed the process.
+	test('leaves an execution `new` and gives its attempt back when the load fails', async () => {
+		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
+		executionPersistence.findSingleExecution.mockRejectedValueOnce(new Error('database is locked'));
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
+		expect(resumeAttemptService.release).toHaveBeenCalledExactlyOnceWith('1', 'new', 1);
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
+			expect.anything(),
+			undefined,
+			false,
+			{ executionId: '2', expectedStatus: 'new', storedAt: 'fs' },
+		);
+	});
+
+	// Nothing scans for `new` rows after startup, so one failed query would leave them
+	// queued until the next restart.
+	test('retries the query for enqueued executions', async () => {
+		vi.useFakeTimers();
+		mockEnqueued([enqueuedExecution('1')]);
+		executionService.findEnqueuedExecutionIds.mockRejectedValueOnce(
+			new Error('database is locked'),
+		);
+
+		const recovery = createService().recoverEnqueuedExecutions();
+		await vi.advanceTimersByTimeAsync(1_000);
+		await recovery;
+
+		expect(executionService.findEnqueuedExecutionIds).toHaveBeenCalledTimes(2);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 	});
 
 	test('does not crash anything when every execution is readable', async () => {

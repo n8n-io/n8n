@@ -250,10 +250,11 @@ describe('UserRepository', () => {
 		test('leaves an execution alone when its attempt count changed since it was read', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution({ status: 'waiting' }, workflow);
+			// The caller read the count as 0, then a claim moved it to 1
 			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 2);
 
 			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting', {
-				expectedAttempts: 2,
+				expectedAttempts: 0,
 			});
 
 			expect(crashed).toEqual([]);

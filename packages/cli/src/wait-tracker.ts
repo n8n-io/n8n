@@ -167,6 +167,17 @@ export class WaitTracker {
 		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
 		if (!claim.granted) return;
 
+		try {
+			await this.loadAndRun(executionId);
+		} catch (error) {
+			// The attempt is for a load that kills the process. A load that throws is retried
+			// by the next sweep, and must not count toward the limit.
+			await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
+			throw error;
+		}
+	}
+
+	private async loadAndRun(executionId: string) {
 		// Get the data to execute
 		const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
