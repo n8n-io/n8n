@@ -2,6 +2,7 @@ import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	agentSkillReferencePathSchema,
 	agentSkillSchema,
 } from '../agent-skill.schema';
 import { CreateAgentSkillDto, UpdateAgentSkillDto } from '../dto';
@@ -71,6 +72,13 @@ describe('agent skill DTOs', () => {
 				],
 			}).success,
 		).toBe(false);
+	});
+
+	it('rejects a reference path with a control character', () => {
+		for (const path of ['references/a\0.md', 'references/a\nb.md', 'references/\u001b[31ma.md']) {
+			expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(false);
+		}
+		expect(agentSkillReferencePathSchema.safeParse('references/a b.md').success).toBe(true);
 	});
 
 	// The Agent Skills format allows descriptions of up to 1024 characters, so skills from
