@@ -1,10 +1,8 @@
 <script lang="ts" setup>
-import {
-	SKILL_SOURCE_REASONS,
-	type DiscoveredSkill,
-	type SkillSourceConnectResponse,
-	type SkillSourceDiscovery,
-	type SkillSourceReason,
+import type {
+	DiscoveredSkill,
+	SkillSourceConnectResponse,
+	SkillSourceDiscovery,
 } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -29,7 +27,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 
 import { useSkillsStore } from '../skills.store';
-import { parseScope } from '../skills.utils';
+import { parseScope, useSkillSourceReasons } from '../skills.utils';
 
 /** What the page needs to confirm an import: the answer, and the names it shows in the toast. */
 export type SkillSourceConnected = {
@@ -51,10 +49,13 @@ const emit = defineEmits<{
 
 /** A loose check only: the server reads the link and answers with the exact reason. */
 const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+([/?#].*)?$/i;
+/** A web link to another host, such as GitLab. */
+const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/i;
 
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
+const { reasonText } = useSkillSourceReasons();
 
 const step = ref<'link' | 'choose'>('link');
 const url = ref('');
@@ -106,31 +107,12 @@ const scopeHint = computed(() => {
 	});
 });
 
-function reasonOf(error: ResponseError): SkillSourceReason | undefined {
-	const reason = error.meta?.reason;
-	return SKILL_SOURCE_REASONS.find((known) => known === reason);
-}
-
 /**
- * The prototype has its own text for a bad link and a missing repository. Other reasons say
- * what the server said; an error without a reason gets the generic text.
+ * Each reason has its own text. An error without a reason, such as a 404 when skill sync is
+ * off, gets the generic text.
  */
-function discoverErrorText(error: unknown): string {
-	if (!(error instanceof ResponseError)) {
-		return i18n.baseText('settings.context.skills.connect.error.discover');
-	}
-	const reason = reasonOf(error);
-	if (reason === 'invalid_url') {
-		return i18n.baseText('settings.context.skills.connect.error.invalidUrl');
-	}
-	if (reason === 'not_found') {
-		return i18n.baseText('settings.context.skills.connect.error.notFound');
-	}
-	// Without a reason the error is not about the link, such as a 404 when skill sync is off.
-	if (!reason || !error.message) {
-		return i18n.baseText('settings.context.skills.connect.error.discover');
-	}
-	return error.message;
+function discoverErrorText(error: unknown, link: string): string {
+	return reasonText(error instanceof ResponseError ? error.meta?.reason : undefined, link);
 }
 
 const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
@@ -168,7 +150,9 @@ function isSelectable(skill: DiscoveredSkill): boolean {
 async function onNext() {
 	const link = url.value.trim();
 	if (!GITHUB_LINK.test(link)) {
-		linkError.value = i18n.baseText('settings.context.skills.connect.error.invalidUrl');
+		linkError.value = reasonText(
+			OTHER_HOST_LINK.test(link) ? 'unsupported_provider' : 'invalid_url',
+		);
 		return;
 	}
 	const requestedScope = scope.value;
@@ -185,7 +169,7 @@ async function onNext() {
 		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
 		step.value = 'choose';
 	} catch (error) {
-		if (isCurrent()) linkError.value = discoverErrorText(error);
+		if (isCurrent()) linkError.value = discoverErrorText(error, link);
 	} finally {
 		if (run === discoverRun) discovering.value = false;
 	}
@@ -403,7 +387,7 @@ const title = computed(() =>
 							color="danger"
 							data-test-id="skill-source-skill-reason"
 						>
-							{{ item.error.message }}
+							{{ reasonText(item.error.reason) }}
 						</N8nText>
 					</div>
 					<N8nBadge
@@ -415,8 +399,21 @@ const title = computed(() =>
 					</N8nBadge>
 				</li>
 			</ul>
-			<N8nText v-if="discovery.truncated" size="small" color="text-light">
-				{{ i18n.baseText('settings.context.skills.connect.truncated') }}
+			<N8nText
+				v-if="discovery.truncated"
+				size="small"
+				color="text-light"
+				data-test-id="skill-source-truncated"
+			>
+				{{ reasonText('too_many_skills') }}
+			</N8nText>
+			<N8nText
+				v-if="discovery.tooDeep"
+				size="small"
+				color="text-light"
+				data-test-id="skill-source-too-deep"
+			>
+				{{ reasonText('too_deep') }}
 			</N8nText>
 			<div :class="$style.addTo">
 				<N8nText size="small" bold>
