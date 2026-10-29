@@ -9,11 +9,15 @@ import { useSkillsStore } from './skills.store';
 const list = vi.fn();
 const creators = vi.fn();
 const agents = vi.fn();
+const discoverSource = vi.fn();
+const connectSource = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	getSkills: async (...args: unknown[]) => await list(...args),
 	getSkillCreators: async (...args: unknown[]) => await creators(...args),
 	getSkillAgents: async (...args: unknown[]) => await agents(...args),
+	discoverSkillSource: async (...args: unknown[]) => await discoverSource(...args),
+	connectSkillSource: async (...args: unknown[]) => await connectSource(...args),
 }));
 
 function deferred<T>() {
@@ -87,6 +91,31 @@ describe('useSkillsStore', () => {
 		expect(await store.fetchCreators()).toEqual([ada]);
 		expect(list).not.toHaveBeenCalled();
 		expect(store.loading).toBe(false);
+	});
+
+	it('reads a GitHub link with the REST context', async () => {
+		const payload = { url: 'https://github.com/acme/skills', scope: 'instance' as const };
+		const answer = { skills: [] };
+		discoverSource.mockResolvedValue(answer);
+		const store = useSkillsStore();
+
+		expect(await store.discoverSource(payload)).toBe(answer);
+		expect(discoverSource).toHaveBeenCalledWith(useRootStore().restApiContext, payload);
+	});
+
+	it('connects a GitHub link with the REST context', async () => {
+		const payload = {
+			url: 'https://github.com/acme/skills',
+			scope: 'project' as const,
+			projectId: 'team-1',
+			skillKeys: ['skills/pdf'],
+		};
+		const answer = { sourceId: 'src-1', imported: [], failed: [] };
+		connectSource.mockResolvedValue(answer);
+		const store = useSkillsStore();
+
+		expect(await store.connectSource(payload)).toBe(answer);
+		expect(connectSource).toHaveBeenCalledWith(useRootStore().restApiContext, payload);
 	});
 
 	it('searches the agents for the agent filter with the REST context', async () => {

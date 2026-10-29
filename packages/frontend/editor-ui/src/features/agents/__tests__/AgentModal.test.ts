@@ -14,6 +14,7 @@ vi.mock('@n8n/design-system', async () => {
 			props: {
 				open: Boolean,
 				size: String,
+				containerClass: String,
 				trapFocus: Boolean,
 				disableOutsidePointerEvents: Boolean,
 				showCloseButton: {
@@ -46,6 +47,7 @@ vi.mock('@n8n/design-system', async () => {
 					ref="dialog"
 					v-if="open"
 					role="dialog"
+					:class="containerClass"
 					:data-size="size"
 					:data-trap-focus="trapFocus"
 					:data-disable-outside-pointer-events="disableOutsidePointerEvents"
@@ -140,6 +142,59 @@ describe('AgentModal', () => {
 
 		expect(wrapper.find('[data-test-id="title-menu"]').exists()).toBe(true);
 		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Close');
+		wrapper.unmount();
+	});
+
+	it('renders a side panel beside the body only when one is given', () => {
+		const withPanel = mountModal(
+			{},
+			{ default: '<p>Form</p>', sidePanel: '<p data-test-id="versions">Versions</p>' },
+		);
+		expect(
+			withPanel.find('[data-testid="agent-modal-side-panel"] [data-test-id="versions"]').exists(),
+		).toBe(true);
+		withPanel.unmount();
+
+		const withoutPanel = mountModal({}, { default: '<p>Form</p>' });
+		expect(withoutPanel.find('[data-testid="agent-modal-side-panel"]').exists()).toBe(false);
+		withoutPanel.unmount();
+	});
+
+	it('gives the dialog a fixed size when asked', () => {
+		const fixed = mountModal({ fixedSize: true });
+		expect(
+			fixed
+				.get('[role="dialog"]')
+				.classes()
+				.some((name) => /dialogFixed/.test(name)),
+		).toBe(true);
+		fixed.unmount();
+
+		const sized = mountModal();
+		expect(
+			sized
+				.get('[role="dialog"]')
+				.classes()
+				.some((name) => /dialogFixed/.test(name)),
+		).toBe(false);
+		sized.unmount();
+	});
+
+	it('draws the divider over each column of a fixed dialog, in warning color when asked', () => {
+		const wrapper = mountModal(
+			{ fixedSize: true, headerDivider: true, headerDividerTone: 'warning' },
+			{ default: '<p>Form</p>', sidePanel: '<p>Versions</p>' },
+		);
+		const split = wrapper.find('[class*="splitDivided"]');
+
+		expect(split.exists()).toBe(true);
+		expect(split.classes().some((name) => /dividerWarning/.test(name))).toBe(true);
+		expect(
+			wrapper
+				.get('header')
+				.classes()
+				.some((name) => /headerDivider/.test(name)),
+		).toBe(false);
 		wrapper.unmount();
 	});
 

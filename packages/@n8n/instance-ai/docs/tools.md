@@ -52,7 +52,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential` | single-purpose |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -61,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
-| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -841,6 +841,19 @@ nodesWithAccess? }], notFound? }`. The description contains the full stored
 text, or `null` when unset. `notFound` lists the ids that did not resolve. The
 response never contains credential secret data.
 
+### `update_credential_description`
+
+Set or replace an existing credential description only when the user explicitly requests it.
+Describe its purpose and intended use from known context. Keep it concise and exclude secrets.
+Pass `credentialId` and `description`.
+The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
+Returns `{ success: true }`.
+
+The tool is available when credential descriptions are enabled. The user must have
+`credential:update` permission, and the credential must belong to the conversation's project.
+Managed credentials allow description updates. Description updates remain available on protected instances.
+The operation keeps credential secrets, names, and types unchanged.
+
 ### `delete_credential`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
@@ -1050,7 +1063,7 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `workflow_builder_search_models`
+## `search_models`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The orchestrator always loads this tool.
@@ -1238,19 +1251,20 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `workflow_builder_ask_user`
+## `ask_user`
 
 Suspend the run for one or more human decisions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `questions` | array | yes | Items with `id`, `question`, `type`, and optional `options` |
+| `questions` | array | yes | Items with `question`, `type`, and optional `id`, `options`, `required`, and `freeTextLabel` |
 | `introMessage` | string | no | Text shown above the first question |
 
-Question type is `single`, `multi`, or `text`. The UI adds its own free-text
-choice to select questions. The result is `{ answered: false }` when the user
-dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
-question text added to every answer.
+Question type is `single`, `multi`, or `text`. A question without an `id` gets
+the first free `q1`, `q2`, ... id. Duplicate ids are rejected. The UI adds its
+own free-text choice to select questions. The result is `{ answered: false }`
+when the user dismisses the request or skips every question. Otherwise it is
+`{ answered: true, answers }`, with the question text added to every answer.
 
 A skipped question grants no additional permission. Defaults apply only to
 unspecified details within the requested task. A skipped request to expand scope
@@ -1480,7 +1494,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and workflow_builder_ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1502,14 +1516,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, workflow_builder_ask_user Q&A, and each turn's final
+user experienced it: their messages, ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); workflow_builder_ask_user rows stay visible for their Q&A. Rows only
+text are escaped); ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, workflow_builder_ask_user rows still awaiting an answer, unreadable content — are
+visible text, ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of

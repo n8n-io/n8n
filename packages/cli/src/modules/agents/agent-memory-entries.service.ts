@@ -114,6 +114,13 @@ export class AgentMemoryEntriesService {
 		if (!deleted) throw new NotFoundError(`Memory entry "${entryId}" not found`);
 	}
 
+	/** Deletes a flagged fact: cancels a pending capture or deletes what it stored. */
+	async deleteCapture(agentId: string, projectId: string, captureId: string): Promise<void> {
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const deleted = await this.memoryEntryRepository.deleteCandidate(agentId, captureId, {});
+		if (!deleted) throw new NotFoundError(`Memory capture "${captureId}" not found`);
+	}
+
 	private async toDtos(
 		agentId: string,
 		entries: AgentMemoryEntryEntity[],

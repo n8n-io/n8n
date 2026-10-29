@@ -3,7 +3,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	createEpisodicMemoryReflectFn,
+	createEpisodicMemoryConsolidateFn,
 } from '../runtime/memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../runtime/memory/memory-store';
 import {
@@ -62,7 +62,6 @@ export function resolveEpisodicMemoryConfig(
 	options: ResolveMemoryConfigDefaultsOptions,
 ): EpisodicMemoryConfig {
 	const embeddingModel = config.embeddingModel ?? DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const reflectorModel = options.defaultModel;
 
 	return {
 		enabled: config.enabled,
@@ -71,10 +70,10 @@ export function resolveEpisodicMemoryConfig(
 		embedder:
 			config.embedder ?? createEmbeddingModel(embeddingModel, config.embeddingProviderOptions),
 		embeddingModel,
-		reflect:
-			config.reflect ??
-			createEpisodicMemoryReflectFn(reflectorModel, {
-				reflectionPrompt: config.prompts?.reflection,
+		consolidate:
+			config.consolidate ??
+			createEpisodicMemoryConsolidateFn(options.defaultModel, {
+				consolidationPrompt: config.prompts?.consolidation,
 			}),
 		prompts: config.prompts,
 		guidance: config.guidance,

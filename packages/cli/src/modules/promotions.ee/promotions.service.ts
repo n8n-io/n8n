@@ -1,7 +1,6 @@
 import {
 	parsePromotionRunDetails,
 	promotionRunTypeSchema,
-	type ApplyCheckResult,
 	type ApplyPackageDto,
 	type ApplyPackageResultDto,
 	type ApplySelectionDto,
@@ -12,9 +11,9 @@ import {
 	type PromoteRequest,
 	type PromotionApplyCheck,
 	type PromotionBindingConflict,
-	type PromotionBindingPreflightResult,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionPreviewCheck,
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -70,11 +69,11 @@ import {
 	buildInstancePromotionCommitMessage,
 	buildSelectionPromotionCommitMessage,
 } from './promotion-commit-message';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { applySelectionRequest, ApplyPreviewService } from './apply-preview.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage } from './instance-package';
-import { compare, PromotionBindingPreflightService } from './promotion-binding-preflight.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { compare } from './package-references';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
@@ -121,7 +120,8 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	conflictPolicy: ImportConflictPolicy.NewVersion,
 	idPolicy: WorkflowIdPolicy.Source,
-	publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+	// Promotion moves content only. Publish state stays with the target until autopublish exists.
+	publishingPolicy: WorkflowPublishingPolicy.PreserveTargetState,
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
@@ -154,7 +154,6 @@ export class PromotionsService {
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly n8nPackagesService: N8nPackagesService,
-		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly applyPreviewService: ApplyPreviewService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
@@ -797,50 +796,6 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Runs the Apply preflight for every workflow that the Apply preview of the project can list.
-	 * It reads the package at the preview's commit and writes nothing. Moved workflows are
-	 * returned instead of rejected.
-	 */
-	async checkApplyBlockers(projectId: string, commitSha: string): Promise<ApplyCheckResult> {
-		const input = await this.resolver.resolveForProject(projectId, 'apply');
-		const branchName = checkoutBranchName(input.config);
-		const files = await this.readApplyPackageAtCommit(projectId, commitSha);
-		if (files.size === 0) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
-		const inventory = await this.inventoryReader.read({
-			listEntries: async () => [...files.keys()],
-			readFile: async (entryPath) => {
-				const content = files.get(entryPath);
-				if (!content) throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
-				return content;
-			},
-		});
-
-		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
-		// Only workflows on the branch import. Deletions and moves need no bindings.
-		const preflight = await this.bindingPreflight.checkInventory({
-			inventory,
-			selection: {
-				selectedProjectId: projectId,
-				selectedWorkflowIds: inventory.workflows
-					.filter((workflow) => workflow.projectId === projectId)
-					.map(({ id }) => id),
-			},
-		});
-
-		return {
-			environmentId: input.environmentId,
-			git: { commitSha, branchName },
-			preflight,
-			movedWorkflows: moves.workflows,
-			movedFolders: moves.folders,
-		};
-	}
-
-	/**
 	 * Reads the package files at a commit of the Apply branch, keyed by their path in the package.
 	 * Empty when the commit holds no package.
 	 */
@@ -943,16 +898,14 @@ export class PromotionsService {
 		// A folder the package holds under this project but this instance holds elsewhere blocks
 		// every selection: the import would meet it whatever the user selected.
 		const requested = new Set(workflowIds);
-		const check = this.applyPreviewService.check(plan, inventory, selection, {
-			...moves,
-			workflows: moves.workflows.filter(({ id }) => requested.has(id)),
-		});
-		const preflight = {
-			...check.preflight,
-			conflicts: [...check.preflight.conflicts, ...moveConflicts(check)],
-		};
-		if (this.isBlocked(preflight, confirmDestructiveChanges, identity)) {
-			return { status: 'blocked', ...identity, preflight };
+		const check = blockingCheck(
+			this.applyPreviewService.check(plan, inventory, selection, {
+				...moves,
+				workflows: moves.workflows.filter(({ id }) => requested.has(id)),
+			}),
+		);
+		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
+			return { status: 'blocked', ...identity, check };
 		}
 
 		this.logger.info('Importing a package selection', {
@@ -971,7 +924,7 @@ export class PromotionsService {
 				importResult: result,
 				projectReconciliation: { deletedProjectIds: [] },
 			}),
-			warnings: preflight.warnings,
+			warnings: check.warnings,
 		};
 	}
 
@@ -1012,17 +965,12 @@ export class PromotionsService {
 			reader,
 			'enforce',
 		);
-		const check = this.applyPreviewService.check(plan, inventory, undefined, moves);
-		const preflight = {
-			...check.preflight,
-			conflicts: [
-				...check.preflight.conflicts,
-				...moveConflicts(check),
-				...(await this.projectDeletions(inventory)),
-			],
-		};
-		if (this.isBlocked(preflight, confirmDestructiveChanges, identity)) {
-			return { status: 'blocked', ...identity, preflight };
+		const check = blockingCheck(
+			this.applyPreviewService.check(plan, inventory, undefined, moves),
+			await this.projectDeletions(inventory),
+		);
+		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
+			return { status: 'blocked', ...identity, check };
 		}
 
 		this.logger.info('Importing a package', {
@@ -1031,7 +979,7 @@ export class PromotionsService {
 		});
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const confirmedProjectIds = preflight.conflicts.flatMap((conflict) =>
+		const confirmedProjectIds = check.conflicts.flatMap((conflict) =>
 			conflict.code === 'project-deletion' ? conflict.project.id : [],
 		);
 		const projectReconciliation = await this.reconcileTeamProjects(
@@ -1044,7 +992,7 @@ export class PromotionsService {
 			status: 'applied',
 			...identity,
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
-			warnings: preflight.warnings,
+			warnings: check.warnings,
 		};
 	}
 
@@ -1110,26 +1058,26 @@ export class PromotionsService {
 	}
 
 	private isBlocked(
-		preflight: PromotionBindingPreflightResult,
+		check: PromotionApplyCheck,
 		confirmDestructiveChanges: boolean,
 		identity: { environmentId: string; git: { commitSha: string; branchName: string } },
 	): boolean {
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
-			: preflight.conflicts;
+			? check.conflicts.filter(({ code }) => !isConfirmableConflict(code))
+			: check.conflicts;
 		const blocked =
-			preflight.missingBindings.length > 0 ||
-			preflight.accessRequirements.length > 0 ||
+			check.missingBindings.length > 0 ||
+			check.accessRequirements.length > 0 ||
 			blockingConflicts.length > 0;
 		if (blocked) {
 			this.logger.info('Apply blocked', {
 				status: 'blocked',
 				...identity,
 				bindingCounts: {
-					missingBindings: preflight.missingBindings.length,
-					accessRequirements: preflight.accessRequirements.length,
-					conflicts: preflight.conflicts.length,
-					warnings: preflight.warnings.length,
+					missingBindings: check.missingBindings.length,
+					accessRequirements: check.accessRequirements.length,
+					conflicts: check.conflicts.length,
+					warnings: check.warnings.length,
 				},
 			});
 		}
@@ -1684,17 +1632,25 @@ function readBranchPlacements(raw: string | undefined, manifestPath: string): Br
 	};
 }
 
-/** Apply cannot move a workflow or folder between projects, so each move blocks. */
-function moveConflicts({
-	movedWorkflows,
-	movedFolders,
-}: PromotionApplyCheck): PromotionBindingConflict[] {
-	return [
-		...movedWorkflows.map((move) => ({
-			kind: 'workflow' as const,
-			code: 'moved' as const,
-			...move,
-		})),
-		...movedFolders.map((move) => ({ kind: 'folder' as const, code: 'moved' as const, ...move })),
-	];
+/**
+ * The check of a `blocked` result. Apply cannot move a workflow or folder between projects, so
+ * each move of the preview becomes a conflict.
+ */
+function blockingCheck(
+	{ movedWorkflows, movedFolders, ...check }: PromotionPreviewCheck,
+	otherConflicts: PromotionBindingConflict[] = [],
+): PromotionApplyCheck {
+	return {
+		...check,
+		conflicts: [
+			...check.conflicts,
+			...movedWorkflows.map((move) => ({
+				kind: 'workflow' as const,
+				code: 'moved' as const,
+				...move,
+			})),
+			...movedFolders.map((move) => ({ kind: 'folder' as const, code: 'moved' as const, ...move })),
+			...otherConflicts,
+		],
+	};
 }

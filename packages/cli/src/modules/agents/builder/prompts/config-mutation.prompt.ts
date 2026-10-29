@@ -43,7 +43,7 @@ ${getSchemaReferenceSection()}
   refs, then read each skill with \`agent-context({ type: "skill", skillId })\`.
   Pass every listed path in \`referencePaths\` so you can search its content.
   Update every match to fit the new schema.
-- Before updating any affected skill, use \`agent_builder_ask_questions\` to ask
+- Before updating any affected skill, use \`ask_user\` to ask
   the user to confirm the skill changes. Builder context does not show who
   else uses a skill, so treat it as potentially shared. \`agent_builder_update_skill\`
   saves a new version that every draft following the latest version will use.
