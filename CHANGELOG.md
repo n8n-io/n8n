@@ -1,3 +1,23 @@
+## [2.46.2](https://github.com/n8n-io/n8n/compare/n8n@2.46.1...n8n@2.46.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **ai-builder:** Open self-healing chat in the result project ([#42466](https://github.com/n8n-io/n8n/issues/42466)) ([9d781ad](https://github.com/n8n-io/n8n/commit/9d781ad5d27580280c15c93a187666d7a6b5193f))
+* **core:** Give each new queue job to one idle worker in turn ([#42400](https://github.com/n8n-io/n8n/issues/42400)) ([d7dbb93](https://github.com/n8n-io/n8n/commit/d7dbb93fbfc7fdec4896525e07cb2a865687bded))
+* **core:** Include jobs in the claiming list when reading waiting queue jobs ([#42418](https://github.com/n8n-io/n8n/issues/42418)) ([1225748](https://github.com/n8n-io/n8n/commit/1225748c622d067334ce819aa616f85b59ff0662))
+* **core:** Re-sync the migration finding table after an n8n upgrade ([#42456](https://github.com/n8n-io/n8n/issues/42456)) ([59986fa](https://github.com/n8n-io/n8n/commit/59986fafb69c886d82046b0dd3129f81479cf7f6))
+* **core:** Record dynamic time saved for executions in queue mode ([#42481](https://github.com/n8n-io/n8n/issues/42481)) ([79832e7](https://github.com/n8n-io/n8n/commit/79832e7178c97e8c53008e5aa3403ff682fb3b3c))
+* **core:** Require execution:read when workflow-scoped routes read execution data ([#42445](https://github.com/n8n-io/n8n/issues/42445)) ([9a20160](https://github.com/n8n-io/n8n/commit/9a201600dc032b8d1ed6832bad6e317a84d333ab))
+* **editor:** Show how many owners a bulk migration notification emails ([#42462](https://github.com/n8n-io/n8n/issues/42462)) ([64691e4](https://github.com/n8n-io/n8n/commit/64691e405ead676c2ab93186831954582de14695))
+
+
+### Features
+
+* **core:** Select managed OAuth app by version stored on the credential ([#42485](https://github.com/n8n-io/n8n/issues/42485)) ([28a3920](https://github.com/n8n-io/n8n/commit/28a39206121811750ff62a8104096fd085edbbfa))
+* **editor:** Show the project of each workflow in the migration report ([#42455](https://github.com/n8n-io/n8n/issues/42455)) ([22c2d76](https://github.com/n8n-io/n8n/commit/22c2d7609d6c786d3c4ed18a890f340a826faf2a))
+
+
 ## [2.46.1](https://github.com/n8n-io/n8n/compare/n8n@2.46.0...n8n@2.46.1) (2026-10-28)
 
 
