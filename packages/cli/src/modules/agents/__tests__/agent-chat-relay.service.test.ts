@@ -7,6 +7,13 @@ import { AgentChatRelayService } from '../agent-chat-relay.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { FlushableResponse } from '../agent-sse-stream';
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+
+vi.mock('@/response-helper', () => ({
+	sendStreamToResponse: vi.fn(async (_res: unknown, _stream: unknown, setHeaders?: () => void) =>
+		setHeaders?.(),
+	),
+}));
 
 function makeSseResponse(writes: string[]) {
 	const emitter = new EventEmitter();
@@ -95,6 +102,27 @@ describe('AgentChatRelayService', () => {
 			await relay.relayQueuedStop(res as unknown as FlushableResponse, 'thread', async () => {});
 
 			expect(sentEvents(writes)).toEqual([{ type: 'done', sessionId: 'thread' }]);
+		});
+	});
+
+	describe('streamAttachment', () => {
+		it('downloads a sandbox file under its base name', async () => {
+			const res = { setHeader: vi.fn() };
+
+			await relay.streamAttachment(
+				mock<AgentChatAttachment>({
+					id: 'att-1',
+					fileName: 'reports/q1.zip',
+					mimeType: 'application/zip',
+					fileSizeBytes: 3,
+				}),
+				res as never,
+			);
+
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Disposition',
+				'attachment; filename="q1.zip"',
+			);
 		});
 	});
 

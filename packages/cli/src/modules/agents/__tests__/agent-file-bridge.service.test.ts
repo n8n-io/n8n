@@ -296,6 +296,22 @@ describe('AgentFileBridge', () => {
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
 		});
 
+		it('gives a node the base name of a sandbox file and keeps the path for the model', async () => {
+			attachmentService.getReadable.mockResolvedValue(
+				mock<AgentChatAttachment>({
+					binaryDataId: 'filesystem-v2:agents/a/attachments/aid-1',
+					mimeType: 'application/pdf',
+					fileName: 'reports/q1.pdf',
+					fileSizeBytes: 68,
+				}),
+			);
+
+			const result = await bridge.toBinary({ data: 'aid-1' }, readScope);
+
+			expect(result?.binary.data).toMatchObject({ fileName: 'q1.pdf', fileExtension: 'pdf' });
+			expect([...result!.stored.values()][0].fileName).toBe('reports/q1.pdf');
+		});
+
 		it('keeps the file ID of an input file that the tool returns unchanged', async () => {
 			readable();
 			const input = await bridge.toBinary({ data: 'aid-1' }, readScope);

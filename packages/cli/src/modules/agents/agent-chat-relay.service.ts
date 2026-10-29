@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
+import { posix } from 'node:path';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 
 import { sendStreamToResponse } from '@/response-helper';
@@ -220,7 +221,7 @@ export class AgentChatRelayService {
 			if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
 				res.setHeader(
 					'Content-Disposition',
-					`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+					`attachment; filename="${sanitizeFilename(posix.basename(attachment.fileName))}"`,
 				);
 			}
 		});

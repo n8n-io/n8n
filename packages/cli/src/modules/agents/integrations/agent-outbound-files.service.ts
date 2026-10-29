@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import type { Attachment, PostableCard, PostableMarkdown, PostableRaw, Thread } from 'chat';
 import { OperationalError } from 'n8n-workflow';
+import { posix } from 'node:path';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
@@ -180,11 +181,12 @@ export class AgentOutboundFiles {
 					data: await this.attachmentService.getBuffer(attachment),
 				})),
 			);
+			// A sandbox file name is a path in outputs/. The platform gets the base name.
 			if (!integration?.sendFilesAsAttachments) {
 				return {
 					files: loaded.map(({ attachment, data }) => ({
 						data,
-						filename: attachment.fileName,
+						filename: posix.basename(attachment.fileName),
 						mimeType: attachment.mimeType,
 					})),
 				};
@@ -194,7 +196,7 @@ export class AgentOutboundFiles {
 				attachments: loaded.map(({ attachment, data }) => ({
 					type: outboundAttachmentType(attachment, maxImageBytes),
 					data,
-					name: attachment.fileName,
+					name: posix.basename(attachment.fileName),
 					mimeType: attachment.mimeType,
 				})),
 			};

@@ -97,6 +97,21 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 	});
 
+	it('sends a sandbox file under its base name', async () => {
+		const { service, attachmentService, thread } = createService();
+		attachmentService.getReadable.mockResolvedValue({
+			...chartFile,
+			fileName: 'reports/q1/chart.png',
+		} as never);
+
+		await service.postReplyFiles(thread, 'slack', { fileIds: ['file-1'], caption: '', scope });
+
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: '',
+			files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+		});
+	});
+
 	it('throws when the thread can no longer read a file', async () => {
 		const { service, thread } = createService();
 
