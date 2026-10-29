@@ -325,8 +325,9 @@ export interface ImportSelection {
  * The service fixes all policies except `conflictPolicy`, `idPolicy`,
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
- * `credentialConflictPolicy` (defaults to `keep-existing`), and `layoutConflictPolicy` (defaults to
- * `fail`; only promotions set it).
+ * `credentialConflictPolicy` (defaults to `keep-existing`), `layoutConflictPolicy` (defaults to
+ * `fail`; only promotions set it), and `publishingPolicy` (defaults to `match-source`; only
+ * promotions set it).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -339,6 +340,8 @@ export type ImportSelectionRequest = {
 	tagConflictPolicy?: TagConflictPolicy;
 	/** Omitted means `keep-existing`. */
 	credentialConflictPolicy?: CredentialConflictPolicy;
+	/** Promotion-only. The public selection import does not carry it. Omitted means `match-source`. */
+	publishingPolicy?: WorkflowPublishingPolicy;
 } & PromotionLayoutProperties;
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {

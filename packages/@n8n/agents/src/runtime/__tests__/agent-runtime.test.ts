@@ -1782,6 +1782,101 @@ describe('AgentRuntime — guardrails', () => {
 		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 	}
 
+	it.each(['generate', 'stream'] as const)(
+		'%s reports an applied skill revocation when cancellation interrupts restoration',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+			const scope = { ...persistence, agentName: 'test' };
+			await memory.skillState.save(scope, {
+				skillIds: ['revoked-skill'],
+				versions: { 'revoked-skill': 'v1' },
+			});
+			const controller = new AbortController();
+			const save = memory.skillState.save.bind(memory.skillState);
+			vi.spyOn(memory.skillState, 'save').mockImplementationOnce(async (scope, state) => {
+				controller.abort();
+				await save(scope, state);
+			});
+			const source = createRuntimeSkillSource([]);
+			const onContext = vi.fn();
+			source.onContext = onContext;
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				skillSource: source,
+				memory,
+			});
+			try {
+				const options = { persistence, abortSignal: controller.signal };
+				if (mode === 'stream') {
+					const { stream } = await runtime.stream('hi', options);
+					await collectChunks(stream);
+				} else {
+					await runtime.generate('hi', options);
+				}
+				expect(generateText).not.toHaveBeenCalled();
+				expect(streamText).not.toHaveBeenCalled();
+				expect(await memory.skillState.load(scope)).toEqual({
+					skillIds: [],
+					versions: { 'revoked-skill': null },
+				});
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([
+					{ skillId: 'revoked-skill', kind: 'revoked' },
+				]);
+				onContext.mockClear();
+				generateText.mockResolvedValueOnce(makeGenerateSuccess());
+				await runtime.generate('continue', { persistence });
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
+			} finally {
+				await runtime.dispose();
+			}
+		},
+	);
+
+	it('reports skill context only when model-call guards allow delivery', async () => {
+		const memory = new InMemoryMemory();
+		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+		const source = createRuntimeSkillSource([
+			{
+				id: 'test-skill',
+				name: 'test-skill',
+				description: 'Test',
+				instructions: 'Test instructions',
+			},
+		]);
+		source.shouldAppendSkillUpdates = () => true;
+		const version = source.registry.skills[0].hash;
+		await memory.skillState.save(
+			{ ...persistence, agentName: 'test' },
+			{ skillIds: ['test-skill'], versions: { 'test-skill': version } },
+		);
+		const onContext = vi.fn();
+		source.onContext = onContext;
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			skillSource: source,
+			memory,
+		});
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		try {
+			await runtime.generate('hi', { persistence, guardrails: guardrailsOption(hook) });
+			expect(onContext).not.toHaveBeenCalled();
+			expect(generateText).not.toHaveBeenCalled();
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			await runtime.generate('hi', { persistence });
+			expect(onContext).toHaveBeenCalledExactlyOnceWith([
+				{ skillId: 'test-skill', version, kind: 'carried' },
+			]);
+			expect(JSON.stringify(generateText.mock.calls[0][0])).toContain('Test instructions');
+		} finally {
+			await runtime.dispose();
+		}
+	});
+
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
 		const { runtime } = createRuntime();

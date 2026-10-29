@@ -54,7 +54,7 @@ then publish and assign only after the user approves.
 
 After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
-Use `workflow_builder_ask_user` with a yes/no choice or a concise visible question. Do **not**
+Use `ask_user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
 
 The opt-in must explicitly mention an error workflow and the target workflow

@@ -120,7 +120,8 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	conflictPolicy: ImportConflictPolicy.NewVersion,
 	idPolicy: WorkflowIdPolicy.Source,
-	publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+	// Promotion moves content only. Publish state stays with the target until autopublish exists.
+	publishingPolicy: WorkflowPublishingPolicy.PreserveTargetState,
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',

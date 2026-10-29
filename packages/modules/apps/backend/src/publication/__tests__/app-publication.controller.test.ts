@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 
 import { AppPublicationController } from '../app-publication.controller';
 import { AppAuthController } from '../../auth/app-auth.controller';
+import { AppPreviewController } from '../../preview/app-preview.controller';
 
 describe('App controller access', () => {
 	it('gates publication changes and version listing with project scopes', () => {
@@ -18,6 +19,17 @@ describe('App controller access', () => {
 			globalOnly: false,
 		});
 		expect(metadata.routes.get('listVersions')?.accessScope).toEqual({
+			scope: 'app:read',
+			globalOnly: false,
+		});
+	});
+
+	it('gates preview grants with the read scope', () => {
+		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+			AppPreviewController as never,
+		);
+		expect(metadata.surface).toBeUndefined();
+		expect(metadata.routes.get('createGrant')?.accessScope).toEqual({
 			scope: 'app:read',
 			globalOnly: false,
 		});
