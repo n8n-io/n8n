@@ -10,6 +10,8 @@ import {
 	type AgentCapabilitiesTelemetry,
 	type UseAgentCapabilitiesActionsDeps,
 } from './useAgentCapabilitiesActions';
+import type { AutosaveResult } from './useAgentConfigAutosave';
+import type { AgentSkillModalData } from '../components/AgentSkillModal.vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
@@ -327,32 +329,49 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
-	it('saves a restore before it resolves, and a normal save only on schedule', async () => {
+	/** Opens skill `s1` from the agent's list and returns the modal's Save callback. */
+	function openSkillForRestore(flushSkillSave: () => Promise<AutosaveResult>) {
 		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
-		const flushSkillSave = vi.fn().mockResolvedValue(undefined);
 		const { actions, scheduleSkillSave, agent } = makeActions(
 			{ skills: [{ type: 'skill', id: 's1' }] } as Partial<AgentJsonConfig>,
 			undefined,
 			{ flushSkillSave },
 		);
 		agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
-
 		actions.onOpenSkillFromList('s1');
-		const modalData = openModalWithData.mock.calls[0][0] as {
-			data: {
-				onConfirm: (payload: {
-					id?: string;
-					skill: AgentSkill;
-					restoredFrom?: number;
-				}) => Promise<void>;
-			};
-		};
-		await modalData.data.onConfirm({ id: 's1', skill: { ...skill, instructions: 'Edited.' } });
+		const { data } = openModalWithData.mock.calls[0][0] as { data: AgentSkillModalData };
+		return { skill, scheduleSkillSave, onConfirm: data.onConfirm };
+	}
+
+	it('saves a restore before it resolves, and a normal save only on schedule', async () => {
+		let finishSave: (result: AutosaveResult) => void = () => {};
+		const flushSkillSave = vi.fn(
+			async () => await new Promise<AutosaveResult>((resolve) => (finishSave = resolve)),
+		);
+		const { skill, scheduleSkillSave, onConfirm } = openSkillForRestore(flushSkillSave);
+
+		await onConfirm({ id: 's1', skill: { ...skill, instructions: 'Edited.' } });
 		expect(flushSkillSave).not.toHaveBeenCalled();
 
-		await modalData.data.onConfirm({ id: 's1', skill, restoredFrom: 1 });
+		let settled = false;
+		const restore = Promise.resolve(onConfirm({ id: 's1', skill, restoredFrom: 1 })).finally(
+			() => (settled = true),
+		);
+		await new Promise(process.nextTick);
 		expect(scheduleSkillSave).toHaveBeenCalledTimes(2);
 		expect(flushSkillSave).toHaveBeenCalledTimes(1);
+		expect(settled).toBe(false);
+
+		finishSave(undefined);
+		await expect(restore).resolves.toBeUndefined();
+	});
+
+	it('refuses a restore that the skill save did not persist', async () => {
+		const { skill, onConfirm } = openSkillForRestore(vi.fn().mockResolvedValue('stale'));
+
+		await expect(onConfirm({ id: 's1', skill, restoredFrom: 1 })).resolves.toEqual({
+			saved: false,
+		});
 	});
 
 	it('persists a skill rename without scheduling a config save', () => {

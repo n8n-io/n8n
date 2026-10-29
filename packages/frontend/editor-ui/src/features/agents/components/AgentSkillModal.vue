@@ -892,7 +892,9 @@ const timelineAgent = computed(() =>
 				name: props.data.agentName,
 				...props.data.agentVersions,
 				// A draft that follows the latest version runs the version a restore adds.
-				...(props.data.agentVersions.pinned ? {} : { draft: latestVersion.value ?? 0 }),
+				draft: props.data.agentVersions.pinned
+					? props.data.agentVersions.draft
+					: (latestVersion.value ?? props.data.agentVersions.draft),
 			}
 		: undefined,
 );
@@ -956,12 +958,10 @@ async function restoreVersion(version: number) {
 		viewedVersion.value?.version === version ? viewedVersion.value : await fetchVersion(version);
 	if (!detail) return;
 	const restored = normalizeSkill({ ...detail.skill });
-	if (!(await submit(restored, { restoredFrom: version }, { keepOpen: true }))) return;
-	viewedVersion.value = null;
-	initialSkill.value = cloneDeep(restored);
-	skill.value = cloneDeep(restored);
-	selectedPath.value = SKILL_FILE;
+	if (!(await submit(restored, { restoredFrom: version }))) return;
+	showSavedSkill(restored);
 	submitted.value = false;
+	serverNameError.value = '';
 	await reloadVersions();
 }
 
@@ -1073,7 +1073,7 @@ async function onSave() {
 	});
 
 	const targetChanged = !isEditing.value || availableTo.value !== savedTarget.value;
-	await submit(payload, {
+	const saved = await submit(payload, {
 		...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 		...(canChangeScope.value ? { scope: scope.value } : {}),
 		...(assistantAvailabilityChanged.value
@@ -1081,13 +1081,13 @@ async function onSave() {
 			: {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
+	if (saved) closeModal();
 }
 
 /** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
 async function submit(
 	payload: AgentSkill,
 	extras: Omit<Parameters<AgentSkillModalData['onConfirm']>[0], 'id' | 'skill'>,
-	{ keepOpen = false }: { keepOpen?: boolean } = {},
 ): Promise<boolean> {
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
@@ -1106,7 +1106,6 @@ async function submit(
 		}
 		return false;
 	}
-	if (!keepOpen) closeModal();
 	return true;
 }
 
@@ -1129,20 +1128,25 @@ function onUseLatestVersion() {
 	props.data.onUseLatestVersion?.(props.data.skillId);
 }
 
+/** Shows a saved skill in place of the editor content, as the state to compare edits with. */
+function showSavedSkill(saved: AgentSkill) {
+	initialSkill.value = toFormSkill(saved);
+	skill.value = cloneDeep(initialSkill.value);
+	viewedVersion.value = null;
+	comparison.value = null;
+	if (!(saved.references ?? []).some((file) => file.path === selectedPath.value)) {
+		selectedPath.value = SKILL_FILE;
+	}
+}
+
 // After a version change the builder sends the saved skill to the open editor. Show it in place,
 // so the editor does not close and open again.
 watch(
 	() => props.data.skill,
 	(next) => {
 		if (!next || !isEditing.value) return;
-		initialSkill.value = toFormSkill(next);
-		skill.value = cloneDeep(initialSkill.value);
-		viewedVersion.value = null;
-		comparison.value = null;
+		showSavedSkill(next);
 		if (props.data.initialVersionsOpen) versionsOpen.value = true;
-		if (!(next.references ?? []).some((file) => file.path === selectedPath.value)) {
-			selectedPath.value = SKILL_FILE;
-		}
 	},
 );
 

@@ -18,6 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createAgentSkill, getSkillDetail, getNewSkillName } from './useAgentApi';
+import { isPersistedSave, type AutosaveResult } from './useAgentConfigAutosave';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -103,7 +104,7 @@ export interface UseAgentCapabilitiesActionsDeps {
 	ensureAgentPersisted?: () => Promise<void>;
 	flushConfigSave?: () => Promise<unknown>;
 	/** Saves a scheduled skill edit now. A restore waits for it so the editor can list the new version. */
-	flushSkillSave?: () => Promise<unknown>;
+	flushSkillSave?: () => Promise<AutosaveResult>;
 	/**
 	 * Flushes pending agent edits before an API mutation that also writes the
 	 * agent config. This prevents the mutation from advancing the config hash
@@ -388,7 +389,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
 					restoredFrom?: number;
-				}) => {
+				}): Promise<AgentSkillConfirmResult> => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
@@ -415,7 +416,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						skill: sanitizedSkill,
 						...(availableTo ? { availableTo } : {}),
 					});
-					if (restoredFrom !== undefined) await flushSkillSave?.();
+					// A restore the server did not save keeps the editor on the older version.
+					if (
+						restoredFrom !== undefined &&
+						flushSkillSave &&
+						!isPersistedSave(await flushSkillSave())
+					) {
+						return { saved: false };
+					}
 				},
 			},
 		});
