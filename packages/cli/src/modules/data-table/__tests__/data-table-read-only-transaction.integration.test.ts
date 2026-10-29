@@ -24,13 +24,6 @@ const timed = async <T>(fn: () => Promise<T>) => {
 	return { value, ms: Date.now() - start };
 };
 
-/**
- * On the pooled SQLite driver a write transaction holds the single write
- * connection. A row read must not queue behind it. The timing assertion is
- * SQLite-only: the Postgres test pool has two connections, so the held write
- * transaction and the read share the pool at exact capacity and any other
- * query in the window makes the read wait.
- */
 describe('DataTableService.getManyRowsAndCount under a concurrent write transaction', () => {
 	let dataTableService: DataTableService;
 	let manager: DataTableColumnRepository['manager'];
