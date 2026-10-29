@@ -1,4 +1,3 @@
-ARG NODE_VERSION=26.12.1
 ARG N8N_VERSION=snapshot
 
 # glibc variant of ./Dockerfile. See the README for the use case. The builder
