@@ -768,7 +768,7 @@ Workflows with `workflow_call` trigger:
 | Workflow                           | Inputs                                        | Purpose               |
 |------------------------------------|-----------------------------------------------|-----------------------|
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
-| `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
+| `test-linting-reusable.yml`        | `ref`, `nodeVersion`, `affectedBase`          | Lint (affected packages when `affectedBase` is set) |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
