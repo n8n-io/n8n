@@ -106,11 +106,10 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
+			await this.endedAsFailed(execution, step);
 		}
 
 		await this.stepStore.cancelPendingSteps(execution.id);
-
-		if (finished) await this.endedAsFailed(execution, step);
 	}
 
 	/**
