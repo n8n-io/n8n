@@ -81,6 +81,11 @@ export abstract class SkillSourceClient {
 	 */
 	abstract parseLocator(input: string, auth?: SkillSourceAuth): Promise<SkillSourceLocator>;
 
+	/** Expands an initial selection to the whole source, keeping its saved revision selector. */
+	sourceLocator(locator: SkillSourceLocator): SkillSourceLocator {
+		return locator;
+	}
+
 	abstract identity(locator: SkillSourceLocator): SkillSourceIdentity;
 
 	/**

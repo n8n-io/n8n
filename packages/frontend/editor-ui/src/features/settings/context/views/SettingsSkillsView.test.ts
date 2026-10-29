@@ -968,11 +968,11 @@ describe('SettingsSkillsView', () => {
 		};
 		const ConnectDialogStub = {
 			name: 'SkillSourceConnectDialog',
-			props: ['open', 'scopeOptions'],
+			props: ['open', 'scopeOptions', 'sourceId'],
 			emits: ['update:open', 'connected'],
 			setup: () => ({ connected }),
 			template: `
-				<div v-if="open" data-test-id="connect-dialog-stub" />
+				<div v-if="open" data-test-id="connect-dialog-stub" :data-source-id="sourceId" />
 				<button data-test-id="connect-dialog-done" @click="$emit('connected', connected)" />
 			`,
 		};
@@ -1004,6 +1004,33 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(await findByTestId('skills-create-github'));
 
 			expect(await findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		it('opens the Sources tab from a deep link and passes its source to Add more', async () => {
+			enableSkillSync();
+			routeQuery.tab = 'sources';
+			const sourceStub = {
+				emits: ['addMore'],
+				template: `<button data-test-id="source-add-more" @click="$emit('addMore', 'src-1')" />`,
+			};
+			const view = renderView({
+				global: {
+					stubs: { SkillSources: sourceStub, SkillSourceConnectDialog: ConnectDialogStub },
+				},
+			});
+			await userEvent.click(view.getByTestId('source-add-more'));
+			expect(view.getByTestId('connect-dialog-stub')).toHaveAttribute('data-source-id', 'src-1');
+			skillsStore.fetchSources.mockClear();
+			await userEvent.click(view.getByTestId('connect-dialog-done'));
+			await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
+		});
+
+		it('does not open Sources from a deep link while the flag is off', () => {
+			routeQuery.tab = 'sources';
+			const view = renderWithDialogStub();
+			expect(view.queryByTestId('skill-sources')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-tabs')).not.toBeInTheDocument();
+			expect(skillsStore.fetchSources).not.toHaveBeenCalled();
 		});
 
 		it('reloads the list and names the imported and failed skills', async () => {

@@ -1,5 +1,8 @@
 import type {
 	ConnectSkillSourceDto,
+	AddSkillSourceSkillsDto,
+	SkillSourceListItem,
+	SkillSourceMoreDiscovery,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
 	SaveSkillDto,
@@ -133,5 +136,33 @@ export async function stopSyncingSkill(context: IRestApiContext, skillId: string
 		context,
 		'POST',
 		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
+	);
+}
+
+export async function getSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
+}
+
+export async function discoverMoreSkills(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceMoreDiscovery> {
+	return await makeRestApiRequest<SkillSourceMoreDiscovery>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/discover`,
+	);
+}
+
+export async function addSourceSkills(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: AddSkillSourceSkillsDto,
+): Promise<SkillSourceConnectResponse> {
+	return await makeRestApiRequest<SkillSourceConnectResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/skills`,
+		payload,
 	);
 }

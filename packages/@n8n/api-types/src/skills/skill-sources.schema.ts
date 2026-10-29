@@ -39,12 +39,19 @@ export class DiscoverSkillSourceDto extends Z.class(skillSourceTarget) {}
 
 export const SKILL_SOURCE_MAX_SKILLS = 200;
 
+const skillSourceSelection = {
+	/** The `key` of each picked skill, as discover answered it. */
+	skillKeys: z.array(z.string().min(1).max(2048)).min(1).max(SKILL_SOURCE_MAX_SKILLS),
+};
+
 /** Connects the source in the scope and imports the picked skills. */
 export class ConnectSkillSourceDto extends Z.class({
 	...skillSourceTarget,
-	/** The `key` of each picked skill, as discover answered it. */
-	skillKeys: z.array(z.string().min(1).max(2048)).min(1).max(SKILL_SOURCE_MAX_SKILLS),
+	...skillSourceSelection,
 }) {}
+
+/** Adds picked skills to an existing source. Its stored scope and branch apply. */
+export class AddSkillSourceSkillsDto extends Z.class(skillSourceSelection) {}
 
 /** The source that a link points to. */
 export type SkillSourceSummary = {
@@ -112,4 +119,20 @@ export type SkillSyncedFrom = {
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
 	canStopSyncing: boolean;
+};
+
+/** A connected source that the user can see. Credential data stays on the server. */
+export type SkillSourceListItem = SkillSourceSummary & {
+	id: string;
+	scope: 'instance' | 'project';
+	projectId: string | null;
+	projectName: string | null;
+	projectType: 'personal' | 'team' | null;
+	skillCount: number;
+	canAddSkills: boolean;
+};
+
+/** Remaining remote skills and the fixed destination for Add more. */
+export type SkillSourceMoreDiscovery = Omit<SkillSourceDiscovery, 'source' | 'duplicate'> & {
+	source: SkillSourceListItem;
 };

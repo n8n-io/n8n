@@ -2,6 +2,8 @@ import {
 	SKILL_SYNC_FLAG,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourceMoreDiscovery,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -314,6 +316,197 @@ describe('SkillSourceController', () => {
 				projectId: team.id,
 			});
 			expect(again.duplicate).toEqual({ kind: 'none' });
+		});
+	});
+
+	describe('add more skills', () => {
+		const more = async (agent: SuperAgentTest, id: string, status = 200) =>
+			(await agent.post(`/skill-sources/${id}/discover`).send().expect(status))
+				.body as Body<SkillSourceMoreDiscovery>;
+		const add = async (agent: SuperAgentTest, id: string, skillKeys: string[], status = 200) =>
+			(await agent.post(`/skill-sources/${id}/skills`).send({ skillKeys }).expect(status))
+				.body as Body<SkillSourceConnectResponse>;
+		async function connectOne(agent: SuperAgentTest, scope: Record<string, unknown>, url = REPO) {
+			const { data } = await discover(agent, { url, ...scope });
+			return (await connect(agent, { url, ...scope, skillKeys: keysOf(data, ['pdf']) })).data;
+		}
+
+		it.each(['global', 'team', 'personal'])('keeps the %s source and its scope', async (kind) => {
+			const agent = kind === 'global' ? owner : kind === 'team' ? editor : member;
+			const projectId = kind === 'global' ? null : kind === 'team' ? team.id : personal.id;
+			const scope = projectId ? { scope: 'project', projectId } : { scope: 'instance' };
+			const initial = await connectOne(agent, scope);
+			const { data: remaining } = await more(agent, initial.sourceId);
+			expect(remaining.source).toMatchObject({
+				id: initial.sourceId,
+				projectId,
+				skillCount: 1,
+				canAddSkills: true,
+			});
+			expect(remaining.skills.map((skill) => skill.name)).not.toContain('pdf');
+			const { data: added } = await add(
+				agent,
+				initial.sourceId,
+				keysOf({ ...remaining, duplicate: { kind: 'none' } }, ['docx']),
+			);
+			expect(added.sourceId).toBe(initial.sourceId);
+			expect(added.imported).toHaveLength(1);
+			expect(await findSkill(added.imported[0].skillId)).toMatchObject({
+				projectId,
+				agentId: null,
+			});
+			expect(await countSources()).toBe(1);
+		});
+
+		it('expands a folder link on the saved branch and keeps linked skills fetchable', async () => {
+			github.push(
+				'acme/skills',
+				{ ...FILES, 'skills/docx/SKILL.md': skillMd('branch-docx') },
+				'release',
+			);
+			const initial = await connectOne(
+				owner,
+				{ scope: 'instance' },
+				`${REPO}/tree/release/skills/pdf`,
+			);
+			const { data } = await more(owner, initial.sourceId);
+			expect(data.source).toMatchObject({ ref: 'release', path: '' });
+			const docx = data.skills.find((skill) => skill.name === 'branch-docx')!;
+			const { data: added } = await add(owner, initial.sourceId, [docx.key]);
+			expect((await findLatestSkillVersion(added.imported[0].skillId))?.name).toBe('branch-docx');
+			const stored = await Container.get(DataSource).manager.findOneByOrFail(
+				SkillSourceConnection,
+				{ id: initial.sourceId },
+			);
+			const fetched = await Container.get(GitHubSkillSourceClient).fetchLatest(
+				stored.locator,
+				JSON.parse(docx.key),
+			);
+			expect(fetched.content.name).toBe('branch-docx');
+		});
+
+		it('excludes linked paths after a remote rename and refuses stale selections', async () => {
+			const initial = await connectOne(owner, { scope: 'instance' });
+			github.push('acme/skills', { ...FILES, 'skills/pdf/SKILL.md': skillMd('renamed-pdf') });
+			const { data } = await more(owner, initial.sourceId);
+			expect(data.skills.some((skill) => skill.location === 'skills/pdf')).toBe(false);
+			const body = await add(owner, initial.sourceId, [initial.imported[0].key], 409);
+			expect(body.meta?.reason).toBe('duplicate_source');
+			expect((await findLatestSkillVersion(initial.imported[0].skillId))?.name).toBe('pdf');
+		});
+
+		it('imports each remote skill once when requests overlap', async () => {
+			const initial = await connectOne(owner, { scope: 'instance' });
+			const { data } = await more(owner, initial.sourceId);
+			const skillKeys = [data.skills.find((skill) => skill.name === 'docx')!.key];
+			const responses = await Promise.all([
+				owner.post(`/skill-sources/${initial.sourceId}/skills`).send({ skillKeys }),
+				owner.post(`/skill-sources/${initial.sourceId}/skills`).send({ skillKeys }),
+			]);
+			expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+			expect((await more(owner, initial.sourceId)).data.source.skillCount).toBe(2);
+		});
+
+		it('lists a deleted skill again and keeps a stopped skill as a name conflict', async () => {
+			const initial = await connectOne(owner, { scope: 'instance' });
+			await owner
+				.post(`/skill-sources/skills/${initial.imported[0].skillId}/stop-syncing`)
+				.send()
+				.expect(200);
+			const { data: stopped } = await more(owner, initial.sourceId);
+			expect(stopped.skills.find((skill) => skill.name === 'pdf')?.nameTaken).toBe(true);
+			await owner.delete(`/skills/${initial.imported[0].skillId}`).expect(200);
+			const { data: deleted } = await more(owner, initial.sourceId);
+			const pdf = deleted.skills.find((skill) => skill.name === 'pdf')!;
+			expect(pdf.nameTaken).toBe(false);
+			expect((await add(owner, initial.sourceId, [pdf.key])).data.imported).toHaveLength(1);
+		});
+
+		it('can reimport a deleted synced skill into the existing source', async () => {
+			const initial = await connectOne(owner, { scope: 'instance' });
+			await owner.delete(`/skills/${initial.imported[0].skillId}`).expect(200);
+			const { data } = await more(owner, initial.sourceId);
+			expect(data.source.skillCount).toBe(0);
+			expect(data.skills.find((skill) => skill.name === 'pdf')?.nameTaken).toBe(false);
+			expect(
+				(await add(owner, initial.sourceId, [initial.imported[0].key])).data.imported,
+			).toHaveLength(1);
+			expect(await countSources()).toBe(1);
+		});
+
+		it('reports partial imports as more without reporting a new connection', async () => {
+			const initial = await connectOne(owner, { scope: 'instance' });
+			const { data } = await more(owner, initial.sourceId);
+			const imported = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			const connected = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			const { data: added } = await add(owner, initial.sourceId, [
+				data.skills.find((skill) => skill.name === 'docx')!.key,
+				'missing',
+			]);
+			expect(added.imported).toHaveLength(1);
+			expect(added.failed).toEqual([{ key: 'missing', name: null, reason: 'not_found' }]);
+			expect(imported).toHaveBeenCalledWith(
+				expect.objectContaining({
+					first_or_more: 'more',
+					selected: 2,
+					imported: 1,
+					status: 'success',
+				}),
+				ownerUser.id,
+			);
+			expect(connected).not.toHaveBeenCalled();
+			imported.mockRestore();
+			connected.mockRestore();
+		});
+
+		it('checks access before reading the remote source', async () => {
+			const global = await connectOne(owner, { scope: 'instance' });
+			const requests = github.requests.refs;
+			await more(member, global.sourceId, 403);
+			await add(member, global.sourceId, ['x'], 403);
+			await more(owner, 'missing', 404);
+			await more(member, 'missing', 404);
+			expect(github.requests.refs).toBe(requests);
+		});
+
+		it('hides sources in other projects and refuses project viewers', async () => {
+			const initial = await connectOne(editor, { scope: 'project', projectId: team.id });
+			const requests = github.requests.refs;
+			await more(member, initial.sourceId, 404);
+			await add(member, initial.sourceId, ['x'], 404);
+			await more(viewer, initial.sourceId, 403);
+			await add(viewer, initial.sourceId, ['x'], 403);
+			expect(github.requests.refs).toBe(requests);
+		});
+
+		it('lists only visible sources with counts and actions, without credentials or locators', async () => {
+			const own = await connectOne(member, { scope: 'project', projectId: personal.id });
+			const shared = await connectOne(editor, { scope: 'project', projectId: team.id });
+			const global = await connectOne(owner, { scope: 'instance' });
+			const response = await member.get('/skill-sources').expect(200);
+			const sources = response.body.data as SkillSourceListItem[];
+			expect(sources.map((source) => source.id).sort()).toEqual(
+				[own.sourceId, global.sourceId].sort(),
+			);
+			expect(sources.find((source) => source.id === own.sourceId)).toMatchObject({
+				canAddSkills: true,
+				skillCount: 1,
+			});
+			expect(sources.find((source) => source.id === global.sourceId)?.canAddSkills).toBe(false);
+			for (const source of sources) {
+				expect(source).not.toHaveProperty('credentialId');
+				expect(source).not.toHaveProperty('locator');
+			}
+			const viewed = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(viewed.find((source) => source.id === shared.sourceId)?.canAddSkills).toBe(false);
+		});
+
+		it('gates the new routes before validating input', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await owner.get('/skill-sources').expect(404);
+			await more(owner, 'missing', 404);
+			await owner.post('/skill-sources/missing/skills').send({}).expect(404);
 		});
 	});
 

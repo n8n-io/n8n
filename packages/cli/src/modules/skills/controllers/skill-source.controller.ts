@@ -1,6 +1,10 @@
-import { ConnectSkillSourceDto, DiscoverSkillSourceDto } from '@n8n/api-types';
+import {
+	AddSkillSourceSkillsDto,
+	ConnectSkillSourceDto,
+	DiscoverSkillSourceDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Middleware, Param, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Middleware, Param, Post, RestController } from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -43,6 +47,31 @@ export class SkillSourceController {
 	@Post('/')
 	async connect(req: AuthenticatedRequest, _res: Response, @Body payload: ConnectSkillSourceDto) {
 		return await this.skillSourceService.connect(req.user, payload);
+	}
+
+	/** Access follows the source's stored project, through SkillAccessService in the service. */
+	@Get('/')
+	async list(req: AuthenticatedRequest) {
+		return await this.skillSourceService.list(req.user);
+	}
+
+	@Post('/:sourceId/discover')
+	async discoverMore(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+	) {
+		return await this.skillSourceService.discoverMore(req.user, sourceId);
+	}
+
+	@Post('/:sourceId/skills')
+	async addSkills(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: AddSkillSourceSkillsDto,
+	) {
+		return await this.skillSourceService.addSkills(req.user, sourceId, payload);
 	}
 
 	/**

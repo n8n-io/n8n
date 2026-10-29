@@ -130,6 +130,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return { owner, repository, ...split };
 	}
 
+	override sourceLocator(locator: SkillSourceLocator): SkillSourceLocator {
+		return { ...readLocator(locator), path: '' };
+	}
+
 	identity(locator: SkillSourceLocator): SkillSourceIdentity {
 		const { owner, repository } = readLocator(locator);
 		return { type: this.type, host: GITHUB_HOST, owner, repository };
@@ -173,7 +177,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const parsed = readLocator(locator);
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed));
-		const archive = await this.archiveAt(parsed, sha);
+		// Add more can link a skill outside the folder used for the first import.
+		const archive = await this.archiveAt(
+			isInside(path, parsed.path) ? parsed : { ...parsed, path },
+			sha,
+		);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
