@@ -18,6 +18,7 @@ import type {
 	ExpectedBackgroundJobState,
 } from '../repositories/agent-background-job.repository';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
@@ -79,6 +80,7 @@ export class SubAgentBackgroundRunner {
 		private readonly logger: Logger,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly workspaceService: AgentWorkspaceService,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -93,6 +95,14 @@ export class SubAgentBackgroundRunner {
 		// Throws on an unusable task name — before the job row exists, so a bad
 		// name cannot leave a phantom `running` row holding a thread slot.
 		const taskPath = createChildSubAgentTaskPath(request.taskName, this.dispatchCounter++);
+		// The run grants the files later. Check them here so that a bad fileId fails the tool call.
+		for (const fileId of request.fileIds ?? []) {
+			const file = await this.attachmentService.getReadable(fileId, {
+				projectId: context.projectId,
+				threadId: request.parentThreadId,
+			});
+			if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
+		}
 
 		const jobId = uuid();
 		const childThreadId = uuid();

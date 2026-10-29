@@ -526,6 +526,7 @@ describe('AgentExecutionRepository', () => {
 					mockLogger(),
 					jobs,
 					workspaceService,
+					mock<AgentChatAttachmentService>(),
 				);
 				return { service, runner };
 			};
