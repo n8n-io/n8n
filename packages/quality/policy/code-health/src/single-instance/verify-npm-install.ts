@@ -38,6 +38,7 @@ const NPM_INSTALL_EXCLUSIONS = [
 const NPM_INSTALL_EXCLUSION_REPLACEMENT = 'empty-npm-package';
 const NPM_INSTALL_ALLOWLIST_FILE =
 	'packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts';
+const NPM_INSTALL_ALLOWLIST_NAME = 'EXPECTED_NPM_DUPLICATES';
 
 interface ExpectedNpmDuplicate {
 	reason: string;
@@ -512,6 +513,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 				exemptPackages: exemptPackages(byName),
 				scratch: scratchHint,
 				allowlistFile: NPM_INSTALL_ALLOWLIST_FILE,
+				allowlistName: NPM_INSTALL_ALLOWLIST_NAME,
 			};
 			console.log('\nHow to fix\n');
 			for (const line of formatRemediation(explained, remediationOptions)) console.log(line);

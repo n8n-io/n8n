@@ -212,6 +212,7 @@ export function describeFailureCount(count: number): string {
 
 const LIBS_FILE = 'packages/quality/policy/code-health/src/single-instance/libs.ts';
 const ALLOWLIST_FILE = 'packages/quality/policy/code-health/src/single-instance/collect-copies.ts';
+const ALLOWLIST_NAME = 'EXPECTED_DUPLICATES';
 
 interface Requirer {
 	lib: string;
@@ -254,7 +255,13 @@ export function formatRemediation(
 		exemptPackages,
 		scratch,
 		allowlistFile = ALLOWLIST_FILE,
-	}: { exemptPackages: Set<string>; scratch?: string; allowlistFile?: string },
+		allowlistName = ALLOWLIST_NAME,
+	}: {
+		exemptPackages: Set<string>;
+		scratch?: string;
+		allowlistFile?: string;
+		allowlistName?: string;
+	},
 ): string[] {
 	// Keyed, not per copy: npm installs the same requirer at several nesting depths, and the fix is
 	// one manifest edit however many copies it produced.
@@ -334,7 +341,7 @@ export function formatRemediation(
 		);
 	}
 	lines.push(
-		`  ${++step}. If the split cannot be removed yet, add an EXPECTED_DUPLICATES entry in`,
+		`  ${++step}. If the split cannot be removed yet, add an ${allowlistName} entry in`,
 		`     ${allowlistFile} documenting why it is tolerated and what removes it.`,
 		'',
 		'  Reproduce locally (packs + installs the same closure, no CI needed):',
@@ -372,11 +379,13 @@ export function formatStepSummary(
 		exemptPackages,
 		scratch,
 		allowlistFile,
+		allowlistName,
 	}: {
 		reportOnly: boolean;
 		exemptPackages: Set<string>;
 		scratch?: string;
 		allowlistFile?: string;
+		allowlistName?: string;
 	},
 ): string {
 	const rows = explained.flatMap((dup) =>
@@ -397,7 +406,7 @@ export function formatStepSummary(
 		'<details><summary>How to fix</summary>',
 		'',
 		FENCE,
-		...formatRemediation(explained, { exemptPackages, scratch, allowlistFile }),
+		...formatRemediation(explained, { exemptPackages, scratch, allowlistFile, allowlistName }),
 		FENCE,
 		'',
 		'</details>',
