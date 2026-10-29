@@ -555,6 +555,20 @@ describe('OtelService', () => {
 			expect(lastApplied?.spanProcessors !== initialProcessors).toBe(expectNewExporter);
 		});
 
+		it('installs a trace context and baggage propagator only while outbound headers are on', async () => {
+			otelSettingsService.loadSettings
+				.mockResolvedValueOnce(enabledSettings)
+				.mockResolvedValueOnce({ ...enabledSettings, injectOutbound: false });
+			await service.init();
+			const withHeaders = otelSdk.apply.mock.calls[0][0].propagator;
+
+			await service.applySavedSettings();
+			const withoutHeaders = otelSdk.apply.mock.lastCall?.[0].propagator;
+
+			expect(withHeaders.fields()).toEqual(['traceparent', 'tracestate', 'baggage']);
+			expect(withoutHeaders).toBe(TRACING_OFF.propagator);
+		});
+
 		it('probes the endpoint only when a save builds a new exporter', async () => {
 			otelSettingsService.loadSettings
 				.mockResolvedValueOnce(enabledSettings)
