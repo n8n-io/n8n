@@ -4,6 +4,7 @@ import {
 	MfaRequiredError,
 	ResponseError,
 	STREAM_SEPARATOR,
+	makePublicApiRequest,
 	makeRestApiRequest,
 	request,
 	requestResponse,
@@ -81,6 +82,28 @@ describe('request headers', () => {
 		});
 
 		expect(axiosRequest).toHaveBeenCalledWith(expect.objectContaining({ headers }));
+	});
+});
+
+describe('makePublicApiRequest', () => {
+	it('sends the context headers with the public API base URL', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { id: 'workflow-1' } });
+		const headers = { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI };
+
+		const result = await makePublicApiRequest(
+			{ baseUrl: 'https://api.example.com/api/v1', headers },
+			'GET',
+			'/workflows',
+		);
+
+		expect(result).toEqual({ id: 'workflow-1' });
+		expect(axiosRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseURL: 'https://api.example.com/api/v1',
+				url: '/workflows',
+				headers,
+			}),
+		);
 	});
 });
 

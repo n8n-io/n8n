@@ -3,7 +3,7 @@ import type {
 	CredentialPublicDto,
 	CredentialOptionsRequestDto,
 } from '@n8n/api-types';
-import { request, type PublicApiContext } from '@n8n/rest-api-client';
+import { makePublicApiRequest, type PublicApiContext } from '@n8n/rest-api-client';
 import type {
 	CredentialFetchScope,
 	CredentialPayload,
@@ -221,11 +221,5 @@ export async function createPublicCredential(
 	context: PublicApiContext,
 	data: CreateCredentialPublicDto,
 ): Promise<CredentialPublicDto> {
-	return await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		headers: context.headers,
-		endpoint: '/credentials',
-		data,
-	});
+	return await makePublicApiRequest(context, 'POST', '/credentials', data);
 }
