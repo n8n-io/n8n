@@ -58,7 +58,10 @@ function createSelfHealingTools(
 			allowedActions: ['list', 'get', 'debug', 'get-node-output', 'get-resolved-node-parameters'],
 			description: 'Read execution status, diagnostics, node output, and resolved parameters.',
 		}),
-		...createDataTableTools(context, { allowedActions: ['list', 'schema', 'query'] }),
+		...createDataTableTools(context, {
+			allowedActions: ['list', 'schema', 'query'],
+			skillGuidance: false,
+		}),
 		createSearchNodesTool(context),
 		createGetNodeTypesTool(context),
 		createN8nDocsTool(context),

@@ -91,6 +91,12 @@ describe('buildAlwaysAllowKey', () => {
 		);
 	});
 
+	it('uses the same action grant key for split data table tools', () => {
+		expect(buildAlwaysAllowKey('insert_data_table_rows', {})).toBe('data-tables:insert-rows');
+		expect(buildAlwaysAllowKey('delete_data_table', {})).toBe('data-tables:delete');
+		expect(buildAlwaysAllowKey('rename_data_table_column', {})).toBe('data-tables:rename-column');
+	});
+
 	it('falls back to the tool and the action for other tools', () => {
 		expect(buildAlwaysAllowKey('skills', { action: 'create' })).toBe('skills:create');
 	});

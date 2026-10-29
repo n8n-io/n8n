@@ -216,19 +216,14 @@ export const DATA_TABLE_TOOL_NAMES: readonly string[] = Object.values(
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 );
 
-export const DATA_TABLE_TOOL_ACTIONS = [
-	'list',
-	'schema',
-	'query',
-	'create',
-	'delete',
-	'add-column',
-	'delete-column',
-	'rename-column',
-	'insert-rows',
-	'update-rows',
-	'delete-rows',
-] as const satisfies readonly DataTableToolAction[];
+function isDataTableToolAction(key: string): key is DataTableToolAction {
+	return Object.hasOwn(DATA_TABLE_TOOL_NAME_BY_ACTION, key);
+}
+
+/** Derived from the map, so a new action always gets a registered tool. */
+export const DATA_TABLE_TOOL_ACTIONS: readonly DataTableToolAction[] = Object.keys(
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+).filter(isDataTableToolAction);
 
 /** Returns the action that a data table tool performs. Session grant keys still use the action. */
 export function getDataTableToolAction(toolName: string): DataTableToolAction | undefined {

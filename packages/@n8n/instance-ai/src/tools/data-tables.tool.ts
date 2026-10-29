@@ -926,7 +926,12 @@ async function handleDeleteRows(
 
 export interface DataTablesToolOptions {
 	allowedActions?: readonly DataTableToolAction[];
+	/** Set to false for agents without `load_skill`, so descriptions do not point to skills. */
+	skillGuidance?: boolean;
 }
+
+/** Actions whose extra guidance tells the model to load a skill. */
+const SKILL_GUIDANCE_ACTIONS = new Set<DataTableToolAction>(['list']);
 
 const READ_ACTIONS = new Set<DataTableToolAction>(['list', 'schema', 'query']);
 
@@ -943,9 +948,10 @@ const EXTRA_DESCRIPTIONS: Partial<Record<DataTableToolAction, string>> = {
 	create: 'Call get_data_table_schema before you reference the new table in SDK code.',
 };
 
-function getActionDescription(action: DataTableToolAction): string {
+function getActionDescription(action: DataTableToolAction, skillGuidance: boolean): string {
 	const base = ACTION_SCHEMAS[action].shape.action.description ?? '';
-	const extra = EXTRA_DESCRIPTIONS[action];
+	const extra =
+		!skillGuidance && SKILL_GUIDANCE_ACTIONS.has(action) ? undefined : EXTRA_DESCRIPTIONS[action];
 	return extra ? `${base}. ${extra}` : base;
 }
 
@@ -960,11 +966,15 @@ const NON_SUSPENDING_CONTEXT: ConfirmationToolContext = {
  * Build the tool that owns one data table action. A suspended call of the
  * former multi-action tool resumes here through its legacy action mapping.
  */
-export function createDataTableTool(context: InstanceAiContext, action: DataTableToolAction) {
+export function createDataTableTool(
+	context: InstanceAiContext,
+	action: DataTableToolAction,
+	{ skillGuidance = true }: Pick<DataTablesToolOptions, 'skillGuidance'> = {},
+) {
 	const name = DATA_TABLE_TOOL_NAME_BY_ACTION[action];
 	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
 	const tool = new Tool(name)
-		.description(getActionDescription(action))
+		.description(getActionDescription(action, skillGuidance))
 		.input(sanitizeInputSchema(schema.omit({ action: true })));
 	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
 		tool.legacyActions(legacyName, ...actions);
@@ -996,7 +1006,7 @@ export function createDataTableTools(
 ) {
 	const allowed = new Set(options.allowedActions ?? DATA_TABLE_TOOL_ACTIONS);
 	return DATA_TABLE_TOOL_ACTIONS.filter((action) => allowed.has(action)).map((action) =>
-		createDataTableTool(context, action),
+		createDataTableTool(context, action, options),
 	);
 }
 

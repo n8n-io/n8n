@@ -109,7 +109,7 @@ relative to the request. Use `prompt` only to override the default judge prompt.
 
 ## Dataset Boundary
 
-- Build the dataset with the `data_tables` tool: one column for each input the
+- Build the dataset with `create_data_table` and `insert_data_table_rows`: one column for each input the
   evaluation varies, plus a ground-truth column when using `correctness`.
 - The config only references the dataset by `dataTableId`; the `eval-config` tool
   does not create or populate rows. If no suitable dataset exists, create one
