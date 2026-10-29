@@ -118,6 +118,7 @@ export class StepSettledHandler {
 	 * waits for it fails with the error.
 	 */
 	private async endedAsFailed(execution: ExecutionRecord, step: StepRecord): Promise<void> {
+		if (!execution.parent?.awaited) return;
 		await resumeAwaitingParent(this.resumeDeps(), execution, {
 			status: 'failed',
 			error: await this.failureOf(execution, step),
@@ -255,7 +256,7 @@ export class StepSettledHandler {
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 			if (failed) {
 				await this.endedAsFailed(execution, step);
-			} else {
+			} else if (execution.parent?.awaited) {
 				await resumeAwaitingParent(this.resumeDeps(), execution, {
 					status: 'completed',
 					result: collectSubExecutionResult(
