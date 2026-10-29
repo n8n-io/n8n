@@ -10,7 +10,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 
@@ -23,7 +23,7 @@ export class AgentSessionStopService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly chatExecutionService: AgentChatExecutionService,
-		private readonly queuedStreams: AgentQueuedPreviewStreamService,
+		private readonly queuedStreams: AgentQueuedTestStreamService,
 		private readonly attachments: AgentChatAttachmentService,
 	) {}
 

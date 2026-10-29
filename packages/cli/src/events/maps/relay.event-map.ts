@@ -59,7 +59,8 @@ export type WorkflowActionSource =
 	| 'n8n-mcp'
 	| 'n8n-ai'
 	| 'import'
-	| 'review-approval';
+	| 'review-approval'
+	| 'cli';
 
 export type { UserLike };
 
@@ -323,7 +324,10 @@ export type RelayEventMap = {
 	};
 
 	'user-deleted': {
-		user: UserLike;
+		/** The user who deleted the user. `null` when no user asked for the deletion. */
+		user: UserLike | null;
+		/** The system that deleted the user without a user request. */
+		source?: 'scim';
 		publicApi: boolean;
 		targetUserOldStatus: 'active' | 'invited';
 		migrationStrategy?: 'transfer_data' | 'delete_data';
@@ -1442,7 +1446,7 @@ export type RelayEventMap = {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
-		outcome: 'applied' | 'blocked' | 'source_changed' | 'failed';
+		outcome: 'applied' | 'blocked' | 'source_changed' | 'preview_changed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 		/** Set when the outcome is 'applied'. */

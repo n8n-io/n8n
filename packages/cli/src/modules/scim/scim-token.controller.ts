@@ -1,17 +1,38 @@
-import { ScimConfigPatchDto } from '@n8n/api-types';
+import {
+	ScimConfigPatchDto,
+	ScimDeprovisioningPolicyDto,
+	ScimTransferTargetsQueryDto,
+	type ScimConfigResponse,
+	type ScimDeprovisioningPolicy,
+	type ScimTransferTargetsResponse,
+} from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, GlobalScope, Patch, Post, RestController } from '@n8n/decorators';
-import type { Response } from 'express';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Middleware,
+	Patch,
+	Post,
+	Put,
+	Query,
+	RestController,
+} from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
 
+import { ScimDeprovisioningService } from './scim-deprovisioning.service';
+import { scimOptInGate } from './scim-opt-in';
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
 import { ScimSsoRequiredError, ScimTokenConflictError } from './scim.errors';
 
 /**
- * REST Controller for SCIM configuration and token management.
- * These endpoints require authentication and the `scim:manage` scope.
+ * REST Controller for SCIM configuration, token management and the transfer
+ * target picker. These endpoints require authentication and the
+ * `scim:manage` scope.
  *
  * The instance has one SCIM token. Every user with `scim:manage` sees,
  * rotates and revokes that token, whoever created it.
@@ -28,19 +49,28 @@ export class ScimTokenController {
 		private readonly scimSettingsService: ScimSettingsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly scimSsoService: ScimSsoService,
+		private readonly scimDeprovisioningService: ScimDeprovisioningService,
 	) {}
+
+	/** Every route answers 404 while the SCIM opt-in is off. */
+	@Middleware()
+	requireOptIn(req: Request, res: Response, next: NextFunction) {
+		scimOptInGate(req, res, next);
+	}
 
 	/**
 	 * GET /rest/scim/config
-	 * Current provisioning state for the settings screen.
+	 * Current provisioning state and the deprovisioning policy for the
+	 * settings screen.
 	 */
 	@Get('/config')
 	@GlobalScope('scim:manage')
 	async getConfig(_req: AuthenticatedRequest, res: Response) {
 		try {
-			const [enabled, tokenInfo] = await Promise.all([
+			const [enabled, tokenInfo, policy] = await Promise.all([
 				this.scimSettingsService.isEnabled(),
 				this.scimTokenService.getTokenInfo(),
+				this.scimDeprovisioningService.getPolicy(),
 			]);
 
 			return res.status(200).json({
@@ -49,7 +79,8 @@ export class ScimTokenController {
 					hasToken: tokenInfo.hasToken,
 					tokenHint: tokenInfo.lastFour,
 					baseUrl: this.scimTokenService.getScimBaseUrl(),
-				},
+					...policy,
+				} satisfies ScimConfigResponse,
 			});
 		} catch (error) {
 			this.logger.error('Error getting SCIM config', { error });
@@ -101,6 +132,27 @@ export class ScimTokenController {
 	}
 
 	/**
+	 * PUT /rest/scim/deprovisioning
+	 * Replace the deprovisioning policy. A transfer project must be a team
+	 * project or the personal project of an active user. An admin can set the
+	 * policy while SCIM is off.
+	 */
+	@Put('/deprovisioning')
+	@GlobalScope('scim:manage')
+	async setDeprovisioningPolicy(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: ScimDeprovisioningPolicyDto,
+	): Promise<ScimDeprovisioningPolicy> {
+		const { onDelete, dataAction, transferProjectId } = body;
+		return await this.scimDeprovisioningService.savePolicy({
+			onDelete,
+			dataAction,
+			transferProjectId,
+		});
+	}
+
+	/**
 	 * POST /rest/scim/token
 	 * Generate the instance SCIM token, or rotate it. This is the only place
 	 * the full token value is ever returned. Returns 409 when another request
@@ -141,6 +193,23 @@ export class ScimTokenController {
 			this.logger.error('Error deleting SCIM token', { error });
 			return res.status(500).json({ message: 'Internal server error' });
 		}
+	}
+
+	/**
+	 * GET /rest/scim/transfer-targets
+	 * People and team projects that can get the work of a user that SCIM
+	 * deletes. Every item is a valid transfer target, so a deactivated user is
+	 * never in the results. The endpoint works while SCIM is off, because an
+	 * admin can set the policy before SCIM is on.
+	 */
+	@Get('/transfer-targets')
+	@GlobalScope('scim:manage')
+	async getTransferTargets(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ScimTransferTargetsQueryDto,
+	): Promise<ScimTransferTargetsResponse> {
+		return await this.scimDeprovisioningService.findTransferTargets(query);
 	}
 
 	/** SCIM users can sign in only through the identity provider. */

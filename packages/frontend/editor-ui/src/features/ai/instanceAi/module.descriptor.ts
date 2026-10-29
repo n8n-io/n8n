@@ -83,7 +83,7 @@ async function readSignupSurvey(
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
-const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
+const InstanceAiThreadRouteView = async () => await import('./InstanceAiThreadRouteView.vue');
 const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
@@ -221,7 +221,7 @@ export const InstanceAiModule = defineFrontendModule({
 				{
 					name: INSTANCE_AI_THREAD_VIEW,
 					path: ':threadId',
-					component: InstanceAiThreadView,
+					component: InstanceAiThreadRouteView,
 					props: true,
 				},
 			],

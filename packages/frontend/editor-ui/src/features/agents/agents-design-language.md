@@ -47,6 +47,14 @@ column.
 
 Reduce the editor column side padding when the column is narrow.
 
+## Builder Assistant default
+
+Open the Assistant on each visit to an unpublished Agent when the user can edit
+the Agent and Assistant setup is complete. Let users close it during the visit.
+Keep the panel state when the Agent is saved or published. For published or
+read-only Agents, use the saved panel preference. Apply these defaults in the
+control layout. Keep the experiment layouts unchanged.
+
 ## Builder side panel widths
 
 Start the Assistant and Preview panels at 30% of the builder container width.
@@ -56,6 +64,52 @@ handle to reset its panel to the current default.
 Reserve 480 pixels for the editor. When both panels are open, share the
 remaining width in proportion to each panel's requested extra width above
 320 pixels. Do not save automatic layout adjustments as user resize choices.
+
+Disable Test entry points while the Assistant works. Show the same working
+warning beside the Agent title, in the Triggers section, and in the task modal. Keep the action to close
+an open preview available. Restore Test availability when the Assistant finishes.
+
+## Chat-first builder
+
+The Build/Test experiment variants use one chat area in the standalone Agents UI.
+Keep the full Assistant and its Agent artifacts unchanged. Users outside the experiments keep the
+current layout. Keep each chat mounted when the mode changes. Preserve each
+draft, session, and active response.
+Put the grouped Build/Test selector first in the composer toolbar. Use wrench
+and flask icons. Show a purple active state in both themes. Stop the discovery
+pulse after the first message. Disable the pulse for reduced motion.
+
+In the wide variants, start chat at 65% and configuration at 35% of the
+workspace beside the sidebar. Apply this ratio only to the standalone Agents UI.
+Save manual resize choices as a ratio. Keep this preference separate from the
+saved Assistant dock width and the previous fixed configuration width. Keep the
+ratio when the window or sidebar changes size. Double-click the standalone
+divider to reset to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+When the ratio would break a minimum, the minimum wins.
+Do not cap configuration at a fixed maximum width. Below 680 pixels of available
+workspace, fill the viewport with one panel at a time, above the sidebar. Measure
+the original workspace to keep this layout stable when the sidebar is open.
+Close either chat to show the full-width configuration. Use Chat to reopen the
+selected mode. Keep both panels mounted. Keep the mode selector and composer
+actions inside the input at narrow widths. Show the same preview disclaimer
+below both composers, including empty chats. Use the same footer spacing.
+
+Keep both composers at the same fixed height. Put the placeholder and prompt text
+at the top left. Show the attachment row only when it has content. Put attached
+agents and files above the text. Scroll long prompts and attachment lists inside
+the composer. Use a plus icon for the Test file picker, in the same position as
+the Build menu.
+
+Keep chat width and test placement independent. The control layout keeps its
+existing docks. In toggle variants, always show the selector in the standalone
+builder. Test readiness does not control visibility. Disable Test when the Agent cannot run. Use the
+same validation tooltip as the Test button beside the Agent title to explain the setup issues.
+Show one readiness heading. Put missing instructions, model, and credential in a
+bulleted list under `Add:`. Put other blockers in a bulleted list under `Fix:`.
+Keep the selector visible during later Assistant work, with both modes disabled.
+Do not show a link from the standalone build chat to the full Assistant.
+Test links and task previews select Test. An accepted Fix with Assistant request selects Build.
+Keep Test selected if the Assistant refuses the request to preserve a draft.
 
 ## Session controls
 

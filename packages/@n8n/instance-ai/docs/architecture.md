@@ -132,7 +132,7 @@ graph TD
 ```
 
 **Orchestrator** handles directly:
-- Read-only queries (`workflow_builder_workflows`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
+- Read-only queries (`list_workflows`, `get_workflow`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
 - Execution triggers (`workflow_builder_executions(action="run")`)
 - Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
 - Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
@@ -156,7 +156,7 @@ The agent package — framework-agnostic business logic.
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Storage** (`storage/`) — iteration logs, task storage, workflow loop storage
+- **Storage** (`storage/`) — task storage, workflow loop storage
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
 - **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
@@ -185,7 +185,7 @@ The n8n integration layer.
 - **Browser Use** — `BrowserLocalMcpServer` (extension session via CDP relay).
 - **Persistence** — 12 TypeORM entity/repository pairs for threads, messages,
   resources, observations, observation cursors and locks, checkpoints,
-  event-log entries, pending confirmations, iteration logs, thread
+  event-log entries, pending confirmations, thread tabs, thread
   grants, and MCP registry connections
 
 ### `packages/@n8n/api-types` (Shared Types)
@@ -320,7 +320,7 @@ workflow builds:
 
 - `ready_to_verify` schedules an internal workflow-verification follow-up.
 - `verified` reuses structured `workflow_builder_verify_built_workflow` evidence.
-- `needs_setup` routes to `workflow_builder_workflows(action="setup")`.
+- `needs_setup` routes to `setup_workflow`.
 - `not_verifiable` is a warning/manual-test completion state, not "verified".
 - `blocked` carries the build or verification blocker.
 
@@ -333,7 +333,7 @@ a terminal state to prevent infinite loops.
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
 - **Core tools** (always-loaded when registered, as selected by
-  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, `workflow_builder_workflows`,
+  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, the workflow tools,
   `workflow_builder_executions`, the credential tools, `data_tables`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
   `workflow_builder_search_models`, `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
   `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
@@ -363,7 +363,7 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
-   shadowing of tools like `workflow_builder_workflows` or `workflow_builder_executions`)
+   shadowing of tools like `list_workflows` or `workflow_builder_executions`)
 3. **Separated** from domain tools in the orchestrator's tool set
 4. **Cached** by config hash inside the manager — the underlying `MCPClient`
    instances are tracked so `mcpManager.disconnect()` (called during service
