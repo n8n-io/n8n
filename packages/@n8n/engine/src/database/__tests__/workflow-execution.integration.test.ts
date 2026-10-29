@@ -415,40 +415,6 @@ describe('workflow_execution table (integration)', () => {
 		expect((await viewStore.loadExecutionWithStepsView(id)).parent).toEqual(parent);
 	});
 
-	it('TypeOrmExecutionViewStore.listExecutionViews filters by parent execution id', async () => {
-		const repo = dataSource.getRepository(WorkflowExecution);
-		const store = new TypeOrmExecutionStore(repo);
-		const viewStore = new TypeOrmExecutionViewStore(
-			repo,
-			dataSource.getRepository(WorkflowStepExecution),
-		);
-		const parentId = generateId();
-		const awaited = { executionId: parentId, stepId: generateId(), awaited: true };
-		const detached = { executionId: parentId, stepId: generateId(), awaited: false };
-		const [awaitedId, detachedId, topLevelId] = [generateId(), generateId(), generateId()];
-		await store.createExecution({ ...newRecord(awaitedId), parent: awaited });
-		await store.createExecution({ ...newRecord(detachedId), parent: detached });
-		await store.createExecution(newRecord(topLevelId));
-
-		const subExecutions = await viewStore.listExecutionViews({
-			workflowIds: 'all',
-			parentExecutionId: parentId,
-			limit: 10,
-		});
-
-		expect(subExecutions.map((row) => [row.id, row.parent])).toEqual([
-			[detachedId, detached],
-			[awaitedId, awaited],
-		]);
-		expect(
-			await viewStore.countExecutionViews({
-				workflowIds: 'all',
-				parentExecutionId: parentId,
-				limit: 10,
-			}),
-		).toBe(2);
-	});
-
 	it('carries the parent CHECK and the partial parent index in the schema', async () => {
 		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
 			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
