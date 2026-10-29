@@ -1,0 +1,33 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_e96b2a058a8d23::t_aa7b35e2acf5c8 3,744
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e96b2a058a8d23::t_aa7b35e2acf5c8 49
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_e96b2a058a8d23::t_aa7b35e2acf5c8 2,116
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e96b2a058a8d23::t_c885da75f3b7b1 1450-1454,1457-1461,1464-1468,1487-1491,1494-1498,1501-1505,1508-1510,1512
+  s_e96b2a058a8d23::t_d34b14962b2873 1449,1455-1456,1462-1463,1469,1475,1483-1486,1492-1493,1499-1500,1506-1507,1511,1517,1529
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-session.test.ts
+  s_e96b2a058a8d23::t_aa7b35e2acf5c8 84-87
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_e96b2a058a8d23::t_c885da75f3b7b1 108-122
+  s_e96b2a058a8d23::t_aa7b35e2acf5c8 123
+packages/@n8n/agents/src/sdk/abort.ts
+  s_e96b2a058a8d23::t_aa7b35e2acf5c8 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aabebb1ab5d4c0016ea1b81a65bbeec544ae2612",
+  "prompts": {},
+  "sessions": {
+    "s_e96b2a058a8d23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17996-09b4-7210-950e-5df432b2f229",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

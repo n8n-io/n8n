@@ -1,0 +1,9 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_20bfaa12d3cf1d::t_ec0ed13838fe98 647-709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06cf1e75f4b13750a6cdb9d81a9bf2d67f66b5b0",
+  "prompts": {}
+}

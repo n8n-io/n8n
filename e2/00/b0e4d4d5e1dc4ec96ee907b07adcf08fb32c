@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactThread.test.ts
+  s_d740321ee1c7f2::t_15394c9363403b 1-116
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactPreviewMemory.ts
+  s_d740321ee1c7f2::t_5b59b33a1feb9b 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e200b0e4d4d5e1dc4ec96ee907b07adcf08fb32c",
+  "prompts": {},
+  "sessions": {
+    "s_d740321ee1c7f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd0bc4a5-d678-410d-b6c9-7a9cc5d6c9ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

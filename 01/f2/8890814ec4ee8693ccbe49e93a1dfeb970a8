@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_6f3bf766fd9fe0::t_8c4b70ded01277 42-43,53-55
+  s_6f3bf766fd9fe0::t_d11ae9a517dfb6 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_6f3bf766fd9fe0::t_dd91e3309edd67 73-77
+  s_6f3bf766fd9fe0::t_e8c5c78bbf922c 52
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadRouteView.vue
+  s_6f3bf766fd9fe0::t_d4b2d8d50162e8 2-3,27,38-52,56,67-83,89,92-93
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.test.ts
+  s_6f3bf766fd9fe0::t_f214bf0298117d 57,64-73
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_6f3bf766fd9fe0::t_ec6e49f5caea47 37,41-43
+  s_6f3bf766fd9fe0::t_6d311a877f9dd9 73
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadRouteView.test.ts
+  s_6f3bf766fd9fe0::t_7a6b110ff93fbc 150,158
+  ai_agent 140-142
+  s_6f3bf766fd9fe0::t_734f5eb276ffa9 124-126,133-139,143-149,151-157,159
+  s_6f3bf766fd9fe0::t_0181d4daab8c3c 2
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6f3bf766fd9fe0::t_2b642a1398321b 7624
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_6f3bf766fd9fe0::t_65eab2a7db3f3d 1610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "01f28890814ec4ee8693ccbe49e93a1dfeb970a8",
+  "prompts": {},
+  "sessions": {
+    "s_6f3bf766fd9fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54b552f3-ed95-47f8-bae0-29b5254ca51c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_2a8ce83efa44b6::t_7f06d607bca1cf 4
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 145,147
+packages/@n8n/nodes-langchain/package.json
+  s_2a8ce83efa44b6::t_38ae0ccf9e824a 278
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_2a8ce83efa44b6::t_b0679d1d4755ce 11-12,21-25,502,622-642,646-649,655-664,672-675
+  s_2a8ce83efa44b6::t_e2a527c93a61e4 508
+  s_2a8ce83efa44b6::t_a8ac1f3b924462 526
+  s_2a8ce83efa44b6::t_d205a9e6b04e4a 643-645,650-654
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_2a8ce83efa44b6::t_e1cfd05ad77e37 1,22,270-341
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 3,31-32,39-44,51,53
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_2a8ce83efa44b6::t_48b60280e7dcd2 20-27
+pnpm-workspace.yaml
+  s_2a8ce83efa44b6::t_fffb6babc508f7 302
+packages/cli/src/observability/otel-sdk.ts
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 2,4,7,9,43-44,48,81-84,97-104,108-113
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 105-107
+packages/cli/package.json
+  s_2a8ce83efa44b6::t_bfc51b408702f1 153
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_2a8ce83efa44b6::t_67453a01ccdee4 404-409
+  s_2a8ce83efa44b6::t_cf5ea1b4bd0678 241-242,245-246,248
+  s_2a8ce83efa44b6::t_cb3cab59def5e6 410-411
+  s_2a8ce83efa44b6::t_31e68a87348e7e 234-238
+  s_2a8ce83efa44b6::t_e93cdc342783fc 1-3,42-44,233,239-240,243-244,383-392,394-400,402-403,413,415-419,427,429-434,436-442,444-448
+packages/cli/src/observability/agent-365-provider.ts
+  s_2a8ce83efa44b6::t_aa8602021f4efc 1-51
+packages/cli/src/observability/tracer-gate.ts
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 7,13-20,33-36,41
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d54ecee1d4bb5f7e6eab1ed73106c30db12462e",
+  "prompts": {},
+  "sessions": {
+    "s_2a8ce83efa44b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "439b3f77-5dbe-4a94-945b-d462bc256d1c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

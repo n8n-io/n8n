@@ -1,0 +1,40 @@
+packages/modules/apps/frontend/src/views/AppDetailView.test.ts
+  s_b6d332c56aa1c5::t_985ea86268119d 1-68
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_b6d332c56aa1c5::t_a987f87227e999 9,26-33,59
+packages/modules/apps/frontend/src/views/AppsListView.vue
+  s_b6d332c56aa1c5::t_1e206a64c43ef4 12,15,178
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_b6d332c56aa1c5::t_985ea86268119d 60,63,124-140
+packages/modules/apps/frontend/src/views/AppDetailView.vue
+  s_b6d332c56aa1c5::t_a987f87227e999 13-20,29-34
+packages/modules/apps/frontend/src/views/AppsListView.test.ts
+  s_b6d332c56aa1c5::t_1e206a64c43ef4 68,70
+packages/modules/apps/frontend/src/components/AppCard.vue
+  s_b6d332c56aa1c5::t_881f3fc8860d15 7,27,59,63-68
+  s_b6d332c56aa1c5::t_d0ed77614adfe4 9,14,20-23,28-45,47-58
+packages/modules/apps/frontend/src/components/AppCard.test.ts
+  s_b6d332c56aa1c5::t_aaa54e73624fbe 19-20,24-27,29,58-59,61,64,70
+  s_b6d332c56aa1c5::t_ec08ad48961143 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd6cc793aa14033b58a2ab51f1481be5a832d962",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

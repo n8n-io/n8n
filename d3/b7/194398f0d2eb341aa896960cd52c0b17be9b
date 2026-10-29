@@ -1,0 +1,62 @@
+packages/cli/src/observability/tracer-gate.ts
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 7,13-20,33-36,41
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 37-40
+packages/cli/package.json
+  s_2a8ce83efa44b6::t_bfc51b408702f1 153
+packages/cli/src/observability/otel-sdk.ts
+  s_2a8ce83efa44b6::t_a86b74debbc102 128-130
+  s_2a8ce83efa44b6::t_eb98b56a886f43 4,6-22,50-57,94,96-97,108,124-127,131,134,140,190-197
+  s_2a8ce83efa44b6::t_b0c276b34d6dcc 139,141-142
+  s_2a8ce83efa44b6::t_f0fe5ac48e827f 2,5,24,26,68-69,73,109-111,132-133,135-138,143-148
+  s_2a8ce83efa44b6::t_00aa6adad7d6ed 93,104-105,172-176
+pnpm-workspace.yaml
+  s_2a8ce83efa44b6::t_fffb6babc508f7 302
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_2a8ce83efa44b6::t_7f06d607bca1cf 4
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 145,147
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_2a8ce83efa44b6::t_1603937e8e908d 135,139-140
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_2a8ce83efa44b6::t_649d7d977b30e4 658
+  s_2a8ce83efa44b6::t_a8ac1f3b924462 526
+  s_2a8ce83efa44b6::t_b0679d1d4755ce 11-12,21-25,502,622-642,657,659-662,670-673
+  s_2a8ce83efa44b6::t_d205a9e6b04e4a 643-645
+  s_2a8ce83efa44b6::t_e2a527c93a61e4 508
+  s_2a8ce83efa44b6::t_f005fec00bee98 646-656
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_2a8ce83efa44b6::t_b95a2eeef71dce 3,34-35,42-47,54,56
+  s_2a8ce83efa44b6::t_e1cfd05ad77e37 22,273,277,279-280,287-294,296-301,303-320,323-324,327,330-332,346,348,350,361,377-390
+  s_2a8ce83efa44b6::t_00aa6adad7d6ed 371
+  s_2a8ce83efa44b6::t_67e0d70777c032 1,23-25,274-276,278,281-286,295,302,321-322,325-326,328-329,333-345,347,349,351-360,362-370,372-376
+packages/@n8n/nodes-langchain/package.json
+  s_2a8ce83efa44b6::t_38ae0ccf9e824a 278
+packages/cli/src/observability/agent-365-provider.ts
+  s_2a8ce83efa44b6::t_bfb4ac00eb5a82 1-3,12,15,19-21,28,31,35,39,42-52,54
+  s_2a8ce83efa44b6::t_aa8602021f4efc 4-11,13-14,16-18,22-27,29-30,32-34,36-38,40-41,53,55-56
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_2a8ce83efa44b6::t_cf5ea1b4bd0678 242-243,247-248,250
+  s_2a8ce83efa44b6::t_31e68a87348e7e 235-239
+  s_2a8ce83efa44b6::t_67453a01ccdee4 406-411
+  s_2a8ce83efa44b6::t_cb3cab59def5e6 412-413
+  s_2a8ce83efa44b6::t_e93cdc342783fc 1-3,42-44,234,240-241,244-245,385-394,396-402,404-405,415,417-421,429,431-433,436-442,444-446,450
+  s_2a8ce83efa44b6::t_1569bb6a2f7456 45,246,434-435,447-448
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_2a8ce83efa44b6::t_48b60280e7dcd2 20-23,25-27
+  s_2a8ce83efa44b6::t_4a2573402e7e8f 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3b7194398f0d2eb341aa896960cd52c0b17be9b",
+  "prompts": {},
+  "sessions": {
+    "s_2a8ce83efa44b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "439b3f77-5dbe-4a94-945b-d462bc256d1c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

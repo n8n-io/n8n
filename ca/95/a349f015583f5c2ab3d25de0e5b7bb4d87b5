@@ -1,0 +1,21 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_6db733ee4282ae::t_5d46f9f03ec8cb 556-558,568-570
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_6db733ee4282ae::t_5d46f9f03ec8cb 115-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca95a349f015583f5c2ab3d25de0e5b7bb4d87b5",
+  "prompts": {},
+  "sessions": {
+    "s_6db733ee4282ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e88622bd8ffeO5TuJByFsdmdRq",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

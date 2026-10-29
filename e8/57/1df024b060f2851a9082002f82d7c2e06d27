@@ -1,0 +1,94 @@
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_be7f812aa784b6::t_67bf5f43fbc0eb 104-106
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_6766773bb82a48::t_6f92fa67cd41ed 6-9,97,99-102,979-980,982-993
+  s_be7f812aa784b6::t_89dbb7a485a16b 72
+  s_bccf3616ba1e3f::t_ed8eb0ec36611e 95
+  s_5f72bed614ce17::t_9d9a315cb6441a 98,994
+  s_6766773bb82a48::t_c08acd31e08dba 103-106
+  s_be7f812aa784b6::t_a9f4dd57a8df4d 1092,1111-1113,1133-1138
+packages/cli/src/modules/agents/integrations/integration-error-codes.ts
+  s_be7f812aa784b6::t_62af5f1c670957 17-18
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_be7f812aa784b6::t_67bf5f43fbc0eb 140-142
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_be7f812aa784b6::t_a9f4dd57a8df4d 151,153,167,188-189,204,279-281
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_be7f812aa784b6::t_5efc210ef78e82 67
+  s_be7f812aa784b6::t_4d8a97ec5bb88b 1745-1763,1765-1773,1776-1779,1781,1783-1787,1789-1796,1802-1824,1830-1849,1851-1853,1855-1869,1871-1906,1911-1937
+  s_be7f812aa784b6::t_5c0532d0b1e46f 1797-1800
+  s_be7f812aa784b6::t_ef312c4fb2a667 1825-1826
+  s_be7f812aa784b6::t_eefd110d7244ac 1827
+  s_be7f812aa784b6::t_3da3fd6496c790 1907-1910
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_be7f812aa784b6::t_a9f4dd57a8df4d 168,170,219,230
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_be7f812aa784b6::t_62af5f1c670957 195-196
+packages/cli/src/modules/agents/integrations/integration-tool-descriptions.ts
+  s_be7f812aa784b6::t_a9f4dd57a8df4d 48
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_6766773bb82a48::t_065b8a399dcead 1,167-197
+  s_a9406db86844b8::t_7cc0870c35fd09 234-238,241,244-254
+  s_be7f812aa784b6::t_62af5f1c670957 268-275
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_6ecf2337b07e97 8
+  s_be7f812aa784b6::t_598906b4ef4098 17,39,43,48,50,99-100,135,138,160,274,276,300,302,396,425,429,431,434-446,456-459,466,485,494
+  s_be7f812aa784b6::t_3da3fd6496c790 397
+  s_be7f812aa784b6::t_81de320d07ad15 423-424
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_be7f812aa784b6::t_33ffc5781765d3 120-126
+  s_be7f812aa784b6::t_7823b80fd9c67d 320-324
+  s_be7f812aa784b6::t_00433bd20b62a3 325
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_be7f812aa784b6::t_6c6d4455eede23 52-57,159,170,181
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_be7f812aa784b6::t_67bf5f43fbc0eb 115-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8571df024b060f2851a9082002f82d7c2e06d27",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_6766773bb82a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "823bd4ec-cb35-4791-a5bb-53cae1cb7ca3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_a9406db86844b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2315531e-83c9-4c88-9ccc-a293d57e6ef3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_bccf3616ba1e3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b57198ee-528d-418e-810c-e4b7c30fb793",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

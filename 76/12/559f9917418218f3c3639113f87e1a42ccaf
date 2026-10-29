@@ -1,0 +1,127 @@
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_565818c1363886::t_b63d7535aa77f6 16-21
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_e33c697cb16d0a::t_cb51c85889149c 637
+  s_c32ac2cf3a1c3f::t_e08ca0b6b414a1 387-388,390-395,400,407,410-442,499,514-522,527,529,539-544,591,607-636
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_e33c697cb16d0a::t_30deed9ea4cdc0 21-27
+  s_565818c1363886::t_56b43588702b6b 176,178,182
+  s_e33c697cb16d0a::t_6f71f5d75a4973 173
+  s_565818c1363886::t_b474321e3c2c2f 20
+  s_565818c1363886::t_71b66a6e38d5e2 186-190
+packages/@n8n/scheduler/src/core/index.ts
+  s_565818c1363886::t_3c1d67139db886 9
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_565818c1363886::t_177b3202bfef87 7
+  s_565818c1363886::t_0b8f10d5e08b88 66
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_565818c1363886::t_b4c1b7dae61cb1 62
+packages/cli/test/integration/database/repositories/scheduled-job.repository.test.ts
+  s_e33c697cb16d0a::t_dd741dfde68584 55,60-66,69-70
+  s_565818c1363886::t_c9a619140593d7 4,56-59,67-68
+  s_e33c697cb16d0a::t_413970ae947b68 1-3,5-54,71,84
+  s_565818c1363886::t_e21b8c73511aaf 72-83
+packages/@n8n/scheduler/src/core/factory.ts
+  s_565818c1363886::t_21d27394bea71d 21
+  s_565818c1363886::t_4aaf5456e12191 84-86
+  s_565818c1363886::t_3ee0603aca9a91 152
+  s_565818c1363886::t_c5b1a0e2f13547 290
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_565818c1363886::t_e1b1c91d33db6c 122,124-130,137,139-141,149
+  s_122c352d9bbc34::t_0d0fdad16eaec7 158-172
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_565818c1363886::t_4d66a0392922d5 70
+  s_c32ac2cf3a1c3f::t_978ba794ace308 33,72,99-105,208,241-243,250,270-271
+  s_565818c1363886::t_ebe88835dc5eda 34-35
+  s_e33c697cb16d0a::t_040fb1c6cd74f9 272
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_565818c1363886::t_f693879a7ff82a 345
+  s_565818c1363886::t_40539f0680b499 11-16
+  s_565818c1363886::t_2b12ff84404d3d 154
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_565818c1363886::t_af56120d405c32 816
+  s_565818c1363886::t_8dd41f31671361 43
+  s_565818c1363886::t_f038209d50a31a 10
+  s_565818c1363886::t_0d7e975493af90 74,81
+  s_565818c1363886::t_d4cad907ed83c5 269-301
+packages/cli/src/metrics/prometheus/database-metric-query.service.ts
+  s_c32ac2cf3a1c3f::t_5fe37c48c3c85c 28,92,98,103-106
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_565818c1363886::t_d9a42c2381a78f 13
+  s_565818c1363886::t_c4686e5b526ac6 59
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_565818c1363886::t_5daa992bc9e080 119
+  s_565818c1363886::t_1e419d36ef8916 120-129
+packages/@n8n/scheduler/src/core/executor/index.ts
+  s_565818c1363886::t_ad4e29f3d26b8e 5-10
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_565818c1363886::t_47d342e51a0c3e 106
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_565818c1363886::t_42e2d6b4fadca9 666,719
+packages/cli/test/integration/scheduling/agent-task-multi-main.test.ts
+  s_565818c1363886::t_89d7aa07a58cff 58
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_565818c1363886::t_ab1e9a228338f9 91
+packages/cli/test/integration/scheduling/license-renewal-multi-main.test.ts
+  s_565818c1363886::t_f76f8e2ed462a6 194
+packages/cli/test/integration/scheduling/scheduler-cascade-delete.test.ts
+  s_565818c1363886::t_b6ae5409ee4eb5 45
+packages/cli/test/integration/scheduling/scheduler-concurrent-loops.test.ts
+  s_565818c1363886::t_c7695a0c41e4a5 44
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_565818c1363886::t_33282e70a6b7fd 42
+packages/cli/test/integration/scheduling/scheduler-lease-renewal.test.ts
+  s_565818c1363886::t_bdb6f5cc64ee7e 39
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_565818c1363886::t_b7dfb4b371750d 76
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_565818c1363886::t_540c46878b55a3 42
+packages/cli/test/integration/scheduling/scheduler-retention.test.ts
+  s_565818c1363886::t_5450085fa438a7 43
+packages/cli/test/integration/scheduling/scheduler-task-timeout.test.ts
+  s_565818c1363886::t_510e4a79a81fe5 42
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_565818c1363886::t_f4374182c8b2ad 63
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_565818c1363886::t_0d40c3a9fa1068 39,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7612559f9917418218f3c3639113f87e1a42ccaf",
+  "prompts": {},
+  "sessions": {
+    "s_122c352d9bbc34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85dd6495-03bc-44d8-8c1c-c118edc05fd0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    },
+    "s_c32ac2cf3a1c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fa22ee8-4dd2-47ed-a525-9430c1f08152",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_e33c697cb16d0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "374d5610-1ad0-45c7-94a8-3ca730f4d487",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.vue
+  s_3d5c7c631ac5ac::t_2340ba0bb3076f 274
+packages/frontend/editor-ui/src/features/core/folders/components/ProjectBreadcrumb.vue
+  s_3d5c7c631ac5ac::t_e9de9b67d0303f 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25d1598320a84f9505c65eafc9cf95ad361b8fd3",
+  "prompts": {},
+  "sessions": {
+    "s_3d5c7c631ac5ac": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a178f7-b067-70b1-bf4c-8f9d73510e4f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

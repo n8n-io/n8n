@@ -1,0 +1,44 @@
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_d740321ee1c7f2::t_7740807cc1837a 1-219,222-227,229-304,365-374,431-445,463-477,488-502
+  s_87e2d8a4f6ce7c::t_3780045018eb05 375-386
+  s_ec79774a9352ba::t_9435c6027db3f8 387-396
+  s_ec79774a9352ba::t_5d8f8061d5b113 397-404,409,413-417,419-421
+  s_ec79774a9352ba::t_70f8f6409fd46f 405-408,410-412,418
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_d740321ee1c7f2::t_c697fe6231dd23 2-41,43-198,200-206,208-251,254-324,327-357,379-400,446
+  s_ec79774a9352ba::t_aa0fc09b9dfbcc 42
+  s_87e2d8a4f6ce7c::t_3780045018eb05 325-326
+  s_ec79774a9352ba::t_5d8f8061d5b113 368-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "406649a65d1b35942d3f189f1fe2c4f82acbbc12",
+  "prompts": {},
+  "sessions": {
+    "s_87e2d8a4f6ce7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f19d83-aa1e-4d1f-bbd7-3c897bd1bd2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    },
+    "s_d740321ee1c7f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd0bc4a5-d678-410d-b6c9-7a9cc5d6c9ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    },
+    "s_ec79774a9352ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a52c7a06-2cc8-4e0f-94da-51d19a42e63c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

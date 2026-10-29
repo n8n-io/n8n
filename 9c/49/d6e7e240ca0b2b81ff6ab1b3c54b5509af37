@@ -1,0 +1,23 @@
+packages/cli/src/webhooks/__tests__/webhook-response-headers.test.ts
+  s_db0624fad67230::t_17aa17c242b8a9 246
+  s_db0624fad67230::t_6f82e06ba167da 243,255-258
+  s_db0624fad67230::t_cbc01b747e4e88 244-245,247-254,259-260
+packages/cli/src/webhooks/webhook-response-headers.ts
+  s_db0624fad67230::t_4ac6547ab391aa 45-46,48-49,51,54,59,71,75,83-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c49d6e7e240ca0b2b81ff6ab1b3c54b5509af37",
+  "prompts": {},
+  "sessions": {
+    "s_db0624fad67230": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26fea659-4d76-41a8-b353-83b020110783",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

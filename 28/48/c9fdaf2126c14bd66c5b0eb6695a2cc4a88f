@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/ArtifactCard.test.ts
+  s_1c91ddedd3de97::t_936e5cdb8301f3 1,3-9,13-35
+  s_1c91ddedd3de97::t_29b3a76fac36ee 2,10-12
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ArtifactCard.vue
+  s_1c91ddedd3de97::t_972d85adb6abe3 2-6,8,38-59,103-104,108,110
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/__snapshots__/ArtifactCard.test.ts.snap
+  s_1c91ddedd3de97::t_d957426b7f5534 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2848c9fdaf2126c14bd66c5b0eb6695a2cc4a88f",
+  "prompts": {},
+  "sessions": {
+    "s_1c91ddedd3de97": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1823c-6a42-7110-b50e-ea0669d1637a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

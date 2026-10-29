@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_82789c69de1855::t_9d12fba4eb8643 396-398
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_82789c69de1855::t_7c823868d058e3 246-253
+  s_82789c69de1855::t_93da3a016af843 226-245,254-268
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_82789c69de1855::t_93d68764863909 108-112,115,121-123,126-127,130-141,285-286,289
+  s_82789c69de1855::t_7c823868d058e3 113
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_82789c69de1855::t_9d12fba4eb8643 23
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_82789c69de1855::t_240059c59367fc 12-40,63
+  s_82789c69de1855::t_7c823868d058e3 41-62
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_82789c69de1855::t_9d12fba4eb8643 16-17,357-358,361
+  s_82789c69de1855::t_d3294f45b4c83a 15,72
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_82789c69de1855::t_d3294f45b4c83a 16-17,75-76,123,130,145-171,175-179
+  s_82789c69de1855::t_7c823868d058e3 172-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc26c9d4a746904d73b4560be80a46a3cf76bd2d",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

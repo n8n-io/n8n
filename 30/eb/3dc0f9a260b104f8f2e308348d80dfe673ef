@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/__tests__/message-split.test.ts
+  s_f5af8c164cba73::t_555a6562701784 1-9
+packages/cli/src/modules/agents/integrations/message-split.ts
+  s_f5af8c164cba73::t_c23eced8e8f0eb 14-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30eb3dc0f9a260b104f8f2e308348d80dfe673ef",
+  "prompts": {},
+  "sessions": {
+    "s_f5af8c164cba73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fde0483a-208b-4943-9c5a-fddb6937e64b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.test.ts
+  s_8f712dad216c7e::t_4748664106666a 9-18,23,39,45,62,99,101,107,118,133,136
+  s_8f712dad216c7e::t_fb532e78e0686b 19-22
+  s_8f712dad216c7e::t_41b26c84f5a4e2 24-26,36-38
+  s_8f712dad216c7e::t_f846bb36cf9618 40-44
+  s_8f712dad216c7e::t_ab2694339c5ef4 46-48,59-61
+  s_8f712dad216c7e::t_22c11898ccf9e6 63-65,96-98
+  s_8f712dad216c7e::t_d09f1bae9a5ee0 100
+  s_8f712dad216c7e::t_57928ffdef297b 102-106
+  s_8f712dad216c7e::t_205fd75ffe89d7 108-110,115-117
+  s_8f712dad216c7e::t_bfc7eecf8cae7e 119-121,130-132
+  s_8f712dad216c7e::t_b5a73544460a32 134-135
+  s_8f712dad216c7e::t_5e6c73c917ee38 137
+  s_8f712dad216c7e::t_6063d44eb0a697 2-3,5,27-35,49-58,66-95,111-114,122-129,179
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_8f712dad216c7e::t_dc5e66e73ed3f5 5,145-152,159-160
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentSection.test.ts
+  s_8f712dad216c7e::t_da005c5243814b 3,8,99,101-121,132
+  s_8f712dad216c7e::t_edbbb96fc83759 122-124,129-131
+  s_8f712dad216c7e::t_82bad14b433cfd 133-135
+  s_8f712dad216c7e::t_133e6e2e76b8e0 125-128,136,138-141
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.vue
+  s_8f712dad216c7e::t_f10c954651e850 14-23,34-39,47-51,53,55,57-62,65-72,78-79,81,89,92
+  s_8f712dad216c7e::t_5ec5f1c6f07f1c 13
+  s_8f712dad216c7e::t_f3dbd40c594eae 93-94
+  s_1fa72f8e433695::t_d5424da2d427b4 3,10,96,107
+packages/frontend/editor-ui/src/features/ai/shared/components/AiThinkingBlock.vue
+  s_8f712dad216c7e::t_300ce7621a3bdb 122
+  s_8f712dad216c7e::t_a05cdab6b5f31a 148-151
+  s_8f712dad216c7e::t_f36fe25e8696c3 2,119,121,123-124,128-131,133-137,139-147,152-154,156-157,173-175,179-180
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/context.ts
+  s_8f712dad216c7e::t_65c995828261a2 1,3
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepGroup/AiActivityStepGroup.stories.ts
+  s_8f712dad216c7e::t_a709100e798b62 2,10,174-212
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_8f712dad216c7e::t_84e3820ef99f71 2,138-162
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentSection.vue
+  s_8f712dad216c7e::t_4636029a8e5647 2,53,66-90
+packages/frontend/editor-ui/src/features/ai/shared/components/AiThinkingBlock.test.ts
+  s_8f712dad216c7e::t_7446aa3c613c42 43-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2375ea4f222af5095c649cb82c36ebf77a15b4be",
+  "prompts": {},
+  "sessions": {
+    "s_1fa72f8e433695": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17504-725e-70f0-9e17-29f9dd0e36ec",
+        "model": "unknown"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_8f712dad216c7e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a174ef-78bc-70f0-9e17-29efbd3e016b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

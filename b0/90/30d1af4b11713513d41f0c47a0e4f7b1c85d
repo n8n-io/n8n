@@ -1,0 +1,21 @@
+packages/workflow/src/expression.ts
+  s_e82f6408562ded::t_8dc5b8dfd745e9 611
+packages/workflow/test/native-evaluation-metrics.test.ts
+  s_e82f6408562ded::t_d27ac2031551b8 48-49,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b09030d1af4b11713513d41f0c47a0e4f7b1c85d",
+  "prompts": {},
+  "sessions": {
+    "s_e82f6408562ded": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f4c565c-68e0-43ae-85c2-253d5604f873",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

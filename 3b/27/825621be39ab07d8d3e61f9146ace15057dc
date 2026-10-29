@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_31031f9c98b91d::t_ba89f6c409c0ad 44,47,51,68,105-106
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_31031f9c98b91d::t_f1680424866d1c 88-89
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_31031f9c98b91d::t_f1680424866d1c 9
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.ts
+  s_31031f9c98b91d::t_59a7c312ea145d 7,14
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_31031f9c98b91d::t_36a6f82e18c7b2 167,216
+  s_31031f9c98b91d::t_c8916fe8d68c9a 68,80
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_31031f9c98b91d::t_4aa6c5a62d4e46 25
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_31031f9c98b91d::t_ed98f70d7e017e 414,463,469-470,474
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.test.ts
+  s_31031f9c98b91d::t_59a7c312ea145d 24,30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_31031f9c98b91d::t_d028bc8614956f 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b27825621be39ab07d8d3e61f9146ace15057dc",
+  "prompts": {},
+  "sessions": {
+    "s_31031f9c98b91d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86ab8cd1-84c0-4e93-9be8-28dc12569b19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_0124dfca07eaee::t_bd4b4f5a4e68f8 143
+  s_0124dfca07eaee::t_afd58e5f7161d5 486
+  s_0124dfca07eaee::t_2995ba461ac99e 514-531,535-537
+  s_0124dfca07eaee::t_24a038ba335af9 532-534
+  s_0124dfca07eaee::t_19f5b1d2b361c1 505
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_0124dfca07eaee::t_c3db28f5418675 270,273,276,624
+  s_0124dfca07eaee::t_48a588f49d3d67 1231-1341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a8c1cabb20e2839f458d976b7f81a11ff94dcc6",
+  "prompts": {},
+  "sessions": {
+    "s_0124dfca07eaee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4432e389-b611-4d01-a0b8-3b2bacf20633",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

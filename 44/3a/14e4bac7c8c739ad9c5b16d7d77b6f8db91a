@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_952e2dc69e6ab3::t_4a59e0e172252a 244-245
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_952e2dc69e6ab3::t_4a59e0e172252a 3,354-356,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "443a14e4bac7c8c739ad9c5b16d7d77b6f8db91a",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
