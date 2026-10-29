@@ -57,6 +57,7 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -340,6 +341,7 @@ provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+provide('openSkillPreview', preview.openSkillPreview);
 provide('pendingComposerContext', handoffContext);
 provide(
 	'dismissPendingComposerContext',
@@ -680,6 +682,16 @@ function handleFixWithAiFromOffer() {
 		{
 			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
 			pushRef: rootStore.pushRef,
+			// Names the failed run, so the agent reads that execution instead of
+			// guessing from the list. A run that n8n did not save has no list entry.
+			attachments: [
+				{
+					type: 'workflow',
+					id: offer.workflowId,
+					...(offer.workflowName ? { name: offer.workflowName } : {}),
+					executionId: offer.executionId,
+				},
+			],
 		},
 	);
 }
@@ -1094,6 +1106,12 @@ function handleNewThreadClick() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentTestDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiSkillPreview
+								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value"
+								:class="$style.previewSlot"
+								:skill-id="preview.activeSkillId.value"
+								:refresh-key="preview.skillRefreshKey.value"
 							/>
 						</div>
 					</TabsRoot>

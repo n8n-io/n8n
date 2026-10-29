@@ -3540,6 +3540,9 @@ export interface IRun {
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
 	jobId?: string;
+
+	/** Total minutes of time saved that nodes report. Only in scaling mode. */
+	nodeTimeSavedMinutes?: number;
 }
 
 export type SchemaType =

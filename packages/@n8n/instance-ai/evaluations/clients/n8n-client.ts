@@ -29,6 +29,7 @@ import {
 	type EvaluationConfigDto,
 	instanceAiEvalFailedExecutionEnvelopeSchema,
 	type InstanceAiEvalFailedExecutionEnvelope,
+	type ProjectIcon,
 } from '@n8n/api-types';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
@@ -1114,9 +1115,22 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a team project. Used to seed the extra projects a project-scope case
-	 * needs: a second project the eval user can see but whose writes are barred,
-	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 * Whether the license allows team projects (`quota:maxTeamProjects` is not 0).
+	 * GET /rest/settings
+	 */
+	async canCreateTeamProjects(): Promise<boolean> {
+		const result = (await this.fetch('/rest/settings')) as {
+			data?: { enterprise?: { projects?: { team?: { limit?: number } } } };
+		};
+		const limit = result.data?.enterprise?.projects?.team?.limit;
+		return limit !== undefined && limit !== 0;
+	}
+
+	/**
+	 * Create a team project. Used for a build's own project, and to seed the extra
+	 * projects a project-scope case needs: a second project the eval user can see
+	 * but whose writes are barred, so `isCurrentProject` has something to
+	 * distinguish the bound project from.
 	 *
 	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
 	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
@@ -1125,11 +1139,11 @@ export class N8nClient {
 	 * against a project list it never saw, and pass for the wrong reason.
 	 * POST /rest/projects
 	 */
-	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+	async createTeamProject(name: string, icon?: ProjectIcon): Promise<{ id: string; name: string }> {
 		try {
 			const result = (await this.fetch('/rest/projects', {
 				method: 'POST',
-				body: { name },
+				body: { name, ...(icon ? { icon } : {}) },
 			})) as { data?: { id?: string; name?: string } };
 			const id = result.data?.id;
 			if (!id) {
@@ -1139,7 +1153,7 @@ export class N8nClient {
 		} catch (error: unknown) {
 			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
 				throw new Error(
-					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+					`Could not create the team project "${name}" (${String(error.status)}): team projects are licensed ` +
 						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
 						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
 						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
@@ -1159,12 +1173,14 @@ export class N8nClient {
 	 * are filtered out — they're never seeded and must never be deleted.
 	 * GET /rest/projects
 	 */
-	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+	async listTeamProjects(): Promise<
+		Array<{ id: string; name: string; icon?: ProjectIcon | null }>
+	> {
 		const result = (await this.fetch('/rest/projects')) as {
-			data?: Array<{ id?: string; name?: string; type?: string }>;
+			data?: Array<{ id?: string; name?: string; type?: string; icon?: ProjectIcon | null }>;
 		};
-		return (result.data ?? []).flatMap(({ id, name, type }) =>
-			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		return (result.data ?? []).flatMap(({ id, name, type, icon }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name, icon }] : [],
 		);
 	}
 

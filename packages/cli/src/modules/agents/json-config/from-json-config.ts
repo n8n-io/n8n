@@ -27,7 +27,6 @@ import {
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AI_GATEWAY_MANAGED_TAG,
-	MANAGED_CREDENTIAL_TOKEN,
 	type AgentModelCredentialConfig,
 	type AgentSkill,
 	type AgentJsonConfig,
@@ -41,7 +40,7 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import {
-	resolveEmbeddingProviderOptionsFromCredential,
+	resolveEpisodicMemoryEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
 } from '@/modules/knowledge/vector-stores/embedding-credential';
@@ -287,13 +286,7 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(
-			agent,
-			config.memory,
-			options.memoryFactory,
-			options.credentialProvider,
-			options.resolveManagedEmbeddingProviderOptions,
-		);
+		await applyMemoryFromConfig(agent, config.memory, options);
 	}
 
 	// Config options
@@ -581,9 +574,12 @@ async function resolveToolRef(
 async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
-	memoryFactory: MemoryFactory,
-	credentialProvider: CredentialProvider,
-	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	{
+		memoryFactory,
+		credentialProvider,
+		resolveManagedEmbeddingProviderOptions,
+		modelFetch,
+	}: BuildFromJsonOptions,
 ) {
 	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
@@ -593,11 +589,10 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryJsonConfig(
-				memoryConfig.episodicMemory,
-				credentialProvider,
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider, {
 				resolveManagedEmbeddingProviderOptions,
-			),
+				modelFetch,
+			}),
 		);
 	}
 
@@ -651,20 +646,20 @@ async function applyMemoryFromConfig(
 async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
-	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	{
+		resolveManagedEmbeddingProviderOptions,
+		modelFetch,
+	}: Pick<BuildFromJsonOptions, 'resolveManagedEmbeddingProviderOptions' | 'modelFetch'>,
 ) {
-	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
-		'@n8n/agents'
-	);
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryConsolidateFn } =
+		await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const embeddingProviderOptions =
-		config.credential === MANAGED_CREDENTIAL_TOKEN
-			? await resolveManagedEmbeddingProviderOptions?.()
-			: await resolveEmbeddingProviderOptionsFromCredential(
-					config.credential,
-					embeddingModel,
-					credentialProvider,
-				);
+	const embeddingProviderOptions = await resolveEpisodicMemoryEmbeddingProviderOptions(
+		config.credential,
+		embeddingModel,
+		credentialProvider,
+		{ resolveManaged: resolveManagedEmbeddingProviderOptions, fetch: modelFetch },
+	);
 
 	if (!embeddingProviderOptions) {
 		throw new Error('Managed Episodic Memory embeddings require the AI assistant proxy.');
@@ -673,7 +668,7 @@ async function resolveEpisodicMemoryJsonConfig(
 	return {
 		enabled: true,
 		...(config.reflectorModel !== undefined && {
-			reflect: createEpisodicMemoryReflectFn(
+			consolidate: createEpisodicMemoryConsolidateFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
 			),
 		}),

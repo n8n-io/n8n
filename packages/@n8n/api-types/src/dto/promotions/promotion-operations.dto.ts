@@ -6,9 +6,8 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
 	promotionApplyCheckSchema,
-	promotionBindingPreflightResultSchema,
 	promotionBindingWarningSchema,
-} from './promotion-binding-preflight.dto';
+} from './promotion-apply-check.dto';
 import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
@@ -204,7 +203,7 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),
-		preflight: promotionBindingPreflightResultSchema,
+		check: promotionApplyCheckSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
 	/** This instance changed after the reviewed preview. Nothing was imported. */
@@ -218,13 +217,3 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
-
-/** The Apply check reads the package at the commit of the Apply preview. */
-export class ApplyCheckQueryDto extends Z.class(
-	{ commitSha: expectedSourceSchema.shape.commitSha },
-	{ strict: true },
-) {}
-
-const applyCheckResultSchema = applyPackageIdentitySchema.merge(promotionApplyCheckSchema);
-
-export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

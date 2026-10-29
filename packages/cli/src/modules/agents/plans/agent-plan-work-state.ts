@@ -5,9 +5,3 @@ export function planLeaves(document: AgentPlanDocument) {
 		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
 	);
 }
-
-export function unfinishedPlanIds(document: AgentPlanDocument): string[] {
-	return planLeaves(document)
-		.filter((item) => item.status === 'pending' || item.status === 'in_progress')
-		.map((item) => item.id);
-}

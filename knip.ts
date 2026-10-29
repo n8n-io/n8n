@@ -112,6 +112,7 @@ const config: KnipConfig = {
 			// The exported config names these plugins as strings.
 			ignoreDependencies: [
 				'@n8n/eslint-config',
+				'@n8n/eslint-plugin-design-system',
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
 				'eslint-plugin-unused-imports',

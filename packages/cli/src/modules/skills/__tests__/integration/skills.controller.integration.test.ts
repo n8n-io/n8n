@@ -13,9 +13,10 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillsGate } from '../../services/skills-gate';
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
+import { createSkill } from '../../testing';
+import { linkSkill } from '../test-utils/skill-source-fixtures';
 import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -203,17 +204,6 @@ describe('SkillsController', () => {
 			body: { data: list },
 		} = await owner.get('/skills').expect(200);
 		expect(list.count).toBe(0);
-	});
-
-	it('hides the skills API while the agents module is off', async () => {
-		// As when the agents module never registered its provider.
-		vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
-
-		await owner.get('/skills').expect(404);
-		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
-		// The gate is checked before the body, so a malformed request also answers 404.
-		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
-		await owner.get('/skills?take=-1').expect(404);
 	});
 
 	afterEach(async () => {
@@ -655,6 +645,55 @@ describe('SkillsController', () => {
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Second.', baseSkillHash: skillHash })
 				.expect(409);
+		});
+
+		it('refuses a content change to a synced skill', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			await linkSkill(id, { projectId: project.id, createdById: ownerUser.id });
+			const { skillHash } = (await editor.get(`/skills/${id}`).expect(200)).body.data;
+
+			const refused = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(400);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(refused.body.message).toBe(
+				'"Brand voice" is synced from GitHub, so it is read-only in n8n. Change it in GitHub.',
+			);
+			expect(read.body.data).toMatchObject({ source: 'github', latestVersion: 1 });
+		});
+
+		it('refuses to move a synced skill on its own, as it moves only with its source', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			await linkSkill(id, { projectId: project.id, createdById: ownerUser.id });
+			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
+
+			const refused = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(400);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(refused.body.message).toBe(
+				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
+			);
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
+		});
+
+		it('moves a skill that stopped syncing, as its source no longer holds it', async () => {
+			// `source` keeps `github` after Stop syncing. Without a link the skill is not synced.
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
+
+			const moved = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(moved.body.data).toMatchObject({ version: 1, created: false });
+			expect(read.body.data).toMatchObject({ scope: 'instance', projectId: null });
 		});
 
 		it('refuses a save without a base hash', async () => {

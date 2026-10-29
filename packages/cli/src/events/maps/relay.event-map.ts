@@ -59,7 +59,8 @@ export type WorkflowActionSource =
 	| 'n8n-mcp'
 	| 'n8n-ai'
 	| 'import'
-	| 'review-approval';
+	| 'review-approval'
+	| 'cli';
 
 export type { UserLike };
 
@@ -527,6 +528,8 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
 	};
 
 	'credentials-shared': {
@@ -549,6 +552,8 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
 	};
 
 	'credentials-deleted': {

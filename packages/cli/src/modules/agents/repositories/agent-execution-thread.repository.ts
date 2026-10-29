@@ -10,6 +10,7 @@ import {
 import { Service } from '@n8n/di';
 import {
 	DataSource,
+	In,
 	IsNull,
 	Not,
 	type EntityManager,
@@ -451,6 +452,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				sessionOrigin: origin,
 			});
 		}
+	}
+
+	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
 	}
 
 	/**

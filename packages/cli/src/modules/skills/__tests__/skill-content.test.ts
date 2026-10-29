@@ -1,4 +1,4 @@
-import { toAgentSkill, toSkillContent } from '../utils/skill-content';
+import { syncedSourceLabel, toAgentSkill, toSkillContent } from '../utils/skill-content';
 
 import { skillRow, versionRow } from './test-utils/skill-services';
 
@@ -35,5 +35,18 @@ describe('skill content', () => {
 			description: 'Write in our voice',
 			instructions: 'Use short sentences.',
 		});
+	});
+});
+
+describe('syncedSourceLabel', () => {
+	it.each([
+		{ source: 'ui', expected: undefined },
+		{ source: 'agent', expected: undefined },
+		{ source: 'mcp', expected: undefined },
+		{ source: 'assistant', expected: undefined },
+		{ source: 'import', expected: undefined },
+		{ source: 'github', expected: 'GitHub' },
+	] as const)('$source → $expected', ({ source, expected }) => {
+		expect(syncedSourceLabel(source)).toBe(expected);
 	});
 });
