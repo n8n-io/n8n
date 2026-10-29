@@ -33,6 +33,16 @@ jobs:
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
+      # Tests under scripts/ may need root devDependencies (for example
+      # typescript for scripts/env-vars-manifest.mjs); the scoped install
+      # above only covers .github/scripts. Install just typescript into
+      # scripts/, pinned to the root package.json version. npm cannot
+      # install at the repo root (workspace: protocol in devDependencies).
+      - name: Install root script dependencies
+        run: |
+          VERSION=$(node -p "require('./package.json').devDependencies.typescript")
+          npm install --no-save --no-package-lock --ignore-scripts --prefix scripts "typescript@${VERSION}"
+
       - name: Run tests
         id: run-tests
         run: npm test --prefix=.github/scripts
