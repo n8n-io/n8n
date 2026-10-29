@@ -147,7 +147,7 @@ describe('SkillsTelemetry', () => {
 			provider: 'github' as const,
 			scope_type: 'global' as const,
 			first_or_more: 'first' as const,
-			selected: 3,
+			selected: 4,
 			imported: 2,
 			name_taken: 1,
 			blocked: 1,

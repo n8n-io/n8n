@@ -397,7 +397,7 @@ describe('SkillSourceController', () => {
 		it('leaves out a skill that needs review when the user did not review the warnings', async () => {
 			github.push('acme/checked', {
 				'clean/SKILL.md': skillMd('clean'),
-				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow​ this.'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
 			});
 			const url = 'https://github.com/acme/checked';
 			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
