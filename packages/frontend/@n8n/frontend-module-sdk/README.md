@@ -3,8 +3,9 @@
 The frontend module contract and registries for n8n editor modules.
 
 This package owns the `FrontendModuleDescription` descriptor type, the
-`defineFrontendModule()` helper that declares one, plus the modal and resource
-registries that features register against. The editor shell keeps the wiring
+`defineFrontendModule()` helper that declares one, plus the modal, resource and
+capability registries that features register against. The "Capabilities" section
+of the frontend module guide covers when to declare a capability. The editor shell keeps the wiring
 (`moduleInitializer`) that drives the two-phase lifecycle; this package only
 defines the contract and the registry state.
 

@@ -1,9 +1,10 @@
 import { AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
-import { Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { JsonColumn, Project, User, WithTimestampsAndStringId } from '@n8n/db';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { AgentHistory } from './agent-history.entity';
 import { Agent } from './agent.entity';
+import type { StoredAgentTaskStop } from '../types/agent-task-stop';
 
 /**
  * One conversation between a user and an agent. Aggregates per-session
@@ -20,6 +21,25 @@ import { Agent } from './agent.entity';
  */
 @Entity({ name: 'agent_execution_threads' })
 export class AgentExecutionThread extends WithTimestampsAndStringId {
+	@JsonColumn({ nullable: true, comment: 'Latest task stop boundary' })
+	taskStop: StoredAgentTaskStop | null;
+
+	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'ownerId', foreignKeyConstraintName: 'FK_agent_execution_threads_owner' })
+	owner: Relation<User> | null;
+
+	@Index()
+	@Column({ type: 'uuid', nullable: true, comment: 'User who started this private session' })
+	ownerId: string | null;
+
+	@Column({
+		type: 'varchar',
+		length: 16,
+		default: 'user',
+		comment: 'user: private session; project: shared integration, workflow, or task session',
+	})
+	accessScope: 'user' | 'project';
+
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
 	agent: Agent;
@@ -106,3 +126,5 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@Column({ type: 'int', default: 0 })
 	totalDuration: number;
 }
+
+export type AgentThreadAccess = Pick<AgentExecutionThread, 'ownerId' | 'accessScope'>;

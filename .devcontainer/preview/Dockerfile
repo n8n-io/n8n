@@ -4,7 +4,7 @@ ARG NODE_VERSION=24
 # Docker here: a preview only builds the repo and serves it.
 FROM node:${NODE_VERSION}-bookworm
 
-ARG PNPM_VERSION=12.3.4
+ARG PNPM_VERSION=12.4.2
 
 # tmux holds the backend between `preview refresh` runs. The rest is for triage.
 RUN apt-get update && apt-get install -y --no-install-recommends \

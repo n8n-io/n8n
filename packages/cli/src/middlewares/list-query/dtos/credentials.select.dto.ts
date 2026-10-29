@@ -5,6 +5,7 @@ export class CredentialsSelect extends BaseSelect {
 		return new Set([
 			'id', // always included downstream
 			'name',
+			'description',
 			'type',
 		]);
 	}

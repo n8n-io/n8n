@@ -1,8 +1,15 @@
-import type { PolicyViolation } from '@n8n/api-types';
+import type { AgentImportIssue } from './entities/agent/agent-import.types';
+import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
+import type {
+	CredentialConflict,
+	CredentialNotFoundReason,
+	CredentialUpdateForbidden,
+} from './entities/credential/credential.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { PublishingOutcome } from './entities/publishing';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
 	VariableConflict,
@@ -23,32 +30,31 @@ import type {
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
 import type { PackageManifest } from './spec/manifest.schema';
+import type { PackageRequirementConsumer } from './spec/requirements.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
-export type CredentialMissingMode = 'must-preexist' | 'create-stub';
+export type CredentialMissingMode = 'must-preexist' | 'create-stub' | 'create-with-values';
 
 export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
-export const WorkflowConflictPolicy = {
+export const ImportConflictPolicy = {
 	/**
-	 * Updates existing workflows with matching sourceWorkflowId; otherwise creates a new workflow.
-	 * The archived state follows the package: a matched workflow is archived or unarchived to match.
+	 * Updates matched Agents and workflows. Creates entities that have no match.
+	 * A matched workflow is archived or unarchived to match the package.
 	 */
 	NewVersion: 'new-version',
-	/** Fails the import if any matched workflow already exists in the target project. */
+	/** Fails the import if a matched Agent or workflow exists in the target project. */
 	Fail: 'fail',
-	/** Leaves matched workflows unchanged; creates the rest of the workflows in the package. */
+	/** Leaves matched Agents and workflows unchanged. Creates entities that have no match. */
 	Skip: 'skip',
 } as const;
 
 export const WorkflowIdPolicy = {
-	/** Mints a fresh id for each imported workflow; the source id is kept as `sourceWorkflowId`. */
-	New: 'new',
 	/** Reuses the package's own workflow id in the target instance. */
 	Source: 'source',
 } as const;
@@ -93,23 +99,23 @@ export const MissingNodeTypeMode = {
 	ImportAnyway: 'import-anyway',
 } as const;
 
-export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a workflow dependency is not included. */
+export const ExportDependencyPolicy = {
+	/** Fails the export when a required workflow or agent is not included. */
 	Fail: 'fail',
-	/** Keeps missing workflow dependencies out of the package, listing them as requirements only. */
+	/** Leaves external dependencies out of the package and lists them as requirements. */
 	ReferenceOnly: 'reference-only',
-	/** Automatically adds missing workflow dependencies to the package. */
+	/** Adds accessible workflow and agent dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
-export const WorkflowVersionPolicy = {
-	/** Exports the latest published version, failing if any workflow has none. */
+export const ExportVersionPolicy = {
+	/** Exports published definitions. Fails if a selected workflow or agent has none. */
 	PublishedStrict: 'published-strict',
-	/** Exports the latest published version where there is one, the latest version otherwise. */
+	/** Exports published definitions when available. Exports drafts otherwise. */
 	PreferPublished: 'prefer-published',
-	/** Exports only published workflows, leaving unpublished ones out of the package. */
+	/** Exports only published definitions and skips unpublished selections. */
 	IgnoreUnpublished: 'ignore-unpublished',
-	/** Exports the latest version of every workflow, published or not. */
+	/** Exports the current draft of each workflow and agent. */
 	Latest: 'latest',
 } as const;
 
@@ -135,10 +141,14 @@ export const DataTableMissingMode = {
 } as const;
 
 export const DataTableSchemaConflictPolicy = {
-	/** Accepts a matched target able that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
+	/** Accepts a matched target table that has every package column, ignoring additional columns the target table has of its own. Never alters the target table. */
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
+	/** Changes a matched target table to match the package schema: renames the table, adds, renames, removes, and retypes columns, and sets the column order. The values in removed or retyped columns are removed. When the package has column ids, a column that is only renamed keeps its values. */
+	Overwrite: 'overwrite',
+	/** Like `overwrite`, but fails the import when a change removes or retypes a column. A target-only column counts as removed. */
+	OverwriteNonDestructive: 'overwrite-non-destructive',
 } as const;
 
 export const VariableMissingMode = {
@@ -159,6 +169,25 @@ export const VariableConflictPolicy = {
 	Overwrite: 'overwrite',
 	/** Rejects the import when the package bundles a value that differs from the target's. */
 	Fail: 'fail',
+} as const;
+
+export const CredentialConflictPolicy = {
+	/** Does not change a matched credential, also when the package has a different name or different values. */
+	KeepExisting: 'keep-existing',
+	/** Writes the package name and expression values to a matched credential. Keeps the other stored values. */
+	Overwrite: 'overwrite',
+	/** Blocks the import when `overwrite` would change a matched credential. */
+	Fail: 'fail',
+} as const;
+
+/**
+ * Whether the credential matcher may bind the user's own personal credential in a team project
+ * the user is a member of. Promotions use `exclude`: a credential must be usable by the
+ * project, not only by the user who runs the import.
+ */
+export const CredentialPersonalRoute = {
+	Allow: 'allow',
+	Exclude: 'exclude',
 } as const;
 
 export const VariableParentPolicy = {
@@ -183,8 +212,7 @@ export const TagConflictPolicy = {
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
-export type WorkflowConflictPolicy =
-	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
+export type ImportConflictPolicy = (typeof ImportConflictPolicy)[keyof typeof ImportConflictPolicy];
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
@@ -198,11 +226,10 @@ export type OverwriteDeletionPolicy =
 
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
-export type MissingWorkflowDependencyPolicy =
-	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
+export type ExportDependencyPolicy =
+	(typeof ExportDependencyPolicy)[keyof typeof ExportDependencyPolicy];
 
-export type WorkflowVersionPolicy =
-	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
+export type ExportVersionPolicy = (typeof ExportVersionPolicy)[keyof typeof ExportVersionPolicy];
 
 export type CredentialExportPolicy =
 	(typeof CredentialExportPolicy)[keyof typeof CredentialExportPolicy];
@@ -220,6 +247,12 @@ export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof Vari
 export type VariableConflictPolicy =
 	(typeof VariableConflictPolicy)[keyof typeof VariableConflictPolicy];
 
+export type CredentialConflictPolicy =
+	(typeof CredentialConflictPolicy)[keyof typeof CredentialConflictPolicy];
+
+export type CredentialPersonalRoute =
+	(typeof CredentialPersonalRoute)[keyof typeof CredentialPersonalRoute];
+
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
 export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode];
@@ -228,6 +261,7 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	agentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
@@ -237,13 +271,15 @@ export interface ExportPackageRequest {
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	projectWorkflowIds?: string[];
+	/** Internal opt-out for callers that cannot import Agents yet. */
+	includeAgents?: boolean;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
 	includeArchivedWorkflows?: boolean;
-	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
-	workflowVersionPolicy?: WorkflowVersionPolicy;
+	dependencyPolicy?: ExportDependencyPolicy;
+	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
@@ -253,8 +289,10 @@ export type ImportRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
-	bindings?: Partial<PackageImportBindings>;
+	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	apiKeyScopes?: string[];
+	/** Omit to import the whole package. */
+	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportProjectProperties &
@@ -267,15 +305,60 @@ export type ImportPackageRequest = ImportRequest & {
 	packageBuffer: Buffer;
 };
 
+/**
+ * Import only the selected workflows. Do not add referenced sub-workflows to the selection.
+ *
+ * Delete only within the destination project, even under `merge`. Ignore absent or archived IDs.
+ * References to deleted workflows remain unchanged.
+ */
+export interface ImportSelection {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+}
+
+/**
+ * Match or create the destination project from the package. Callers cannot override its location.
+ * The service fixes all policies except `conflictPolicy`, `idPolicy`,
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
+ * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
+ * `credentialConflictPolicy` (defaults to `keep-existing`), and `layoutConflictPolicy` (defaults to
+ * `fail`; only promotions set it).
+ */
+export type ImportSelectionRequest = {
+	user: User;
+	apiKeyScopes?: string[];
+	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
+	conflictPolicy?: ImportConflictPolicy;
+	idPolicy?: WorkflowIdPolicy;
+	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
+	dataTableSchemaConflictPolicy?: DataTableSchemaConflictPolicy;
+	tagConflictPolicy?: TagConflictPolicy;
+	/** Omitted means `keep-existing`. */
+	credentialConflictPolicy?: CredentialConflictPolicy;
+} & PromotionLayoutProperties;
+
+export type ImportPackageSelectionRequest = ImportSelectionRequest & {
+	packageBuffer: Buffer;
+};
+
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+	/** Omitted means `keep-existing`. */
+	credentialConflictPolicy?: CredentialConflictPolicy;
 };
 
-export type ImportWorkflowProperties = {
-	workflowConflictPolicy: WorkflowConflictPolicy;
-	workflowPublishingPolicy: WorkflowPublishingPolicy;
-	workflowIdPolicy: WorkflowIdPolicy;
+export type ImportEntityProperties = {
+	conflictPolicy: ImportConflictPolicy;
+	idPolicy: WorkflowIdPolicy;
+	publishingPolicy: WorkflowPublishingPolicy;
+};
+
+export type ImportWorkflowProperties = ImportEntityProperties & {
 	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
@@ -285,13 +368,36 @@ export type ImportProjectProperties = {
 };
 
 /** Folder options once the dispatcher has settled what the caller left to the project policy. */
-export type ResolvedImportFolderProperties = ImportFolderProperties & {
-	folderConflictPolicy: FolderConflictPolicy;
+export type ResolvedImportFolderProperties = ImportFolderProperties &
+	PromotionLayoutProperties & {
+		folderConflictPolicy: FolderConflictPolicy;
+	};
+
+/**
+ * Promotion-only. The public import request does not carry these, so a public import keeps the
+ * defaults.
+ */
+export type PromotionLayoutProperties = {
+	/** Omitted means `fail`. */
+	layoutConflictPolicy?: LayoutConflictPolicy;
+	/** Omitted means `allow`. */
+	credentialPersonalRoute?: CredentialPersonalRoute;
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
 
 export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
+
+/**
+ * Whether a matched folder or workflow that sits somewhere else in the package moves to that place.
+ * `fail` reports the difference as a conflict. `follow-package` moves it within its own project.
+ */
+export const LayoutConflictPolicy = {
+	Fail: 'fail',
+	FollowPackage: 'follow-package',
+} as const;
+
+export type LayoutConflictPolicy = (typeof LayoutConflictPolicy)[keyof typeof LayoutConflictPolicy];
 
 export type ImportFolderProperties = {
 	/**
@@ -335,13 +441,20 @@ export interface ImportContext {
 	folderId: string | null;
 }
 
-export type ImportPackageEventOptions = ImportCredentialProperties &
-	ImportWorkflowProperties &
+export type ImportPackageEventOptions = Required<ImportCredentialProperties> &
+	Omit<ImportWorkflowProperties, 'idPolicy' | 'publishingPolicy'> &
 	ImportProjectProperties &
 	ResolvedImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
-	ImportTagProperties;
+	ImportTagProperties & {
+		/** Keep existing audit properties when request fields change. */
+		workflowConflictPolicy: ImportConflictPolicy;
+		workflowIdPolicy: WorkflowIdPolicy;
+		agentIdPolicy: WorkflowIdPolicy;
+		workflowPublishingPolicy: WorkflowPublishingPolicy;
+		agentPublishingPolicy: WorkflowPublishingPolicy;
+	};
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -355,6 +468,7 @@ export type ImportAuditCredentialIds = {
  * Counts only — no ids — so they can be relayed to analytics without leaking data.
  */
 export type ImportPackageEventCounts = {
+	agents: ImportStatusCounts;
 	workflows: {
 		created: number;
 		updated: number;
@@ -370,11 +484,13 @@ export type ImportPackageEventCounts = {
 	credentials: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	dataTables: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	variables: {
@@ -397,6 +513,7 @@ export type ImportPackageEventCounts = {
 
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
 export type ExportPackageEventCounts = {
+	agents: number;
 	workflows: number;
 	folders: number;
 	credentials: number;
@@ -453,6 +570,25 @@ export interface ImportedWorkflowSummary {
 	isArchived: boolean;
 	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
+	/** Set when the update also moved the workflow to another folder (`layoutConflictPolicy=follow-package`). */
+	moved?: true;
+}
+
+export interface ImportedAgentSummary {
+	sourceAgentId: string;
+	localId: string;
+	name: string;
+	projectId: string;
+	activeVersionId: string | null;
+	status: 'created' | 'updated' | 'skipped';
+	publishing: PublishingOutcome;
+	channels: ImportedAgentChannel[];
+}
+
+export interface ImportStatusCounts {
+	created: number;
+	updated: number;
+	skipped: number;
 }
 
 export interface ImportedFolderSummary {
@@ -460,7 +596,12 @@ export interface ImportedFolderSummary {
 	localId: string;
 	name: string;
 	parentFolderId: string | null;
-	status: 'created' | 'skipped';
+	/** `updated` only under `layoutConflictPolicy=follow-package`, which the public import never sets. */
+	status: 'created' | 'skipped' | 'updated';
+	/** Set when the update moved the folder to another parent. */
+	moved?: true;
+	/** Set when the update gave the folder the name in the package. */
+	renamed?: true;
 }
 
 /**
@@ -496,11 +637,20 @@ export interface ImportedProjectSummary {
 }
 
 /**
+ * How an import plan runs its gates.
+ * - `enforce`: policy checks write audit events. A refusal that the import reports as an error
+ *   throws that error.
+ * - `check`: policy checks write no audit events, and refusals become issues.
+ */
+export type ImportPlanMode = 'enforce' | 'check';
+
+/**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
  * The import aborts when any are present.
  */
 export type BlockingIssue =
+	| AgentImportIssue
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
 	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)
@@ -509,34 +659,67 @@ export type BlockingIssue =
 	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
+			/** For `not_found` of a credential named by id: why the user cannot use it. */
+			reason?: CredentialNotFoundReason;
 			sourceId: string;
 			targetId?: string;
 			/** For `type_mismatch`: the credential type the package's workflow node requires. */
 			expectedType?: string;
 			/** For `type_mismatch`: the actual type of the resolved target credential. */
 			actualType?: string;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
+	| ({ type: 'credential-conflict' } & CredentialConflict)
+	| ({ type: 'credential-update-forbidden' } & CredentialUpdateForbidden)
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
+	| ({ type: 'workflow-removal-conflict' } & WorkflowRemovalConflict)
 	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
-	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
-	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
-	| ({ type: 'variable-conflict' } & VariableConflict)
-	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
+	| ({
+			type: 'data-table-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & DataTableResolutionFailure)
+	| ({ type: 'tag-unresolved'; usedBy: PackageRequirementConsumer[] } & TagResolutionFailure)
+	| ({
+			type: 'variable-unresolved';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict'; usedBy: PackageRequirementConsumer[] } & VariableConflict)
+	| ({
+			type: 'variable-limit-exceeded';
+			usedBy: PackageRequirementConsumer[];
+	  } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
 			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
 			nodeType: string;
 			typeVersion: number;
-			usedByWorkflows: string[];
+			usedBy: PackageRequirementConsumer[];
 	  }
 	| {
 			type: 'policy-violation';
 			sourceWorkflowId: string;
 			name: string;
+			violations: PolicyViolation[];
+	  }
+	| {
+			/**
+			 * A policy check that crashed or timed out in `check` mode. The plan cannot tell whether
+			 * the import is allowed. In `enforce` mode the same failure fails the import.
+			 */
+			type: 'policy-check-failed';
+			point: 'contentImport' | 'credentialSave';
+	  }
+	| {
+			/** A credential write that a `credentialSave` or `contentImport` policy check refused. */
+			type: 'credential-policy-violation';
+			sourceId: string;
+			/** Set when policy refused an update of this matched destination credential. */
+			targetId?: string;
+			name?: string;
+			credentialType: string;
+			usedBy: PackageRequirementConsumer[];
 			violations: PolicyViolation[];
 	  };
 
@@ -551,6 +734,13 @@ export interface WorkflowRemovalFailure {
 	projectId: string;
 }
 
+/** A selected workflow also named for explicit removal. */
+export interface WorkflowRemovalConflict {
+	sourceWorkflowId: string;
+	workflowId: string;
+	projectId: string;
+}
+
 /**
  * A folder `folderConflictPolicy=overwrite` would delete that the caller may not delete.
  * Blocking for the same reason as workflow removal: a partial reconciliation leaves the
@@ -562,8 +752,15 @@ export interface FolderRemovalFailure {
 	projectId: string;
 }
 
+/**
+ * - `fail-policy`: the project exists and `projectConflictPolicy` is `fail`.
+ * - `not-team`: the project id belongs to a personal project on the target.
+ * - `update-forbidden`: the project exists and the user cannot update it.
+ * - `create-forbidden`: the project is new and the user cannot create projects.
+ * - `license`: the project is new and the license does not allow team projects.
+ */
 export interface ProjectConflict {
-	kind: 'fail-policy';
+	kind: 'fail-policy' | 'not-team' | 'update-forbidden' | 'create-forbidden' | 'license';
 	sourceProjectId: string;
 	name: string;
 }
@@ -585,12 +782,14 @@ export type ImportBindingMap = Map<string, string>;
  * entity type.
  */
 export interface PackageImportBindings {
+	agents: ImportBindingMap;
 	workflows: ImportBindingMap;
 	credentials: ImportBindingMap;
 }
 
 export function createBindings(seed: Partial<PackageImportBindings> = {}): PackageImportBindings {
 	return {
+		agents: new Map(),
 		workflows: new Map(),
 		credentials: new Map(),
 		...seed,
@@ -600,6 +799,7 @@ export function createBindings(seed: Partial<PackageImportBindings> = {}): Packa
 /** Combines per-scope binding maps into one — used when a project package imports several scopes. */
 export function mergeBindings(...bindings: PackageImportBindings[]): PackageImportBindings {
 	return {
+		agents: new Map(bindings.flatMap(({ agents }) => [...agents])),
 		workflows: new Map(bindings.flatMap(({ workflows }) => [...workflows])),
 		credentials: new Map(bindings.flatMap(({ credentials }) => [...credentials])),
 	};
@@ -611,6 +811,7 @@ export type SerializedBindings = Record<keyof PackageImportBindings, Record<stri
 /** Flattens the internal binding `Map`s into the plain objects exposed over the wire. */
 export function serializeBindings(bindings: PackageImportBindings): SerializedBindings {
 	return {
+		agents: Object.fromEntries(bindings.agents),
 		workflows: Object.fromEntries(bindings.workflows),
 		credentials: Object.fromEntries(bindings.credentials),
 	};
@@ -619,12 +820,17 @@ export function serializeBindings(bindings: PackageImportBindings): SerializedBi
 export interface ImportPackageSummary {
 	sourceN8nVersion: string;
 	sourceId: string;
-	exportedAt: string;
 }
 
 export interface ImportCredentialSummary {
 	matched: string[];
 	stubbed: string[];
+	/** Source ids of credentials created with all their source data from the package. */
+	seeded: string[];
+	/** Source ids of credentials created from package data that is not confirmed as complete. */
+	incomplete: string[];
+	/** Source ids whose matched credential this import wrote under `credentialConflictPolicy=overwrite`. */
+	updated: string[];
 }
 
 export interface ImportVariableSummary {
@@ -638,6 +844,7 @@ export interface ImportVariableSummary {
 export interface ImportDataTableSummary {
 	matched: number;
 	created: number;
+	updated: number;
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */
@@ -652,6 +859,8 @@ export interface ImportTagSummary {
 
 export interface ImportResult {
 	package: ImportPackageSummary;
+	agents: ImportedAgentSummary[];
+	counts: { agents: ImportStatusCounts };
 	workflows: ImportedWorkflowSummary[];
 	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
 	removedWorkflows: RemovedWorkflowSummary[];

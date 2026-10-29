@@ -276,8 +276,9 @@ onBeforeUnmount(() => {
 				<N8nIconButton
 					:class="['action-toggle', $style['actions-menu']]"
 					variant="ghost"
-					icon="ellipsis-vertical"
-					size="medium"
+					icon="ellipsis-12"
+					size="small"
+					icon-size="medium"
 					data-test-id="folder-breadcrumbs-actions"
 				/>
 			</template>

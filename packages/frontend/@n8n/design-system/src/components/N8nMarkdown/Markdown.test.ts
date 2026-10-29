@@ -5,6 +5,62 @@ import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {
+		it('supports flat parser options and preserves defaults', () => {
+			const wrapper = render(N8nMarkdown, {
+				props: {
+					content: 'First\nSecond\n\nhttps://example.com',
+					options: { breaks: false },
+				},
+			});
+
+			expect(wrapper.container.querySelector('br')).toBeNull();
+			expect(wrapper.getByRole('link')).toHaveAttribute('target', '_blank');
+		});
+
+		it('supports nested parser options', () => {
+			const wrapper = render(N8nMarkdown, {
+				props: {
+					content: 'First\nSecond',
+					options: { markdown: { breaks: false } },
+				},
+			});
+
+			expect(wrapper.container.querySelector('br')).toBeNull();
+		});
+
+		it('applies custom plugins and sanitizes their output', () => {
+			const wrapper = render(N8nMarkdown, {
+				props: {
+					content: '```text\nExample\n```',
+					options: {
+						highlight: () => '<strong>Highlighted</strong>',
+					},
+					plugins: [
+						function addHeading(parser) {
+							const renderFence = parser.renderer.rules.fence;
+							parser.renderer.rules.fence = (tokens, idx, options, env, self) =>
+								'<h2>Code</h2><script>alert(1)</script>' +
+								(renderFence?.(tokens, idx, options, env, self) ?? '');
+						},
+					],
+				},
+			});
+
+			expect(wrapper.getByRole('heading')).toHaveTextContent('Code');
+			expect(wrapper.container.querySelector('pre strong')).toHaveTextContent('Highlighted');
+			expect(wrapper.container.querySelector('script')).toBeNull();
+		});
+
+		it('updates the parser when options change', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: 'First\nSecond', options: { breaks: false } },
+			});
+
+			await wrapper.rerender({ options: { breaks: true } });
+
+			expect(wrapper.container.querySelector('br')).not.toBeNull();
+		});
+
 		it('should render unchecked checkboxes', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {

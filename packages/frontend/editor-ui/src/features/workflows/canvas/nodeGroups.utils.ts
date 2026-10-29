@@ -8,6 +8,22 @@ export function snapshotGroup(group: IWorkflowGroup): IWorkflowGroup {
 	return { ...group, nodeIds: [...group.nodeIds] };
 }
 
+/** Ids of the groups that hold a trigger, so the canvas can mark them. */
+export function findGroupIdsWithTrigger(
+	groups: IWorkflowGroup[],
+	getNodeById: (nodeId: string) => { type: string } | undefined,
+	isTriggerNode: (nodeType: string) => boolean,
+): Set<string> {
+	const groupsWithTrigger = groups.filter((group) =>
+		group.nodeIds.some((nodeId) => {
+			const node = getNodeById(nodeId);
+			return node ? isTriggerNode(node.type) : false;
+		}),
+	);
+
+	return new Set(groupsWithTrigger.map((group) => group.id));
+}
+
 /**
  * Deletes a group and pushes an undo command that restores it.
  * Snapshots the group at call time, so callers pass the group whose current

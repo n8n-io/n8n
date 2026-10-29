@@ -1,7 +1,7 @@
 import { WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryCompactionService } from './workflow-history-compaction.service';
 
@@ -15,14 +15,18 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	// Optimization runs twice per optimizing window, so first and last versions
 	// of a window are covered redundantly across restarts and small gaps.
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: (this.config.optimizingTimeWindowHours / 2) * Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		(this.config.optimizingTimeWindowHours / 2) * Time.hours.toSeconds,
+	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly durable = false;
+	readonly target = clusterTarget({
+		scheduler: {
+			retryOnFailure: true,
+			// A run takes 7 to 13 minutes on a large instance, and the workflows it does not
+			// reach get only one more run.
+			timeoutSeconds: 30 * Time.minutes.toSeconds,
+		},
+	});
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,

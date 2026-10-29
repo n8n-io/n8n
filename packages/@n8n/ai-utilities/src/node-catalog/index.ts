@@ -23,6 +23,7 @@ export {
 	getNodeTypeDefinition,
 	getNodeTypes,
 	isValidPathComponent,
+	isValidVersionSegment,
 	validatePathWithinBase,
 	parseNodeId,
 	toSnakeCase,

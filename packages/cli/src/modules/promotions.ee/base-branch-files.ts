@@ -1,6 +1,5 @@
 import {
 	PACKAGE_ENTITY_LAYOUT,
-	WORKFLOW_METADATA_FILE_NAME,
 	type ManifestEntityCollection,
 } from '../n8n-packages/io/manifest-entry';
 
@@ -12,28 +11,30 @@ const BASE_BRANCH_ENTITIES = {
 	dataTables: { ...PACKAGE_ENTITY_LAYOUT.dataTables, type: 'dataTable', includeRoot: true },
 	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
-} as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
+} as const satisfies Record<
+	Exclude<ManifestEntityCollection, 'agents' | 'skills'>,
+	{ type: string; includeRoot: boolean }
+>;
+
+type BaseBranchEntity = (typeof BASE_BRANCH_ENTITIES)[keyof typeof BASE_BRANCH_ENTITIES];
 
 export type PackageFile = Readonly<{
 	entityId: string;
 	slug: string;
 	projectId: string | null;
-	fileName:
-		| (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName']
-		| typeof WORKFLOW_METADATA_FILE_NAME;
+	fileName: BaseBranchEntity['fileName'];
 	path: string;
 	blobSha: string;
-	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
+	type: BaseBranchEntity['type'];
 }>;
 
 export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
 	.filter(({ includeRoot }) => includeRoot)
 	.map(({ directory }) => directory);
 
-const ENTITIES_BY_DIRECTORY = new Map<
-	string,
-	(typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]
->(Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]));
+const ENTITIES_BY_DIRECTORY = new Map<string, BaseBranchEntity>(
+	Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]),
+);
 
 function entityIdOfSegment(segment: string): string {
 	return segment.slice(segment.lastIndexOf('-') + 1);
@@ -80,9 +81,8 @@ export function parsePackageFiles(
 				? folders
 				: ENTITIES_BY_DIRECTORY.get(segments[segments.length - 3]);
 		if (!entity) continue;
-		const isWorkflowMetadata =
-			entity.type === 'workflow' && fileName === WORKFLOW_METADATA_FILE_NAME;
-		if (fileName !== entity.fileName && !isWorkflowMetadata) continue;
+		// Only entity files count. `workflow-metadata.json` holds state, not content.
+		if (fileName !== entity.fileName) continue;
 		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];
@@ -90,7 +90,7 @@ export function parsePackageFiles(
 			entityId: entityIdOfSegment(entitySegment),
 			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
 			projectId: segments[0] === projects.directory ? projectId : null,
-			fileName: isWorkflowMetadata ? WORKFLOW_METADATA_FILE_NAME : entity.fileName,
+			fileName: entity.fileName,
 			path,
 			blobSha,
 			type,

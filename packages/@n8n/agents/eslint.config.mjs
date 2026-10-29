@@ -15,27 +15,15 @@ export default defineConfig(
 	},
 	backendConfig,
 	{
-		rules: {
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'enumMember',
-					format: ['UPPER_CASE', 'PascalCase'],
-				},
-			],
-		},
-	},
-	{
 		files: ['src/**/*.ts'],
 		ignores: ['src/**/__tests__/**/*.ts'],
 		rules: {
-			'@typescript-eslint/no-restricted-imports': [
+			'n8n-local-rules/no-static-runtime-import': [
 				'error',
 				{
 					paths: [
 						{
 							name: 'ai',
-							allowTypeImports: true,
 							message: AI_SDK_LAZY_IMPORT_MESSAGE,
 						},
 					],

@@ -65,9 +65,9 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
 
 		expect(resolved).toMatchObject({
-			observerThresholdTokens: 8_000,
-			reflectorThresholdTokens: 12_000,
-			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+			observerThresholdTokens: 50_000,
+			reflectorThresholdTokens: 60_000,
+			renderTokenBudget: 67_500,
 			observationLogTailLimit: 20,
 			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
 		});
@@ -148,8 +148,8 @@ describe('Memory builder — observation log memory', () => {
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		});
 		expect(runtimeConfig.observationalMemory).toMatchObject({
-			observerThresholdTokens: 8_000,
-			reflectorThresholdTokens: 12_000,
+			observerThresholdTokens: 50_000,
+			reflectorThresholdTokens: 60_000,
 		});
 		expect(runtimeConfig.observationalMemory?.midRunObservation).toBeUndefined();
 		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
@@ -172,7 +172,7 @@ describe('Memory builder — observation log memory', () => {
 		expect(runtimeConfig.observationalMemory?.midRunObservation).toBe(false);
 	});
 
-	it('rejects backends that do not implement the observation-log store', () => {
+	it.each(['minimal', 'non-atomic'])('rejects %s observation-log backends', (kind) => {
 		const minimalBackend = {
 			getThread: vi.fn().mockResolvedValue(null),
 			saveThread: vi.fn().mockResolvedValue({}),
@@ -187,7 +187,11 @@ describe('Memory builder — observation log memory', () => {
 			}),
 		} as unknown as BuiltMemory;
 
-		expect(() => new Memory().storage(minimalBackend).observationalMemory().build()).toThrow(
+		let backend: BuiltMemory = minimalBackend;
+		if (kind === 'non-atomic') {
+			backend = Object.assign(new InMemoryMemory(), { commitObservationLogBatch: undefined });
+		}
+		expect(() => new Memory().storage(backend).observationalMemory().build()).toThrow(
 			/BuiltObservationLogStore/,
 		);
 	});

@@ -7,7 +7,8 @@ import {
 } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
-import { filterSortSearchListItems } from '../helpers/utils';
+import { escapeODataSearchValue } from '@utils/query-escaping';
+import { filterSortSearchListItems, tagPermissionError } from '../helpers/utils';
 import {
 	buildTeamsPath,
 	getTeamsCredentialType,
@@ -169,20 +170,8 @@ export async function getUsers(
 	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
 	const qs: IDataObject = paginationToken ? {} : { $select: 'id,displayName,userPrincipalName' };
 	if (!paginationToken) {
-		// Two different problems. `"` and `\` only need escaping inside the quoted term, so
-		// escape them (backslash first, then quote) and keep the term intact. `&` and `#`
-		// cannot be escaped or encoded away: Graph re-splits the query string AFTER
-		// percent-decoding, so they truncate the expression and 400 the whole call (verified on
-		// a live tenant). Those two are dropped, which just widens the match. `mail` is searched
-		// as well, because a guest's mail differs from their principal name and the mail is the
-		// address people actually know.
-		// The emptiness check is on the stripped term, not the raw filter: a filter of only
-		// unusable characters would otherwise send an empty term, which Graph rejects.
-		const escaped = (filter ?? '')
-			.replace(/[&#]/g, '')
-			.replaceAll('\\', '\\\\')
-			.replaceAll('"', '\\"')
-			.trim();
+		// Graph splits `&` and `#` after decoding. Remove them before escaping the quoted term.
+		const escaped = escapeODataSearchValue((filter ?? '').replace(/[&#]/g, '').trim());
 		if (escaped) {
 			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
 		}
@@ -310,6 +299,69 @@ export async function getChannels(
 	}
 
 	const results = filterSortSearchListItems(returnData, filter);
+	return { results };
+}
+
+/**
+ * Team tags for the mention picker. Mirrors `getChannels` (team-scoped, client-side filtering)
+ * rather than `getUsers`: Graph documents no `$search` on `/tags`, and `$filter` cannot do the
+ * substring match a picker needs. `/v1.0`, the tags collection is GA.
+ */
+export async function getTags(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
+	// Deliberate divergence from `getChannels`, which has no such guard and lets `buildTeamsPath`
+	// emit the generic "A required ID is empty" on the same node.
+	if (!teamId) {
+		throw new NodeOperationError(this.getNode(), 'Select a team first');
+	}
+
+	let value: IDataObject[];
+	try {
+		value = await microsoftApiRequestAllItems.call(
+			this,
+			'value',
+			'GET',
+			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/tags']),
+		);
+	} catch (error) {
+		// The action belongs in the message, not the description: the resource-locator dropdown
+		// renders only the message and drops the description, so guidance put there is invisible.
+		// Verified in the editor against a credential without the scope, 2026-09-10.
+		throw (
+			tagPermissionError(
+				error,
+				this.getNode(),
+				'Could not load team tags. Add TeamworkTag.Read to the credential, then reconnect it.',
+			) ?? error
+		);
+	}
+
+	// Graph sends `memberCount` as a number when listing and as a string when getting one tag.
+	const memberCounts = new Map(value.map((tag) => [tag.id as string, Number(tag.memberCount)]));
+	const returnData: INodeListSearchItems[] = value.map((tag) => ({
+		// Falls back like `getUsers`: a tag with no display name would otherwise set `name` to
+		// `undefined` and throw in the comparator below instead of listing the tags.
+		name: (tag.displayName as string) || (tag.id as string),
+		value: tag.id as string,
+		description: tag.description as string,
+	}));
+
+	// Filter and sort on the bare display name, then append the count. A tag notifies everyone
+	// carrying it and the dropdown renders only `name`, so the blast radius has to go in the
+	// label, but baking it in first makes every tag match any substring of "(4 members)".
+	const results = filterSortSearchListItems(returnData, filter).map((tag) => {
+		const memberCount = memberCounts.get(tag.value as string);
+		return memberCount !== undefined && Number.isFinite(memberCount)
+			? {
+					...tag,
+					name: `${tag.name} (${memberCount} ${memberCount === 1 ? 'member' : 'members'})`,
+				}
+			: tag;
+	});
+
 	return { results };
 }
 

@@ -30,9 +30,16 @@ export type JsonToBinaryOptions = {
 	addBOM?: boolean;
 	mimeType?: string;
 	dataIsBase64?: boolean;
+	strictBase64?: boolean;
 	itemIndex?: number;
 	format?: boolean;
 };
+
+function isByteArray(value: unknown[]): value is number[] {
+	return Array.from(value).every(
+		(byte) => typeof byte === 'number' && Number.isInteger(byte) && byte >= 0 && byte <= 255,
+	);
+}
 
 export async function convertJsonToSpreadsheetBinary(
 	this: IExecuteFunctions,
@@ -84,14 +91,15 @@ export async function convertJsonToSpreadsheetBinary(
 	return binaryData;
 }
 
+/** Converts the selected input value to binary data with the configured encoding. */
 export async function createBinaryFromJson(
 	this: IExecuteFunctions,
 	data: IDataObject | IDataObject[],
 	options: JsonToBinaryOptions,
 ): Promise<IBinaryData> {
-	let value;
+	let value: unknown;
 	if (options.sourceKey) {
-		value = get(data, options.sourceKey) as IDataObject;
+		value = get(data, options.sourceKey);
 	} else {
 		value = data;
 	}
@@ -103,11 +111,12 @@ export async function createBinaryFromJson(
 	}
 
 	let buffer: Buffer;
+	let mimeType = options.mimeType;
 	if (!options.dataIsBase64) {
 		let valueAsString = value as unknown as string;
 
 		if (typeof value === 'object') {
-			options.mimeType = 'application/json';
+			mimeType = 'application/json';
 			if (options.format) {
 				valueAsString = JSON.stringify(value, null, 2);
 			} else {
@@ -119,14 +128,65 @@ export async function createBinaryFromJson(
 			addBOM: options.addBOM,
 		});
 	} else {
-		buffer = Buffer.from(value as unknown as string, BINARY_ENCODING);
+		const invalidBase64 = () =>
+			new NodeOperationError(
+				this.getNode(),
+				`The value in "${options.sourceKey}" is not valid Base64 data`,
+				{
+					description: 'Use Convert to Text File to write plain text to a file.',
+					itemIndex: options.itemIndex ?? 0,
+				},
+			);
+
+		if (Buffer.isBuffer(value)) {
+			buffer = value;
+		} else if (Array.isArray(value)) {
+			if (options.strictBase64 && !isByteArray(value)) throw invalidBase64();
+			buffer = Buffer.from(value);
+		} else if (
+			typeof value === 'object' &&
+			value !== null &&
+			'type' in value &&
+			value.type === 'Buffer' &&
+			'data' in value &&
+			Array.isArray(value.data)
+		) {
+			if (options.strictBase64 && !isByteArray(value.data)) throw invalidBase64();
+			buffer = Buffer.from(value.data);
+		} else {
+			if (typeof value !== 'string') {
+				throw invalidBase64();
+			}
+
+			let encoded = value.trim();
+			if (/^data:/i.test(encoded)) {
+				const dataUri = /^data:([^;,]*)(?:;[^;,]*)*;base64,([\s\S]*)$/i.exec(encoded);
+				if (dataUri) {
+					mimeType ||= dataUri[1] || undefined;
+					encoded = dataUri[2];
+				} else if (options.strictBase64) {
+					throw invalidBase64();
+				}
+			}
+
+			if (options.strictBase64) {
+				encoded = encoded.replace(/\s/g, '');
+				const match = /^([A-Za-z0-9+/_-]*)(={0,2})$/.exec(encoded);
+				// Preserve unpadded and URL-safe input, but reject incomplete groups and misplaced padding.
+				if (
+					!match ||
+					match[1].length % 4 === 1 ||
+					(match[2].length > 0 && (encoded.length % 4 !== 0 || match[1].length % 4 === 0))
+				) {
+					throw invalidBase64();
+				}
+			}
+
+			buffer = Buffer.from(encoded, BINARY_ENCODING);
+		}
 	}
 
-	const binaryData = await this.helpers.prepareBinaryData(
-		buffer,
-		options.fileName,
-		options.mimeType,
-	);
+	const binaryData = await this.helpers.prepareBinaryData(buffer, options.fileName, mimeType);
 
 	if (!binaryData.fileName) {
 		const fileExtension = binaryData.fileExtension ? `.${binaryData.fileExtension}` : '';
@@ -181,12 +241,16 @@ export async function extractDataFromPDF(
 	);
 	const document = await readPDF({
 		password,
-		isEvalSupported: false,
 		data: new Uint8Array(buffer),
 	}).promise;
-	const { info, metadata } = await document
+	const { info: documentInfo, metadata } = await document
 		.getMetadata()
 		.catch(() => ({ info: null, metadata: null }));
+	// pdfjs-dist returns custom info entries as a Map, which JSON serializes as an empty object.
+	const info =
+		documentInfo && 'Custom' in documentInfo && documentInfo.Custom instanceof Map
+			? { ...documentInfo, Custom: Object.fromEntries(documentInfo.Custom) }
+			: documentInfo;
 
 	const pages = [];
 	if (maxPages !== 0) {

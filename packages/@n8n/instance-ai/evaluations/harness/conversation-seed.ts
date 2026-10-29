@@ -3,18 +3,23 @@
 // `mode: 'replay'` reconstructs one from a LangSmith trace at run time (see
 // langsmith-seed.ts). Either way the shape below is what reaches restore-thread.
 
-import { instanceAiEvalSeedAgentSchema } from '@n8n/api-types';
+import {
+	instanceAiEvalSeedAgentSchema,
+	instanceAiEvalSeedArtifactIdSchema,
+	instanceAiEvalSeedFolderSchema,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
+import { isAgentTargetingToolName } from '../../src/tools/orchestration/agent-target-binding';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
 	extractAskUserQuestions,
-	extractPlanTasks,
 	extractSetupCardRequests,
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
@@ -31,6 +36,10 @@ const SeedWorkflowSchema = z.object({
 	connections: z.record(z.unknown()),
 	/** Restore it published (see `instanceAiEvalSeedWorkflowSchema`). */
 	published: z.boolean().optional(),
+	/** The `folders[].id` this workflow is created in. Omit for the project root.
+	 *  Must name a declared folder — checked at the case level, which sees both
+	 *  arrays (`findSeedFolderIssues`). */
+	parentFolderId: instanceAiEvalSeedArtifactIdSchema.optional(),
 });
 
 /** A project seeded before the live turn. Only the name is authored: the
@@ -167,6 +176,15 @@ export const ConversationSeedSchema = z.object({
 		),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
 	dataTables: z.array(SeedDataTableSchema).default([]),
+	/** Folders created in the thread's project before the live turn, so a case can
+	 *  grade how the agent finds a folder's contents. Seeded by `restore-thread`,
+	 *  which generates the ids: like data tables, they are carried through the
+	 *  remap untouched. Names are created verbatim (no seed suffix) because the
+	 *  live turn names the folder the way a user would; a leftover of the same
+	 *  name at the project root is evicted first. Unique ids, parent references
+	 *  and workflow placement are checked at the case level (`findSeedFolderIssues`),
+	 *  the one place that sees both arrays. */
+	folders: z.array(instanceAiEvalSeedFolderSchema).max(20).default([]),
 	/** Agents the history built, recreated (and bound to the thread) on restore, so
 	 *  the live turn edits one that already exists. */
 	agents: z.array(instanceAiEvalSeedAgentSchema).default([]),
@@ -392,9 +410,13 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		...seed.workflows.map((workflow) => workflow.id),
 		...seed.agents.map((agent) => agent.id),
 	]);
+	// `parentFolderId` stays out of the blob: it names a folder id, which is not in
+	// the id space the replace below rewrites, so a workflow id that happens to be a
+	// substring of a folder id would otherwise corrupt the reference. Re-attached
+	// by index after the parse, unchanged.
 	let serialized = JSON.stringify({
 		messages: seed.messages,
-		workflows: seed.workflows,
+		workflows: seed.workflows.map(({ parentFolderId: _placement, ...workflow }) => workflow),
 		agents: seed.agents,
 	});
 	// Longest id first, for the same reason the name pass below sorts: if one id were a
@@ -429,9 +451,10 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	// Uniquify names after the id pass, so the rename can't perturb id matching.
-	const workflows = remapped.workflows.map((workflow) => ({
+	const workflows = remapped.workflows.map((workflow, index) => ({
 		...workflow,
 		name: uniquifySeedName(workflow.name, freshSeedNameSuffix()),
+		parentFolderId: seed.workflows[index].parentFolderId,
 	}));
 
 	// Any mention in the seeded history follows the workflow, so the agent's own
@@ -476,11 +499,11 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		},
 	}));
 
-	// Data table ids are remapped server-side on restore (id is generated, not
-	// pinnable), so carry them through untouched here. `projects` likewise: the
-	// serialized blob above covers only the id-bearing artifacts, so anything not
-	// re-attached here comes back as the schema's `[]` default — silently dropping
-	// the fixture instead of failing.
+	// Data table and folder ids are remapped server-side on restore (the id is
+	// generated, not pinnable), so carry them through untouched here. `projects`
+	// likewise: the serialized blob above covers only the id-bearing artifacts, so
+	// anything not re-attached here comes back as the schema's `[]` default —
+	// silently dropping the fixture instead of failing.
 	return {
 		...remapped,
 		messages,
@@ -488,6 +511,7 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		agents,
 		source: seed.source,
 		dataTables: seed.dataTables,
+		folders: seed.folders,
 		projects: seed.projects,
 	};
 }
@@ -556,15 +580,8 @@ const interpretAskUser: SeedStepInterpreter = (call) => {
 	return { kind: 'ask-user', questions: parsed, answers };
 };
 
-const interpretPlan: SeedStepInterpreter = (call) => {
-	const tasks = call.input?.tasks;
-	if (call.toolName !== ORCHESTRATION_TOOL_IDS.CREATE_TASKS || !Array.isArray(tasks)) return null;
-	const parsed = extractPlanTasks(tasks);
-	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
-};
-
 // The applied setup outcome: which nodes were configured / skipped (same
-// rendering as the live `workflows` result).
+// rendering as the live `setup_workflow` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
 	const { output } = call;
 	// `skippedNodes` is the pre-split key, kept so seeded fixtures recorded then still parse.
@@ -591,7 +608,7 @@ const interpretSetupCard: SeedStepInterpreter = (call) => {
 	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
 };
 
-// A HITL confirmation other than ask-user/setup-card (plan-review, resource decision, …):
+// A HITL confirmation other than ask-user/setup-card (resource decision, …):
 // the request is in the resume block's input, the decision in its output.
 const interpretConfirmation: SeedStepInterpreter = (call) => {
 	const reasonRaw = call.input?.resumeReason ?? call.input?.inputType;
@@ -608,16 +625,13 @@ const interpretConfirmation: SeedStepInterpreter = (call) => {
 		toolName: typeof toolNameRaw === 'string' ? toolNameRaw : call.toolName,
 		resumeReason,
 		approved: typeof approvedRaw === 'boolean' ? approvedRaw : undefined,
-		// Plan-review prompts are boilerplate; the plan renders separately.
-		message:
-			resumeReason === 'plan-review' || typeof messageRaw !== 'string' ? undefined : messageRaw,
+		message: typeof messageRaw !== 'string' ? undefined : messageRaw,
 		feedback: typeof feedbackRaw === 'string' ? feedbackRaw : undefined,
 	};
 };
 
 const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
 	interpretAskUser,
-	interpretPlan,
 	interpretSetupWizard,
 	interpretSetupCard,
 	interpretConfirmation,
@@ -627,7 +641,9 @@ const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
  *  else a generic tool-call). */
 function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 	const call: SeedToolCall = {
-		toolName: typeof block.toolName === 'string' ? block.toolName : 'unknown-tool',
+		// Seeded histories can carry a former builder tool name.
+		toolName:
+			typeof block.toolName === 'string' ? resolveBuilderToolName(block.toolName) : 'unknown-tool',
 		input: isRecord(block.input) ? block.input : undefined,
 		output: isRecord(block.output) ? block.output : undefined,
 	};
@@ -648,7 +664,8 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `build-agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved targeting call (`agent_builder_build_agent` or `agent_builder_select_agent`), ordered
+ * by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.
@@ -668,7 +685,7 @@ export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			if (!isAgentTargetingToolName(block.toolName)) continue;
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId === 'string') active = output.agentId;
 		}

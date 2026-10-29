@@ -4,6 +4,9 @@
         "data": {
             "type": "object",
             "properties": {
+                "approved": {
+                    "type": "boolean"
+                },
                 "respondedAt": {
                     "type": "string"
                 },
@@ -13,5 +16,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

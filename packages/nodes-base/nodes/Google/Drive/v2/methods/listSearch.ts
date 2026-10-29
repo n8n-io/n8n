@@ -5,6 +5,8 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { escapeBackslashQuotedValue } from '@utils/query-escaping';
+
 import type { SearchFilter } from '../helpers/interfaces';
 import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../helpers/interfaces';
 import { updateDriveScopes } from '../helpers/utils';
@@ -29,7 +31,7 @@ export async function fileSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = ['trashed = false'];
 	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		query.push(`name contains '${escapeBackslashQuotedValue(filter)}'`);
 	}
 	query.push(`mimeType != '${DRIVE.FOLDER}'`);
 	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
@@ -60,7 +62,7 @@ export async function driveSearch(
 	let res = { drives: [], nextPageToken: undefined };
 
 	res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
-		q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
+		q: filter ? `name contains '${escapeBackslashQuotedValue(filter)}'` : undefined,
 		pageToken: paginationToken,
 	});
 
@@ -115,7 +117,7 @@ export async function folderSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = [];
 	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		query.push(`name contains '${escapeBackslashQuotedValue(filter)}'`);
 	}
 	query.push(`mimeType = '${DRIVE.FOLDER}'`);
 

@@ -1,18 +1,19 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { CRON_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
@@ -42,6 +43,7 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -75,15 +77,27 @@ export class ScheduleTriggerTaskHandler implements TaskHandler {
 			settingsTimezone && settingsTimezone !== 'DEFAULT'
 				? settingsTimezone
 				: this.globalConfig.generic.timezone;
-		const item = buildScheduleTriggerItem(task.scheduledFor, timezone);
+		const item =
+			node.type === CRON_NODE_TYPE
+				? { json: {} }
+				: buildScheduleTriggerItem(task.scheduledFor, timezone);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,
 			workflowSettings: workflowData.settings,
+			// A schedule has nobody to be, so the run is attributed to the publisher
+			// of the version it runs. That is the mapping's `versionId`, not the
+			// workflow row's `activeVersionId`: publication updates the row first and
+			// the mapping after, so mid-publication the row already points at a
+			// version whose nodes are not the ones below.
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				workflowId,
+				workflowData.versionId,
+			),
 		});
 
 		try {
-			// TODO(CAT-4078): an engine 2.0 run writes no execution row, so the unique
+			// TODO(CAT-4078): an engine v2 run writes no execution row, so the unique
 			// index that turns a redelivered occurrence into a `DuplicateExecutionError`
 			// never applies and the redelivery starts a second run.
 			const executionId = await this.workflowExecutionService.runWorkflow(

@@ -23,6 +23,11 @@ const USERS: Record<string, IDataObject> = {
 	'/v1.0/users/bob%40example.com': { id: 'guid-2', displayName: 'Bob Jones' },
 };
 
+const TAGS: Record<string, IDataObject> = {
+	'/v1.0/teams/team-a/tags/tag-a': { id: 'tag-a', displayName: 'Engineering' },
+	'/v1.0/teams/team-b/tags/tag-b': { id: 'tag-b', displayName: 'Support' },
+};
+
 describe('Microsoft Teams V2, create per item', () => {
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
@@ -74,12 +79,11 @@ describe('Microsoft Teams V2, create per item', () => {
 			contentType: 'text',
 			message: 'hi',
 			options,
-			'mentions.mention': [{}],
 		};
 		ctx.getNodeParameter.mockImplementation(
 			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
-				if (name === 'mentions.mention[0].userId') {
-					return mentionedPerItem[itemIndex as number];
+				if (name === 'mentions.mention') {
+					return [{ userId: mentionedPerItem[itemIndex as number] }] as NodeParameterValueType;
 				}
 				return (name in params ? params[name] : fallback) as NodeParameterValueType;
 			},
@@ -166,4 +170,134 @@ describe('Microsoft Teams V2, create per item', () => {
 			expect(janeLookups()).toHaveLength(2);
 		},
 	);
+
+	// Its own `it`: the table above keys its mock on the parameter name only, and its chatMessage
+	// arm has no team at all. The tag resolve reads both the team and the row per item.
+	it('channelMessage create resolves each item tag against the team of that item', async () => {
+		const teams = ['team-a', 'team-b'];
+		const tags = ['tag-a', 'tag-b'];
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftTeamsOAuth2Api',
+			resource: 'channelMessage',
+			operation: 'create',
+			channelId: 'channelID',
+			contentType: 'text',
+			message: 'hi',
+			options: { includeLinkToWorkflow: false },
+		};
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
+				if (name === 'teamId') return teams[itemIndex as number];
+				if (name === 'mentions.mention') {
+					return [
+						{ mentionType: 'tag', tagId: tags[itemIndex as number] },
+					] as NodeParameterValueType;
+				}
+				return (name in params ? params[name] : fallback) as NodeParameterValueType;
+			},
+		);
+		apiRequest.mockImplementation(async (method: string, resourcePath: string) => {
+			if (method !== 'GET') return { id: 'sent' };
+			if (!(resourcePath in TAGS)) throw new Error(`unexpected GET ${resourcePath}`);
+			return TAGS[resourcePath];
+		});
+
+		await node.execute.call(ctx);
+
+		const resolved = apiRequest.mock.calls
+			.filter((call) => call[0] === 'GET')
+			.map((call) => call[1] as string);
+		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-b/tags/tag-b']);
+	});
+
+	// The per-run cache keys a tag on its team as well as its ID. A tag name can be reused across
+	// teams, so keying on the ID alone would serve item 1 the mention resolved for item 0's team:
+	// a different set of people, and a path that would 404 if it were ever requested for real.
+	it('channelMessage create resolves the same tag ID again for a different team', async () => {
+		const teams = ['team-a', 'team-c'];
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftTeamsOAuth2Api',
+			resource: 'channelMessage',
+			operation: 'create',
+			channelId: 'channelID',
+			contentType: 'text',
+			message: 'hi',
+			options: { includeLinkToWorkflow: false },
+		};
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
+				if (name === 'teamId') return teams[itemIndex as number];
+				if (name === 'mentions.mention') {
+					return [{ mentionType: 'tag', tagId: 'tag-a' }] as NodeParameterValueType;
+				}
+				return (name in params ? params[name] : fallback) as NodeParameterValueType;
+			},
+		);
+		const SHARED: Record<string, IDataObject> = {
+			'/v1.0/teams/team-a/tags/tag-a': { id: 'tag-a', displayName: 'Engineering' },
+			'/v1.0/teams/team-c/tags/tag-a': { id: 'tag-a', displayName: 'Engineering (Team C)' },
+		};
+		apiRequest.mockImplementation(async (method: string, resourcePath: string) => {
+			if (method !== 'GET') return { id: 'sent' };
+			if (!(resourcePath in SHARED)) throw new Error(`unexpected GET ${resourcePath}`);
+			return SHARED[resourcePath];
+		});
+
+		await node.execute.call(ctx);
+
+		const resolved = apiRequest.mock.calls
+			.filter((call) => call[0] === 'GET')
+			.map((call) => call[1] as string);
+		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-c/tags/tag-a']);
+
+		const sent = apiRequest.mock.calls
+			.filter((call) => call[0] === 'POST')
+			.map((call) => (call[2] as { body: { content: string } }).body.content);
+		expect(sent).toEqual([
+			'<at id="0">Engineering</at> hi',
+			'<at id="0">Engineering (Team C)</at> hi',
+		]);
+	});
+
+	it('chat create resolves a separate participant per item and binds it on the credential host', async () => {
+		const CALLER = '00000000-1111-2222-3333-444444444444';
+		const CHAT_USERS: Record<string, IDataObject> = {
+			'/v1.0/users/jane%40contoso.com': { id: '714c1202-cbac-40ff-9160-53ab5c4df9b8' },
+			'/v1.0/users/bob%40contoso.com': { id: '22222222-3333-4444-5555-666666666666' },
+		};
+		ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
+		const participantPerItem = ['jane@contoso.com', 'bob@contoso.com'];
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftTeamsOAuth2Api',
+			resource: 'chat',
+			operation: 'create',
+			chatType: 'oneOnOne',
+			'members.member': [{ role: 'owner' }],
+		};
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
+				if (name === 'members.member[0].userId') {
+					return participantPerItem[itemIndex as number];
+				}
+				return (name in params ? params[name] : fallback) as NodeParameterValueType;
+			},
+		);
+		apiRequest.mockImplementation(async (_method: string, resourcePath: string) => {
+			if (resourcePath === '/v1.0/me') return { id: CALLER, userPrincipalName: 'me@contoso.com' };
+			return resourcePath in CHAT_USERS ? CHAT_USERS[resourcePath] : { id: 'created' };
+		});
+
+		await node.execute.call(ctx);
+
+		const bound = apiRequest.mock.calls
+			.filter((call) => call[0] === 'POST')
+			.map(
+				(call) =>
+					(call[2] as { members: Array<Record<string, string>> }).members[1]['user@odata.bind'],
+			);
+		expect(bound).toEqual([
+			"https://graph.microsoft.us/v1.0/users('714c1202-cbac-40ff-9160-53ab5c4df9b8')",
+			"https://graph.microsoft.us/v1.0/users('22222222-3333-4444-5555-666666666666')",
+		]);
+	});
 });

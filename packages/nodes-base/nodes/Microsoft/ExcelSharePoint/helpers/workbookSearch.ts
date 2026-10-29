@@ -1,5 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 export type DriveItem = IDataObject & {
 	id?: string;
 	name?: string;
@@ -19,5 +21,5 @@ export function isWorkbookFile(item: DriveItem): boolean {
 export function workbookSearchEndpoint(siteId: string, driveId: string, text?: string): string {
 	const trimmed = text?.trim() ?? '';
 	const q = trimmed === '' ? WORKBOOK_EXTENSIONS.join(' OR ') : trimmed;
-	return `/v1.0/sites/${encodeURIComponent(siteId)}/drives/${encodeURIComponent(driveId)}/root/search(q='${encodeURIComponent(q.replace(/'/g, "''"))}')`;
+	return `/v1.0/sites/${encodeURIComponent(siteId)}/drives/${encodeURIComponent(driveId)}/root/search(q='${encodeURIComponent(escapeODataValue(q))}')`;
 }

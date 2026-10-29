@@ -8,12 +8,14 @@ import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import type { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
+import { parseMcpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
@@ -57,6 +59,7 @@ function makeService({
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
+	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -79,6 +82,7 @@ function makeService({
 		userRepository,
 		urlService,
 		outboundHttp,
+		credentialTypes,
 	);
 }
 
@@ -607,6 +611,57 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('embeds agentId under the literal "agent" execution segment when no workflowId', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/google`,
+			});
+		});
+
+		it('embeds agentId without projectId when project is absent', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/agent/AG123/google`,
+			});
+		});
+
+		it('prefers workflowId over agentId when both are provided', async () => {
+			mockConfigThenToken();
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				agentId: 'AG123',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
 		it('fans a single credential out to multiple gateway URLs when routing is present', async () => {
 			const routingConfig = {
 				...MOCK_GATEWAY_CONFIG,
@@ -672,6 +727,41 @@ describe('AiGatewayService', () => {
 				browserbaseApiKey: 'mock-jwt-token',
 				baseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbase`,
 				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbaseStagehand`,
+			});
+		});
+
+		it('embeds agent context in every routed gateway URL', async () => {
+			const routingConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['browserbaseApi'],
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						urlField: 'baseUrl',
+						apiKeyField: 'browserbaseApiKey',
+						routing: {
+							baseUrl: '/v1/gateway/browserbase',
+							stagehandBaseUrl: '/v1/gateway/browserbaseStagehand',
+						},
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(routingConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				browserbaseApiKey: 'mock-jwt-token',
+				baseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbase`,
+				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbaseStagehand`,
 			});
 		});
 
@@ -742,6 +832,122 @@ describe('AiGatewayService', () => {
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('fetchAiGatewayMcpServers()', () => {
+		it('maps each AI Gateway MCP server to a valid registry row', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					servers: [
+						{
+							slug: 'firecrawl',
+							name: 'com.n8n/n8n-connect-firecrawl-mcp',
+							title: 'Firecrawl',
+							description: 'Read the web',
+							tagline: 'Read the web with Gateway credits',
+							version: '1.0.0',
+							updatedAt: '2026-09-17T10:00:00.000Z',
+							websiteUrl: 'https://firecrawl.dev',
+							icons: [
+								{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/x-unknown' },
+								{ src: 'https://firecrawl.dev/dark.png', mimeType: 'image/png', theme: 'dark' },
+							],
+							tags: ['web'],
+							tools: [
+								{ name: 'firecrawl_scrape', title: 'Scrape', readOnlyHint: true },
+								{ name: 'firecrawl_crawl', readOnlyHint: false },
+								{ name: 'firecrawl_map' },
+							],
+						},
+					],
+				}),
+			);
+
+			const [row] = await makeService().fetchAiGatewayMcpServers();
+
+			expect(parseMcpRegistryServer(row)).toEqual(row);
+			expect(row).toMatchObject({
+				slug: 'n8n-connect-firecrawl',
+				authType: '__aiGatewayManaged',
+				remotes: [{ type: 'streamable-http', url: `${BASE_URL}/v1/gateway/mcp/firecrawl` }],
+				requiredCapabilities: ['n8n-connect'],
+				isOfficial: false,
+				websiteUrl: 'https://firecrawl.dev',
+				tags: ['web'],
+			});
+			// An icon keeps a MIME type the registry accepts, and drops one it does not.
+			expect(row.icons).toEqual([
+				{ src: 'https://firecrawl.dev/icon.svg' },
+				{ src: 'https://firecrawl.dev/dark.png', mimeType: 'image/png', theme: 'dark' },
+			]);
+			expect(row.tools).toEqual([
+				{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } },
+				{ name: 'firecrawl_crawl', annotations: { readOnlyHint: false } },
+				{ name: 'firecrawl_map' },
+			]);
+		});
+
+		it.each([
+			{ case: 'does not match the contract', response: ok({ servers: [{ slug: 'firecrawl' }] }) },
+			{ case: 'has a non-2xx status', response: fail(502) },
+		])('rejects a response that $case', async ({ response }) => {
+			requestMock.mockResolvedValueOnce(response);
+
+			await expect(makeService().fetchAiGatewayMcpServers()).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('getSyntheticCredential() for an MCP server', () => {
+		const credentialType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+		const mcpNode = {
+			type: '@n8n/mcp-registry.n8nConnectFirecrawl',
+			typeVersion: 1,
+			parameters: {},
+		};
+
+		it.each([
+			{ case: 'a registry MCP node', node: mcpNode },
+			{ case: 'a call without a node (agent or discovery)', node: undefined },
+		])('mints a token pinned to the AI Gateway host for $case', async ({ node }) => {
+			requestMock.mockResolvedValueOnce(ok({ token: 'mcp-jwt', expiresIn: 3600 }));
+
+			const result = await makeService().getSyntheticCredential({
+				credentialType,
+				userId: USER_ID,
+				node,
+			});
+
+			expect(result).toEqual({
+				token: 'mcp-jwt',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'gateway.test',
+			});
+			// The MCP path never reads the node-credits config.
+			expect(requestMock).toHaveBeenCalledTimes(1);
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({ url: `${BASE_URL}/v1/gateway/credentials` }),
+			);
+		});
+
+		it.each([
+			{
+				case: 'a credential type that no listed server has',
+				credentialTypes: mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(false) }),
+				node: mcpNode,
+			},
+			{
+				case: 'a node that can request any credential type',
+				credentialTypes: undefined,
+				node: { type: 'n8n-nodes-base.httpRequest', typeVersion: 4.5, parameters: {} },
+			},
+		])('refuses $case', async ({ credentialTypes, node }) => {
+			const service = makeService(credentialTypes ? { credentialTypes } : {});
+
+			await expect(
+				service.getSyntheticCredential({ credentialType, userId: USER_ID, node }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 

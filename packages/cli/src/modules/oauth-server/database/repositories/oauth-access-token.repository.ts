@@ -19,4 +19,9 @@ export class AccessTokenRepository extends BaseRepository<AccessToken> {
 	async insertToken(token: NewAccessToken, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).insert(AccessToken, token);
 	}
+
+	/** A token is active while its row exists; revocation deletes the row. */
+	async isActive(token: string): Promise<boolean> {
+		return await this.existsBy({ token });
+	}
 }

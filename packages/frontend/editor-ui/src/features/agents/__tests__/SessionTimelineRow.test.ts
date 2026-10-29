@@ -2,9 +2,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { TimelineItem } from '../session-timeline.types';
+import SessionTimelineRow from '../components/SessionTimelineRow.vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/wf/1' }) }),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) => (name === 'n8n-nodes-base.httpRequest' ? { name } : undefined),
+	}),
 }));
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
@@ -28,17 +35,17 @@ vi.mock('../utils/toolDisplayName', () => ({
 const STUBS = {
 	N8nTooltip: { template: '<span><slot /></span>' },
 	N8nIcon: {
-		props: ['icon', 'size'],
+		props: ['icon', 'size', 'color'],
 		template:
-			'<span :data-icon="icon" :data-testid="icon ? `icon-${icon}` : undefined"><slot /></span>',
-	},
-	N8nBadge: {
-		props: ['theme', 'size'],
-		template: '<span data-test-id="timeline-tool-error-badge"><slot /></span>',
+			'<span :data-icon="icon" :data-color="color" :data-testid="icon ? `icon-${icon}` : undefined"><slot /></span>',
 	},
 	SessionTimelinePill: {
 		props: ['kind'],
 		template: '<span :data-testid="pill" :data-kind="kind" />',
+	},
+	NodeIcon: {
+		props: ['nodeType', 'size'],
+		template: '<span data-testid="node-icon" :data-node-type="nodeType.name" :data-size="size" />',
 	},
 };
 
@@ -53,7 +60,6 @@ function item(partial: Partial<TimelineItem>): TimelineItem {
 }
 
 async function renderComponent(it: TimelineItem) {
-	const { default: SessionTimelineRow } = await import('../components/SessionTimelineRow.vue');
 	return mount(SessionTimelineRow, {
 		props: { item: it, selected: false },
 		global: { stubs: STUBS },
@@ -61,6 +67,65 @@ async function renderComponent(it: TimelineItem) {
 }
 
 describe('SessionTimelineRow', () => {
+	it('renders a skill with its name and pill', async () => {
+		const wrapper = await renderComponent(item({ kind: 'skill', skillName: 'Triage' }));
+
+		expect(wrapper.text()).toContain('Triage');
+		expect(wrapper.find('[data-kind="skill"]').exists()).toBe(true);
+	});
+
+	it('shows the memory activity in a memory row', async () => {
+		const onMemoryDeleted = vi.fn();
+		const memory = { recalls: {}, flags: {} };
+		const wrapper = mount(SessionTimelineRow, {
+			props: {
+				item: item({ kind: 'memory', memoryAction: 'flag', toolCallId: 'call-1' }),
+				selected: false,
+				memory,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				onMemoryDeleted,
+			},
+			global: {
+				stubs: {
+					...STUBS,
+					SessionMemoryDetail: {
+						props: ['memory', 'threadId'],
+						emits: ['deleted'],
+						template:
+							'<button data-testid="memory-detail" :data-thread-id="threadId" :data-has-memory="memory !== undefined" @click="$emit(\'deleted\')" />',
+					},
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-kind="memory"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Flagged this run');
+		const detail = wrapper.find('[data-testid="memory-detail"]');
+		expect(detail.attributes()).toMatchObject({
+			'data-thread-id': 'thread-1',
+			'data-has-memory': 'true',
+		});
+		await detail.trigger('click');
+		expect(onMemoryDeleted).toHaveBeenCalled();
+	});
+
+	it('renders the node icon when the node type is available', async () => {
+		const wrapper = await renderComponent(
+			item({ kind: 'node', nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 4.2 }),
+		);
+
+		expect(wrapper.get('[data-testid="node-icon"]').attributes('data-size')).toBe('20');
+		expect(wrapper.find('[data-kind]').exists()).toBe(false);
+	});
+
+	it('renders the pill when the node type is unavailable', async () => {
+		const wrapper = await renderComponent(item({ kind: 'node', nodeType: 'unknown' }));
+
+		expect(wrapper.find('[data-kind="node"]').exists()).toBe(true);
+	});
+
 	it('renders the failure icon for a generic tool soft-failure', async () => {
 		const wrapper = await renderComponent(
 			item({
@@ -69,7 +134,7 @@ describe('SessionTimelineRow', () => {
 				toolOutput: { success: false, error: 'boom' },
 			}),
 		);
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(true);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(true);
 	}, 30_000);
 
 	it('renders the failure icon for a workflow soft-failure (success true, status error)', async () => {
@@ -80,24 +145,24 @@ describe('SessionTimelineRow', () => {
 				toolOutput: { status: 'error', error: 'node X failed' },
 			}),
 		);
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(true);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(true);
 	});
 
 	it('does not render the failure icon for a successful tool call', async () => {
 		const wrapper = await renderComponent(
 			item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } }),
 		);
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(false);
 	});
 
 	it('does not render the failure icon for an in-flight tool call', async () => {
 		const wrapper = await renderComponent(item({ kind: 'tool', toolSuccess: undefined }));
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(false);
 	});
 
 	it('does not render the failure icon for non-tool kinds', async () => {
 		const wrapper = await renderComponent(item({ kind: 'user', toolSuccess: false }));
-		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-alert"][data-color="danger"]').exists()).toBe(false);
 	});
 });
 
@@ -110,6 +175,6 @@ it('shows task titles and translated statuses in a signal row', async () => {
 			},
 		}),
 	);
-	expect(wrapper.text()).toContain('Check invoices — Failed');
+	expect(wrapper.text()).toContain('Check invoices • Failed');
 	expect(wrapper.find('[data-kind="background-task-signal"]').exists()).toBe(true);
 });

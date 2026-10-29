@@ -1,5 +1,3 @@
-export const TRACER_NAME = 'n8n-expression-runtime';
-
 export const ATTRIBUTE = {
 	EXPRESSION_ENGINE: 'expression.engine',
 	EXPRESSION_DURATION_SECONDS: 'expression.duration_seconds',

@@ -7,8 +7,7 @@ import { BinaryDataService, FileLocation, TEMP_EXECUTION_ID } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { ChatHubMessageRepository } from './chat-message.repository';
 
@@ -36,7 +35,7 @@ export class ChatHubAttachmentService {
 			throw new BadRequestError('File uploads are not allowed for this model');
 		}
 
-		if (allowedFilesMimeTypes === '*/*' || allowedFilesMimeTypes === '') return;
+		if (allowedFilesMimeTypes === '') return;
 
 		for (const attachment of attachments) {
 			if (!this.isAllowedMimeType(attachment.mimeType, allowedFilesMimeTypes)) {
@@ -196,6 +195,7 @@ export class ChatHubAttachmentService {
 	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {
 		const patterns = allowedMimeTypes.split(',').map((p) => p.trim());
 		for (const pattern of patterns) {
+			if (pattern === '*' || pattern === '*/*') return true;
 			if (pattern === mimeType) return true;
 			if (pattern.endsWith('/*')) {
 				const category = pattern.slice(0, pattern.indexOf('/'));

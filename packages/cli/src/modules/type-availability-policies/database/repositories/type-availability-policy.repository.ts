@@ -36,18 +36,22 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 	}
 
 	/**
+	 * Scoped by `kind` as well as `id`: a caller that manages one kind must not reach a
+	 * document of another kind whose id it happens to know.
+	 *
 	 * Pass `forUpdate: true` inside a write transaction that checks `expectedVersion` — see
 	 * `TypeAvailabilityPolicyScopeRepository.findScopeByKindAndProject` for why the lock
 	 * matters: without it, two concurrent writers can both pass the version check.
 	 */
-	async findById(
+	async findByIdAndKind(
 		id: string,
+		kind: string,
 		ctx: OperationContext,
 		forUpdate = false,
 	): Promise<TypeAvailabilityPolicy | null> {
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(TypeAvailabilityPolicy, {
-			where: { id },
+			where: { id, kind },
 			...(forUpdate ? this.forUpdateLock(manager) : {}),
 		});
 	}

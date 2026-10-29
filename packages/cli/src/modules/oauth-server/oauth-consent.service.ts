@@ -1,6 +1,6 @@
 import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { User, OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -8,13 +8,11 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
+import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthHelpers } from './oauth.helpers';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { ForbiddenError } from '@n8n/errors';
+import { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 
 type ConsentDetailsResult =
 	| {
@@ -63,6 +61,7 @@ export class OAuthConsentService {
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
 		private readonly urlService: UrlService,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	/**
@@ -110,7 +109,10 @@ export class OAuthConsentService {
 						reason: 'forbidden',
 					};
 
-				const scopes = this.grantableScopes(resource.scopes, sessionPayload.requestedScopes);
+				const scopes = this.grantableScopes(
+					await this.supportedScopesFor(resource, user),
+					sessionPayload.requestedScopes,
+				);
 
 				return {
 					ok: true,
@@ -121,7 +123,7 @@ export class OAuthConsentService {
 					redirectUri: sessionPayload.redirectUri,
 					scopes,
 					previousScopes: await this.previousScopes(user.id, client.id, scopes),
-					scopeTools: resource.getScopeTools?.(),
+					scopeTools: await resource.getScopeTools?.(),
 					uiHints: resource.uiHints,
 					isFirstParty: client.isFirstParty,
 				};
@@ -134,7 +136,7 @@ export class OAuthConsentService {
 			}
 
 			const scopes = this.grantableScopes(
-				defaultResource?.scopes ?? [],
+				await this.supportedScopesFor(defaultResource, user),
 				sessionPayload.requestedScopes,
 			);
 
@@ -146,7 +148,7 @@ export class OAuthConsentService {
 				redirectUri: sessionPayload.redirectUri,
 				scopes,
 				previousScopes: await this.previousScopes(user.id, client.id, scopes),
-				scopeTools: defaultResource?.getScopeTools?.(),
+				scopeTools: await defaultResource?.getScopeTools?.(),
 				uiHints: defaultResource?.uiHints,
 				isFirstParty: client.isFirstParty,
 			};
@@ -160,6 +162,18 @@ export class OAuthConsentService {
 	 * The client's requested scopes are a ceiling: the user may narrow a grant
 	 * but never widen it beyond what the client asked for.
 	 */
+	/**
+	 * Scopes the resource supports, narrowed to what this user may grant. A
+	 * resource without a per-user rule falls back to its full advertised set.
+	 */
+	private async supportedScopesFor(
+		resource: ProtectedResource | undefined,
+		user: User,
+	): Promise<string[]> {
+		if (!resource) return [];
+		return resource.getGrantableScopes ? await resource.getGrantableScopes(user) : resource.scopes;
+	}
+
 	private grantableScopes(supportedScopes: string[], requestedScopes?: string[]): string[] {
 		if (!requestedScopes || requestedScopes.length === 0) return supportedScopes;
 		return supportedScopes.filter((scope) => requestedScopes.includes(scope));
@@ -240,7 +254,7 @@ export class OAuthConsentService {
 			}
 		}
 
-		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes);
+		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes, user);
 
 		return await this.issueGrant(user, sessionPayload, grantedScopes);
 	}
@@ -265,42 +279,47 @@ export class OAuthConsentService {
 		user: User,
 		sessionPayload: OAuthSessionPayload,
 		grantedScopes: string[],
+		ctx: OperationContext = {},
 	): Promise<{ redirectUrl: string }> {
-		const issuer = this.urlService.getInstanceBaseUrl();
-
-		await this.userConsentRepository.upsert(
-			{
-				userId: user.id,
-				clientId: sessionPayload.clientId,
-				grantedAt: Date.now(),
-				scope: grantedScopes,
-			},
-			['userId', 'clientId'],
-		);
-
-		const code = await this.authorizationCodeService.createAuthorizationCode(
-			sessionPayload.clientId,
+		return await this.grantService.runForActiveUser(
 			user.id,
-			sessionPayload.redirectUri,
-			sessionPayload.codeChallenge,
-			sessionPayload.state,
-			sessionPayload.resource,
-			grantedScopes,
+			async (ctx) => {
+				const issuer = this.urlService.getInstanceBaseUrl();
+
+				await this.userConsentRepository.saveGrant(
+					user.id,
+					sessionPayload.clientId,
+					grantedScopes,
+					ctx,
+				);
+
+				const code = await this.authorizationCodeService.createAuthorizationCode(
+					sessionPayload.clientId,
+					user.id,
+					sessionPayload.redirectUri,
+					sessionPayload.codeChallenge,
+					sessionPayload.state,
+					sessionPayload.resource,
+					grantedScopes,
+					ctx,
+				);
+
+				const successRedirectUrl = OAuthHelpers.buildSuccessRedirectUrl(
+					sessionPayload.redirectUri,
+					code,
+					sessionPayload.state,
+					issuer,
+				);
+
+				this.logger.info('Consent approved', {
+					clientId: sessionPayload.clientId,
+					userId: user.id,
+				});
+
+				return { redirectUrl: successRedirectUrl };
+			},
+			ctx,
 		);
-
-		const successRedirectUrl = OAuthHelpers.buildSuccessRedirectUrl(
-			sessionPayload.redirectUri,
-			code,
-			sessionPayload.state,
-			issuer,
-		);
-
-		this.logger.info('Consent approved', {
-			clientId: sessionPayload.clientId,
-			userId: user.id,
-		});
-
-		return { redirectUrl: successRedirectUrl };
 	}
 
 	/**
@@ -313,12 +332,15 @@ export class OAuthConsentService {
 	private async resolveGrantedScopes(
 		sessionPayload: OAuthSessionPayload,
 		scopes: string[] | undefined,
+		user: User,
 	): Promise<string[]> {
 		const resource = sessionPayload.resource
 			? await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource)
 			: this.protectedResourceRegistry.getDefaultResource();
 
-		const supportedScopes = resource?.scopes ?? [];
+		// Narrowed per user, not just for display: this is the check that stops a
+		// hand-crafted approve request granting a scope the caller's role cannot use.
+		const supportedScopes = await this.supportedScopesFor(resource, user);
 		if (supportedScopes.length === 0) {
 			return [];
 		}
@@ -352,16 +374,39 @@ export class OAuthConsentService {
 			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
-		const consent = await this.userConsentRepository.findOne({
-			where: { clientId: sessionPayload.clientId, userId: user.id },
-		});
+		const consent = await this.userConsentRepository.findGrant(
+			user.id,
+			sessionPayload.clientId,
+			{},
+		);
 
 		if (!consent) {
 			return null;
 		}
 
-		const grantable = this.grantableScopes(resource.scopes ?? [], sessionPayload.requestedScopes);
-		if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+		const grantable = this.grantableScopes(
+			await this.supportedScopesFor(resource, user),
+			sessionPayload.requestedScopes,
+		);
+
+		const requestedScopes = sessionPayload.requestedScopes ?? [];
+		if (requestedScopes.length > 0) {
+			// The client named the scopes it needs. A consent that does not cover
+			// them re-prompts, so the user can decide on the missing ones.
+			if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+		}
+
+		// Reissue what the user already granted, narrowed to what is grantable
+		// now. Never the full grantable set: a scope introduced after the consent
+		// (an upgrade widening the supported set) must neither be granted without
+		// consent nor invalidate the consent — requiring full coverage here would
+		// re-prompt on every authorization, and approving the preselected scopes
+		// would never converge, because the picker preselects only the previously
+		// granted ones.
+		const consented = grantable.filter((scope) => consent.scope.includes(scope));
+		// Zero-scope resources (per-workflow MCP triggers) always grant `[]`, so
+		// an empty intersection only blocks reuse when there were scopes to keep.
+		if (grantable.length > 0 && consented.length === 0) return null;
 
 		if (!(await resource.authorize(user))) {
 			this.logger.debug('Consent reuse skipped: user no longer authorized for resource', {
@@ -372,6 +417,20 @@ export class OAuthConsentService {
 			return null;
 		}
 
-		return await this.issueGrant(user, sessionPayload, grantable);
+		return await this.grantService.runForActiveUser(user.id, async (ctx) => {
+			// Recheck after the user lock: consent can change while resource checks run.
+			const currentConsent = await this.userConsentRepository.findGrant(
+				user.id,
+				sessionPayload.clientId,
+				ctx,
+			);
+			if (
+				!currentConsent ||
+				currentConsent.id !== consent.id ||
+				currentConsent.grantedAt !== consent.grantedAt
+			)
+				return null;
+			return await this.issueGrant(user, sessionPayload, consented, ctx);
+		});
 	}
 }

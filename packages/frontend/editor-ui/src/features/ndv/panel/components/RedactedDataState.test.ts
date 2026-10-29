@@ -50,6 +50,74 @@ describe('RedactedDataState', () => {
 		expect(getByText('workflow settings')).toBeInTheDocument();
 	});
 
+	describe('redaction by a sub-workflow', () => {
+		const description =
+			'This execution is redacted because a sub-workflow it called has a redaction policy.';
+
+		it('says a sub-workflow caused the redaction and keeps the reveal button', () => {
+			const { getByText, queryByText, getByTestId } = renderComponent({
+				props: {
+					title: 'Redacted',
+					isDynamicCredentials: false,
+					isSubWorkflowRedaction: true,
+					canReveal: true,
+				},
+			});
+
+			expect(getByText(description)).toBeInTheDocument();
+			// The calling workflow's settings do not control this redaction.
+			expect(queryByText('workflow settings')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-reveal-redacted-data')).toBeInTheDocument();
+		});
+
+		it('shows no reveal button without permission', () => {
+			const { getByText, queryByTestId } = renderComponent({
+				props: {
+					title: 'Redacted',
+					isDynamicCredentials: false,
+					isSubWorkflowRedaction: true,
+					canReveal: false,
+				},
+			});
+
+			expect(getByText(description)).toBeInTheDocument();
+			expect(queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('a credential the viewer can share with themselves', () => {
+		const props = {
+			title: 'Redacted',
+			isDynamicCredentials: false,
+			canReveal: false,
+			credentialToShare: { id: 'alice-gmail', name: "Alice's Gmail" },
+		};
+
+		it('says why the data is hidden and links to the credential sharing', async () => {
+			const { getByText, queryByText, getByTestId, emitted } = renderComponent({ props });
+
+			expect(
+				getByText("This execution used a credential you don't have access to", { exact: false }),
+			).toBeInTheDocument();
+			expect(
+				queryByText('You do not have the permissions to reveal it', { exact: false }),
+			).not.toBeInTheDocument();
+			const link = getByTestId('redacted-data-share-credential');
+			expect(link).toHaveTextContent("Give yourself access to Alice's Gmail");
+
+			link.click();
+			expect(emitted().shareCredential).toHaveLength(1);
+		});
+
+		it('shows no link without a credential to share', () => {
+			const { queryByTestId } = renderComponent({
+				props: { ...props, credentialToShare: undefined },
+			});
+
+			expect(queryByTestId('redacted-data-share-credential')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should show reveal button when canReveal is true', () => {
 		const { getByTestId } = renderComponent({
 			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: true },

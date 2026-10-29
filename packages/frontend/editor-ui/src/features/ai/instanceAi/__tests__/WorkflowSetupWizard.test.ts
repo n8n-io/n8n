@@ -4,7 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowSetupWizard from '../workflowSetup/components/WorkflowSetupWizard.vue';
 import type { WorkflowSetupContext } from '../workflowSetup/composables/useWorkflowSetupContext';
 import { makeWorkflowSetupSection } from '../workflowSetup/__tests__/factories';
-import type { WorkflowSetupSection, WorkflowSetupStep } from '../workflowSetup/workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup/workflowSetup.types';
 import type { INodeUi } from '@/Interface';
 
 const workflowSetupContext = vi.hoisted(() => ({
@@ -31,10 +31,6 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizard, {
 			WorkflowSetupCard: {
 				template:
 					'<section data-test-id="instance-ai-workflow-setup-card"><slot name="footer" /></section>',
-			},
-			WorkflowSetupGroupCard: {
-				template:
-					'<section data-test-id="instance-ai-workflow-setup-group-card"><slot name="footer" /></section>',
 			},
 			N8nButton: {
 				props: ['disabled', 'label'],
@@ -85,20 +81,13 @@ interface ContextOptions {
 function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): WorkflowSetupContext {
 	const sections = options.sections ?? [sectionA];
 	const currentStepIndex = options.currentStepIndex ?? ref(0);
-	const steps = computed<WorkflowSetupStep[]>(() =>
-		sections.map((section) => ({ kind: 'section', section })),
-	);
 
-	const isStepHandled = (step: WorkflowSetupStep): boolean => {
-		if (step.kind !== 'section') return false;
-		return isComplete.value || (options.isSkipped?.value ?? false);
-	};
+	const isSectionHandled = (): boolean => isComplete.value || (options.isSkipped?.value ?? false);
 
 	return {
 		sections: computed(() => sections),
-		steps,
 		currentStepIndex,
-		activeStep: computed(() => steps.value[currentStepIndex.value]),
+		activeSection: computed(() => sections[currentStepIndex.value]),
 		hasOtherUnhandledSteps: computed(() => options.hasOtherUnhandledSteps?.value ?? false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),
@@ -114,9 +103,7 @@ function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): Wo
 		isSectionComplete: () => isComplete.value,
 		isCredentialTestFailed: () => options.isCredentialTestFailed?.value ?? false,
 		isSectionSkipped: () => options.isSkipped?.value ?? false,
-		isStepComplete: () => isComplete.value,
-		isStepSkipped: () => options.isSkipped?.value ?? false,
-		isStepHandled,
+		isSectionHandled,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),

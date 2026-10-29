@@ -4,6 +4,8 @@ import { createTestingPinia } from '@pinia/testing';
 import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { computed } from 'vue';
+import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '../embed/instanceAiEmbed.types';
 
 // Stub ChatMarkdownChunk to expose the processed content. v-html mirrors the
 // real component (VueMarkdown renders via innerHTML): plain text stays plain
@@ -49,6 +51,29 @@ describe('InstanceAiMarkdown', () => {
 		const { getByTestId } = renderComponent({ props: { content } });
 		return getByTestId('markdown-output').textContent ?? '';
 	}
+
+	it.each([true, false])(
+		'uses the Test link label only in the Agents UI (embedded: %s)',
+		(embedded) => {
+			const { getByTestId } = renderComponent({
+				props: { content: '<a href="/projects/project-1/agents/agent-1/preview">Preview</a>' },
+				global: {
+					provide: embedded
+						? {
+								[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
+									type: 'agent',
+									id: 'agent-1',
+									projectId: 'project-1',
+								})),
+							}
+						: {},
+				},
+			});
+			expect(getByTestId('markdown-output').querySelector('a')?.textContent).toBe(
+				embedded ? 'Test' : 'Preview',
+			);
+		},
+	);
 
 	it('should return content unchanged when registry is empty', () => {
 		const result = getProcessedContent('Hello world');
@@ -333,6 +358,46 @@ describe('InstanceAiMarkdown', () => {
 			},
 		);
 
+		it.each(agentPreviewLinks)(
+			'preserves Cmd/Ctrl-click on $label Preview links with an embedded provider',
+			({ content: agentPreviewContent }) => {
+				const openAgentChatPreview = vi.fn(() => true);
+				const { getByTestId } = renderComponent({
+					props: { content: agentPreviewContent },
+					global: {
+						provide: {
+							openAgentChatPreview,
+							[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
+								type: 'agent',
+								id: 'agent-1',
+								projectId: 'project-1',
+							})),
+						},
+					},
+				});
+				const link = getByTestId('markdown-output').querySelector('a');
+				if (!link) throw new Error('expected Preview anchor');
+				for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+					const event = clickEvent(modifier);
+					let prevented: boolean | undefined;
+					link.parentElement?.parentElement?.addEventListener(
+						'click',
+						(event) => {
+							prevented = event.defaultPrevented;
+							event.preventDefault();
+						},
+						{ once: true },
+					);
+					link.dispatchEvent(event);
+					expect(prevented).toBe(false);
+				}
+				expect(openAgentChatPreview).not.toHaveBeenCalled();
+				expect(link.getAttribute('href')).toBe(
+					'/projects/project-1/agents/agent-1?openPreview=true',
+				);
+			},
+		);
+
 		it('uses the builder artifact target for its Preview link', () => {
 			const openAgentChatPreview = vi.fn(() => true);
 			const { getByTestId } = renderComponent({
@@ -392,6 +457,58 @@ describe('InstanceAiMarkdown', () => {
 			link.dispatchEvent(clickEvent());
 
 			expect(openAgentChatPreview).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('embedded subject', () => {
+		const subject = computed(() => ({
+			type: 'agent' as const,
+			id: 'agent-1',
+			projectId: 'project-1',
+		}));
+
+		function renderInEmbed(content: string) {
+			const { getByTestId } = renderComponent({
+				props: { content },
+				global: { provide: { [INSTANCE_AI_EMBED_SUBJECT_KEY]: subject } },
+			});
+			return getByTestId('markdown-output');
+		}
+
+		it('should render the subject agent name as plain text', () => {
+			const registry = makeRegistry([
+				{ type: 'agent', id: 'agent-1', name: 'Simple Triggered Assistant' },
+				{ type: 'workflow', id: 'wf-1', name: 'Trigger Workflow' },
+			]);
+			thread.resourceNameIndex = registry;
+			thread.linkableResourceNameIndex = registry;
+
+			const output = renderInEmbed('I saved Simple Triggered Assistant and built Trigger Workflow');
+
+			expect(output.textContent).not.toContain('n8n-resource://agent/agent-1');
+			expect(output.textContent).toContain('[Trigger Workflow](n8n-resource://workflow/wf-1)');
+		});
+
+		it.each([
+			'<a href="n8n-resource://agent/agent-1">Simple Triggered Assistant</a>',
+			'<a href="/projects/project-1/agents/agent-1">Simple Triggered Assistant</a>',
+		])('should unwrap links to the subject agent: %s', (content) => {
+			const output = renderInEmbed(content);
+
+			expect(output.querySelector('a')).toBeNull();
+			expect(output.textContent).toBe('Simple Triggered Assistant');
+		});
+
+		it('should keep links to other agents and the Preview link', () => {
+			const output = renderInEmbed(
+				'<a href="n8n-resource://agent/agent-2">Other Agent</a> ' +
+					'<a href="/projects/project-1/agents/agent-1?openPreview=true">Preview</a>',
+			);
+
+			const links = output.querySelectorAll('a');
+			expect(links).toHaveLength(2);
+			expect(links[0].dataset.resourceId).toBe('agent-2');
+			expect(links[1].dataset.agentPreviewId).toBe('agent-1');
 		});
 	});
 });

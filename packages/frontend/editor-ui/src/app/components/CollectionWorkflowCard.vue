@@ -45,7 +45,7 @@ defineProps<{
 	-webkit-box-orient: vertical;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	overflow: hidden;
 	white-space: normal;
 }

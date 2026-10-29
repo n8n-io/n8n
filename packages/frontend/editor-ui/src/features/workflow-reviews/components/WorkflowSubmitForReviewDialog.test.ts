@@ -190,6 +190,24 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 	});
 
+	it('submits the review step from the body form', async () => {
+		const { getByTestId, goToStep2, selectReviewer } = await renderDialog();
+		expect(getByTestId('workflow-review-next-button')).toHaveAttribute(
+			'form',
+			'workflow-submit-for-review-form',
+		);
+		await goToStep2();
+
+		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+		await selectReviewer();
+		const button = getByTestId('workflow-review-submit-button');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'workflow-submit-for-review-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalled());
+	});
+
 	it('requires a non-empty title and cancel creates nothing', async () => {
 		const { getByTestId, queryByTestId, emitted, goToStep2 } = await renderDialog();
 		await goToStep2();

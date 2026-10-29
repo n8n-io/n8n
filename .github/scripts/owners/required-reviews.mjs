@@ -1,12 +1,16 @@
 /**
  * Required-review enforcement for OWNERS entries marked `required`.
  *
- * Computes the teams whose approval the changeset needs (per OWNERS)
+ * Computes the teams whose approval the non-test changes need (per OWNERS)
  * and reports the verdict as a "Required Reviews" commit status on the PR
  * head SHA. A ruleset that lists this status as a required check blocks the
  * merge until a member of each required team has approved the PR. Merge-queue
  * runs do not reach this script: the workflow reports success on the queue
  * head directly, because entering the queue already required a green status.
+ *
+ * Every base branch is enforced unless the PR matches a trusted exemption.
+ * Exemptions include configured routes and an authorized large-scale-change
+ * label. An exempt PR reports success without approval evaluation.
  *
  * The job itself always succeeds when the evaluation runs; the commit status
  * carries the verdict. The status is set to pending before the evaluation
@@ -17,15 +21,37 @@
 import {
 	getChangedFiles,
 	getEventFromGithubEventPath,
+	getPrEvents,
 	getPrReviews,
 	getPullRequestById,
 	isTeamMember,
+	listOpenPullRequestsByHead,
+	readPrLabels,
 	setCommitStatus,
 } from '../github-helpers.mjs';
 import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
 
 export const STATUS_CONTEXT = 'Required Reviews';
-const TARGET_BRANCH = 'master';
+export const LARGE_SCALE_CHANGE_LABEL = 'large-scale-change';
+export const LARGE_SCALE_CHANGES_TEAM = 'large-scale-changes';
+
+/**
+ * PR routes that skip the evaluation. Each entry is `<head> -> <base>` or
+ * just `<base>` (any head). `*` matches any run of characters, including
+ * `/`. Only heads in this repository qualify; a fork branch with a
+ * matching name does not.
+ *
+ * Add a route here only when every commit it carries was already reviewed
+ * elsewhere, like the master-to-3.x sync, whose commits landed on master.
+ */
+export const REQUIRED_REVIEW_EXEMPTIONS = ['sync/master-to-3x -> 3.x'];
+
+/**
+ * @typedef ExemptRoute
+ * @property { string } head Glob for the head branch.
+ * @property { string } base Glob for the base branch.
+ * @property { string } source The entry as written.
+ */
 
 /**
  * A PR review as returned by the reviews API.
@@ -37,15 +63,66 @@ const TARGET_BRANCH = 'master';
  */
 
 /**
+ * @param { string } entry `<head> -> <base>` or `<base>`
+ * @returns { ExemptRoute }
+ */
+export function parseExemption(entry) {
+	const parts = entry.split('->').map((part) => part.trim());
+	if (parts.length > 2 || parts.some((part) => part === '')) {
+		throw new Error(`Invalid exemption "${entry}": expected "<head> -> <base>" or "<base>"`);
+	}
+	const [head, base] = parts.length === 2 ? parts : ['*', parts[0]];
+	return { head, base, source: entry };
+}
+
+/**
+ * @param { string } ref Branch name.
+ * @param { string } pattern Glob where `*` matches any run of characters.
+ * @returns { boolean }
+ */
+export function matchesBranchPattern(ref, pattern) {
+	const escaped = pattern.split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+	return new RegExp(`^${escaped.join('.*')}$`).test(ref);
+}
+
+/**
+ * @param { { head: { ref: string, repo: { full_name: string } | null }, base: { ref: string, repo: { full_name: string } } } } pullRequest
+ * @param { string[] } [exemptions]
+ * @returns { ExemptRoute | undefined } The first matching route.
+ */
+export function findExemption(pullRequest, exemptions = REQUIRED_REVIEW_EXEMPTIONS) {
+	// A fork can name its branch anything, so the head must live in this repo.
+	if (pullRequest.head.repo?.full_name !== pullRequest.base.repo.full_name) return undefined;
+
+	return exemptions
+		.map(parseExemption)
+		.find(
+			(route) =>
+				matchesBranchPattern(pullRequest.head.ref, route.head) &&
+				matchesBranchPattern(pullRequest.base.ref, route.base),
+		);
+}
+
+/**
  * Resolve the PR number from the triggering event.
+ *
+ * A workflow_run event carries no PR: the PR is looked up from the
+ * triggering run's head. Only an open PR whose head SHA is the run's head
+ * SHA counts; several PRs can share a head branch.
  *
  * @param { string } eventName
  * @param { any } event Parsed GITHUB_EVENT_PATH payload.
  * @param { string | undefined } pullRequestNumberEnv PULL_REQUEST_NUMBER (workflow_dispatch input).
- * @returns { number }
+ * @returns { Promise<number | undefined> } undefined when the event has no open PR to evaluate.
  */
-export function resolvePullRequestNumber(eventName, event, pullRequestNumberEnv) {
+export async function resolvePullRequestNumber(eventName, event, pullRequestNumberEnv) {
 	if (event?.pull_request?.number) return event.pull_request.number;
+
+	if (eventName === 'workflow_run' && event?.workflow_run) {
+		const { head_sha: sha, head_branch: branch, head_repository: headRepository } = event.workflow_run;
+		const candidates = await listOpenPullRequestsByHead(headRepository.owner.login, branch);
+		return candidates.find((pullRequest) => pullRequest.head.sha === sha)?.number;
+	}
 
 	const parsed = parseInt(pullRequestNumberEnv ?? '');
 	if (Number.isNaN(parsed)) {
@@ -86,6 +163,32 @@ export function collectApprovers(reviews) {
 			.filter(([, state]) => state === 'APPROVED')
 			.map(([login]) => login),
 	);
+}
+
+/**
+ * Return the team member who applied the active large-scale-change label.
+ * The current membership check makes the exemption expire when the actor
+ * leaves the team.
+ *
+ * @param { number } pullRequestNumber
+ * @param {{ labels?: Array<string | { name: string }> }} pullRequest
+ * @returns { Promise<string | undefined> }
+ */
+export async function findLargeScaleChangeExemption(pullRequestNumber, pullRequest) {
+	if (!readPrLabels(pullRequest).includes(LARGE_SCALE_CHANGE_LABEL)) return undefined;
+
+	const labelEvents = (await getPrEvents(pullRequestNumber)).filter(
+		(event) =>
+			['labeled', 'unlabeled'].includes(event.event) &&
+			event.label?.name === LARGE_SCALE_CHANGE_LABEL,
+	);
+	const latestEvent = labelEvents.at(-1);
+	if (latestEvent?.event !== 'labeled') return undefined;
+
+	const actor = latestEvent.actor?.login;
+	if (!actor) return undefined;
+
+	return (await isTeamMember(LARGE_SCALE_CHANGES_TEAM, actor)) ? actor : undefined;
 }
 
 /**
@@ -160,18 +263,16 @@ export async function run() {
 	const eventName = process.env.GITHUB_EVENT_NAME ?? 'workflow_dispatch';
 	const event = getEventFromGithubEventPath();
 
-	const pullRequestNumber = resolvePullRequestNumber(
+	const pullRequestNumber = await resolvePullRequestNumber(
 		eventName,
 		event,
 		process.env.PULL_REQUEST_NUMBER,
 	);
-	const pullRequest = await getPullRequestById(pullRequestNumber);
-
-	if (pullRequest.base.ref !== TARGET_BRANCH) {
-		console.log(`PR #${pullRequestNumber} targets "${pullRequest.base.ref}", not "${TARGET_BRANCH}"; skipping.`);
+	if (pullRequestNumber === undefined) {
+		console.log(`No open PR for the ${eventName} head; nothing to evaluate.`);
 		return;
 	}
-
+	const pullRequest = await getPullRequestById(pullRequestNumber);
 	const statusSha = pullRequest.head.sha;
 	const targetUrl = statusTargetUrl();
 
@@ -187,7 +288,24 @@ export async function run() {
 	/** @type { { state: 'success' | 'pending', description: string } } */
 	let status;
 	try {
-		status = await evaluateRequiredReviews(pullRequestNumber);
+		const exemption = findExemption(pullRequest);
+		const largeScaleChangeActor = exemption
+			? undefined
+			: await findLargeScaleChangeExemption(pullRequestNumber, pullRequest);
+		if (exemption) {
+			console.log(`PR #${pullRequestNumber} matches exempt route "${exemption.source}"; skipping the evaluation.`);
+			status = { state: 'success', description: `Exempt route: ${exemption.source}` };
+		} else if (largeScaleChangeActor) {
+			console.log(
+				`PR #${pullRequestNumber} has an authorized ${LARGE_SCALE_CHANGE_LABEL} label from ${largeScaleChangeActor}; skipping the evaluation.`,
+			);
+			status = {
+				state: 'success',
+				description: `Large-scale change exemption by @${largeScaleChangeActor}`,
+			};
+		} else {
+			status = await evaluateRequiredReviews(pullRequestNumber);
+		}
 	} catch (evaluationError) {
 		// Best effort: nicer than a stuck pending status. The pending status
 		// already blocks the merge if this write fails too.

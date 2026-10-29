@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
-import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
+import { isOAuthCredentialConnected } from '@/features/credentials/composables/oauthCallback';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
@@ -28,7 +28,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
-import { AI_GATEWAY_MANAGED_TAG } from '../constants';
+import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -51,10 +51,11 @@ const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 const settingsStore = useInstanceAiSettingsStore();
 
-const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
-	useInstanceAiBrowserCredentialSetupExperiment();
+const isBrowserCredentialSetupEnabled = computed(
+	() => INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED && settingsStore.isBrowserUseAvailable,
+);
 const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
-const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect, isOAuthCredentialType } = useCredentialOAuth();
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -114,8 +115,11 @@ const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) =>
 
 // Listen for credential creation to auto-select newly created credentials
 // when using the button path (no NodeCredentials rendered)
-const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
+const stopCreateListener = credentialsStore.$onAction(({ name, after, args }) => {
 	if (name !== 'createNewCredential') return;
+	// A connection flow creates its credential before authorization and selects
+	// it through NodeCredentials once it succeeds.
+	if (args[3]?.skipStoreUpdate) return;
 	after((newCred) => {
 		if (!newCred || typeof newCred !== 'object' || !('id' in newCred)) return;
 		const req = currentRequest.value;
@@ -136,8 +140,48 @@ onBeforeUnmount(() => {
 // Completion
 // ---------------------------------------------------------------------------
 
+/** Selected OAuth credential id → whether it can authenticate now. */
+const oauthConnections = ref<Record<string, boolean | undefined>>({});
+
+const selectedOAuthIds = computed(() =>
+	props.credentialRequests.flatMap(({ credentialType }) => {
+		const id = selections.value[credentialType];
+		return id && isOAuthCredentialType(credentialType) ? [id] : [];
+	}),
+);
+
+// Check again when the stored record changes: the OAuth callback saves the
+// token and updates `updatedAt`, and the credential modal then fetches again.
+watch(
+	() =>
+		selectedOAuthIds.value
+			.map((id) => {
+				const stored = credentialsStore.getCredentialById(id);
+				return [id, stored?.updatedAt, stored?.connectedByMe, stored?.scopes?.join(',')].join(':');
+			})
+			.join('|'),
+	async (_key, _previous, onCleanup) => {
+		let stale = false;
+		onCleanup(() => {
+			stale = true;
+		});
+		await Promise.all(
+			selectedOAuthIds.value.map(async (id) => {
+				const stored = credentialsStore.getCredentialById(id);
+				const fetched = await credentialsStore.getCredentialData({ id }).catch(() => undefined);
+				if (!stale) oauthConnections.value[id] = isOAuthCredentialConnected(stored, fetched);
+			}),
+		);
+	},
+	{ immediate: true },
+);
+
 function isStepComplete(credentialType: string): boolean {
-	return selections.value[credentialType] !== null;
+	const selected = selections.value[credentialType];
+	if (!selected) return false;
+	// Credential types load on mount. Until then, the card cannot tell if a sign-in is needed.
+	if (!credentialsStore.getCredentialTypeByName(credentialType)) return false;
+	return !isOAuthCredentialType(credentialType) || oauthConnections.value[selected] === true;
 }
 
 /** A step is handled once it has a selection or the user explicitly skipped it — either way, nothing left to do there. */
@@ -151,6 +195,15 @@ const allHandled = computed(() =>
 
 const anySelected = computed(() =>
 	props.credentialRequests.some((r) => isStepComplete(r.credentialType)),
+);
+
+/** Continue must not drop a selected credential that is still waiting for its sign-in. */
+const canContinue = computed(
+	() =>
+		anySelected.value &&
+		props.credentialRequests.every(
+			(r) => !selections.value[r.credentialType] || isStepComplete(r.credentialType),
+		),
 );
 
 /** The submitted-state label: finalize has its own copy; otherwise distinguish a full submit from a mixed skip/select one. */
@@ -760,7 +813,7 @@ async function handleSetupAutomatically() {
 							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
-							:disabled="!anySelected"
+							:disabled="!canContinue"
 							data-test-id="instance-ai-credential-continue-button"
 							@click="handleContinue"
 						/>

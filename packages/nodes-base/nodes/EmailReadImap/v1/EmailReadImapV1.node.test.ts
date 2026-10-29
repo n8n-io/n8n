@@ -1,240 +1,233 @@
-import type { Arrival, CloseReason, ImapSimple as Connection, Message } from '@n8n/imap';
-import { ImapSimple } from '@n8n/imap';
-import type { IDataObject, INode, INodeTypeBaseDescription, ITriggerFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import { mock, mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
+/* eslint-disable @typescript-eslint/naming-convention -- keys are wire header names */
+import { ImapSimple, type ImapTransport } from '@n8n/imap';
+import type {
+	IBinaryData,
+	IDataObject,
+	INode,
+	INodeTypeBaseDescription,
+	ITriggerFunctions,
+} from 'n8n-workflow';
+import type { Readable } from 'stream';
+import { mockDeep } from 'vitest-mock-extended';
 
-import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
+import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { EmailReadImapV1 } from './EmailReadImapV1.node';
+import {
+	BOTH_BODIES,
+	bodyOf,
+	FakeImapFlow,
+	PLAIN_ONLY,
+	WITH_ATTACHMENTS,
+	type Fixture,
+} from '../test/fake-imap-flow';
 
-vi.mock('@n8n/imap', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/imap')>()),
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	ImapSimple: { connect: vi.fn() },
-}));
+/** Captured before any spy, so a stubbed `connect` does not recurse into itself. */
+const openDirectly = ImapSimple.connect.bind(ImapSimple);
 
-const message = (uid: number): Message =>
-	({
-		attributes: { uid, struct: [] },
-		parts: [
-			{ which: '', body: 'Subject: Hello\r\n\r\nBody' },
-			{ which: 'HEADER', body: { from: ['a@b.com'], 'x-custom': ['kept'] } },
-			{ which: 'TEXT', body: 'raw-body' },
-		],
-	}) as unknown as Message;
+/** A fake transport never dials, but `connect` still wants somewhere to point. */
+const NOWHERE = {
+	host: 'imap.test',
+	port: 993,
+	secure: true,
+	user: 'user',
+	password: 'password',
+};
 
-describe('EmailReadImapV1', () => {
-	const baseDescription: INodeTypeBaseDescription = {
-		displayName: 'Email Trigger (IMAP)',
-		name: 'emailReadImap',
-		group: ['trigger'],
-		description: 'Triggers on new email',
-	};
+/**
+ * v1 keeps its own copy of the per-format loop, so it needs covering separately from v2. The
+ * mailbox reaches it through the real ImapSimple, driven by an arrival the fake server reports.
+ */
 
-	const credentials: ICredentialsDataImap = {
-		host: 'imap.test.com',
-		port: 993,
-		user: 'user',
-		password: 'password',
-		secure: true,
-		allowUnauthorizedCerts: false,
-	};
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'EmailReadImapV1',
+	name: 'emailReadImap',
+	group: ['trigger'],
+	description: 'Test',
+};
 
-	let staticData: IDataObject;
-	let triggerFunctions: DeepMockProxy<ITriggerFunctions>;
-	let connection: Connection;
-	let arrival: ((arrival: Arrival) => Promise<void>) | undefined;
-	let onError: ((error: Error) => void) | undefined;
-	let onClose: ((reason: CloseReason, cause?: Error) => void) | undefined;
+const credentials: ICredentialsDataImap = {
+	host: 'imap.test.com',
+	port: 993,
+	user: 'user',
+	password: 'password',
+	secure: false,
+	allowUnauthorizedCerts: false,
+};
 
-	const trigger = async (params: IDataObject = {}) => {
-		triggerFunctions.getNodeParameter.mockImplementation(
-			((param: string) =>
-				({
-					mailbox: 'INBOX',
-					postProcessAction: 'nothing',
-					options: {},
-					format: 'raw',
-					downloadAttachments: false,
-					dataPropertyAttachmentsPrefixName: 'attachment_',
-					...params,
-				})[param]) as never,
+const start = async (
+	mailbox: Fixture[],
+	params: { format: string; downloadAttachments?: boolean; postProcessAction?: string },
+) => {
+	const client = new FakeImapFlow(mailbox);
+	const connect = vi
+		.spyOn(ImapSimple, 'connect')
+		.mockImplementation(
+			async (_options, reconnect) =>
+				await openDirectly(NOWHERE, reconnect, () => client as unknown as ImapTransport),
 		);
 
-		return await new EmailReadImapV1(baseDescription).trigger.call(triggerFunctions);
-	};
-
-	beforeEach(() => {
-		staticData = {};
-		arrival = undefined;
-		onError = undefined;
-		onClose = undefined;
-
-		connection = {
-			onArrival: vi.fn((h) => ((arrival = h), connection)),
-			onError: vi.fn((h) => ((onError = h), connection)),
-			onClose: vi.fn((h) => ((onClose = h), connection)),
-			onReconnect: vi.fn(() => connection),
-			search: vi.fn().mockResolvedValue([message(7)]),
-			downloadText: vi.fn().mockResolvedValue('text'),
-			downloadAttachments: vi.fn().mockResolvedValue([]),
-			addFlags: vi.fn().mockResolvedValue(undefined),
-			end: vi.fn(),
-			endedByCaller: false,
-		} as unknown as Connection;
-		vi.mocked(ImapSimple.connect).mockResolvedValue(connection);
-
-		triggerFunctions = mockDeep<ITriggerFunctions>({
-			helpers: {
-				createDeferredPromise: () => {
-					let resolve!: () => void;
-					const promise = new Promise<void>((res) => (resolve = res));
-					return { promise, resolve, reject: vi.fn() } as never;
-				},
-			},
+	const trigger = mockDeep<ITriggerFunctions>();
+	const staticData: IDataObject = {};
+	trigger.getCredentials.mockResolvedValue(credentials as unknown as IDataObject);
+	trigger.getNode.mockReturnValue({ typeVersion: 1 } as INode);
+	trigger.getWorkflowStaticData.mockReturnValue(staticData);
+	trigger.getNodeParameter.mockImplementation((name: string) => {
+		if (name === 'format') return params.format;
+		if (name === 'mailbox') return 'INBOX';
+		if (name === 'postProcessAction') return params.postProcessAction ?? 'nothing';
+		if (name === 'options') return {};
+		if (name === 'downloadAttachments') return params.downloadAttachments ?? false;
+		if (name === 'dataPropertyAttachmentsPrefixName') return 'attachment_';
+		return undefined;
+	});
+	trigger.helpers.createDeferredPromise.mockImplementation(() => {
+		let resolve!: () => void;
+		const promise = new Promise<void>((res) => {
+			resolve = res;
 		});
-		triggerFunctions.getCredentials.calledWith('imap').mockResolvedValue(credentials);
-		triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1 }));
-		triggerFunctions.getWorkflowStaticData.calledWith('node').mockReturnValue(staticData);
+		return { promise, resolve, reject: () => {} } as ReturnType<
+			ITriggerFunctions['helpers']['createDeferredPromise']
+		>;
 	});
+	trigger.helpers.prepareBinaryData.mockImplementation(
+		async (data: Buffer | Readable, fileName?: string, mimeType?: string) =>
+			({
+				data: Buffer.isBuffer(data) ? data.toString('utf8') : '',
+				fileName,
+				mimeType,
+			}) as unknown as IBinaryData,
+	);
 
-	afterEach(() => vi.clearAllMocks());
+	const node = new EmailReadImapV1(baseDescription);
+	const response = await node.trigger.call(trigger);
 
-	it('returns a close function that ends the connection', async () => {
-		const { closeFunction } = await trigger();
+	const stop = async () => {
+		await response?.closeFunction?.();
+		connect.mockRestore();
+	};
 
-		await closeFunction?.();
+	return { client, trigger, staticData, stop };
+};
 
-		expect(connection.end).toHaveBeenCalled();
-	});
+const run = async (
+	mailbox: Fixture[],
+	params: { format: string; downloadAttachments?: boolean; postProcessAction?: string },
+) => {
+	const { client, trigger, stop } = await start(mailbox, params);
 
-	it('watches the mailbox it was configured with', async () => {
-		await trigger();
+	client.emit('exists', { path: 'INBOX', count: mailbox.length, prevCount: 0 });
+	await vi.waitFor(() => expect(trigger.emit).toHaveBeenCalled());
+	await stop();
 
-		expect(ImapSimple.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ host: 'imap.test.com', secure: true }),
-			expect.objectContaining({ mailbox: 'INBOX' }),
-		);
-	});
+	const emitted = trigger.emit.mock.calls.flatMap((call) => call[0][0]);
 
-	it('takes the certificate option from the node, not the credential', async () => {
-		await trigger({ options: { allowUnauthorizedCerts: true } });
+	return { client, emitted };
+};
 
-		expect(ImapSimple.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ allowUnauthorizedCerts: true }),
-			expect.anything(),
-		);
-	});
+describe('EmailReadImapV1 output', () => {
+	describe('format: simple', () => {
+		it('splits headers into top-level fields and metadata, without an attributes key', async () => {
+			const { emitted } = await run([PLAIN_ONLY], { format: 'simple' });
 
-	it('emits an error the connection could not recover from', async () => {
-		await trigger();
-		const error = new Error('gone for good');
-
-		onError?.(error);
-		// `emitError` is held back until the workflow is active, so it lands a microtask later.
-		await new Promise((resolve) => setImmediate(resolve));
-
-		expect(triggerFunctions.emitError).toHaveBeenCalledWith(error);
-	});
-
-	it('emits an actionable error when the server closes without explanation', async () => {
-		await trigger();
-
-		onClose?.('dropped', new Error('reconnect timed out'));
-
-		const emitted = triggerFunctions.emitError.mock.calls[0][0] as NodeOperationError;
-		expect(emitted).toBeInstanceOf(NodeOperationError);
-		expect(emitted.message).toBe('IMAP connection closed unexpectedly');
-		expect(emitted.description).toContain('closes long-lived connections');
-	});
-
-	it.each(['ended', 'error'] as const)('stays quiet on a %s close', async (reason) => {
-		await trigger();
-
-		onClose?.(reason);
-
-		expect(triggerFunctions.emitError).not.toHaveBeenCalled();
-	});
-
-	describe('formats', () => {
-		const emitted = () => triggerFunctions.emit.mock.calls[0][0][0];
-
-		it('emits the raw body', async () => {
-			await trigger({ format: 'raw' });
-
-			await arrival?.({ count: 1 });
-
-			expect(emitted()).toEqual([{ json: { raw: 'raw-body' } }]);
-		});
-
-		it('splits headers into top-level fields and metadata', async () => {
-			await trigger({ format: 'simple' });
-
-			await arrival?.({ count: 1 });
-
-			expect(emitted()).toEqual([
+			expect(emitted).toEqual([
 				{
 					json: {
-						textHtml: 'text',
-						textPlain: 'text',
-						from: 'a@b.com',
-						metadata: { 'x-custom': 'kept' },
+						textHtml: '',
+						textPlain: 'Plain body 101\r\n',
+						metadata: {
+							'message-id': '<101@example.com>',
+							'mime-version': '1.0',
+							'content-type': 'text/plain; charset=UTF-8',
+							'content-transfer-encoding': '7bit',
+						},
+						from: 'alice@example.com',
+						to: 'bob@example.com',
+						subject: 'Plain only',
+						date: 'Wed, 01 Jan 2020 12:00:00 +0000',
 					},
 				},
 			]);
 		});
 
-		it('attaches downloaded attachments under the configured prefix', async () => {
-			vi.mocked(connection.downloadAttachments).mockResolvedValue([
-				{ filename: 'a.pdf', content: Buffer.from('pdf') },
-			]);
-			triggerFunctions.helpers.prepareBinaryData.mockResolvedValue({
-				data: 'cGRm',
-				mimeType: 'application/pdf',
+		it('names attachments by their position among the attachment parts', async () => {
+			const { emitted } = await run([WITH_ATTACHMENTS], {
+				format: 'simple',
+				downloadAttachments: true,
 			});
 
-			await trigger({ format: 'simple', downloadAttachments: true });
-			await arrival?.({ count: 1 });
-
-			expect(emitted()[0].binary).toEqual({
-				attachment_0: { data: 'cGRm', mimeType: 'application/pdf' },
+			expect(emitted[0].binary).toStrictEqual({
+				attachment_0: { data: 'invoice', fileName: 'invoice.pdf', mimeType: 'application/pdf' },
+				attachment_1: { data: 'png', fileName: 'résumé.png', mimeType: 'image/png' },
+				attachment_2: { data: 'notes', fileName: 'notes-café.txt', mimeType: 'text/plain' },
 			});
 		});
 	});
 
+	describe('format: raw', () => {
+		it('returns the body as the server sent it', async () => {
+			const { emitted } = await run([BOTH_BODIES], { format: 'raw' });
+
+			expect(emitted).toEqual([{ json: { raw: bodyOf(BOTH_BODIES) } }]);
+		});
+	});
+
+	describe('format: resolved', () => {
+		it('names mailparser attachments by position, with decoded filenames', async () => {
+			const { emitted } = await run([WITH_ATTACHMENTS], { format: 'resolved' });
+
+			expect(emitted[0].json).toMatchObject({ subject: 'With attachments' });
+			expect(emitted[0].binary).toStrictEqual({
+				attachment_0: { data: 'invoice', fileName: 'invoice.pdf', mimeType: 'application/pdf' },
+				attachment_1: { data: 'png', fileName: 'résumé.png', mimeType: 'image/png' },
+				attachment_2: { data: 'notes', fileName: 'notes-café.txt', mimeType: 'text/plain' },
+			});
+		});
+	});
+
+	describe('watermark', () => {
+		it('skips a message that cannot be built instead of refetching it on every arrival', async () => {
+			const broken: Fixture = { ...PLAIN_ONLY, uid: 90 };
+			const { client, trigger, staticData, stop } = await start([broken, PLAIN_ONLY], {
+				format: 'raw',
+			});
+
+			// The server answers the broken message's fetch without the requested body.
+			const fetchDirectly = client.fetch.getMockImplementation()!;
+			client.fetch.mockImplementation((uids, query) => {
+				const messages = fetchDirectly(uids, query);
+				return (function* () {
+					for (const message of messages) {
+						if (message.uid === broken.uid) message.bodyParts = new Map();
+						yield message;
+					}
+				})();
+			});
+
+			client.emit('exists', { path: 'INBOX', count: 2, prevCount: 0 });
+			await vi.waitFor(() => expect(trigger.emitError).toHaveBeenCalled());
+			expect(trigger.emit).not.toHaveBeenCalled();
+
+			client.emit('exists', { path: 'INBOX', count: 3, prevCount: 2 });
+			await vi.waitFor(() => expect(trigger.emit).toHaveBeenCalled());
+			await stop();
+
+			expect(trigger.emit).toHaveBeenCalledExactlyOnceWith([
+				[{ json: { raw: bodyOf(PLAIN_ONLY) } }],
+			]);
+			expect(trigger.emitError).toHaveBeenCalledOnce();
+			expect(staticData.lastMessageUid).toBe(PLAIN_ONLY.uid);
+		});
+	});
+
 	describe('post-processing', () => {
-		it('marks every message it fetched as read', async () => {
-			await trigger({ postProcessAction: 'read' });
+		it('flags every fetched message as seen', async () => {
+			const { client } = await run([PLAIN_ONLY, BOTH_BODIES], {
+				format: 'raw',
+				postProcessAction: 'read',
+			});
 
-			await arrival?.({ count: 1 });
-
-			expect(connection.addFlags).toHaveBeenCalledWith([7], '\\SEEN');
-		});
-
-		it('leaves messages untouched when asked to do nothing', async () => {
-			await trigger({ postProcessAction: 'nothing' });
-
-			await arrival?.({ count: 1 });
-
-			expect(connection.addFlags).not.toHaveBeenCalled();
-		});
-
-		it('skips mail it has already seen', async () => {
-			staticData.lastMessageUid = 7;
-			await trigger();
-
-			await arrival?.({ count: 1 });
-
-			expect(triggerFunctions.emit).not.toHaveBeenCalled();
-		});
-
-		it('remembers the highest UID it processed', async () => {
-			await trigger();
-
-			await arrival?.({ count: 1 });
-
-			expect(staticData.lastMessageUid).toBe(7);
+			expect(client.flagsAdded).toEqual([{ range: '101,102', flags: ['\\SEEN'] }]);
 		});
 	});
 });

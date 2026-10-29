@@ -3,6 +3,7 @@ import {
 	assertCredentialAllowsUrl,
 	assertUrlAllowed,
 	getCredentialAllowedDomains,
+	getCredentialOwnRequestAllowedDomains,
 	injectDomainRestrictionFields,
 	isDomainAllowed,
 } from '../src/credential-domain-restrictions';
@@ -920,5 +921,42 @@ describe('DOMAIN_RESTRICTION_FIELDS', () => {
 		expect(DOMAIN_RESTRICTION_FIELDS).toHaveLength(2);
 		expect(DOMAIN_RESTRICTION_FIELDS[0].name).toBe('allowedHttpRequestDomains');
 		expect(DOMAIN_RESTRICTION_FIELDS[1].name).toBe('allowedDomains');
+	});
+});
+
+describe('getCredentialOwnRequestAllowedDomains', () => {
+	it('returns the list a credential declares', () => {
+		expect(
+			getCredentialOwnRequestAllowedDomains({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'login.example.com, *.api.example.com',
+			}),
+		).toBe('login.example.com, *.api.example.com');
+	});
+
+	it.each([
+		['unset', {}],
+		['all', { allowedHttpRequestDomains: 'all' }],
+		['none', { allowedHttpRequestDomains: 'none' }],
+		['unrecognised', { allowedHttpRequestDomains: 'nonsense' }],
+	])('leaves the request unrestricted when the mode is %s', (_mode, credentialData) => {
+		expect(
+			getCredentialOwnRequestAllowedDomains({
+				...credentialData,
+				allowedDomains: 'ignored.example.com',
+			}),
+		).toBeUndefined();
+	});
+
+	it.each([
+		['omitted', {}],
+		['empty', { allowedDomains: '' }],
+		['whitespace', { allowedDomains: '   ' }],
+	])('refuses an explicit list that is %s', (_shape, list) => {
+		const read = () =>
+			getCredentialOwnRequestAllowedDomains({ allowedHttpRequestDomains: 'domains', ...list });
+
+		expect(read).toThrow(UserError);
+		expect(read).toThrow('No allowed domains specified');
 	});
 });

@@ -49,6 +49,12 @@ const mockResponse = {
 		{
 			name: 'models/gemini-3.1-flash-image-preview',
 		},
+		{
+			name: 'models/gemini-nano-banana-2.1',
+		},
+		{
+			name: 'models/gemini-3.1-flash-lite-image',
+		},
 	],
 };
 
@@ -95,6 +101,44 @@ describe('GoogleGemini -> listSearch', () => {
 				],
 			});
 		});
+
+		it('should label, sort and pin models', async () => {
+			apiRequestMock.mockResolvedValue({
+				models: [
+					{ name: 'models/gemini-zeta' },
+					{ name: 'models/gemini-featured', displayName: 'Gemini Featured', priority: 10 },
+					{ name: 'models/gemini-2.5-pro' },
+					{ name: 'models/gemini-api-named', displayName: 'Gemini Api Named' },
+				],
+			});
+
+			const result = await modelSearch.call(mockExecuteFunctions);
+
+			// The API's displayName labels a model, else its id. A priority pins a model.
+			expect(result).toEqual({
+				results: [
+					{ name: 'Gemini Featured', value: 'models/gemini-featured' },
+					{ name: 'Gemini Api Named', value: 'models/gemini-api-named' },
+					{ name: 'models/gemini-2.5-pro', value: 'models/gemini-2.5-pro' },
+					{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
+				],
+			});
+		});
+
+		it('should match the filter against the label and the id', async () => {
+			apiRequestMock.mockResolvedValue({
+				models: [
+					{ name: 'models/gemini-zeta' },
+					{ name: 'models/gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' },
+				],
+			});
+
+			const byName = await modelSearch.call(mockExecuteFunctions, '2.5 Pro');
+			const byId = await modelSearch.call(mockExecuteFunctions, 'gemini-zeta');
+
+			expect(byName.results).toEqual([{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' }]);
+			expect(byId.results).toEqual([{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' }]);
+		});
 	});
 
 	describe('audioModelSearch', () => {
@@ -110,12 +154,12 @@ describe('GoogleGemini -> listSearch', () => {
 						value: 'models/gemini-2.5-flash',
 					},
 					{
-						name: 'models/gemma-3-1b-it',
-						value: 'models/gemma-3-1b-it',
-					},
-					{
 						name: 'models/gemini-2.5-flash-preview-native-audio-dialog',
 						value: 'models/gemini-2.5-flash-preview-native-audio-dialog',
+					},
+					{
+						name: 'models/gemma-3-1b-it',
+						value: 'models/gemma-3-1b-it',
 					},
 				],
 			});
@@ -135,10 +179,6 @@ describe('GoogleGemini -> listSearch', () => {
 						value: 'models/gemini-2.0-flash-exp-image-generation',
 					},
 					{
-						name: 'models/imagen-3.0-generate-002',
-						value: 'models/imagen-3.0-generate-002',
-					},
-					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-2.5-flash-image (Nano Banana)',
 						value: 'models/gemini-2.5-flash-image',
@@ -152,6 +192,20 @@ describe('GoogleGemini -> listSearch', () => {
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-3.1-flash-image-preview (Nano Banana 2)',
 						value: 'models/gemini-3.1-flash-image-preview',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
+						value: 'models/gemini-3.1-flash-lite-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
+						value: 'models/gemini-nano-banana-2.1',
+					},
+					{
+						name: 'models/imagen-3.0-generate-002',
+						value: 'models/imagen-3.0-generate-002',
 					},
 				],
 			});
@@ -170,6 +224,26 @@ describe('GoogleGemini -> listSearch', () => {
 					},
 				],
 			});
+		});
+	});
+
+	describe('imageModelSearch with names from the API', () => {
+		it('should match the filter against the id when the API names the model', async () => {
+			apiRequestMock.mockResolvedValue({
+				models: [{ name: 'models/gemini-2.5-flash-image', displayName: 'Gemini 2.5 Flash Image' }],
+			});
+
+			const result = await imageGenerationModelSearch.call(
+				mockExecuteFunctions,
+				'gemini-2.5-flash-image',
+			);
+
+			expect(result.results).toEqual([
+				{
+					name: 'Gemini 2.5 Flash Image (Nano Banana)',
+					value: 'models/gemini-2.5-flash-image',
+				},
+			]);
 		});
 	});
 
@@ -195,6 +269,16 @@ describe('GoogleGemini -> listSearch', () => {
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-3.1-flash-image-preview (Nano Banana 2)',
 						value: 'models/gemini-3.1-flash-image-preview',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
+						value: 'models/gemini-3.1-flash-lite-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
+						value: 'models/gemini-nano-banana-2.1',
 					},
 				],
 			});

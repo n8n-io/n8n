@@ -1,6 +1,7 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
+import { escapeODataValue } from '../../../../utils/query-escaping';
 import { dataverseApiRequest } from '../GenericFunctions';
 import { isElasticTable, resolveTableMetadataByLogicalNames } from './metadata';
 import { hasUrlBreakingChars, normalizeEntitySet } from './shared';
@@ -227,7 +228,7 @@ async function resolveLogicalName(
 		{},
 		{
 			$select: 'LogicalName',
-			$filter: `EntitySetName eq '${entitySet.replace(/'/g, "''")}'`,
+			$filter: `EntitySetName eq '${escapeODataValue(entitySet)}'`,
 		},
 		{},
 		credentialType,

@@ -1,8 +1,26 @@
-import { PromotionChangesQueryDto, type PromotableResource } from '@n8n/api-types';
+import {
+	PromotionChangesQueryDto,
+	PromotionResourceDetailsRequestDto,
+	promotionDirectionSchema,
+	type PromotionDirection,
+	type PromotionPreview,
+	type PromotionResourceDetails,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Licensed, Param, ProjectScope, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Get,
+	GlobalScope,
+	Licensed,
+	Param,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import type { Response } from 'express';
+
+import { NotFoundError } from '@n8n/errors';
 
 import { PromotionChangeService } from './promotion-change.service';
 
@@ -10,22 +28,46 @@ import { PromotionChangeService } from './promotion-change.service';
 export class PromotionChangesController {
 	constructor(private readonly changeService: PromotionChangeService) {}
 
-	@Get('/:projectId/changes')
-	@ProjectScope('project:export')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@Get('/:projectId/changes/:direction')
+	@GlobalScope('promotions:read')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getChanges(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
+		@Param('direction') direction: string,
 		@Query query: PromotionChangesQueryDto,
-	): Promise<PromotableResource[]> {
-		const changes = await this.changeService.getChanges(req.user, projectId);
-		const search = query.search?.toLowerCase();
-		return changes
-			.filter(({ name }) => !search || name.toLowerCase().includes(search))
-			.sort((a, b) => {
-				const comparison = (a[query.sort] ?? '').localeCompare(b[query.sort] ?? '');
-				return (query.order === 'desc' ? -comparison : comparison) || a.id.localeCompare(b.id);
-			});
+	): Promise<PromotionPreview> {
+		return await this.changeService.getPreview(
+			req.user,
+			projectId,
+			parseDirection(direction),
+			query,
+		);
 	}
+
+	@Post('/:projectId/changes/:direction/details')
+	@GlobalScope('promotions:read')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	async getDetails(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('direction') direction: string,
+		@Body body: PromotionResourceDetailsRequestDto,
+	): Promise<PromotionResourceDetails> {
+		return await this.changeService.getDetails(
+			req.user,
+			projectId,
+			parseDirection(direction),
+			body,
+		);
+	}
+}
+
+function parseDirection(direction: string): PromotionDirection {
+	const parsed = promotionDirectionSchema.safeParse(direction);
+	// An unknown direction addresses nothing, so it is a 404 rather than a 400.
+	if (!parsed.success) throw new NotFoundError(`Unknown promotion direction: ${direction}`);
+	return parsed.data;
 }

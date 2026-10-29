@@ -1,6 +1,5 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
@@ -21,6 +20,9 @@ export const enum DbLock {
 	EVAL_COLLECTION_RERUN = 1006,
 	INSTANCE_AI_SETTINGS = 1007,
 	DATA_ENCRYPTION_KEY_SEED = 1008,
+	INSIGHTS_COMPACTION = 1009,
+	/** Unscoped for quota reservations; scoped by app for storage mutations. */
+	APPS_STORAGE = 1010,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -179,7 +181,7 @@ export class DbLockService {
 	async withLockContext<T>(
 		lockId: DbLock,
 		fn: (ctx: OperationContext) => Promise<T>,
-		options?: { timeoutMs?: number },
+		options?: { timeoutMs?: number; subKey?: number },
 	): Promise<T> {
 		return await this.withLock(lockId, async (_manager, ctx) => await fn(ctx), options);
 	}

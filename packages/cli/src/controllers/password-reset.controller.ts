@@ -4,8 +4,9 @@ import {
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
-import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, PersonRepository } from '@n8n/db';
 import {
 	Body,
 	createBodyKeyedRateLimiter,
@@ -20,12 +21,13 @@ import { ErrorReporter } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UnprocessableRequestError,
+} from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -50,7 +52,7 @@ export class PasswordResetController {
 		private readonly mfaService: MfaService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly eventService: EventService,
 		private readonly errorReporter: ErrorReporter,
 	) {}
@@ -85,13 +87,14 @@ export class PasswordResetController {
 			const { email } = payload;
 
 			// User should just be able to reset password if one is already present
-			const user = await this.userRepository.findNonShellUser(email);
-			if (!user) {
+			const person = await this.personRepository.findSetUpByEmail(email);
+			if (!person) {
 				this.logger.debug('No user found in the system');
 				return;
 			}
 
-			if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
+			// oxlint-disable-next-line typescript/no-deprecated
+			if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 				this.logger.debug(
 					'Request to send password reset email failed because the user limit was reached',
 				);
@@ -100,7 +103,10 @@ export class PasswordResetController {
 
 			if (
 				(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
-				!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
+				!(
+					hasGlobalScope(person, 'user:resetPassword') ||
+					person.settings?.allowSSOManualLogin === true
+				)
 			) {
 				const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
 				this.logger.debug(
@@ -111,8 +117,8 @@ export class PasswordResetController {
 				);
 			}
 
-			const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
-			if (!user.password || (ldapIdentity && user.disabled)) {
+			const ldapIdentity = person.authIdentities?.find((i) => i.providerType === 'ldap');
+			if (!person.password || (ldapIdentity && person.disabled)) {
 				this.logger.debug(
 					'Request to send password reset email failed because no user was found for the provided email',
 					{ invalidEmail: email },
@@ -120,13 +126,14 @@ export class PasswordResetController {
 				return;
 			}
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (this.license.isLdapEnabled() && ldapIdentity) {
 				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 			}
 
-			const url = this.authService.generatePasswordResetUrl(user);
+			const url = this.authService.generatePasswordResetUrl(person);
 
-			const { id, firstName } = user;
+			const { id, firstName } = person;
 			try {
 				await this.mailer.passwordReset({
 					email,
@@ -135,7 +142,7 @@ export class PasswordResetController {
 				});
 			} catch (error) {
 				this.eventService.emit('email-failed', {
-					user,
+					user: person,
 					messageType: 'Reset password',
 					publicApi: false,
 				});
@@ -147,14 +154,14 @@ export class PasswordResetController {
 				}
 			}
 
-			this.logger.info('Sent password reset email successfully', { userId: user.id, email });
+			this.logger.info('Sent password reset email successfully', { userId: person.id, email });
 			this.eventService.emit('user-transactional-email-sent', {
 				userId: id,
 				messageType: 'Reset password',
 				publicApi: false,
 			});
 
-			this.eventService.emit('user-password-reset-request-click', { user });
+			this.eventService.emit('user-password-reset-request-click', { user: person });
 		} catch (error) {
 			// Catch any unexpected errors to prevent information leakage
 			this.errorReporter.error(
@@ -173,19 +180,20 @@ export class PasswordResetController {
 		@Query payload: ResolvePasswordTokenQueryDto,
 	) {
 		const { token } = payload;
-		const user = await this.authService.resolvePasswordResetToken(token);
-		if (!user) throw new NotFoundError('');
+		const person = await this.authService.resolvePasswordResetToken(token);
+		if (!person) throw new NotFoundError('');
 
-		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
+		// oxlint-disable-next-line typescript/no-deprecated
+		if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: user.id },
+				{ userId: person.id },
 			);
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
-		this.eventService.emit('user-password-reset-email-click', { user });
+		this.logger.info('Reset-password token resolved successfully', { userId: person.id });
+		this.eventService.emit('user-password-reset-email-click', { user: person });
 	}
 
 	/**
@@ -202,13 +210,15 @@ export class PasswordResetController {
 	) {
 		const { token, password, mfaCode } = payload;
 
-		const user = await this.authService.resolvePasswordResetToken(token);
-		if (!user) throw new NotFoundError('');
+		const person = await this.authService.resolvePasswordResetToken(token);
+		if (!person) throw new NotFoundError('');
 
-		if (user.mfaEnabled) {
+		if (person.mfaEnabled) {
 			if (!mfaCode) throw new BadRequestError('If MFA enabled, mfaCode is required.');
 
-			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(
+				person.id,
+			);
 
 			const validToken = this.mfaService.totp.verifySecret({ secret, mfaCode });
 
@@ -217,24 +227,24 @@ export class PasswordResetController {
 
 		const passwordHash = await this.passwordUtility.hash(password);
 
-		await this.userService.update(user.id, { password: passwordHash });
+		await this.userService.update(person.id, { password: passwordHash });
 
-		this.logger.info('User password updated successfully', { userId: user.id });
+		this.logger.info('User password updated successfully', { userId: person.id });
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		this.authService.issueCookie(res, person, person.mfaEnabled, req.browserId);
 
-		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
+		this.eventService.emit('user-updated', { user: person, fieldsChanged: ['password'] });
 
 		// if this user used to be an LDAP user
-		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
+		const ldapIdentity = person?.authIdentities?.find((i) => i.providerType === 'ldap');
 		if (ldapIdentity) {
 			this.eventService.emit('user-signed-up', {
-				user,
+				user: person,
 				userType: 'email',
 				wasDisabledLdapUser: true,
 			});
 		}
 
-		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
+		await this.externalHooks.run('user.password.update', [person.email, passwordHash]);
 	}
 }

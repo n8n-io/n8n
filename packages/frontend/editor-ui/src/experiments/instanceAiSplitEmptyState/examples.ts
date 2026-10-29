@@ -1,4 +1,5 @@
 import type { BaseTextKey } from '@n8n/i18n';
+import type { InstanceAiPrefillDeclaration } from '@/features/ai/instanceAi/prefills';
 
 export interface SplitEmptyStateExample {
 	id: string;
@@ -7,7 +8,7 @@ export interface SplitEmptyStateExample {
 	workflowFile: string;
 }
 
-export interface SplitEmptyStateSuggestionSubmitPayload {
+export interface SplitEmptyStateSuggestionSubmitPayload extends InstanceAiPrefillDeclaration {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'quick_example';

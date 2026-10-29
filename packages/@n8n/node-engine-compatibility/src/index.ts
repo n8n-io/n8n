@@ -15,3 +15,4 @@ export type {
 	StepDataLoader,
 	V1StepExecutorDeps,
 } from './types';
+export { attachResponseHooks } from './v1-response-hooks';

@@ -8,7 +8,7 @@
 | content | text |  | false |  |  |  |
 | contentHash | varchar(64) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| embedding | json |  | true |  |  | Embedding vector for episodic recall |
+| embedding | bytea |  | true |  |  | Embedding vector for episodic recall, as float32 bytes |
 | embeddingModel | varchar(128) |  | true |  |  | Embedding model used to produce embedding |
 | id | varchar(36) |  | false | [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
 | lastSeenAt | timestamp(3) with time zone |  | false |  |  | Last time equivalent content was observed; updatedAt tracks row mutation time |
@@ -22,7 +22,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agents_memory_entries_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'superseded'::character varying, 'dropped'::character varying])::text[]))) |
+| CHK_agents_memory_entries_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'superseded'::character varying, 'dropped'::character varying, 'deleted'::character varying])::text[]))) |
 | FK_0edf1226b77ddc525eae4938079 | FOREIGN KEY | FOREIGN KEY ("supersededBy") REFERENCES agents_memory_entries(id) |
 | FK_1443a75e59adbfb796071d66393 | FOREIGN KEY | FOREIGN KEY ("resourceId") REFERENCES agents_resources(id) ON DELETE CASCADE |
 | FK_28e981fb675e9b44ce02f0ec1dd | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
@@ -62,7 +62,7 @@ erDiagram
   text content
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  json embedding
+  bytea embedding
   varchar_128_ embeddingModel
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt
@@ -80,8 +80,10 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
+  varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools

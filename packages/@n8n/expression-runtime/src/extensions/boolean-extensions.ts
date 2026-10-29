@@ -26,7 +26,7 @@ toNumber.doc = {
 	section: 'cast',
 	returnType: 'number',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/booleans/#boolean-toNumber',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/boolean#booleantonumber',
 };
 
 export const booleanExtensions: ExtensionMap = {

@@ -1,17 +1,71 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
+import {
+	classifyRestError,
+	isResponseError,
+	serializeInternalRestError,
+} from '@n8n/backend-services';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { ReportingOptions } from '@n8n/errors';
+import { type ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import picocolors from 'picocolors';
 
-import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
-import { applyFormSandboxCSP } from './webhooks/webhook-response-headers';
-import { serializeInternalRestError } from './errors/http-error-serializers';
+import { applySandboxCSP } from './webhooks/webhook-response-headers';
+
+/**
+ * Sends `stream` as the body of `res` and destroys `stream` however the call ends.
+ *
+ * Resolves when the body is sent or the client disconnected. Rejects with the stream
+ * error when the stream fails or ends early. A failure before the first chunk leaves
+ * the headers unsent, so the caller can still send an error response. A later failure
+ * destroys `res`, so the client sees an incomplete download instead of waiting.
+ *
+ * @param setHeaders Sets the status and headers. Runs after the first chunk is read.
+ */
+export async function sendStreamToResponse(
+	res: Response,
+	stream: Readable,
+	setHeaders?: () => void,
+): Promise<void> {
+	if (res.destroyed) {
+		stream.destroy();
+		return;
+	}
+
+	// Runs before pipeline's own listener, so the stream is still open when the client left first.
+	// A stream that was read to the end is destroyed too (autoDestroy), but that is not a failure.
+	let clientDisconnected = false;
+	const onClose = () => {
+		clientDisconnected = !res.writableFinished && (stream.readableEnded || !stream.destroyed);
+		stream.destroy();
+	};
+	res.once('close', onClose);
+
+	try {
+		const chunks = stream[Symbol.asyncIterator]();
+		const first = await chunks.next();
+
+		setHeaders?.();
+
+		async function* body() {
+			if (!first.done) yield first.value;
+			yield* { [Symbol.asyncIterator]: () => chunks };
+		}
+		await pipeline(Readable.from(body()), res);
+	} catch (error) {
+		if (clientDisconnected) return;
+		// pipeline can reject with the response's premature close instead of the stream's own error.
+		throw stream.errored ?? error;
+	} finally {
+		res.off('close', onClose);
+		stream.destroy();
+	}
+}
 
 export function sendSuccessResponse(
 	res: Response,
@@ -29,7 +83,11 @@ export function sendSuccessResponse(
 	}
 
 	if (data instanceof Readable) {
-		data.pipe(res);
+		void sendStreamToResponse(res, data).catch((e: unknown) => {
+			const error = ensureError(e);
+			reportError(error);
+			sendErrorResponse(res, error);
+		});
 		return;
 	}
 
@@ -47,6 +105,12 @@ export function sendSuccessResponse(
 }
 
 export function sendErrorResponse(res: Response, error: Error) {
+	if (res.headersSent) {
+		// Part of the body is already sent. Destroying the response tells the client it is incomplete.
+		res.destroy();
+		return;
+	}
+
 	if (isResponseError(error)) {
 		if (inDevelopment) {
 			Container.get(Logger).error(picocolors.red([error.httpStatusCode, error.message].join(' ')));
@@ -62,7 +126,8 @@ export function sendErrorResponse(res: Response, error: Error) {
 			if (isFormTrigger || isLegacyFormTrigger) {
 				const isTestWebhook = basePath.includes('test');
 				res.status(404);
-				applyFormSandboxCSP(res);
+				// The setting of the route decides: a webhook path can look like a form path.
+				applySandboxCSP(res, 'form');
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
 		}
@@ -70,14 +135,14 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
 			//codes other than 200  breaks redirection to form-waiting page from form trigger
 			//render form page instead of json
-			applyFormSandboxCSP(res);
+			applySandboxCSP(res, 'form');
 			return res.render('form-trigger-409', {
 				message: error.message,
 			});
 		}
 	}
 
-	const descriptor = classifyHttpError(error);
+	const descriptor = classifyRestError(error);
 	const { status, body: response } = serializeInternalRestError(descriptor);
 
 	if (error instanceof NodeApiError) {
@@ -92,6 +157,8 @@ export function sendErrorResponse(res: Response, error: Error) {
 		response.stacktrace = error.stack;
 	}
 
+	// res.json() does not override a Content-Type set earlier; force JSON here.
+	res.setHeader('Content-Type', 'application/json');
 	res.status(status).json(response);
 }
 

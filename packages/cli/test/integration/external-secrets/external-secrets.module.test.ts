@@ -78,7 +78,7 @@ describe('ExternalSecretsModule', () => {
 
 			await settingsRepository.save({
 				key: 'feature.externalSecrets',
-				value: cipher.encrypt(settings),
+				value: cipher.encryptWithInstanceKey(settings),
 				loadOnStartup: false,
 			});
 		});
@@ -145,7 +145,7 @@ describe('ExternalSecretsModule', () => {
 
 			module = Container.get(ExternalSecretsModule);
 
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
+			const encryptedSettings = cipher.encryptWithInstanceKey(JSON.stringify({}));
 			await connectionRepository.save({
 				providerKey: 'my-vault',
 				type: 'dummy',

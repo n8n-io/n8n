@@ -75,6 +75,26 @@ describe('AgentDefaultModelResolverService', () => {
 		});
 	});
 
+	it('never makes a Foundry deployment the default, and keeps the managed fallback', async () => {
+		const { service, modelLookupService, aiGatewayService } = makeService([
+			{ id: 'f1', name: 'My Foundry', type: 'azureOpenAiApi' },
+		]);
+		aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+
+		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
+			model: 'openai/gpt-5.6-terra',
+			credential: AI_GATEWAY_MANAGED_TAG,
+		});
+		expect(modelLookupService.list).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			'f1',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('resolves to null instead of throwing when the gateway config lookup fails', async () => {
 		const { service, aiGatewayService } = makeService();
 		aiGatewayService.getCredentialTypeForProvider.mockRejectedValue(

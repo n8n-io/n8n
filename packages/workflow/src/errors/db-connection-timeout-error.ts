@@ -1,4 +1,4 @@
-import { OperationalError } from './base/operational.error';
+import { OperationalError } from '@n8n/errors';
 
 export type DbConnectionTimeoutErrorOpts = {
 	configuredTimeoutInMs: number;

@@ -1,7 +1,7 @@
 import type { Folder, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { FolderFinderService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
@@ -50,7 +50,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 			basePrefix: 'projects/team-ligo',
 		});
@@ -69,7 +69,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: true,
 		});
 
@@ -82,7 +82,14 @@ describe('FolderExporter', () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
 		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld_1', ['w1']]]));
 		workflowExporter.export.mockResolvedValue({
-			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld_1/workflows/w1' }],
+			entries: [
+				{
+					id: 'w1',
+					name: 'W1',
+					target: 'folders/toproduction-fld_1/workflows/w1',
+					isArchived: false,
+				},
+			],
 			requirements: {
 				credentials: [
 					{
@@ -104,7 +111,7 @@ describe('FolderExporter', () => {
 			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -117,7 +124,12 @@ describe('FolderExporter', () => {
 			}),
 		);
 		expect(result.workflowEntries).toEqual([
-			{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld_1/workflows/w1' },
+			{
+				id: 'w1',
+				name: 'W1',
+				target: 'folders/toproduction-fld_1/workflows/w1',
+				isArchived: false,
+			},
 		]);
 		expect(result.requirements.credentials).toEqual([
 			{
@@ -141,7 +153,14 @@ describe('FolderExporter', () => {
 			]),
 		);
 		workflowExporter.export.mockResolvedValue({
-			entries: [{ id: 'w-n2', name: 'N2', target: 'folders/ops-ops_b/nested-nested/workflows/n2' }],
+			entries: [
+				{
+					id: 'w-n2',
+					name: 'N2',
+					target: 'folders/ops-ops_b/nested-nested/workflows/n2',
+					isArchived: false,
+				},
+			],
 			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
 		});
 		const writer = new CapturingWriter();
@@ -152,7 +171,7 @@ describe('FolderExporter', () => {
 			selectedWorkflowIds: new Set(['w-n2']),
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -184,7 +203,12 @@ describe('FolderExporter', () => {
 		);
 		workflowExporter.export.mockResolvedValue({
 			entries: [
-				{ id: 'w-selected', name: 'Selected', target: 'folders/parent-parent/nested-nested/x' },
+				{
+					id: 'w-selected',
+					name: 'Selected',
+					target: 'folders/parent-parent/nested-nested/x',
+					isArchived: false,
+				},
 			],
 			requirements: { credentials: [], dataTables: [], variables: [], tags: [], nodeTypes: [] },
 		});
@@ -195,7 +219,7 @@ describe('FolderExporter', () => {
 			selectedWorkflowIds: new Set(['w-selected']),
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -218,7 +242,7 @@ describe('FolderExporter', () => {
 				folderIds: ['fld_1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow(/not found or not accessible/);

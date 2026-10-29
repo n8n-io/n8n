@@ -71,6 +71,40 @@ describe('UserRepository', () => {
 			]);
 		});
 
+		test('pages by ID, even when the timestamps disagree', async () => {
+			// The timestamps descend while the IDs ascend, so a timestamp order
+			// would page these rows in the opposite order.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const first = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const second = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const third = await createExecution({ startedAt: null }, workflow);
+
+			const page = async (beforeId?: string) =>
+				await executionRepository.findManyByRangeQuery({
+					workflowId: workflow.id,
+					user: owner,
+					kind: 'range',
+					range: { limit: 1, beforeId },
+				});
+
+			// Walk the pages the way the cursor does: the first page has no cursor.
+			const [newest] = await page();
+			expect(newest.id).toBe(third.id);
+
+			const [middle] = await page(newest.id);
+			expect(middle.id).toBe(second.id);
+
+			const [oldest] = await page(middle.id);
+			expect(oldest.id).toBe(first.id);
+		});
+
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(
@@ -319,6 +353,49 @@ describe('UserRepository', () => {
 			expect(result).toBe(false);
 			const row = await executionRepository.findOne({ where: { id: execution.id } });
 			expect(row?.status).toBe('canceled');
+		});
+	});
+
+	describe('unsaved manual executions', () => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			await executionRepository.softDelete(execution.id);
+			return { workflow, execution };
+		};
+
+		test('finds the execution inside the hard-delete buffer', async () => {
+			const { workflow, execution } = await createUnsavedManualExecution();
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toMatchObject({
+				id: execution.id,
+				workflowId: workflow.id,
+			});
+			expect(await executionRepository.findSingleExecution(execution.id)).toBeUndefined();
+		});
+
+		test('does not find the execution after the hard-delete buffer', async () => {
+			const { execution } = await createUnsavedManualExecution();
+			await executionRepository.update(
+				{ id: execution.id },
+				{ deletedAt: DateTime.utc().minus({ hours: 2 }).toJSDate() },
+			);
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toBeNull();
+		});
+
+		test('does not find a kept, an unfinished or a non-manual execution', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const kept = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			const { execution: unfinished } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: unfinished.id }, { status: 'running' });
+			const { execution: webhook } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: webhook.id }, { mode: 'webhook' });
+
+			expect(await executionRepository.findUnsavedManualExecution(kept.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(unfinished.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(webhook.id)).toBeNull();
 		});
 	});
 });

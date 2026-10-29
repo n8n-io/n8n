@@ -18,16 +18,22 @@ import type {
 import { type INode, type INodeParameters, type INodeProperties, NodeHelpers } from 'n8n-workflow';
 
 /**
- * Collects all credential types that a node requires from three sources:
+ * Collects all credential types that a node requires:
  * 1. Node type definition — standard credentials with displayOptions
  * 2. Node issues — dynamic credentials (e.g. in HTTP Request node) that are missing or invalid
  * 3. Assigned credentials — dynamic credentials already properly set
+ * 4. Parameter-selected credentials, even before a binding or issue exists
  */
 export function getNodeCredentialTypes(
 	nodeTypeProvider: NodeTypeProvider,
 	node: INodeUi,
 ): string[] {
 	const credentialTypes = new Set<string>();
+	const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+	const activeTypes = NodeHelpers.getActiveCredentialTypes(node, nodeType);
+	for (const type of [node.parameters.nodeCredentialType, node.parameters.genericAuthType]) {
+		if (typeof type === 'string' && activeTypes?.has(type)) credentialTypes.add(type);
+	}
 
 	const displayableCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
 	for (const cred of displayableCredentials) {
@@ -72,7 +78,7 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 			nodeType.properties,
 			node.parameters,
 			true,
-			false,
+			true,
 			node,
 			nodeType,
 		) ?? node.parameters;

@@ -2,6 +2,8 @@ import type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListFilter,
+	ExecutionListQuery,
 } from './execution-view-store';
 
 /**
@@ -11,6 +13,26 @@ import type {
  */
 export class ExecutionQueryService {
 	constructor(private readonly viewStore: ExecutionViewStore) {}
+
+	/**
+	 * Lists executions matching `query`, one page at a time. Fetches one extra
+	 * row over the requested limit, so the last in-page row's own cursor can be
+	 * reported as `nextCursor` without a second query.
+	 */
+	async searchExecutions(query: ExecutionListQuery) {
+		const { limit } = query;
+		const [rows, total] = await Promise.all([
+			this.viewStore.listExecutionViews({ ...query, limit: limit + 1 }),
+			query.includeTotal ? this.viewStore.countExecutionViews(query) : undefined,
+		]);
+		const items = rows.slice(0, limit);
+		const last = items.at(-1);
+		return {
+			items,
+			nextCursor: rows.length > limit && last ? { createdAt: last.createdAt, id: last.id } : null,
+			...(total !== undefined ? { total } : {}),
+		};
+	}
 
 	/** @throws {ExecutionNotFoundError} if absent. */
 	async getExecution(id: string): Promise<ExecutionView> {
@@ -25,5 +47,16 @@ export class ExecutionQueryService {
 	 */
 	async getExecutionWithSteps(id: string): Promise<ExecutionWithStepsView> {
 		return await this.viewStore.loadExecutionWithStepsView(id);
+	}
+
+	/**
+	 * The newest execution matching `filter` and every step of it, or
+	 * `undefined` when none matches. One query, so a caller that wants the
+	 * latest run's data does not list first and read second.
+	 */
+	async findLatestExecutionWithSteps(
+		filter: ExecutionListFilter,
+	): Promise<ExecutionWithStepsView | undefined> {
+		return await this.viewStore.loadLatestExecutionWithStepsView(filter);
 	}
 }

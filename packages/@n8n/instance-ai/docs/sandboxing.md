@@ -4,7 +4,7 @@ Instance AI uses a remote sandbox workspace to build workflows from
 `@n8n/workflow-sdk` source. The sandbox keeps file writes and command execution
 off the n8n host. Workflow building is unavailable when sandboxing is disabled.
 
-Agent building is separate. `build-agent` delegates to
+Agent building is separate. `agent_builder_build_agent` delegates to
 `AgentsBuilderService` in the agents module and does not use the Instance AI
 sandbox.
 
@@ -110,32 +110,60 @@ entry that they already resolved.
 
 Initialization is lazy and idempotent. A marker file prevents repeated base
 setup. Knowledge-base content is refreshed when an existing sandbox is
-reattached. The setup creates or materializes:
+reattached. Initial setup creates or materializes:
 
-| Path | Purpose |
-|------|---------|
-| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, and Node type dependencies in normal mode |
-| `tsconfig.json` | Strict TypeScript configuration |
-| `build.mjs` | Workflow SDK execution and JSON conversion |
-| `node-types/index.txt` | Searchable node-type catalog |
-| `src/` | Workflow source files |
-| `chunks/` | Reusable source modules |
-| `knowledge-base/` | Best-practice, template, and SDK reference material |
-| `.sandbox-initialized` | Setup marker |
+| Path                   | Purpose                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `package.json`         | Pinned `@n8n/workflow-sdk`, `tsx`, `typescript`, and Node type dependencies in normal mode |
+| `tsconfig.json`        | Strict TypeScript configuration                                                            |
+| `build.mjs`            | Workflow SDK execution and JSON conversion                                                 |
+| `node-types/index.txt` | Searchable node-type catalog                                                               |
+| `src/`                 | Workflow source files                                                                      |
+| `chunks/`              | Reusable source modules                                                                    |
+| `knowledge-base/`      | Best-practice, template, and SDK reference material                                        |
+| `.sandbox-initialized` | Setup marker                                                                               |
 
 The Daytona image or versioned snapshot includes the stable workspace files
 and installed dependencies. The node-type catalog is written after sandbox
 creation because it is instance-specific and too large for the Daytona image
 request.
 
+The knowledge base has a manifest with a content hash. Setup compares the
+manifest hash with the expected hash. When the hashes do not match, setup
+writes the bundle again and writes the manifest last. A matching manifest is
+trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
+the result, so later runs do not read the manifest again.
+
+Skills are not stored in the sandbox. `load_skill` serves built-in text from memory.
+Built-in knowledge paths, such as `knowledge-base/index.json`, are relative to the
+workspace root.
+
+Hub skills require the `skills`, `agents`, and `instance-ai` modules,
+`N8N_AGENTS_SKILLS_HUB_ENABLED=true` at startup, and the instance PostHog flag
+`130_attach_skills_to_assistant`. Discovery reads summaries only. Instructions load
+when a skill is selected. Markdown reference bodies load separately through
+`load_skill({ skillId, filePath })`. Both reads use the version selected for the
+turn and check current access. Paths under `.n8n/skills/hub/<stable-id>/` are virtual
+identifiers. No files are written to the workspace.
+
+With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
+
+| Message                             | Content                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `Checked prebaked workspace bundle` | Decision (`reused`, `cached`, `stale`, `missing`, `invalid`) and hashes |
+| `Wrote workspace bundle`            | Bundle hash, file count, bytes, and duration                            |
+| `Read workspace file`               | Path, transport, result, bytes, and duration                            |
+| `Wrote workspace file`              | Path, transport, bytes, and duration                                    |
+| `Wrote workspace files`             | File count, bytes, and duration of a batch write                        |
+
 When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` is enabled for local development,
-Instance AI packs and installs the local `@n8n/utils`, `n8n-workflow`, and
-`@n8n/workflow-sdk` packages. Build those packages before starting a new
-thread.
+Instance AI packs and installs the local `@n8n/utils`, `@n8n/errors`,
+`n8n-workflow`, and `@n8n/workflow-sdk` packages. Build those packages before
+starting a new thread.
 
 ## Workflow Build Path
 
-The `build-workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
+The `workflow_builder_build_workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
 (`.json`) from the runtime workspace. The conventional filenames are
 `.workflow.ts` and `.workflow.json`.
 
@@ -151,37 +179,72 @@ node --import tsx build.mjs <source-file>
 The tool then performs server-side workflow validation, resolves credentials,
 and saves the workflow through the backend service.
 
+If source construction or source validation fails, the tool runs supplemental
+TypeScript diagnostics after automatic import recovery. This pass checks the
+requested file and its imports. It uses the sandbox compiler options and the
+installed SDK declarations. It uses the pinned TypeScript 7.0.2 experimental
+async API. Verify the API contract before upgrading. It does not check unrelated
+workflow files or execute the source. Chat-model and node-group validation
+failures do not start this pass.
+
+The package includes `assets/workflow-diagnostics.mts` as a source asset.
+Setup copies it into new sandboxes as `workflow-diagnostics.mts`.
+Snapshot builds include this file. The tool runs it with `node --import tsx`.
+The worker extends the sandbox's `tsconfig.json` and selects the requested file.
+Worker changes do not require a package build before testing from source.
+
+Initialized sandboxes keep their existing compiler and files. Sandboxes without
+the worker or pinned compiler return the original build errors. They receive
+supplemental diagnostics after they are recreated.
+
+The original errors appear first. Compiler findings include the file, line,
+column, and TypeScript error code. Exact duplicates are removed. The compiler
+runs in a sandbox Node process and starts a native compiler. The JavaScript heap
+limit is 512 MB; this does not limit native compiler memory. The sandbox provider
+enforces a five-second command timeout. A six-second host guard stops waiting if
+the provider does not respond. Compiler failures and timeouts preserve the
+original build errors. User cancellation still stops the build.
+
+The async API collects the native process exit status after normal completion.
+In n8n sandbox image 1.3.0, forced termination can leave exited native processes
+unreaped under PID 1. The provider stops execution, but its init process must
+also collect these exit records.
+
+Successful builds do not run this pass. A source construction error prevents
+graph validation, so this pass cannot report graph checks that did not run.
+Node schema errors include all available findings from the selected variant.
+Discriminator errors retain the guidance for valid variants.
+
 For WorkflowJSON source, the tool parses the JSON directly and then applies the
 same server-side save controls. There is no host-side TypeScript build fallback
 when the sandbox is unavailable.
 
 ## Boundaries
 
-The runtime sandbox is not the local Computer Use gateway. The sandbox is a
-private provider workspace for Instance AI. The local gateway exposes tools on
-the user's machine under daemon permissions.
+The runtime sandbox is not the user's browser. The sandbox is a
+private provider workspace for Instance AI. Browser Use exposes tools in the
+user's browser under extension permissions.
 
 Sandbox isolation does not grant product authorization. Backend services still
 apply RBAC, project scope, session grants, and HITL confirmation rules.
 
-The workspace is for Instance AI build and runtime-skill work. It is not a
-general user workload platform.
+The workspace is for Instance AI build work. It is not a general user
+workload platform.
 
 ## Tracing
 
 Sandbox operations use the active Instance AI trace. Each span inherits the
-thread metadata. The sandbox does not retain a turn's trace handle. Skill
-preparation runs inside the agent's lazy build and uses the same trace context.
+thread metadata. The sandbox does not retain a turn's trace handle.
 
-| Operation | Trace data |
-|-----------|------------|
-| Acquire and start | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors |
-| Initialize workspace | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
-| Sync skills and knowledge base | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result |
-| Read, write, and edit files | File operations under the existing tool span, paths, byte counts, and errors |
+| Operation                              | Trace data                                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Acquire and start                      | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors              |
+| Initialize workspace                   | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
+| Sync knowledge base                    | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result         |
+| Read, write, and edit files            | File operations under the existing tool span, paths, byte counts, and errors              |
 | Execute commands and compile workflows | Command size, exit code, timeout or cancellation, compile result, and bounded diagnostics |
-| Retry and fallback | File path, failed attempt, retry delay, and command fallback |
-| Evict cache and destroy | Reason, provider, sandbox ID, and cleanup errors |
+| Retry and fallback                     | File path, failed attempt, retry delay, and command fallback                              |
+| Evict cache and destroy                | Reason, provider, sandbox ID, and cleanup errors                                          |
 
 Batch operations reject on the first failure. Their spans end at that point.
 Transfers that already started can continue. Batch spans omit individual successful
@@ -210,24 +273,24 @@ provider notifications or polling.
 
 ## Configuration
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | `false` | Enable the sandbox-backed workspace |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `n8n-sandbox` | Select `n8n-sandbox` or `daytona` |
-| `N8N_SANDBOX_SERVICE_URL` | empty | n8n sandbox service URL |
-| `N8N_SANDBOX_SERVICE_API_KEY` | empty | n8n sandbox service API key |
-| `DAYTONA_API_URL` | empty | Daytona API URL |
-| `DAYTONA_API_KEY` | empty | Daytona API key for direct mode |
-| `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Daytona base image |
-| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | empty | Daytona proxy snapshot override |
-| `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Default command timeout in milliseconds |
-| `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` | `900000` | In-process idle cache TTL; `0` disables eviction |
-| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | empty | Prefix and label for Daytona names |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Delete the sandbox once idle instead of stopping it |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Daytona idle time before stop; `0` disables auto-stop |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` | Daytona stopped time before archive; `0` uses its maximum |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` | Daytona stopped time before delete; negative disables and `0` deletes on stop |
-| `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | `300000` | Proxy-token refresh skew |
-| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | `false` | Install local workspace packages for development |
+| Variable                                        | Default                   | Purpose                                                                       |
+| ----------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
+| `N8N_INSTANCE_AI_SANDBOX_ENABLED`               | `false`                   | Enable the sandbox-backed workspace                                           |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER`              | `n8n-sandbox`             | Select `n8n-sandbox` or `daytona`                                             |
+| `N8N_SANDBOX_SERVICE_URL`                       | empty                     | n8n sandbox service URL                                                       |
+| `N8N_SANDBOX_SERVICE_API_KEY`                   | empty                     | n8n sandbox service API key                                                   |
+| `DAYTONA_API_URL`                               | empty                     | Daytona API URL                                                               |
+| `DAYTONA_API_KEY`                               | empty                     | Daytona API key for direct mode                                               |
+| `N8N_INSTANCE_AI_SANDBOX_IMAGE`                 | `daytonaio/sandbox:0.5.0` | Daytona base image                                                            |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT`              | empty                     | Daytona proxy snapshot override                                               |
+| `N8N_INSTANCE_AI_SANDBOX_TIMEOUT`               | `300000`                  | Default command timeout in milliseconds                                       |
+| `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS`        | `900000`                  | In-process idle cache TTL; `0` disables eviction                              |
+| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX`           | empty                     | Prefix and label for Daytona names                                            |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL`             | `false`                   | Delete the sandbox once idle instead of stopping it                           |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES`     | `15`                      | Daytona idle time before stop; `0` disables auto-stop                         |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES`  | `60`                      | Daytona stopped time before archive; `0` uses its maximum                     |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES`   | `10080`                   | Daytona stopped time before delete; negative disables and `0` deletes on stop |
+| `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | `300000`                  | Proxy-token refresh skew                                                      |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK`              | `false`                   | Install local workspace packages for development                              |
 
 See [Configuration](configuration.md) for the complete environment reference.

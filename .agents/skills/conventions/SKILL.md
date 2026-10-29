@@ -45,6 +45,9 @@ throw new UnexpectedError('message', { extra: { context } });
 **Testing:**
 - Vitest (unit), Playwright (E2E)
 - Mock external dependencies
+- Keep filesystem tests in a test-owned temporary directory
+- Set `N8N_USER_FOLDER` before importing settings code
+- Trace branches activated by mocks and isolate every reachable mutation
 - Work from package directory: `pushd packages/cli && pnpm test`
 
 **Database:**

@@ -56,8 +56,8 @@ onMounted(async () => {
 
 <template>
 	<span>
-		<div v-if="isLoading">Loading binary data...</div>
-		<div v-else-if="error">Error loading binary data</div>
+		<div v-if="isLoading">{{ i18n.baseText('binaryDataDisplay.loading') }}</div>
+		<div v-else-if="error">{{ i18n.baseText('binaryDataDisplay.errorLoading') }}</div>
 		<span v-else>
 			<video v-if="binaryData.fileType === 'video'" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType" />

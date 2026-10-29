@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { Tool as AiSdkTool } from 'ai';
 import { z } from 'zod';
 
@@ -117,33 +118,14 @@ export async function executeTool(
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}
 
+	const loadSkill = anchorSkillLoader(executionContext.loadSkill, toolCallId);
 	if (builtTool.suspendSchema) {
 		const isCancelled = isCancellation(resumeData);
 		const ctx: InterruptibleToolContext = {
-			suspend: async (payload: unknown, options?: ToolSuspendOptions): Promise<never> => {
-				const resolvedOptions: ToolSuspendOptions = {
-					continuation: executionContext.continuation,
-					...options,
-					resumeSchema: options?.resumeSchema ?? executionContext.resumeSchema,
-				};
-				await executionContext.onSuspend?.(payload, resolvedOptions);
-				return await Promise.resolve({
-					[SUSPEND_BRAND]: true,
-					payload,
-					...resolvedOptions,
-				} as never);
-			},
+			suspend: createSuspendHandler(executionContext),
 			resumeData: isCancelled ? undefined : resumeData,
 			cancellation: isCancelled ? { message: resumeData.message } : undefined,
-			parentTelemetry,
-			toolCallId,
-			toolName: builtTool.name,
-			runId: executionContext.runId,
-			...(executionContext.loadSkill ? { loadSkill: executionContext.loadSkill } : {}),
-			persistence: executionContext.persistence,
-			emitEvent: executionContext.emitEvent,
-			abortSignal: executionContext.abortSignal,
-			executionCounter: executionContext.executionCounter,
+			...createToolContext(builtTool, executionContext, parentTelemetry, toolCallId, loadSkill),
 			suspendPayload: executionContext.suspendPayload,
 			continuation: executionContext.continuation,
 			resumeSchema: executionContext.resumeSchema,
@@ -151,35 +133,131 @@ export async function executeTool(
 		return await builtTool.handler(args, ctx);
 	}
 
-	const ctx: ToolContext = {
+	const ctx = createToolContext(
+		builtTool,
+		executionContext,
+		parentTelemetry,
+		toolCallId,
+		loadSkill,
+	);
+	return await builtTool.handler(args, ctx);
+}
+
+function anchorSkillLoader(
+	loadSkill: ToolExecutionContext['loadSkill'],
+	toolCallId: string | undefined,
+): ToolExecutionContext['loadSkill'] {
+	if (!loadSkill) return undefined;
+	// Keep skill content on the tool result. An explicit anchor takes precedence.
+	return async (skillId, anchor) =>
+		await loadSkill(skillId, anchor ?? (toolCallId ? { toolCallId } : undefined));
+}
+
+function createToolContext(
+	builtTool: BuiltTool,
+	executionContext: ToolExecutionContext,
+	parentTelemetry: BuiltTelemetry | undefined,
+	toolCallId: string | undefined,
+	loadSkill: ToolExecutionContext['loadSkill'],
+): ToolContext {
+	return {
 		parentTelemetry,
 		toolCallId,
 		toolName: builtTool.name,
 		runId: executionContext.runId,
-		...(executionContext.loadSkill ? { loadSkill: executionContext.loadSkill } : {}),
+		...(loadSkill ? { loadSkill } : {}),
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
 		abortSignal: executionContext.abortSignal,
 		executionCounter: executionContext.executionCounter,
+		approvalContext: executionContext.approvalContext,
+		onGuardrailNotice: executionContext.onGuardrailNotice,
 	};
-	return await builtTool.handler(args, ctx);
+}
+
+function createSuspendHandler(
+	executionContext: ToolExecutionContext,
+): InterruptibleToolContext['suspend'] {
+	return async (payload: unknown, options?: ToolSuspendOptions): Promise<never> => {
+		const resolvedOptions: ToolSuspendOptions = {
+			continuation: executionContext.continuation,
+			...options,
+			resumeSchema: options?.resumeSchema ?? executionContext.resumeSchema,
+		};
+		await executionContext.onSuspend?.(payload, resolvedOptions);
+		return await Promise.resolve({
+			[SUSPEND_BRAND]: true,
+			payload,
+			...resolvedOptions,
+		} as never);
+	};
+}
+
+// A tool name cannot contain this character, so the key never shadows a real name.
+const LEGACY_ACTION_KEY_SEPARATOR = '\u0000';
+
+function legacyActionKey(toolName: string, action: string): string {
+	return `${toolName}${LEGACY_ACTION_KEY_SEPARATOR}${action}`;
+}
+
+/** The call's `action` input. Persisted and repaired calls can carry the input as JSON text. */
+export function callAction(input: unknown): string | undefined {
+	let value = input;
+	if (typeof value === 'string') {
+		try {
+			value = JSON.parse(value);
+		} catch {
+			return undefined;
+		}
+	}
+	return isRecord(value) && typeof value.action === 'string' ? value.action : undefined;
 }
 
 /**
- * Check if a tool has suspend/resume schemas (i.e. is interruptible).
+ * Build a Map from tool name to BuiltTool for quick lookups. Legacy names are
+ * registered too, so persisted calls under a former name still resolve. A
+ * current tool name always wins over a legacy name. Resolve calls through
+ * `resolveToolForCall`, which also applies `legacyActions`.
  */
-export function isInterruptible(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
-	const builtTool = toolMap.get(toolName);
-	return !!builtTool?.suspendSchema;
-}
-
-/** Build a Map from tool name to BuiltTool for quick lookups. */
 export function buildToolMap(tools?: BuiltTool[]): Map<string, BuiltTool> {
 	const map = new Map<string, BuiltTool>();
-	if (tools) {
-		for (const t of tools) {
-			map.set(t.name, t);
+	if (!tools) return map;
+	for (const t of tools) {
+		map.set(t.name, t);
+	}
+	for (const t of tools) {
+		for (const legacyName of t.legacyNames ?? []) {
+			if (!map.has(legacyName)) map.set(legacyName, t);
+		}
+	}
+	for (const t of tools) {
+		for (const [legacyName, actions] of Object.entries(t.legacyActions ?? {})) {
+			if (map.get(legacyName)?.name === legacyName) continue;
+			for (const action of actions) {
+				const key = legacyActionKey(legacyName, action);
+				if (!map.has(key)) map.set(key, t);
+			}
 		}
 	}
 	return map;
+}
+
+/**
+ * The tool that runs a call. A call under a former name of a split tool
+ * resolves by its `action` input to the tool that now owns that action.
+ */
+export function resolveToolForCall(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	input: unknown,
+): BuiltTool | undefined {
+	const action = callAction(input);
+	const byAction =
+		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
+	return byAction ?? toolMap.get(toolName);
+}
+
+/** Whether `tool` resolved from a former name through `legacyActions`, not `legacyNames`. */
+export function isResolvedByLegacyAction(tool: BuiltTool, toolName: string): boolean {
+	return tool.name !== toolName && tool.legacyActions?.[toolName] !== undefined;
 }

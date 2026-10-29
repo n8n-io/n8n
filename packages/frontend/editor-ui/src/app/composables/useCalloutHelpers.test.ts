@@ -96,7 +96,6 @@ describe('useCalloutHelpers()', () => {
 			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
 				telemetry: {
 					source: 'nodeCreator',
-					section: 'testSection',
 				},
 			});
 

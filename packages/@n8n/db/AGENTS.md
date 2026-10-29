@@ -16,6 +16,13 @@ type its parameters and return value in **domain terms** — don't surface
 add generic `find(options)` passthroughs. This keeps operators and query
 construction inside the persistence layer where they belong.
 
+Repositories in this package follow the same rule as everywhere else: compose a
+file-private `BaseRepository` subclass (the table), do not extend it. Otherwise
+every injecting service inherits the full TypeORM surface and the boundary is
+gone. `src/repositories/deployment-key.repository.ts` is the in-package example;
+the root AGENTS.md "Repositories compose, they don't extend" bullet has the
+rules. Do not add new `extends BaseRepository` repositories.
+
 ## Transactions
 
 Both transaction primitives live here: the deprecated `withTransaction` helper

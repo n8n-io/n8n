@@ -21,6 +21,7 @@ import type {
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { raceAbort } from '@n8n/utils/race-abort';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonParse, NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import http from 'node:http';
@@ -679,20 +680,8 @@ export function configureDataEmitter(
 		}
 	}
 
-	// Rejects on close; kept handled so it can never become an unhandled rejection.
-	const abortPromise = new Promise<never>((_, reject) => {
-		closeSignal.addEventListener(
-			'abort',
-			() =>
-				reject(
-					new OperationalError(
-						'Trigger closed before the execution finished, offsets not resolved.',
-					),
-				),
-			{ once: true },
-		);
-	});
-	void abortPromise.catch(() => undefined);
+	const closedError = () =>
+		new OperationalError('Trigger closed before the execution finished, offsets not resolved.');
 
 	return async (dataArray: INodeExecutionData[]) => {
 		// Never start an execution once the trigger is closing.
@@ -714,7 +703,11 @@ export function configureDataEmitter(
 				}, executionTimeoutInSeconds * 1000);
 			});
 
-			const run = await Promise.race([responsePromise.promise, timeoutPromise, abortPromise]);
+			const run = await raceAbort(
+				Promise.race([responsePromise.promise, timeoutPromise]),
+				closeSignal,
+				closedError,
+			);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -727,7 +720,7 @@ export function configureDataEmitter(
 		} catch (e) {
 			// The retry backoff must not delay teardown.
 			if (!closeSignal.aborted) {
-				await Promise.race([sleep(errorRetryDelay), abortPromise.catch(() => undefined)]);
+				await sleep(errorRetryDelay, closeSignal).catch(() => undefined);
 			}
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });

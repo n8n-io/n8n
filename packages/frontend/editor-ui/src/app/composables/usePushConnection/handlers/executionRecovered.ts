@@ -6,6 +6,7 @@ import {
 	handleExecutionFinishedWithSuccessOrOther,
 	handleExecutionFinishedWithErrorOrCanceled,
 	handleExecutionFinishedWithWaitTill,
+	isFailedOrCanceledStatus,
 	setRunExecutionData,
 } from './executionFinished';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -39,7 +40,7 @@ export async function executionRecovered(
 
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
-	} else if (execution.status === 'error' || execution.status === 'canceled') {
+	} else if (isFailedOrCanceledStatus(execution.status)) {
 		handleExecutionFinishedWithErrorOrCanceled(
 			execution,
 			runExecutionData,

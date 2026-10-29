@@ -15,6 +15,9 @@ const sourceEntry = [
 // package override has to restate the shared defaults.
 const pkg = (overrides: Workspace = {}): Workspace => ({
 	entry: sourceEntry,
+	// Manifest `types` and `exports` fields make a local dist an entry. `ignore` only mutes
+	// findings in these files; a stale dist reports imports the source no longer has.
+	ignore: ['dist/**'],
 	// The default only reads tsconfig.json; build tsconfigs extend shared configs too.
 	typescript: { config: ['tsconfig.json', 'tsconfig.*.json'] },
 	// postcss is not a declared dependency, so the plugin needs to be forced on.
@@ -36,15 +39,15 @@ const config: KnipConfig = {
 		enumMembers: 'off',
 		namespaceMembers: 'off',
 		duplicates: 'off',
-		unlisted: 'off',
+		unlisted: 'error',
 		unresolved: 'off',
 		binaries: 'off',
-		catalogReferences: 'off',
+		catalogReferences: 'error',
 		cycles: 'off',
 	},
 	workspaces: {
 		'.': {
-			entry: ['scripts/**/*.{mjs,js,ts}', '.github/scripts/**/*.mjs'],
+			entry: ['scripts/**/*.{mjs,js,ts}'],
 			ignoreDependencies: [
 				// Invoked by path in the n8n-module-sdk script.
 				'@n8n/module-cli',
@@ -53,6 +56,27 @@ const config: KnipConfig = {
 				'@stryker-mutator/vitest-runner',
 				// Manual dev tool; CONTRIBUTING.md documents `pnpm exec dotenvx run`.
 				'@dotenvx/dotenvx',
+				// scripts/instance-seeding resolves it from packages/cli by path.
+				'flatted',
+				// scripts/generate-emoji-data.mjs is a manual generator; install emojibase-data ad hoc.
+				'emojibase-data',
+				// Only named in JSDoc type imports; @stryker-mutator/core provides it.
+				'@stryker-mutator/api',
+			],
+		},
+		// Not a pnpm workspace; the release and CI scripts carry their own manifest and lockfile.
+		'.github/scripts': {
+			entry: ['**/*.mjs'],
+			ignoreDependencies: [
+				// docker/edit-image-native-smoke-check.mjs requires these from the n8n install under test.
+				'@napi-rs/canvas',
+				'@napi-rs/image',
+				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
+				'@confluentinc/kafka-javascript',
+				// The generate-sbom script runs the cdxgen binary; the package is not installed here.
+				'@cyclonedx/cdxgen',
+				// conventional-changelog loads the preset by name.
+				'conventional-changelog-angular',
 			],
 		},
 		'packages/**': pkg(),
@@ -71,6 +95,10 @@ const config: KnipConfig = {
 				// psl is loaded with a dynamic import, which knip does not link to @types.
 				'@types/psl',
 			],
+		}),
+		'packages/@n8n/backend-services': pkg({
+			// ioredis-mock is loaded with vi.importActual, which knip does not link.
+			ignoreDependencies: ['ioredis-mock'],
 		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.
@@ -103,8 +131,15 @@ const config: KnipConfig = {
 			ignoreDependencies: ['@langchain/langgraph-checkpoint'],
 		}),
 		'packages/nodes-base': pkg({
-			// Pins the pg version that pg-promise resolves for npm installs of the published package.
-			ignoreDependencies: ['pg'],
+			ignoreDependencies: [
+				// napi-rs wrappers load these platform bindings dynamically at runtime.
+				'@napi-rs/canvas-linux-arm64-musl',
+				'@napi-rs/canvas-linux-x64-musl',
+				'@napi-rs/image-linux-arm64-musl',
+				'@napi-rs/image-linux-x64-musl',
+				// Pins the pg version that pg-promise resolves for npm installs of the published package.
+				'pg',
+			],
 		}),
 		'packages/@n8n/create-node': pkg({
 			// bin/create-node.cjs spawns the n8n-node binary through require.resolve.
@@ -113,6 +148,22 @@ const config: KnipConfig = {
 		'packages/modules/instance-registry/frontend': pkg({
 			// tsconfig.json reaches into design-system/src through rootDirs and types.
 			ignoreDependencies: ['@n8n/design-system'],
+		}),
+		'packages/workflow': pkg({
+			// Only named in JSDoc type imports; @stryker-mutator/core provides it.
+			ignoreDependencies: ['@stryker-mutator/api'],
+		}),
+		'packages/@n8n/scheduler': pkg({
+			// Only named in JSDoc type imports; @stryker-mutator/core provides it.
+			ignoreDependencies: ['@stryker-mutator/api'],
+		}),
+		'packages/quality/efficiency/scale/benchmark': pkg({
+			// The k6 runtime provides its own modules; only @types/k6 is installed.
+			ignoreDependencies: ['k6'],
+		}),
+		'packages/@n8n/backend-common': pkg({
+			// module-registry resolves the installed n8n package by path at runtime.
+			ignoreDependencies: ['n8n'],
 		}),
 		'packages/core': pkg({
 			// bin/generate-node-defs and bin/copy-static-files have no extension, so knip does not parse them.
@@ -134,6 +185,10 @@ const config: KnipConfig = {
 				'web-tree-sitter',
 				// Target of the `stream` alias that @n8n/frontend-vite-config declares.
 				'stream-browserify',
+				// .oxlintrc.json names these plugins; @n8n/oxlint-config provides them.
+				'@stylistic/eslint-plugin',
+				'eslint-plugin-lodash',
+				'eslint-plugin-unused-imports',
 			],
 		}),
 		'packages/frontend/@n8n/storybook': pkg({
@@ -159,7 +214,7 @@ const config: KnipConfig = {
 			// Spawned as a binary through execFile.
 			ignoreDependencies: ['agent-browser'],
 		}),
-		'packages/testing/playwright': pkg({
+		'packages/quality/testing/playwright': pkg({
 			ignoreDependencies: [
 				// The e2e suite runs against the built app; the edge orders the turbo build.
 				'n8n',

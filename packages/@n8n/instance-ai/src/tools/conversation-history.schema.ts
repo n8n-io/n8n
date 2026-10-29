@@ -35,7 +35,7 @@ export const conversationHistoryMessageSchema = z.object({
 	createdAt: z.string(),
 	/** Text blocks of the message, truncated. */
 	text: z.string(),
-	/** Resolved ask-user Q&A pairs carried by this (assistant) message, if any. */
+	/** Resolved workflow_builder_ask_user Q&A pairs carried by this (assistant) message, if any. */
 	userAnswers: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
 });
 

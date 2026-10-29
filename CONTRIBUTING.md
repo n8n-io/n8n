@@ -84,7 +84,7 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 [pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
 
 ```bash
-npm i -g pnpm@12.3.4
+npm i -g pnpm@12.4.2
 ```
 
 The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.
@@ -237,6 +237,22 @@ to both commands:
 ```bash
 N8N_PORT=5699 pnpm dev:be
 N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
+```
+
+### See telemetry events locally
+
+To see the telemetry events that your instance sends, start a local listener in
+one terminal and the backend in another. The listener shows one line for each
+event, from the backend and from the editor, and writes each event to
+`.output/telemetry.ndjson`. Run `pnpm telemetry:sink --help` for its options.
+
+`pnpm dev:be:telemetry` loads `.env.local` and `.env` when they exist, like
+`dotenvx` in the examples above. It always points the diagnostics settings at the
+listener, also when those files set them to other values.
+
+```bash
+pnpm telemetry:sink
+pnpm dev:be:telemetry
 ```
 
 ### Basic Development Workflow Example (most used within n8n)
@@ -432,7 +448,7 @@ Each instance gets its own port, and the webhook URL matches the main URL. Multi
 >- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
 >- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
 
-Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+Refer to [packages/quality/environments/containers/README.md](packages/quality/environments/containers/README.md) for more information.
 
 ### Work locally with syslog
 
@@ -661,7 +677,7 @@ E2E tests can be started via one of the following commands:
 - `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
 - `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
+See `packages/quality/testing/playwright/README.md` for more test commands and `packages/quality/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Create custom nodes
 

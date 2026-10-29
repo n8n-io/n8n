@@ -1,7 +1,7 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { DatabaseConfig, ExecutionsConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { ExecutionsPruningService } from './executions-pruning.service';
 
@@ -13,17 +13,26 @@ import { ExecutionsPruningService } from './executions-pruning.service';
 export class ExecutionPruningSoftDeleteTask implements SystemTask {
 	readonly name = 'execution-pruning-soft-delete';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toSeconds,
+	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly durable = false;
+	readonly target = clusterTarget({
+		scheduler: {
+			retryOnFailure: true,
+			// One UPDATE that ignores the signal. A timeout that stops the run before the
+			// UPDATE ends lets the next run start a second one, so it waits for the
+			// statement timeout first.
+			timeoutSeconds: timeoutAfterLimit(
+				statementTimeoutSeconds(this.databaseConfig),
+				5 * Time.minutes.toSeconds,
+			),
+		},
+	});
 
 	constructor(
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly databaseConfig: DatabaseConfig,
 		private readonly pruningService: ExecutionsPruningService,
 	) {}
 

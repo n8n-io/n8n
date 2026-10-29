@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { escapeODataValue } from '../../../../utils/query-escaping';
 import { dataverseApiRequest, type DataverseQuery } from '../GenericFunctions';
 import { normalizeEntitySet } from './shared';
 
@@ -63,7 +64,7 @@ async function fetchTableMetadata(
 		{},
 		{
 			$select: 'LogicalName,EntitySetName,PrimaryIdAttribute,TableType',
-			$filter: `EntitySetName eq '${entitySet.replace(/'/g, "''")}'`,
+			$filter: `EntitySetName eq '${escapeODataValue(entitySet)}'`,
 		},
 		{},
 		credentialType,

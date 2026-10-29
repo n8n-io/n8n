@@ -14,7 +14,13 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestWorkflow,
+	defaultNodeDescriptions,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
@@ -67,8 +73,14 @@ describe('NodeDetailsView', () => {
 	const setNode = createTestNode({ name: 'Set', type: SET_NODE_TYPE });
 	const stickyNode = createTestNode({ name: 'Sticky', type: STICKY_NODE_TYPE });
 
-	const renderComponent = (props: { readOnly?: boolean; activeNodeName?: string | null } = {}) => {
-		const { activeNodeName = null, ...componentProps } = props;
+	const renderComponent = (
+		props: {
+			readOnly?: boolean;
+			activeNodeName?: string | null;
+			stubs?: Record<string, unknown>;
+		} = {},
+	) => {
+		const { activeNodeName = null, stubs = {}, ...componentProps } = props;
 
 		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 		if (activeNodeName) {
@@ -99,6 +111,7 @@ describe('NodeDetailsView', () => {
 						emits: ['execute', 'activate'],
 					},
 					NodeSettings: { template: '<div data-test-id="node-settings"></div>' },
+					...stubs,
 				},
 			},
 		});
@@ -288,6 +301,72 @@ describe('NodeDetailsView', () => {
 
 			await waitFor(() => {
 				expect(emitted().renameNode).toEqual([['Renamed Trigger']]);
+			});
+		});
+	});
+
+	describe('node rename', () => {
+		beforeEach(() => {
+			const store = setupStore([manualTriggerNode, setNode]);
+			pinia = store.pinia;
+			workflowId = store.workflow.id;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
+		});
+
+		test('should not allow renaming a deprecated node', async () => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: SET_NODE_TYPE, deprecated: true }),
+			]);
+			const { getByTestId } = renderComponent({ activeNodeName: 'Set' });
+
+			await waitFor(() => expect(getByTestId('inline-edit-input')).toHaveAttribute('readonly'));
+		});
+
+		test('should not allow renaming a node when read-only', async () => {
+			const { getByTestId } = renderComponent({ activeNodeName: 'Set', readOnly: true });
+
+			await waitFor(() => expect(getByTestId('inline-edit-input')).toHaveAttribute('readonly'));
+		});
+	});
+
+	describe('restricted node type', () => {
+		const stubs = {
+			OutputPanel: {
+				props: ['isReadOnly'],
+				template: '<div data-test-id="output-panel" :data-read-only="isReadOnly"></div>',
+			},
+			NodeSettings: {
+				emits: ['replaceNode'],
+				template:
+					'<div data-test-id="node-settings" @click="$emit(\'replaceNode\', \'node-id\')"></div>',
+			},
+		};
+
+		beforeEach(() => {
+			const store = setupStore([manualTriggerNode, setNode]);
+			pinia = store.pinia;
+			workflowId = store.workflow.id;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
+			mockRestrictedNodeTypes({ [SET_NODE_TYPE]: 'instance' });
+		});
+
+		test('makes the output panel read-only', async () => {
+			const { getByTestId } = renderComponent({ activeNodeName: 'Set', stubs });
+
+			await waitFor(() =>
+				expect(getByTestId('output-panel')).toHaveAttribute('data-read-only', 'true'),
+			);
+		});
+
+		test('closes and re-emits the replace request', async () => {
+			const { getByTestId, emitted } = renderComponent({ activeNodeName: 'Set', stubs });
+
+			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
+			await userEvent.click(getByTestId('node-settings'));
+
+			await waitFor(() => {
+				expect(emitted('replaceNode')).toEqual([['node-id']]);
+				expect(useNDVStore(createWorkflowDocumentId(workflowId)).activeNodeName).toBeNull();
 			});
 		});
 	});

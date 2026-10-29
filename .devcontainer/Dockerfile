@@ -3,7 +3,7 @@ ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-alpine
 
 ARG NODE_VERSION
-ARG PNPM_VERSION=12.3.4
+ARG PNPM_VERSION=12.4.2
 
 RUN apk add --no-cache \
     openssh sudo shadow bash libc-utils \
