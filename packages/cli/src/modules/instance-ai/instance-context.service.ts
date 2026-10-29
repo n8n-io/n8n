@@ -692,30 +692,14 @@ export class InstanceContextService {
 				};
 			}
 
-			// The personal project is credential-readable by its owner without a project role, so
-			// naming it explicitly must not lose its credential entries.
-			// The same holds for its runs.
-			const personalProjectId =
-				scope.credentialGranted || scope.executionGranted
-					? (await this.projectRepository.getPersonalProjectForUser(user.id))?.id
-					: undefined;
-			const [credentialProjectIds, runProjectIds] = await Promise.all([
-				scope.credentialGranted
-					? this.projectIdsWithScope(user, 'credential:read', [projectId], personalProjectId)
-					: [],
-				scope.executionGranted
-					? this.projectIdsWithScope(user, 'execution:read', [projectId], personalProjectId)
-					: [],
-			]);
-			return {
-				surface: 'mcp',
-				projectIds: [projectId],
-				credentialProjectIds,
-				allowedCategories: hasProjectScope(credentialProjectIds)
-					? ['workflow', 'credential']
-					: ['workflow'],
-				runProjectIds,
-			};
+			// The personal project is credential- and execution-readable by its owner without a
+			// project role, so naming it explicitly must not lose its credential entries or runs.
+			return await this.resolveMcpScope(
+				user,
+				scope,
+				[projectId],
+				await this.personalProjectIdIfGranted(user, scope),
+			);
 		}
 
 		if (scope.surface === 'conversation') return null;
@@ -723,32 +707,14 @@ export class InstanceContextService {
 		// A global reader needs no project predicate at all, which is both correct and the only
 		// bounded option: `getProjectIdsWithScope` would hand back every project on the instance.
 		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
-			// Reading every workflow does not imply reading every credential, and the two are
-			// resolved apart: global `credential:read` opens all of them, otherwise the caller may
-			// still hold it on individual projects and should see those.
-			// Runs follow the same rule with `execution:read`. The scoped query returns team
-			// projects only, so the personal project is added back as in the branch below.
-			const personalProjectId =
-				scope.credentialGranted || scope.executionGranted
-					? (await this.projectRepository.getPersonalProjectForUser(user.id))?.id
-					: undefined;
-			const [credentialProjectIds, runProjectIds] = await Promise.all([
-				scope.credentialGranted
-					? this.globalOrProjectIdsWithScope(user, 'credential:read', personalProjectId)
-					: [],
-				scope.executionGranted
-					? this.globalOrProjectIdsWithScope(user, 'execution:read', personalProjectId)
-					: [],
-			]);
-			return {
-				surface: 'mcp',
-				projectIds: 'all-projects',
-				credentialProjectIds,
-				allowedCategories: hasProjectScope(credentialProjectIds)
-					? ['workflow', 'credential']
-					: ['workflow'],
-				runProjectIds,
-			};
+			// Credentials and runs are resolved apart from workflows. A caller without the global
+			// permission may still hold it on individual projects, including the personal one.
+			return await this.resolveMcpScope(
+				user,
+				scope,
+				'all-projects',
+				await this.personalProjectIdIfGranted(user, scope),
+			);
 		}
 
 		const [scopedIds, personalProject] = await Promise.all([
@@ -761,13 +727,35 @@ export class InstanceContextService {
 			: scopedIds;
 		if (projectIds.length === 0) return null;
 
+		return await this.resolveMcpScope(user, scope, projectIds, personalProject?.id);
+	}
+
+	/**
+	 * Builds the MCP scope for `projectIds`. Each token grant is checked against the caller's
+	 * real permission on those projects: `credential:read` for credential entries and
+	 * `execution:read` for runs.
+	 */
+	private async resolveMcpScope(
+		user: User,
+		scope: Extract<InstanceContextScope, { surface: 'mcp' }>,
+		projectIds: ActivityProjectScope,
+		personalProjectId: string | undefined,
+	): Promise<ResolvedScope> {
+		const readableWith = async (
+			permission: 'credential:read' | 'execution:read',
+		): Promise<ActivityProjectScope> => {
+			if (projectIds !== 'all-projects') {
+				return await this.projectIdsWithScope(user, permission, projectIds, personalProjectId);
+			}
+			// Reading every workflow does not imply reading every credential or run. The scoped
+			// query returns team projects only, so the personal project is added back.
+			if (hasGlobalScope(user, [permission], { mode: 'allOf' })) return 'all-projects';
+			return await this.projectIdsWithScope(user, permission, null, personalProjectId);
+		};
+
 		const [credentialProjectIds, runProjectIds] = await Promise.all([
-			scope.credentialGranted
-				? this.projectIdsWithScope(user, 'credential:read', projectIds, personalProject?.id)
-				: [],
-			scope.executionGranted
-				? this.projectIdsWithScope(user, 'execution:read', projectIds, personalProject?.id)
-				: [],
+			scope.credentialGranted ? readableWith('credential:read') : [],
+			scope.executionGranted ? readableWith('execution:read') : [],
 		]);
 
 		return {
@@ -781,14 +769,13 @@ export class InstanceContextService {
 		};
 	}
 
-	/** `'all-projects'` for a global holder of `scope`, otherwise the projects where it is held. */
-	private async globalOrProjectIdsWithScope(
+	/** Read only when a grant can use it, so a workflow-only token skips the lookup. */
+	private async personalProjectIdIfGranted(
 		user: User,
-		scope: 'credential:read' | 'execution:read',
-		personalProjectId: string | undefined,
-	): Promise<ActivityProjectScope> {
-		if (hasGlobalScope(user, [scope], { mode: 'allOf' })) return 'all-projects';
-		return await this.projectIdsWithScope(user, scope, null, personalProjectId);
+		scope: Extract<InstanceContextScope, { surface: 'mcp' }>,
+	): Promise<string | undefined> {
+		if (!scope.credentialGranted && !scope.executionGranted) return undefined;
+		return (await this.projectRepository.getPersonalProjectForUser(user.id))?.id;
 	}
 
 	/**
