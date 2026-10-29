@@ -1,9 +1,13 @@
 import type {
+	ConnectSkillSourceDto,
 	CreateSkillDto,
+	DiscoverSkillSourceDto,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListItem,
 	SkillSaveResponse,
+	SkillSourceConnectResponse,
+	SkillSourceDiscovery,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -75,6 +79,18 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.deleteSkill(rootStore.restApiContext, id);
 	}
 
+	/** Lists the skills that a GitHub link holds, for the "Choose skills" picker. */
+	async function discoverSource(payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
+		return await api.discoverSkillSource(rootStore.restApiContext, payload);
+	}
+
+	/** Connects a GitHub link and imports the picked skills. The caller reloads the list. */
+	async function connectSource(
+		payload: ConnectSkillSourceDto,
+	): Promise<SkillSourceConnectResponse> {
+		return await api.connectSkillSource(rootStore.restApiContext, payload);
+	}
+
 	return {
 		skills,
 		count,
@@ -88,5 +104,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		createSkill,
 		saveSkill,
 		deleteSkill,
+		discoverSource,
+		connectSource,
 	};
 });

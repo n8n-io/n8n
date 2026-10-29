@@ -32,8 +32,6 @@ export const BUILDER_TOOLS = {
 	GET_NODE_TYPES: AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
 } as const;
 
-export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];
-
 /** Thread-id prefix scoping the test-chat surface of an agent. */
 export const AGENT_THREAD_PREFIX = {
 	TEST: 'test-',

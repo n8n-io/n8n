@@ -6,7 +6,7 @@ import {
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 } from '@n8n/api-types';
-import { LicenseState, Logger, isEnvFeatureEnabled } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -91,7 +91,6 @@ export class PromotionReviewInboxService {
 	isEnabled() {
 		return (
 			this.licenseState.isLicensed(LICENSE_FEATURES.PROMOTIONS) &&
-			isEnvFeatureEnabled('N8N_ENV_FEAT_PROMOTIONS') &&
 			this.sourceControlPreferences.getPreferences().environmentsVersion === 'v2'
 		);
 	}

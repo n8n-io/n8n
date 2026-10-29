@@ -29,6 +29,7 @@ import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { SsoAccessDeniedError } from './errors/sso-access-denied.error';
@@ -500,7 +501,13 @@ export class ProvisioningService {
 		return (await this.roleMappingRuleRepository.count({ where: { type } })) > 0;
 	}
 
+	/**
+	 * The provisioning settings stay when an admin turns SAML or OIDC sign-in
+	 * off, but then no sign-in applies the mapped roles. So the manual role
+	 * lock applies only while SAML or OIDC sign-in is on.
+	 */
 	async isInstanceRoleManaged(): Promise<boolean> {
+		if (!isSamlOrOidcLoginEnabled()) return false;
 		if (await this.isInstanceRoleProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) &&
@@ -509,6 +516,7 @@ export class ProvisioningService {
 	}
 
 	async isProjectRoleManaged(): Promise<boolean> {
+		if (!isSamlOrOidcLoginEnabled()) return false;
 		if (await this.isProjectRolesProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) && (await this.hasRoleMappingRulesOfType('project'))

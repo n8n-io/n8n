@@ -2,10 +2,9 @@ import type { AgentSnapshot, AttributeValue, BuiltTelemetry } from '@n8n/agents'
 import { Telemetry } from '@n8n/agents';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { trace } from '@opentelemetry/api';
 
-import { OtelService } from '@/modules/otel/otel.service';
-
-const AGENTS_TRACER_NAME = '@n8n/agents';
+import { AGENTS_TRACER_NAME } from '@/observability/tracer-names';
 
 interface AgentRunTracingMetadataBase {
 	agentId: string;
@@ -50,16 +49,13 @@ function isWorkflowTracingMetadata(
 }
 
 /**
- * Builds the per-run OTel telemetry handed to an agent run on the workflow OTel
- * module's tracer provider — this service never creates, registers, or shuts
- * down a provider itself.
+ * Builds the per-run OTel telemetry handed to an agent run on the global tracer
+ * provider — this service never creates, registers, or shuts down a provider
+ * itself.
  */
 @Service()
 export class AgentRunTracingService {
-	constructor(
-		private readonly agentsConfig: AgentsConfig,
-		private readonly otelService: OtelService,
-	) {}
+	constructor(private readonly agentsConfig: AgentsConfig) {}
 
 	/** Whether agent tracing is enabled — lets callers skip tracing-only work (e.g. a DB lookup) upfront. */
 	get enabled(): boolean {
@@ -70,9 +66,6 @@ export class AgentRunTracingService {
 	 * Returns undefined when agent tracing is disabled — callers omit
 	 * `ExecutionOptions.telemetry` entirely in that case, indistinguishable
 	 * from "OTel module off" to the SDK (both are no-ops).
-	 *
-	 * Fetches the tracer fresh on every call rather than caching it, so a
-	 * tracer never goes stale across an OTel module restart.
 	 */
 	async build(metadata: AgentRunTracingMetadata): Promise<BuiltTelemetry | undefined> {
 		if (!this.agentsConfig.tracingEnabled) return undefined;
@@ -92,7 +85,7 @@ export class AgentRunTracingService {
 		}
 
 		const built = await new Telemetry()
-			.tracer(this.otelService.getTracer(AGENTS_TRACER_NAME))
+			.tracer(trace.getTracer(AGENTS_TRACER_NAME))
 			.metadata(attributes)
 			.recordInputs(this.agentsConfig.tracingRecordInputs)
 			.recordOutputs(this.agentsConfig.tracingRecordOutputs)

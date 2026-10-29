@@ -15,6 +15,9 @@ import {
 import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
 import { isWorkflowLevelRule } from '../types';
 
+/** The minimum wait before a notified finding can be emailed again. */
+export const REMINDER_COOLDOWN_MS = 60_000;
+
 /** The user as the email names them. */
 function displayName(user: Pick<User, 'firstName' | 'lastName' | 'email'>): string {
 	return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'An admin';
@@ -42,8 +45,9 @@ export class MigrationFindingNotificationService {
 	 * Notifies the owners of the given workflows about the rule's finding on them.
 	 * A finding is marked notified only when its owner's email went out, so the
 	 * report never claims a notification that nobody received. A notified finding
-	 * is emailed again as a reminder. A workflow whose finding is won't fix or
-	 * missing, or that has no owner with an email, is reported as skipped.
+	 * is emailed again as a reminder, once the cooldown has passed. A workflow whose
+	 * finding is won't fix or missing, whose owner was notified within the cooldown,
+	 * or that has no owner with an email, is reported as skipped.
 	 */
 	async notifyOwners(
 		ruleId: string,
@@ -76,9 +80,19 @@ export class MigrationFindingNotificationService {
 			'no_finding',
 		);
 
-		const findingsByOwner = await this.groupByOwner(findings);
+		// Keeps repeated clicks on Remind from flooding the owner's inbox.
+		const cooldownStart = Date.now() - REMINDER_COOLDOWN_MS;
+		const isRecentlyNotified = (finding: TriageableMigrationFinding) =>
+			finding.notifiedAt !== null && finding.notifiedAt.getTime() > cooldownStart;
 		skip(
-			findings
+			findings.filter(isRecentlyNotified).map((finding) => finding.workflowId),
+			'recently_notified',
+		);
+		const dueFindings = findings.filter((finding) => !isRecentlyNotified(finding));
+
+		const findingsByOwner = await this.groupByOwner(dueFindings);
+		skip(
+			dueFindings
 				.filter((finding) => !findingsByOwner.has(finding.workflowId))
 				.map((finding) => finding.workflowId),
 			'no_owner',
