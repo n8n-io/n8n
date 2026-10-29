@@ -86,6 +86,16 @@ export function laterOfColumnAndNowPlusMsLiteral(
 	return `MAX(COALESCE(${columnExpr}, ${now}), ${offset})`;
 }
 
+/** A `Date` as SQLite stores it: UTC wall-clock text with milliseconds and no zone. */
+export function toSqliteTimestamp(date: Date): string {
+	return date.toISOString().replace('T', ' ').replace('Z', '');
+}
+
+/** A `Date` as a raw query parameter: Postgres takes the `Date`, SQLite takes text. */
+export function toDbTimestamp(isPostgres: boolean, date: Date): Date | string {
+	return isPostgres ? date : toSqliteTimestamp(date);
+}
+
 /**
  * Parse a DB-clock value read back from a query.
  * Postgres returns a `Date`.

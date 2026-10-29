@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { IsolationLevel, OperationContext, RunOptions } from './transaction';
 import { Transaction, TransactionRunner } from './transaction';
@@ -21,6 +22,14 @@ export class TypeOrmTransaction extends Transaction {
 	getEntityManager(): EntityManager {
 		return this.#manager;
 	}
+}
+
+/** Unwraps a transaction handle. Internal to `@n8n/db`: not exported from the package. */
+export function entityManagerOf(trx: Transaction): EntityManager {
+	if (!(trx instanceof TypeOrmTransaction)) {
+		throw new UnexpectedError('Transaction was not created by the TypeORM runner');
+	}
+	return trx.getEntityManager();
 }
 
 /** TypeORM implementation of the {@link TransactionRunner} port. */
