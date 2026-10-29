@@ -31,7 +31,7 @@ breaking-changes/
    sync/
       migration-finding-diff.ts  # Pure diff of scan hits against stored findings
       migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
-      migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, and pull
+      migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, unpublish, archive, and pull
    query/
       migration-finding-query.service.ts  # Shapes finding table reads into the report response types
    triage/
@@ -152,7 +152,8 @@ Sets the status of the finding of one workflow rule on one workflow. A user can 
 - The overview keeps a rule with only `wont_fix` findings, with a count of zero. Its detail page is the only place to set them back to `open`.
 - The rule detail lists `open`, `notified` and `wont_fix` findings, each with its `status` and, once notified, its `notifiedAt`.
 - Setting a `notified` finding to `open` clears its `notifiedAt`, so the next notification is not a reminder.
-- When a scan no longer detects a `wont_fix` or `notified` finding, the sync marks it `fixed`.
+- When a scan no longer detects a finding in the latest version of the workflow, the sync marks it `fixed_unpublished` if the published version still has the issue, and `fixed` otherwise. A workflow with nothing published counts as fixed. A `wont_fix` finding stays `wont_fix` while the published version has the issue. A new detection in the latest version reopens a `fixed` or `fixed_unpublished` finding.
+- Batch rules check the latest version only.
 - The route returns 404 when the user cannot edit the workflow, as for a workflow that does not exist.
 - The route returns 404 when the rule is unknown or is not a workflow rule.
 - The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
