@@ -8,32 +8,32 @@ import {
 	type CredentialsEntity,
 	type User,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsService } from './credentials.service';
 import {
 	SkillSourceCredentials,
+	SkillSourceCredentialsProxy,
 	type ResolvedSkillSourceCredential,
 	type SkillSourceCredentialScope,
 } from '@/modules/skills';
-
-import { decryptAgentCredential } from './utils/decrypt-agent-credential';
 
 /** The most a GitHub App token mint may take, as the GitHub client limits its own requests. */
 const TOKEN_TIMEOUT_MS = 30_000;
 
 /**
  * The credentials that a skill source may use, with the rules of the credential select of a
- * workflow. A project source accepts the credentials of its project and the global
+ * workflow. The skills module cannot import the credential services, so cli implements its
+ * `SkillSourceCredentials` contract here and `registerSkillSourceCredentials` registers it. A project source accepts the credentials of its project and the global
  * credentials. A Global source accepts a credential whose owner may manage Global skills, so it
  * does not depend on one project. With a user, the user must also be able to read the
  * credential. A resolvable credential is never accepted.
  */
 @Service()
-export class AgentSkillSourceCredentials extends SkillSourceCredentials {
+export class CliSkillSourceCredentials extends SkillSourceCredentials {
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinder: CredentialsFinderService,
@@ -88,16 +88,31 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 			? (await this.acceptedInProject(credential, projectId)) && projectId
 			: (await this.adminOwners([credentialId])).get(credentialId);
 		if (!decryptIn) return null;
-		const data = await decryptAgentCredential(this.credentialsHelper, credential, {
-			projectId: decryptIn,
-			userId: user?.id,
-		});
+		const data = await this.decrypt(credential, { projectId: decryptIn, userId: user?.id });
 		check?.({ id: credential.id, type: credential.type, data });
 		return {
 			id: credential.id,
 			type: credential.type,
 			data: await this.withFreshToken(credential.type, data),
 		};
+	}
+
+	/**
+	 * The decrypted data in the scope of the source. A source has no workflow execution, so no
+	 * dynamic credential resolution applies.
+	 */
+	private async decrypt(
+		credential: Pick<CredentialsEntity, 'id' | 'name' | 'type'>,
+		scope: { projectId: string; userId?: string },
+	): Promise<ICredentialDataDecryptedObject> {
+		// Loaded lazily, as the execution stack is large.
+		const { getBase } = await import('@/workflow-execute-additional-data.js');
+		return await this.credentialsHelper.getDecrypted(
+			await getBase(scope),
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			'internal',
+		);
 	}
 
 	/** A credential of the project, or a global one, as the workflow select of the project. */
@@ -147,4 +162,14 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 		const fresh = await this.credentialsHelper.runPreAuthentication(helper, data, type);
 		return fresh ? { ...data, ...fresh } : data;
 	}
+}
+
+/**
+ * Registers the credentials of skill sources on the skills module. Call it after the modules
+ * started, on a main instance, which serves the Skill Sync routes.
+ */
+export function registerSkillSourceCredentials(): void {
+	Container.get(SkillSourceCredentialsProxy).register(() =>
+		Container.get(CliSkillSourceCredentials),
+	);
 }
