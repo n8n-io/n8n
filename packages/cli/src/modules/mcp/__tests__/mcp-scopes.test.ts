@@ -290,6 +290,7 @@ describe('McpService scope enforcement', () => {
 			await service.getServer(user, mcpFeatureFlags());
 
 			const blockedTools = new Set([
+				'update_credential_description',
 				'test_workflow',
 				'create_workflow_from_code',
 				'update_workflow',
@@ -311,12 +312,7 @@ describe('McpService scope enforcement', () => {
 				'undo_user_preference',
 			]);
 			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
-			for (const name of [
-				'execute_workflow',
-				'test_workflow',
-				'search_workflows',
-				'update_credential_description',
-			]) {
+			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
 				expect(registeredTools.has(name), name).toBe(true);
 			}
 

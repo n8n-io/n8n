@@ -1,7 +1,6 @@
 import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
 import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
-	SHARED_BUILDER_TOOL_NAMES,
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
