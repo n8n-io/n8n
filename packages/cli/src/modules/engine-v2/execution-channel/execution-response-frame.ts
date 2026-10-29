@@ -7,10 +7,7 @@ import {
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { ExecutionChannelCodec, FrameResult } from './execution-channel';
-
-/** An execution channel must be able to carry every frame this module produces. */
-const MAX_FRAME_BYTES = 5 * 1024 * 1024;
+import { type ExecutionChannelCodec, type FrameResult, MAX_FRAME_BYTES } from './execution-channel';
 
 /** The codec of the `responses` topic. */
 export function createExecutionResponseCodec(
