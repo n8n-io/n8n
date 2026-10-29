@@ -155,6 +155,8 @@ jobs:
           RUNNERS_DIGEST: ${{ needs.build.outputs.runners_digest }}
           DISTROLESS_IMAGE: ${{ needs.build.outputs.runners_distroless_image }}
           DISTROLESS_DIGEST: ${{ needs.build.outputs.runners_distroless_digest }}
+          RUNNERS_DEBIAN_IMAGE: ${{ needs.build.outputs.runners_debian_image }}
+          RUNNERS_DEBIAN_DIGEST: ${{ needs.build.outputs.runners_debian_digest }}
         run: |
           set -euo pipefail
 
@@ -203,3 +205,4 @@ jobs:
           promote "$N8N_DEBIAN_IMAGE" "$N8N_DEBIAN_DIGEST" "${DOCKER_BASE}/n8n" "-debian"
           promote "$RUNNERS_IMAGE" "$RUNNERS_DIGEST" "${DOCKER_BASE}/runners" ""
           promote "$DISTROLESS_IMAGE" "$DISTROLESS_DIGEST" "${DOCKER_BASE}/runners" "-distroless"
+          promote "$RUNNERS_DEBIAN_IMAGE" "$RUNNERS_DEBIAN_DIGEST" "${DOCKER_BASE}/runners" "-debian"
