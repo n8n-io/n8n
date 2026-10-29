@@ -3,6 +3,7 @@ import {
 	initDbUpToMigration,
 	runSingleMigration,
 	type TestMigrationContext,
+	undoLastSingleMigration,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -104,7 +105,7 @@ describe('CreateProjectExecutionLimitTable migration', () => {
 	});
 
 	it('drops the table on down and can be re-applied', async () => {
-		await dataSource.undoLastMigration({ transaction: 'each' });
+		await undoLastSingleMigration();
 
 		const context = createTestMigrationContext(dataSource);
 		const table = `${context.tablePrefix}${TABLE}`;
