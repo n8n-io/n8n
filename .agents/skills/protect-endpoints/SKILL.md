@@ -136,5 +136,5 @@ Decorator alone is not enough when handlers leak data via downstream calls. Serv
 
 ## Reference patterns
 
-- Project-scoped CRUD: `packages/cli/src/workflows/workflows.controller.ts`, `packages/cli/src/credentials/credentials.controller.ts`, `packages/cli/src/modules/data-table/data-table.controller.ts`.
+- Project-scoped CRUD: `packages/cli/src/workflows/workflows.controller.ts`, `packages/cli/src/credentials/credentials.controller.ts`, `packages/modules/data-table/backend/src/data-table.controller.ts`.
 - Mixed global + project: `packages/cli/src/controllers/project.controller.ts`.

@@ -64,18 +64,35 @@ describe('AgentDependencyIndexListener', () => {
 		},
 	);
 
-	it('clears the runtimes of every dependent agent on credentials-updated', async () => {
-		credentialDependencyRepository.findByCredentialIds.mockResolvedValue([
-			{ agentId: 'agent-a', credentialId: 'cred-1' },
-			{ agentId: 'agent-b', credentialId: 'cred-1' },
-		]);
+	it.each([undefined, false])(
+		'clears dependent runtimes when descriptionOnly is %s',
+		async (descriptionOnly) => {
+			credentialDependencyRepository.findByCredentialIds.mockResolvedValue([
+				{ agentId: 'agent-a', credentialId: 'cred-1' },
+				{ agentId: 'agent-b', credentialId: 'cred-1' },
+			]);
 
-		eventService.emit('credentials-updated', { credentialId: 'cred-1' } as never);
+			eventService.emit('credentials-updated', {
+				credentialId: 'cred-1',
+				descriptionOnly,
+			} as never);
+			await new Promise(setImmediate);
+
+			expect(credentialDependencyRepository.findByCredentialIds).toHaveBeenCalledWith(['cred-1']);
+			expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-a');
+			expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-b');
+		},
+	);
+
+	it('keeps dependent runtimes for description-only updates', async () => {
+		eventService.emit('credentials-updated', {
+			credentialId: 'cred-1',
+			descriptionOnly: true,
+		} as never);
 		await new Promise(setImmediate);
 
-		expect(credentialDependencyRepository.findByCredentialIds).toHaveBeenCalledWith(['cred-1']);
-		expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-a');
-		expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-b');
+		expect(credentialDependencyRepository.findByCredentialIds).not.toHaveBeenCalled();
+		expect(runtimeCache.clearRuntimes).not.toHaveBeenCalled();
 	});
 
 	it('logs and swallows a failing dependency lookup', async () => {

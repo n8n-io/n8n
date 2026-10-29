@@ -146,11 +146,12 @@ export function resolveInclusion(
 		for (const reference of graph.calls.get(key) ?? []) addTo(called, reference, key);
 	}
 
-	// Apply imports every folder of the project, also folders without a selected workflow.
-	// It runs only with at least one selected workflow.
+	// Apply creates every new folder of the project, also one without a selected workflow. It
+	// moves or renames a folder only with a selected workflow inside it. It runs only with at
+	// least one selected workflow.
 	if (graph.direction === 'apply' && reasons.size > 0) {
 		for (const { key, type, change } of graph.resources.values()) {
-			if (type === 'folder' && change !== 'unchanged' && !containers.has(key)) {
+			if (type === 'folder' && change === 'added' && !containers.has(key)) {
 				containers.set(key, []);
 			}
 		}

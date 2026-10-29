@@ -1625,14 +1625,6 @@
 				"hash": "63742f55819c"
 			}
 		],
-		"packages/cli/src/commands/import/credentials.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 19,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "a5cc02a1d765"
-			}
-		],
 		"packages/cli/src/events/relays/telemetry.event-relay.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",

@@ -79,6 +79,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_annotations](public.execution_annotations.md) | 6 |  | BASE TABLE |
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 19 |  | BASE TABLE |
+| [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -145,7 +146,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 9 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 13 |  | BASE TABLE |
+| [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
+| [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
@@ -425,6 +428,11 @@ erDiagram
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.skill_file" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id) ON DELETE CASCADE"
+"public.skill_source" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.skill_source" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
+"public.skill_source" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.skill_source_link" |o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill_source_link" }o--|| "public.skill_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES skill_source(id) ON DELETE CASCADE"
 "public.skill_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
@@ -840,7 +848,7 @@ erDiagram
   text content
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  json embedding
+  bytea embedding
   varchar_128_ embeddingModel
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt
@@ -1239,6 +1247,24 @@ erDiagram
   timestamp_3__with_time_zone waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
+}
+"public.execution_ledger" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_16_ event
+  uuid eventId
+  varchar_36_ executionId
+  bigint id
+  varchar_32_ mode
+  timestamp_3__with_time_zone occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  varchar_36_ projectId
+  integer runtimeMs
+  varchar_32_ source
+  integer timeSavedMin
 }
 "public.execution_metadata" {
   integer executionId FK
@@ -1851,6 +1877,37 @@ erDiagram
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.skill_source" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ credentialId FK
+  uuid id
+  varchar_255_ identityKey
+  timestamp_3__with_time_zone lastCheckedAt
+  varchar_32_ lastErrorReason
+  json locator
+  text probeCursor
+  varchar_36_ projectId FK
+  varchar_32_ status
+  varchar_16_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_source_link" {
+  varchar_64_ baseContentHash
+  varchar_255_ baseRevision
+  timestamp_3__with_time_zone createdAt
+  json pendingContent
+  varchar_64_ pendingContentHash
+  varchar_255_ pendingRevision
+  json pendingScan
+  json remoteRef
+  varchar_36_ skillId FK
+  varchar_64_ skippedContentHash
+  json skippedFiles
+  uuid sourceId FK
+  varchar_32_ state
+  timestamp_3__with_time_zone updatedAt
+}
 "public.skill_version" {
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
@@ -1861,6 +1918,7 @@ erDiagram
   text instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   timestamp_3__with_time_zone updatedAt
   integer version
 }

@@ -1,6 +1,13 @@
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
-import { deleteApp, listApps } from './apps.api';
+import {
+	createAppPreview,
+	deleteApp,
+	getApp,
+	getAppBuild,
+	listApps,
+	listAppVersions,
+} from './apps.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	getFullApiResponse: vi.fn(),
@@ -28,6 +35,16 @@ describe('apps.api', () => {
 		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/apps', options);
 	});
 
+	it('gets one app of a project', async () => {
+		await getApp(context, 'project-1', 'app-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/apps/app-1',
+		);
+	});
+
 	it('deletes an app in its project', async () => {
 		await deleteApp(context, 'project-1', 'app-1');
 
@@ -36,5 +53,26 @@ describe('apps.api', () => {
 			'DELETE',
 			'/projects/project-1/apps/app-1',
 		);
+	});
+
+	it.each([
+		['lists the versions', listAppVersions, 'GET', '/projects/project-1/apps/app-1/versions'],
+		[
+			'gets the build of a version',
+			async (ctx: IRestApiContext, p: string, a: string) => await getAppBuild(ctx, p, a, 'v-1'),
+			'GET',
+			'/projects/project-1/apps/app-1/versions/v-1/build',
+		],
+		[
+			'creates a preview grant for a version',
+			async (ctx: IRestApiContext, p: string, a: string) =>
+				await createAppPreview(ctx, p, a, 'v-1'),
+			'POST',
+			'/projects/project-1/apps/app-1/versions/v-1/preview',
+		],
+	])('%s', async (_name, request, method, endpoint) => {
+		await request(context, 'project-1', 'app-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, method, endpoint);
 	});
 });

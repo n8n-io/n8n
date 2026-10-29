@@ -286,7 +286,7 @@ export type { AgentBuilderTarget } from './tools/orchestration/agent-target-bind
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
-} from './tools/orchestration/agent-preview-session-binding';
+} from './tools/orchestration/agent-test-session-binding';
 
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,
@@ -548,6 +548,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export declare const suspendedInstanceContextSchema: typeof InstanceContextStateMod.suspendedInstanceContextSchema;
+export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
 	formatWorkflowSetupStateNote,

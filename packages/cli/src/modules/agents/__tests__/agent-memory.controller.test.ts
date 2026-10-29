@@ -18,6 +18,7 @@ describe('AgentMemoryController route access scopes', () => {
 		['listMemoryEntries', 'agent:read'],
 		['listMemorySourceFacets', 'agent:read'],
 		['deleteMemoryEntry', 'agent:update'],
+		['deleteMemoryCapture', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -53,5 +54,12 @@ describe('AgentMemoryController', () => {
 			controller.deleteMemoryEntry(req, mock<Response>(), 'project-1', 'agent-1', 'entry-1'),
 		).resolves.toEqual({ success: true });
 		expect(service.delete).toHaveBeenCalledWith('agent-1', 'project-1', 'entry-1');
+	});
+
+	it('deletes one flagged capture', async () => {
+		await expect(
+			controller.deleteMemoryCapture(req, mock<Response>(), 'project-1', 'agent-1', 'capture-1'),
+		).resolves.toEqual({ success: true });
+		expect(service.deleteCapture).toHaveBeenCalledWith('agent-1', 'project-1', 'capture-1');
 	});
 });

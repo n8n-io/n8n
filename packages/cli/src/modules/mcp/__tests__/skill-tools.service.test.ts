@@ -8,6 +8,7 @@ import {
 	SkillNameTakenError,
 	type SkillService,
 } from '@/modules/skills';
+import { SkillSyncedError } from '@/modules/skills/testing';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
@@ -33,8 +34,10 @@ const listItem: SkillListItem = {
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
 	usedByAgents: 1,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
+	canStopSyncing: false,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };
@@ -44,6 +47,7 @@ const detail: SkillDetail = {
 	skill: { name: 'Brand voice', description: 'Write in the brand voice', instructions: 'Be kind.' },
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 describe('McpSkillToolsService', () => {
@@ -67,7 +71,7 @@ describe('McpSkillToolsService', () => {
 		const registerTool: RegisterToolFn = (tool) => {
 			tools.set(tool.name, tool.handler as unknown as Handler);
 		};
-		await service.registerTools(registerTool, user);
+		await service.registerTools(registerTool, user, true);
 	});
 
 	it('registers exactly the skill tools of the scope map (drift guard)', () => {
@@ -77,10 +81,14 @@ describe('McpSkillToolsService', () => {
 	it('hides Assistant availability from MCP when its flag is off', async () => {
 		rollout.isEnabled.mockResolvedValue(false);
 		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
-		await service.registerTools((tool) => {
-			registered.push(tool);
-			tools.set(tool.name, tool.handler as unknown as Handler);
-		}, user);
+		await service.registerTools(
+			(tool) => {
+				registered.push(tool);
+				tools.set(tool.name, tool.handler as unknown as Handler);
+			},
+			user,
+			true,
+		);
 		for (const name of ['create_skill', 'update_skill']) {
 			expect(registered.find((tool) => tool.name === name)?.config.inputSchema).not.toHaveProperty(
 				'availableToAssistant',
@@ -90,6 +98,27 @@ describe('McpSkillToolsService', () => {
 		expect(
 			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
 		).not.toHaveProperty('availableToAssistant');
+	});
+
+	it('hides MCP availability when the MCP skills extension is off', async () => {
+		const registered: Array<Parameters<RegisterToolFn>[0]> = [];
+		await service.registerTools(
+			(tool) => {
+				registered.push(tool);
+				tools.set(tool.name, tool.handler as unknown as Handler);
+			},
+			user,
+			false,
+		);
+		for (const name of ['create_skill', 'update_skill']) {
+			const inputSchema = registered.find((tool) => tool.name === name)?.config.inputSchema;
+			expect(inputSchema).not.toHaveProperty('availableToMCP');
+			expect(inputSchema).toHaveProperty('availableToAssistant');
+		}
+		skillService.get.mockResolvedValue(detail);
+		expect(
+			(await callTool('get_skill', { skillId: 'skill_a' })).structuredContent,
+		).not.toHaveProperty('availableToMCP');
 	});
 
 	describe('search_n8n_skills', () => {
@@ -116,6 +145,7 @@ describe('McpSkillToolsService', () => {
 						id: 'skill_a',
 						name: 'Brand voice',
 						availableToAssistant: false,
+						availableToMCP: false,
 					}),
 				],
 			});
@@ -132,7 +162,11 @@ describe('McpSkillToolsService', () => {
 
 	describe('get_skill', () => {
 		it('returns the content and the hash for the next update', async () => {
-			skillService.get.mockResolvedValue({ ...detail, availableToAssistant: true });
+			skillService.get.mockResolvedValue({
+				...detail,
+				availableToAssistant: true,
+				availableToMCP: true,
+			});
 
 			const result = await callTool('get_skill', { skillId: 'skill_a' });
 
@@ -143,6 +177,7 @@ describe('McpSkillToolsService', () => {
 				skillHash: 'hash-2',
 				usedBy: detail.usedBy,
 				availableToAssistant: true,
+				availableToMCP: true,
 			});
 		});
 
@@ -203,6 +238,23 @@ describe('McpSkillToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ availableToAssistant: true });
 		});
 
+		it('creates the skill with the MCP availability the client sent', async () => {
+			skillService.create.mockResolvedValue({ ...detail, availableToMCP: true });
+
+			const result = await callTool('create_skill', {
+				scope: 'instance',
+				skill,
+				availableToMCP: true,
+			});
+
+			expect(skillService.create).toHaveBeenCalledWith(
+				user,
+				{ scope: 'instance', skill, availableToMCP: true },
+				'mcp',
+			);
+			expect(result.structuredContent).toMatchObject({ availableToMCP: true });
+		});
+
 		it('tells the client to choose another name when the name is taken', async () => {
 			skillService.create.mockRejectedValue(new SkillNameTakenError('Brand voice'));
 
@@ -246,6 +298,23 @@ describe('McpSkillToolsService', () => {
 				created: true,
 				skillHash: 'hash-3',
 			});
+		});
+
+		it('saves an MCP availability change', async () => {
+			skillService.update.mockResolvedValue({ ...saved, version: 2, created: false });
+
+			await callTool('update_skill', {
+				skillId: 'skill_a',
+				baseSkillHash: 'hash-2',
+				availableToMCP: true,
+			});
+
+			expect(skillService.update).toHaveBeenCalledWith(
+				user,
+				'skill_a',
+				{ baseSkillHash: 'hash-2', availableToMCP: true },
+				'mcp',
+			);
 		});
 
 		it('returns the latest hash when the skill changed since the client read it', async () => {
@@ -292,6 +361,24 @@ describe('McpSkillToolsService', () => {
 			});
 
 			expect(result.structuredContent).toMatchObject({ ok: false, code: 'skill_name_taken' });
+			expect(skillService.get).not.toHaveBeenCalled();
+		});
+
+		it('tells the client that a synced skill is read-only', async () => {
+			skillService.update.mockRejectedValue(new SkillSyncedError('Brand voice', 'GitHub'));
+
+			const result = await callTool('update_skill', {
+				skillId: 'skill_a',
+				baseSkillHash: 'hash-2',
+				instructions: 'Be kinder.',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				skillId: 'skill_a',
+				code: 'skill_synced',
+				message: expect.stringContaining('Do not retry.'),
+			});
 			expect(skillService.get).not.toHaveBeenCalled();
 		});
 	});

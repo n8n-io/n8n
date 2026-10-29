@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
+import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
@@ -17,10 +18,14 @@ import { MigrationWorkflowOwnerRepository } from '../database/repositories/migra
 import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
-/** Stable hash of a rule set. The order of `ruleIds` does not change the result. */
-export function computeRuleSetFingerprint(ruleIds: string[]): string {
+/**
+ * Stable hash of a rule set. The order of `ruleIds` does not change the result.
+ * The n8n version is part of the hash: a release can change how a rule detects
+ * issues without changing its id, so the first read after an upgrade re-syncs.
+ */
+export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = N8N_VERSION): string {
 	return createHash('sha256')
-		.update([...ruleIds].sort().join('\n'))
+		.update([n8nVersion, ...[...ruleIds].sort()].join('\n'))
 		.digest('hex');
 }
 
@@ -72,7 +77,7 @@ export class MigrationFindingSyncService {
 
 		this.logger.debug('Migration finding table is stale, syncing', {
 			targetVersion,
-			reason: record ? 'rule set changed' : 'never synced',
+			reason: record ? 'rule set or n8n version changed' : 'never synced',
 		});
 		await this.sync(targetVersion);
 	}
@@ -102,8 +107,10 @@ export class MigrationFindingSyncService {
 
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
-		const { report, failedChecks } = await this.breakingChangeService.detect(targetVersion);
+		const { report, publishedHits, failedChecks } =
+			await this.breakingChangeService.detect(targetVersion);
 		const hitsByWorkflow = groupHitsByWorkflow(report.workflowResults);
+		const publishedHitsByWorkflow = groupByWorkflow(publishedHits);
 
 		// A rule check that threw leaves no hit for its pair. Treating that as "clean"
 		// would mark a real finding fixed, so the diff leaves those pairs untouched.
@@ -125,7 +132,11 @@ export class MigrationFindingSyncService {
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			try {
-				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
+				await this.syncBatch(targetVersion, workflowIds, {
+					hitsByWorkflow,
+					publishedHitsByWorkflow,
+					unknownByWorkflow,
+				});
 				await this.refreshSuggestedOwners(targetVersion, workflowIds);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record stays cleared
@@ -190,22 +201,19 @@ export class MigrationFindingSyncService {
 		if (!targetVersion) return;
 
 		try {
-			const { hits, failedChecks } = await this.breakingChangeService.detectWorkflowHits(
-				targetVersion,
-				workflowId,
-			);
+			const { hits, publishedHits, failedChecks } =
+				await this.breakingChangeService.detectWorkflowHits(targetVersion, workflowId);
 			// A batch rule decides from all workflows at once, so only a full sync
 			// may change its rows. Here they are out of scope and stay as they are.
 			const batchRulePairs = this.ruleRegistry
 				.getRules(targetVersion)
 				.filter((rule) => 'collectWorkflowData' in rule)
 				.map((rule) => ({ ruleId: rule.id, workflowId }));
-			await this.syncBatch(
-				targetVersion,
-				[workflowId],
-				groupByWorkflow(hits),
-				groupByWorkflow([...failedChecks, ...batchRulePairs]),
-			);
+			await this.syncBatch(targetVersion, [workflowId], {
+				hitsByWorkflow: groupByWorkflow(hits),
+				publishedHitsByWorkflow: groupByWorkflow(publishedHits),
+				unknownByWorkflow: groupByWorkflow([...failedChecks, ...batchRulePairs]),
+			});
 			await this.refreshSuggestedOwners(targetVersion, [workflowId]);
 		} catch (error) {
 			this.logger.warn('Migration finding sync for one workflow failed', {
@@ -247,8 +255,11 @@ export class MigrationFindingSyncService {
 	private async syncBatch(
 		targetVersion: BreakingChangeVersion,
 		pagedIds: string[],
-		hitsByWorkflow: Map<string, MigrationFindingHit[]>,
-		unknownByWorkflow: Map<string, MigrationFindingHit[]>,
+		scan: {
+			hitsByWorkflow: Map<string, MigrationFindingHit[]>;
+			publishedHitsByWorkflow: Map<string, MigrationFindingHit[]>;
+			unknownByWorkflow: Map<string, MigrationFindingHit[]>;
+		},
 	): Promise<void> {
 		if (pagedIds.length === 0) return;
 
@@ -258,20 +269,38 @@ export class MigrationFindingSyncService {
 			const workflowIds = await this.workflowRepository.findExistingIds(pagedIds, ctx);
 			if (workflowIds.length === 0) return;
 
-			const hits = workflowIds.flatMap((workflowId) => hitsByWorkflow.get(workflowId) ?? []);
-			const unknown = workflowIds.flatMap((workflowId) => unknownByWorkflow.get(workflowId) ?? []);
+			const forBatch = (byWorkflow: Map<string, MigrationFindingHit[]>) =>
+				workflowIds.flatMap((workflowId) => byWorkflow.get(workflowId) ?? []);
+			const hits = forBatch(scan.hitsByWorkflow);
+			const publishedHits = forBatch(scan.publishedHitsByWorkflow);
+			const unknown = forBatch(scan.unknownByWorkflow);
 			const existing = await this.findingRepository.listForWorkflows(
 				targetVersion,
 				workflowIds,
 				ctx,
 			);
-			const diff = diffMigrationFindings({ targetVersion, workflowIds, hits, existing, unknown });
+			const diff = diffMigrationFindings({
+				targetVersion,
+				workflowIds,
+				hits,
+				publishedHits,
+				existing,
+				unknown,
+			});
 
 			if (diff.toInsert.length > 0) {
 				await this.findingRepository.insertMany(diff.toInsert, ctx);
 			}
 			if (diff.toMarkFixed.length > 0) {
 				await this.findingRepository.markFixedForIds(diff.toMarkFixed, ctx);
+			}
+			if (diff.toMarkFixedUnpublished.length > 0) {
+				await this.findingRepository.updateStatusForIds(
+					diff.toMarkFixedUnpublished,
+					'fixed_unpublished',
+					undefined,
+					ctx,
+				);
 			}
 			if (diff.toReopen.length > 0) {
 				await this.findingRepository.updateStatusForIds(diff.toReopen, 'open', undefined, ctx);

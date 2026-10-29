@@ -127,6 +127,7 @@ export const setupTestServer = ({
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
 	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagForInstance.mockResolvedValue(undefined);
 	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
 		featureFlags: {},
 		featureFlagPayloads: {},

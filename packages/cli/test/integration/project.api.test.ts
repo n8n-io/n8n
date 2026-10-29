@@ -34,6 +34,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -379,12 +380,16 @@ describe('Project members endpoints', () => {
 			await provisioningService.getConfig();
 			// @ts-expect-error - provisioningConfig is private
 			savedConfig = { ...provisioningService.provisioningConfig };
+			// The lock applies only while SAML or OIDC sign-in is on.
+			testServer.license.enable('feat:saml');
+			await setSamlLoginEnabled(true);
 		});
 
 		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
 			await Container.get(RoleMappingRuleRepository).delete({});
+			await setSamlLoginEnabled(false);
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {

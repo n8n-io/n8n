@@ -59,6 +59,7 @@ describe('DataTableImporter.plan', () => {
 			creations: [],
 			updates: [],
 			columnAlignments: [],
+			matched: [],
 			failures: [],
 			matchedCount: 0,
 		});
@@ -98,6 +99,7 @@ describe('DataTableImporter.plan', () => {
 			creations: [],
 			updates: [],
 			columnAlignments: [],
+			matched: [],
 			failures: [],
 			matchedCount: 0,
 		});
