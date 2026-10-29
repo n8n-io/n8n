@@ -20,7 +20,12 @@ import {
 	RoleService,
 } from '@n8n/backend-services';
 import { MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
-import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -388,31 +393,36 @@ export class DataTableService {
 	) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
-			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
-			const sortColumn = dto.sortBy?.[0];
-			if (
-				sortColumn &&
-				!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn) &&
-				!columns.some((column) => column.name === sortColumn)
-			) {
-				throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
-			}
+		// Read-only: columns and rows come from one snapshot without taking the write lock.
+		return await this.transactionRunner.run(
+			{},
+			async (ctx) => {
+				const columns = await this.dataTableColumnRepository.getColumnsInContext(dataTableId, ctx);
+				const sortColumn = dto.sortBy?.[0];
+				if (
+					sortColumn &&
+					!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn) &&
+					!columns.some((column) => column.name === sortColumn)
+				) {
+					throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
+				}
 
-			const transformedDto = dto.filter
-				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
-				: dto;
-			const result = await this.dataTableRowsRepository.getManyAndCount(
-				dataTableId,
-				transformedDto,
-				columns,
-				em,
-			);
-			return {
-				count: result.count,
-				data: normalizeRows(result.data, columns),
-			};
-		});
+				const transformedDto = dto.filter
+					? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
+					: dto;
+				const result = await this.dataTableRowsRepository.getManyAndCount(
+					dataTableId,
+					transformedDto,
+					columns,
+					ctx,
+				);
+				return {
+					count: result.count,
+					data: normalizeRows(result.data, columns),
+				};
+			},
+			{ readOnly: true },
+		);
 	}
 
 	async getColumns(dataTableId: string, projectId: string) {

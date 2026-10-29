@@ -7,7 +7,12 @@ import {
 	RoleService,
 } from '@n8n/backend-services';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	type TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -75,6 +80,7 @@ describe('DataTableService', () => {
 			mockProjectRepository,
 			mockProjectScopeService,
 			mockModuleRegistry,
+			mock<TransactionRunner>(),
 		);
 
 		vi.clearAllMocks();
