@@ -32,6 +32,7 @@ const detail: SkillDetail = {
 	skill: { name: 'Brand voice', description: 'Write in the brand voice', instructions: 'Be kind.' },
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };

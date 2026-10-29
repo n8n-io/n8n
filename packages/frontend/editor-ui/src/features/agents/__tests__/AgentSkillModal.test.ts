@@ -163,6 +163,7 @@ function renderModal({
 	settings?: Pick<
 		AgentSkillModalData,
 		| 'readOnly'
+		| 'syncedFrom'
 		| 'scopeOptions'
 		| 'initialScope'
 		| 'scopeLockedReason'
@@ -1530,6 +1531,57 @@ describe('AgentSkillModal from Settings', () => {
 		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 	});
 
+	it('shows where a synced skill comes from and keeps its content read-only', () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+				},
+			},
+		});
+
+		expect(getByTestId('agent-skill-synced-banner')).toHaveTextContent(
+			'settings.context.skills.synced.banner acme/skills',
+		);
+		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-open-in-github')).toHaveAttribute(
+			'href',
+			'https://github.com/acme/skills/tree/main/brand-voice',
+		);
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
+	it('reads where a synced skill comes from in the agent builder, and the server keeps it read-only', async () => {
+		getSkillDetail.mockResolvedValue({
+			...makeDetail({ id: 's1', name: 'Brand voice', scope: 'project', canEdit: false }),
+			syncedFrom: {
+				sourceId: 'src-1',
+				type: 'github',
+				label: 'acme/skills',
+				webUrl: 'https://github.com/acme/skills',
+			},
+		});
+		const { findByTestId, queryByTestId } = renderModal({
+			skillRefsEnabled: true,
+			skillId: 's1',
+			skill: SAVED_SKILL,
+		});
+
+		expect(await findByTestId('agent-skill-synced-banner')).toHaveTextContent(
+			'settings.context.skills.synced.banner acme/skills',
+		);
+		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
 	it('returns the chosen scope with a new skill', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({
@@ -1770,6 +1822,7 @@ function makeDetail(
 		skill: { name: item.name, description: item.description, instructions: 'Instructions' },
 		skillHash: 'hash',
 		usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+		syncedFrom: null,
 	};
 }
 
