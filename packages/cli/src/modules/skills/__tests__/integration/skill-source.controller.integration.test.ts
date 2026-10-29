@@ -414,6 +414,41 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
+		it('checks each skill again at connect, after a new commit changed it', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden'),
+				'long/SKILL.md': skillMd('long'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			expect(discovery.skills.map((skill) => skill.check?.verdict)).toEqual([
+				'pass',
+				'pass',
+				'pass',
+			]);
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow​ this.'),
+				'long/SKILL.md': skillMd('long', 'x'.repeat(2000)),
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden', 'long']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual(
+				expect.arrayContaining([
+					{ key: keysOf(discovery, ['hidden'])[0], name: 'hidden', reason: 'review_required' },
+					{ key: keysOf(discovery, ['long'])[0], name: 'long', reason: 'blocked_by_check' },
+				]),
+			);
+			expect(data.failed).toHaveLength(2);
+		});
+
 		it('stores nothing when every picked skill is blocked by the security check', async () => {
 			github.push('acme/checked', {
 				'big/SKILL.md': `---\nname: big\ndescription: Big\nmetadata: ${'x'.repeat(17_000)}\n---\n\nBody.\n`,

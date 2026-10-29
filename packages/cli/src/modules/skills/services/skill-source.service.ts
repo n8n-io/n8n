@@ -92,7 +92,7 @@ type ReadSkill = {
 	fetched?: FetchedSkill;
 	skill?: AgentSkill;
 	error?: { reason: SkillSourceReason; message: string };
-	/** Absent when n8n could not fetch the skill. */
+	/** Absent when the skill is gone from the source. */
 	check?: SkillScanResult;
 };
 
@@ -257,7 +257,7 @@ export class SkillSourceService {
 				if (read.check?.verdict === 'blocked') {
 					failed.push({
 						key: read.key,
-						name: read.skill?.name ?? null,
+						name: read.skill?.name ?? read.fetched?.content.name ?? null,
 						reason: 'blocked_by_check',
 					});
 				} else if (read.error) {
@@ -351,16 +351,23 @@ export class SkillSourceService {
 
 	/** One event for each skill that the picker shows as needing review or blocked. */
 	private async trackFlagged(user: User, provider: SkillSourceType, reads: ReadSkill[]) {
-		for (const { check } of reads) {
-			if (!check || check.verdict === 'pass') continue;
-			const ruleCodes = check.findings
-				.filter((finding) => finding.severity !== 'info')
-				.map((finding) => finding.rule);
-			await this.skillsTelemetry.flaggedSkill(
-				{ provider, stage: 'import', verdict: check.verdict, rule_codes: [...new Set(ruleCodes)] },
-				user.id,
-			);
-		}
+		await Promise.all(
+			reads.map(async ({ check }) => {
+				if (!check || check.verdict === 'pass') return;
+				const ruleCodes = check.findings
+					.filter((finding) => finding.severity !== 'info')
+					.map((finding) => finding.rule);
+				await this.skillsTelemetry.flaggedSkill(
+					{
+						provider,
+						stage: 'import',
+						verdict: check.verdict,
+						rule_codes: [...new Set(ruleCodes)],
+					},
+					user.id,
+				);
+			}),
+		);
 	}
 
 	/**

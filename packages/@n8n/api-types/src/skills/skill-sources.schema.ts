@@ -117,7 +117,7 @@ export type DiscoveredSkill = {
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
-	/** The security check. Null when n8n could not fetch the skill. */
+	/** The security check. Null when the skill is gone from the source. */
 	check: SkillScanResult | null;
 	webUrl: string;
 };
