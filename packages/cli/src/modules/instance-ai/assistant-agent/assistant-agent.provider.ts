@@ -1,4 +1,9 @@
-import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
+import {
+	isCancellation,
+	type JSONObject,
+	type SideCallUsageReport,
+	type TokenUsage,
+} from '@n8n/agents';
 import {
 	ASSISTANT_TRACE_EVENT,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
@@ -101,6 +106,16 @@ function contextAttachmentsOf(
 			attachment.type === 'agent' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
+}
+
+/**
+ * The message of a resume that cancels the waiting tool call: the user typed
+ * a message instead of answering the card.
+ */
+function steeringMessageOf(turn: SystemAgentTurn<AssistantSandboxLease>): string | undefined {
+	return turn.type === 'resume' && isCancellation(turn.resumeData)
+		? turn.resumeData.message
+		: undefined;
 }
 
 /** The resume input as the trace records it: the answer's shape, not its values. */
@@ -275,8 +290,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				: await buildInput();
 		}
 
+		const steeringMessage = steeringMessageOf(turn);
 		await trace?.startOrchestratorRun(
-			turn.type === 'start' ? { message: turn.message } : { toolCallId: turn.toolCallId },
+			turn.type === 'start'
+				? { message: turn.message }
+				: steeringMessage !== undefined
+					? { message: steeringMessage }
+					: { toolCallId: turn.toolCallId },
 		);
 		const agent = await this.agentFactory.createAgent(environment, runtime, {
 			user,
@@ -360,31 +380,52 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			contextAttachments: InstanceAiResourceAttachment[];
 		},
 	): Promise<AssistantTurnTrace | undefined> {
+		const anchor =
+			turn.type === 'resume'
+				? readAssistantTraceAnchor(turn.checkpointHostMetadata[ASSISTANT_TRACE_METADATA_KEY])
+				: undefined;
 		const scope = {
 			threadId: turn.thread.id,
 			runId: options.runId,
-			messageGroupId: options.messageGroupId,
+			// A resume after a steering message continues the trace turn of that message.
+			messageGroupId: anchor?.messageGroupId ?? options.messageGroupId,
 			userId: turn.user.id,
 			...(setup.proxyConfig ? { proxyConfig: setup.proxyConfig } : {}),
 		};
-		const trace =
-			turn.type === 'start'
-				? await this.tracer.startTurn(
-						scope,
-						buildAssistantTurnTraceInput({
-							message: turn.message,
-							fileAttachments: setup.fileAttachments,
-							contextAttachments: setup.contextAttachments,
-							threadArtifacts: options.request.threadArtifacts,
-							messageGroupId: options.messageGroupId,
-						}),
-					)
-				: await this.tracer.resumeTurn(scope, resumeTraceInput(turn), {
-						anchor: readAssistantTraceAnchor(
-							turn.checkpointHostMetadata[ASSISTANT_TRACE_METADATA_KEY],
-						),
-						metadata: { pending_tool_call_id: turn.toolCallId },
-					});
+		const steeringMessage = steeringMessageOf(turn);
+		let trace: AssistantTurnTrace | undefined;
+		if (turn.type === 'start') {
+			trace = await this.tracer.startTurn(
+				scope,
+				buildAssistantTurnTraceInput({
+					message: turn.message,
+					fileAttachments: setup.fileAttachments,
+					contextAttachments: setup.contextAttachments,
+					threadArtifacts: options.request.threadArtifacts,
+					messageGroupId: scope.messageGroupId,
+				}),
+			);
+		} else if (steeringMessage !== undefined) {
+			// The current runtime starts a new run for a message that the user sends
+			// while a card waits, so its trace shows a new turn. Do the same here,
+			// with a message group of its own, although the runtime resumes the run.
+			const messageGroupId = `mg_${nanoid()}`;
+			trace = await this.tracer.startTurn(
+				{ ...scope, messageGroupId },
+				buildAssistantTurnTraceInput({
+					message: steeringMessage,
+					fileAttachments: [],
+					contextAttachments: [],
+					messageGroupId,
+				}),
+				{ cancelled_tool_call_id: turn.toolCallId },
+			);
+		} else {
+			trace = await this.tracer.resumeTurn(scope, resumeTraceInput(turn), {
+				anchor,
+				metadata: { pending_tool_call_id: turn.toolCallId },
+			});
+		}
 		if (!trace) return undefined;
 		try {
 			turn.emitHostEvent(ASSISTANT_TRACE_EVENT, trace.payload, { key: 'turn' });

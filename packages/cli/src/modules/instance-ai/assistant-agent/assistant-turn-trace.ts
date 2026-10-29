@@ -55,12 +55,15 @@ export interface AssistantTraceAnchor {
 	actorRunId: string;
 	otelTraceId?: string;
 	actorSpanId?: string;
+	/** The message group of the trace turn. A steering message gives the run a new one. */
+	messageGroupId?: string;
 }
 
 /** Read a stored trace anchor. Returns `undefined` when the value is not one. */
 export function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor | undefined {
 	if (!isRecord(value)) return undefined;
-	const { langsmithTraceId, rootRunId, actorRunId, otelTraceId, actorSpanId } = value;
+	const { langsmithTraceId, rootRunId, actorRunId, otelTraceId, actorSpanId, messageGroupId } =
+		value;
 	if (
 		typeof langsmithTraceId !== 'string' ||
 		typeof rootRunId !== 'string' ||
@@ -74,6 +77,7 @@ export function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor |
 		actorRunId,
 		...(typeof otelTraceId === 'string' ? { otelTraceId } : {}),
 		...(typeof actorSpanId === 'string' ? { actorSpanId } : {}),
+		...(typeof messageGroupId === 'string' ? { messageGroupId } : {}),
 	};
 }
 
@@ -142,12 +146,14 @@ export class AssistantTurnTrace {
 	/** The ids that a resume of this turn links to. Store them with the checkpoint. */
 	anchor(): JSONObject {
 		const { rootRun, actorRun } = this.context;
+		const messageGroupId = rootRun.metadata?.message_group_id;
 		return {
 			langsmithTraceId: rootRun.traceId,
 			rootRunId: rootRun.id,
 			actorRunId: actorRun.id,
 			...(rootRun.otelTraceId ? { otelTraceId: rootRun.otelTraceId } : {}),
 			...(actorRun.otelSpanId ? { actorSpanId: actorRun.otelSpanId } : {}),
+			...(typeof messageGroupId === 'string' ? { messageGroupId } : {}),
 		};
 	}
 
@@ -331,12 +337,13 @@ export class AssistantTurnTracer {
 	async startTurn(
 		scope: AssistantTraceScope,
 		input: Record<string, unknown>,
+		metadata?: Record<string, unknown>,
 	): Promise<AssistantTurnTrace | undefined> {
 		return await this.create(scope, async () => {
 			return await createInstanceAiTraceContext({
 				...this.commonOptions(scope),
 				input,
-				metadata: RUNTIME_TRACE_METADATA,
+				metadata: { ...metadata, ...RUNTIME_TRACE_METADATA },
 			});
 		});
 	}

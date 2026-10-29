@@ -777,6 +777,101 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
+		describe('tracing a message sent while a card waits', () => {
+			function resumeTurn(
+				overrides: Partial<SystemAgentResumeTurn<AssistantSandboxLease>>,
+			): SystemAgentResumeTurn<AssistantSandboxLease> {
+				const start = startTurn();
+				return {
+					type: 'resume',
+					user,
+					thread,
+					resourceId: start.resourceId,
+					abortSignal: start.abortSignal,
+					emitHostEvent: start.emitHostEvent,
+					memory: start.memory,
+					checkpointStore: start.checkpointStore,
+					sessionGrants: start.sessionGrants,
+					runId: 'agent-run-1',
+					toolCallId: 'tool-call-1',
+					checkpointHostMetadata: {
+						assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
+						assistantTrace: {
+							langsmithTraceId: 'ls-trace-0',
+							rootRunId: 'ls-run-0',
+							actorRunId: 'actor-0',
+						},
+					},
+					resumeData: { approved: true },
+					...overrides,
+				};
+			}
+
+			function traceStub() {
+				const trace = mock<AssistantTurnTrace>({
+					context: {} as AssistantTurnTrace['context'],
+					payload: { langsmithTraceId: 'ls-trace-1', langsmithRunId: 'ls-run-1' },
+				});
+				trace.anchor.mockReturnValue({});
+				trace.finish.mockResolvedValue(undefined);
+				return trace;
+			}
+
+			it('traces the message as a new turn, like the current runtime', async () => {
+				const { provider, tracer } = setup();
+				const trace = traceStub();
+				tracer.startTurn.mockResolvedValue(trace);
+
+				await provider.prepareTurn(
+					resumeTurn({
+						resumeData: { _type: 'agent.cancellation', message: 'Use #general instead' },
+					}),
+				);
+
+				expect(tracer.resumeTurn).not.toHaveBeenCalled();
+				const [scope, input, metadata] = tracer.startTurn.mock.calls[0];
+				expect(scope).toMatchObject({ runId: 'run-1' });
+				// A message group of its own, so the trace shows a new user turn.
+				expect(scope.messageGroupId).toMatch(/^mg_/);
+				expect(scope.messageGroupId).not.toBe('mg-1');
+				expect(input).toEqual({
+					message: 'Use #general instead',
+					messageGroupId: scope.messageGroupId,
+				});
+				expect(metadata).toEqual({ cancelled_tool_call_id: 'tool-call-1' });
+				expect(trace.startOrchestratorRun).toHaveBeenCalledWith({
+					message: 'Use #general instead',
+				});
+			});
+
+			it('continues the trace turn of the message on a later resume of the run', async () => {
+				const { provider, tracer } = setup();
+				tracer.resumeTurn.mockResolvedValue(traceStub());
+
+				await provider.prepareTurn(
+					resumeTurn({
+						checkpointHostMetadata: {
+							assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
+							assistantTrace: {
+								langsmithTraceId: 'ls-trace-2',
+								rootRunId: 'ls-run-2',
+								actorRunId: 'actor-2',
+								messageGroupId: 'mg_steered',
+							},
+						},
+					}),
+				);
+
+				expect(tracer.resumeTurn).toHaveBeenCalledWith(
+					expect.objectContaining({ messageGroupId: 'mg_steered' }),
+					expect.anything(),
+					expect.objectContaining({
+						anchor: expect.objectContaining({ messageGroupId: 'mg_steered' }),
+					}),
+				);
+			});
+		});
+
 		it('gives the turn the sandbox of its workspace lease', async () => {
 			const { provider, turnEnvironment, workspace } = setup();
 			const lease: AssistantSandboxLease = {

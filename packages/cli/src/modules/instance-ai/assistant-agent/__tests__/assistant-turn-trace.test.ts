@@ -40,7 +40,11 @@ function traceRun(overrides: Partial<InstanceAiTraceRun>): InstanceAiTraceRun {
 }
 
 function traceContext() {
-	const rootRun = traceRun({ id: 'root-1', otelTraceId: 'otel-1' });
+	const rootRun = traceRun({
+		id: 'root-1',
+		otelTraceId: 'otel-1',
+		metadata: { message_group_id: 'mg-1' },
+	});
 	const actorRun = traceRun({ id: 'actor-1', otelSpanId: 'span-1', parentRunId: 'root-1' });
 	const startChildRun = vi.fn(async () => actorRun);
 	const finishRun = vi.fn(async () => {});
@@ -95,6 +99,7 @@ describe('AssistantTurnTrace', () => {
 			actorRunId: 'actor-1',
 			otelTraceId: 'otel-1',
 			actorSpanId: 'span-1',
+			messageGroupId: 'mg-1',
 		});
 	});
 
@@ -263,6 +268,14 @@ describe('readAssistantTraceAnchor', () => {
 		expect(
 			readAssistantTraceAnchor({ langsmithTraceId: 'ls', rootRunId: 'root', actorRunId: 'actor' }),
 		).toEqual({ langsmithTraceId: 'ls', rootRunId: 'root', actorRunId: 'actor' });
+		expect(
+			readAssistantTraceAnchor({
+				langsmithTraceId: 'ls',
+				rootRunId: 'root',
+				actorRunId: 'actor',
+				messageGroupId: 'mg-2',
+			}),
+		).toMatchObject({ messageGroupId: 'mg-2' });
 		expect(readAssistantTraceAnchor({ langsmithTraceId: 'ls' })).toBeUndefined();
 		expect(readAssistantTraceAnchor(null)).toBeUndefined();
 	});
