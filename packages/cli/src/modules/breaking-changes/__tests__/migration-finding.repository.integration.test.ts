@@ -87,6 +87,18 @@ describe('MigrationFindingRepository', () => {
 			}
 		});
 
+		test('inserts a finding with the status it is given', async () => {
+			const workflow = await createWorkflow();
+			await findingRepository.insertMany(
+				[{ ...finding(workflow.id), status: 'fixed_unpublished' }],
+				ctx,
+			);
+
+			const [row] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+
+			expect(row.status).toBe('fixed_unpublished');
+		});
+
 		test('lists only findings for the requested target version', async () => {
 			const workflow = await createWorkflow();
 			await findingRepository.insertMany(
