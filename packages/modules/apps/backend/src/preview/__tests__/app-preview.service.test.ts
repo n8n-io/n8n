@@ -68,7 +68,7 @@ function setup(baseUrl = 'https://apps.example.com') {
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, versions, resources, users, store, jwt, res };
+	return { service, app, apps, versions, resources, users, store, cache, jwt, res };
 }
 
 function previewRequest(query: Record<string, string> = {}, cookies: Record<string, string> = {}) {
@@ -90,9 +90,11 @@ describe('AppPreviewService', () => {
 
 	describe('createGrant', () => {
 		it('returns a preview host URL with a code that is stored for one minute', async () => {
-			const { service, store } = setup();
+			const { service, store, cache } = setup();
 
 			const { url } = await service.createGrant('user-1', 'project-1', appId, versionId);
+
+			expect(cache.set).toHaveBeenCalledWith(expect.any(String), expect.any(String), 60_000);
 
 			const parsed = new URL(url);
 			expect(parsed.origin).toBe('https://sales--preview.apps.example.com');

@@ -94,16 +94,23 @@ describe('AppServingController', () => {
 		expect(bundles.get).not.toHaveBeenCalled();
 	});
 
-	it('authenticates preview hosts with the preview session', async () => {
-		const { controller, req, res, auth, hosts, preview } = setup();
-		hosts.previewNamespace.mockReturnValue('sales');
-		const next = vi.fn();
+	it.each([
+		{ host: 'preview', namespace: 'sales', expected: 'preview', skipped: 'auth' },
+		{ host: 'published', namespace: undefined, expected: 'auth', skipped: 'preview' },
+	] as const)(
+		'authenticates $host hosts with the $expected session',
+		async ({ namespace, expected, skipped }) => {
+			const context = setup();
+			const { controller, req, res, hosts } = context;
+			hosts.previewNamespace.mockReturnValue(namespace);
+			const next = vi.fn();
 
-		await controller.authenticate(req, res, next);
+			await controller.authenticate(req, res, next);
 
-		expect(preview.authenticate).toHaveBeenCalledExactlyOnceWith(req, res, next);
-		expect(auth.authenticate).not.toHaveBeenCalled();
-	});
+			expect(context[expected].authenticate).toHaveBeenCalledExactlyOnceWith(req, res, next);
+			expect(context[skipped].authenticate).not.toHaveBeenCalled();
+		},
+	);
 
 	it('serves the preview version and allows only the editor to frame it', async () => {
 		const { controller, req, res, bundles } = setup('/assets/main.js', false);
