@@ -421,6 +421,13 @@ function save() {
 						</N8nSelect>
 					</N8nInputLabel>
 					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipient')">
+						<N8nText
+							v-if="channel.channel === 'slack' && recipientKind === 'channel'"
+							:class="$style.selectorSubtitle"
+							color="text-light"
+							size="small"
+							>{{ i18n.baseText('agents.hitl.slackChannelHelp') }}</N8nText
+						>
 						<AgentHitlDestinationPicker
 							:key="`${channelKey}:${guild?.id}:${recipientKind}`"
 							v-model="recipient"
@@ -430,12 +437,6 @@ function save() {
 						/>
 					</N8nInputLabel>
 				</template>
-				<N8nText
-					v-if="channel?.channel === 'slack' && recipientKind === 'channel'"
-					color="text-light"
-					size="small"
-					>{{ i18n.baseText('agents.hitl.slackChannelHelp') }}</N8nText
-				>
 				<N8nText
 					v-if="channel?.channel === 'discord' && recipientKind === 'user'"
 					color="text-light"
@@ -531,5 +532,8 @@ function save() {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+.selectorSubtitle {
+	margin-bottom: var(--spacing--2xs);
 }
 </style>
