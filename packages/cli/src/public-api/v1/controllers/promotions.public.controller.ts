@@ -333,7 +333,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:update')
 	@ApiSummary('Update a promotion environment')
 	@ApiDescription(
-		'Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.',
+		'Updates the name, provider, remote, or settings. A remote replaces the whole saved remote, and settings replace the whole saved settings. The settings must match the direction of the environment, so `createBranchOnPromotion` is always required for Promote. GitLab environments store a repository path and derive remoteUrl from the provider. Plain Git environments keep the full remote URL. A new provider type or repository closes the open promotion reviews of the environment in n8n. Their merge requests stay open on the Git host. If the provider changes during the update, the update returns 409. Reload the environment and try again. Direction and scope cannot change.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionEnvironmentPublicDto)
@@ -356,7 +356,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:delete')
 	@ApiSummary('Delete a promotion environment')
 	@ApiDescription(
-		'Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in Git changes.',
+		'Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in the Git repository changes. The open promotion reviews of the environment close in n8n. Their merge requests stay open on the Git host.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(204)
