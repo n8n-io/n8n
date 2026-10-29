@@ -39,8 +39,9 @@ the credential checks read control-plane state.
 1. **A sub-workflow call uses a similar mechanism to wait-resume.** We receive the sub-execution
    request in the shim and return a `subExecution` declaration, similar to `wait`. For an awaited
    sub-execution, the engine suspends the parent step, runs the sub-execution, and resumes the
-   parent step when the sub-execution is complete. For a fire-and-forget sub-execution, the parent
-   step completes with its outputs, and the engine then starts the sub-execution.
+   parent step when the sub-execution is complete. For a fire-and-forget sub-execution, the engine
+   starts the sub-execution before the parent step completes with its outputs. When the start fails,
+   the parent step fails.
 2. **We re-invoke the execute method when the parent step is resumed.** On the second invocation,
    the shim answers the `executeWorkflow` call with the output of the sub-execution. Then all of the
    existing post-processing is automatically applied. This decision supersedes the decision in
