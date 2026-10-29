@@ -37,6 +37,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
+	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -768,15 +769,19 @@ const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
 	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
-const showAttach = computed(() => {
-	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes.length > 0;
-	const capabilities = attachmentCapabilities.value;
-	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
-});
+// Data files work with every model, so the attach button shows unless the host turns uploads off.
+const showAttach = computed(() =>
+	props.acceptedMimeTypes !== undefined ? props.acceptedMimeTypes.length > 0 : true,
+);
 const acceptedMimeTypes = computed(() => {
 	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes;
 	const capabilities = attachmentCapabilities.value;
-	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
+	return [
+		capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : '',
+		AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	]
+		.filter(Boolean)
+		.join(',');
 });
 
 function handleFilesSelected(files: File[]) {
@@ -796,7 +801,7 @@ function handleFilesSelected(files: File[]) {
 			!isFileAcceptedByAccept(
 				file.name,
 				resolveFileMimeType(file.name, file.type),
-				acceptedMimeTypes.value ?? '',
+				acceptedMimeTypes.value,
 			)
 		) {
 			toast.showMessage({
