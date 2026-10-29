@@ -475,7 +475,6 @@ const {
 	backgroundStoppingIds,
 	backgroundStopLabel,
 	tasksStopping,
-	tasksStopped,
 	stopDisabled,
 	stopNotice,
 	stopTasks,
@@ -500,8 +499,6 @@ const backgroundInProgress = computed(
 	() => backgroundRunningCount.value > 0 || backgroundStoppingIds.value.size > 0,
 );
 const backgroundTitle = computed(() => {
-	if (tasksStopped.value) return locale.baseText('agents.chat.tasks.stopped');
-
 	const stoppingCount = backgroundStoppingIds.value.size;
 
 	if (stoppingCount > 0) {
@@ -516,12 +513,6 @@ const backgroundTitle = computed(() => {
 	}
 
 	const count = backgroundRunningCount.value;
-
-	if (count === 0) {
-		return locale.baseText('agents.chat.backgroundTasks.finished', {
-			adjustToNumber: backgroundJobs.value.length,
-		});
-	}
 
 	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
 		adjustToNumber: count,
@@ -1606,7 +1597,9 @@ onBeforeUnmount(() => {
 					v-if="currentPlan && showPlanCard && planStopActive"
 					v-model:expanded="planExpanded"
 					:plan="currentPlan"
-					:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
+					:trace-route="
+						continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+					"
 					v-bind="planCardProps"
 					@stop="stopTasks"
 				/>

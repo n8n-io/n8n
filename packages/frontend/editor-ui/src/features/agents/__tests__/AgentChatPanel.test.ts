@@ -150,8 +150,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
 			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
-			'agents.chat.backgroundTasks.finished':
-				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
 			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
 			'agents.chat.backgroundTasks.stoppingCount': `Stopping ${options?.interpolate?.count} background ${options?.adjustToNumber === 1 ? 'task' : 'tasks'}…`,
 			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
@@ -2329,10 +2327,13 @@ describe('AgentChatPanel', () => {
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 			stopAllMock.mockRejectedValueOnce(new Error('Request failed'));
+			refreshPlanMock.mockClear();
 			await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
 			await flushPromises();
 
 			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			// A Retry must send the latest plan ID.
+			expect(refreshPlanMock).toHaveBeenCalledOnce();
 
 			const notice = wrapper.get('[data-testid="agent-task-stop-status"]');
 

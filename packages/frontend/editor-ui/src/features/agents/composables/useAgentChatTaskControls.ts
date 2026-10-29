@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
-import { isAgentPlanFinished } from '../utils/agent-plan';
+import { getAgentPlanTasks, isAgentPlanFinished } from '../utils/agent-plan';
 import type { AgentChatChannel } from './useAgentApi';
 import { useAgentBackgroundJobs } from './useAgentBackgroundJobs';
 import { useAgentPlan } from './useAgentPlan';
@@ -173,10 +173,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 	});
 
 	const planStopped = computed(() => {
-		const tasks =
-			currentPlan.value?.document.items.flatMap((item) =>
-				item.kind === 'group' && item.tasks.length ? item.tasks : [item],
-			) ?? [];
+		const tasks = currentPlan.value ? getAgentPlanTasks(currentPlan.value) : [];
 		const unfinished = tasks.filter((item) =>
 			['pending', 'in_progress', 'paused'].includes(item.status),
 		);
@@ -289,6 +286,9 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 
 			stopFailed.value = true;
 
+			// A plan conflict rejects a stale plan ID. Read the latest plan so Retry sends its ID.
+			if (stopCurrentPlan) void refreshPlan();
+
 			if (!planStopActive.value)
 				toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
 		}
@@ -390,7 +390,6 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		backgroundStoppingIds,
 		backgroundStopLabel,
 		tasksStopping,
-		tasksStopped,
 		stopDisabled,
 		stopNotice,
 		stopTasks,
