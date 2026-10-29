@@ -89,7 +89,7 @@ describe('SettingsContextView', () => {
 		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
 	});
 
-	describe('with the skills hub on', () => {
+	describe('with the skills module on', () => {
 		beforeEach(() => {
 			flags.skills = true;
 		});
@@ -117,7 +117,7 @@ describe('SettingsContextView', () => {
 			expect(showErrorMock).toHaveBeenCalled();
 		});
 
-		it('hides Preferences when only the skills hub is on', () => {
+		it('hides Preferences when only skills are on', () => {
 			flags.preferences = false;
 
 			const { queryByTestId } = renderView();

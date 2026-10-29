@@ -562,6 +562,27 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'skill-update': {
+			const agent = ensureAgent(state, event.agentId);
+			const alreadyShown = agent?.timeline.some(
+				(entry) =>
+					entry.type === 'skill-update' &&
+					entry.runId === event.runId &&
+					entry.skillId === event.payload.skillId &&
+					entry.version === event.payload.version &&
+					entry.change === event.payload.change,
+			);
+			if (agent && !alreadyShown) {
+				agent.timeline.push({
+					type: 'skill-update',
+					runId: event.runId,
+					...event.payload,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tasks-update': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

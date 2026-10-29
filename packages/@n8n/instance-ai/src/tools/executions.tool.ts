@@ -18,6 +18,10 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { restrictToolActions } from './restrict-tool-actions';
+import {
+	TRIGGER_INPUT_DATA_DESCRIPTION,
+	TRIGGER_NODE_NAME_DESCRIPTION,
+} from './shared/trigger-input-descriptions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -70,29 +74,8 @@ const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
 	approvalSummary: approvalSummarySchema,
 	workflowId: z.string().describe('Workflow ID'),
-	inputData: z
-		.record(z.unknown())
-		.optional()
-		.describe(
-			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
-				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
-				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
-				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
-				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
-		),
-	triggerNodeName: z
-		.string()
-		.optional()
-		.describe(
-			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
-				'more than one trigger: without it a single trigger is auto-detected and the other ' +
-				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from workflow_builder_build_workflow's `triggerNodes` or " +
-				'workflow_builder_workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
-				'workflow to reach a branch — use this instead.',
-		),
+	inputData: z.record(z.unknown()).optional().describe(TRIGGER_INPUT_DATA_DESCRIPTION),
+	triggerNodeName: z.string().optional().describe(TRIGGER_NODE_NAME_DESCRIPTION),
 	timeout: z
 		.number()
 		.int()
@@ -514,6 +497,17 @@ const REDACTED_RESULT_GUIDANCE =
 	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
 	'and do not try to get the data another way.';
 
+/**
+ * Appended to every description: the user's own canvas runs are often not
+ * saved, and `list` does not show them.
+ */
+const UNSAVED_EXECUTION_GUIDANCE =
+	' When saving manual executions is turned off, n8n can keep a finished manual run ' +
+	'for a short time, only for the user who ran it, and `list` does not show it. ' +
+	'Read such a run by its execution id. When the execution the user means is not ' +
+	'found, tell the user that you cannot read that run. Do not debug a different ' +
+	'execution from `list` in its place.';
+
 export function createExecutionsTool(
 	context: InstanceAiContext,
 	options: ExecutionsToolOptions = {},
@@ -527,7 +521,7 @@ export function createExecutionsTool(
 				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 					'get node output, get resolved node parameters for a past run, and stop. ' +
 					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					"list_workflows, then run it here with the user's values as inputData — " +
 					'do not treat such a request as a request to build something. ' +
 					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
 					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
@@ -535,7 +529,9 @@ export function createExecutionsTool(
 					'"Execute step" button. Use it to see what one node really returns — when ' +
 					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
 					'the node re-runs on the data it actually received. It runs for real, so do ' +
-					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
+					'not point it at a node that writes.') +
+				REDACTED_RESULT_GUIDANCE +
+				UNSAVED_EXECUTION_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

@@ -6,13 +6,11 @@ import {
 	type PromotionReviewDetailsRequestDto,
 	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
-	type SerializedWorkflow,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
-import { jsonParse } from 'n8n-workflow';
 
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -105,13 +103,11 @@ export class PromotionReviewChangesService {
 		if (warnings.length > 0) return { ...commitShas, resources: [], dependencies: [], warnings };
 
 		const projectIds = projectIdsOf(base.side.manifest, head.side.manifest);
-		const archiveState = await readArchiveState(commits.head, base.side, head.side, projectIds);
 		const { resources, dependencies } = buildPreview({
 			operation: null,
 			projectIds,
 			base: base.side,
 			desired: head.side,
-			isArchived: (path) => archiveState.get(path) ?? false,
 		});
 		return { ...commitShas, resources, dependencies, warnings };
 	}
@@ -259,29 +255,6 @@ function projectIdsOf(...manifests: Array<PackageManifest | null>): string[] {
 	return [
 		...new Set(manifests.flatMap((manifest) => manifest?.projects?.map(({ id }) => id) ?? [])),
 	];
-}
-
-/** Archive state separates "archived" from "modified", so only changed workflows are read. */
-async function readArchiveState(
-	head: PackageCommit,
-	base: PreviewSide,
-	desired: PreviewSide,
-	projectIds: readonly string[],
-): Promise<Map<string, boolean>> {
-	const baseIndex = indexProjects(base, projectIds);
-	const paths = [...indexProjects(desired, projectIds).values()].flatMap((resource) => {
-		const before = baseIndex.get(resource.key);
-		return resource.type === 'workflow' && before && before.blobSha !== resource.blobSha
-			? [resource.path]
-			: [];
-	});
-	const files = await head.readFiles(paths);
-	return new Map(
-		[...files].map(([path, raw]) => [
-			path,
-			jsonParse<SerializedWorkflow>(raw, { fallbackValue: undefined })?.isArchived ?? false,
-		]),
-	);
 }
 
 function detailSide(content: string | undefined): DetailSide {

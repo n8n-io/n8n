@@ -7,7 +7,7 @@ export function memorySkill(): RuntimeSkill {
 		id: 'agent-builder-memory',
 		name: 'Agent Builder Memory',
 		description:
-			'Use for explicit memory changes: Episodic/long-term/cross-session memory, observer/reflector worker models, threshold/budget tuning, or disabling memory. Not for ordinary fresh-agent creation, which uses the default memory config in Memory Guidance.',
+			'Use for explicit memory changes: Episodic/long-term/cross-session memory, observer/reflector worker models, threshold/budget tuning, or disabling memory. Not for ordinary fresh-agent creation: the server adds default memory to a fresh agent.',
 		recommendedTools: [
 			'agent_builder_resolve_llm',
 			'setup_credentials',
@@ -17,7 +17,7 @@ export function memorySkill(): RuntimeSkill {
 		allowedTools: [
 			'agent_builder_resolve_llm',
 			'setup_credentials',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent-context',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
@@ -48,7 +48,7 @@ Memory (long-term, cross-session recall).
 
 - Enable \`memory.episodicMemory\` only when the user asks for Episodic Memory, long-term memory, prior conversations, remembered decisions, exact artifacts, or cross-session memory.
 - Before enabling it, call \`setup_credentials({ target: "agent", credentials: [{ credentialType: "openAiApi", reason: "OpenAI credential for Episodic Memory embeddings", allowManaged: true }] })\`. Without the assistant proxy: ${INITIAL_BUILD_NOTE} Leave Episodic Memory disabled, include an \`openAiApi\` entry in the trailing \`agent_builder_finish_setup\` call, and enable it with the returned credential id — the draft schema requires a credential to enable it.
-- On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`, using the returned \`credentialId\` value. This can be a real credential id or \`"managed"\` when the assistant proxy is available. Preserve existing \`topK\` or \`maxEntriesPerRun\`.
+- On success, set \`memory.episodicMemory = { "enabled": true, "credential": "<credentialId>" }\`, using the returned \`credentialId\` value. This can be a real credential id or \`"managed"\` when the assistant proxy is available. Preserve existing \`topK\`, \`maxEntriesPerRun\`, or \`guidance\`.
 - \`memory.episodicMemory.credential\` is only for OpenAI embeddings. It is separate from the optional \`reflectorModel\` worker credential.
 - If credential selection is skipped, do not enable Episodic Memory; explain that it needs an OpenAI credential for embeddings.
 - Do not add instructions saying the agent should remember, store, save, or decide what context matters. The runtime handles memory extraction and indexing.

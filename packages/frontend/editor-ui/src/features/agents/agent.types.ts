@@ -16,7 +16,12 @@ export interface CustomToolEntry {
 	descriptor: ToolDescriptor;
 }
 
-import type { AgentVersionDto, AgentSkill, AgentJsonConfig } from '@n8n/api-types';
+import type {
+	AgentVersionDto,
+	AgentSkill,
+	AgentSkillVersionInfo,
+	AgentJsonConfig,
+} from '@n8n/api-types';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 export type AgentVersion = AgentVersionDto;
@@ -32,6 +37,7 @@ export type Agent = {
 	isCompiled: boolean;
 	isRunnable?: boolean;
 	hasPublishHistory?: boolean;
+	hasVersionHistory?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;
@@ -45,5 +51,7 @@ export type Agent = {
 	configHash?: string | null;
 	skillHashes?: Record<string, string>;
 	outdatedSkillIds?: string[];
+	/** The draft, published and latest version of each attached hub skill, keyed by skill id. */
+	skillVersions?: Record<string, AgentSkillVersionInfo>;
 	activeVersion: AgentVersion | null;
 };

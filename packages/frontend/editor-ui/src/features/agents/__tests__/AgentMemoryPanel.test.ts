@@ -29,6 +29,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nDialogHeader: { template: '<div><slot /></div>' },
 	N8nDialogBody: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
+	N8nIconButton: {
+		template:
+			'<button :data-testid="$attrs[\'data-testid\']" :disabled="disabled" @click="$emit(\'click\')" />',
+		props: ['disabled'],
+		emits: ['click'],
+	},
 	N8nSwitch: {
 		template:
 			'<button :data-testid="$attrs[\'data-testid\']" @click="$emit(\'update:modelValue\', !modelValue)" />',
@@ -50,6 +56,15 @@ vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue
 			credentialModalAppendToBody: Boolean,
 		},
 		emits: ['credential-selected'],
+	},
+}));
+
+vi.mock('../components/AgentMemoryGuidanceModal.vue', () => ({
+	default: {
+		name: 'AgentMemoryGuidanceModal',
+		template: '<div />',
+		props: ['open', 'guidance', 'disabled'],
+		emits: ['update:open', 'save'],
 	},
 }));
 
@@ -244,5 +259,63 @@ describe('AgentMemoryPanel', () => {
 				},
 			],
 		]);
+	});
+	describe('capture guidance', () => {
+		function configWithGuidance(): AgentJsonConfig {
+			const config = baseConfig();
+			config.memory = {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: {
+					enabled: true,
+					credential: 'existing-credential',
+					topK: 8,
+					guidance: { include: ['timezone'], exclude: [] },
+				},
+			};
+			return config;
+		}
+
+		it('shows the guidance button only when episodic memory is enabled', () => {
+			const disabled = mountPanel({ proxyEnabled: true });
+			expect(disabled.find('[data-testid="agent-episodic-memory-guidance-open"]').exists()).toBe(
+				false,
+			);
+
+			const enabled = mountPanel({ proxyEnabled: true, config: configWithGuidance() });
+			expect(enabled.find('[data-testid="agent-episodic-memory-guidance-open"]').exists()).toBe(
+				true,
+			);
+		});
+
+		it('opens the modal with saved guidance and saves changes without resetting settings', async () => {
+			const wrapper = mountPanel({ proxyEnabled: true, config: configWithGuidance() });
+			const modal = wrapper.findComponent({ name: 'AgentMemoryGuidanceModal' });
+			expect(modal.props('open')).toBe(false);
+
+			await wrapper.find('[data-testid="agent-episodic-memory-guidance-open"]').trigger('click');
+			expect(modal.props('open')).toBe(true);
+			expect(modal.props('guidance')).toEqual({ include: ['timezone'], exclude: [] });
+
+			modal.vm.$emit('save', { include: ['timezone'], exclude: ['passwords'] });
+			modal.vm.$emit('save', undefined);
+
+			const episodicMemory = { enabled: true, credential: 'existing-credential', topK: 8 };
+			expect(wrapper.emitted('update:config')).toEqual([
+				[
+					{
+						memory: {
+							enabled: true,
+							storage: 'n8n',
+							episodicMemory: {
+								...episodicMemory,
+								guidance: { include: ['timezone'], exclude: ['passwords'] },
+							},
+						},
+					},
+				],
+				[{ memory: { enabled: true, storage: 'n8n', episodicMemory } }],
+			]);
+		});
 	});
 });

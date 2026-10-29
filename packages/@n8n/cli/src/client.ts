@@ -118,7 +118,7 @@ export interface PromotionExpectedSource {
 }
 
 /** References in a package that must be set up on this instance before Apply can import it. */
-export interface PromotionBindingPreflight {
+export interface PromotionApplyCheck {
 	missingProjects: Array<Record<string, unknown>>;
 	missingBindings: Array<Record<string, unknown>>;
 	accessRequirements: Array<Record<string, unknown>>;
@@ -145,7 +145,7 @@ export type ApplyPackageResult =
 			counts: ImportPackageCounts;
 			warnings: Array<Record<string, unknown>>;
 	  })
-	| (ApplyPackageIdentity & { status: 'blocked'; preflight: PromotionBindingPreflight })
+	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
 	| (ApplyPackageIdentity & { status: 'source-changed' });
 
 export interface PromotionChangesQuery {
@@ -170,6 +170,21 @@ export interface PromotableResourceSummary {
 export interface ProjectPromotionChanges {
 	commitSha: string | null;
 	changes: PromotableResourceSummary[];
+}
+
+/** A repository that the token of a Git host provider can access. */
+export interface PromotionRepository {
+	id: string;
+	name: string;
+	fullPath: string;
+	remoteUrl: string;
+	defaultBranch: string | null;
+}
+
+/** A branch of a Git host repository. */
+export interface PromotionBranch {
+	name: string;
+	isDefault: boolean;
 }
 
 /** State of an environment's local checkout, after a connect or a disconnect. */
@@ -362,6 +377,32 @@ export class N8nClient {
 
 	async deletePromotionProvider(id: string) {
 		return await this.del<undefined>(`/promotions/providers/${id}`);
+	}
+
+	async listPromotionProviderRepositories(id: string, search?: string, limit?: number) {
+		return await this.paginate<PromotionRepository>(
+			`/promotions/providers/${id}/repositories`,
+			search ? { search } : {},
+			limit,
+		);
+	}
+
+	/**
+	 * `repositoryId` is a plain full path such as `group/repo`, or a Git host
+	 * project ID. A full path contains slashes, so it is encoded into one path
+	 * segment here.
+	 */
+	async listPromotionProviderBranches(
+		id: string,
+		repositoryId: string,
+		search?: string,
+		limit?: number,
+	) {
+		return await this.paginate<PromotionBranch>(
+			`/promotions/providers/${id}/repositories/${encodeURIComponent(repositoryId)}/branches`,
+			search ? { search } : {},
+			limit,
+		);
 	}
 
 	// ─── Promotion environments ────────────────────────────────────

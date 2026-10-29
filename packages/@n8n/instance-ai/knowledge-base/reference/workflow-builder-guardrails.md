@@ -5,8 +5,8 @@ multiple requested effects, digests or reports, non-trivial branching, or Code
 nodes. They are a runtime checklist, not extra user-facing output.
 
 Code-node runtime limits (no network, forbidden imports, nested template
-literals) and unsolicited stickies are enforced by `workflow-sdk validate` —
-fix those findings before `workflow_builder_build_workflow`. Use built-in nodes (Edit Fields
+literals) and unsolicited stickies are reported by the source lint in
+`workflow_builder_build_workflow`. Fix those findings, then build again. Use built-in nodes (Edit Fields
 (Set), Filter, IF / Switch, Sort, Remove Duplicates, Aggregate, Split Out, Merge)
 for shaping, filtering, routing, sorting, de-duplicating and aggregating work; a
 Code node is only for the reserved cases the workflow-builder skill lists.

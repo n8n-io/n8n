@@ -140,6 +140,7 @@ describe('ProjectsNavigation', () => {
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
 				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 	}

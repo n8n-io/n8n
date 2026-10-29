@@ -6,12 +6,13 @@ import {
 	isServiceAccount,
 	isPerson,
 	ServiceAccount,
+	ServiceAccountDetails,
 	ServiceAccountRepository,
 	Person,
 	PersonRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, type Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 
 import { createMember } from '../../shared/db/users';
 
@@ -37,8 +38,11 @@ describe('UserRepository (both kinds)', () => {
 		await testDb.terminate();
 	});
 
-	async function createServiceAccount() {
-		return await serviceAccountTable.save(serviceAccountTable.create({ role: GLOBAL_MEMBER_ROLE }));
+	async function createServiceAccount(name = 'Deploy bot') {
+		return await Container.get(ServiceAccountRepository).create({
+			name,
+			role: GLOBAL_MEMBER_ROLE,
+		});
 	}
 
 	it('stores each account with its kind and loads it as its child entity', async () => {
@@ -53,17 +57,6 @@ describe('UserRepository (both kinds)', () => {
 		expect(byId.get(serviceAccount.id)).toBeInstanceOf(ServiceAccount);
 		expect(byId.get(serviceAccount.id)?.kind).toBe('service');
 		expect(byId.get(serviceAccount.id)?.role.slug).toBe(GLOBAL_MEMBER_ROLE.slug);
-	});
-
-	it('saves an instance with the kind of its class', async () => {
-		const saved = await userRepository.save(
-			Object.assign(new ServiceAccount(), { role: GLOBAL_MEMBER_ROLE }),
-		);
-
-		const loaded = await userRepository.findOneBy({ id: saved.id });
-
-		expect(loaded).toBeInstanceOf(ServiceAccount);
-		expect(loaded?.kind).toBe('service');
 	});
 
 	it('saves a new User() as a person', async () => {
@@ -217,6 +210,75 @@ describe('UserRepository (both kinds)', () => {
 				ServiceAccount,
 			);
 			expect(await serviceAccountRepository.findById(person.id)).toBeNull();
+		});
+
+		it('creates a service account with a name and loads the name with it', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+
+			const created = await createServiceAccount('Deploy bot');
+			const loaded = await serviceAccountRepository.findById(created.id);
+
+			expect(created).toBeInstanceOf(ServiceAccount);
+			expect(created.kind).toBe('service');
+			expect(created.details.name).toBe('Deploy bot');
+			expect(loaded).toBeInstanceOf(ServiceAccount);
+			expect(loaded?.details).toBeInstanceOf(ServiceAccountDetails);
+			expect(loaded?.details.name).toBe('Deploy bot');
+		});
+
+		it.each([
+			['an empty name', ''],
+			['a blank name', '   '],
+		])('rejects %s and creates nothing', async (_, name) => {
+			await expect(createServiceAccount(name)).rejects.toThrow('A service account needs a name');
+
+			expect(await serviceAccountTable.count()).toBe(0);
+		});
+
+		it('creates nothing when the details cannot be saved', async () => {
+			const save = EntityManager.prototype.save;
+			const spy = vi.spyOn(EntityManager.prototype, 'save').mockImplementation(async function (
+				this: EntityManager,
+				...args: unknown[]
+			) {
+				if (args[0] instanceof ServiceAccountDetails) {
+					throw new Error('details insert failed');
+				}
+				return await (save as (...a: unknown[]) => Promise<unknown>).apply(this, args);
+			});
+
+			try {
+				await expect(createServiceAccount()).rejects.toThrow('details insert failed');
+			} finally {
+				spy.mockRestore();
+			}
+
+			expect(await serviceAccountTable.count()).toBe(0);
+		});
+	});
+
+	describe('ServiceAccountDetails entity', () => {
+		let detailsTable: Repository<ServiceAccountDetails>;
+
+		beforeAll(() => {
+			detailsTable = Container.get(DataSource).getRepository(ServiceAccountDetails);
+		});
+
+		it('is deleted with its service account', async () => {
+			const { id } = await createServiceAccount('Short-lived bot');
+
+			await serviceAccountTable.delete({ id });
+
+			expect(await detailsTable.existsBy({ userId: id })).toBe(false);
+		});
+
+		it('cannot be saved without a name', async () => {
+			const serviceAccount = await createServiceAccount();
+			await detailsTable.delete({ userId: serviceAccount.id });
+
+			await expect(
+				detailsTable.save(detailsTable.create({ userId: serviceAccount.id })),
+			).rejects.toThrow();
 		});
 	});
 });

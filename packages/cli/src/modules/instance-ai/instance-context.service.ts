@@ -902,7 +902,7 @@ const toolNames = {
 	conversation: {
 		expand: '`activity(action="expand", id=N)`',
 		list: '`activity(action="list")`',
-		workflows: '`workflow_builder_workflows(action="list")`',
+		workflows: '`list_workflows`',
 	},
 	mcp: {
 		expand: '`expand_instance_activity(id=N)`',
@@ -1059,7 +1059,7 @@ function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiA
  * exist, they carry their own permission checks, and duplicating them would drift from them.
  *
  * Named in the caller's own vocabulary,
- * because the two surfaces do not share tool names. An MCP client handed `workflow_builder_workflows(action="get")`
+ * because the two surfaces do not share tool names. An MCP client handed `get_workflow`
  * would be told to call a tool its server does not expose.
  */
 function liveRecordHint(
@@ -1071,9 +1071,7 @@ function liveRecordHint(
 		Record<ActivityResourceType, string | undefined>
 	> = {
 		conversation: {
-			workflow: row.resourceId
-				? `workflow_builder_workflows(action="get", workflowId="${row.resourceId}")`
-				: undefined,
+			workflow: row.resourceId ? `get_workflow(workflowId="${row.resourceId}")` : undefined,
 			credential: row.resourceId
 				? `list_credentials(ids=["${row.resourceId}"])`
 				: 'list_credentials()',

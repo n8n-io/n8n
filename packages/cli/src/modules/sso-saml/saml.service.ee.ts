@@ -3,7 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
-import { AuthIdentityRepository, isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
+import {
+	AuthIdentityRepository,
+	isPerson,
+	isValidEmail,
+	PersonRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
@@ -17,7 +23,7 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError, BadRequestError } from '@n8n/errors';
+import { AuthError, BadRequestError, ForbiddenError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { CacheService, EventService, UrlService } from '@n8n/backend-services';
@@ -95,7 +101,7 @@ export class SamlService {
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
 		private readonly validator: SamlValidator,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
@@ -397,6 +403,9 @@ export class SamlService {
 				'saml',
 			);
 			if (identity?.user) {
+				if (!isPerson(identity.user)) {
+					throw new ForbiddenError('A service account cannot log in with SAML');
+				}
 				if (identity.user.email?.toLowerCase() !== lowerCasedEmail) {
 					// The identity is authoritative. A different asserted email usually means the
 					// identity provider sends one principal name for more than one person.
@@ -422,26 +431,23 @@ export class SamlService {
 				};
 			}
 
-			const user = await this.userRepository.findOne({
-				where: { email: lowerCasedEmail },
-				relations: ['authIdentities', 'role'],
-			});
-			if (user) {
+			const person = await this.personRepository.findByEmailWithAuthIdentities(lowerCasedEmail);
+			if (person) {
 				// No identity matches this principal, so the link to the existing user
 				// rests on the email alone. The identity provider must vouch for it.
 				this.assertEmailVerified(attributes.emailVerified, lowerCasedEmail);
 				this.logger.info(
 					'SAML login: linking the asserted principal to an existing user by email',
 					{
-						userId: user.id,
+						userId: person.id,
 						providerId: attributes.userPrincipalName,
 					},
 				);
-				const updatedUser = await updateUserFromSamlAttributes(user, attributes);
-				const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
-				await this.applySsoProvisioning(updatedUser, attributes, rawAttributes);
+				const updatedPerson = await updateUserFromSamlAttributes(person, attributes);
+				const onboardingRequired = !updatedPerson.firstName || !updatedPerson.lastName;
+				await this.applySsoProvisioning(updatedPerson, attributes, rawAttributes);
 				return {
-					authenticatedUser: updatedUser,
+					authenticatedUser: updatedPerson,
 					attributes,
 					rawAttributes,
 					onboardingRequired,

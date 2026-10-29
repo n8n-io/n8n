@@ -28,6 +28,8 @@ describe('TelegramInteractionWebhooks', () => {
 			mockInstanceSettings,
 			mock<EventService>(),
 			mock(),
+			mock(),
+			mock(),
 		);
 		getWebhookExecutionData = vi.fn().mockResolvedValue({ noWebhookResponse: true });
 		// Stub the shared resume so these tests focus on parsing, verification, and routing.

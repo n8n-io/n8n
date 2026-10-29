@@ -7,12 +7,14 @@
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | author | varchar(255) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| description | text |  | true |  |  |  |
+| name | text |  | true |  |  |  |
 | publishedById | uuid |  | true |  | [public.user](public.user.md) |  |
 | schema | json |  | true |  |  | Frozen snapshot of the published AgentJsonConfig |
 | skills | json |  | true |  |  | Frozen map of `skillId → AgentSkill` at publish time |
 | tools | json |  | true |  |  | Frozen map of `toolId → { code, descriptor }` at publish time |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.agents](public.agents.md) |  |  |
+| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_publish_history](public.agent_publish_history.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.agents](public.agents.md) |  |  |
 
 ## Constraints
 
@@ -42,6 +44,7 @@ erDiagram
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_publish_history" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agent_version_skill_dependency" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -50,6 +53,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   timestamp_3__with_time_zone createdAt
+  text description
+  text name
   uuid publishedById FK
   json schema
   json skills
@@ -65,6 +70,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
   varchar_16_ scope
@@ -113,6 +119,16 @@ erDiagram
   integer totalDuration
   integer totalPromptTokens
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_publish_history" {
+  varchar_36_ agentId FK
+  varchar_255_ author
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ event
+  integer id
+  boolean isLegacy
+  uuid userId FK
+  varchar_36_ versionId FK
 }
 "public.agent_task_snapshot" {
   timestamp_3__with_time_zone createdAt

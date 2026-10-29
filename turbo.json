@@ -1,6 +1,7 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
-	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	// VITEST_RETRY is not hashed, so a merge queue run can still use cached master test results.
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN", "VITEST_RETRY"],
 	"boundaries": {
 		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
 		// icon barrel), not a real package — declare it so boundaries doesn't flag it.

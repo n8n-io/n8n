@@ -229,6 +229,14 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		expect(connectSpy).not.toHaveBeenCalled();
 	});
 
+	it('does not connect a draft channel on a published agent', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+
+		await service.syncToConfig(agent, [], [{ type: 'slack', credentialId: '' }]);
+
+		expect(connectSpy).not.toHaveBeenCalled();
+	});
+
 	it('still disconnects removed integrations even when the agent is not published', async () => {
 		const agent = makeAgent({ activeVersionId: null });
 
