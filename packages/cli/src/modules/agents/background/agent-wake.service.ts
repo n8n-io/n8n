@@ -350,6 +350,25 @@ export class AgentWakeService {
 		return { agent, identity };
 	}
 
+	private async isFinalBatch(threadId: string, jobs: AgentBackgroundJob[]): Promise<boolean> {
+		const first = jobs[0];
+		if (first.pauseRequestId) return false;
+
+		const plan = await this.planService.findActivePlan(threadId, {});
+		const leaves = plan ? planLeaves(plan.data) : [];
+		if (plan && !(leaves.length > 0 && leaves.every((task) => isFinalPlanStatus(task.status)))) {
+			return false;
+		}
+
+		const deliveredIds = new Set(jobs.map((job) => job.id));
+		return !(await this.jobRepository.findByParentThread(threadId)).some(
+			(job) =>
+				this.hasSameParentIdentity(job, first) &&
+				(['running', 'suspended', 'paused'].includes(job.status) ||
+					(job.notifiedAt === null && !deliveredIds.has(job.id))),
+		);
+	}
+
 	private async runWake(
 		agent: ProjectAgent,
 		identity: ExecuteForWakeConfig['identity'],
@@ -361,20 +380,16 @@ export class AgentWakeService {
 		this.activeWakes.add(threadId);
 
 		try {
-			const first = jobs[0];
-			const deliveredIds = new Set(jobs.map((job) => job.id));
-
-			const plan = await this.planService.findActivePlan(threadId, {});
-			const leaves = plan ? planLeaves(plan.data) : [];
-			const isFinal =
-				!first.pauseRequestId &&
-				(!plan || (leaves.length > 0 && leaves.every((task) => isFinalPlanStatus(task.status)))) &&
-				!(await this.jobRepository.findByParentThread(threadId)).some(
-					(job) =>
-						this.hasSameParentIdentity(job, first) &&
-						(['running', 'suspended', 'paused'].includes(job.status) ||
-							(job.notifiedAt === null && !deliveredIds.has(job.id))),
-				);
+			// The final marker is only a UI hint. A failed lookup must not block delivery.
+			let isFinal = false;
+			try {
+				isFinal = await this.isFinalBatch(threadId, jobs);
+			} catch (error) {
+				this.logger.warn('Failed to check whether background results are final', {
+					threadId,
+					error,
+				});
+			}
 
 			await this.orchestrator.executeForWake({
 				agentId: agent.id,

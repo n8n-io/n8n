@@ -197,6 +197,16 @@ describe('AgentWakeService', () => {
 		expect(orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal).not.toBe(true);
 	});
 
+	it('delivers the results without the final marker when the plan lookup fails', async () => {
+		const { service, planService, orchestrator } = setup();
+		planService.findActivePlan.mockRejectedValue(new Error('plan lookup failed'));
+
+		await service.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+		expect(orchestrator.executeForWake.mock.calls[0][0].backgroundJobSignal.isFinal).not.toBe(true);
+	});
+
 	it.each(['running', 'suspended', 'paused', 'completed', 'failed', 'cancelled'] as const)(
 		'identifies the final result batch when the other job is %s',
 		async (status) => {
