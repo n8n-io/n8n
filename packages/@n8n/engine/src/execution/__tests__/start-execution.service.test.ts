@@ -122,6 +122,7 @@ describe('StartExecutionService', () => {
 			await service.start({ ...base, parent });
 
 			expect(store.loadExecutionStatus).toHaveBeenCalledWith('exec-parent');
+			expect(store.loadExecution).not.toHaveBeenCalled();
 			expect(stepStore.loadStep).toHaveBeenCalledWith('step-1');
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
 		});
