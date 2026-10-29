@@ -1552,6 +1552,26 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('listThreads', () => {
+		it("reads a page of the user's sessions with the agent", async () => {
+			const { service, threadRepository } = setup();
+			const page = { threads: [thread], hasMore: true };
+			threadRepository.findOwnedHistoryPage.mockResolvedValue(page);
+			const before = { updatedAt: new Date('2026-10-19T10:00:00.000Z'), id: 'thread-0' };
+
+			await expect(
+				service.listThreads(AGENT_ID, user, { limit: 5, search: 'digest', before }),
+			).resolves.toBe(page);
+			expect(threadRepository.findOwnedHistoryPage).toHaveBeenCalledWith(
+				AGENT_ID,
+				user.id,
+				5,
+				'digest',
+				before,
+			);
+		});
+	});
+
 	describe('prepareChatMessage', () => {
 		it('keeps the working project of an existing session', async () => {
 			const { service } = setup();

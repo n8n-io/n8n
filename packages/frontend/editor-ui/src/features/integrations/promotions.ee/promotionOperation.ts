@@ -1,11 +1,11 @@
 import type {
-	ApplyCheckResult,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
 	PromotionResource,
 	PromotionVariableScope,
 } from '@n8n/api-types';
 
+import type { ApplyCheckResult } from './promotions.types';
 import type { ResourceKey, SelectionGraph } from './promotionPreview.selection';
 
 /**
@@ -68,35 +68,38 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 			});
 			return consumers.length > 0 ? [{ ...entry, consumers }] : [];
 		});
-	const { preflight } = check;
 	return {
 		...check,
-		preflight: {
-			...preflight,
-			missingBindings: scope(preflight.missingBindings),
-			accessRequirements: scope(preflight.accessRequirements),
-			conflicts: preflight.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
-				if ('consumers' in conflict) return scope([conflict]);
-				if (conflict.code === 'project-not-team') {
-					return conflict.workflows.some(({ id }) => listed(id)) ? [conflict] : [];
-				}
-				return [conflict];
-			}),
-			warnings: scope(preflight.warnings),
-		},
+		missingBindings: scope(check.missingBindings),
+		accessRequirements: scope(check.accessRequirements),
+		conflicts: check.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
+			if ('consumers' in conflict) return scope([conflict]);
+			if (conflict.code === 'project-not-team') {
+				return conflict.workflows.some(({ id }) => listed(id)) ? [conflict] : [];
+			}
+			return [conflict];
+		}),
+		warnings: scope(check.warnings),
 		movedWorkflows: check.movedWorkflows.filter(({ id }) => listed(id)),
 		// A folder that moved into the project stops the import for every selection, so keep all.
 		movedFolders: check.movedFolders,
 	};
 }
 
-export function listBlockers({
-	preflight,
-	movedWorkflows,
-	movedFolders,
-}: ApplyCheckResult): Blocker[] {
+/** The blockers of the check. A project-wide conflict blocks every workflow in `listedWorkflowKeys`. */
+export function listBlockers(
+	{
+		missingBindings,
+		accessRequirements,
+		conflicts,
+		warnings,
+		movedWorkflows,
+		movedFolders,
+	}: ApplyCheckResult,
+	listedWorkflowKeys: ResourceKey[],
+): Blocker[] {
 	const blockers: Blocker[] = [];
-	for (const binding of preflight.missingBindings) {
+	for (const binding of missingBindings) {
 		blockers.push({
 			kind: 'missing',
 			resourceKey:
@@ -106,14 +109,16 @@ export function listBlockers({
 			workflowKeys: consumerKeys(binding.consumers),
 		});
 	}
-	for (const access of preflight.accessRequirements) {
+	for (const access of accessRequirements) {
 		blockers.push({
 			kind: 'access',
 			resourceKey: `credential:${access.sourceId}`,
 			workflowKeys: consumerKeys(access.consumers),
 		});
 	}
-	for (const conflict of preflight.conflicts) {
+	for (const conflict of conflicts) {
+		// Moves come from `movedWorkflows` and `movedFolders` below.
+		if (conflict.code === 'moved') continue;
 		if (conflict.code === 'destructive-change') {
 			blockers.push({
 				kind: 'destructive',
@@ -132,17 +137,29 @@ export function listBlockers({
 				resourceKey: conflict.sourceId === null ? null : `credential:${conflict.sourceId}`,
 				workflowKeys: consumerKeys(conflict.consumers),
 			});
-		} else if (conflict.kind === 'variable') {
-			// The reference names no scope, so no preview row matches it.
+		} else if (conflict.kind === 'variable' || conflict.kind === 'workflow') {
+			// No preview row matches these, so the blocker marks only the workflows.
 			blockers.push({
 				kind: 'conflict',
 				resourceKey: null,
 				workflowKeys: consumerKeys(conflict.consumers),
 			});
+		} else if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+			const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: conflict.id === undefined ? null : `${type}:${conflict.id}`,
+				workflowKeys: consumerKeys(conflict.consumers),
+			});
+		} else if (conflict.code !== 'project-deletion') {
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: `project:${conflict.project.id}`,
+				workflowKeys: listedWorkflowKeys,
+			});
 		}
-		// A selection never deletes a project, so the check reports no `project-deletion`.
 	}
-	for (const warning of preflight.warnings) {
+	for (const warning of warnings) {
 		blockers.push({
 			kind: 'warning',
 			resourceKey: variableKey(warning.name, warning.scope),

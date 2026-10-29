@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -17,6 +18,8 @@ const BROWSERBASE_API_KEY_HEADER = 'X-BB-API-Key';
  * looks zoomed out. 16:10 matches the frame in the UI, and 1280 wide still gets desktop layouts.
  */
 export const BROWSER_VIEWPORT = { width: 1280, height: 800 };
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
@@ -85,6 +88,7 @@ export class AiGatewayBrowserUseService {
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
 		});
 		const parsed = createdSessionSchema.safeParse(body);
 		if (!parsed.success) {
@@ -110,6 +114,7 @@ export class AiGatewayBrowserUseService {
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
 		});
 		const parsed = liveViewSchema.safeParse(body);
 		if (!parsed.success) {
@@ -136,6 +141,7 @@ export class AiGatewayBrowserUseService {
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
 		});
 	}
 }

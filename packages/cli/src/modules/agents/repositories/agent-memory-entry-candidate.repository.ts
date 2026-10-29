@@ -58,6 +58,16 @@ export class AgentMemoryEntryCandidateRepository extends Repository<AgentMemoryE
 		});
 	}
 
+	/** The candidates that flag_memory calls of one thread enqueued. */
+	async findByToolCalls(
+		agentId: string,
+		threadId: string,
+		toolCallIds: string[],
+	): Promise<AgentMemoryEntryCandidateEntity[]> {
+		if (toolCallIds.length === 0) return [];
+		return await this.findBy({ agentId, threadId, toolCallId: In(toolCallIds) });
+	}
+
 	/** Resolves each candidate to the message it quoted. Candidates without a stored message are left out. */
 	async findSourceMessages(
 		agentId: string,

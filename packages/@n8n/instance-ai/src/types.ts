@@ -1531,7 +1531,7 @@ export interface InstanceAiBuilderDelegate {
 	): BuiltTool[];
 	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
 	getRuntimeSkills(): RuntimeSkill[];
-	/** Preview link and model recommendations for the target agent. */
+	/** Preview link for the target agent. */
 	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;

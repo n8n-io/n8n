@@ -111,6 +111,16 @@ export interface PlaywrightAdapterOptions {
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to the CDP endpoint (e.g. an auth token). */
 	cdpConnectHeaders?: Record<string, string>;
+	/**
+	 * Maximum entries that each page keeps for each event type (console messages, page errors and
+	 * responses). The oldest entries are dropped first. Unset keeps all entries.
+	 */
+	maxPageEventEntries?: number;
+	/**
+	 * Releases console argument handles after the message text is read. This stops Playwright from
+	 * keeping them in memory, since `browser_console` only needs the text.
+	 */
+	releaseConsoleHandles?: boolean;
 }
 
 export class PlaywrightAdapter {
@@ -124,6 +134,8 @@ export class PlaywrightAdapter {
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
 	private readonly cdpConnectHeaders?: Record<string, string>;
+	private readonly maxPageEventEntries?: number;
+	private readonly releaseConsoleHandles: boolean;
 	/** Puts the embedder's relay handlers back; set while ours are installed. */
 	private restoreRelayHandlers?: () => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
@@ -141,6 +153,8 @@ export class PlaywrightAdapter {
 		this.externalRelay = options?.relay;
 		this.externalCdpEndpoint = options?.cdpEndpoint;
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
+		this.maxPageEventEntries = options?.maxPageEventEntries;
+		this.releaseConsoleHandles = options?.releaseConsoleHandles ?? false;
 	}
 
 	/** Remote mode without a relay connects straight to `cdpEndpoint`, for example a cloud browser. */
@@ -1155,16 +1169,20 @@ export class PlaywrightAdapter {
 
 		// Console listener
 		page.on('console', (msg) => {
-			state.consoleBuffer.push({
+			this.recordPageEvent(state.consoleBuffer, {
 				level: msg.type(),
 				text: msg.text(),
 				timestamp: Date.now(),
 			});
+			// The tools only use the text, so the argument handles are not needed after this.
+			if (this.releaseConsoleHandles) {
+				for (const arg of msg.args()) void arg.dispose().catch(() => {});
+			}
 		});
 
 		// Error listener
 		page.on('pageerror', (error) => {
-			state.errorBuffer.push({
+			this.recordPageEvent(state.errorBuffer, {
 				message: error.message,
 				stack: error.stack,
 				timestamp: Date.now(),
@@ -1173,7 +1191,7 @@ export class PlaywrightAdapter {
 
 		// Network listeners
 		page.on('response', (response: Response) => {
-			state.networkBuffer.push({
+			this.recordPageEvent(state.networkBuffer, {
 				url: response.url(),
 				method: response.request().method(),
 				status: response.status(),
@@ -1205,6 +1223,13 @@ export class PlaywrightAdapter {
 		this.pageStates.set(id, state);
 		this.onPageChange?.({ type: 'opened', pageId: id });
 		return state;
+	}
+
+	/** Adds an entry, and drops the oldest entries beyond `maxPageEventEntries` when it is set. */
+	private recordPageEvent<T>(buffer: T[], entry: T): void {
+		buffer.push(entry);
+		const max = this.maxPageEventEntries;
+		if (max !== undefined && buffer.length > max) buffer.splice(0, buffer.length - max);
 	}
 
 	/** Get the live URL for a tracked page (synchronous, from Playwright's page.url()). */
