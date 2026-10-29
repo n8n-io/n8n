@@ -48,7 +48,8 @@ export class AgentConversationStateService {
 		toolResults: Array<{ toolCallId: string; toolName: string; output: unknown }>;
 	} | null> {
 		const result = await this.checkpointStorage.getStatus(runId, agentId);
-		if (result.status !== 'active') return null;
+		// A run that is already claimed or done has no queue for a resume to send.
+		if (result.status !== 'active' || result.checkpoint.status !== 'suspended') return null;
 		const { persistence, messageList } = result.checkpoint;
 		if (!persistence) return null;
 		const responseIds = new Set(messageList.responseIds);

@@ -158,6 +158,20 @@ describe('AgentConversationStateService', () => {
 			});
 		});
 
+		it('returns null for a checkpoint that is not suspended', async () => {
+			const service = createService({
+				status: 'active',
+				checkpoint: {
+					status: 'running',
+					persistence: { threadId: 'agent-thread-1', resourceId: 'resource-1' },
+					pendingToolCalls: {},
+					messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				},
+			});
+
+			await expect(service.getSuspendedRun(AGENT_ID, RUN_ID)).resolves.toBeNull();
+		});
+
 		it('returns null for a checkpoint that is gone', async () => {
 			const service = createService({ status: 'not-found' });
 
