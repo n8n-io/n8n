@@ -164,7 +164,15 @@ export function getTaskSummaryGroupIds(
 	groups: DisplayGroup[],
 ): Set<string> {
 	const turnIds = messageTurnIds(messages);
-	const executions = taskSummaryTurnIds(messages, turnIds);
+
+	return lastSummaryGroupIds(groups, turnIds, taskSummaryTurnIds(messages, turnIds));
+}
+
+function lastSummaryGroupIds(
+	groups: DisplayGroup[],
+	turnIds: Map<string, string>,
+	executions: Set<string>,
+): Set<string> {
 	const lastGroups = new Map<string, string>();
 
 	for (const group of groups) {
@@ -320,7 +328,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 				: message,
 		),
 	);
-	const summaryGroupIds = getTaskSummaryGroupIds(messages, groups);
+	const summaryGroupIds = lastSummaryGroupIds(groups, turnIds, summaryTurns);
 
 	return groups.flatMap((group): DisplayGroup[] => {
 		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return [group];
