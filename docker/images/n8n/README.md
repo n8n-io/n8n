@@ -180,7 +180,7 @@ COPY --from=oracle /opt/oracle/instantclient /opt/oracle/instantclient
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
 ```
 
-In queue mode, every n8n container that runs the node must use the derived image.
+**Use the same image in every n8n container.** If a deployment has more than one n8n container, for example in queue mode or multi-main mode, all containers must use the same image. Do not mix Alpine and Debian images, regular and derived images, or different n8n versions. n8n does not support a deployment with mixed images.
 
 Stop the container and start it again:
 
