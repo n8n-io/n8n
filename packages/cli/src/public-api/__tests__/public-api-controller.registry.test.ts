@@ -276,13 +276,9 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/api/v1/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'public-api-invoked',
-			expect.objectContaining({ method: 'GET', path: '/widgets' }),
-		);
 	});
 
-	it('reports the version-less route path for a sub-path route', async () => {
+	it('emits public-api-invoked with the full event body for an authenticated call', async () => {
 		@Service()
 		class WidgetsPublicController {
 			@Get('/:widgetId')
@@ -293,53 +289,18 @@ describe('PublicApiControllerRegistry', () => {
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		await request(activate()).get('/api/v1/widgets/w-1').expect(200);
+		await request(activate())
+			.get('/api/v1/widgets/w-1')
+			.set({ 'x-n8n-client': 'editor-ui', 'user-agent': 'n8n-cli/1.0' })
+			.expect(200);
 
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'public-api-invoked',
-			expect.objectContaining({ method: 'GET', path: '/widgets/w-1' }),
-		);
-	});
-
-	describe('public-api-invoked client', () => {
-		const emitWidgetCall = async (headers: Record<string, string> = {}) => {
-			@Service()
-			class WidgetsPublicController {
-				@Get('/')
-				@ApiResponse(200)
-				method() {
-					return { ok: true };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			await request(activate()).get('/api/v1/widgets').set(headers).expect(200);
-
-			return eventService.emit.mock.calls.find(([name]) => name === 'public-api-invoked')?.[1];
-		};
-
-		it('reports editor_ui when the caller sends the editor UI marker header', async () => {
-			const event = await emitWidgetCall({ 'x-n8n-client': 'editor-ui' });
-
-			expect(event).toEqual(expect.objectContaining({ client: 'editor_ui' }));
-		});
-
-		it('reports other when the caller sends no marker header', async () => {
-			const event = await emitWidgetCall();
-
-			expect(event).toEqual(expect.objectContaining({ client: 'other' }));
-		});
-
-		it('reports other when the marker header has an unknown value', async () => {
-			const event = await emitWidgetCall({ 'x-n8n-client': 'foo' });
-
-			expect(event).toEqual(expect.objectContaining({ client: 'other' }));
-		});
-
-		it('reports editor_ui when the marker header differs only in case and whitespace', async () => {
-			const event = await emitWidgetCall({ 'x-n8n-client': ' Editor-UI ' });
-
-			expect(event).toEqual(expect.objectContaining({ client: 'editor_ui' }));
+		expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
+			userId: 'user-1',
+			path: '/widgets/w-1',
+			method: 'GET',
+			apiVersion: 'v1',
+			userAgent: 'n8n-cli/1.0',
+			client: 'editor_ui',
 		});
 	});
 
