@@ -106,8 +106,9 @@ export class StepReadyHandler {
 				? { kind: 'resume', cause: step.resumeCause }
 				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
 
-		// Only a failure to run the step fails it. A store error propagates instead —
-		// recording `failed` on a step whose side effects happened would be a lie.
+		// Only a failure to run the step or to start its sub-execution fails it. Other
+		// store errors propagate instead — recording `failed` on a step whose side
+		// effects happened would be a lie.
 		let run:
 			| { kind: 'outputs'; outputs: StepSlots }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
