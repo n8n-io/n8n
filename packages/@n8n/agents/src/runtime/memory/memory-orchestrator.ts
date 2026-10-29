@@ -841,10 +841,10 @@ export class MemoryOrchestrator {
 					modelFetch: this.config.modelFetch,
 					functionId: this.config.functionId,
 					agentName: this.config.name,
-					// Each embed/reflect usage is forwarded inside the processor
+					// Each embed/consolidate usage is forwarded inside the processor
 					// the moment its model call resolves, before persistence, so a
-					// billed turn is priced even when a later save or applyReflection
-					// throws. Returning usageReports here would double-count.
+					// billed turn is priced even when a later write throws.
+					// Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
 								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
@@ -977,7 +977,12 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		if (!onSideCallUsage || !usage || !model) return;
 		try {
-			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
+			const cost = await computeSideCallCost(
+				model,
+				usage,
+				this.config.promptCaching,
+				this.config.modelFetch,
+			);
 			await onSideCallUsage({
 				task,
 				model,

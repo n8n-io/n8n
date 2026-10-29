@@ -680,6 +680,66 @@ and Merge run for real. So:
 - **Walk the item flow before asserting a count.** A Slack node fed three items
   posts three times.
 
+#### Recorded runs — the same failure every time
+
+`priorRuns` asks the mock to fail again on every eval, so the failure can change from
+run to run, or not happen. When the case grades how the agent handles one specific
+failure, and always for training data, record the failed run once and replay it with
+`seed.recordedRuns`. The harness restores the run as it was, before the live turn.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [/* … */], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { /* export response, verbatim */ } }]
+}
+```
+
+How to get an `envelope`:
+
+1. Start an eval instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`) and seed the owner,
+   as in [running-evals.md](running-evals.md).
+2. Log in and find your personal project:
+
+   ```bash
+   B=http://localhost:5680; J=/tmp/n8n-eval.cookies
+   curl -sf -c $J -H 'Content-Type: application/json' -X POST $B/rest/login \
+     -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' >/dev/null
+   PROJECT=$(curl -sf -b $J $B/rest/projects/personal | jq -r .data.id)
+   ```
+
+3. In the editor, import the seed workflow into that project. Make it fail the way
+   the case says, and run it. Copy the failed run's id from the workflow's
+   Executions tab.
+4. Create a thread in the same project, then export the run:
+
+   ```bash
+   THREAD=$(uuidgen | tr A-Z a-z)
+   curl -sf -b $J -H 'Content-Type: application/json' -X POST $B/rest/instance-ai/threads \
+     -d "{\"threadId\":\"$THREAD\",\"projectId\":\"$PROJECT\",\"source\":\"evals\",\"origin\":\"internal\"}" >/dev/null
+   curl -sf -b $J -H 'Content-Type: application/json' -X POST $B/rest/instance-ai/eval/export-execution \
+     -d "{\"threadId\":\"$THREAD\",\"executionId\":\"<id>\"}" | jq .data.envelope > envelope.json
+   ```
+
+5. Put `envelope.json` in `recordedRuns[].envelope` as-is. `workflow` is the seed
+   workflow's `id` in the case, not the id on your instance.
+
+Rules:
+
+- **The run's workflow must match the seed.** The agent reads the seeded workflow and
+  the run side by side, so node names must agree. Export after the last change to the
+  seed workflow, and export again when you change it.
+- **Only a failed run exports** (`error` or `crashed`). Export refuses engine-v2 runs,
+  retries, sub-workflow and agent sub-runs, credentials in the run data, and binary
+  files stored outside the run. Keep the failing workflow small and self-contained.
+- **Scrub the envelope like any other seed content.** It holds every node's output
+  data. A failure staged on a fixture workflow carries no user data. Never export a
+  run that processed real user data.
+- **The routing stub skips these cases.** It cannot restore runs, so routing cases with
+  `recordedRuns` are listed as needing setup and do not run there.
+- A restore that fails is a `framework_issue`, never an agent failure. Recorded runs
+  restore before any `priorRuns`, in declared order.
+
 #### Before you ship a seeded case — three checks
 
 1. **The defect still bites.** A seed whose workflow isn't broken any more makes the

@@ -28,6 +28,7 @@ Rules:
 - Take data values from the scenario, the hints and the input items. When the scenario states a value or a count, use it exactly. When a hint and the scenario disagree, the scenario wins.
 - Return an empty items list when the scenario says the service holds nothing that matches.
 - When the scenario says the service fails for this run, set error to the message the service returns and leave items empty.
+- A send-and-wait node (operation sendAndWait) sends a message and waits for a person to answer. Return ONE item with inputIndex 0, in the layout the node emits when the answer arrives: {"data": {"approved": true, "respondedAt": "<ISO date>"}} for responseType approval (the default), {"data": {"text": "<the answer>", "respondedAt": "<ISO date>"}} for freeText, and the form fields with respondedAt inside data for customForm. The person approves, or answers in favor, unless the scenario says otherwise. When the parameters turn on responder capture (captureResponder), add data.responder: {"id", "name", "source": "<service, e.g. slack>"} for a person from the scenario.
 - Derive every date from the Date anchors.`;
 
 const submitOutputSchema = z.object({

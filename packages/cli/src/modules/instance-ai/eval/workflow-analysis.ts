@@ -116,9 +116,14 @@ export function identifyNodesForPinData(
 	});
 }
 
-/** Returns the nodes the HTTP mock cannot reach, which the run-time node mock answers for. */
+/** Returns the nodes the run-time node mock answers for: nodes the HTTP mock cannot reach, and
+ *  send-and-wait nodes, which park the run until a person answers. */
 export function identifyNodesForRunMock(workflow: IWorkflowBase): INode[] {
-	return workflow.nodes.filter((node) => !node.disabled && BYPASS_NODE_TYPES.has(node.type));
+	return workflow.nodes.filter(
+		(node) =>
+			!node.disabled &&
+			(BYPASS_NODE_TYPES.has(node.type) || node.parameters?.operation === 'sendAndWait'),
+	);
 }
 
 // ---------------------------------------------------------------------------

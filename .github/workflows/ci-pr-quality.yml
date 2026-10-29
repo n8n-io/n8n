@@ -154,18 +154,23 @@ jobs:
 
   check-do-not-merge:
     name: Do Not Merge
-    # Fails while the 'Do Not Merge' label is present. Re-runs on labeled/unlabeled
-    # so the gate flips as the label is toggled on the current commit.
+    # Read current labels because concurrent PR events can have stale labels.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - name: Fail if 'Do Not Merge' label is present
-        if: contains(github.event.pull_request.labels.*.name, 'Do Not Merge')
-        run: |
-          echo "::error::This PR has the 'Do Not Merge' label and cannot be merged."
-          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+
+      - name: Check current PR labels
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/quality/check-do-not-merge.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   required-pr-quality-checks:
     name: Required PR Quality Checks

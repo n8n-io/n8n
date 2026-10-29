@@ -110,7 +110,7 @@ export class AgentEvaluationService {
 		const error = await this.accessError(user, projectId, snapshot.agent.id, abortSignal);
 		if (error) throw new UserError(error);
 		const skills = await raceWithAbort(
-			async () => await this.skillRefs.skillsForRefs(snapshot.agent, snapshot.skillRefs, {}),
+			async () => await this.skillRefs.skillsForRefs(snapshot.skillRefs, {}),
 			abortSignal,
 		);
 		return await raceWithAbort(async () => {

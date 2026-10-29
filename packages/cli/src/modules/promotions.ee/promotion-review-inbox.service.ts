@@ -6,7 +6,8 @@ import {
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 } from '@n8n/api-types';
-import { LicenseState, Logger, isEnvFeatureEnabled } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,6 +21,8 @@ import {
 } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
+
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
 import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
@@ -36,6 +39,7 @@ import {
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
+import { observePromotion } from './promotion-telemetry';
 import { approvalNote } from './promotion-review.utils';
 
 /** One live look at a review on the host. A failed read says why, and never a state. */
@@ -77,15 +81,17 @@ export class PromotionReviewInboxService {
 		private readonly runRepository: PromotionRunRepository,
 		private readonly hostResolver: PromotionReviewHostResolver,
 		private readonly mergeRequests: GitLabMergeRequestClient,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
+		private readonly sourceControlPreferences: SourceControlPreferencesService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
 
 	isEnabled() {
 		return (
-			this.licenseState.isLicensed(LICENSE_FEATURES.GIT_CONNECTIONS) &&
-			isEnvFeatureEnabled('N8N_ENV_FEAT_PROMOTIONS')
+			this.licenseState.isLicensed(LICENSE_FEATURES.PROMOTIONS) &&
+			this.sourceControlPreferences.getPreferences().environmentsVersion === 'v2'
 		);
 	}
 
@@ -163,6 +169,29 @@ export class PromotionReviewInboxService {
 		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
 		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
 		if (!review) throw new NotFoundError('Promotion review not found.');
+
+		return await observePromotion(
+			async () => await this.approveReview(user, review, headCommitSha),
+			(observed) =>
+				this.eventService.emit('promotion-review-approved', {
+					user,
+					reviewId: review.id,
+					environmentId: review.environmentId,
+					reviewType: review.type,
+					reviewAgeMs: Date.now() - review.createdAt.getTime(),
+					outcome: observed.ok ? 'merged' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async approveReview(
+		user: User,
+		review: PromotionReview,
+		headCommitSha: string,
+	): Promise<InboxPromotionReviewItem> {
+		const reviewId = review.id;
 		if (review.state === 'merged' || review.state === 'closed') {
 			throw new ConflictError(`This promotion review is already ${review.state}.`);
 		}
@@ -340,7 +369,7 @@ export class PromotionReviewInboxService {
 	}
 }
 
-const canRead = (user: User) => hasGlobalScope(user, 'gitConnection:readReviews');
+const canRead = (user: User) => hasGlobalScope(user, 'promotions:readReviews');
 
 const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,

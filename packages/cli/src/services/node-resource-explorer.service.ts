@@ -1,9 +1,25 @@
 import { Logger } from '@n8n/backend-common';
-import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
+import {
+	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	normalizeParameterPath,
+	toDynamicParameterPath,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
+} from '@n8n/ai-utilities/node-catalog';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
+import type {
+	ExploreResourcesParams,
+	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
+} from '@n8n/instance-ai';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -28,8 +44,26 @@ import { getBase } from '@/workflow-execute-additional-data';
  */
 const MAX_AVAILABILITY_PAGES = 5;
 
-/** Display name for the managed n8n Connect credential slot in explore-resources. */
+/** Display name for the managed n8n Connect credential slot in node parameter option lookups. */
 const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
+
+type CredentialReference = Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>;
+
+/** The credentials a parameter option lookup uses: the `credentials` map, or the single credential. */
+export function getParameterOptionsCredentialReferences(
+	params: Pick<ResolveParameterOptionsParams, 'credentials' | 'credentialId' | 'credentialType'>,
+): CredentialReference[] {
+	if (params.credentials && Object.keys(params.credentials).length > 0) {
+		return Object.entries(params.credentials).map(([credentialType, { id }]) => ({
+			credentialId: id,
+			credentialType,
+		}));
+	}
+	if (params.credentialId && params.credentialType) {
+		return [{ credentialId: params.credentialId, credentialType: params.credentialType }];
+	}
+	return [];
+}
 
 /**
  * Looks up dynamic resource locator and load-options values for a node on
@@ -77,7 +111,7 @@ export class NodeResourceExplorerService {
 
 		// Look up the property's builderHint so the agent sees selection guidance
 		// alongside the raw list. This makes the hint reachable even when the
-		// agent jumps straight to explore-resources without reading type-definition.
+		// agent calls get_node_parameter_options without reading get_node_types first.
 		const builderHint = nodeDescription
 			? findBuilderHintForMethod(nodeDescription, params.methodName, params.methodType)
 			: undefined;
@@ -135,10 +169,206 @@ export class NodeResourceExplorerService {
 				...(builderHint ? { builderHint } : {}),
 			};
 		} catch (error) {
-			this.logger.error('Failed to load options for explore-resources', {
+			this.logger.error('Failed to load node parameter options', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
+		}
+	}
+
+	async resolveParameterOptions(
+		user: User,
+		params: ResolveParameterOptionsParams & { projectId?: string },
+	): Promise<ResolveParameterOptionsResult> {
+		let nodeTypeDescription;
+		try {
+			nodeTypeDescription = this.nodeTypes.getByNameAndVersion(params.nodeType, params.version);
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'node_type_not_found',
+				message:
+					error instanceof Error ? error.message : `Node type "${params.nodeType}" not found`,
+			};
+		}
+
+		const description = nodeTypeDescription.description;
+		const node = { typeVersion: params.version };
+		const rawParameters = (params.nodeParameters ?? {}) as INodeParameters;
+		const resolvedParameters =
+			NodeHelpers.getNodeParameters(
+				description.properties,
+				rawParameters,
+				true,
+				false,
+				node,
+				description,
+			) ?? rawParameters;
+		const property = findNodeParameterProperty(description.properties, params.parameterPath, (p) =>
+			NodeHelpers.displayParameter(resolvedParameters, p, node, description),
+		);
+		if (!property) {
+			return {
+				ok: false,
+				code: 'parameter_not_found',
+				message: `Parameter "${params.parameterPath}" was not found on ${params.nodeType}.`,
+				dynamicParameters: collectDynamicNodeParameterPaths(
+					nodeTypeDescription.description.properties,
+				),
+			};
+		}
+
+		const lookup = getDynamicNodeParameterLookup(property);
+		if (!lookup) {
+			return {
+				ok: false,
+				code: 'not_dynamic_selector',
+				message: `Parameter "${params.parameterPath}" does not expose a resource locator or load-options lookup.`,
+				dynamicParameters: collectDynamicNodeParameterPaths(
+					nodeTypeDescription.description.properties,
+				),
+			};
+		}
+
+		let credentials: INodeCredentials | undefined;
+		try {
+			const references = getParameterOptionsCredentialReferences(params);
+			if (references.length > 0) {
+				credentials = {};
+				for (const reference of references) {
+					Object.assign(credentials, await this.resolveExploreCredentials(user, reference));
+				}
+			}
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : String(error),
+			};
+		}
+
+		const credentialSlots = getRequiredNodeCredentialSlots(nodeTypeDescription.description);
+		if (
+			credentialSlots.length > 0 &&
+			!lookup.skipCredentialsCheck &&
+			!hasNodeCredentials(credentials)
+		) {
+			return {
+				ok: false,
+				code: 'missing_credentials',
+				message:
+					'This parameter needs node credentials before live options can be fetched. Resolve a credential for one of the returned credential slots, then retry with credentialId + credentialType or credentials.',
+				credentialSlots,
+			};
+		}
+
+		const projectId =
+			params.projectId ??
+			(await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+		const currentNodeParameters = structuredClone(params.nodeParameters ?? {}) as INodeParameters;
+		const resourceIds = { projectId, credentials };
+		try {
+			await this.dynamicNodeParametersService.refineResourceIds(user, resourceIds);
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : 'Failed to verify credentials',
+			};
+		}
+
+		if (!currentNodeParameters.authentication && resourceIds.credentials) {
+			for (const credentialType of Object.keys(resourceIds.credentials)) {
+				const authValue = detectAuthenticationParameterValue(
+					nodeTypeDescription.description,
+					credentialType,
+				);
+				if (authValue !== undefined) {
+					currentNodeParameters.authentication = authValue;
+					break;
+				}
+			}
+		}
+
+		const builderHint = property.builderHint?.propertyHint;
+		const additionalData = await getBase({
+			userId: user.id,
+			projectId: resourceIds.projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = resourceIds.projectId;
+
+		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
+		const dynamicPath = toDynamicParameterPath(params.parameterPath);
+
+		try {
+			if (lookup.kind === 'resourceLocator') {
+				const result = await this.dynamicNodeParametersService.getResourceLocatorResults(
+					lookup.methodName,
+					dynamicPath,
+					additionalData,
+					nodeTypeAndVersion,
+					currentNodeParameters,
+					resourceIds.credentials,
+					params.filter,
+					params.paginationToken,
+				);
+
+				return {
+					ok: true,
+					kind: lookup.kind,
+					parameterPath: normalizeParameterPath(params.parameterPath),
+					methodName: lookup.methodName,
+					mode: lookup.mode,
+					results: (result.results ?? []).map((option) => ({
+						name: String(option.name),
+						value: option.value,
+						...(option.url ? { url: option.url } : {}),
+						parameterValue: toResourceLocatorParameterValue(option, lookup.mode),
+					})),
+					paginationToken:
+						typeof result.paginationToken === 'string' ? result.paginationToken : undefined,
+					...(builderHint ? { builderHint } : {}),
+				};
+			}
+
+			const options =
+				lookup.kind === 'loadOptionsMethod'
+					? await this.dynamicNodeParametersService.getOptionsViaMethodName(
+							lookup.methodName,
+							dynamicPath,
+							additionalData,
+							nodeTypeAndVersion,
+							currentNodeParameters,
+							resourceIds.credentials,
+						)
+					: await this.dynamicNodeParametersService.getOptionsViaLoadOptions(
+							lookup.loadOptions,
+							additionalData,
+							nodeTypeAndVersion,
+							currentNodeParameters,
+							resourceIds.credentials,
+						);
+
+			return {
+				ok: true,
+				kind: lookup.kind,
+				parameterPath: normalizeParameterPath(params.parameterPath),
+				...(lookup.kind === 'loadOptionsMethod' ? { methodName: lookup.methodName } : {}),
+				results: options.map((option) => ({
+					name: String(option.name),
+					value: option.value,
+					...(option.description ? { description: option.description } : {}),
+					parameterValue: toLoadedOptionParameterValue(option),
+				})),
+				...(builderHint ? { builderHint } : {}),
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : 'Failed to fetch parameter options',
+			};
 		}
 	}
 
@@ -146,15 +376,12 @@ export class NodeResourceExplorerService {
 	 * Run the credential access and type check `exploreResources` runs, without the
 	 * provider lookup. Throws as `exploreResources` does when the check fails.
 	 */
-	async assertExploreCredentialAccess(
-		user: User,
-		params: Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>,
-	): Promise<void> {
+	async assertExploreCredentialAccess(user: User, params: CredentialReference): Promise<void> {
 		await this.resolveExploreCredentials(user, params);
 	}
 
 	/**
-	 * Resolve credentials for explore-resources / availability checks.
+	 * Resolve credentials for node parameter option lookups and availability checks.
 	 * The n8n Connect managed tag skips the credential store and passes the
 	 * gateway-managed marker so CredentialsHelper mints a synthetic credential
 	 * against the gateway allowlist.

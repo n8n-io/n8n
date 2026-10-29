@@ -1,10 +1,11 @@
-import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
-import { getApplyBlockers, getPromotionPreview } from '../promotions.api';
+import { getPromotionPreview } from '../promotions.api';
+import type { ApplyCheckResult } from '../promotions.types';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
 import { useInstancePromotionConnection } from './useInstancePromotionConnection';
@@ -22,8 +23,8 @@ type PromotionPreviewState =
 	| 'ready';
 
 /**
- * Loads the preview of one project and direction for the preview page. On Apply, it also loads
- * the blockers at the commit of the preview, so both describe the same source.
+ * Loads the preview of one project and direction for the preview page. On Apply, the preview
+ * also holds the blockers, so both describe the same source.
  */
 export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
 	const rootStore = useRootStore();
@@ -36,12 +37,21 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 
 	const state = ref<PromotionPreviewState>('loading');
 	const preview = shallowRef<PromotionPreview | null>(null);
-	/** The Apply check. `null` on Promote, and when the branch has no commit yet. */
-	const check = shallowRef<ApplyCheckResult | null>(null);
 	const refreshing = ref(false);
 	/** True when a refresh failed. The page keeps the last preview and says so. */
 	const refreshFailed = ref(false);
 	const lastRefreshedAt = ref<Date | null>(null);
+	/** The Apply check. `null` on Promote, and when the branch has no commit yet. */
+	const check = computed<ApplyCheckResult | null>(() => {
+		const result = preview.value;
+		return result?.check && result.commitSha
+			? {
+					environmentId: result.source.environmentId,
+					git: { commitSha: result.commitSha, branchName: result.source.branchName },
+					...result.check,
+				}
+			: null;
+	});
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
 	);
@@ -65,7 +75,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			if (connectionFailed.value || !environment.value) {
 				state.value = connectionFailed.value ? 'connectionFailed' : 'disconnected';
 				preview.value = null;
-				check.value = null;
 				return;
 			}
 
@@ -74,13 +83,8 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				requested.projectId,
 				requested.direction,
 			);
-			const blockers =
-				requested.direction === 'apply' && result.commitSha && result.resources.length > 0
-					? await getApplyBlockers(rootStore.restApiContext, requested.projectId, result.commitSha)
-					: null;
 			if (!isLatest()) return;
 			preview.value = result;
-			check.value = blockers;
 			lastRefreshedAt.value = new Date();
 			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {
@@ -90,7 +94,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				refreshFailed.value = true;
 			} else {
 				preview.value = null;
-				check.value = null;
 				state.value = 'error';
 			}
 		} finally {
@@ -102,7 +105,6 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		[projectId, direction],
 		async () => {
 			preview.value = null;
-			check.value = null;
 			lastRefreshedAt.value = null;
 			await load();
 		},

@@ -15,8 +15,7 @@ const settingsStore = useSettingsStore();
 // The link opens the Inbox list. Opening the Inbox also refreshes a stale review state.
 const canOpenInbox = computed(
 	() =>
-		settingsStore.settings.inbox?.enabled === true &&
-		rbacStore.hasScope('gitConnection:readReviews'),
+		settingsStore.settings.inbox?.enabled === true && rbacStore.hasScope('promotions:readReviews'),
 );
 
 async function openInbox() {

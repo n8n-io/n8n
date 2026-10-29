@@ -241,7 +241,9 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 
 	test('refuses a source that does not accept instance-mcp, with a reason that differs from a bad token', async () => {
 		const notAccepted = await probe(await externalToken(PUBLIC_API_ISSUER));
-		const tampered = await probe(`${(await internalToken()).slice(0, -2)}xx`);
+		const [header, payload, signature] = (await internalToken()).split('.');
+		const changedSignature = `${signature[0] === 'A' ? 'B' : 'A'}${signature.slice(1)}`;
+		const tampered = await probe(`${header}.${payload}.${changedSignature}`);
 
 		expect(notAccepted.statusCode).toBe(401);
 		expect(notAccepted.headers['www-authenticate']).toMatch(

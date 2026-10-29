@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { aiClientFetch } from '@n8n/ai-utilities';
+import { aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
+import { createResultOk } from '@n8n/utils/result';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions, NodeEgressFilter } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { EmbeddingsLemonade } from '../EmbeddingsLemonade.node';
@@ -14,6 +15,15 @@ vi.mock('@n8n/ai-utilities');
 
 const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
 const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+
+const egressFilter: NodeEgressFilter = {
+	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+	createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+	validateRedirectSync: vi.fn(),
+};
+const dispatcher = { kind: 'dispatcher' };
 
 describe('EmbeddingsLemonade', () => {
 	let node: EmbeddingsLemonade;
@@ -42,6 +52,8 @@ describe('EmbeddingsLemonade', () => {
 			if (paramName === 'model') return 'nomic-embed-text';
 			return undefined;
 		});
+		ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue(egressFilter);
+		mockedGetProxyAgent.mockReturnValue(dispatcher as never);
 		return ctx;
 	};
 
@@ -63,6 +75,25 @@ describe('EmbeddingsLemonade', () => {
 					configuration: expect.objectContaining({
 						fetch: mockedAiClientFetch,
 						baseURL: 'http://localhost:8000/api/v1',
+					}),
+				}),
+			);
+		});
+
+		it('should pass the egress-filtered dispatcher to the client', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
+				'http://localhost:8000/api/v1',
+				{},
+				egressFilter,
+			);
+			expect(MockedOpenAIEmbeddings).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						fetchOptions: { dispatcher },
 					}),
 				}),
 			);

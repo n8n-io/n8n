@@ -10,18 +10,19 @@ import {
 import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillReferencePathSchema,
+	hasSkillInstructions,
 	skillNameKey,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { createHash } from 'node:crypto';
+
 import type {
 	AssistantSkillContent,
 	AssistantSkillContext,
 	AssistantSkillFileContent,
-	AssistantSkillProvider,
 	AssistantSkillSummary,
-} from '@n8n/backend-services';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import { createHash } from 'node:crypto';
+} from '@/modules/skills';
 
 import { createHubSkillDisplayMapper } from './instance-ai-skill-display';
 
@@ -35,22 +36,41 @@ export interface HubRunSkills {
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 }
 
+/** The skill reads of one Assistant run. Every read checks availability and the user's access. */
+export interface AssistantSkillReader {
+	isEnabled(): Promise<boolean>;
+	listSkills(context: AssistantSkillContext): Promise<AssistantSkillSummary[]>;
+	/** Reads the requested version, or the latest saved version when omitted. */
+	readSkill(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId?: string,
+	): Promise<AssistantSkillContent | null>;
+	readFile(
+		context: AssistantSkillContext,
+		skillId: string,
+		versionId: string,
+		path: string,
+	): Promise<AssistantSkillFileContent | null>;
+}
+
 type LoadedHubSkill = RuntimeSkillContent & Pick<RuntimeSkillRegistryEntry, 'hash' | 'linkedFiles'>;
 
 export async function loadHubRunSkills(
 	builtIns: RuntimeSkillSource,
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 ): Promise<HubRunSkills> {
-	const enabled = await provider.isEnabled().catch(() => false);
-	if (!enabled) return { source: builtIns };
+	const enabled = await provider.isEnabled().catch(() => null);
+	if (!enabled)
+		return createDeferredHubSource(builtIns, provider, context, enabled === null ? null : []);
 	const summaries = await provider.listSkills(context).catch(() => null);
 	return createDeferredHubSource(builtIns, provider, context, summaries);
 }
 
 function createDeferredHubSource(
 	builtIns: RuntimeSkillSource,
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 	summaries: AssistantSkillSummary[] | null,
 ): HubRunSkills {
@@ -89,6 +109,9 @@ function createDeferredHubSource(
 	const source: RuntimeSkillSource = {
 		...builtIns,
 		registry: mergedRegistry(),
+		shouldAppendSkillUpdates: (id) =>
+			id.startsWith(HUB_SKILL_ID_PREFIX) &&
+			!builtIns.registry.skills.some((entry) => entry.id === id),
 		loadSkill: async (id) => (hubSkills.has(id) ? await load(id) : await builtIns.loadSkill(id)),
 		loadFile: async (id, path) => {
 			const selected = hubSkills.get(id);
@@ -159,7 +182,7 @@ function createHubCatalog(builtIns: RuntimeSkillSource, summaries: AssistantSkil
 }
 
 async function readHubSkill(
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 	summary: AssistantSkillSummary,
 	entry: RuntimeSkillRegistryEntry,
@@ -188,7 +211,7 @@ async function readHubSkill(
 }
 
 async function readHubReference(
-	provider: AssistantSkillProvider,
+	provider: AssistantSkillReader,
 	context: AssistantSkillContext,
 	summary: AssistantSkillSummary,
 	skillId: string,
@@ -260,16 +283,18 @@ function prepareSkill(
 	entry: RuntimeSkillRegistryEntry,
 	content: AssistantSkillContent,
 ): LoadedHubSkill | RuntimeSkillLoadError {
-	if (!content.name.trim() || !content.description.trim() || !content.instructions.trim()) {
+	if (
+		!content.name.trim() ||
+		!content.description.trim() ||
+		!hasSkillInstructions(content.instructions)
+	) {
 		return { message: 'This Hub skill has invalid instructions or metadata.', retryable: false };
 	}
 	const paths = content.files.map(({ path }) => path);
 	if (
 		paths.length > AGENT_SKILL_REFERENCE_MAX_COUNT ||
 		new Set(paths).size !== paths.length ||
-		paths.some(
-			(path) => !agentSkillReferencePathSchema.safeParse(path).success || path.includes('\0'),
-		)
+		paths.some((path) => !agentSkillReferencePathSchema.safeParse(path).success)
 	) {
 		return {
 			message:

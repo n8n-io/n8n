@@ -12,6 +12,8 @@ Five harnesses live here:
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
+To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
+
 > **Writing a test case?** This README is the reference and quick-start. Use the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the shared process and workflow cases. Use the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agent cases. To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
@@ -644,6 +646,7 @@ before the turn:
 - `seed.messages` are earlier messages in the thread.
 - `seed.workflows` and `seed.dataTables` are on the instance.
 - `seed.priorRuns` are failed runs. `hints` is the error of the run.
+  The stub instance cannot serve `seed.recordedRuns`, so it skips cases that have them.
 - `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
   turn sends it in the same `<thread-context>` block as production.
 - `credentials` are accounts. Each account passes its connection test, unless
@@ -885,7 +888,7 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 
 ### Build isolation
 
-Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
+Each orchestrator build runs in its own empty project, named like the lane owner. The owner drives the build. When the license allows team projects, the project is a team project the owner creates, so the owner is its admin and n8n shows it the build's execution output. Cleanup deletes the project; lane setup and the run end also delete any marked build project a crashed or failed build left, because with team projects licensed the agent's project list shows every project. Without team projects, the project is the personal project of a freshly invited member, the only new project an unlicensed instance can create. n8n then hides execution output from the owner, because the owner has no direct access to the member's credentials, and lane setup logs a warning. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there. Under `--keep-workflows`, build projects and members stay. Like the MCP lane, the member path needs a lane without SMTP, so invites return their accept token.
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
@@ -895,7 +898,7 @@ By default a build sees **no credentials**: the harness pins every build thread'
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
-Live resource lookups (`workflow_builder_nodes(action="explore-resources")`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
+Live resource lookups (`get_node_parameter_options`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
 
 A case that tests credential behaviour declares what should exist:
 
@@ -984,6 +987,28 @@ requires the agent to read it.
 - Runs execute sequentially in declared order, before the live turn, on a 120s budget —
   tighter than a scenario execution, which gets the case's build budget (900s by default).
 
+#### `seed.recordedRuns` — the same failure on every run
+
+`priorRuns` asks the mock layer to fail again on each eval, so the failure can differ from
+run to run. `recordedRuns` restores a failed run recorded once, so every eval sees the same
+record: the same node outputs, the same error.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { "format": "n8n-instance-ai-failed-execution", "version": 1 /* … */ } }]
+}
+```
+
+- Get an `envelope` from `POST /rest/instance-ai/eval/export-execution` on an eval
+  instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`), for one failed run (`error` or
+  `crashed`) of a thread's project.
+- `workflow` is the seed workflow's `id`, as for `priorRuns`. The restore binds the run to
+  the restored workflow and moves its timestamps so it ends at restore time.
+- Recorded runs restore in declared order, before any `priorRuns`. A restore that fails is
+  a seeding failure (framework issue), not an agent failure.
+
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
 The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
@@ -1068,7 +1093,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 A seed can create folders in the thread's project before the live turn, and place its
 workflows inside them. Use it to grade how the agent finds the contents of a folder the
-user names (CONTEXT-86: `workflow_builder_workflows(action="list")` takes `folderPath` or `folderId`).
+user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
 
 ```jsonc
 "seed": {

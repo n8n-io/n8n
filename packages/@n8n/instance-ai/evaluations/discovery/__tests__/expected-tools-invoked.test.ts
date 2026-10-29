@@ -66,7 +66,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					expectedToolInvocations: { anyOf: ['spawn_sub_agent:researcher'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'researcher', tools: ['workflow_builder_credentials'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
@@ -79,15 +79,15 @@ describe('runExpectedToolsInvokedCheck', () => {
 				{
 					id: 'test',
 					userMessage: '',
-					expectedToolInvocations: { anyOf: ['workflow_builder_credentials'] },
+					expectedToolInvocations: { anyOf: ['credentials'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'researcher', tools: ['workflow_builder_credentials'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.invokedTools).toContain('workflow_builder_credentials');
+			expect(result.invokedTools).toContain('credentials');
 		});
 	});
 
@@ -226,7 +226,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					agents: [
 						{
 							role: 'delegate',
-							tools: ['workflow_builder_credentials', 'workflow_builder_ask_user'],
+							tools: ['credentials', 'workflow_builder_ask_user'],
 						},
 					],
 				}),
@@ -250,7 +250,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					agents: [
 						{
 							role: 'delegate',
-							tools: ['workflow_builder_credentials', 'workflow_builder_ask_user'],
+							tools: ['credentials', 'workflow_builder_ask_user'],
 						},
 					],
 				}),
@@ -275,7 +275,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					agents: [
 						{
 							role: 'delegate',
-							tools: ['workflow_builder_credentials', 'workflow_builder_ask_user'],
+							tools: ['credentials', 'workflow_builder_ask_user'],
 						},
 					],
 				}),

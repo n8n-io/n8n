@@ -50,11 +50,11 @@ const skillProjectId = z
 		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
 	);
 
-/** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
+/** The surface that wrote the skill. The same values as `skill.source`. */
 const skillSource = z
-	.enum(['ui', 'agent', 'mcp', 'assistant'])
+	.enum(['ui', 'agent', 'mcp', 'assistant', 'github'])
 	.describe(
-		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder',
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder. `github` is Skill Sync from a GitHub source',
 	);
 
 /** Whether a person or an assistant wrote the text. */
@@ -360,7 +360,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_SKILL: {
 		name: 'User created skill',
 		description:
-			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+			'A skill was created from the settings page, the agent builder, n8n Assistant or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the data migration or an agent duplicate, reports nothing.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,
@@ -382,6 +382,32 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: skillSource,
 			version: z.number().describe('The number of the version this save stored'),
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
+		}),
+	},
+	MCP_LISTED_SKILLS: {
+		name: 'MCP listed skills',
+		description:
+			'An MCP client called `skills/list` or `skills/get` of the MCP skills extension. Both return skill entries without their text. Claude Code lists the skills each time it connects, so this counts sessions that receive the skills, not skill use.',
+		properties: z.object({
+			user_id: userId,
+			method: z
+				.enum(['skills/list', 'skills/get'])
+				.describe('`skills/list` returns one page of skills. `skills/get` returns one skill'),
+			count: z.number().describe('Skills the response returned'),
+		}),
+	},
+	MCP_READ_SKILL_FILE: {
+		name: 'MCP read skill file',
+		description:
+			'An MCP client read one file of a skill through `resources/read` of the MCP skills extension. Fires on a successful read only. Claude Code reads each SKILL.md when it connects and keeps it in a cache by digest, so a SKILL.md read means a skill was loaded or changed, not used. A reference read is the nearest sign that a model used the skill.',
+		properties: z.object({
+			user_id: userId,
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			file: z
+				.enum(['skill_md', 'reference'])
+				.describe('`skill_md` is the SKILL.md file. `reference` is a file under `references/`'),
 		}),
 	},
 	USER_DELETED_SKILL: {

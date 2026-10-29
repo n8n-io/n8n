@@ -209,7 +209,7 @@ export function useSettingsItems() {
 				icon: 'git-branch',
 				label: i18n.baseText('settings.sourceControl.title'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
+				available: !isPromotionsEnabled.value && canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{

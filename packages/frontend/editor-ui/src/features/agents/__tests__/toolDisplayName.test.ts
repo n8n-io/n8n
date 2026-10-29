@@ -2,6 +2,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+	TOOL_SEARCH_TOOL_NAME_KEY,
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
@@ -35,15 +36,26 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
 	});
 
+	it('returns an i18n key for native tool search tool names', () => {
+		expect(getToolNameTranslationKey('anthropic.tool_search')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('anthropic.tool_search_2')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('openai.tool_search')).toBe(TOOL_SEARCH_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('anthropic.tool_search_bm25_20251119')).toBe(
+			TOOL_SEARCH_TOOL_NAME_KEY,
+		);
+		expect(getToolNameTranslationKey('anthropic.tool_search_regex_20251119')).toBe(
+			TOOL_SEARCH_TOOL_NAME_KEY,
+		);
+		expect(getToolNameTranslationKey('tool_search')).toBeUndefined();
+	});
+
 	it('returns translation keys for stable builder tool IDs', () => {
 		expect(getToolNameTranslationKey('resolve_integration')).toBe(
 			'instanceAi.tools.resolve_integration',
 		);
-		expect(getToolNameTranslationKey('agent_builder_get_node_types')).toBe(
-			'instanceAi.tools.agent_builder_get_node_types',
-		);
+		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
 		expect(getToolNameTranslationKey('agent_builder_list_credentials')).toBe(
-			'instanceAi.tools.agent_builder_list_credentials',
+			'instanceAi.tools.list_credentials',
 		);
 		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
 		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');
@@ -54,8 +66,8 @@ describe('formatToolNameForDisplay', () => {
 	});
 
 	it('resolves legacy builder tool names to the current translation key', () => {
-		expect(getToolNameTranslationKey('get_node_types')).toBe(
-			'instanceAi.tools.agent_builder_get_node_types',
+		expect(getToolNameTranslationKey('agent_builder_get_node_types')).toBe(
+			'instanceAi.tools.get_node_types',
 		);
 		expect(getToolNameTranslationKey('write_config')).toBe(
 			'instanceAi.tools.agent_builder_write_config',
