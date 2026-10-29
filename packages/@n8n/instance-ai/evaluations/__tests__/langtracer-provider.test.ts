@@ -125,6 +125,46 @@ describe('casesFromExportedFiles', () => {
 		);
 	});
 
+	it.each([
+		['a removed seed key', { seedThread: { threadId: 't1' } }],
+		['an empty inline seed', { seed: { mode: 'inline' } }],
+		['no execution scenarios', { executionScenarios: [] }],
+		[
+			'an attachment to a workflow the seed does not declare',
+			{
+				seed: inlineSeed(),
+				conversation: [{ role: 'user', text: 'fix it', attach: { workflow: 'missing-id' } }],
+			},
+		],
+		[
+			'a newer seed field next to an authoring bug',
+			{ seed: { mode: 'inline', someFutureField: [] } },
+		],
+	])(
+		'fails the load on an authoring bug (%s), even with a valid case beside it',
+		(_, overrides) => {
+			expect(() =>
+				casesFromExportedFiles(
+					{ 'good.json': validCase(), 'broken.json': validCase(overrides) },
+					{ suite: 'demo', logger: { warn: vi.fn() } },
+				),
+			).toThrow(/broken\.json/);
+		},
+	);
+
+	it('skips a case whose seed mode this harness does not know', () => {
+		const logger = { warn: vi.fn() };
+		const cases = casesFromExportedFiles(
+			{
+				'good.json': validCase(),
+				'newer-mode.json': validCase({ seed: { mode: 'someFutureMode' } }),
+			},
+			{ suite: 'demo', logger },
+		);
+		expect(cases.map((c) => c.fileSlug)).toEqual(['good']);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/newer-mode\.json/));
+	});
+
 	it('fails when every case the filter selects is invalid, even if another case is valid', () => {
 		expect(() =>
 			casesFromExportedFiles(

@@ -34,11 +34,15 @@ const REMOVED_SEED_KEYS: Record<string, string> = {
 	seedThread: 'now `seed: { mode: "replay", threadId, … }`',
 };
 
+/** Zod issue codes a case written for a newer harness produces: a seed key or a seed
+ *  mode this one predates. Any other issue is an authoring bug. */
+const NEWER_HARNESS_CODES = new Set(['unrecognized_keys', 'invalid_union_discriminator']);
+
 /** Normalize + validate an `export_suite` payload into n8n test cases (same
- *  filter/exclude/tier selection as the disk loader). A case that does not load is
- *  skipped with a warning naming every issue, so one case written for a newer
- *  harness (a seed field this one predates) does not stop the whole suite. The load
- *  fails only when no case is valid. */
+ *  filter/exclude/tier selection as the disk loader). A case written for a newer
+ *  harness (every issue is a newer-harness code) is skipped with a warning, so it does
+ *  not stop the whole suite. Any other invalid case fails the load, and so does a
+ *  selection with no valid case. */
 export function casesFromExportedFiles(
 	files: ExportedSuite['files'],
 	opts: {
@@ -51,6 +55,7 @@ export function casesFromExportedFiles(
 ): WorkflowTestCaseWithFile[] {
 	const cases: WorkflowTestCaseWithFile[] = [];
 	const errors: string[] = [];
+	const skipped: string[] = [];
 
 	for (const [filename, raw] of Object.entries(files)) {
 		const fileSlug = filename.replace(/\.json$/i, '');
@@ -72,16 +77,21 @@ export function casesFromExportedFiles(
 			const issues = parsed.error.issues
 				.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
 				.join('\n');
-			errors.push(`${filename}:\n${issues}`);
+			const newerHarness = parsed.error.issues.every((i) => NEWER_HARNESS_CODES.has(i.code));
+			(newerHarness ? skipped : errors).push(`${filename}:\n${issues}`);
 			continue;
 		}
 		cases.push({ testCase: parsed.data, fileSlug });
 	}
 
-	if (errors.length > 0) {
-		const report = `Invalid test case(s) exported from lang-tracer suite "${opts.suite}":\n${errors.join('\n')}`;
-		if (cases.length === 0) throw new Error(report);
-		opts.logger?.warn(`${report}\nSkipping ${String(errors.length)} case(s); running the rest.`);
+	const header = `Invalid test case(s) exported from lang-tracer suite "${opts.suite}":`;
+	if (errors.length > 0 || (skipped.length > 0 && cases.length === 0)) {
+		throw new Error(`${header}\n${[...errors, ...skipped].join('\n')}`);
+	}
+	if (skipped.length > 0) {
+		opts.logger?.warn(
+			`${header}\n${skipped.join('\n')}\nSkipping ${String(skipped.length)} case(s) written for a newer harness; running the rest.`,
+		);
 	}
 
 	return selectTier(cases, opts.tier);
