@@ -1,0 +1,104 @@
+packages/@n8n/module-cli/src/templates/frontend/eslint.config.mjs.template
+  s_fdd6cf6d79ee0b::t_401821c993e7f9 2,4
+packages/@n8n/eslint-config/src/configs/frontend-oxlint-residual.ts
+  s_fdd6cf6d79ee0b::t_8cefcd464adbc3 27-31
+  s_fdd6cf6d79ee0b::t_a60aa1d99b88dd 1-6,8,10-26,32
+  s_fdd6cf6d79ee0b::t_3cbb785bda2a63 7
+  s_fdd6cf6d79ee0b::t_d1cfa318b36b56 9
+packages/modules/mcp/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8e94cf66bc17d2 2,4
+packages/modules/instance-registry/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_fdd6cf6d79ee0b::t_b5cbfa1d8431f6 152-153
+packages/modules/otel/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.test.ts
+  s_fdd6cf6d79ee0b::t_cc96afae42d379 54-66
+packages/modules/self-healing/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/@n8n/oxlint-config/src/configs/frontend.ts
+  s_fdd6cf6d79ee0b::t_3cbb785bda2a63 10,13,18-42
+  s_fdd6cf6d79ee0b::t_8cefcd464adbc3 15-17,43-44
+packages/modules/insights/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 16-17,49,64-65
+packages/modules/otel/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_fdd6cf6d79ee0b::t_401821c993e7f9 15-16,39,50-51
+scripts/lint-parity/samples.json
+  s_fdd6cf6d79ee0b::t_a599e9cd7a38d6 339-350,357-374
+packages/modules/instance-registry/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/frontend/@n8n/frontend-module-sdk/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+packages/modules/type-availability-policies/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 16-17,38,50-51
+packages/modules/type-availability-policies/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/modules/apps/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.ts
+  s_fdd6cf6d79ee0b::t_cc96afae42d379 21
+packages/modules/otel/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,37,51-52
+packages/modules/mcp/frontend/package.json
+  s_fdd6cf6d79ee0b::t_8e94cf66bc17d2 16-17,47,63-64
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_fdd6cf6d79ee0b::t_401821c993e7f9 111,148-156
+  s_fdd6cf6d79ee0b::t_a596a3a3a2eed2 157-158
+packages/modules/apps/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/modules/inbox/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+packages/modules/inbox/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/modules/self-healing/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+packages/modules/insights/frontend/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1,4
+packages/@n8n/module-cli/src/templates/frontend/oxlint.config.mts.template
+  s_fdd6cf6d79ee0b::t_401821c993e7f9 1-4
+packages/modules/insights/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-3
+  s_fdd6cf6d79ee0b::t_9e41be0ff00244 4-8
+packages/modules/apps/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,38,50-51
+packages/modules/type-availability-policies/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 1-4
+packages/@n8n/eslint-config/package.json
+  s_fdd6cf6d79ee0b::t_765747ffac366e 20
+  s_fdd6cf6d79ee0b::t_a60aa1d99b88dd 19,21-22
+packages/modules/mcp/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_8e94cf66bc17d2 1-7
+packages/@n8n/module-cli/src/frontend.mjs
+  s_fdd6cf6d79ee0b::t_401821c993e7f9 46
+packages/frontend/@n8n/frontend-module-sdk/eslint.config.mjs
+  s_fdd6cf6d79ee0b::t_8fcc8f18b05670 2,4
+packages/modules/self-healing/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,37,49-50
+packages/modules/instance-registry/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,31,40-41
+scripts/lint-parity/oxlint-parity.mjs
+  s_fdd6cf6d79ee0b::t_62bc7298d4d5eb 38,41,209-231,233,247-250,278
+packages/modules/inbox/frontend/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,43,54-55
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,31,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "897f2d81f37b50f8fd7247675e238f29def16dad",
+  "prompts": {},
+  "sessions": {
+    "s_fdd6cf6d79ee0b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e79590a04ffeZvlC8mMYsLMXAC",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
