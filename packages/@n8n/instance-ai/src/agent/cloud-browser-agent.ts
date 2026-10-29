@@ -11,7 +11,8 @@
  * When a browser tool requires approval, the agent pauses until `waitForConfirmation` returns
  * the user's response.
  */
-import { Agent, Tool, type ExecutionOptions } from '@n8n/agents';
+import { Agent, Tool, type AgentDbMessage, type ExecutionOptions } from '@n8n/agents';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
@@ -80,15 +81,18 @@ function createReportResultTool(onReport: (report: CloudBrowserAgentReport) => v
 // ── User action ─────────────────────────────────────────────────────────────
 const REQUEST_USER_ACTION_TOOL_ID = 'browser_request_user_action';
 
+/** Wraps the user's note in the message the agent gets after the user gives control back. */
+const USER_CONTROL_NOTE_TAG = 'user-control-note';
+
 /** How the user's control of the browser ended. */
-export type CloudBrowserUserControlResult =
-	| { returned: true; note?: string }
-	| { returned: false; error: string };
+export type CloudBrowserUserControlResult = { returned: true } | { returned: false; error: string };
 
 /** What `browser_request_user_action` needs from the host, which owns the browser session. */
 export interface CloudBrowserUserActionHost {
 	/** Gives the user control of the browser and waits until they return it. */
 	requestUserAction(): Promise<CloudBrowserUserControlResult>;
+	/** Returns and clears the notes the user wrote when they gave control back, oldest first. */
+	drainUserControlNotes(): string[];
 }
 
 const requestUserActionInputSchema = z.object({
@@ -116,7 +120,6 @@ function createRequestUserActionTool(userActionHost: CloudBrowserUserActionHost)
 			if (!result.returned) return { controlReturned: false, error: result.error };
 			return {
 				controlReturned: true,
-				...(result.note ? { userNote: result.note } : {}),
 				next: 'Call browser_snapshot to see the page, then continue.',
 			};
 		})
@@ -145,8 +148,9 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 - When a page needs a sign-in, a two-factor code, a CAPTCHA, or a choice only the user can make, open that page first. Then call ${REQUEST_USER_ACTION_TOOL_ID} with one sentence that tells the user what to do.
 - Do this even when the task message says to stop or report at a sign-in. Do not report blocked because of a login page.
 - When a site opens its sign-in in a popup, the user sees the popup in the live view. Call ${REQUEST_USER_ACTION_TOOL_ID} while the popup is open.
-- When the user returns control, call browser_snapshot and continue from the page they left. Take their note into account.
+- When the user returns control, call browser_snapshot and continue from the page they left.
 - The user can also take over without being asked. A browser call then returns that it did not run. Call browser_snapshot and continue from there.
+- After the user gives control back, a <${USER_CONTROL_NOTE_TAG}> message can follow with what they did. Take it into account.
 - If the result says the browser session was closed, report blocked.
 
 ## Creating credentials
@@ -285,7 +289,7 @@ export async function runCloudBrowserAgent(
 		}),
 	);
 
-	const executionOptions = {
+	const executionOptions: ExecutionOptions = {
 		abortSignal: options.abortSignal,
 		// A stopped task still reports the tokens it used, so it can be billed.
 		recoverUsageOnAbort: true,
@@ -293,6 +297,12 @@ export async function runCloudBrowserAgent(
 		// the new page content. Without it, every step resends the whole browser history uncached.
 		providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 		...options.streamOptions,
+		// The user's notes go in as user messages before the next step. Browser tool results are
+		// untrusted page content, so a note in one would be ignored.
+		onInputBoundary: async ({ canContinue }): Promise<AgentDbMessage[]> => {
+			if (!canContinue) return [];
+			return options.userActionHost.drainUserControlNotes().map(toUserControlNoteMessage);
+		},
 	};
 
 	const runAgent = async () => {
@@ -378,4 +388,23 @@ function detachedEventBus(eventBus: InstanceAiEventBus): InstanceAiEventBus {
 function describeError(error: unknown): string {
 	if (error instanceof Error) return error.message;
 	return typeof error === 'string' ? error : 'unknown error';
+}
+
+function toUserControlNoteMessage(note: string): AgentDbMessage {
+	return {
+		id: randomUUID(),
+		createdAt: new Date(),
+		role: 'user',
+		content: [
+			{
+				type: 'text',
+				text: [
+					`<${USER_CONTROL_NOTE_TAG}>`,
+					'The user took control of the browser and gave it back. They wrote this note about what they did:',
+					note,
+					`</${USER_CONTROL_NOTE_TAG}>`,
+				].join('\n'),
+			},
+		],
+	};
 }

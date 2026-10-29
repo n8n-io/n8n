@@ -61,13 +61,13 @@ const rows = computed(() =>
 function subtitleOf(task: CloudBrowserTask): string {
 	if (task.state === 'done') return i18n.baseText('instanceAi.cloudBrowser.doneWaitingToSend');
 	if (task.state === 'failed') return i18n.baseText('instanceAi.cloudBrowser.failedWaitingToSend');
-	if (task.userAction) return i18n.baseText('instanceAi.cloudBrowser.needsYou');
 	const view = liveViews?.get(task.taskId);
-	if (view?.status === 'live') {
-		return view.userInControl
-			? i18n.baseText('instanceAi.cloudBrowser.youHaveControl')
-			: i18n.baseText('instanceAi.cloudBrowser.working');
+	// After the user takes over, also when the agent asked for them.
+	if (view?.status === 'live' && view.userHasTakenOver) {
+		return i18n.baseText('instanceAi.cloudBrowser.youHaveControl');
 	}
+	if (task.userAction) return i18n.baseText('instanceAi.cloudBrowser.needsYou');
+	if (view?.status === 'live') return i18n.baseText('instanceAi.cloudBrowser.working');
 	if (view?.status === 'disconnected') return i18n.baseText('instanceAi.cloudBrowser.disconnected');
 	return i18n.baseText('instanceAi.cloudBrowser.opening');
 }

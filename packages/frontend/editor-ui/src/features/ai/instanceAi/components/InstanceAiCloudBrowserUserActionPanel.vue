@@ -22,7 +22,11 @@ const items = computed<SetupPanelItem[]>(() =>
 			? [
 					{
 						id: task.taskId,
-						title: i18n.baseText('instanceAi.cloudBrowser.tabName'),
+						title: task.title
+							? i18n.baseText('instanceAi.cloudBrowser.userActionRowTitle', {
+									interpolate: { title: task.title },
+								})
+							: i18n.baseText('instanceAi.cloudBrowser.tabName'),
 						completed: false,
 						hasAction: true,
 					},

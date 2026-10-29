@@ -32,6 +32,14 @@ export type CloudBrowserLiveViews = ReadonlyMap<string, CloudBrowserLiveView>;
 export const CloudBrowserLiveViewsKey: InjectionKey<CloudBrowserLiveViews> =
 	Symbol('CloudBrowserLiveViews');
 
+/**
+ * Fetches a task's live view again. Taking over and giving control back do not change the
+ * session key, so the view only shows who has control after this.
+ */
+export const CloudBrowserLiveViewRefreshKey: InjectionKey<(taskId: string) => void> = Symbol(
+	'CloudBrowserLiveViewRefresh',
+);
+
 /** Set on every live view iframe, with the task id, so a message from the frame leads to its task. */
 const FRAME_TASK_ATTRIBUTE = 'data-cloud-browser-task-id';
 
@@ -103,7 +111,7 @@ export function embeddedLiveViewUrl(href: string, { navbar = false } = {}): stri
 export function useCloudBrowserLiveViews(
 	tasks: ComputedRef<CloudBrowserTask[]>,
 	threadId: () => string,
-): CloudBrowserLiveViews {
+): { views: CloudBrowserLiveViews; refresh: (taskId: string) => void } {
 	const rootStore = useRootStore();
 	const views = reactive(new Map<string, CloudBrowserLiveView>());
 	const fetchedKeys = new Map<string, string>();
@@ -201,5 +209,8 @@ export function useCloudBrowserLiveViews(
 		fetchedKeys.clear();
 	});
 
-	return views;
+	return {
+		views,
+		refresh: (taskId) => void refresh(taskId, { sameSession: true }),
+	};
 }

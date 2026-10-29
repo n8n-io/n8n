@@ -6,7 +6,10 @@ import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import type { CloudBrowserLiveView } from '../../composables/useCloudBrowserLiveViews';
-import { CloudBrowserLiveViewsKey } from '../../composables/useCloudBrowserLiveViews';
+import {
+	CloudBrowserLiveViewRefreshKey,
+	CloudBrowserLiveViewsKey,
+} from '../../composables/useCloudBrowserLiveViews';
 import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../../instanceAi.api';
 import InstanceAiBrowserPreview from '../InstanceAiBrowserPreview.vue';
 
@@ -42,11 +45,17 @@ function render(
 ) {
 	const liveViews = reactive(new Map<string, CloudBrowserLiveView>());
 	if (view) liveViews.set('task-1', view);
+	const refreshLiveView = vi.fn();
 	const rendered = renderComponent({
 		props: { taskId: 'task-1', ...props },
-		global: { provide: { [CloudBrowserLiveViewsKey as symbol]: liveViews } },
+		global: {
+			provide: {
+				[CloudBrowserLiveViewsKey as symbol]: liveViews,
+				[CloudBrowserLiveViewRefreshKey as symbol]: refreshLiveView,
+			},
+		},
 	});
-	return { ...rendered, liveViews };
+	return { ...rendered, liveViews, refreshLiveView };
 }
 
 describe('InstanceAiBrowserPreview', () => {
@@ -160,7 +169,7 @@ describe('InstanceAiBrowserPreview', () => {
 		});
 
 		it('keeps the window behind view-only while the user has control', () => {
-			const { getByTestId } = render({ ...popup, userInControl: true });
+			const { getByTestId } = render({ ...popup, userHasTakenOver: true });
 
 			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
 			expect(getByTestId('instance-ai-browser-preview-background-frame')).toHaveClass('viewOnly');
@@ -183,12 +192,13 @@ describe('InstanceAiBrowserPreview', () => {
 	});
 
 	describe('take over', () => {
-		it('gives the user control without a request when the agent asked', async () => {
+		it('tells the server when the user takes over after the agent asked', async () => {
 			const { getByTestId, queryByTestId } = render(live, { userAction });
 
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
 
-			expect(postCloudBrowserTakeOver).not.toHaveBeenCalled();
+			expect(postCloudBrowserTakeOver).toHaveBeenCalledWith({}, 'thread-1', 'task-1');
 			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
 				'You have control of the browser',
 			);
@@ -212,14 +222,27 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
 		});
 
-		it('shows an error and keeps the view-only state when the take over fails', async () => {
-			const error = new Error('Request failed');
-			vi.mocked(postCloudBrowserTakeOver).mockRejectedValue(error);
-			const { getByTestId, queryByTestId } = render(live);
+		it.each([
+			['without a request', {}],
+			['after the agent asked', { userAction }],
+		])('fetches the live view again after the user takes over %s', async (_, props) => {
+			const { getByTestId, refreshLiveView } = render(live, props);
 
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
 			await flushPromises();
 
+			expect(refreshLiveView).toHaveBeenCalledExactlyOnceWith('task-1');
+		});
+
+		it('shows an error and keeps the view-only state when the take over fails', async () => {
+			const error = new Error('Request failed');
+			vi.mocked(postCloudBrowserTakeOver).mockRejectedValue(error);
+			const { getByTestId, queryByTestId, refreshLiveView } = render(live);
+
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
+
+			expect(refreshLiveView).not.toHaveBeenCalled();
 			expect(showError).toHaveBeenCalledWith(error, 'Could not take over the browser');
 			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
 			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
@@ -228,12 +251,14 @@ describe('InstanceAiBrowserPreview', () => {
 
 	describe('return control', () => {
 		it('returns control without a note dialog after the agent asked', async () => {
-			const { getByTestId, queryByTestId } = render(live, { userAction });
+			const { getByTestId, queryByTestId, refreshLiveView } = render(live, { userAction });
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
 
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
 			await flushPromises();
 
+			// Once after the take over, once after control returns.
+			expect(refreshLiveView).toHaveBeenCalledTimes(2);
 			expect(queryByTestId('instance-ai-browser-preview-note-dialog')).not.toBeInTheDocument();
 			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith(
 				{},
@@ -332,12 +357,15 @@ describe('InstanceAiBrowserPreview', () => {
 		it('shows an error and keeps control when returning control fails', async () => {
 			const error = new Error('Request failed');
 			vi.mocked(postCloudBrowserReturnControl).mockRejectedValue(error);
-			const { getByTestId } = render(live, { userAction });
+			const { getByTestId, refreshLiveView } = render(live, { userAction });
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
 
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
 			await flushPromises();
 
+			// Only after the take over.
+			expect(refreshLiveView).toHaveBeenCalledTimes(1);
 			expect(showError).toHaveBeenCalledWith(error, 'Could not give control back to the assistant');
 			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
 				'You have control of the browser',
@@ -347,7 +375,7 @@ describe('InstanceAiBrowserPreview', () => {
 
 	describe('control state', () => {
 		it('restores control after a reload when the user is in control', () => {
-			const { getByTestId } = render({ ...live, userInControl: true });
+			const { getByTestId } = render({ ...live, userHasTakenOver: true });
 
 			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
 				'You have control of the browser',
@@ -355,8 +383,17 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
 		});
 
-		it('does not restore control while the agent asks for the user', () => {
-			const { getByTestId } = render({ ...live, userInControl: true }, { userAction });
+		it('restores control after a reload when the user took over after the agent asked', () => {
+			const { getByTestId } = render({ ...live, userHasTakenOver: true }, { userAction });
+
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+			expect(getByTestId('instance-ai-browser-preview-frame')).not.toHaveClass('viewOnly');
+		});
+
+		it('keeps the view read-only while the agent asks and the user has not taken over', () => {
+			const { getByTestId } = render(live, { userAction });
 
 			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
 				'The browser needs your input',
@@ -365,7 +402,7 @@ describe('InstanceAiBrowserPreview', () => {
 		});
 
 		it('ends control when the browser disconnects', async () => {
-			const { getByTestId, queryByTestId, liveViews } = render({ ...live, userInControl: true });
+			const { getByTestId, queryByTestId, liveViews } = render({ ...live, userHasTakenOver: true });
 
 			liveViews.set('task-1', { status: 'disconnected', reason: 'idleTimeout' });
 			await flushPromises();

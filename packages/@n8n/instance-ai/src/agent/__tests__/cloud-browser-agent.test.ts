@@ -225,15 +225,7 @@ describe('runCloudBrowserAgent', () => {
 			return output;
 		}
 
-		it("returns the user's note and what to do next when the user returns control", async () => {
-			expect(await requestUserAction({ returned: true, note: 'Signed in' })).toEqual({
-				controlReturned: true,
-				userNote: 'Signed in',
-				next: 'Call browser_snapshot to see the page, then continue.',
-			});
-		});
-
-		it('leaves out the note when the user gives none', async () => {
+		it('returns what to do next when the user returns control', async () => {
 			expect(await requestUserAction({ returned: true })).toEqual({
 				controlReturned: true,
 				next: 'Call browser_snapshot to see the page, then continue.',
@@ -304,6 +296,58 @@ describe('runCloudBrowserAgent', () => {
 		expect(options.waitForConfirmation).toHaveBeenCalledWith('request-1');
 	});
 
+	describe('user control notes', () => {
+		/** Runs the agent and returns the input boundary hook it streams with. */
+		async function inputBoundaryWithNotes(notes: string[]) {
+			vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
+			const options = makeOptions();
+			vi.mocked(options.userActionHost.drainUserControlNotes).mockReturnValue(notes);
+			await runCloudBrowserAgent(options);
+			const streamOptions = agents[0].stream.mock.calls[0][1];
+			return { options, onInputBoundary: streamOptions.onInputBoundary };
+		}
+
+		const boundary = (canContinue: boolean) => ({
+			messages: [],
+			lastCreatedAt: 0,
+			completing: false,
+			canContinue,
+		});
+
+		it('gives the agent each note as a user message in a user-control-note block', async () => {
+			const { onInputBoundary } = await inputBoundaryWithNotes(['I signed in', 'I closed a popup']);
+
+			const messages = await onInputBoundary(boundary(true));
+
+			expect(messages).toEqual(
+				['I signed in', 'I closed a popup'].map((note) => ({
+					id: expect.any(String),
+					createdAt: expect.any(Date),
+					role: 'user',
+					content: [
+						{
+							type: 'text',
+							text: `<user-control-note>\nThe user took control of the browser and gave it back. They wrote this note about what they did:\n${note}\n</user-control-note>`,
+						},
+					],
+				})),
+			);
+		});
+
+		it('adds no message when there is no note', async () => {
+			const { onInputBoundary } = await inputBoundaryWithNotes([]);
+
+			expect(await onInputBoundary(boundary(true))).toEqual([]);
+		});
+
+		it('leaves the notes queued when the run cannot continue', async () => {
+			const { options, onInputBoundary } = await inputBoundaryWithNotes(['I signed in']);
+
+			expect(await onInputBoundary(boundary(false))).toEqual([]);
+			expect(options.userActionHost.drainUserControlNotes).not.toHaveBeenCalled();
+		});
+	});
+
 	it('resumes after a card with the same options as the first stream', async () => {
 		vi.mocked(executeResumableStream).mockResolvedValue(streamResult());
 		const onStepStart = vi.fn();
@@ -321,6 +365,8 @@ describe('runCloudBrowserAgent', () => {
 			providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 			modelStreamIdleTimeoutMs: 1000,
 			onStepStart,
+			// The same hook, so a note after a card still reaches the agent.
+			onInputBoundary: agents[0].stream.mock.calls[0][1].onInputBoundary,
 		};
 		expect(agents[0].stream).toHaveBeenCalledWith(
 			expect.any(String),

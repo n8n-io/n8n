@@ -1092,15 +1092,15 @@ describe('CloudBrowserLocalMcpServer', () => {
 	describe('user control', () => {
 		const releasedMessage = 'The browser task has ended. No browser tools can run.';
 		const userControlTimeoutMessage =
-			'The browser session was closed because the user did not return control within 30 minutes. Its pages, sign-ins and cookies are gone. Call browser_start_session with a URL to open a session.';
-		const skippedResult = (note = '') => ({
+			'The browser session was closed because the user did not return control within 30 minutes. Its pages, sign-ins and cookies are gone. Report the task as blocked.';
+		const skippedResult = {
 			content: [
 				{
 					type: 'text',
-					text: `The user took control of the browser, so this call did not run.${note} Call browser_snapshot to see the page, then continue.`,
+					text: 'The user took control of the browser, so this call did not run. Call browser_snapshot to see the page, then continue.',
 				},
 			],
-		});
+		};
 		const clickOn = (toolkit: ReturnType<typeof fakeToolkit>) =>
 			toolkit.tools.find(({ name }) => name === 'browser_click')!.execute;
 
@@ -1133,19 +1133,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			expect(server.isUserInControl()).toBe(false);
 		});
 
-		it("holds a tool call until control returns, then skips it with the user's note", async () => {
-			const { server, toolkits, start } = setup();
-			await start({ url: 'https://example.com' });
-			server.giveControlToUser();
-
-			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
-			server.returnControlToAgent('x');
-
-			expect(await call).toEqual(skippedResult(' The user says: "x"'));
-			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
-		});
-
-		it('skips a held tool call without a note when the user gives none', async () => {
+		it('holds a tool call until control returns, then skips it', async () => {
 			const { server, toolkits, start } = setup();
 			await start({ url: 'https://example.com' });
 			server.giveControlToUser();
@@ -1153,8 +1141,63 @@ describe('CloudBrowserLocalMcpServer', () => {
 			const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
 			server.returnControlToAgent();
 
-			expect(await call).toEqual(skippedResult());
+			expect(await call).toEqual(skippedResult);
 			expect(clickOn(toolkits[0])).not.toHaveBeenCalled();
+		});
+
+		describe('user control notes', () => {
+			it('keeps the note out of the skipped tool result and queues it for the agent', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				const call = server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+				server.returnControlToAgent('I accepted the cookie banner');
+
+				expect(await call).toEqual(skippedResult);
+				expect(server.drainUserControlNotes()).toEqual(['I accepted the cookie banner']);
+			});
+
+			it('queues the note when no tool call was waiting', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				server.returnControlToAgent('I signed in');
+
+				expect(server.drainUserControlNotes()).toEqual(['I signed in']);
+			});
+
+			it('returns the notes oldest first and clears them', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				server.returnControlToAgent('first');
+				server.giveControlToUser();
+				server.returnControlToAgent('second');
+
+				expect(server.drainUserControlNotes()).toEqual(['first', 'second']);
+				expect(server.drainUserControlNotes()).toEqual([]);
+			});
+
+			it('queues nothing when the user gives no note', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+
+				server.returnControlToAgent();
+
+				expect(server.drainUserControlNotes()).toEqual([]);
+			});
+
+			it('queues nothing when the user is not in control', async () => {
+				const { server, start } = setup();
+				await start({ url: 'https://example.com' });
+
+				server.returnControlToAgent('x');
+
+				expect(server.drainUserControlNotes()).toEqual([]);
+			});
 		});
 
 		it('runs tool calls again after control returns', async () => {
@@ -1219,13 +1262,13 @@ describe('CloudBrowserLocalMcpServer', () => {
 			const second = server.callTool({ name: 'browser_click', arguments: { ref: 'e2' } });
 			server.returnControlToAgent('done');
 
-			expect(await first).toEqual(skippedResult(' The user says: "done"'));
-			expect(await second).toEqual(skippedResult(' The user says: "done"'));
+			expect(await first).toEqual(skippedResult);
+			expect(await second).toEqual(skippedResult);
 			expect(server.isUserInControl()).toBe(false);
 		});
 
 		describe('requestUserAction', () => {
-			it('gives the user control and resolves with their note when they return it', async () => {
+			it('gives the user control and resolves when they return it', async () => {
 				const { server, start } = setup();
 				await start({ url: 'https://example.com' });
 
@@ -1233,17 +1276,8 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(server.isUserInControl()).toBe(true);
 				server.returnControlToAgent('Signed in');
 
-				expect(await request).toEqual({ returned: true, note: 'Signed in' });
-			});
-
-			it('resolves without a note when the user gives none', async () => {
-				const { server, start } = setup();
-				await start({ url: 'https://example.com' });
-
-				const request = server.requestUserAction();
-				server.returnControlToAgent();
-
 				expect(await request).toEqual({ returned: true });
+				expect(server.drainUserControlNotes()).toEqual(['Signed in']);
 			});
 
 			it('does not give control when no session is open', async () => {
@@ -1299,6 +1333,30 @@ describe('CloudBrowserLocalMcpServer', () => {
 					content: [{ type: 'text', text: userControlTimeoutMessage }],
 					isError: true,
 				});
+				expect(server.isUserInControl()).toBe(false);
+			});
+
+			it('refuses a new session after the user does not return control in time', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				server.giveControlToUser();
+				await vi.advanceTimersByTimeAsync(USER_CONTROL_TIMEOUT_MS);
+
+				expect(await start({ url: 'https://example.com' })).toEqual({
+					content: [{ type: 'text', text: userControlTimeoutMessage }],
+					isError: true,
+				});
+				expect(openSessions.size).toBe(0);
+			});
+
+			it('opens a new session after a normal idle timeout', async () => {
+				const { server, openSessions, start } = setup();
+				await start({ url: 'https://example.com' });
+				await vi.advanceTimersByTimeAsync(SESSION_IDLE_TIMEOUT_MS);
+
+				await start({ url: 'https://example.com' });
+
+				expect(openSessions.size).toBe(1);
 				expect(server.isUserInControl()).toBe(false);
 			});
 
@@ -1390,7 +1448,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				status: 'live',
 				liveViewUrl: 'https://live.example.com/1',
 				windowId: 'page-1',
-				userInControl: true,
+				userHasTakenOver: true,
 			});
 
 			server.returnControlToAgent();
@@ -1400,6 +1458,28 @@ describe('CloudBrowserLocalMcpServer', () => {
 				liveViewUrl: 'https://live.example.com/1',
 				windowId: 'page-1',
 			});
+		});
+
+		it('says the user is in control only after they take over, when the agent asked', async () => {
+			const { server, sessionProvider, start } = setup();
+			sessionProvider.getSessionLiveViewUrl.mockResolvedValue('https://live.example.com/1');
+			await start({ url: 'https://example.com' });
+			const live = {
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/1',
+				windowId: 'page-1',
+			};
+
+			const request = server.requestUserAction();
+			expect(server.isUserInControl()).toBe(true);
+			expect(await server.getLiveView()).toEqual(live);
+
+			expect(server.giveControlToUser()).toBeUndefined();
+			expect(await server.getLiveView()).toEqual({ ...live, userHasTakenOver: true });
+
+			server.returnControlToAgent();
+			expect(await request).toEqual({ returned: true });
+			expect(await server.getLiveView()).toEqual(live);
 		});
 
 		it('is starting when a new session replaced the one it asked about', async () => {

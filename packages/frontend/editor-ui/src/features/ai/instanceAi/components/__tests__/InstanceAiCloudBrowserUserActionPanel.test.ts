@@ -36,15 +36,23 @@ describe('InstanceAiCloudBrowserUserActionPanel', () => {
 		expect(queryByTestId('instance-ai-cloud-browser-user-action-panel')).not.toBeInTheDocument();
 	});
 
-	it('shows one "Browser" row for each task that waits for the user', () => {
-		const { getAllByTestId, getAllByText } = render([
-			makeTask({ taskId: 'task-1', userAction: { reason: 'Log in, please' } }),
-			makeTask({ taskId: 'task-2' }),
-			makeTask({ taskId: 'task-3', userAction: { reason: 'Solve the captcha' } }),
+	it('shows one row, named after the task, for each task that waits for the user', () => {
+		const { getAllByTestId, getByText, queryByText } = render([
+			makeTask({ taskId: 'task-1', title: 'Read the invoice', userAction: { reason: 'Log in' } }),
+			makeTask({ taskId: 'task-2', title: 'Find the price' }),
+			makeTask({ taskId: 'task-3', title: 'Check the order', userAction: { reason: 'Captcha' } }),
 		]);
 
 		expect(getAllByTestId('instance-ai-cloud-browser-take-over')).toHaveLength(2);
-		expect(getAllByText('Browser')).toHaveLength(2);
+		expect(getByText('Browser · Read the invoice')).toBeInTheDocument();
+		expect(getByText('Browser · Check the order')).toBeInTheDocument();
+		expect(queryByText('Browser · Find the price')).not.toBeInTheDocument();
+	});
+
+	it('names the row "Browser" when the task has no title', () => {
+		const { getByText } = render([makeTask({ title: '', userAction: { reason: 'Log in' } })]);
+
+		expect(getByText('Browser')).toBeInTheDocument();
 	});
 
 	it('opens the browser tab of the task when the user clicks "Take over"', async () => {

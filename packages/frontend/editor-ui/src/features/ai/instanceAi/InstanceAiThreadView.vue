@@ -29,6 +29,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { CloudBrowserTasksKey } from './composables/useCloudBrowserTasks';
 import {
+	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
 } from './composables/useCloudBrowserLiveViews';
@@ -339,10 +340,12 @@ provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
 const runningCloudBrowserTasks = computed(() =>
 	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
 );
-provide(
-	CloudBrowserLiveViewsKey,
-	useCloudBrowserLiveViews(runningCloudBrowserTasks, () => props.threadId),
+const cloudBrowserLiveViews = useCloudBrowserLiveViews(
+	runningCloudBrowserTasks,
+	() => props.threadId,
 );
+provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
+provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('pendingComposerContext', handoffContext);

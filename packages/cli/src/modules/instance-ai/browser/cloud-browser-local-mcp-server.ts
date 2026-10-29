@@ -134,7 +134,7 @@ const SESSION_UNAVAILABLE_MESSAGES: Record<SessionUnavailableReason, string> = {
 	notStarted: `No browser session is open. ${START_SESSION_HINT}`,
 	connectionLost: `The browser session closed unexpectedly. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
 	idleTimeout: `The browser session was closed because no browser tool was used for ${SESSION_IDLE_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
-	userControlTimeout: `The browser session was closed because the user did not return control within ${USER_CONTROL_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. ${START_SESSION_HINT}`,
+	userControlTimeout: `The browser session was closed because the user did not return control within ${USER_CONTROL_TIMEOUT_MS / 60_000} minutes. Its pages, sign-ins and cookies are gone. Report the task as blocked.`,
 };
 
 const USER_NOT_IN_CONTROL_MESSAGE = 'The user does not have control of the browser.';
@@ -145,12 +145,11 @@ const USER_NOT_IN_CONTROL_MESSAGE = 'The user does not have control of the brows
  */
 function skippedToolCallResult(result: CloudBrowserUserControlResult): McpToolCallResult {
 	if (!result.returned) return browserErrorResult(result.error);
-	const note = result.note ? ` The user says: "${result.note}"` : '';
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `The user took control of the browser, so this call did not run.${note} Call browser_snapshot to see the page, then continue.`,
+				text: 'The user took control of the browser, so this call did not run. Call browser_snapshot to see the page, then continue.',
 			},
 		],
 	};
@@ -221,11 +220,13 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	/** Set while a session opens, so the live view can tell an opening browser from none. */
 	private isOpeningSession = false;
 
-	/**
-	 * Set while the user has control of the browser. Its promise resolves when control comes back to
-	 * the agent, or when the browser closes first.
-	 */
-	private userControl?: IDeferredPromise<CloudBrowserUserControlResult>;
+	/** Set while the user has control of the browser. */
+	private userControl?: {
+		/** Resolves when control comes back to the agent, or when the browser closes first. */
+		result: IDeferredPromise<CloudBrowserUserControlResult>;
+		/** The user clicked "Take over". When the agent asks, they have control before that. */
+		hasTakenOver: boolean;
+	};
 
 	/**
 	 * Session starts and releases hold this lock, so they run one at a time and two
@@ -242,6 +243,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 
 	/** Called when the user gives control back to the agent. */
 	private onControlReturned?: () => void;
+
+	/**
+	 * Notes the user wrote when they gave control back. They never go into a browser tool result:
+	 * the agent treats those as untrusted page content. The agent takes them as user messages.
+	 */
+	private userControlNotes: string[] = [];
 
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
@@ -279,7 +286,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	async callTool(req: McpToolCallRequest): Promise<McpToolCallResult> {
 		if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
 		// Not counted as pending, so the user-control timeout still runs while the call waits.
-		if (this.userControl) return skippedToolCallResult(await this.userControl.promise);
+		if (this.userControl) return skippedToolCallResult(await this.userControl.result.promise);
 
 		this.clearIdleTimer();
 		this.pendingCalls++;
@@ -334,7 +341,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			status: 'live',
 			liveViewUrl,
 			windowId: session.windows.at(-1) ?? '',
-			...(this.userControl ? { userInControl: true } : {}),
+			...(this.userControl?.hasTakenOver ? { userHasTakenOver: true } : {}),
 		};
 	}
 
@@ -344,13 +351,24 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * Gives the user control of the browser. Tool calls wait, and the session gets the longer idle
-	 * limit. Returns why the user cannot take over, for example when no session is open.
+	 * The user clicked "Take over": gives them control of the browser, or keeps the control the agent
+	 * asked for. Returns why the user cannot take over, for example when no session is open.
 	 */
 	giveControlToUser(): string | undefined {
+		const error = this.startUserControl();
+		if (error) return error;
+		if (this.userControl) this.userControl.hasTakenOver = true;
+		return undefined;
+	}
+
+	/** Tool calls wait while the user has control, and the session gets the longer idle limit. */
+	private startUserControl(): string | undefined {
 		if (this.isReleased) return RELEASED_MESSAGE;
 		if (!this.activeSession) return SESSION_UNAVAILABLE_MESSAGES[this.sessionUnavailableReason];
-		this.userControl ??= createDeferredPromise<CloudBrowserUserControlResult>();
+		this.userControl ??= {
+			result: createDeferredPromise<CloudBrowserUserControlResult>(),
+			hasTakenOver: false,
+		};
 		this.scheduleIdleRelease();
 		return undefined;
 	}
@@ -358,23 +376,28 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	/** Gives control back to the agent, with what the user changed. Returns why it cannot. */
 	returnControlToAgent(note?: string): string | undefined {
 		if (!this.userControl) return USER_NOT_IN_CONTROL_MESSAGE;
-		this.endUserControl({ returned: true, ...(note ? { note } : {}) });
+		if (note) this.userControlNotes.push(note);
+		this.endUserControl({ returned: true });
 		this.onControlReturned?.();
 		return undefined;
 	}
 
+	drainUserControlNotes(): string[] {
+		return this.userControlNotes.splice(0);
+	}
+
 	/** For the agent's request: gives the user control and waits until they return it. */
 	async requestUserAction(): Promise<CloudBrowserUserControlResult> {
-		const error = this.giveControlToUser();
+		const error = this.startUserControl();
 		if (error) return { returned: false, error };
-		return (await this.userControl?.promise) ?? { returned: true };
+		return (await this.userControl?.result.promise) ?? { returned: true };
 	}
 
 	private endUserControl(result: CloudBrowserUserControlResult): void {
 		const userControl = this.userControl;
 		if (!userControl) return;
 		this.userControl = undefined;
-		userControl.resolve(result);
+		userControl.result.resolve(result);
 		this.scheduleIdleRelease();
 	}
 
@@ -418,6 +441,10 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		return await this.withSessionLock(async () => {
 			// A start queued behind release() must not open a session.
 			if (this.isReleased) return browserErrorResult(RELEASED_MESSAGE);
+			// The user did not come back, the session was closed so the task should be reported as blocked
+			if (this.sessionUnavailableReason === 'userControlTimeout') {
+				return browserErrorResult(SESSION_UNAVAILABLE_MESSAGES.userControlTimeout);
+			}
 
 			// Check before a session opens, so a denied site costs no browser. The check never
 			// waits for the user: it returns a request, and the agent pauses outside this call.

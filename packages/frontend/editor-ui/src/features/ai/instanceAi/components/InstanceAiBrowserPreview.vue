@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 /**
  * The live view of a running cloud browser task, in a preview tab. It keeps Browserbase's own
- * bar, which shows the address of the page. It is read-only until the user takes over. When the
- * agent asked for the user, the server already gave them control, so "Take over" only unlocks
- * the view. Otherwise it also tells the server, and the agent's calls wait. "I'm done" gives
+ * bar, which shows the address of the page. It is read-only until the user takes over. "Take over"
+ * tells the server, which then shows the take over after a reload. When the agent asked for the
+ * user, they already have control; otherwise the agent's calls wait from now on. "I'm done" gives
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
@@ -14,6 +14,7 @@ import { FocusScope } from 'reka-ui';
 import { computed, inject, ref, watch } from 'vue';
 
 import {
+	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
@@ -27,6 +28,7 @@ const toast = useToast();
 const rootStore = useRootStore();
 const thread = useThread();
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
+const refreshLiveView = inject(CloudBrowserLiveViewRefreshKey, undefined);
 
 const liveView = computed(() => liveViews?.get(props.taskId));
 
@@ -83,11 +85,11 @@ const note = ref('');
 /** The user took over without the agent asking, so the agent does not know what they changed. */
 const isUserTakeover = computed(() => hasControl.value && !props.userAction);
 
-// After a reload, a takeover the user started is still in progress.
+// After a reload, or when the tab mounts again, the user's take over is still in progress.
 watch(
-	() => liveView.value?.status === 'live' && liveView.value.userInControl === true,
+	() => liveView.value?.status === 'live' && liveView.value.userHasTakenOver === true,
 	(inControl) => {
-		if (inControl && !props.userAction) hasControl.value = true;
+		if (inControl) hasControl.value = true;
 	},
 	{ immediate: true },
 );
@@ -116,16 +118,12 @@ watch(
 );
 
 async function takeOver() {
-	// The agent asked, so the server already gave the user control.
-	if (props.userAction) {
-		hasControl.value = true;
-		return;
-	}
 	if (isBusy.value) return;
 	isBusy.value = true;
 	try {
 		await postCloudBrowserTakeOver(rootStore.restApiContext, thread.id, props.taskId);
 		hasControl.value = true;
+		refreshLiveView?.(props.taskId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.takeOverFailed'));
 	} finally {
@@ -152,6 +150,7 @@ async function returnControl(userNote?: string) {
 			userNote,
 		);
 		hasControl.value = false;
+		refreshLiveView?.(props.taskId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.returnControlFailed'));
 	} finally {

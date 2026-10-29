@@ -127,10 +127,22 @@ describe('InstanceAiCloudBrowsersCard', () => {
 			status: 'live',
 			liveViewUrl: 'https://live.example.com/1',
 			windowId: 'window-1',
-			userInControl: true,
 		});
 
 		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent('Needs you');
+	});
+
+	it('says the user has control after they take over the task that needs them', () => {
+		const { getByTestId } = render(makeTask({ userAction: { reason: 'Log in, please' } }), {
+			status: 'live',
+			liveViewUrl: 'https://live.example.com/1',
+			windowId: 'window-1',
+			userHasTakenOver: true,
+		});
+
+		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
+			'You have control of the browser',
+		);
 	});
 
 	it('says the user has control after they took over', () => {
@@ -138,7 +150,7 @@ describe('InstanceAiCloudBrowsersCard', () => {
 			status: 'live',
 			liveViewUrl: 'https://live.example.com/1',
 			windowId: 'window-1',
-			userInControl: true,
+			userHasTakenOver: true,
 		});
 
 		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
