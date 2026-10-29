@@ -327,7 +327,14 @@ export class ExecutionRecorder {
 						title: scrubSecretsInText(title),
 						kind,
 						status,
-						...(files?.length ? { files } : {}),
+						...(files?.length
+							? {
+									files: files.map((file) => ({
+										...file,
+										fileName: scrubSecretsInText(file.fileName),
+									})),
+								}
+							: {}),
 					})),
 				},
 			});
