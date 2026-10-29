@@ -219,6 +219,20 @@ describe('StartExecutionService', () => {
 			).rejects.toMatchObject({ name: 'InvalidParentLinkError', reason });
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
+
+		it('rethrows a lookup failure that is not a missing row', async () => {
+			const failure = new Error('connection lost');
+			const { store, stepStore } = parentRows('running', 'waiting');
+			vi.mocked(stepStore.loadStep).mockRejectedValue(failure);
+			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
+
+			await expect(
+				service.start({
+					...base,
+					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
+				}),
+			).rejects.toBe(failure);
+		});
 	});
 
 	it('records no parent for a top-level execution', async () => {
