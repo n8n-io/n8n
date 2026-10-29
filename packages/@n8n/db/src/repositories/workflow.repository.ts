@@ -2041,11 +2041,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// `settings` holds the error workflow, which the indexer records.
 		qb.select([
 			'workflow.id',
 			'workflow.versionCounter',
 			'workflow.activeVersionId',
 			'workflow.nodes',
+			'workflow.settings',
 		]);
 
 		qb.leftJoin(
@@ -2101,8 +2103,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
 		// For published version indexing we need the published version's nodes
-		// (from activeVersion), not the draft nodes.
-		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
+		// (from activeVersion), not the draft nodes. `settings` holds the error workflow.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.settings',
+		]);
 
 		// Left join to find matching published version dependencies
 		qb.leftJoin(
