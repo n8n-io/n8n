@@ -227,9 +227,12 @@ export class StepReadyHandler {
 		subExecution: SubExecutionDeclaration,
 	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
 		const started = await this.startSubExecution(step, execution, subExecution);
-		// The step is running and its own, so a refused link means the execution
-		// has ended, and an ended execution is owed no sub-execution.
-		if (started.kind === 'error' && started.error instanceof InvalidParentLinkError) {
+		// An ended execution is owed no sub-execution.
+		if (
+			started.kind === 'error' &&
+			started.error instanceof InvalidParentLinkError &&
+			started.error.reason === 'execution-ended'
+		) {
 			return { kind: 'parent-ended' };
 		}
 		return started;

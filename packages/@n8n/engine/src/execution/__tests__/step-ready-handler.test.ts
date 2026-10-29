@@ -1277,7 +1277,9 @@ describe('StepReadyHandler sub-executions', () => {
 		// still the node's outcome, and an ended execution is owed no sub-execution.
 		const stepStore = makeStepStore();
 		const subExecutionStarter: SubExecutionStarter = {
-			start: vi.fn().mockRejectedValue(new InvalidParentLinkError('execution exec-1 is cancelled')),
+			start: vi
+				.fn()
+				.mockRejectedValue(new InvalidParentLinkError('execution-ended', 'exec-1 is cancelled')),
 		};
 		const handler = makeHandler(
 			makeExecutionStore(),
