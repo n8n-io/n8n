@@ -17,6 +17,7 @@ import type {
 	AgentMessage,
 	ContentCustom,
 	ContentFile,
+	ContentFileWithRef,
 	ContentReasoning,
 	ContentReasoningFile,
 	ContentText,
@@ -24,6 +25,7 @@ import type {
 	Message,
 	MessageContent,
 } from '../../types/sdk/message';
+import { isFileRefPart, toolOutputFileParts } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
 // Used across all message roles; AssistantContent omits user images and tool approval responses.
@@ -273,6 +275,44 @@ function toAiContent(
 	return base;
 }
 
+/**
+ * Text for a file in a tool output that has no loaded bytes, for example when
+ * it is outside the hydration budget or its bytes are gone. The model may
+ * never have seen the file, so the text only states that it is not attached.
+ * Keep it stable, so the prompt prefix stays cached.
+ */
+function detachedFileText(part: ContentFileWithRef): string {
+	const name = part.fileRef.fileName ?? 'file';
+	return `[File "${name}" (fileId: ${part.fileRef.id}) is not attached now.]`;
+}
+
+/**
+ * Map file parts with a `fileRef` in a tool output to AI SDK parts. A loaded
+ * file becomes a file part, and a part without data becomes a short text.
+ */
+function toModelContentOutput(output: ContentToolResultOutput): ContentToolResultOutput {
+	if (toolOutputFileParts(output).length === 0) return output;
+	return {
+		...output,
+		value: output.value.map((part) => {
+			const candidate: unknown = part;
+			if (!isFileRefPart(candidate)) return part;
+			// Keep provider options, the same as `toAiContent` does for user files.
+			const options = candidate.providerOptions && { providerOptions: candidate.providerOptions };
+			if (candidate.data === undefined) {
+				return { type: 'text', text: detachedFileText(candidate), ...options };
+			}
+			return {
+				type: 'file',
+				data: { type: 'data', data: candidate.data },
+				mediaType: candidate.mediaType ?? 'application/octet-stream',
+				...(candidate.fileRef.fileName ? { filename: candidate.fileRef.fileName } : {}),
+				...options,
+			};
+		}),
+	};
+}
+
 /** Build an AI SDK ToolResultPart from a resolved/rejected ContentToolCall. */
 function toolCallToResultPart(
 	block: ContentToolCall & { state: 'resolved' | 'rejected' },
@@ -285,7 +325,7 @@ function toolCallToResultPart(
 			toolName: block.toolName,
 			...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 			output: isContentToolResultOutput(block.output)
-				? block.output
+				? toModelContentOutput(block.output)
 				: { type: 'json', value: block.output },
 		};
 	}

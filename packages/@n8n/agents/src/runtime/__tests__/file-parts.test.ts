@@ -215,3 +215,29 @@ describe('toAiMessages — file parts', () => {
 		expect(parts[1].text).toContain('fileId: att-1');
 	});
 });
+
+describe('stripHydratedFileData — tool outputs', () => {
+	it('strips loaded bytes from file parts in a tool output', () => {
+		const file = refFileBlock({ data: bytes });
+		const message: AgentDbMessage = {
+			id: 'm-tool',
+			createdAt: new Date(),
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'call-1',
+					toolName: 'read',
+					input: {},
+					state: 'resolved',
+					output: { type: 'content', value: [file] },
+				},
+			],
+		} as unknown as AgentDbMessage;
+
+		const stripped = stripHydratedFileData(message);
+
+		expect(JSON.stringify(stripped)).not.toContain('"data"');
+		expect(file.data).toBe(bytes);
+	});
+});
