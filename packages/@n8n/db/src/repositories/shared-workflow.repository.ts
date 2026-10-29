@@ -22,7 +22,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
-import { readWorkflowCollections, selectWorkflowCollections } from '../utils/workflow-collections';
+import { getWithWorkflowCollections } from '../utils/workflow-collections';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -374,10 +374,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		} = options;
 
 		// One statement reads the share the user reaches the workflow through, the workflow, its
-		// one-row relations and its shares and tags, so the result is one consistent read and
-		// the access check covers it. Shares and tags come back as JSON arrays: joining them
-		// would repeat the workflow row, with its nodes JSON, once per share and tag.
-		const collections = { shared: { project: true }, tags: includeTags };
+		// one-row relations, shares and tags, so the access check covers all of it.
 		const qb = em
 			.createQueryBuilder(SharedWorkflow, 'sharedWorkflow')
 			.innerJoinAndSelect('sharedWorkflow.workflow', 'workflow')
@@ -387,14 +384,13 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			.limit(1);
 		if (includeParentFolder) qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
 		if (includeActiveVersion) qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
-		selectWorkflowCollections(qb, 'workflow', collections);
 
-		const {
-			entities: [sharedWorkflow],
-			raw,
-		} = await qb.getRawAndEntities();
+		const [sharedWorkflow] = await getWithWorkflowCollections(
+			qb,
+			{ shared: { project: true }, tags: includeTags },
+			({ workflow }) => workflow,
+		);
 		if (!sharedWorkflow) return null;
-		readWorkflowCollections(em.connection, raw, [sharedWorkflow.workflow], 'workflow', collections);
 
 		const activeVersion = sharedWorkflow.workflow.activeVersion;
 		if (activeVersion && publishHistory !== 'none') {

@@ -9,28 +9,20 @@ const containsText = (value: unknown, text: string) => {
 	return false;
 };
 
+/** Every cell of every row a statement returned. */
+const cells = ({ records }: CapturedStatement) => records.flatMap((row) => Object.values(row));
+
 /**
  * How many cells across all statements contain `text`, counted on the raw rows before
  * TypeORM merges duplicate rows. Use a marker inside a workflow's nodes to count how many
  * copies of that JSON the database sent.
  */
 export const countCopies = (statements: CapturedStatement[], text: string) =>
-	statements.reduce(
-		(copies, { records }) =>
-			copies +
-			records.reduce(
-				(rowCopies, row) =>
-					rowCopies + Object.values(row).filter((value) => containsText(value, text)).length,
-				0,
-			),
-		0,
-	);
+	statements.flatMap(cells).filter((value) => containsText(value, text)).length;
 
 /** Index of the first statement whose rows contain `text`, or -1. */
 export const statementContaining = (statements: CapturedStatement[], text: string) =>
-	statements.findIndex(({ records }) =>
-		records.some((row) => Object.values(row).some((value) => containsText(value, text))),
-	);
+	statements.findIndex((statement) => cells(statement).some((value) => containsText(value, text)));
 
 /**
  * Runs `load` and records every statement sent through a new query runner, with its raw

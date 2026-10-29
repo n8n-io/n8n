@@ -184,7 +184,7 @@ describe('WorkflowFinderService', () => {
 	});
 
 	describe('findWorkflowsByIdsForUser', () => {
-		const user = mock<User>({ id: 'user-1' });
+		const user = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
 
 		it('reads the workflows with the access check in the same query', async () => {
 			const { service, workflowRepository, sharedWorkflowRepository, roleService } = makeService();
@@ -215,6 +215,25 @@ describe('WorkflowFinderService', () => {
 			);
 			// A separate access query could let a share revoked in between return the workflow.
 			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('looks up no roles for a user with the scopes globally', async () => {
+			const { service, workflowRepository, roleService } = makeService();
+			const owner = {
+				id: 'owner-1',
+				role: { slug: 'global:owner', scopes: [{ slug: 'workflow:read' }] },
+			} as unknown as User;
+			workflowRepository.findAccessibleByIds.mockResolvedValue([]);
+
+			await service.findWorkflowsByIdsForUser(['wf-1'], owner, ['workflow:read']);
+
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(workflowRepository.findAccessibleByIds).toHaveBeenCalledWith(
+				owner,
+				{ scopes: ['workflow:read'], projectRoles: [], workflowRoles: [] },
+				['wf-1'],
+				{},
+			);
 		});
 
 		it('runs no query for an empty list', async () => {

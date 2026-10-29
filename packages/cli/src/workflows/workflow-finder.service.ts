@@ -222,14 +222,16 @@ export class WorkflowFinderService {
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
-		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roleService.rolesWithScope('project', scopes),
-			this.roleService.rolesWithScope('workflow', scopes),
-		]);
+		// A user with these scopes globally reaches every workflow, so needs no roles.
+		const [projectRoles, workflowRoles] = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? [[], []]
+			: await Promise.all([
+					this.roleService.rolesWithScope('project', scopes),
+					this.roleService.rolesWithScope('workflow', scopes),
+				]);
 
-		// Reads each workflow once, with the access check in the same statement. A workflow can
-		// be reachable through several shares, and reading it through every share row would
-		// repeat its nodes JSON per share.
+		// One read per workflow, with the access check in the same statement, rather than one
+		// read per share the workflow is reachable through.
 		return await this.workflowRepository.findAccessibleByIds(
 			user,
 			{ scopes, projectRoles, workflowRoles },
@@ -474,8 +476,7 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			// Shares and tags come back as JSON arrays instead of selected here: selecting them
-			// joins them and repeats each workflow's nodes JSON once per share and tag.
+			// Shares and tags are passed as collections below, not selected here.
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
 			...(includeParentFolder && { parentFolder: true }),

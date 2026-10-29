@@ -1,9 +1,9 @@
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	createWorkflowWithHistory,
 	linkUserToProject,
-	setActiveVersion,
 	shareWorkflowWithProjects,
 	testDb,
 } from '@n8n/backend-test-utils';
@@ -32,7 +32,6 @@ import {
 import { createFolder } from '../../shared/db/folders';
 import { createTag } from '../../shared/db/tags';
 import { createMember, createOwner } from '../../shared/db/users';
-import { createWorkflowPublishHistoryItem } from '../../shared/db/workflow-publish-history';
 
 /**
  * Loading a workflow with a to-many relation (tags, shares) in the same JOIN as the
@@ -102,20 +101,16 @@ describe('Workflow relation loading', () => {
 
 		// Publish a version, then save a different draft, so the draft and the
 		// published JSON can be counted separately.
-		workflow = await createWorkflowWithHistory(
-			{ name: 'Invoice Sync', nodes: [codeNode(PUBLISHED_MARKER)], parentFolder: folder },
+		workflow = await createActiveWorkflow(
+			{
+				name: 'Invoice Sync',
+				nodes: [codeNode(PUBLISHED_MARKER)],
+				connections: {},
+				parentFolder: folder,
+			},
 			ownerProject,
 		);
 		publishedVersionId = workflow.versionId;
-		await setActiveVersion(workflow.id, publishedVersionId);
-		await createWorkflowPublishHistoryItem({
-			workflowId: workflow.id,
-			versionId: publishedVersionId,
-		});
-		await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
-			workflow.id,
-			publishedVersionId,
-		);
 		draftVersionId = uuid();
 		await Container.get(WorkflowRepository).update(workflow.id, {
 			versionId: draftVersionId,
@@ -286,8 +281,7 @@ describe('Workflow relation loading', () => {
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
 			expectOneStatement(statements, [DRAFT_MARKER, PUBLISHED_MARKER, ...expectedTagNames]);
-			// TypeORM adds a DISTINCT query for `findOne`-style reads with joins.
-			expect(statements).toHaveLength(2);
+			expect(statements).toHaveLength(1);
 			expect(result?.tags?.map((tag) => tag.name)).toEqual(expectedTagNames);
 			expect(result?.activeVersion?.versionId).toBe(publishedVersionId);
 			expect(result?.shared).toBeUndefined();
@@ -424,13 +418,10 @@ describe('Workflow relation loading', () => {
 		});
 
 		it('includes projects when asked', async () => {
-			const { result } = await measure(
-				async () =>
-					await Container.get(WorkflowFinderService).findWorkflowsForUser(
-						owner,
-						['workflow:read'],
-						{ ...publicApiOptions, includeProjects: true },
-					),
+			const result = await Container.get(WorkflowFinderService).findWorkflowsForUser(
+				owner,
+				['workflow:read'],
+				{ ...publicApiOptions, includeProjects: true },
 			);
 
 			const listed = result.workflows.find(({ id }) => id === workflow.id);
@@ -453,13 +444,10 @@ describe('Workflow relation loading', () => {
 		});
 
 		it('pages and counts by workflow, not by joined row', async () => {
-			const { result } = await measure(
-				async () =>
-					await Container.get(WorkflowFinderService).findWorkflowsForUser(
-						owner,
-						['workflow:read'],
-						{ ...publicApiOptions, offset: 0, limit: 1 },
-					),
+			const result = await Container.get(WorkflowFinderService).findWorkflowsForUser(
+				owner,
+				['workflow:read'],
+				{ ...publicApiOptions, offset: 0, limit: 1 },
 			);
 
 			expect(result.count).toBe(2);
@@ -467,13 +455,10 @@ describe('Workflow relation loading', () => {
 		});
 
 		it('leaves tags out when not asked', async () => {
-			const { result } = await measure(
-				async () =>
-					await Container.get(WorkflowFinderService).findWorkflowsForUser(
-						owner,
-						['workflow:read'],
-						{ includeActiveVersion: true },
-					),
+			const result = await Container.get(WorkflowFinderService).findWorkflowsForUser(
+				owner,
+				['workflow:read'],
+				{ includeActiveVersion: true },
 			);
 
 			expect(result.workflows.every((listed) => listed.tags === undefined)).toBe(true);
@@ -519,40 +504,7 @@ describe('Workflow relation loading', () => {
 
 			expect(result).toEqual([]);
 		});
-	});
 
-	describe('folder transfer (WorkflowRepository.findInFoldersForTransfer)', () => {
-		it('loads shares with projects without repeating the JSON per share', async () => {
-			const { result, draftCopies, publishedCopies } = await measure(
-				async () =>
-					await Container.get(WorkflowRepository).findInFoldersForTransfer([folder.id], {
-						withNodes: true,
-					}),
-			);
-
-			expect(draftCopies).toBe(1);
-			expect(publishedCopies).toBe(1);
-			expect(result.map(({ id }) => id)).toEqual([workflow.id]);
-			expect(result[0].activeVersion?.versionId).toBe(publishedVersionId);
-			expect(sortedProjectIds(result[0].shared)).toEqual(allProjectIds());
-			expect(result[0].shared.every((share) => share.project?.id === share.projectId)).toBe(true);
-		});
-
-		it('leaves the nodes out when not asked', async () => {
-			const { result, draftCopies, publishedCopies } = await measure(
-				async () =>
-					await Container.get(WorkflowRepository).findInFoldersForTransfer([folder.id], {
-						withNodes: false,
-					}),
-			);
-
-			expect(draftCopies).toBe(0);
-			expect(publishedCopies).toBe(0);
-			expect(sortedProjectIds(result[0].shared)).toEqual(allProjectIds());
-		});
-	});
-
-	describe('reading many workflows by id (WorkflowFinderService.findWorkflowsByIdsForUser)', () => {
 		it('reads ids in batches the database accepts, each with its access check', async () => {
 			// 10,001 ids span two batches. Only the first and the last exist.
 			const ids = Array.from({ length: 10_001 }, (_, index) =>
@@ -593,6 +545,37 @@ describe('Workflow relation loading', () => {
 		});
 	});
 
+	describe('folder transfer (WorkflowRepository.findInFoldersForTransfer)', () => {
+		it('loads shares with projects without repeating the JSON per share', async () => {
+			const { result, draftCopies, publishedCopies } = await measure(
+				async () =>
+					await Container.get(WorkflowRepository).findInFoldersForTransfer([folder.id], {
+						withNodes: true,
+					}),
+			);
+
+			expect(draftCopies).toBe(1);
+			expect(publishedCopies).toBe(1);
+			expect(result.map(({ id }) => id)).toEqual([workflow.id]);
+			expect(result[0].activeVersion?.versionId).toBe(publishedVersionId);
+			expect(sortedProjectIds(result[0].shared)).toEqual(allProjectIds());
+			expect(result[0].shared.every((share) => share.project?.id === share.projectId)).toBe(true);
+		});
+
+		it('leaves the nodes out when not asked', async () => {
+			const { result, draftCopies, publishedCopies } = await measure(
+				async () =>
+					await Container.get(WorkflowRepository).findInFoldersForTransfer([folder.id], {
+						withNodes: false,
+					}),
+			);
+
+			expect(draftCopies).toBe(0);
+			expect(publishedCopies).toBe(0);
+			expect(sortedProjectIds(result[0].shared)).toEqual(allProjectIds());
+		});
+	});
+
 	describe('a workflow shared with many projects', () => {
 		it('opens with tags on every database', async () => {
 			const projectRepository = Container.get(ProjectRepository);
@@ -600,8 +583,8 @@ describe('Workflow relation loading', () => {
 			const widelyShared = await createWorkflowWithHistory({ name: 'Widely shared' }, ownerProject);
 			await createTag({}, widelyShared);
 
-			// SQLite rejects expressions nested more than 1,000 levels deep, so a loader
-			// that writes one OR term per share would fail here.
+			// SQLite rejects expressions nested more than 1,000 levels deep, so loading the shares
+			// with one OR term per share, as TypeORM's 'query' relation strategy does, fails here.
 			const shareCount = 1_100;
 			const projects = Array.from({ length: shareCount }, (_, index) =>
 				projectRepository.create({ id: uuid().slice(0, 16), name: `Team ${index}`, type: 'team' }),

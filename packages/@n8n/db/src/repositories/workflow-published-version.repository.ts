@@ -5,7 +5,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { readWorkflowCollections, selectWorkflowCollections } from '../utils/workflow-collections';
+import { getWithWorkflowCollections } from '../utils/workflow-collections';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -83,32 +83,18 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 	async getPublishedVersionWithRelations(
 		workflowId: string,
 	): Promise<WorkflowPublishedVersion | null> {
-		// One statement for the published version, its workflow and the workflow's shares, which
-		// come back as a JSON array: joining them would repeat the workflow and published version
-		// JSON once per share. `workflowId` is the primary key and both joins have one row, so no
-		// LIMIT and no extra DISTINCT query is needed.
-		const collections = { shared: { project: true } };
+		// `workflowId` is the primary key and both joins have one row, so no LIMIT is needed.
 		const qb = this.createQueryBuilder('record')
-			.leftJoinAndSelect('record.workflow', 'workflow')
+			.innerJoinAndSelect('record.workflow', 'workflow')
 			.leftJoinAndSelect('record.publishedVersion', 'publishedVersion')
 			.where('record.workflowId = :workflowId', { workflowId });
-		selectWorkflowCollections(qb, 'workflow', collections);
 
-		const {
-			entities: [record],
-			raw,
-		} = await qb.getRawAndEntities();
-		if (!record) return null;
-		if (record.workflow) {
-			readWorkflowCollections(
-				this.manager.connection,
-				raw,
-				[record.workflow],
-				'workflow',
-				collections,
-			);
-		}
-		return record;
+		const [record] = await getWithWorkflowCollections(
+			qb,
+			{ shared: { project: true } },
+			({ workflow }) => workflow,
+		);
+		return record ?? null;
 	}
 
 	async getPublishedVersionForExecution(
