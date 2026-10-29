@@ -204,7 +204,6 @@ export class StepReadyHandler {
 			subExecutionId: subExecution.executionId,
 		});
 		if (!recorded) return;
-		// If the suspension results in no running steps, mark the execution as waiting.
 		await this.executionStore.refreshLiveStatus(execution.id);
 
 		const started = await this.startSubExecution(step, execution, subExecution);
