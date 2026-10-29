@@ -372,8 +372,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				return null;
 			}
 
-			// Every executionData store mutation replaces the runData object, so
-			// its identity is the change signal.
+			// Every executionData store mutation that changes runData replaces the
+			// runData object, so its identity is the change signal.
 			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
 
 			return dropRunDataOfReplacedNodes(
@@ -491,10 +491,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		const lastSuccessfulExecution = computed<IExecutionResponse | null>(() => {
 			const lid = lastSuccessfulExecutionId.value;
 			if (!lid) return null;
-			// Mutable-typed for consumers (the executionData store exposes a
-			// readonly ref); treat it as read-only.
-			return useExecutionDataStore(createExecutionDataId(lid))
-				.execution as IExecutionResponse | null;
+			// Mutable-typed for consumers; treat it as read-only.
+			return useExecutionDataStore(createExecutionDataId(lid)).execution;
 		});
 
 		const isWorkflowRunning = computed(() => {

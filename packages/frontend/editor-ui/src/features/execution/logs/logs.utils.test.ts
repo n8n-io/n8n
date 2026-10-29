@@ -1580,7 +1580,7 @@ describe(mergeStartData, () => {
 		expect(mergeStartData({}, response)).toEqual(response);
 	});
 
-	it('should add runs in start data when the execution response has no run data', () => {
+	it('should add runs in start data when the execution response has no data', () => {
 		const response = createTestWorkflowExecutionResponse({ data: undefined });
 		const startData: { [nodeName: string]: ITaskStartedData[] } = {
 			A: [{ startTime: 1, executionIndex: 0, source: [] }],

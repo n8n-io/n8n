@@ -26,14 +26,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-
-function deepFreeze<T>(value: T): T {
-	if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-		Object.freeze(value);
-		for (const child of Object.values(value)) deepFreeze(child);
-	}
-	return value;
-}
+import { deepFreeze } from '@n8n/frontend-utils/objectUtils';
 
 function createTestExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return createTestWorkflowExecutionResponse({
@@ -824,10 +817,10 @@ describe('executionData.store', () => {
 	describe('copy-on-write', () => {
 		type ExecutionDataStore = ReturnType<typeof useExecutionDataStore>;
 
-		const nodeA = createTestNode({ id: 'node-a', name: 'NodeA' });
-		const nodeB = createTestNode({ id: 'node-b', name: 'NodeB' });
-
 		function createSeedExecution(overrides: Partial<IExecutionResponse> = {}) {
+			// Created for each call: a frozen test must not freeze another test's fixtures.
+			const nodeA = createTestNode({ id: 'node-a', name: 'NodeA' });
+			const nodeB = createTestNode({ id: 'node-b', name: 'NodeB' });
 			return createTestExecution({
 				executedNode: 'NodeA',
 				workflowData: createTestWorkflow({
@@ -859,6 +852,10 @@ describe('executionData.store', () => {
 								{
 									json: {},
 									pairedItem: { item: 0, sourceOverwrite: { previousNode: 'NodeA' } },
+								},
+								{
+									json: {},
+									pairedItem: [{ item: 0, sourceOverwrite: { previousNode: 'NodeA' } }, 1] as never,
 								},
 							],
 						},
@@ -978,6 +975,10 @@ describe('executionData.store', () => {
 						item: 0,
 						sourceOverwrite: { previousNode: 'NodeC' },
 					});
+					expect(resultData?.pinData?.NodeC[1].pairedItem).toEqual([
+						{ item: 0, sourceOverwrite: { previousNode: 'NodeC' } },
+						1,
+					]);
 					expect(execution?.workflowData.nodes.map((node) => node.name)).toEqual([
 						'NodeC',
 						'NodeB',
@@ -1025,7 +1026,10 @@ describe('executionData.store', () => {
 			expect(isProxy(store.execution)).toBe(false);
 			expect(isProxy(store.execution?.data?.resultData.runData)).toBe(false);
 			expect(isProxy(store.executionRunData)).toBe(false);
-			expect(isProxy(store.executionRunData?.NodeB)).toBe(false);
+			// Includes the task arrays that the mutator built.
+			for (const tasks of Object.values(store.executionRunData ?? {})) {
+				expect(isProxy(tasks)).toBe(false);
+			}
 		});
 
 		it('setExecution leaves no Vue proxy in the payload', () => {
@@ -1055,6 +1059,91 @@ describe('executionData.store', () => {
 			expect(store.executionRunData?.NodeA).toBeUndefined();
 			expect(store.executionRunData?.NodeB).toHaveLength(1);
 			expect(execution.data?.resultData.runData.NodeA).toHaveLength(2);
+		});
+
+		describe('tolerates missing values', () => {
+			const inputs: Array<{ name: string; execution: () => IExecutionResponse }> = [
+				{
+					name: 'a task without source',
+					execution: () =>
+						createSeedExecution({
+							data: createRunExecutionData({
+								resultData: { runData: { NodeA: [{ executionStatus: 'success' } as never] } },
+							}),
+						}),
+				},
+				{
+					name: 'a task with a null source',
+					execution: () =>
+						createSeedExecution({
+							data: createRunExecutionData({
+								resultData: {
+									runData: { NodeA: [createTestTaskData({ source: null as never })] },
+								},
+							}),
+						}),
+				},
+				{
+					name: 'a null entry in source',
+					execution: () =>
+						createSeedExecution({
+							data: createRunExecutionData({
+								resultData: { runData: { NodeA: [createTestTaskData({ source: [null] })] } },
+							}),
+						}),
+				},
+				{
+					name: 'a pairedItem without sourceOverwrite',
+					execution: () =>
+						createSeedExecution({
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									pinData: { NodeA: [{ json: {}, pairedItem: [{ item: 0 }, null as never] }] },
+								},
+							}),
+						}),
+				},
+				{
+					name: 'a null connection bucket',
+					execution: () =>
+						createSeedExecution({
+							workflowData: createTestWorkflow({
+								connections: { NodeA: { main: [null, [null as never]] } },
+							}),
+						}),
+				},
+				{
+					name: 'missing connection outputs',
+					execution: () =>
+						createSeedExecution({
+							workflowData: createTestWorkflow({
+								connections: { NodeA: { main: undefined as never } },
+							}),
+						}),
+				},
+				{
+					name: 'an undefined runData',
+					execution: () =>
+						createSeedExecution({
+							data: createRunExecutionData({ resultData: { runData: null as never } }),
+						}),
+				},
+			];
+
+			it.each(inputs)('renameExecutionDataNode accepts $name', ({ execution }) => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(deepFreeze(execution()));
+
+				expect(() => store.renameExecutionDataNode('NodeA', 'NodeC')).not.toThrow();
+			});
+
+			it.each(inputs)('markAsStopped accepts $name', ({ execution }) => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(deepFreeze(execution()));
+
+				expect(() => store.markAsStopped()).not.toThrow();
+			});
 		});
 
 		describe('notifies consumers during a live run', () => {

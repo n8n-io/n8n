@@ -134,7 +134,7 @@ function renameRecordKey<T>(
 
 function renameTaskSources(tasks: ITaskData[], oldName: string, newName: string): ITaskData[] {
 	return mapArray(tasks, (task) => {
-		if (!task.source) return task;
+		if (!Array.isArray(task.source)) return task;
 		const source = mapArray(task.source, (entry) =>
 			entry?.previousNode === oldName ? { ...entry, previousNode: newName } : entry,
 		);
@@ -147,7 +147,7 @@ function renamePairedItemSource(
 	oldName: string,
 	newName: string,
 ): IPairedItemData {
-	if (pairedItem.sourceOverwrite?.previousNode !== oldName) return pairedItem;
+	if (pairedItem?.sourceOverwrite?.previousNode !== oldName) return pairedItem;
 	return {
 		...pairedItem,
 		sourceOverwrite: { ...pairedItem.sourceOverwrite, previousNode: newName },
@@ -176,11 +176,15 @@ function renameConnections(
 ): IConnections {
 	return mapRecord(renameRecordKey(connections, oldName, newName), (outputs) =>
 		mapRecord(outputs, (buckets) =>
-			mapArray(buckets, (bucket) =>
-				bucket
-					? mapArray(bucket, (conn) => (conn.node === oldName ? { ...conn, node: newName } : conn))
-					: bucket,
-			),
+			buckets
+				? mapArray(buckets, (bucket) =>
+						bucket
+							? mapArray(bucket, (conn) =>
+									conn?.node === oldName ? { ...conn, node: newName } : conn,
+								)
+							: bucket,
+					)
+				: buckets,
 		),
 	);
 }
@@ -732,18 +736,19 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			const dataChanges: Partial<IRunExecutionData> = {};
 			if (!current.data.redactionInfo?.isRedacted && data.data) {
 				for (const connectionType of Object.keys(data.data)) {
-					const redacted = data.data[connectionType]
-						.flatMap((items) => items ?? [])
-						.find((item) => item.redaction?.redacted);
-					if (redacted) {
-						dataChanges.redactionInfo = {
-							isRedacted: true,
-							reason: redacted.redaction?.reason ?? 'workflow_redaction_policy',
-							canReveal: false,
-							provisional: true,
-						};
-						break;
+					for (const items of data.data[connectionType]) {
+						const redacted = items?.find((item) => item.redaction?.redacted);
+						if (redacted) {
+							dataChanges.redactionInfo = {
+								isRedacted: true,
+								reason: redacted.redaction?.reason ?? 'workflow_redaction_policy',
+								canReveal: false,
+								provisional: true,
+							};
+							break;
+						}
 					}
+					if (dataChanges.redactionInfo) break;
 				}
 			}
 
@@ -846,13 +851,20 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		}) {
 			const current = execution.value;
 			if (!current?.data) return;
+			const { runData } = current.data.resultData;
 			execution.value = {
-				...withResultData(current, current.data, {
-					runData: mapRecord(current.data.resultData.runData, (tasks) => {
-						const kept = tasks.filter(({ executionStatus }) => executionStatus === 'success');
-						return kept.length === tasks.length ? tasks : kept;
-					}),
-				}),
+				...withResultData(
+					current,
+					current.data,
+					runData
+						? {
+								runData: mapRecord(runData, (tasks) => {
+									const kept = tasks.filter(({ executionStatus }) => executionStatus === 'success');
+									return kept.length === tasks.length ? tasks : kept;
+								}),
+							}
+						: {},
+				),
 				...(stopData && {
 					status: stopData.status,
 					startedAt: stopData.startedAt,
