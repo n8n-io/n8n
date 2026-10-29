@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
+import { vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 
 import N8nListbox from './Listbox.vue';
@@ -302,10 +303,8 @@ describe('N8nListbox', () => {
 		await nextTick();
 		const current = getByRole('option', { name: 'v2' });
 		const next = getByRole('option', { name: 'v1' });
-		const point = { bubbles: true, clientX: 40, clientY: 20, pointerType: 'mouse' as const };
 
-		next.dispatchEvent(new PointerEvent('pointermove', point));
-		await nextTick();
+		await userEvent.hover(next);
 
 		expect(next).toHaveAttribute('data-highlighted');
 		expect(current).not.toHaveAttribute('data-highlighted');
@@ -316,11 +315,33 @@ describe('N8nListbox', () => {
 		expect(current).toHaveAttribute('data-highlighted');
 		expect(next).not.toHaveAttribute('data-highlighted');
 
-		next.dispatchEvent(new PointerEvent('pointermove', point));
-		await nextTick();
+		await userEvent.hover(next);
 
 		expect(current).toHaveAttribute('data-highlighted');
 		expect(next).not.toHaveAttribute('data-highlighted');
+	});
+
+	it('does not scroll the page when the list mounts', async () => {
+		const scrolling = document.documentElement;
+		scrolling.scrollTop = 180;
+		const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {
+			scrolling.scrollTop = 480;
+		});
+		const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {
+			scrolling.scrollTop = 480;
+		});
+
+		try {
+			render(HoverHarness, { props: { highlightOnHover: false } });
+			await nextTick();
+			await nextTick();
+
+			expect(scrollIntoView).toHaveBeenCalled();
+			expect(scrolling.scrollTop).toBe(180);
+		} finally {
+			scrollIntoView.mockRestore();
+			focus.mockRestore();
+		}
 	});
 
 	it('does not move the highlight on hover when highlightOnHover is off', async () => {

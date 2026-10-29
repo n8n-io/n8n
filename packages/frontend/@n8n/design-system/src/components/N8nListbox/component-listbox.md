@@ -33,7 +33,7 @@ Omit `modelValue` and pass `defaultValue` when the list owns the value. `default
 
 One item in the list has the highlight. Arrow keys move it. Home and End move it to the ends. `orientation="vertical"` uses Up and Down. `orientation="horizontal"` uses Left and Right. Items sit in a row in a horizontal list.
 
-The list does not take focus when it mounts.
+The list does not take focus when it mounts. It does not scroll the page.
 
 Tab moves through the controls inside the focused item, then to the next item. Shift+Tab moves back. Tab leaves the list at either end.
 

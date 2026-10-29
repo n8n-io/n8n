@@ -142,15 +142,57 @@ function onFocusOut(event: FocusEvent) {
 	event.stopPropagation();
 }
 
+type ScrollMark = {
+	node: Element | Window;
+	top: number;
+	left: number;
+};
+
+// Ancestors plus the document. Reka's mount highlight scrolls every one of them.
+function scrollMarks(start: HTMLElement): ScrollMark[] {
+	const marks: ScrollMark[] = [{ node: window, top: window.scrollY, left: window.scrollX }];
+	const scrollingElement = document.scrollingElement;
+	if (scrollingElement) {
+		marks.push({
+			node: scrollingElement,
+			top: scrollingElement.scrollTop,
+			left: scrollingElement.scrollLeft,
+		});
+	}
+	let node: HTMLElement | null = start.parentElement;
+	while (node) {
+		marks.push({ node, top: node.scrollTop, left: node.scrollLeft });
+		node = node.parentElement;
+	}
+	return marks;
+}
+
+function restoreScroll(marks: ScrollMark[]) {
+	for (const mark of marks) {
+		if (mark.node === window) {
+			window.scrollTo(mark.left, mark.top);
+			continue;
+		}
+		mark.node.scrollTop = mark.top;
+		mark.node.scrollLeft = mark.left;
+	}
+}
+
 // Reka focuses the highlighted item while the list mounts.
 // Release that focus so the caller keeps the caret where it was.
+// Put the page back after that highlight. It scrolls on the second tick.
 onMounted(() => {
+	const content = contentRef.value;
+	if (!content) return;
+	const marks = scrollMarks(content);
 	void nextTick(() => {
-		const active = document.activeElement;
-		const content = contentRef.value;
-		if (active instanceof HTMLElement && content?.contains(active)) {
-			active.blur();
-		}
+		void nextTick(() => {
+			restoreScroll(marks);
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && content.contains(active)) {
+				active.blur();
+			}
+		});
 	});
 });
 </script>
