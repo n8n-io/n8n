@@ -92,6 +92,7 @@ export class McpConnection {
 	private client: McpClient | undefined;
 
 	private config: McpServerConfig;
+	private httpFetch: typeof fetch | undefined;
 
 	private connectionPromise: Promise<void> | undefined = undefined;
 	private disconnectPromise: Promise<void> | undefined = undefined;
@@ -124,6 +125,12 @@ export class McpConnection {
 
 	private async doConnect(): Promise<void> {
 		const sdk = await loadMcpSdk();
+		this.httpFetch = this.config.fetch;
+		if (this.config.url && !this.httpFetch) {
+			const { createRefreshingAuthFetch } = await import('@n8n/ai-utilities');
+			// Keep credential handling across redirects when no custom fetch is supplied.
+			this.httpFetch = createRefreshingAuthFetch({ baseFetch: globalThis.fetch });
+		}
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		await this.connectPreferredTransport(sdk);
 	}
@@ -326,7 +333,8 @@ export class McpConnection {
 			if (config.transport === 'sse') return this.createSseTransport(url, config, sdk);
 			return new sdk.StreamableHTTPClientTransport(url, {
 				requestInit,
-				fetch: config.fetch,
+				fetch: this.httpFetch,
+				redirectPolicy: 'follow',
 			});
 		}
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
@@ -335,8 +343,9 @@ export class McpConnection {
 	private createSseTransport(url: URL, config: McpServerConfig, sdk: McpSdkModule): McpTransport {
 		return new sdk.SSEClientTransport(url, {
 			requestInit: config.headers ? { headers: config.headers } : undefined,
-			fetch: config.fetch,
-			eventSourceInit: config.fetch ? { fetch: config.fetch } : undefined,
+			fetch: this.httpFetch,
+			eventSourceInit: { fetch: this.httpFetch },
+			redirectPolicy: 'follow',
 		});
 	}
 }

@@ -91,8 +91,8 @@ export interface McpServerConfig {
 	/**
 	 * Custom fetch implementation used by URL-based transports (SSE,
 	 * StreamableHTTP).
-	 * Ignored for stdio transport. When omitted, the SDK transports fall back
-	 * to the global `fetch`.
+	 * Ignored for stdio transport. When omitted, a redirect-aware wrapper uses
+	 * the global `fetch`.
 	 */
 	fetch?: typeof fetch;
 
