@@ -1,8 +1,4 @@
-import {
-	MAX_CHANNEL_SEND_FILE_BYTES,
-	MAX_FILE_MESSAGES_PER_SEND,
-	type FileUploadLimits,
-} from './agent-chat-integration';
+import { MAX_FILE_MESSAGES_PER_SEND, type FileUploadLimits } from './agent-chat-integration';
 import { MAX_BATCH_OPERATIONS } from './integration-tool-schema';
 import type { IntegrationToolConnectionDescriptor } from './integration-tool-types';
 
@@ -51,7 +47,7 @@ export function buildActionToolDescription(
 
 /** A platform that streams the reply posts the queued files after it, so the reply text is not their message. */
 export function buildFileUploadGuidance(limits: FileUploadLimits, streamsReply: boolean): string {
-	const maxFileBytes = Math.min(limits.maxFileBytes, MAX_CHANNEL_SEND_FILE_BYTES);
+	const maxFileBytes = limits.maxFileBytes;
 	const maxMegabytes = Math.floor(maxFileBytes / (1024 * 1024));
 	const sendLimit = `Send up to ${limits.maxFiles * MAX_FILE_MESSAGES_PER_SEND} files of up to ${maxMegabytes} MB each with one action.`;
 	if (streamsReply) {
