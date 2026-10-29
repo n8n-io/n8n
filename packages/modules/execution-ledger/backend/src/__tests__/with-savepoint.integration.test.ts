@@ -65,6 +65,22 @@ describe('withSavepoint', () => {
 		expect(await remainingExecutionIds()).toEqual(['before', 'after']);
 	});
 
+	it('undoes a failed step even after a same-named nested step failed inside it', async () => {
+		await txRunner.run({}, async (ctx) => {
+			await expect(
+				withSavepoint(ctx, 'step', async (outerCtx) => {
+					await repository.append(ledgerRow({ executionId: 'outer' }), outerCtx);
+					await withSavepoint(outerCtx, 'step', async () => {
+						throw new Error('inner failed');
+					}).catch(() => {});
+					throw new Error('outer failed');
+				}),
+			).rejects.toThrow('outer failed');
+		});
+
+		expect(await remainingExecutionIds()).toEqual([]);
+	});
+
 	it('throws FoldTransactionLostError when the transaction ended inside the step', async () => {
 		const error = await txRunner
 			.run({}, async (ctx) => {
@@ -79,5 +95,6 @@ describe('withSavepoint', () => {
 
 		expect(error).toBeInstanceOf(FoldTransactionLostError);
 		expect(error).toHaveProperty('cause.message', 'database or disk is full');
+		expect(error).toHaveProperty('extra.statement', 'ROLLBACK TO SAVEPOINT fold_step_lost');
 	});
 });
