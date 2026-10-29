@@ -8500,6 +8500,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-config
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../@n8n/eslint-plugin-community-nodes
@@ -8602,6 +8605,9 @@ importers:
       confusables:
         specifier: 1.1.1
         version: 1.1.1
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2

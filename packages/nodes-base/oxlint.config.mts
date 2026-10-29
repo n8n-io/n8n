@@ -19,22 +19,28 @@ export default defineConfig({
 	rules: {
 		'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 		'@n8n/community-nodes/no-builder-hint-leakage': 'error',
-		'import/no-duplicates': 'off',
-		'import-x-alias/no-extraneous-dependencies': 'warn',
-		'n8n-local-rules/no-dynamic-regexp': 'off',
 		'n8n-local-rules/require-escaped-query-values': 'error',
-		'no-constant-condition': 'warn',
-		'no-control-regex': 'warn',
-		'no-dupe-else-if': 'warn',
-		'no-ex-assign': 'warn',
-		'no-fallthrough': 'warn',
-		'no-self-assign': 'off',
-		'no-unsafe-optional-chaining': 'off',
-		'typescript/ban-ts-comment': 'off',
-		'typescript/no-deprecated': 'warn',
-		'typescript/prefer-promise-reject-errors': 'warn',
 	},
 	overrides: [
+		{
+			files: ['nodes/**/*.ts', 'credentials/**/*.ts', 'utils/**/*.ts', 'test/**/*.ts'],
+			rules: {
+				'import-x-alias/no-extraneous-dependencies': 'warn',
+				'n8n-local-rules/no-dynamic-regexp': 'off',
+				'no-constant-condition': 'warn',
+				'no-control-regex': 'warn',
+				'no-dupe-else-if': 'warn',
+				'no-ex-assign': 'warn',
+				'no-fallthrough': 'warn',
+				'typescript/ban-ts-comment': 'off',
+				'typescript/no-deprecated': 'warn',
+				'typescript/prefer-promise-reject-errors': 'warn',
+				// The residual ESLint pass enforces these rules on the same paths.
+				'import/no-duplicates': 'off',
+				'no-self-assign': 'off',
+				'no-unsafe-optional-chaining': 'off',
+			},
+		},
 		{
 			files: ['nodes/**/*.ts'],
 			excludeFiles: [

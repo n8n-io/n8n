@@ -114,6 +114,7 @@ const config: KnipConfig = {
 				'@n8n/eslint-config',
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
+				'eslint-plugin-n8n-nodes-base',
 				'eslint-plugin-unused-imports',
 			],
 		}),

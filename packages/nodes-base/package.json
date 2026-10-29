@@ -902,6 +902,7 @@
   },
   "devDependencies": {
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
@@ -936,6 +937,7 @@
     "@types/xml2js": "catalog:",
     "@unicode/unicode-18.0.0": "2.0.7",
     "confusables": "1.1.1",
+    "eslint": "catalog:",
     "fast-check": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
