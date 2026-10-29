@@ -8,6 +8,7 @@ import {
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
+	type SkillDetail,
 	type SkillListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
@@ -479,8 +480,16 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
  * use can still move: the modal warns about a scope that drops an agent.
  */
 function scopeLock(
-	detail: Pick<SkillListItem, 'canDelete'>,
+	detail: Pick<SkillDetail, 'canDelete' | 'syncedFrom'>,
 ): Pick<AgentSkillModalData, 'scopeLockedReason'> {
+	// A synced skill moves only with its source, until the user stops syncing it.
+	if (detail.syncedFrom) {
+		return {
+			scopeLockedReason: i18n.baseText('settings.context.skills.synced.scopeLocked', {
+				interpolate: { repo: detail.syncedFrom.label },
+			}),
+		};
+	}
 	if (!detail.canDelete) {
 		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
 	}
@@ -521,6 +530,12 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 			initialCompare: show === 'compare',
 			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 			deleteDisabledReason: deleteBlockedReason(detail),
+			...(detail.syncedFrom?.canStopSyncing
+				? {
+						onStopSyncing: async () =>
+							await onStopSyncing(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
+					}
+				: {}),
 			onConfirm: async ({ skill, scope, availableToAssistant }) =>
 				await onSave(
 					detail.id,
@@ -611,6 +626,41 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
+	await load();
+}
+
+/**
+ * The skill keeps its versions and becomes a normal skill that the user can edit. The row
+ * menu and the modal both use this. The modal closes, as in the prototype, and the list
+ * reloads with the row editable.
+ */
+async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
+	const name = skill.name;
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
+			interpolate: { scope: scopeDisplay(skill).label, count: skill.latestVersion },
+			adjustToNumber: skill.latestVersion,
+		}),
+		i18n.baseText('settings.context.skills.stopSyncing.confirm.title', {
+			interpolate: { name },
+		}),
+		{
+			confirmButtonText: i18n.baseText('settings.context.skills.stopSyncing.action'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	try {
+		await skillsStore.stopSyncingSkill(skill.id);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.stopSyncing.error'));
+		return;
+	}
+	onStopped?.();
+	showMessage({
+		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
+		type: 'success',
+	});
 	await load();
 }
 
@@ -784,6 +834,7 @@ onMounted(async () => {
 			@timeline="openEditModal($event, 'versions')"
 			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
+			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>

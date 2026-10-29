@@ -13,6 +13,7 @@ import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
+import type { SkillSourceLinkRepository } from '../../database/repositories/skill-source-link.repository';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
 import { skillContentHash } from '../../utils/skill-content-hash';
 import { FakeSkillUsage } from '../../testing';
@@ -91,6 +92,7 @@ export function createSkillServices() {
 	const users = mock<UserRepository>();
 	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const syncedFrom = mock<SkillSyncedFromService>();
+	const links = mock<SkillSourceLinkRepository>();
 	const access = new SkillAccessService(skills, projectScope, skillUsage);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
@@ -105,6 +107,7 @@ export function createSkillServices() {
 		telemetry,
 		assistantGate,
 		syncedFrom,
+		links,
 	);
 	return {
 		skills,
@@ -116,6 +119,7 @@ export function createSkillServices() {
 		users,
 		assistantGate,
 		syncedFrom,
+		links,
 		access,
 		runtime,
 		service,
@@ -127,7 +131,10 @@ export async function resetSkillMocks({
 	skills,
 	usage,
 	txRunner,
-}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'>) {
+	links,
+}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'> & {
+	links?: ReturnType<typeof createSkillServices>['links'];
+}) {
 	vi.restoreAllMocks();
 	vi.resetAllMocks();
 	await usage.seed({ agents: [], skills: [] });
@@ -137,4 +144,7 @@ export async function resetSkillMocks({
 	skills.findLatestSummaries.mockResolvedValue(new Map());
 	skills.findVersionsByIds.mockResolvedValue(new Map());
 	skills.findByIds.mockResolvedValue([]);
+	// No skill is synced unless a test links it.
+	links?.isLinked.mockResolvedValue(false);
+	links?.findLinkedSkillIds.mockResolvedValue(new Set());
 }

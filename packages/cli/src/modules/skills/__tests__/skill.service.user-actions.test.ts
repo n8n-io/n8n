@@ -83,6 +83,7 @@ describe('SkillService user actions', () => {
 		skillUsage,
 		assistantGate: rollout,
 		access,
+		links,
 		service,
 	} = createSkillServices();
 	let canAccess: MockInstance<SkillAccessService['canAccess']>;
@@ -96,7 +97,7 @@ describe('SkillService user actions', () => {
 	let visible: Skill[];
 
 	beforeEach(async () => {
-		await resetSkillMocks({ skills: repository, usage, txRunner });
+		await resetSkillMocks({ skills: repository, usage, txRunner, links });
 		// Support bot is the only agent, in project-1, and uses no skill.
 		await usage.seed({
 			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
@@ -392,6 +393,7 @@ describe('SkillService user actions', () => {
 				availableToAssistant: false,
 				canEdit: true,
 				canDelete: false,
+				canStopSyncing: false,
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});

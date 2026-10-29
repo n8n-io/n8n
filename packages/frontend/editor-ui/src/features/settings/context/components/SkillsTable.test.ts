@@ -40,6 +40,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
+		canStopSyncing: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -263,6 +264,32 @@ describe('SkillsTable', () => {
 		await userEvent.click(document.querySelector('[data-test-id="action-delete"]')!);
 
 		expect(emitted('delete')).toEqual([[row]]);
+	});
+
+	it('offers Stop syncing only for a synced skill the user may stop syncing', async () => {
+		const { getByTestId } = render([skill({ source: 'github', canEdit: false })]);
+
+		await openActions(getByTestId('skills-table'));
+
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+		);
+		expect(document.querySelector('[data-test-id="action-stopSyncing"]')).not.toBeInTheDocument();
+	});
+
+	it('emits stopSyncing for a synced skill the user may stop syncing', async () => {
+		const row = skill({ source: 'github', canEdit: false, canStopSyncing: true });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-stopSyncing"]')).toHaveTextContent(
+				'Stop syncing',
+			),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-stopSyncing"]')!);
+
+		expect(emitted('stopSyncing')).toEqual([[row]]);
 	});
 
 	it('emits download for any skill, also one the user cannot change', async () => {

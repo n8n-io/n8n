@@ -91,6 +91,11 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.connectSkillSource(rootStore.restApiContext, payload);
 	}
 
+	/** Stops syncing one skill, which makes it editable. The caller reloads the list. */
+	async function stopSyncingSkill(id: string): Promise<void> {
+		await api.stopSyncingSkill(rootStore.restApiContext, id);
+	}
+
 	return {
 		skills,
 		count,
@@ -106,5 +111,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		deleteSkill,
 		discoverSource,
 		connectSource,
+		stopSyncingSkill,
 	};
 });

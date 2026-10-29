@@ -39,11 +39,12 @@ describe('SkillService', () => {
 		telemetry,
 		users,
 		assistantGate,
+		links,
 		service,
 	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner, links }));
 
 	describe('createTrusted', () => {
 		it('creates the skill with an id in the agent skill format', async () => {
@@ -388,6 +389,9 @@ describe('SkillService', () => {
 				agentId: null,
 				source: 'github',
 			});
+
+			// A link makes a skill synced, not its source value.
+			beforeEach(() => links.isLinked.mockResolvedValue(true));
 
 			it.each([
 				{ case: 'new instructions', update: { instructions: 'new' } },

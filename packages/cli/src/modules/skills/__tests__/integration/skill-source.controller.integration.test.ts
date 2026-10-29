@@ -234,6 +234,7 @@ describe('SkillSourceController', () => {
 				type: 'github',
 				label: 'acme/skills',
 				webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
+				canStopSyncing: true,
 			});
 			expect(detail.data.skill.references).toEqual([
 				{ path: 'references/pages.md', content: '# Pages\n' },
@@ -361,6 +362,74 @@ describe('SkillSourceController', () => {
 			});
 
 			expect(data.duplicate).toEqual({ kind: 'none' });
+		});
+	});
+
+	describe('stop syncing', () => {
+		const importPdf = async (agent: SuperAgentTest, scope: Record<string, unknown>) => {
+			const { data: discovery } = await discover(agent, { url: REPO, ...scope });
+			const { data } = await connect(agent, {
+				url: REPO,
+				...scope,
+				skillKeys: keysOf(discovery, ['pdf']),
+			});
+			return data.imported[0].skillId;
+		};
+
+		const stop = async (agent: SuperAgentTest, skillId: string, status = 200) =>
+			await agent.post(`/skill-sources/skills/${skillId}/stop-syncing`).send().expect(status);
+
+		it('turns a synced skill into a normal skill that keeps its versions', async () => {
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+			const { body: before } = await editor.get(`/skills/${skillId}`).expect(200);
+			expect(before.data).toMatchObject({ canEdit: false, canStopSyncing: true });
+			expect(before.data.syncedFrom).toMatchObject({ canStopSyncing: true });
+
+			await stop(editor, skillId);
+
+			const { body: after } = await editor.get(`/skills/${skillId}`).expect(200);
+			expect(after.data).toMatchObject({ source: 'github', canEdit: true, syncedFrom: null });
+			expect(after.data.latestVersion).toBe(before.data.latestVersion);
+			const { body: saved } = await editor
+				.patch(`/skills/${skillId}`)
+				.send({ baseSkillHash: after.data.skillHash, instructions: 'Changed in n8n.' })
+				.expect(200);
+			expect(saved.data).toMatchObject({ created: true, version: 2 });
+			const { body: list } = await editor.get('/skills').expect(200);
+			expect(list.data.data.find((skill: { id: string }) => skill.id === skillId)).toMatchObject({
+				canEdit: true,
+				canStopSyncing: false,
+			});
+		});
+
+		it('lets the skill move on its own once it stopped syncing', async () => {
+			const skillId = await importPdf(owner, { scope: 'project', projectId: team.id });
+			const { body } = await owner.get(`/skills/${skillId}`).expect(200);
+			const move = { scope: 'instance', baseSkillHash: body.data.skillHash };
+
+			await owner.patch(`/skills/${skillId}`).send(move).expect(400);
+			await stop(owner, skillId);
+			await owner.patch(`/skills/${skillId}`).send(move).expect(200);
+		});
+
+		it('answers 404 for a skill that is not synced, also after a stop', async () => {
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+			const { id: plain } = await createSkill({ projectId: team.id, content: { name: 'plain' } });
+
+			await stop(editor, skillId);
+			await stop(editor, skillId, 404);
+			await stop(editor, plain, 404);
+		});
+
+		it('refuses a viewer, hides the skill from an outsider, and answers 404 with the flag off', async () => {
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+
+			const { body } = await viewer.get(`/skills/${skillId}`).expect(200);
+			expect(body.data.syncedFrom).toMatchObject({ canStopSyncing: false });
+			await stop(viewer, skillId, 403);
+			await stop(member, skillId, 404);
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await stop(editor, skillId, 404);
 		});
 	});
 

@@ -123,6 +123,11 @@ export type AgentSkillModalData = {
 	onDelete?: (id: string) => void | Promise<void>;
 	/** Why "Delete skill" is disabled, for example because agents use the skill. */
 	deleteDisabledReason?: string;
+	/**
+	 * Settings only: stops syncing a synced skill. The caller asks for confirmation and
+	 * closes the modal. Absent, or a skill the user may not stop syncing, hides the action.
+	 */
+	onStopSyncing?: (id: string) => void | Promise<void>;
 	/** The latest version of a saved hub skill. Set means the skill has versions to show. */
 	latestVersion?: number;
 	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
@@ -325,6 +330,15 @@ const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
  * marks a synced skill `canEdit: false`, so it does not feed the read-only rule here.
  */
 const syncedFrom = computed(() => props.data.syncedFrom ?? skillAccess.value?.syncedFrom ?? null);
+const canStopSyncing = computed(
+	() => !!syncedFrom.value?.canStopSyncing && !!props.data.onStopSyncing && !!props.data.skillId,
+);
+
+function onStopSyncing() {
+	if (props.data.skillId && props.data.onStopSyncing) {
+		void props.data.onStopSyncing(props.data.skillId);
+	}
+}
 const isReadOnly = computed(
 	() =>
 		props.data.readOnly === true ||
@@ -1362,6 +1376,16 @@ function onRemove() {
 			>
 				<template #icon><N8nIcon icon="external-link" :size="16" /></template>
 				{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
+			</N8nButton>
+			<N8nButton
+				v-if="canStopSyncing"
+				variant="ghost"
+				:disabled="isSaving"
+				data-testid="agent-skill-stop-syncing"
+				@click="onStopSyncing"
+			>
+				<template #icon><N8nIcon icon="unlink" :size="16" /></template>
+				{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
 			</N8nButton>
 		</template>
 		<template v-else-if="step === 'select'" #footerLeft>

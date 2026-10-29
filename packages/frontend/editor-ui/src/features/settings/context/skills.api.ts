@@ -126,3 +126,12 @@ export async function connectSkillSource(
 		payload,
 	);
 }
+
+/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
+export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
+	await makeRestApiRequest<{ ok: true }>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
+	);
+}

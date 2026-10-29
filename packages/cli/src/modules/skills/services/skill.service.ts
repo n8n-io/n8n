@@ -35,6 +35,7 @@ import {
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
+import { SkillSourceLinkRepository } from '../database/repositories/skill-source-link.repository';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import {
 	isSameSkillTarget,
@@ -141,6 +142,7 @@ export class SkillService {
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
+		private readonly linkRepository: SkillSourceLinkRepository,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -483,11 +485,10 @@ export class SkillService {
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
 			}
-			// Only Skill Sync changes the content of a synced skill. A save with unchanged
-			// content passes above, so a synced skill still accepts a no-op save.
-			const sourceLabel = syncedSourceLabel(latest.skill.source);
-			if (sourceLabel && !allowSynced) {
-				throw new SkillSyncedError(latest.version.name, sourceLabel);
+			// Only Skill Sync changes the content of a synced skill: a skill with a link. A save
+			// with unchanged content passes above, so a synced skill still accepts a no-op save.
+			if (!allowSynced && (await this.linkRepository.isLinked(skillId, txCtx))) {
+				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
@@ -541,14 +542,23 @@ export class SkillService {
 					);
 				}
 			}
+			const name =
+				nameAfterMove ??
+				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
+			// All skills of a source share its scope, so a synced skill moves only with its source.
+			if (await this.linkRepository.isLinked(skillId, txCtx)) {
+				const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
+				throw new SkillSyncedError(
+					name ?? skillId,
+					sourceLabelOf(skill?.source ?? 'github'),
+					'move',
+				);
+			}
 			const others = (await this.skillUsage.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
 			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
-			const name =
-				nameAfterMove ??
-				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
@@ -715,7 +725,7 @@ export class SkillService {
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		const [usedBy, syncedFrom] = await Promise.all([
 			this.skillUsage.findUsage(skill.id, agentProjectIds ?? 'all'),
-			syncedSourceLabel(skill.source) ? this.syncedFrom.of(skill.id) : null,
+			this.syncedFrom.of(user, skill.id),
 		]);
 		return {
 			...item,
@@ -778,13 +788,14 @@ export class SkillService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
+		const [latest, usage, projects, creators, canEdit, canDelete, synced] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillUsage.countUsingAgents(ids),
 			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
 			this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
 			this.skillAccess.accessCheck(user, 'delete'),
+			this.linkRepository.findLinkedSkillIds(ids),
 		]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
@@ -807,8 +818,10 @@ export class SkillService {
 				usedByAgents: usage.get(skill.id) ?? 0,
 				availableToAssistant: skill.availableToAssistant,
 				// The source holds the content of a synced skill, so n8n cannot edit it.
-				canEdit: canEdit(skill, projectId) && !syncedSourceLabel(skill.source),
+				canEdit: canEdit(skill, projectId) && !synced.has(skill.id),
 				canDelete: canDelete(skill, projectId),
+				// Stop syncing needs the update permission of the scope that the skill shares with its source.
+				canStopSyncing: synced.has(skill.id) && canEdit(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});
@@ -833,4 +846,9 @@ export class SkillService {
 			]),
 		);
 	}
+}
+
+/** How a message names the source of a synced skill, such as GitHub. */
+function sourceLabelOf(source: SkillSource): string {
+	return syncedSourceLabel(source) ?? 'its source';
 }
