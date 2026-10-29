@@ -28,10 +28,12 @@ export function useMigrationFindingAssistant() {
 	async function open({
 		rule,
 		workflow,
+		action,
 		automatedMigration,
 	}: {
 		rule: { ruleId: string; ruleTitle: string };
 		workflow: AffectedWorkflow;
+		action: 'fix' | 'review';
 		automatedMigration?: InstanceAiAutomatedMigrationOutcome;
 	}): Promise<void> {
 		const projectId = workflow.homeProjectId ?? (await ensurePersonalProjectId());
@@ -70,6 +72,7 @@ export function useMigrationFindingAssistant() {
 		telemetry.track(TELEMETRY_EVENT.MIGRATION_REPORT.USER_OPENED_MIGRATION_FINDING_IN_ASSISTANT, {
 			rule_id: rule.ruleId,
 			workflow_id: workflow.id,
+			action,
 			...(automatedMigration ? { automated_migration: automatedMigration.outcome } : {}),
 			outcome,
 		});

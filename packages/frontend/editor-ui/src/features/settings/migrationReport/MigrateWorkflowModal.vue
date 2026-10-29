@@ -187,9 +187,12 @@ const canContinueInAssistant = computed(
 );
 
 function continueInAssistant(outcome: MigrationOutcome) {
+	const action = props.data.assistantAction;
+	if (action === 'none') return;
 	void findingAssistant.open({
 		rule: props.data,
 		workflow: outcome.workflow,
+		action,
 		automatedMigration:
 			'error' in outcome
 				? { outcome: 'refused', message: outcome.error.message, nodeName: outcome.error.node?.name }

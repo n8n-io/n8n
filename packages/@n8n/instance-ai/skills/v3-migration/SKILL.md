@@ -145,6 +145,7 @@ only to clear the finding.
   case explicitly, and apply it after the user agrees. The finding stays open
   while the setting is on.
 - Gmail Trigger below version 1.4: first ask whether the workflow relies on
-  drafts, on sent mail, or on more than 10 emails per poll. Then update the
-  node to version 1.4 and keep its filters. For sent mail, propose a Schedule
-  Trigger with Gmail "Get Many messages" and a search such as `in:sent`.
+  drafts, on sent mail, or on more than 10 emails per poll. If the user agrees,
+  update the node to version 1.4 and keep its filters. For sent mail, propose a
+  Schedule Trigger with Gmail "Get Many messages" and a search such as
+  `in:sent`.

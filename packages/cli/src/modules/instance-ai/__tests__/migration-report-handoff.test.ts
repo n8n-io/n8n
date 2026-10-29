@@ -49,6 +49,7 @@ const finding: MigrationReportFinding = {
 			nodeName: 'Transform',
 		},
 	],
+	assistantAction: 'fix',
 };
 
 const SKILL = '# n8n 3.0 Migration\n\nFix the finding you were given.';
@@ -70,6 +71,7 @@ describe('resolveMigrationReportFinding', () => {
 		findingQuery.describeWorkflowFinding.mockResolvedValue({
 			rule,
 			issues: finding.issues,
+			assistantAction: 'fix',
 		});
 	});
 
@@ -123,6 +125,15 @@ describe('buildMigrationReportContextBlock', () => {
 		]) {
 			expect(block).toContain(text);
 		}
+	});
+
+	it('asks for agreement before any change only for a review finding', () => {
+		const review = 'change the workflow only after the user agrees';
+
+		expect(buildMigrationReportContextBlock(handoff, finding, SKILL)).not.toContain(review);
+		expect(
+			buildMigrationReportContextBlock(handoff, { ...finding, assistantAction: 'review' }, SKILL),
+		).toContain(review);
 	});
 
 	it('says the report no longer finds the issue when the workflow has none', () => {

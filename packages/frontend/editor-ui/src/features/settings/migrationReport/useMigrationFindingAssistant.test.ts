@@ -65,7 +65,7 @@ beforeEach(() => {
 });
 
 it('opens a new tab in the workflow project with the finding, and tracks the click', async () => {
-	await createAssistant().open({ rule, workflow });
+	await createAssistant().open({ rule, workflow, action: 'fix' });
 
 	expect(mocks.startThread).toHaveBeenCalledExactlyOnceWith(
 		'team-project',
@@ -90,6 +90,7 @@ it('opens a new tab in the workflow project with the finding, and tracks the cli
 	expect(mocks.track).toHaveBeenCalledWith(EVENT, {
 		rule_id: 'function-removed-v3',
 		workflow_id: 'workflow-1',
+		action: 'fix',
 		outcome: 'started',
 	});
 });
@@ -102,7 +103,7 @@ it('passes on what an automated migration left behind', async () => {
 		nodeName: 'Split',
 	};
 
-	await createAssistant().open({ rule, workflow, automatedMigration });
+	await createAssistant().open({ rule, workflow, action: 'fix', automatedMigration });
 
 	const [, , , launch, , , options] = mocks.startThread.mock.calls[0];
 	expect(launch.sourceContext).toEqual({
@@ -122,7 +123,11 @@ it('passes on what an automated migration left behind', async () => {
 });
 
 it('falls back to the personal project when the workflow has no home project', async () => {
-	await createAssistant().open({ rule, workflow: { ...workflow, homeProjectId: undefined } });
+	await createAssistant().open({
+		rule,
+		workflow: { ...workflow, homeProjectId: undefined },
+		action: 'fix',
+	});
 
 	expect(mocks.startThread.mock.calls[0][0]).toBe('personal-project');
 });
@@ -131,7 +136,11 @@ it('tracks a failed hand-off when no project can be resolved', async () => {
 	mocks.personalProject = null;
 	mocks.getPersonalProject.mockRejectedValue(new Error('Offline'));
 
-	await createAssistant().open({ rule, workflow: { ...workflow, homeProjectId: undefined } });
+	await createAssistant().open({
+		rule,
+		workflow: { ...workflow, homeProjectId: undefined },
+		action: 'fix',
+	});
 
 	expect(mocks.startThread).not.toHaveBeenCalled();
 	expect(mocks.track).toHaveBeenCalledWith(EVENT, expect.objectContaining({ outcome: 'failed' }));

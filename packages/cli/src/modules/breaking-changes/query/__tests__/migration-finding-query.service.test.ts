@@ -711,6 +711,7 @@ describe('MigrationFindingQueryService', () => {
 					migratable: false,
 				},
 				issues: [issueFor(workflow.nodes[0])],
+				assistantAction: 'fix',
 			});
 		});
 

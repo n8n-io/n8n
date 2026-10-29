@@ -46,6 +46,7 @@ export const MIGRATION_REPORT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			rule_id: z.string(),
 			workflow_id: z.string(),
+			action: z.enum(['fix', 'review']).describe('The Assistant action the rule offers'),
 			automated_migration: z
 				.enum(['refused', 'partial'])
 				.optional()

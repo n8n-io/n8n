@@ -858,6 +858,7 @@ describe('MigrationRuleDetail', () => {
 			expect(assistant.open).toHaveBeenCalledWith({
 				rule: expect.objectContaining({ ruleId: 'rule-1', ruleTitle: 'Test Rule' }),
 				workflow: expect.objectContaining({ id: 'workflow-1', homeProjectId: 'project-1' }),
+				action: 'fix',
 			});
 		});
 

@@ -220,22 +220,27 @@ export class MigrationFindingQueryService {
 		targetVersion: BreakingChangeVersion,
 		ruleId: string,
 		workflow: WorkflowEntity,
-	): Promise<{ rule: RuleDescription; issues: BreakingChangeWorkflowIssue[] } | undefined> {
+	): Promise<
+		| {
+				rule: RuleDescription;
+				issues: BreakingChangeWorkflowIssue[];
+				assistantAction: 'fix' | 'review';
+		  }
+		| undefined
+	> {
 		const rule = this.ruleRegistry.getRule(ruleId);
-		if (
-			!rule ||
-			!('detectWorkflow' in rule) ||
-			rule.getMetadata().version !== targetVersion ||
-			assistantActionOf(rule) === 'none'
-		) {
+		if (!rule || !('detectWorkflow' in rule) || rule.getMetadata().version !== targetVersion) {
 			return undefined;
 		}
+		const assistantAction = assistantActionOf(rule);
+		if (assistantAction === 'none') return undefined;
 
 		const issuesByWorkflow = await this.issuesFromRecheck(rule, [workflow]);
 
 		return {
 			rule: await this.describeRule(rule),
 			issues: issuesByWorkflow.get(workflow.id) ?? [],
+			assistantAction,
 		};
 	}
 

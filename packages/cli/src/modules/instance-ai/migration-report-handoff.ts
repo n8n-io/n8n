@@ -23,6 +23,8 @@ export interface MigrationReportFinding {
 	rule: RuleDescription;
 	/** The workflow's current issues for the rule. Empty when a fix already landed. */
 	issues: BreakingChangeWorkflowIssue[];
+	/** What the rule offers the Assistant for. A review must not change the workflow on its own. */
+	assistantAction: 'fix' | 'review';
 }
 
 /** Longest issue or migration text kept in the block. Issue text embeds node names. */
@@ -93,12 +95,17 @@ export function buildMigrationReportContextBlock(
 	finding: MigrationReportFinding,
 	skillInstructions: string,
 ): string {
-	const { workflow, rule, issues } = finding;
+	const { workflow, rule, issues, assistantAction } = finding;
 
 	const lines = [
 		`The user opened this conversation from the n8n ${MIGRATION_REPORT_TARGET_VERSION ?? ''} migration report to resolve one finding in the workflow "${sanitisePromptText(workflow.name)}" (id \`${sanitisePromptText(workflow.id)}\`).`,
 		`Finding: ${rule.ruleTitle} (\`${rule.ruleId}\`).`,
 		`What changes: ${rule.ruleDescription}`,
+		...(assistantAction === 'review'
+			? [
+					'This finding is a review: explain what changes for this workflow, and change the workflow only after the user agrees.',
+				]
+			: []),
 		...(issues.length > 0
 			? [
 					'Affected nodes in the current workflow:',

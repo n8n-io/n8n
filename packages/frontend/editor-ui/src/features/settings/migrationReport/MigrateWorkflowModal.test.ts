@@ -244,6 +244,7 @@ describe('MigrateWorkflowModal', () => {
 					ruleTitle: 'AI Transform node is deprecated',
 				}),
 				workflow: expect.objectContaining({ id: 'workflow-1' }),
+				action: 'fix',
 				automatedMigration: {
 					outcome: 'refused',
 					message: 'This node has no generated code yet.',

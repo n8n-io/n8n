@@ -220,10 +220,12 @@ const assistantButton = computed(() => {
 	}
 	return action === 'review'
 		? {
+				action,
 				label: i18n.baseText('settings.migrationReport.detail.assistant.reviewLabel'),
 				text: i18n.baseText('settings.migrationReport.detail.assistant.review'),
 			}
 		: {
+				action,
 				label: i18n.baseText('settings.migrationReport.detail.assistant.fixLabel'),
 				text: i18n.baseText('settings.migrationReport.detail.assistant.fix'),
 			};
@@ -1095,7 +1097,13 @@ const sortedWorkflows = computed(() => {
 							:label="assistantButton.label"
 							:aria-label="assistantButton.text"
 							data-test-id="migration-open-in-assistant-button"
-							@click="findingAssistant.open({ rule: state, workflow: item })"
+							@click="
+								findingAssistant.open({
+									rule: state,
+									workflow: item,
+									action: assistantButton.action,
+								})
+							"
 						>
 							<template #icon>
 								<N8nAssistantIcon size="small" />
