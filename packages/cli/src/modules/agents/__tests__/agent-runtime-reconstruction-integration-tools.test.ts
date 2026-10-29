@@ -159,6 +159,7 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsService>(),
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>(),
 	);
 }
 
@@ -505,6 +506,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					'delegate_subagent',
 					'write_todos',
 					'read_binary_data',
+					'import_files',
 					'get_environment',
 					'recall_memory',
 					'flag_memory',
