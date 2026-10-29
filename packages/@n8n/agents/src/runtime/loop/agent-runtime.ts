@@ -1131,6 +1131,7 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
+			this.activeSkills?.reportContext();
 			const turn = await sink.callModel(modelCallContext);
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.

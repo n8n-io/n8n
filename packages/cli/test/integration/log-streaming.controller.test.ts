@@ -2,13 +2,18 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
+import { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
@@ -40,6 +45,163 @@ beforeAll(async () => {
 });
 
 describe('POST /eventbus/destination', () => {
+	describe('destination save permissions', () => {
+		const payload = {
+			__type: MessageEventBusDestinationTypeNames.webhook,
+			url: 'https://example.com/original',
+			label: 'Original destination',
+			enabled: true,
+			subscribedEvents: ['n8n.audit', 'n8n.workflow'],
+			options: {},
+		};
+		let createOnlyAgent: SuperAgentTest;
+		let createAndUpdateAgent: SuperAgentTest;
+		const destinationIds = new Set<string>();
+
+		beforeAll(async () => {
+			const createOnlyRole = await createCustomRoleWithScopeSlugs(['eventBusDestination:create'], {
+				roleType: 'global',
+			});
+			const createAndUpdateRole = await createCustomRoleWithScopeSlugs(
+				['eventBusDestination:create', 'eventBusDestination:update'],
+				{ roleType: 'global' },
+			);
+			createOnlyAgent = testServer.authAgentFor(await createUser({ role: createOnlyRole }));
+			createAndUpdateAgent = testServer.authAgentFor(
+				await createUser({ role: createAndUpdateRole }),
+			);
+		});
+
+		afterEach(async () => {
+			vi.restoreAllMocks();
+			for (const id of destinationIds) {
+				await Container.get(LogStreamingDestinationService).removeDestination(id, false);
+			}
+			destinationIds.clear();
+		});
+
+		test.each([false, true])(
+			'creates a destination with create scope when a client id is supplied: %s',
+			async (supplyId) => {
+				const id = supplyId ? uuid() : undefined;
+				const response = await createOnlyAgent
+					.post('/eventbus/destination')
+					.send({ ...payload, id });
+				expect(response.statusCode).toBe(200);
+				destinationIds.add(response.body.data.id);
+				expect(response.body.data.id).toEqual(id ?? expect.any(String));
+				const stored = await Container.get(EventDestinationsRepository).findOneByOrFail({
+					id: response.body.data.id,
+				});
+				expect(stored.destination).toMatchObject(payload);
+			},
+		);
+
+		test.each([true, false])(
+			'keeps the stored and active destination without update scope when enabled is %s',
+			async (enabled) => {
+				const id = uuid();
+				destinationIds.add(id);
+				await authOwnerAgent
+					.post('/eventbus/destination')
+					.send({ ...payload, id })
+					.expect(200);
+				const repository = Container.get(EventDestinationsRepository);
+				const service = Container.get(LogStreamingDestinationService);
+				const stored = await repository.findOneByOrFail({ id });
+				const active = await service.findDestination(id);
+				const close = vi.spyOn(MessageEventBusDestinationWebhook.prototype, 'close');
+				const publisher = Container.get(Publisher);
+				vi.mocked(publisher.publishCommand).mockClear();
+
+				await createOnlyAgent
+					.post('/eventbus/destination')
+					.send({
+						...payload,
+						id,
+						url: 'https://example.com/changed',
+						label: 'Changed destination',
+						enabled,
+						subscribedEvents: ['n8n.audit'],
+					})
+					.expect(403);
+
+				expect(await repository.findOneByOrFail({ id })).toEqual(stored);
+				expect(await service.findDestination(id)).toEqual(active);
+				expect(close.mock.contexts).toEqual([
+					expect.objectContaining({ label: 'Changed destination' }),
+				]);
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			},
+		);
+
+		test('replaces a destination with create and update scopes', async () => {
+			const id = uuid();
+			destinationIds.add(id);
+			await authOwnerAgent
+				.post('/eventbus/destination')
+				.send({ ...payload, id })
+				.expect(200);
+			const replacement = { ...payload, id, label: 'Updated destination', enabled: false };
+
+			const response = await createAndUpdateAgent
+				.post('/eventbus/destination')
+				.send(replacement)
+				.expect(200);
+
+			expect(response.body.data).toMatchObject(replacement);
+			const stored = await Container.get(EventDestinationsRepository).findOneByOrFail({ id });
+			expect(stored.destination).toMatchObject(replacement);
+			expect(await Container.get(LogStreamingDestinationService).findDestination(id)).toEqual([
+				stored.destination,
+			]);
+		});
+
+		test('requires update scope for a stored destination that is not loaded locally', async () => {
+			const id = uuid();
+			destinationIds.add(id);
+			await authOwnerAgent
+				.post('/eventbus/destination')
+				.send({ ...payload, id })
+				.expect(200);
+			const repository = Container.get(EventDestinationsRepository);
+			const stored = await repository.findOneByOrFail({ id });
+			const service = Container.get(LogStreamingDestinationService);
+			await service.close();
+
+			try {
+				await createOnlyAgent
+					.post('/eventbus/destination')
+					.send({ ...payload, id, enabled: false })
+					.expect(403);
+				expect(await repository.findOneByOrFail({ id })).toEqual(stored);
+				expect(await service.findDestination(id)).toEqual([]);
+			} finally {
+				await service.loadDestinationsFromDb();
+				await service.initialize();
+			}
+		});
+
+		test('creates only one destination when two create-only saves use the same id', async () => {
+			const id = uuid();
+			destinationIds.add(id);
+			const responses = await Promise.all(
+				['First destination', 'Second destination'].map(
+					async (label) =>
+						await createOnlyAgent.post('/eventbus/destination').send({ ...payload, id, label }),
+				),
+			);
+
+			expect(responses.map((response) => response.statusCode).sort()).toEqual([200, 403]);
+			const created = responses.find((response) => response.statusCode === 200);
+			const stored = await Container.get(EventDestinationsRepository).findOneByOrFail({ id });
+			expect(stored.destination).toEqual(created?.body.data);
+			expect(await Container.get(LogStreamingDestinationService).findDestination(id)).toEqual([
+				stored.destination,
+			]);
+		});
+	});
+
 	describe('Valid destination creation', () => {
 		test('should create a webhook destination', async () => {
 			const webhookPayload = {

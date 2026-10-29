@@ -10,14 +10,16 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
 import type { SkillTarget } from '../utils/skill-content';
+import { requiredSourceScope, type SkillSourceAction } from './skill-source.policy';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 
 type SkillOperation = 'read' | 'update' | 'delete';
 
 /**
- * Who may do what with a skill. The permission comes from the skill's own scope:
- * `projectSkill:*` on the project of a project or agent skill, and the global `skill:*`
- * for an instance skill. The project of an agent skill comes from `SkillUsageProxy`.
+ * Who may do what with a skill or a skill source. The permission comes from the scope of the
+ * skill or the source: `projectSkill:*` on the project of a project or agent skill or of a
+ * project source, and the global `skill:*` for an instance skill or a Global source. The
+ * project of an agent skill comes from `SkillUsageProxy`.
  */
 @Service()
 export class SkillAccessService {
@@ -134,7 +136,7 @@ export class SkillAccessService {
 				if (payload.projectId || payload.agentId) {
 					throw new UserError('An instance skill has no project and no agent.');
 				}
-				if (!hasGlobalScope(user, 'skill:create')) {
+				if (!(await this.canCreate(user, null))) {
 					throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
 				}
 				return { projectId: null, agentId: null };
@@ -163,8 +165,54 @@ export class SkillAccessService {
 		}
 	}
 
+	/** Whether the user may do `action` on a source in this scope. `projectId` null is Global. */
+	async canOnSource(
+		user: User,
+		source: { projectId: string | null },
+		action: SkillSourceAction,
+	): Promise<boolean> {
+		const { projectId } = source;
+		const scope = requiredSourceScope(action, projectId ? 'project' : 'global');
+		if (scope === null) return true;
+		return projectId
+			? await userHasScopes(user, [scope], false, { projectId })
+			: hasGlobalScope(user, scope);
+	}
+
+	/**
+	 * Change scope takes the source and its skills out of their scope, as a disconnect does,
+	 * and puts them into another scope, as a connect does.
+	 */
+	async canChangeSourceScope(
+		user: User,
+		from: { projectId: string | null },
+		to: { projectId: string | null },
+	): Promise<boolean> {
+		return (
+			(await this.canOnSource(user, from, 'disconnect')) &&
+			(await this.canOnSource(user, to, 'connect'))
+		);
+	}
+
+	/**
+	 * The projects whose sources the user sees, as the skills list does. Every user also sees
+	 * the Global sources. A source in another project stays hidden, also from the duplicate check.
+	 */
+	async visibleSourceProjects(user: User): Promise<string[] | 'all'> {
+		return (await this.projectScopeService.getProjectIds(user, ['projectSkill:list'])) ?? 'all';
+	}
+
+	/**
+	 * Whether the user may create a skill in the project, or an instance skill when
+	 * `projectId` is null. Each caller decides what a skill of one agent needs.
+	 */
+	async canCreate(user: User, projectId: string | null): Promise<boolean> {
+		if (projectId === null) return hasGlobalScope(user, 'skill:create');
+		return await userHasScopes(user, ['projectSkill:create'], false, { projectId });
+	}
+
 	private async assertCanCreateIn(user: User, projectId: string): Promise<void> {
-		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
+		if (!(await this.canCreate(user, projectId))) {
 			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}
 	}

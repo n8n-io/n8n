@@ -19,6 +19,7 @@ vi.mock('../attachments/parse-file.tool', () => ({
 
 vi.mock('../credentials.tool', () => ({
 	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
+	createUpdateCredentialDescriptionTool: vi.fn(() => ({ id: 'update_credential_description' })),
 	createSearchCredentialTypesTool: vi.fn(() => ({ id: 'search_credential_types' })),
 	createSetupCredentialsTool: vi.fn(() => ({ id: 'setup_credentials' })),
 	createTestCredentialTool: vi.fn(() => ({ id: 'test_credential' })),
@@ -48,7 +49,7 @@ vi.mock('../nodes.tool', () => ({
 }));
 
 vi.mock('../search-models.tool', () => ({
-	createSearchModelsTool: vi.fn(() => ({ id: 'workflow_builder_search_models' })),
+	createSearchModelsTool: vi.fn(() => ({ id: 'search_models' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -84,8 +85,8 @@ vi.mock('../research.tool', () => ({
 }));
 
 vi.mock('../shared/ask-user.tool', () => ({
-	ASK_USER_TOOL_ID: 'workflow_builder_ask_user',
-	createAskUserTool: vi.fn(() => ({ id: 'workflow_builder_ask_user' })),
+	ASK_USER_TOOL_ID: 'ask_user',
+	createAskUserTool: vi.fn(() => ({ id: 'ask_user' })),
 }));
 
 vi.mock('../task-control.tool', () => ({
@@ -161,8 +162,8 @@ describe('domain tool construction', () => {
 			get_node_types: { id: 'get_node_types' },
 			get_node_parameter_options: { id: 'get_node_parameter_options' },
 			execute_node: { id: 'execute_node' },
-			workflow_builder_search_models: { id: 'workflow_builder_search_models' },
-			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
+			search_models: { id: 'search_models' },
+			ask_user: { id: 'ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
 		expect(orchestratorTools.has('workflow_builder_workflows')).toBe(false);
@@ -193,10 +194,8 @@ describe('domain tool construction', () => {
 	});
 
 	it('never defers model catalog search behind search_tools', () => {
-		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain(
-			'workflow_builder_search_models',
-		);
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_builder_search_models')).toBe(true);
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('search_models');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('search_models')).toBe(true);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -364,3 +363,15 @@ describe('domain tool construction', () => {
 		expect(withSession.has('get-session')).toBe(true);
 	});
 });
+
+it.each([true, false, undefined])(
+	'gates description updates when the flag is %s',
+	(credentialDescriptionsEnabled) => {
+		const context = mock<InstanceAiContext>({
+			credentialDescriptionsEnabled,
+			currentUserAttachments: [],
+		});
+		const names = getActiveOrchestratorDomainToolNames(context);
+		expect(names.has('update_credential_description')).toBe(credentialDescriptionsEnabled === true);
+	},
+);

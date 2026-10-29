@@ -7,6 +7,7 @@ import {
 	cancelAgentChatRun,
 	createAgent,
 	deleteN8nChatThread,
+	deleteSystemAgentThread,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
@@ -23,6 +24,7 @@ import {
 	listAgentsPage,
 	listN8nChatAgents,
 	listN8nChatThreads,
+	listSystemAgentThreads,
 	duplicateAgent,
 	listAttachableSkills,
 	createAgentSkill,
@@ -213,6 +215,39 @@ describe('useAgentApi', () => {
 				['GET', '/agents/system/assistant/chat/thread-1/queue'],
 				['DELETE', '/agents/system/assistant/chat/runs/run-1'],
 			]);
+		});
+
+		it('lists a page of system-agent threads, with the cursor and search only when set', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ data: [], nextCursor: null });
+
+			await listSystemAgentThreads(restApiContext, 'assistant', { limit: 30 });
+			await listSystemAgentThreads(restApiContext, 'assistant', {
+				limit: 30,
+				cursor: 'cursor-1',
+				search: 'digest',
+			});
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+				[restApiContext, 'GET', '/agents/system/assistant/threads', { limit: 30 }],
+				[
+					restApiContext,
+					'GET',
+					'/agents/system/assistant/threads',
+					{ limit: 30, cursor: 'cursor-1', search: 'digest' },
+				],
+			]);
+		});
+
+		it('deletes one of the own system-agent threads', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ success: true });
+
+			await deleteSystemAgentThread(restApiContext, 'assistant', 'thread/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'DELETE',
+				'/agents/system/assistant/chat/thread%2F1',
+			);
 		});
 	});
 

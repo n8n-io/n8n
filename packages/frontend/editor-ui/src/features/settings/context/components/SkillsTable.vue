@@ -20,7 +20,7 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'download' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -43,7 +43,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	open: [skill: SkillListItem];
+	timeline: [skill: SkillListItem];
+	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
+	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
@@ -68,10 +71,32 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			icon: skill.canEdit ? 'pencil' : 'eye',
 		},
 		{
+			value: 'timeline',
+			label: i18n.baseText('settings.context.skills.actions.timeline'),
+			icon: 'history',
+		},
+		{
+			value: 'compare',
+			label: i18n.baseText('settings.context.skills.actions.compare'),
+			icon: 'file-diff',
+			// A skill with one version has nothing to compare.
+			disabled: skill.latestVersion < 2,
+		},
+		{
 			value: 'download',
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
+		// Only a synced skill that the user may stop syncing.
+		...(skill.canStopSyncing
+			? [
+					{
+						value: 'stopSyncing' as const,
+						label: i18n.baseText('settings.context.skills.stopSyncing.action'),
+						icon: 'unlink' as const,
+					},
+				]
+			: []),
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
@@ -85,7 +110,10 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
+	else if (action === 'timeline') emit('timeline', skill);
+	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
+	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
 

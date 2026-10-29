@@ -12,7 +12,7 @@ export function targetTasksSkill(): RuntimeSkill {
 			'agent_builder_create_tasks',
 			'agent-context',
 			'agent_builder_update_task',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_publish_agent',
 		],
@@ -20,7 +20,7 @@ export function targetTasksSkill(): RuntimeSkill {
 			'agent_builder_create_tasks',
 			'agent-context',
 			'agent_builder_update_task',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
 			'search_nodes',
@@ -73,7 +73,7 @@ BOTH of these are true for it:
    the user did not specify a cadence, pick a sensible default and state it
    as an assumption.
 
-Use \`agent_builder_ask_questions\` only when even a reasonable assumption is impossible —
+Use \`ask_user\` only when even a reasonable assumption is impossible —
 never during an initial build: add the open decision to the pending setup
 instead, per the Initial Build rules in the \`agent-builder\` skill. Never create a
 placeholder or "refine-it-later" task.

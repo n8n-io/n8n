@@ -1,9 +1,9 @@
-import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
+import { CliWorkflowPublisher, isExpectedFailure } from '../cli-workflow-publisher';
 
 const flagsSchema = z.object({
 	id: z.string().describe('The ID of the workflow to publish'),
@@ -22,6 +22,16 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// Publishing evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+		await this.initExternalHooks();
+	}
+
 	async run() {
 		const { flags } = this;
 
@@ -40,13 +50,15 @@ export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSche
 			this.logger.info(`Publishing workflow with ID: ${flags.id} (current version)`);
 		}
 
-		await Container.get(WorkflowRepository).publishVersion(flags.id, flags.versionId);
+		const cliWorkflowPublisher = Container.get(CliWorkflowPublisher);
+		await cliWorkflowPublisher.publish(flags.id, flags.versionId);
 
-		this.logger.info('Note: Changes will not take effect if n8n is running.');
-		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');
+		this.logger.info(cliWorkflowPublisher.whenChangeApplies());
 	}
 
 	async catch(error: Error) {
-		this.logError(error, 'Error updating database. See log messages for details.');
+		if (!isExpectedFailure(error)) {
+			this.logError(error, 'Error publishing workflow. See log messages for details.');
+		}
 	}
 }

@@ -1781,6 +1781,101 @@ describe('AgentRuntime — guardrails', () => {
 		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 	}
 
+	it.each(['generate', 'stream'] as const)(
+		'%s reports an applied skill revocation when cancellation interrupts restoration',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+			const scope = { ...persistence, agentName: 'test' };
+			await memory.skillState.save(scope, {
+				skillIds: ['revoked-skill'],
+				versions: { 'revoked-skill': 'v1' },
+			});
+			const controller = new AbortController();
+			const save = memory.skillState.save.bind(memory.skillState);
+			vi.spyOn(memory.skillState, 'save').mockImplementationOnce(async (scope, state) => {
+				controller.abort();
+				await save(scope, state);
+			});
+			const source = createRuntimeSkillSource([]);
+			const onContext = vi.fn();
+			source.onContext = onContext;
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				skillSource: source,
+				memory,
+			});
+			try {
+				const options = { persistence, abortSignal: controller.signal };
+				if (mode === 'stream') {
+					const { stream } = await runtime.stream('hi', options);
+					await collectChunks(stream);
+				} else {
+					await runtime.generate('hi', options);
+				}
+				expect(generateText).not.toHaveBeenCalled();
+				expect(streamText).not.toHaveBeenCalled();
+				expect(await memory.skillState.load(scope)).toEqual({
+					skillIds: [],
+					versions: { 'revoked-skill': null },
+				});
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([
+					{ skillId: 'revoked-skill', kind: 'revoked' },
+				]);
+				onContext.mockClear();
+				generateText.mockResolvedValueOnce(makeGenerateSuccess());
+				await runtime.generate('continue', { persistence });
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
+			} finally {
+				await runtime.dispose();
+			}
+		},
+	);
+
+	it('reports skill context only when model-call guards allow delivery', async () => {
+		const memory = new InMemoryMemory();
+		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+		const source = createRuntimeSkillSource([
+			{
+				id: 'test-skill',
+				name: 'test-skill',
+				description: 'Test',
+				instructions: 'Test instructions',
+			},
+		]);
+		source.shouldAppendSkillUpdates = () => true;
+		const version = source.registry.skills[0].hash;
+		await memory.skillState.save(
+			{ ...persistence, agentName: 'test' },
+			{ skillIds: ['test-skill'], versions: { 'test-skill': version } },
+		);
+		const onContext = vi.fn();
+		source.onContext = onContext;
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			skillSource: source,
+			memory,
+		});
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		try {
+			await runtime.generate('hi', { persistence, guardrails: guardrailsOption(hook) });
+			expect(onContext).not.toHaveBeenCalled();
+			expect(generateText).not.toHaveBeenCalled();
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			await runtime.generate('hi', { persistence });
+			expect(onContext).toHaveBeenCalledExactlyOnceWith([
+				{ skillId: 'test-skill', version, kind: 'carried' },
+			]);
+			expect(JSON.stringify(generateText.mock.calls[0][0])).toContain('Test instructions');
+		} finally {
+			await runtime.dispose();
+		}
+	});
+
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
 		const { runtime } = createRuntime();
@@ -8534,7 +8629,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			memory.episodic.searchEntries(
 				{ resourceId: 'resource-1', threadId: 'thread-1' },
 				'Remember',
-				{ topK: 10 },
+				{ queryEmbedding: [1, 1], topK: 10 },
 			),
 		).resolves.toHaveLength(2);
 	});
@@ -8547,7 +8642,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -8561,7 +8656,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-2',
 				content: 'Earlier session: user chose SQLite for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -8609,7 +8704,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -8872,7 +8967,6 @@ describe('AgentRuntime — observation log jobs', () => {
 				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
 					content: 'Remember this detail.',
 					evidence: 'Please remember this.',
-					kind: 'explicit_remember',
 				}),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
@@ -10857,6 +10951,99 @@ describe('AgentRuntime — oversized tool results', () => {
 		) as (StreamChunk & { type: 'tool-result' }) | undefined;
 
 		expect(streamResult?.output).toEqual(modelOutput);
+	});
+
+	it('streams trace output to the host without sending it to the model', async () => {
+		const tool: BuiltTool = {
+			name: 'traced_result',
+			description: 'Return a traced result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ids: ['a'], text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => ({ ids: ['a'] }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-traced', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-traced', toolName: tool.name, input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-traced',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toEqual({ ids: ['a'] });
+
+		const modelMessages = streamText.mock.calls[1][0].messages as Array<{
+			role: string;
+			content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+		}>;
+		const modelToolResult = modelMessages
+			.find((message) => message.role === 'tool')
+			?.content.find((part) => part.type === 'tool-result');
+		expect(modelToolResult?.output?.value).toEqual({ text: 'visible' });
+		expect(JSON.stringify(modelMessages)).not.toContain('"ids"');
+	});
+
+	it('keeps the tool call successful when the trace output hook throws', async () => {
+		const tool: BuiltTool = {
+			name: 'trace_failure',
+			description: 'Return a result with a failing trace hook',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => {
+				throw new Error('trace failed');
+			},
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-trace-fail', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-trace-fail', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-trace-fail',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.isError).toBeFalsy();
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toBeUndefined();
 	});
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {
