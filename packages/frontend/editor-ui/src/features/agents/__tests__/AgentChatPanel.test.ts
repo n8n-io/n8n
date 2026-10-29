@@ -6,7 +6,12 @@ import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { AGENT_SUMMARY_WAIT_TIMEOUT } from '@/app/constants/durations';
-import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
+import {
+	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
+} from '@n8n/api-types';
 import type {
 	AgentChatQueueItem,
 	AgentBackgroundJobDto,
@@ -1437,12 +1442,15 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('showAttachButton')).toBe(false);
 	});
 
-	it('hides the attach button when the model accepts no attachments', () => {
+	it('accepts data files when the model accepts no attachments', () => {
 		const wrapper = mountPanel({
 			agentConfig: { ...defaultAgentConfig, model: 'unknown-provider/model' },
 		});
 
-		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('acceptedMimeTypes')).toBe(
+			AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+		);
 	});
 
 	it('moves a queued message to the composer after removal and sends it through the normal path', async () => {
@@ -4269,18 +4277,19 @@ describe('AgentChatPanel', () => {
 
 			expect(chatInput.props('showAttach')).toBe(true);
 			expect(chatInput.props('acceptedMimeTypes')).toBe(
-				'image/png,image/jpeg,image/gif,image/webp,application/pdf',
+				`image/png,image/jpeg,image/gif,image/webp,application/pdf,${AGENT_CHAT_DATA_ATTACHMENT_ACCEPT}`,
 			);
 		});
 
-		it('hides the attach button when every family in the prop is false', () => {
+		it('accepts only data files when every family in the prop is false', () => {
 			const wrapper = mountPanel({
 				agentConfig: { ...defaultAgentConfig, model: '' },
 				attachmentCapabilities: { image: false, pdf: false, audio: false },
 			});
 			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-			expect(chatInput.props('showAttach')).toBe(false);
+			expect(chatInput.props('showAttach')).toBe(true);
+			expect(chatInput.props('acceptedMimeTypes')).toBe(AGENT_CHAT_DATA_ATTACHMENT_ACCEPT);
 		});
 
 		it('rejects a file whose type the capabilities do not accept, with a toast, and keeps a supported one', async () => {
@@ -4350,7 +4359,7 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
 			expect(input.props('showAttach')).toBe(true);
 			expect(input.props('acceptedMimeTypes')).toBe(
-				'image/png,image/jpeg,image/gif,image/webp,application/pdf',
+				`image/png,image/jpeg,image/gif,image/webp,application/pdf,${AGENT_CHAT_DATA_ATTACHMENT_ACCEPT}`,
 			);
 		});
 

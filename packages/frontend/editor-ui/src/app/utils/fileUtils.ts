@@ -17,8 +17,18 @@ export function getBinaryDataFileName({
 }
 
 export function resolveFileMimeType(fileName: string, mimeType: string): string {
+	const extension = getFileExtension(fileName).toLowerCase();
+	// Windows browsers report a CSV file as an Excel file when Excel is installed.
+	if (
+		extension === 'csv' &&
+		(!mimeType ||
+			mimeType === 'application/vnd.ms-excel' ||
+			mimeType === 'application/octet-stream')
+	) {
+		return 'text/csv';
+	}
 	if (mimeType) return mimeType;
-	if (fileName.toLowerCase().endsWith('.md')) return 'text/markdown';
+	if (extension === 'md' || extension === 'markdown') return 'text/markdown';
 	return '';
 }
 

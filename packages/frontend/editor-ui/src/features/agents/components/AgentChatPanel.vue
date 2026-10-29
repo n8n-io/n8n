@@ -37,6 +37,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
+	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -758,13 +759,15 @@ const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
 	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
-const showAttach = computed(() => {
-	const capabilities = attachmentCapabilities.value;
-	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
-});
+// Data files work with every model, so the attach button always shows.
 const acceptedMimeTypes = computed(() => {
 	const capabilities = attachmentCapabilities.value;
-	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
+	return [
+		capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : '',
+		AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	]
+		.filter(Boolean)
+		.join(',');
 });
 
 function handleFilesSelected(files: File[]) {
@@ -780,11 +783,10 @@ function handleFilesSelected(files: File[]) {
 		}
 		// Handed-off files (n8n Assistant picker) skip the composer's `accept` filter.
 		if (
-			!showAttach.value ||
 			!isFileAcceptedByAccept(
 				file.name,
 				resolveFileMimeType(file.name, file.type),
-				acceptedMimeTypes.value ?? '',
+				acceptedMimeTypes.value,
 			)
 		) {
 			toast.showMessage({
@@ -1746,7 +1748,7 @@ onBeforeUnmount(() => {
 					:is-streaming="false"
 					:show-stop-button="showStop"
 					show-voice
-					:show-attach="showAttach"
+					:show-attach="true"
 					:show-attach-button="false"
 					:accepted-mime-types="acceptedMimeTypes"
 					:can-submit="!isSubmissionBlocked && hasDraft"
@@ -1830,7 +1832,7 @@ onBeforeUnmount(() => {
 					<template #footer-start>
 						<slot name="composer-start" />
 						<N8nTooltip
-							v-if="showAttach && showAttachButton"
+							v-if="showAttachButton"
 							:content="locale.baseText('chatInputBase.button.attach')"
 							placement="top"
 						>
