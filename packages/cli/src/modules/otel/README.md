@@ -104,9 +104,8 @@ telemetry.
 | `N8N_OTEL_TRACES_PROPAGATE_BAGGAGE` | `false` | Read caller baggage on webhooks and send it on |
 
 - The variable is env-only for now. It is not on the OTel settings page or in the public API. Set it on all main, worker and webhook instances. A restart applies a change.
-- The setting stands alone. `N8N_OTEL_TRACES_INJECT_OUTBOUND` holds back `traceparent` and
-  `tracestate` only, so an instance can send caller baggage without its own trace context, and
-  the other way round. The baggage takes the same paths as `traceparent`: `httpRequest`,
+- Outbound baggage also needs OTel on, because it is kept on the workflow span that OTel starts for each execution. `N8N_OTEL_TRACES_INJECT_OUTBOUND` holds back `traceparent` and
+  `tracestate` only, so an instance can send caller baggage without its own trace context. The baggage takes the same paths as `traceparent`: `httpRequest`,
   `request` and `getTraceHeaders()`.
 - When the node already sets a `baggage` header (in any case), `httpRequest` and `request` keep
   the node's header and do not add the caller baggage. The MCP path replaces it, because
