@@ -6,6 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent the attachment was sent to, when persisted (null for inline agents) |
 | binaryDataId | text |  | false |  |  | Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:\<uuid\>"); not an FK to binary_data, which only has rows in DB storage mode |
+| contentHash | varchar(64) |  | true |  |  | SHA-256 of the file bytes, hex; null for older rows |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdByThreadId | varchar(128) |  | false |  |  | Thread that made the file; threadId is the root thread that owns it |
 | fileName | varchar(255) |  | false |  |  |  |
@@ -57,6 +58,7 @@ erDiagram
 "public.agent_chat_attachments" {
   varchar_36_ agentId FK
   text binaryDataId
+  varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName

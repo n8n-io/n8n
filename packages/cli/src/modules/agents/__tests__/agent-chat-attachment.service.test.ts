@@ -147,6 +147,9 @@ describe('AgentChatAttachmentService', () => {
 			expect(stored.source).toBe('chat');
 			expect(stored.threadId).toBe('thread-1');
 			expect(stored.createdByThreadId).toBe('thread-1');
+			expect(stored.contentHash).toBe(
+				'039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81',
+			);
 		});
 
 		it('stores a file that a sub-agent makes under the root thread', async () => {
@@ -220,6 +223,47 @@ describe('AgentChatAttachmentService', () => {
 				}),
 			).rejects.toThrow('db down');
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
+		});
+	});
+
+	describe('findReadableByHashes', () => {
+		const file = (id: string, contentHash: string, createdByThreadId: string) =>
+			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;
+
+		it('maps each hash to its newest file for the root thread', async () => {
+			repository.findByHashesInThread.mockResolvedValue([
+				file('new', 'h1', 'child'),
+				file('old', 'h1', 'root'),
+			]);
+
+			const result = await service.findReadableByHashes(['h1', 'h2'], {
+				projectId: 'project-1',
+				threadId: 'root',
+			});
+
+			expect([...result]).toEqual([['h1', expect.objectContaining({ id: 'new' })]]);
+			expect(repository.findByHashesInThread).toHaveBeenCalledWith(
+				['h1', 'h2'],
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
+			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
+		});
+
+		it('returns only files that a sub-agent made or got granted', async () => {
+			repository.findByHashesInThread.mockResolvedValue([
+				file('parent-file', 'h1', 'root'),
+				file('granted', 'h2', 'root'),
+				file('own', 'h3', 'child'),
+			]);
+			grantRepository.findGrantedIds.mockResolvedValue(new Set(['granted']));
+
+			const result = await service.findReadableByHashes(['h1', 'h2', 'h3'], {
+				projectId: 'project-1',
+				threadId: 'child',
+			});
+
+			expect([...result.keys()]).toEqual(['h2', 'h3']);
 		});
 	});
 

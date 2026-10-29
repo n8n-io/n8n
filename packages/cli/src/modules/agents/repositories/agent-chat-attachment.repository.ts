@@ -22,7 +22,7 @@ type InboundAttachment = Pick<
 	| 'mimeType'
 	| 'fileSizeBytes'
 	| 'source'
-> & { id?: string };
+> & { id?: string; contentHash?: string | null };
 
 @Service()
 export class AgentChatAttachmentRepository {
@@ -113,6 +113,19 @@ export class AgentChatAttachmentRepository {
 		return await this.table
 			.managerFor(ctx)
 			.findBy(AgentChatAttachment, { createdByThreadId, ...scope });
+	}
+
+	/** Files of one delegation tree with one of the given content hashes, newest first. */
+	async findByHashesInThread(
+		hashes: string[],
+		scope: { projectId: string; threadId: string },
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment[]> {
+		if (hashes.length === 0) return [];
+		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
+			where: { contentHash: In(hashes), ...scope },
+			order: { createdAt: 'DESC' },
+		});
 	}
 
 	async findByIds(ids: string[], ctx: OperationContext): Promise<AgentChatAttachment[]> {
