@@ -97,6 +97,37 @@ describe('computeLatencyMetrics', () => {
 		expect(metrics.firstWorkspaceToolMs).toBe(8_000);
 	});
 
+	it.each([DOMAIN_TOOL_IDS.BUILD_WORKFLOW, DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE])(
+		'counts %s as the first workspace tool, since it sets up the sandbox too',
+		(toolName) => {
+			const metrics = computeLatencyMetrics(
+				[
+					toolCall(5_000, 'tc-1', toolName),
+					toolResult(11_000, 'tc-1'),
+					toolCall(12_000, 'tc-2', 'workspace_read_file'),
+					toolResult(12_500, 'tc-2'),
+				],
+				SENT_AT,
+			);
+
+			expect(metrics.firstWorkspaceToolMs).toBe(6_000);
+		},
+	);
+
+	it('ignores tools that do not use the sandbox', () => {
+		const metrics = computeLatencyMetrics(
+			[
+				toolCall(2_000, 'tc-1', DOMAIN_TOOL_IDS.SEARCH_NODES),
+				toolResult(4_000, 'tc-1'),
+				toolCall(5_000, 'tc-2', 'workspace_write_file'),
+				toolResult(13_000, 'tc-2'),
+			],
+			SENT_AT,
+		);
+
+		expect(metrics.firstWorkspaceToolMs).toBe(8_000);
+	});
+
 	it('times a save whose result carries the tool call id outside the payload', () => {
 		const metrics = computeLatencyMetrics(
 			[
