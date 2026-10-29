@@ -153,7 +153,7 @@ describe('custom role scope whitelists', () => {
 
 	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
 		// Member's baseline n8n Assistant access is `instanceAi:message` +
-		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
+		// `instanceAi:gateway` (Browser Use pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
 		const memberInstanceAiScopes = GLOBAL_MEMBER_SCOPES.filter((s) => s.startsWith('instanceAi:'));

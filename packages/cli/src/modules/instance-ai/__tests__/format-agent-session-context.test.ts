@@ -214,6 +214,28 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).not.toContain('x'.repeat(3_000));
 	});
 
+	it('renders host events with their name and truncated payload', () => {
+		const executions = [
+			makeExecution({
+				timeline: [
+					{ type: 'host-event', name: 'test.notice', payload: { level: 'info' }, timestamp: 5 },
+					{
+						type: 'host-event',
+						name: 'test.blob',
+						payload: { blob: 'x'.repeat(5_000) },
+						timestamp: 6,
+					},
+				],
+			}),
+		];
+
+		const block = formatPreviewSessionContext(makeThread(), executions);
+
+		expect(block).toContain('Host event test.notice: {"level":"info"}');
+		expect(block).toContain('Host event test.blob:');
+		expect(block).not.toContain('x'.repeat(3_000));
+	});
+
 	it('renders suspension events and execution errors', () => {
 		const executions = [
 			makeExecution({
@@ -229,6 +251,18 @@ describe('formatPreviewSessionContext', () => {
 
 		expect(block).toContain('[suspended waiting on ask_question]');
 		expect(block).toContain('error=boom');
+	});
+
+	it('renders a guardrail stop with its code instead of a tool call', () => {
+		const block = formatPreviewSessionContext(makeThread(), [
+			makeExecution({
+				timeline: [toolCallEvent(), { type: 'guardrail', code: 'budget.session', timestamp: 2000 }],
+			}),
+		]);
+
+		expect(block).toContain('[stopped by guardrail budget.session]');
+		expect(block).toContain('Tool call: search_orders');
+		expect(block?.match(/Tool call:/g)).toHaveLength(1);
 	});
 
 	it('omits turns beyond the whole-block cap and reports the omission', () => {

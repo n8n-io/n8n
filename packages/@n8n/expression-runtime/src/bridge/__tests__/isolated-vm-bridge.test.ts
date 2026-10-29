@@ -1,3 +1,5 @@
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { IsolatedVmBridge } from '../isolated-vm-bridge';
 import type { Logger } from '../../types';
@@ -86,6 +88,48 @@ describe('IsolatedVmBridge', () => {
 			const result = bridge.execute('return typeof extend === "function"', {});
 			expect(result).toBe(true);
 			void bridge.dispose();
+		});
+	});
+
+	describe('workflow data', () => {
+		let bridge: IsolatedVmBridge;
+
+		beforeEach(async () => {
+			bridge = new IsolatedVmBridge();
+			await bridge.initialize();
+		});
+
+		afterEach(async () => {
+			await bridge.dispose();
+		});
+
+		it('should free the data of a finished call after the bridge is disposed', async () => {
+			setFlagsFromString('--expose_gc');
+			const gc = runInNewContext('gc') as unknown as () => void;
+
+			let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
+			const dataRef = new WeakRef(data);
+			expect(bridge.execute('return this.$json.value', data)).toBe(42);
+			await bridge.dispose();
+			data = undefined;
+
+			// A WeakRef keeps its target alive until the current job ends.
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			gc();
+
+			expect(dataRef.deref()).toBeUndefined();
+		});
+
+		it('should return an error from a callback that runs after its call failed', () => {
+			expect(() =>
+				bridge.execute('globalThis.__getValueAtPath = $0; throw new Error("boom")', {
+					$json: { value: 42 },
+				}),
+			).toThrow('boom');
+
+			expect(() =>
+				bridge.execute('return globalThis.__getValueAtPath(["$json", "value"])', {}),
+			).toThrow('Host callback called after its expression finished');
 		});
 	});
 });

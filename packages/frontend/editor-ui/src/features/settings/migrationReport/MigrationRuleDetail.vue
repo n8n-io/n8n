@@ -50,6 +50,7 @@ import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
 	matchesWorkflowFilters,
+	PERSONAL_PROJECTS,
 	type WorkflowFilters,
 } from './workflowFilters';
 
@@ -712,6 +713,25 @@ const ownerFilterOptions = computed(() => {
 	);
 });
 
+// The projects of the listed workflows, for the project filter. Personal projects share one option.
+const projectFilterOptions = computed(() => {
+	const projects = new Map<string, string>();
+	let hasPersonal = false;
+	for (const workflow of state.value.affectedWorkflows) {
+		if (workflow.homeProjectType === 'personal') hasPersonal = true;
+		else if (workflow.homeProjectType === 'team' && workflow.homeProjectId) {
+			projects.set(workflow.homeProjectId, workflow.homeProjectName ?? workflow.homeProjectId);
+		}
+	}
+	const teamOptions = orderBy(
+		[...projects].map(([id, label]) => ({ id, label })),
+		[(project) => project.label.toLowerCase()],
+	);
+	if (!hasPersonal) return teamOptions;
+	const personalLabel = i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	return [{ id: PERSONAL_PROJECTS, label: personalLabel }, ...teamOptions];
+});
+
 const filteredWorkflows = computed(() => {
 	const query = searchQuery.value.toLowerCase();
 	const now = Date.now();
@@ -854,6 +874,7 @@ const sortedWorkflows = computed(() => {
 			<WorkflowFiltersPopover
 				v-model="workflowFilters"
 				:owners="ownerFilterOptions"
+				:projects="projectFilterOptions"
 				:current-user-id="currentUserId"
 				:counts="quickFilterCounts"
 			/>

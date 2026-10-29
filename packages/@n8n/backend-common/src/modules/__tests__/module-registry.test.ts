@@ -60,6 +60,7 @@ describe('eligibleModules', () => {
 	it.each([
 		'skills',
 		'instance-ai',
+		'knowledge',
 		'agents',
 		'agent-evals',
 		'inbox',
@@ -71,6 +72,7 @@ describe('eligibleModules', () => {
 	it.each([
 		'skills',
 		'instance-ai',
+		'knowledge',
 		'agents',
 		'agent-evals',
 		'inbox',
@@ -78,6 +80,11 @@ describe('eligibleModules', () => {
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+	});
+
+	it('should initialize knowledge before agents', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible.indexOf('knowledge')).toBeLessThan(eligible.indexOf('agents'));
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
@@ -119,6 +126,7 @@ describe('eligibleModules', () => {
 			'inbox',
 			'skills',
 			'instance-ai',
+			'knowledge',
 			'agents',
 			'agent-evals',
 			'scim',
@@ -166,6 +174,7 @@ describe('eligibleModules', () => {
 			'inbox',
 			'skills',
 			'instance-ai',
+			'knowledge',
 			'agents',
 			'agent-evals',
 			'scim',

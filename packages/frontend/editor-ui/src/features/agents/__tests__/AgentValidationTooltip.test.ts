@@ -308,3 +308,62 @@ describe('AgentValidationTooltip', () => {
 		);
 	});
 });
+
+describe('AgentValidationTooltip — restricted node types', () => {
+	const toolIssue = (reason?: string): AgentConfigValidationIssue => ({
+		code: 'restricted_node_type',
+		path: 'tools.1.node.nodeType',
+		capability: { kind: 'tool', toolType: 'node', id: 'query_database', index: 1 },
+		restriction: { nodeType: 'n8n-nodes-base.postgresTool', scope: 'instance' },
+		...(reason === undefined ? {} : { reason }),
+	});
+
+	const mcpIssue: AgentConfigValidationIssue = {
+		code: 'restricted_node_type',
+		path: 'mcpServers.0',
+		capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+		restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
+	};
+
+	// The chip names the scope, so the tooltip copy stays the same whatever level denied the type.
+	it.each([
+		['publish', 'agents.publish.issue.restrictedNodeType'],
+		['preview', 'agents.builder.preview.issue.restrictedNodeType'],
+	] as const)('names a restricted tool in the %s copy', (action, key) => {
+		const wrapper = mountTooltip({ action, issues: [toolIssue()] });
+
+		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(key);
+	});
+
+	it.each([
+		['publish', 'agents.publish.issue.restrictedNodeType'],
+		['preview', 'agents.builder.preview.issue.restrictedNodeType'],
+	] as const)('names a restricted MCP server in the %s copy', (action, key) => {
+		const wrapper = mountTooltip({ action, issues: [mcpIssue] });
+
+		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(key);
+	});
+
+	it.each([
+		['publish', 'agents.publish.issue.restrictedByInlineTool'],
+		['preview', 'agents.builder.preview.issue.restrictedByInlineTool'],
+	] as const)(
+		'tells the user to open the tool when only its inline agent is denied (%s)',
+		(action, key) => {
+			const wrapper = mountTooltip({ action, issues: [toolIssue('restricted_by_inline_tool')] });
+
+			expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(key);
+		},
+	);
+
+	it('keeps the restriction in the preview list, which excludes only channel and task issues', () => {
+		const wrapper = mountTooltip({
+			action: 'preview',
+			issues: [toolIssue()],
+		});
+
+		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(
+			'agents.builder.preview.issue.restrictedNodeType',
+		);
+	});
+});

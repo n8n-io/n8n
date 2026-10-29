@@ -81,7 +81,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	async getById(id: string): Promise<TrustedSource | undefined> {
 		return await this.cacheService.get(idKey(id), {
 			ttl: CACHE_TTL,
-			refreshFn: async () => await this.load(await this.trustedSourceRepository.findById(id)),
+			refreshFn: async () => await this.load(await this.trustedSourceRepository.findById(id, {})),
 		});
 	}
 
@@ -89,7 +89,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return await this.cacheService.get(issuerKey(issuer), {
 			ttl: CACHE_TTL,
 			refreshFn: async () =>
-				await this.load(await this.trustedSourceRepository.findByIssuer(issuer)),
+				await this.load(await this.trustedSourceRepository.findByIssuer(issuer, {})),
 		});
 	}
 
@@ -109,11 +109,14 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 
 	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
 	async listDue(limit: number): Promise<TrustedSource[]> {
-		const rows = await this.trustedSourceRepository.findDue({
-			errorRetrySeconds: ERROR_RETRY_SECONDS,
-			healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
-			limit,
-		});
+		const rows = await this.trustedSourceRepository.findDue(
+			{
+				errorRetrySeconds: ERROR_RETRY_SECONDS,
+				healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
+				limit,
+			},
+			{},
+		);
 		const sources = await Promise.all(rows.map(async (row) => await this.load(row)));
 		return sources.filter((source): source is TrustedSource => source !== undefined);
 	}
@@ -125,6 +128,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			source.id,
 			token,
 			DISCOVERY_LEASE_SECONDS,
+			{},
 		);
 		if (!claimed) return null;
 		await this.invalidateCache(source);
@@ -138,11 +142,16 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		result: DiscoveryResult,
 	): Promise<boolean> {
 		// Metadata is never cleared: an error keeps the last good documents readable.
-		const recorded = await this.trustedSourceRepository.recordDiscovery(source.id, token, {
-			status: result.status,
-			lastError: result.lastError,
-			...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
-		});
+		const recorded = await this.trustedSourceRepository.recordDiscovery(
+			source.id,
+			token,
+			{
+				status: result.status,
+				lastError: result.lastError,
+				...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
+			},
+			{},
+		);
 		if (recorded) await this.invalidateCache(source);
 		return recorded;
 	}
@@ -151,18 +160,21 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		// Persist the parsed, migrated output, not the raw input: stored rows hold the latest version
 		// with defaults filled in, so a later default change must not alter them.
 		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config));
-		const row = await this.trustedSourceRepository.insertRow({
-			name: input.name,
-			issuer: input.issuer,
-			type: config.authentication.type,
-			managedBy: 'admin',
-			status: 'unchecked',
-			lastError: null,
-			lastCheckedAt: null,
-			configVersion: config.version,
-			config: await this.cipher.encryptV2(config),
-			metadata: null,
-		});
+		const row = await this.trustedSourceRepository.insertRow(
+			{
+				name: input.name,
+				issuer: input.issuer,
+				type: config.authentication.type,
+				managedBy: 'admin',
+				status: 'unchecked',
+				lastError: null,
+				lastCheckedAt: null,
+				configVersion: config.version,
+				config: await this.cipher.encryptV2(config),
+				metadata: null,
+			},
+			{},
+		);
 		await this.invalidateCache(row);
 		return this.toRuntime(row, config);
 	}
@@ -207,7 +219,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 
 	async delete(id: string): Promise<void> {
 		const row = await this.loadAdminRow(id, 'delete');
-		await this.trustedSourceRepository.deleteById(id); // identities go with it via FK cascade
+		await this.trustedSourceRepository.deleteById(id, {}); // identities go with it via FK cascade
 		await this.invalidateCache(row);
 	}
 
@@ -218,25 +230,28 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	 */
 	async seedSystemSource(input: SeedSystemSourceInput): Promise<SeedSystemSourceOutcome> {
 		const { id, name, issuer } = input;
-		const existing = await this.trustedSourceRepository.findById(id);
+		const existing = await this.trustedSourceRepository.findById(id, {});
 
 		if (!existing) {
 			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config));
-			await this.trustedSourceRepository.insertIfAbsent({
-				id,
-				name,
-				issuer,
-				type: config.authentication.type,
-				managedBy: 'system',
-				status: 'unchecked',
-				lastError: null,
-				lastCheckedAt: null,
-				configVersion: config.version,
-				config: await this.cipher.encryptV2(config),
-				metadata: null,
-			});
+			await this.trustedSourceRepository.insertIfAbsent(
+				{
+					id,
+					name,
+					issuer,
+					type: config.authentication.type,
+					managedBy: 'system',
+					status: 'unchecked',
+					lastError: null,
+					lastCheckedAt: null,
+					configVersion: config.version,
+					config: await this.cipher.encryptV2(config),
+					metadata: null,
+				},
+				{},
+			);
 			// `orIgnore` also drops the insert when an admin row holds the name or the issuer.
-			if (!(await this.trustedSourceRepository.findById(id))) return 'conflict';
+			if (!(await this.trustedSourceRepository.findById(id, {}))) return 'conflict';
 			await this.invalidateCache({ id, issuer });
 			return 'inserted';
 		}
@@ -246,22 +261,26 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		if (existing.issuer === issuer) return 'unchanged';
 
 		// Another seeder can move the issuer first; then the row holding it is this one.
-		const holder = await this.trustedSourceRepository.findByIssuer(issuer);
+		const holder = await this.trustedSourceRepository.findByIssuer(issuer, {});
 		if (holder) return holder.id === id ? 'unchanged' : 'conflict';
 
 		try {
 			// The keys do not change, so the source stays usable. Discovery fetches the metadata for the
 			// new issuer on its next run. A run that started before the move loses its lease.
-			await this.trustedSourceRepository.updateById(id, {
-				issuer,
-				lastCheckedAt: null,
-				discoveryClaimToken: null,
-				discoveryClaimedAt: null,
-			});
+			await this.trustedSourceRepository.updateById(
+				id,
+				{
+					issuer,
+					lastCheckedAt: null,
+					discoveryClaimToken: null,
+					discoveryClaimedAt: null,
+				},
+				{},
+			);
 		} catch (error) {
 			// Another row can take the issuer between the check and the update. A conflict must not
 			// stop the boot, so classify it by reading the issuer again.
-			const winner = await this.trustedSourceRepository.findByIssuer(issuer);
+			const winner = await this.trustedSourceRepository.findByIssuer(issuer, {});
 			if (!winner) throw error;
 			return winner.id === id ? 'unchanged' : 'conflict';
 		}
@@ -270,7 +289,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	}
 
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
-		const row = await this.trustedSourceRepository.findById(id);
+		const row = await this.trustedSourceRepository.findById(id, {});
 		if (!row) throw new NotFoundError(`Trusted source "${id}" not found`);
 		if (row.managedBy === 'system') throw new SystemTrustedSourceModificationError(action);
 		return row;
@@ -306,7 +325,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	}
 
 	private async loadAll(): Promise<TrustedSource[]> {
-		const rows = await this.trustedSourceRepository.findAll();
+		const rows = await this.trustedSourceRepository.findAll({});
 		const sources = await Promise.all(rows.map(async (row) => await this.load(row)));
 		return sources.filter((source): source is TrustedSource => source !== undefined);
 	}

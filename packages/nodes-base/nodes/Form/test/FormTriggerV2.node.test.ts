@@ -673,4 +673,19 @@ describe('FormTrigger', () => {
 			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
 		});
 	});
+
+	describe('trustedSource', () => {
+		// The resolvers read the stored value as the source id, without evaluating it.
+		it('takes no expression, so the stored value is the source id', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			const property = formTriggerV2.description.properties.find((p) => p.name === 'trustedSource');
+			expect(property).toMatchObject({ default: 'n8n-internal', noDataExpression: true });
+		});
+	});
 });

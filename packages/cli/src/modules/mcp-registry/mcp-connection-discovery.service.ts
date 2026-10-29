@@ -14,16 +14,18 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
 import { OauthService } from '@/oauth/oauth.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import type { AuthFetchDomainPolicy } from '@/utils/auth-fetch';
 
 import { createMcpAuthFetch } from './mcp-auth-fetch';
 import {
+	findAiGatewayCredentialType,
 	getConfiguredEndpointUrl,
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -115,6 +117,7 @@ export class McpConnectionDiscoveryService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('mcp-registry');
 	}
@@ -190,6 +193,9 @@ export class McpConnectionDiscoveryService {
 		}
 		const connection = resolveMcpRegistryConnection(server);
 		if (!connection) throw new BadRequestError('MCP registry server has no supported connection');
+		if ('aiGateway' in source) {
+			return await this.prepareAiGatewaySource(user, source.slug, connection);
+		}
 
 		const resolvedCredential = await this.resolveCredential(user, source.credentialId);
 		const { credential, data } = resolvedCredential;
@@ -222,6 +228,48 @@ export class McpConnectionDiscoveryService {
 				transport: toAgentMcpTransport(connection.transport),
 				authentication: credential.type,
 				credentialId: credential.id,
+				metadata: { nodeTypeName: connection.nodeTypeName },
+			},
+		};
+	}
+
+	/** Gateway credits have no stored credential: mint one for the request user. */
+	private async prepareAiGatewaySource(
+		user: User,
+		slug: string,
+		connection: McpRegistryConnection,
+	): Promise<PreparedDiscovery> {
+		const credentialType = findAiGatewayCredentialType(connection);
+		if (!credentialType) {
+			throw new BadRequestError('MCP registry server does not offer Gateway credits');
+		}
+		const credentialData = await this.aiGatewayService.getSyntheticCredential({
+			credentialType,
+			userId: user.id,
+		});
+		const prepared = prepareMcpRegistryConnection({ connection, credentialType, credentialData });
+		if (!prepared.ok) throw new BadRequestError('Credential cannot connect to this MCP server');
+
+		return {
+			clientConfig: {
+				name: safeServerName(slug),
+				url: prepared.value.endpointUrl,
+				transport: toAgentMcpTransport(prepared.value.transport),
+				fetch: createMcpAuthFetch({
+					authentication: credentialType,
+					baseFetch: createAiMcpFetch(this.outboundHttp),
+					credentialData,
+					initialHeaders: prepared.value.headers,
+					oauthService: this.oauthService,
+					projectId: null,
+					allowedDomains: { mode: 'domains', domains: prepared.value.allowedDomains },
+				}),
+			},
+			responseConnection: {
+				url: getConfiguredEndpointUrl(connection),
+				transport: toAgentMcpTransport(connection.transport),
+				// An agent entry stores Gateway credits as 'none', with no credential id.
+				authentication: 'none',
 				metadata: { nodeTypeName: connection.nodeTypeName },
 			},
 		};

@@ -131,7 +131,6 @@ describe('ProjectsNavigation', () => {
 			'instance-ai': {
 				enabled: true,
 				mcpConnectionsAvailable: true,
-				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -140,6 +139,7 @@ describe('ProjectsNavigation', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
 			},
 		};
 	}
@@ -357,7 +357,7 @@ describe('ProjectsNavigation', () => {
 			expect(queryByText('Assistant')).toBeNull();
 		});
 
-		it('uses the new-chat icon on "New chat" and the AI sparkle on Assistant threads', async () => {
+		it('uses the new-chat icon on "New chat" and the Assistant icon on Assistant threads', async () => {
 			setupInstanceAiMember();
 			enableFlag();
 			mockedStore(useInstanceAiStore).threads = [
@@ -378,7 +378,7 @@ describe('ProjectsNavigation', () => {
 				),
 			).not.toBeNull();
 			expect(
-				getByTestId('instance-ai-sidebar-chats').querySelector('[data-icon="sparkles"]'),
+				getByTestId('instance-ai-sidebar-chats').querySelector('[data-icon="n8n-assistant"]'),
 			).not.toBeNull();
 		});
 
@@ -447,7 +447,7 @@ describe('ProjectsNavigation', () => {
 				{
 					item: 'new_chat',
 					variant: 'variant-a',
-					session_id: expect.any(String),
+					push_ref: expect.any(String),
 				},
 			);
 		});
@@ -475,7 +475,7 @@ describe('ProjectsNavigation', () => {
 					item: 'chat',
 					chat_type: 'agent',
 					variant: 'variant-a',
-					session_id: expect.any(String),
+					push_ref: expect.any(String),
 				},
 			);
 		});

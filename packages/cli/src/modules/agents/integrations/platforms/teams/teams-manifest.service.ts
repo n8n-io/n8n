@@ -17,8 +17,8 @@ import { sanitiseAppName, truncateToCodePoints } from '../../integration-helpers
 const MANIFEST_VERSION = '1.16';
 const MANIFEST_SCHEMA = `https://developer.microsoft.com/json-schemas/teams/v${MANIFEST_VERSION}/MicrosoftTeams.schema.json`;
 
-/** Matches the colour of the bundled icons, which are used when the agent's are not. */
-const ACCENT_COLOR = '#EA4B71';
+/** Matches the bundled icons, the default agent icon used when the agent's cannot be drawn. */
+export const ACCENT_COLOR = '#FF4A00';
 
 const DEFAULT_APP_NAME = 'n8n Agent';
 
@@ -57,7 +57,7 @@ export interface BuildTeamsManifestOptions {
 	 * only, with the name and description falling back to the agent's.
 	 */
 	settings?: AgentTeamsIntegrationSettings;
-	/** Drawn from the agent's personalisation. Absent means the bundled n8n icons. */
+	/** Drawn from the agent's personalisation. Absent means the bundled default agent icon. */
 	icons?: TeamsAppIcons;
 }
 

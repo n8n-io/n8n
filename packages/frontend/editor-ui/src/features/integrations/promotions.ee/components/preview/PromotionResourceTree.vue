@@ -1,30 +1,41 @@
 <script setup lang="ts">
-import type { PromotionResource } from '@n8n/api-types';
-import { N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import { blockersOf, type BlockerIndex } from '../../promotionOperation';
 import {
-	containerCheckState,
-	selectableDescendants,
-	selectableKeys,
+	availableKeys,
+	selectionCheck,
+	type DisabledKeys,
 	type Inclusion,
 	type ResourceKey,
 	type SelectionGraph,
 } from '../../promotionPreview.selection';
 import { flattenPreviewTree, isContainer, type PreviewTreeItem } from '../../promotionPreview.tree';
 
-const props = defineProps<{
-	tree: PreviewTreeItem[];
-	graph: SelectionGraph;
-	selected: ReadonlySet<ResourceKey>;
-	inclusion: Inclusion;
-	/** Included changes, out of the total in the tab above the tree. */
-	includedChanges: number;
-	totalChanges: number;
-	inspectedKey?: ResourceKey;
-}>();
+const props = withDefaults(
+	defineProps<{
+		tree: PreviewTreeItem[];
+		graph: SelectionGraph;
+		selected: ReadonlySet<ResourceKey>;
+		inclusion: Inclusion;
+		/** Included changes, out of the total in the tab above the tree. */
+		includedChanges: number;
+		totalChanges: number;
+		inspectedKey?: ResourceKey;
+		/** Blocked workflows, which users cannot add. */
+		disabled: DisabledKeys;
+		locked: boolean;
+		direction: PromotionDirection;
+		blockers: BlockerIndex;
+		/** False for a list that users only read, such as a review. Rows then only open their card. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
 
 const emit = defineEmits<{
 	toggle: [key: ResourceKey];
@@ -32,47 +43,49 @@ const emit = defineEmits<{
 	selectAll: [];
 	clear: [];
 	inspect: [key: ResourceKey];
+	showBlockers: [];
 }>();
 
 const i18n = useI18n();
-const { changeLabel } = usePromotionPreviewLabels();
+const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
+
+function markers(resource: PromotionResource) {
+	const blockers = blockersOf(props.blockers, resource);
+	const blocked = blockerMessage(resource, blockers);
+	// A variable warning replaces the change label, as the variable itself does not change.
+	const meta =
+		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
+			? i18n.baseText('promotions.preview.marker.warning')
+			: changeLabel(resource, props.direction);
+	return { blocked, meta: blocked ? undefined : meta };
+}
 
 const rows = computed(() =>
 	flattenPreviewTree(props.tree).map(({ item, indent }) => {
 		const resource = props.graph.resources.get(item.id);
-		return { item, indent, resource, check: resource ? checkbox(resource) : undefined };
+		return {
+			item,
+			indent,
+			resource,
+			check: resource
+				? selectionCheck(props.graph, resource, {
+						selected: props.selected,
+						inclusion: props.inclusion,
+						disabled: props.disabled,
+						locked: props.locked,
+					})
+				: undefined,
+			marker: resource ? markers(resource) : undefined,
+		};
 	}),
 );
 
-const selectableCount = computed(() => selectableKeys(props.graph).length);
+const available = computed(() => availableKeys(props.graph, props.disabled));
 
 const allState = computed(() => {
 	if (props.selected.size === 0) return 'unchecked';
-	return props.selected.size >= selectableCount.value ? 'checked' : 'indeterminate';
+	return available.value.every((key) => props.selected.has(key)) ? 'checked' : 'indeterminate';
 });
-
-/**
- * Workflows toggle themselves, projects and folders toggle the workflows inside them, and
- * dependencies stay read-only: they are checked while a selected workflow needs them.
- */
-function checkbox(resource: PromotionResource) {
-	if (resource.selectable) {
-		return { checked: props.selected.has(resource.key), indeterminate: false, disabled: false };
-	}
-	if (isContainer(resource)) {
-		const state = containerCheckState(props.graph, props.selected, resource.key);
-		return {
-			checked: state === 'checked',
-			indeterminate: state === 'indeterminate',
-			disabled: selectableDescendants(props.graph, resource.key).length === 0,
-		};
-	}
-	return {
-		checked: props.inclusion.included.has(resource.key),
-		indeterminate: false,
-		disabled: true,
-	};
-}
 
 function onToggle(resource: PromotionResource) {
 	if (isContainer(resource)) emit('toggleContainer', resource.key);
@@ -82,10 +95,11 @@ function onToggle(resource: PromotionResource) {
 
 <template>
 	<div :class="$style.tree" data-test-id="promotion-preview-tree">
-		<div :class="$style.row">
+		<div v-if="selectable" :class="$style.row">
 			<N8nCheckbox
 				:model-value="allState === 'checked'"
 				:indeterminate="allState === 'indeterminate'"
+				:disabled="locked || (available.length === 0 && allState === 'unchecked')"
 				:aria-label="i18n.baseText('promotions.preview.tree.selectAll')"
 				data-test-id="promotion-preview-select-all"
 				@update:model-value="allState === 'checked' ? emit('clear') : emit('selectAll')"
@@ -104,25 +118,28 @@ function onToggle(resource: PromotionResource) {
 		</div>
 
 		<ul :class="$style.list" role="list">
-			<template v-for="{ item, indent, resource, check } in rows" :key="item.id">
+			<template v-for="{ item, indent, resource, check, marker } in rows" :key="item.id">
 				<li v-if="item.kind === 'section'" :class="$style.heading">
 					<N8nText step="2xs" bold color="text-base">
 						{{ item.label }}
 					</N8nText>
 				</li>
 				<li
-					v-else-if="resource && check"
-					:class="[$style.row, $style.resource, { [$style.inspected]: inspectedKey === item.id }]"
+					v-else-if="resource && check && marker"
+					:class="[
+						$style.row,
+						$style.resource,
+						{ [$style.inspected]: inspectedKey === item.id, [$style.blocked]: marker.blocked },
+					]"
 					data-test-id="promotion-preview-tree-row"
 					:data-resource-key="item.id"
 				>
 					<N8nCheckbox
+						v-if="selectable"
 						:model-value="check.checked"
 						:indeterminate="check.indeterminate"
 						:disabled="check.disabled"
-						:aria-label="
-							i18n.baseText('promotions.preview.tree.select', { interpolate: { name: item.label } })
-						"
+						:aria-label="selectLabel(resource)"
 						data-test-id="promotion-preview-tree-checkbox"
 						@update:model-value="onToggle(resource)"
 					/>
@@ -134,11 +151,27 @@ function onToggle(resource: PromotionResource) {
 						@click="emit('inspect', item.id)"
 					>
 						<N8nIcon v-if="item.icon" :icon="item.icon" size="small" :class="$style.icon" />
-						<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
-						<N8nText step="2xs" color="text-light" :class="$style.meta">
-							{{ changeLabel(resource) }}
-						</N8nText>
+						<span :class="$style.text">
+							<N8nText step="xs" color="text-dark" :class="$style.label">{{ item.label }}</N8nText>
+							<N8nText v-if="marker.meta" step="2xs" color="text-light" :class="$style.meta">
+								{{ marker.meta }}
+							</N8nText>
+						</span>
 					</button>
+					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
+						<N8nButton
+							variant="ghost"
+							size="xsmall"
+							icon-only
+							:aria-label="marker.blocked"
+							data-test-id="promotion-preview-tree-blocker"
+							@click="emit('showBlockers')"
+						>
+							<template #icon>
+								<N8nIcon icon="circle-alert" size="small" color="warning" />
+							</template>
+						</N8nButton>
+					</N8nTooltip>
 				</li>
 			</template>
 		</ul>
@@ -170,10 +203,19 @@ function onToggle(resource: PromotionResource) {
 	border-radius: var(--radius--3xs);
 }
 
-/* Same color for hover and selection as the items of the main menu. */
-.resource:hover,
-.inspected {
-	background-color: var(--background--subtle);
+/* The same hover and selection as the inbox list. Both colors are transparent, so they show on
+   any page background. */
+.resource:hover {
+	background-color: var(--background--hover);
+}
+
+.inspected,
+.inspected:hover {
+	background-color: var(--background--active);
+}
+
+.resource.blocked {
+	background-color: var(--callout--color--background--warning);
 }
 
 .heading {
@@ -210,6 +252,13 @@ function onToggle(resource: PromotionResource) {
 .icon {
 	flex-shrink: 0;
 	color: var(--icon-color);
+}
+
+.text {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 
 .label {

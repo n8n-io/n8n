@@ -135,7 +135,7 @@ describe('AgentMemoryPanel', () => {
 			credentialType: 'openAiApi',
 			selectedCredentialId: null,
 			hideCreateNew: false,
-			teleported: false,
+			teleported: true,
 			credentialModalAppendToBody: true,
 		});
 	});

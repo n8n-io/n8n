@@ -483,7 +483,7 @@ describe('MigrationFindingQueryService', () => {
 			expect(result.affectedWorkflows[1].owner).toBeUndefined();
 		});
 
-		it('adds the id of the project that owns each workflow', async () => {
+		it('adds the project that owns each workflow', async () => {
 			findingRepository.listTriageableForRule.mockResolvedValue([
 				triageableFinding(1, 'rule-a', {
 					id: 'wf-1',
@@ -493,7 +493,7 @@ describe('MigrationFindingQueryService', () => {
 				}),
 			]);
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
-				new Map([['wf-1', { id: 'project-1' } as Project]]),
+				new Map([['wf-1', { id: 'project-1', name: 'Finance', type: 'team' } as Project]]),
 			);
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
@@ -501,7 +501,11 @@ describe('MigrationFindingQueryService', () => {
 			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
 				'wf-1',
 			]);
-			expect(result.affectedWorkflows[0].homeProjectId).toBe('project-1');
+			expect(result.affectedWorkflows[0]).toMatchObject({
+				homeProjectId: 'project-1',
+				homeProjectName: 'Finance',
+				homeProjectType: 'team',
+			});
 		});
 
 		it('lists a workflow without an owner when its owner row has no user any more', async () => {

@@ -76,7 +76,7 @@ describe('TrustedSourceDbGate', () => {
 	describe('with a binding', () => {
 		it('allows an active binding to the same user', async () => {
 			expect(await gate.authorizeSealed({ userId: 'user-1', grant, binding })).toBe(true);
-			expect(identityRepository.findBinding).toHaveBeenCalledWith('source-1', 'idp-alice');
+			expect(identityRepository.findBinding).toHaveBeenCalledWith('source-1', 'idp-alice', {});
 		});
 
 		it.each(['suspended', 'revoked'] as const)('denies a %s binding', async (status) => {

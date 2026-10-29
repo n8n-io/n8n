@@ -5,9 +5,12 @@ import {
 	serverToNodeDescription,
 	serverToCredentialDescription,
 } from '../node-description-transform';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -835,6 +838,109 @@ describe('serverToCredentialDescription', () => {
 				),
 			).not.toBeNull(); // current code DOES build a tile once the parent credential is known...
 			expect(oldPickRemote(databricksGenieTemplatedMockServer)).toBeNull(); // ...but old code drops it regardless
+		});
+	});
+});
+
+describe('Gateway credits MCP server', () => {
+	it('loads as a node with one credential type that has no base type and no fields', () => {
+		const node = serverToNodeDescription(
+			firecrawlAiGatewayMockServer,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+		const credential = serverToCredentialDescription(
+			firecrawlAiGatewayMockServer,
+			isKnownCredentialType,
+		);
+
+		expect(node?.credentials).toEqual([
+			{ name: 'n8nConnectFirecrawlMcpAiGatewayApi', required: true },
+		]);
+		expect(node?.properties.some(({ name }) => name === 'authentication')).toBe(false);
+		expect(credential).toEqual({
+			name: 'n8nConnectFirecrawlMcpAiGatewayApi',
+			icon: 'node:@n8n/mcp-registry.n8nConnectFirecrawl',
+			displayName: 'Firecrawl Gateway credits',
+			hidden: true,
+			properties: [],
+		});
+	});
+});
+
+describe('a server paired with its AI Gateway twin', () => {
+	it('offers Gateway credits first, keeps the own option as the default, and hides the AI Gateway node', () => {
+		const [twin, aiGatewayRow] = pairAiGatewayServers(
+			[firecrawlMockServer, firecrawlAiGatewayMockServer],
+			() => true,
+		);
+
+		const twinNode = serverToNodeDescription(
+			twin,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+		const aiGatewayNode = serverToNodeDescription(
+			aiGatewayRow,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+
+		expect(twinNode?.credentials).toEqual([
+			{
+				name: 'firecrawlMcpOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
+			},
+			{
+				name: 'n8nConnectFirecrawlMcpAiGatewayApi',
+				required: true,
+				displayOptions: { show: { authentication: ['aiGateway'] } },
+			},
+		]);
+		expect(twinNode?.properties.find(({ name }) => name === 'authentication')).toMatchObject({
+			options: [
+				{ name: 'Gateway credits', value: 'aiGateway' },
+				{ name: 'OAuth2', value: 'oAuth2' },
+			],
+			default: 'oAuth2',
+		});
+		expect(aiGatewayNode?.hidden).toBe(true);
+	});
+
+	it('keeps the supported own credential as the default when the first registry option is unknown', () => {
+		const [twin] = pairAiGatewayServers(
+			[
+				{
+					...firecrawlMockServer,
+					authType: 'usesCredentials',
+					usesCredentials: [
+						{ credentialType: 'unknownApi', name: 'Unknown', value: 'unknown' },
+						{ credentialType: 'firecrawlApi', name: 'API key', value: 'apiKey' },
+					],
+				},
+				firecrawlAiGatewayMockServer,
+			],
+			() => true,
+		);
+
+		const node = serverToNodeDescription(
+			twin,
+			deepCopy(baseDescription),
+			(name) => name !== 'unknownApi',
+		);
+
+		expect(node?.credentials?.[0]).toEqual({
+			name: 'firecrawlApi',
+			required: true,
+			displayOptions: { show: { authentication: ['apiKey'] } },
+		});
+		expect(node?.properties.find(({ name }) => name === 'authentication')).toMatchObject({
+			options: [
+				{ name: 'Gateway credits', value: 'aiGateway' },
+				{ name: 'API key', value: 'apiKey' },
+			],
+			default: 'apiKey',
 		});
 	});
 });

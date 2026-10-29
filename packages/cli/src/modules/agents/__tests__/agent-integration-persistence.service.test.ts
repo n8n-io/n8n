@@ -7,8 +7,12 @@ import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { PostHogClient } from '@/posthog';
+
+import { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -63,6 +67,7 @@ function setup(options: SetupOptions = {}) {
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const setupCompletionService = mock<AgentSetupCompletionService>();
+	const postHogClient = mock<PostHogClient>();
 
 	const row = {
 		id: agentId,
@@ -105,10 +110,15 @@ function setup(options: SetupOptions = {}) {
 			chatIntegrationRegistry,
 			eventService,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
-			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
+			new N8nChatFlagService(postHogClient),
 		),
 		agent,
 		row,
@@ -119,6 +129,7 @@ function setup(options: SetupOptions = {}) {
 		telemetry,
 		credentialsService,
 		setupCompletionService,
+		postHogClient,
 	};
 }
 
@@ -171,6 +182,86 @@ describe('AgentIntegrationPersistenceService', () => {
 		]);
 		expect(chatIntegrationRegistry.listPublic).toHaveBeenCalled();
 		expect(chatIntegrationRegistry.list).not.toHaveBeenCalled();
+	});
+
+	describe('listBuilderChatIntegrations', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const slack = {
+			type: 'slack',
+			displayLabel: 'Slack',
+			displayIcon: 'slack',
+			credentialTypes: ['slackApi'],
+			actionToolDefinitions: [],
+		};
+		const n8nChat = {
+			type: 'n8n_chat',
+			displayLabel: 'n8n Chat',
+			displayIcon: 'message-square',
+			credentialTypes: [],
+			internal: true,
+			builderGuidance: {
+				capabilities: ['Chat in n8n'],
+				useIntegrationWhen: ['Make it available in n8n Chat'],
+				useNodeToolWhen: ['Never'],
+			},
+			actionToolDefinitions: [{ name: 'respond' }],
+		};
+
+		function setupGate() {
+			const context = setup();
+			context.chatIntegrationRegistry.listPublic.mockReturnValue([slack] as never);
+			context.chatIntegrationRegistry.get.mockImplementation(
+				(type) => (type === 'n8n_chat' ? n8nChat : undefined) as never,
+			);
+			return context;
+		}
+
+		it.each(['variant-a', 'variant-b'])('adds n8n Chat for the %s arm', async (variant) => {
+			const { service, postHogClient } = setupGate();
+			postHogClient.getFeatureFlags.mockResolvedValue({ '125_agents_n8n_chat': variant });
+
+			const integrations = await service.listBuilderChatIntegrations(user);
+
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+			expect(integrations.map((i) => i.type)).toEqual(['slack', 'n8n_chat']);
+			expect(integrations[1]).toEqual({
+				type: 'n8n_chat',
+				label: 'n8n Chat',
+				icon: 'message-square',
+				credentialTypes: [],
+				approvableActions: [{ name: 'respond', sensitive: false }],
+				capabilities: ['Chat in n8n'],
+				useIntegrationWhen: ['Make it available in n8n Chat'],
+				useNodeToolWhen: ['Never'],
+			});
+		});
+
+		it.each([{ '125_agents_n8n_chat': 'control' }, { '125_agents_n8n_chat': false }, {}])(
+			'omits n8n Chat when the flag is off (%j)',
+			async (flags) => {
+				const { service, postHogClient } = setupGate();
+				postHogClient.getFeatureFlags.mockResolvedValue(flags);
+
+				const integrations = await service.listBuilderChatIntegrations(user);
+
+				expect(integrations.map((i) => i.type)).toEqual(['slack']);
+			},
+		);
+
+		it('omits n8n Chat when PostHog fails', async () => {
+			const { service, postHogClient } = setupGate();
+			postHogClient.getFeatureFlags.mockRejectedValue(new Error('PostHog down'));
+
+			const integrations = await service.listBuilderChatIntegrations(user);
+
+			expect(integrations.map((i) => i.type)).toEqual(['slack']);
+		});
+
+		it('leaves the public catalog without n8n Chat', () => {
+			const { service } = setupGate();
+
+			expect(service.listChatIntegrations().map((i) => i.type)).toEqual(['slack']);
+		});
 	});
 
 	describe('adding a channel', () => {

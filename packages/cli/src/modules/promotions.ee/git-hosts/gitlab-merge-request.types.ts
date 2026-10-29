@@ -16,6 +16,8 @@ export const mergeRequestSchema = z.object({
 	state: z.enum(['opened', 'locked', 'merged', 'closed']),
 	source_branch: z.string(),
 	target_branch: z.string(),
+	/** The head commit. Approve and merge take it to refuse a newer head. */
+	sha: z.string().nullable().optional(),
 	has_conflicts: z.boolean().optional().default(false),
 	merged_at: z.string().nullable().optional(),
 	closed_at: z.string().nullable().optional(),

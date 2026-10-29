@@ -2,6 +2,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
 
+import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
+import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import { PromotionReviewHostResolver } from '../promotion-review-host.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionOperationInput } from '../promotions.types';
@@ -57,6 +59,32 @@ describe('PromotionReviewHostResolver', () => {
 			authType: 'token',
 			auth: 'enc',
 		});
+	});
+
+	it('resolves the current provider credentials for a stored environment', async () => {
+		const environment = mock<PromotionEnvironment>({ providerId: 'prov1' });
+		const provider = mock<PromotionProvider>({
+			type: 'gitlab',
+			authType: 'token',
+			auth: 'enc',
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com/gitlab' },
+		});
+		providersService.getEntity.mockResolvedValue(provider);
+
+		await expect(resolver.resolveForEnvironment(environment, 'gitlab')).resolves.toEqual({
+			baseUrl: 'https://gitlab.example.com/gitlab',
+			accessToken: 'glpat-token',
+		});
+		expect(providersService.getEntity).toHaveBeenCalledWith('prov1');
+		expect(providersService.decryptCredentials).toHaveBeenCalledWith(provider);
+	});
+
+	it('returns null when the environment no longer uses the review host type', async () => {
+		const environment = mock<PromotionEnvironment>({ providerId: 'prov1' });
+		providersService.getEntity.mockResolvedValue(mock<PromotionProvider>({ type: 'git' }));
+
+		await expect(resolver.resolveForEnvironment(environment, 'gitlab')).resolves.toBeNull();
+		expect(providersService.decryptCredentials).not.toHaveBeenCalled();
 	});
 
 	it('rejects a GitLab snapshot that has no base URL', async () => {

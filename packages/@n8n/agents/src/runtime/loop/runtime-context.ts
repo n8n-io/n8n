@@ -1,5 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { isOpenRouterAnthropicModel, splitModelId } from '@n8n/ai-utilities/agent-config';
+import {
+	isAzureFoundryAnthropicModel,
+	isOpenRouterAnthropicModel,
+	splitModelId,
+} from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -7,7 +11,7 @@ import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -114,11 +118,23 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
-			reasoning: this.config.reasoning,
+			reasoning: this.resolveReasoning(),
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
+	}
+
+	/**
+	 * A Foundry deployment name does not say which Claude model it serves, and the
+	 * Anthropic SDK picks the thinking shape from the model id. Without the served
+	 * model (a failed lookup) a wrong shape would fail the request, so Foundry
+	 * Claude then runs without reasoning.
+	 */
+	private resolveReasoning(): AgentRuntimeConfig['reasoning'] {
+		const servedModelUnknown = getCatalogModelId(this.config.model) === this.modelId;
+		if (isAzureFoundryAnthropicModel(this.modelId) && servedModelUnknown) return undefined;
+		return this.config.reasoning;
 	}
 
 	private buildOutputSpec(

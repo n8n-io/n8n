@@ -1,3 +1,4 @@
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowEditorLockedError } from '../../../errors/workflow-editor-locked.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
@@ -38,6 +39,18 @@ describe('createSaveFailureRemediation', () => {
 			shouldEdit: false,
 			reason: 'workflow_locked_by_editor',
 		});
+	});
+
+	it('classifies the outside-project error by type, not by message text', () => {
+		const error = new OutsideThreadProjectError();
+		error.message = 'Workflow save failed';
+
+		expect(createSaveFailureRemediation(error, true)).toMatchObject({
+			reason: 'workflow_outside_thread_project',
+		});
+		expect(
+			createSaveFailureRemediation(new Error('Workflow save failed', { cause: error }), true),
+		).toMatchObject({ reason: 'workflow_outside_thread_project' });
 	});
 
 	it('returns bound_workflow_not_found for WorkflowNotFoundError', () => {

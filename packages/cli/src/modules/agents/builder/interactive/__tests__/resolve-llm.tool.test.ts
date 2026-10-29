@@ -24,7 +24,7 @@ function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock
  * path where the credential can actually reach it.
  */
 function makeModelLookupServingDefault(credentialType: string) {
-	const { defaultModel } = LLM_PROVIDER_DEFAULTS[credentialType];
+	const defaultModel = LLM_PROVIDER_DEFAULTS[credentialType].defaultModel as string;
 	return makeModelLookup(async () => [{ name: defaultModel, value: defaultModel }]);
 }
 
@@ -429,8 +429,13 @@ describe('agent_builder_resolve_llm tool', () => {
 			});
 		});
 
-		it('LLM_PROVIDER_PRIORITY covers every provider in LLM_PROVIDER_DEFAULTS', () => {
-			const definedProviders = new Set(Object.values(LLM_PROVIDER_DEFAULTS).map((d) => d.provider));
+		it('LLM_PROVIDER_PRIORITY covers every provider with a default model', () => {
+			// A provider without a default model (Microsoft Foundry) is never auto-picked.
+			const definedProviders = new Set(
+				Object.values(LLM_PROVIDER_DEFAULTS)
+					.filter((d) => d.defaultModel !== undefined)
+					.map((d) => d.provider),
+			);
 			expect(new Set(LLM_PROVIDER_PRIORITY)).toEqual(definedProviders);
 		});
 	});
@@ -763,6 +768,121 @@ describe('agent_builder_resolve_llm tool', () => {
 				provider: 'anthropic',
 				requestedModel: 'claude-haiku-4-5',
 				error: 'credentials invalid',
+			});
+		});
+	});
+
+	describe('Microsoft Foundry deployments', () => {
+		const chat = { name: 'my-chat (gpt-4.1)', value: 'my-chat', servedModel: 'gpt-4.1' };
+		const mini = { name: 'my-mini (gpt-4.1-mini)', value: 'my-mini', servedModel: 'gpt-4.1-mini' };
+
+		describe.each(['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'])(
+			'with %s',
+			(credentialType) => {
+				function resolveFoundry(input: Record<string, unknown>, deployments: unknown[] | Error) {
+					const modelLookup = makeModelLookup(async () => {
+						if (deployments instanceof Error) throw deployments;
+						return deployments as Awaited<ReturnType<ModelLookup['list']>>;
+					});
+					const tool = buildResolveLlmTool({
+						credentialProvider: makeProvider([
+							{ id: 'f1', name: 'My Foundry', type: credentialType },
+						]),
+						modelLookup,
+						freeCredits: makeFreeCredits(),
+					});
+					return { result: tool.handler!(input, {}), modelLookup };
+				}
+
+				it('resolves the only deployment when no model is requested', async () => {
+					const { result, modelLookup } = resolveFoundry({ provider: 'azure-openai' }, [chat]);
+
+					await expect(result).resolves.toEqual({
+						ok: true,
+						provider: 'azure-openai',
+						model: 'my-chat',
+						credentialId: 'f1',
+						credentialName: 'My Foundry',
+					});
+					expect(modelLookup.list).toHaveBeenCalledWith('f1', credentialType, 'azure-openai');
+				});
+
+				it('lists the deployments when there are several and no model is requested', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai' }, [chat, mini]);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'unknown_model',
+						provider: 'azure-openai',
+						availableModels: [chat, mini],
+					});
+				});
+
+				it('matches a requested model to the deployment that serves it', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'gpt-4.1' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toMatchObject({ ok: true, model: 'my-chat' });
+				});
+
+				it('resolves a requested deployment name', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'my-mini' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toMatchObject({ ok: true, model: 'my-mini' });
+				});
+
+				it('lists the deployments when the requested model matches none', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'claude-opus-5' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'unknown_model',
+						provider: 'azure-openai',
+						requestedModel: 'claude-opus-5',
+						availableModels: [chat, mini],
+					});
+				});
+
+				it('passes the reason a credential cannot list deployments to the builder', async () => {
+					const { result } = resolveFoundry(
+						{ provider: 'azure-openai' },
+						new Error('Agents need a Microsoft Foundry credential.'),
+					);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'model_lookup_failed',
+						provider: 'azure-openai',
+						error: 'Agents need a Microsoft Foundry credential.',
+					});
+				});
+			},
+		);
+
+		it('does not auto-pick Foundry over a provider with a default model', async () => {
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([
+					{ id: 'f1', name: 'My Foundry', type: 'azureOpenAiApi' },
+					{ id: 'a1', name: 'My Anthropic', type: 'anthropicApi' },
+				]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+
+			await expect(tool.handler!({}, {})).resolves.toMatchObject({
+				ok: true,
+				provider: 'anthropic',
+				autoPicked: true,
+				otherProviders: ['azure-openai'],
 			});
 		});
 	});

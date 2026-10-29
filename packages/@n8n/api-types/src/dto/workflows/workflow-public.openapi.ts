@@ -207,8 +207,6 @@ export const nodesOpenApi: ZodOpenAPIMetadata = {
 					},
 				},
 			},
-			createdAt: { type: 'string', format: 'date-time' },
-			updatedAt: { type: 'string', format: 'date-time' },
 		},
 	},
 };

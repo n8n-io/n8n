@@ -341,6 +341,29 @@ describe('AgentSkillUsageService', () => {
 		});
 	});
 
+	describe('findAgentSummaries', () => {
+		it('reads the lean summaries and keeps only id and name', async () => {
+			agents.findSummariesByProjectIds.mockResolvedValue([
+				{
+					id: 'agent-1',
+					name: 'Support bot',
+					projectId: 'project-1',
+					activeVersionId: null,
+					availableInMCP: false,
+					updatedAt: new Date(),
+				},
+			] as Awaited<ReturnType<AgentRepository['findSummariesByProjectIds']>>);
+
+			const result = await service.findAgentSummaries(['project-1'], { search: 'bot', limit: 50 });
+
+			expect(agents.findSummariesByProjectIds).toHaveBeenCalledWith(['project-1'], {
+				query: 'bot',
+				limit: 50,
+			});
+			expect(result).toEqual([{ id: 'agent-1', name: 'Support bot' }]);
+		});
+	});
+
 	describe('markFollowersChanged', () => {
 		it('marks the following agents in the caller transaction and returns them', async () => {
 			agentSkills.findFollowingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);

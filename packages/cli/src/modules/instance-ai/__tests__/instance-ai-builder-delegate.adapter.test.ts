@@ -4,9 +4,10 @@ import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentContextService } from '@/modules/agents/agent-context.service';
-import { AgentDraftService } from '@/modules/agents/agent-draft.service';
-import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
+import type { AgentContextService } from '@/modules/agents/agent-context.service';
+import type { AgentDraftService } from '@/modules/agents/agent-draft.service';
+import type { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
+import { builderTelemetrySessionProperties } from '@/modules/agents/builder/builder-session';
 import type { Telemetry } from '@/telemetry';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
@@ -52,6 +53,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			credentials,
 			{
 				useEvalModelCatalog: true,
+				session: { threadId: 'thread-1', runId: 'run-1' },
 				track: expect.any(Function),
 			},
 		);
@@ -85,6 +87,25 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			});
 		},
 	);
+
+	it('creates the agent inside the Assistant session, so the creation event carries it', async () => {
+		const { delegate, drafts, user } = setup();
+		let sessionDuringCreate: ReturnType<typeof builderTelemetrySessionProperties> = {};
+		drafts.createDraft.mockImplementation(async () => {
+			sessionDuringCreate = builderTelemetrySessionProperties();
+			return { agentId: 'agent-1', projectId: 'project-1', name: 'Draft name', adopted: false };
+		});
+
+		await delegate.createAgent('Draft name', {
+			session: { threadId: 'thread-1', runId: 'run-1' },
+		});
+
+		expect(drafts.createDraft).toHaveBeenCalledWith(user, 'project-1', 'Draft name', {
+			createdBy: 'builder',
+		});
+		expect(sessionDuringCreate).toEqual({ thread_id: 'thread-1', run_id: 'run-1' });
+		expect(builderTelemetrySessionProperties()).toEqual({});
+	});
 
 	it('keeps the Assistant thread prefix out of the Agent-owned cleanup operation', async () => {
 		const { builder, service } = setup();

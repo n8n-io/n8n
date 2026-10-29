@@ -88,7 +88,6 @@ export function makeThread(): ThreadRuntime {
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	mcpConnectionsAvailable: true,
-	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
@@ -96,6 +95,7 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
+	workflowSuggestionsEnabled: false,
 };
 
 // Shared mutable fixtures the stub below reads from — tests reset them in `beforeEach`

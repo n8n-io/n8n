@@ -23,6 +23,7 @@ import {
 } from '@/modules/mcp-registry/registry/mock-servers';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 const OVERLAPPING_RUNS = 4;
 const SEEDED_AT = new Date('2026-01-01T00:00:00.000Z');
@@ -56,6 +57,7 @@ describe('McpRegistryRefreshTask', () => {
 			mock<LoadNodesAndCredentials>({ loaders: {} }),
 			push,
 			publisher,
+			mock<AiGatewayService>({ isEnabled: () => false }),
 		);
 		task = new McpRegistryRefreshTask(service);
 	});

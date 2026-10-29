@@ -150,10 +150,6 @@ vi.mock('../components/AgentSessionsFilter.vue', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
@@ -161,10 +157,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../utils/thread-title', () => ({
 	useThreadTitle: () => (thread: { title?: string | null; firstMessage?: string | null }) =>
 		thread.title ?? thread.firstMessage ?? 'Session',
-}));
-
-vi.mock('@/app/constants', () => ({
-	MODAL_CONFIRM: 'modal-confirm',
 }));
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
@@ -330,7 +322,7 @@ describe('AgentSessionsListView', () => {
 			});
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
-				{ agent_id: 'agent-1', session_id: 'session-xyz', filter_names: ['status'] },
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: ['status'] },
 			);
 			expect(track.mock.invocationCallOrder[0]).toBeLessThan(
 				setFilters.mock.invocationCallOrder[0],
@@ -383,7 +375,7 @@ describe('AgentSessionsListView', () => {
 			}
 			expect(track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
-				{ agent_id: 'agent-1', session_id: 'session-xyz', filter_names: filterNames },
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: filterNames },
 			);
 		},
 	);

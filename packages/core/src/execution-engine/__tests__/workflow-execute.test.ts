@@ -112,6 +112,76 @@ describe('WorkflowExecute', () => {
 			expect(result.finished).toBe(true);
 			expect(runNodeSpy).toHaveBeenCalledTimes(1);
 		});
+
+		describe('after the execution is cancelled', () => {
+			const setup = (nodeOverrides: Partial<INode> = {}) => {
+				const retryNode: INode = {
+					...createNodeData({ name: 'retryNode' }),
+					retryOnFail: true,
+					maxTries: 3,
+					waitBetweenTries: 1,
+					...nodeOverrides,
+				};
+				const workflow = new Workflow({
+					id: 'test',
+					nodes: [retryNode],
+					connections: {},
+					active: false,
+					nodeTypes,
+				});
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+				const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+				return { workflowExecute, workflow, retryNode };
+			};
+
+			it('should not retry a node that throws', async () => {
+				const { workflowExecute, workflow, retryNode } = setup();
+				let execution: ReturnType<WorkflowExecute['run']> | undefined;
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					execution!.cancel();
+					throw new Error('aborted');
+				});
+
+				execution = workflowExecute.run({ workflow, startNode: retryNode });
+				const result = await execution;
+
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+				expect(result.data.resultData.error?.message).toBe('aborted');
+			});
+
+			it('should not retry a node that continues on error', async () => {
+				const { workflowExecute, workflow, retryNode } = setup({
+					onError: 'continueRegularOutput',
+				});
+				let execution: ReturnType<WorkflowExecute['run']> | undefined;
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					execution!.cancel();
+					return { data: [[{ json: { error: 'aborted' } }]] };
+				});
+
+				execution = workflowExecute.run({ workflow, startNode: retryNode });
+				await execution;
+
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should stop waiting between tries', async () => {
+				const { workflowExecute, workflow, retryNode } = setup({ waitBetweenTries: 5000 });
+				let execution: ReturnType<WorkflowExecute['run']> | undefined;
+				const runNodeSpy = vi.spyOn(workflowExecute, 'runNode').mockImplementation(async () => {
+					setTimeout(() => execution!.cancel(), 10);
+					throw new Error('failed');
+				});
+
+				const startedAt = Date.now();
+				execution = workflowExecute.run({ workflow, startNode: retryNode });
+				await execution;
+
+				expect(runNodeSpy).toHaveBeenCalledTimes(1);
+				expect(Date.now() - startedAt).toBeLessThan(1000);
+			});
+		});
 	});
 
 	describe('v0 execution order', () => {
@@ -1697,6 +1767,66 @@ describe('WorkflowExecute', () => {
 			abortController.abort();
 			await new Promise((resolve) => setImmediate(resolve));
 			expect(closeFunctionSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('continueErrorOutput pairedItem', () => {
+		// Runs a node with the error output enabled on two input items. The node
+		// returns `output` without pairing it, like a declarative node or a
+		// programmatic node on its continue-on-fail path.
+		const runWithErrorOutput = async (output: INodeExecutionData[]) => {
+			// A modified node returns its predetermined output once, so build it per run.
+			const nodeTypes = Helpers.NodeTypes({
+				...nodeTypeArguments,
+				twoItems: {
+					type: modifyNode(passThroughNode)
+						.return([[{ json: { city: 'a' } }, { json: { city: 'b' } }]])
+						.done(),
+					sourcePath: '',
+				},
+				unpaired: { type: modifyNode(passThroughNode).return([output]).done(), sourcePath: '' },
+			});
+			const trigger = createNodeData({ name: 'trigger', type: 'twoItems' });
+			const node = {
+				...createNodeData({ name: 'node', type: 'unpaired' }),
+				onError: 'continueErrorOutput' as const,
+			};
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node)
+				.addConnections({ from: trigger, to: node, type: NodeConnectionTypes.Main })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				'manual',
+			);
+
+			const result = await workflowExecute.run({ workflow, startNode: trigger });
+			return result.data.resultData.runData[node.name][0].data!.main;
+		};
+
+		test('should pair success and error items with their input items', async () => {
+			const [successOutput, errorOutput] = await runWithErrorOutput([
+				{ json: { ok: true } },
+				{ json: { error: 'boom' } },
+			]);
+
+			expect(successOutput).toEqual([{ json: { ok: true }, pairedItem: { item: 0 } }]);
+			expect(errorOutput).toEqual([
+				{ json: { city: 'b', error: 'boom' }, pairedItem: { item: 1 } },
+			]);
+		});
+
+		test('should pair a single error item for several inputs with the first input', async () => {
+			// Same rule as on the regular output: N inputs and one output item pair to item 0.
+			const [successOutput, errorOutput] = await runWithErrorOutput([
+				{ json: { error: 'whole batch failed' } },
+			]);
+
+			expect(successOutput).toEqual([]);
+			expect(errorOutput).toEqual([
+				{ json: { city: 'a', error: 'whole batch failed' }, pairedItem: { item: 0 } },
+			]);
 		});
 	});
 

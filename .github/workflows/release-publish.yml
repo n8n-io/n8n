@@ -7,6 +7,10 @@ on:
     branches:
       - 'release/*'
 
+concurrency:
+  group: ${{ contains(github.event.pull_request.body, '<!-- release-prerelease -->') && 'sync-master-to-3x' || format('release-publish-{0}', github.event.pull_request.base.ref) }}
+  cancel-in-progress: false
+
 jobs:
   determine-version-info:
     name: Determine publishing track
@@ -20,12 +24,22 @@ jobs:
       new_stable_version: ${{ steps.determine-info.outputs.new_stable_version }}
       release_type: ${{ steps.determine-info.outputs.release_type }}
       rc_branch: ${{ steps.determine-info.outputs.rc_branch }}
+      prerelease: ${{ steps.determine-info.outputs.prerelease }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           fetch-tags: true
+
+      - name: Verify prerelease source
+        if: contains(github.event.pull_request.body, '<!-- release-prerelease -->')
+        run: |
+          git fetch origin "refs/heads/3.x:refs/remotes/origin/3.x"
+          if ! git merge-base --is-ancestor origin/3.x HEAD; then
+            echo "::error::Standalone prereleases must descend from the current 3.x branch."
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
@@ -36,6 +50,8 @@ jobs:
 
       - name: Determine track from package version number
         id: determine-info
+        env:
+          PRERELEASE: ${{ contains(github.event.pull_request.body, '<!-- release-prerelease -->') }}
         run: node .github/scripts/determine-version-info.mjs
 
   publish-to-npm:
@@ -94,12 +110,14 @@ jobs:
 
       # If we don't use the --tag rc, all releases will default to "latest".
       - name: Publish n8n to NPM with rc tag
+        if: needs.determine-version-info.outputs.prerelease != 'true'
         env:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
           "$PNPM_HOME/pnpm" --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
 
       - name: Cleanup rc tag
+        if: needs.determine-version-info.outputs.prerelease != 'true'
         run: npm dist-tag rm n8n rc
         continue-on-error: true
 
@@ -194,6 +212,19 @@ jobs:
       target-branch: ${{ needs.determine-version-info.outputs.rc_branch }}
     secrets: inherit
 
+  merge-prerelease-tag-to-3x:
+    name: Merge prerelease tag to 3.x
+    needs: [determine-version-info, publish-to-npm, create-github-release]
+    if: |
+      github.event.pull_request.merged == true &&
+      needs.determine-version-info.outputs.prerelease == 'true'
+    uses: ./.github/workflows/release-merge-tag-to-branch.yml
+    with:
+      version: ${{ needs.determine-version-info.outputs.version }}
+      target-branch: 3.x
+      fast-forward-only: true
+    secrets: inherit
+
   post-release:
     name: Run Post-release actions
     needs:
@@ -220,6 +251,7 @@ jobs:
       bump: ${{ needs.determine-version-info.outputs.bump }}
       new_stable_version: ${{ needs.determine-version-info.outputs.new_stable_version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
+      prerelease: ${{ needs.determine-version-info.outputs.prerelease == 'true' }}
     secrets: inherit
 
   notify-on-failure:
@@ -236,6 +268,7 @@ jobs:
         generate-and-attach-sbom,
         merge-release-tag-to-master,
         merge-release-tag-to-rc-branch,
+        merge-prerelease-tag-to-3x,
         post-release,
       ]
     if: |

@@ -2,6 +2,7 @@ import type {
 	AgentJsonSkillConfig,
 	AgentSkill,
 	AgentSkillAvailability,
+	SkillSource,
 	StoredAgentConfig,
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
@@ -348,6 +349,7 @@ export class AgentSkillRefsService {
 		skills: AgentSkill[],
 		creatorId: string,
 		availableTo: AgentSkillAvailability,
+		source: SkillSource,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (!this.usesSkillsHub) {
@@ -368,7 +370,7 @@ export class AgentSkillRefsService {
 					{
 						target: targetFor(agent, availableTo),
 						skill,
-						source: 'agent',
+						source,
 						createdById: creatorId,
 						checkNameTaken: true,
 					},

@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -233,6 +234,7 @@ describe('McpAgentToolsService', () => {
 		const lifecycleTelemetry = mock<Telemetry>();
 		const modificationTelemetry = new AgentModificationTelemetryService(
 			lifecycleTelemetry,
+			mock<InstanceSettings>(),
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			mock<EventService>(),
 			// EOF Experiment cleanup

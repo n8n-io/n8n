@@ -389,7 +389,6 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides({ ...DEFAULT_INSTANCE_AI_PERMISSIONS });
 
 		// These should remain unchanged (safe for read-only instances)
-		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
 		expect(result.mcpRead).toBe('always_allow');
 		expect(result.mcpWrite).toBe('require_approval');
@@ -424,7 +423,6 @@ describe('applyBranchReadOnlyOverrides', () => {
 			publishWorkflow: 'always_allow',
 			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
-			readFilesystem: 'always_allow',
 		};
 
 		const result = applyBranchReadOnlyOverrides(permissions);
@@ -432,7 +430,6 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.publishWorkflow).toBe('always_allow');
 		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
-		expect(result.readFilesystem).toBe('always_allow');
 	});
 
 	it('keeps an admin block on data table row writes', () => {

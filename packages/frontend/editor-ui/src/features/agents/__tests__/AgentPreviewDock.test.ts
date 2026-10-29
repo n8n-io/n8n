@@ -304,7 +304,7 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('close')).toEqual([[]]);
 		expect(track).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
-			{ agent_id: 'agent-1', session_id: 'session-xyz', source: 'test-panel' },
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'test-panel' },
 		);
 	});
 
@@ -411,7 +411,7 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 		expect(track).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_TEST_CHAT_ICON_FROM_TEST_PANEL,
-			{ agent_id: 'agent-1', session_id: 'session-xyz', source: 'shortcut' },
+			{ agent_id: 'agent-1', push_ref: 'session-xyz', source: 'shortcut' },
 		);
 	});
 

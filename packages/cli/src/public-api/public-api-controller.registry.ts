@@ -80,6 +80,11 @@ function routePath(prefix: string, req: Request): string {
 	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 }
 
+function toEndpointPath(apiVersion: string, prefix: string, routeTemplate: string): string {
+	const path = `/${apiVersion}${prefix === '/' ? '' : prefix}${routeTemplate}`;
+	return path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(
@@ -240,7 +245,11 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 			middlewares.push(
-				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),
+				...this.rateLimitService.createRouteLimiters(
+					route.method,
+					toEndpointPath(apiVersion, prefix, route.path),
+					route.rateLimitAccess,
+				),
 			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
@@ -327,11 +336,13 @@ export class PublicApiControllerRegistry {
 
 	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
-			const authenticated = await this.authStrategyRegistry.authenticate(
-				req as AuthenticatedRequest,
-			);
+			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
-			if (!authenticated) {
+			if (!result.authenticated) {
+				// RFC 7235 §4.1: one header, the challenges comma-separated.
+				if (result.challenges.length > 0) {
+					res.setHeader('WWW-Authenticate', result.challenges.join(', '));
+				}
 				res.status(401).json({ message: 'Unauthorized' });
 				return;
 			}

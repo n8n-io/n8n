@@ -1,4 +1,6 @@
 import {
+	encodeEpisodicScopeMetadata,
+	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
 	type EpisodicMemoryScope,
@@ -6,11 +8,13 @@ import {
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type ObservationCursor,
 	type ObservationLogBatch,
+	type ResolvedEpisodicScope,
 } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
@@ -18,7 +22,21 @@ import { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memor
 import { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { AgentRepository } from '../../repositories/agent.repository';
+import { integrationMemoryResourceId } from '../../utils/agent-memory-scope';
+import type { EpisodicScopeContext } from '../agent-chat-integration';
+import {
+	encodeIntegrationMessageContext,
+	readIntegrationMessageContext,
+} from '../integration-message-context';
+import {
+	createIntegrationActionTool,
+	getIntegrationToolConnectionDescriptors,
+	type IntegrationActionExecutor,
+	type IntegrationMessageContext,
+	type IntegrationMessageContextStore,
+} from '../integration-tools';
 import { N8nMemory, type N8nMemoryImpl } from '../n8n-memory';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 
 describe('N8nMemoryImpl', () => {
 	let repository: AgentThreadRepository;
@@ -26,6 +44,8 @@ describe('N8nMemoryImpl', () => {
 	let otherMemory: N8nMemoryImpl;
 	let observations: AgentObservationRepository;
 	let entryRepository: AgentMemoryEntryRepository;
+	let agentId: string;
+	let otherAgentId: string;
 
 	beforeAll(async () => {
 		// The concurrent tests need real parallel transactions on Postgres.
@@ -45,8 +65,10 @@ describe('N8nMemoryImpl', () => {
 				integrations: [],
 			}),
 		]);
-		memory = Container.get(N8nMemory).getImplementation(agents[0].id);
-		otherMemory = Container.get(N8nMemory).getImplementation(agents[1].id);
+		agentId = agents[0].id;
+		otherAgentId = agents[1].id;
+		memory = Container.get(N8nMemory).getImplementation(agentId);
+		otherMemory = Container.get(N8nMemory).getImplementation(otherAgentId);
 	});
 
 	beforeEach(async () => {
@@ -269,6 +291,7 @@ describe('N8nMemoryImpl', () => {
 		const entry = await store.episodic.saveEntryWithSources(
 			{
 				resourceId: scope.resourceId,
+				episodic: scope.episodic,
 				content,
 				embedding: [1, 0],
 				embeddingModel: 'test-model',
@@ -335,12 +358,16 @@ describe('N8nMemoryImpl', () => {
 				resourceId: 'user-2',
 				threadId: 'thread-2',
 			});
-			const integrationScope = { resourceId: 'integration:slack:U_ALICE', threadId: 'shared-1' };
-			const { entry: shared } = await captureEntry(memory, integrationScope);
-			const { entry: otherThread } = await captureEntry(memory, {
-				...integrationScope,
-				threadId: 'shared-2',
+			const sharedThread = (threadId: string, resourceId = 'integration:slack:U_ALICE') => ({
+				resourceId,
+				threadId,
+				episodic: {
+					writeScopeId: `thread:${threadId}`,
+					readScopeIds: [resourceId, `thread:${threadId}`],
+				},
 			});
+			const { entry: shared } = await captureEntry(memory, sharedThread('shared-1'));
+			const { entry: otherThread } = await captureEntry(memory, sharedThread('shared-2'));
 			await entryRepository.update(owned.id, { status: 'dropped' });
 			await entryRepository.update(shared.id, {
 				status: 'superseded',
@@ -360,19 +387,242 @@ describe('N8nMemoryImpl', () => {
 			).resolves.toEqual([expect.objectContaining({ id: otherResource.id })]);
 			await expect(
 				memory.episodic.getEntriesByContentHashes(
-					{ ...integrationScope, resourceId: 'integration:slack:U_BOB' },
+					sharedThread('shared-1', 'integration:slack:U_BOB'),
 					[owned.contentHash],
 				),
 			).resolves.toEqual([expect.objectContaining({ id: shared.id, status: 'superseded' })]);
 			await expect(
-				memory.episodic.getEntriesByContentHashes({ ...integrationScope, threadId: 'shared-2' }, [
-					owned.contentHash,
-				]),
+				memory.episodic.getEntriesByContentHashes(sharedThread('shared-2'), [owned.contentHash]),
 			).resolves.toEqual([expect.objectContaining({ id: otherThread.id })]);
 			await expect(
 				memory.episodic.getEntriesByContentHashes(scope, ['missing-hash']),
 			).resolves.toEqual([]);
 			await expect(memory.episodic.getEntriesByContentHashes(scope, [])).resolves.toEqual([]);
+		});
+
+		it('isolates entries and pending candidates by the resolved scope instead of the thread', async () => {
+			const inChannel = (channelId: string, threadId: string) => ({
+				resourceId: 'integration:slack:U_ALICE',
+				threadId,
+				episodic: {
+					writeScopeId: `slack:T1:channel:${channelId}`,
+					readScopeIds: [`slack:T1:channel:${channelId}`],
+				},
+			});
+			const first = inChannel('C1', 'thread-a');
+			const second = inChannel('C1', 'thread-b');
+			const other = inChannel('C2', 'thread-c');
+			await captureEntry(memory, first, 'Channel one chose Postgres.', {
+				episodic: first.episodic,
+			});
+			await captureEntry(memory, second, 'Channel one wants weekly reports.', {
+				episodic: second.episodic,
+			});
+			await captureEntry(memory, other, 'Channel two chose MySQL.', { episodic: other.episodic });
+
+			const recalled = async (scope: typeof first) =>
+				(await memory.episodic.searchEntries(scope, 'Channel'))
+					.map(({ content }) => content)
+					.sort();
+
+			await expect(recalled(first)).resolves.toEqual([
+				'Channel one chose Postgres.',
+				'Channel one wants weekly reports.',
+			]);
+			await expect(recalled(second)).resolves.toEqual(await recalled(first));
+			await expect(recalled(other)).resolves.toEqual(['Channel two chose MySQL.']);
+			await expect(memory.episodic.getPendingCaptureCandidates(first)).resolves.toHaveLength(2);
+			await expect(memory.episodic.getPendingCaptureCandidates(other)).resolves.toHaveLength(1);
+		});
+
+		describe('Slack ownership', () => {
+			function slackScope(
+				overrides: Partial<EpisodicScopeContext> = {},
+			): EpisodicMemoryScope & { episodic: ResolvedEpisodicScope } {
+				const context: EpisodicScopeContext = {
+					agentId,
+					credentialId: 'cred-slack',
+					integrationType: 'slack',
+					threadId: crypto.randomUUID(),
+					author: { id: 'U_ALICE', name: 'Alice' },
+					origin: {
+						type: 'slack',
+						workspaceId: 'T1',
+						conversationKind: 'channel',
+						channelId: 'C1',
+					},
+					...overrides,
+				};
+				const episodic = Container.get(SlackIntegration).resolveEpisodicScope(context);
+				if (!episodic) throw new Error('Expected Slack ownership');
+				return {
+					resourceId: integrationMemoryResourceId('slack', context.author.id),
+					threadId: context.threadId,
+					episodic,
+				};
+			}
+
+			async function recall(scope: EpisodicMemoryScope, store = memory) {
+				return (await store.episodic.searchEntries(scope, 'Slack'))
+					.map(({ content }) => content)
+					.sort();
+			}
+
+			it.each([
+				{ channelId: 'C_PUBLIC', conversationKind: 'channel' as const },
+				{ channelId: 'G_PRIVATE', conversationKind: 'channel' as const },
+				{ channelId: 'G_GROUP', conversationKind: 'group' as const },
+			])('shares only $channelId memories across authors and threads', async (conversation) => {
+				const origin = { type: 'slack' as const, workspaceId: 'T1', ...conversation };
+				const alice = slackScope({ origin });
+				const bob = slackScope({ origin, author: { id: 'U_BOB', name: 'Bob' } });
+				const newcomer = slackScope({ origin, author: { id: 'U_NEW', name: 'New member' } });
+				const { entry, source } = await captureEntry(memory, alice, 'Slack chose Postgres.');
+				await captureEntry(memory, bob, 'Slack wants weekly reports.');
+				const personal = slackScope({
+					origin: { ...origin, conversationKind: 'dm', channelId: 'D1' },
+				});
+				await captureEntry(memory, personal, 'Slack personal preference.');
+
+				await expect(recall(newcomer)).resolves.toEqual([
+					'Slack chose Postgres.',
+					'Slack wants weekly reports.',
+				]);
+				await expect(recall(personal)).resolves.toEqual(['Slack personal preference.']);
+				for (const conversationKind of ['channel', 'group', 'dm'] as const) {
+					const other = slackScope({
+						origin: { ...origin, conversationKind, channelId: 'OTHER' },
+						author: { id: 'U_BOB', name: 'Bob' },
+					});
+					await expect(recall(other)).resolves.toEqual([]);
+				}
+				const candidates = await memory.episodic.getPendingCaptureCandidates(newcomer);
+				expect(candidates).toHaveLength(2);
+				expect(candidates).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							id: source.candidateId,
+							threadId: alice.threadId,
+							resourceId: alice.episodic.writeScopeId,
+						}),
+						expect.objectContaining({
+							threadId: bob.threadId,
+							resourceId: bob.episodic.writeScopeId,
+						}),
+					]),
+				);
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual([
+					expect.objectContaining(source),
+				]);
+			});
+
+			it('keeps personal DM ownership through credential and destination changes', async () => {
+				const origin = {
+					type: 'slack' as const,
+					workspaceId: 'T1',
+					conversationKind: 'dm' as const,
+					channelId: 'D1',
+				};
+				await captureEntry(memory, slackScope({ origin }), 'Slack personal preference.');
+				const replacement = slackScope({
+					origin: { ...origin, channelId: 'D2' },
+					credentialId: 'replacement-credential',
+					author: { id: 'U_ALICE', name: 'Renamed Alice' },
+				});
+				await expect(recall(replacement)).resolves.toEqual(['Slack personal preference.']);
+				await expect(
+					recall(slackScope({ origin, author: { id: 'U_BOB', name: 'Bob' } })),
+				).resolves.toEqual([]);
+			});
+
+			it('isolates the same channel by agent and receiving workspace', async () => {
+				const origin = {
+					type: 'slack' as const,
+					workspaceId: 'T1',
+					conversationKind: 'channel' as const,
+					channelId: 'C1',
+				};
+				const first = slackScope({ origin });
+				const workspace = slackScope({ origin: { ...origin, workspaceId: 'T2' } });
+				const agent = slackScope({ origin, agentId: otherAgentId });
+				await captureEntry(memory, first, 'Slack first workspace.');
+				await captureEntry(memory, workspace, 'Slack second workspace.');
+				await captureEntry(otherMemory, agent, 'Slack other agent.');
+
+				await expect(recall(first)).resolves.toEqual(['Slack first workspace.']);
+				await expect(recall(workspace)).resolves.toEqual(['Slack second workspace.']);
+				await expect(recall(agent, otherMemory)).resolves.toEqual(['Slack other agent.']);
+				await expect(recall(first, otherMemory)).resolves.toEqual([]);
+				await expect(recall(agent)).resolves.toEqual([]);
+			});
+
+			it.each(['send_channel_message', 'send_dm'] as const)(
+				'keeps capture and recall on the source after %s',
+				async (action) => {
+					const source = slackScope();
+					const destination = slackScope({
+						origin: {
+							type: 'slack',
+							workspaceId: 'T1',
+							conversationKind: action === 'send_dm' ? 'dm' : 'channel',
+							channelId: action === 'send_dm' ? 'D2' : 'C2',
+						},
+						author: { id: 'U_BOB', name: 'Bob' },
+					});
+					await captureEntry(memory, source, 'Slack source decision.');
+					await captureEntry(memory, destination, 'Slack destination decision.');
+					const context: IntegrationMessageContext = {
+						integrationConnectionId: 'slack:cred-slack',
+						platform: 'slack',
+						target: { type: 'channel', channelId: 'slack:C1', threadId: 'slack:C1:1' },
+						updatedAt: new Date().toISOString(),
+					};
+					const persistence = {
+						resourceId: source.resourceId,
+						threadId: source.threadId,
+						hostMetadata: {
+							...encodeEpisodicScopeMetadata(source.episodic),
+							...encodeIntegrationMessageContext(context),
+						},
+					};
+					const sentContext: IntegrationMessageContext = {
+						...context,
+						target:
+							action === 'send_dm'
+								? { type: 'dm', userId: 'U_BOB', threadId: 'slack:D2:' }
+								: { type: 'channel', channelId: 'slack:C2', threadId: 'slack:C2:2' },
+					};
+					const actionExecutor = mock<IntegrationActionExecutor>();
+					actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+					const descriptor = getIntegrationToolConnectionDescriptors([
+						{ type: 'slack', credentialId: 'cred-slack' },
+					])[0];
+					const tool = createIntegrationActionTool({
+						descriptor,
+						actionExecutor,
+						messageContextStore: mock<IntegrationMessageContextStore>(),
+					}).build();
+					if (!tool.handler) throw new Error('Expected an action handler');
+					await tool.handler(
+						{
+							action,
+							input: { channelId: 'C2', userId: 'U_BOB', message: { text: 'Hello' } },
+						},
+						{ persistence },
+					);
+
+					expect(readIntegrationMessageContext(persistence)?.target).toEqual(sentContext.target);
+					const scope = getEpisodicMemoryScope(persistence);
+					if (!scope) throw new Error('Expected source memory scope');
+					expect(scope).toEqual(source);
+					await captureEntry(memory, scope, 'Slack captured after sending.');
+					await expect(recall(scope)).resolves.toEqual([
+						'Slack captured after sending.',
+						'Slack source decision.',
+					]);
+					await expect(recall(destination)).resolves.toEqual(['Slack destination decision.']);
+				},
+			);
 		});
 
 		it.each([

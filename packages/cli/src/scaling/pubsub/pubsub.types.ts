@@ -82,6 +82,7 @@ export namespace PubSub {
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
+		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
@@ -139,6 +140,7 @@ export namespace PubSub {
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadInstanceAiSettings
+		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection

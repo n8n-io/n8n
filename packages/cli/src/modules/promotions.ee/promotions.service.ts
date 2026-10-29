@@ -1,6 +1,7 @@
 import {
 	parsePromotionRunDetails,
 	promotionRunTypeSchema,
+	type ApplyCheckResult,
 	type ApplyPackageDto,
 	type ApplyPackageResultDto,
 	type ApplySelectionDto,
@@ -12,12 +13,14 @@ import {
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -74,6 +77,7 @@ import {
 } from './promotions-git.utils';
 import type {
 	BranchPackage,
+	PackageCommit,
 	PromotionCacheDescriptor,
 	PromotionGitCredentials,
 	PromotionOperationInput,
@@ -253,6 +257,7 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				title: request.commitMessage,
+				promotionRunContents: { projectIds },
 			})),
 		};
 	}
@@ -261,11 +266,18 @@ export class PromotionsService {
 	private async openReview(
 		input: PromotionOperationInput,
 		actor: User,
-		push: { promotionBranchName: string | undefined; commitSha: string; title: string },
+		push: {
+			promotionBranchName: string | undefined;
+			commitSha: string;
+			title: string;
+			promotionRunContents: PromotionRunContents;
+		},
 	): Promise<Pick<PromotePackageResultDto, 'review' | 'warnings'>> {
 		const recorded = await this.recordPromoteRun(input, actor, {
 			branchName: push.promotionBranchName ?? checkoutBranchName(input.config),
 			commitSha: push.commitSha,
+			// Only a promotion branch has a review, and the review gate reads the project list.
+			...(push.promotionBranchName && { promotionRunContents: push.promotionRunContents }),
 		});
 		// A review without a run cannot be rendered: the branch and commit live on the run.
 		if (!recorded.runId) {
@@ -314,7 +326,7 @@ export class PromotionsService {
 	private async recordPromoteRun(
 		input: PromotionOperationInput,
 		actor: User,
-		git: { branchName: string; commitSha: string },
+		git: { branchName: string; commitSha: string; promotionRunContents?: PromotionRunContents },
 	): Promise<{ runId?: string }> {
 		try {
 			const type = promotionRunTypeSchema.parse('git');
@@ -327,6 +339,7 @@ export class PromotionsService {
 					schemaVersion: 1,
 					branchName: git.branchName,
 					commitSha: git.commitSha,
+					...(git.promotionRunContents && { contents: git.promotionRunContents }),
 				}),
 				reviewId: null,
 			});
@@ -492,6 +505,7 @@ export class PromotionsService {
 				promotionBranchName: targetBranchName,
 				commitSha: pushed.commitSha,
 				title: request.commitMessage,
+				promotionRunContents: { projectIds: [selection.projectId] },
 			})),
 		};
 	}
@@ -614,7 +628,7 @@ export class PromotionsService {
 		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
-	): Promise<ImportSelection> {
+	): Promise<{ selection: ImportSelection; movedWorkflowIds: string[] }> {
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
@@ -651,14 +665,83 @@ export class PromotionsService {
 			);
 		}
 
-		if (movedWorkflowIds.length > 0) {
-			// Mirror the import engine, which rejects a move-shaped change with 409.
-			throw new ConflictError(
-				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
+		return {
+			selection: { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds },
+			movedWorkflowIds,
+		};
+	}
+
+	/**
+	 * Runs the Apply preflight for every workflow that the Apply preview of the project can list.
+	 * It reads the package at the preview's commit and writes nothing. Moved workflows are
+	 * returned instead of rejected.
+	 */
+	async checkApplyBlockers(projectId: string, commitSha: string): Promise<ApplyCheckResult> {
+		const input = await this.resolver.resolveForProject(projectId, 'apply');
+		await this.assertCheckoutReady(input, 'checking Apply blockers');
+
+		const branchName = checkoutBranchName(input.config);
+		const files = await this.gitService.readTreeAtCommit({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName,
+			environmentId: input.environmentId,
+			commitSha,
+			directory: PACKAGE_SUBFOLDER,
+			limits: this.packageImportConfig,
+		});
+		if (files.size === 0) {
+			throw new BadRequestError(
+				'The remote branch has no exported package to import. Promote to it first.',
 			);
 		}
+		const inventory = await this.inventoryReader.read({
+			listEntries: async () => [...files.keys()],
+			readFile: async (entryPath) => {
+				const content = files.get(entryPath);
+				if (!content) throw new BadRequestError(`Package does not contain entry: ${entryPath}`);
+				return content;
+			},
+		});
 
-		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
+		const branchWorkflowIds = inventory.workflows
+			.filter((workflow) => workflow.projectId === projectId)
+			.map(({ id }) => id);
+		const ownedWorkflowIds = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([
+			projectId,
+		]);
+		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+			inventory,
+			projectId,
+			[...new Set([...branchWorkflowIds, ...ownedWorkflowIds])],
+		);
+		const preflight = await this.bindingPreflight.checkInventory({
+			inventory,
+			selection: {
+				selectedProjectId: projectId,
+				selectedWorkflowIds: selection.selectedWorkflowIds,
+			},
+		});
+
+		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		const movedWorkflows = inventory.workflows
+			.filter(({ id }) => movedWorkflowIds.includes(id))
+			.map(({ id, name, projectId: branchProjectId }) => {
+				const project = projects.get(branchProjectId);
+				// The reader requires a project file for every project directory.
+				if (!project)
+					throw new UnexpectedError(`Package inventory has no project "${branchProjectId}"`);
+				return { id, name, project };
+			})
+			.sort((a, b) => a.id.localeCompare(b.id));
+
+		return {
+			environmentId: input.environmentId,
+			git: { commitSha, branchName },
+			preflight,
+			movedWorkflows,
+		};
 	}
 
 	private async applySelectionFromSource(
@@ -707,7 +790,17 @@ export class PromotionsService {
 
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-		const selection = await this.classifyApplySelection(inventory, projectId, workflowIds);
+		const { selection, movedWorkflowIds } = await this.classifyApplySelection(
+			inventory,
+			projectId,
+			workflowIds,
+		);
+		if (movedWorkflowIds.length > 0) {
+			// Mirror the import engine, which rejects a move-shaped change with 409.
+			throw new ConflictError(
+				`These workflows moved to another project: ${movedWorkflowIds.join(', ')}. A selective apply cannot move them. Apply all projects instead.`,
+			);
+		}
 		const preflight = await this.bindingPreflight.checkInventory({
 			inventory,
 			selection: {
@@ -751,6 +844,7 @@ export class PromotionsService {
 				dataTableSchemaConflictPolicy: confirmDestructiveChanges
 					? DataTableSchemaConflictPolicy.Overwrite
 					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+				tagConflictPolicy: IMPORT_POLICY.tagConflictPolicy,
 			},
 			{ sourceDir: packageFolder },
 			selection,
@@ -922,12 +1016,60 @@ export class PromotionsService {
 	): Promise<Map<string, string>> {
 		const input = await this.resolver.resolveForProject(projectId, direction);
 		await this.assertCheckoutReady(input, 'reading branch files');
+		return await this.readExistingFiles(
+			{
+				paths: this.workingDirectory.paths(input.environmentId),
+				branchName: checkoutBranchName(input.config),
+				environmentId: input.environmentId,
+				commitSha,
+			},
+			filePaths,
+		);
+	}
+
+	/**
+	 * Fetches the head and the baseline of a promotion review into the checkout of its
+	 * environment, and returns the package at each. The Git service chooses the baseline.
+	 */
+	async readReviewCommits(
+		environmentId: string,
+		request: {
+			headRef: string;
+			headCommitSha: string;
+			baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
+		},
+	): Promise<{ baseline: PackageCommit; head: PackageCommit }> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		await this.assertCheckoutReady(input, 'reading a review');
 		const operation = {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName: checkoutBranchName(input.config),
 			environmentId: input.environmentId,
-			commitSha,
 		};
+		const { baselineCommitSha } = await this.gitService.fetchReviewCommits({
+			...operation,
+			...request,
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+		});
+		const atCommit = (commitSha: string): PackageCommit => ({
+			commitSha,
+			listFiles: async () =>
+				await this.gitService.listFilesAtCommit({
+					...operation,
+					commitSha,
+					directory: PACKAGE_SUBFOLDER,
+				}),
+			readFiles: async (filePaths) =>
+				await this.readExistingFiles({ ...operation, commitSha }, filePaths),
+		});
+		return { baseline: atCommit(baselineCommitSha), head: atCommit(request.headCommitSha) };
+	}
+
+	private async readExistingFiles(
+		operation: Omit<Parameters<PromotionsGitService['readFilesAtCommit']>[0], 'filePaths'>,
+		filePaths: readonly string[],
+	): Promise<Map<string, string>> {
 		const existing = await this.gitService.findPathsAtCommit({ ...operation, filePaths });
 		return await this.gitService.readFilesAtCommit({
 			...operation,

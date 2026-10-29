@@ -40,7 +40,7 @@ const CREDENTIAL_LOCATIONS: CredentialLocation[] = [
 	})),
 	{ path: ['config', 'webSearch', 'credential'], managedToken: AI_GATEWAY_MANAGED_TAG },
 	{ path: ['integrations', '[]', 'credentialId'] },
-	{ path: ['mcpServers', '[]', 'credential'] },
+	{ path: ['mcpServers', '[]', 'credential'], managedToken: AI_GATEWAY_MANAGED_TAG },
 	{ path: ['vectorStores', '[]', 'credential'] },
 	{ path: ['vectorStores', '[]', 'embedding', 'credential'] },
 	{ path: ['tools', '[]', 'node', 'credentials', '*', 'id'] },

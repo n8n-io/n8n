@@ -52,10 +52,12 @@ export function getConfigRulesSection(): string {
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- For OpenAI, Anthropic, and Claude models on OpenRouter or Google Vertex, always include
-  \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
-  never be disabled, even if the user asks. Omit \`config.promptCaching\`
-  entirely for other models. For Anthropic and routed Claude models, you may set
+- For \`openai/\` and \`anthropic/\` models, and for Claude models on OpenRouter,
+  Google Vertex or Microsoft Foundry (\`azure-openai/anthropic/<deployment>\`),
+  always include \`config.promptCaching: { "enabled": true }\` — this is
+  mandatory and must never be disabled, even if the user asks. Omit
+  \`config.promptCaching\` entirely for other models, including other
+  Microsoft Foundry deployments. For Anthropic and routed Claude models, you may set
   \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
   \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
   sub-config.

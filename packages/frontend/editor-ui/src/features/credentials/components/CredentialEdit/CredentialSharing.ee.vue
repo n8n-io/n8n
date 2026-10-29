@@ -65,8 +65,6 @@ const credentialOwnerName = computed(() => {
 	return name ?? email ?? '';
 });
 
-const credentialOwnerFirstName = computed(() => credentialOwnerName.value.split(' ')[0]);
-
 const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() => {
 	const credentialContainsProjectSharingData = (
 		data: ICredentialDataDecryptedObject,
@@ -88,11 +86,6 @@ const homeProject = computed<ProjectSharingData | undefined>(
 	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
 );
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
-const isOwnedByViewer = computed(
-	() =>
-		homeProject.value?.type === ProjectTypes.Personal &&
-		homeProject.value?.id === projectsStore.personalProject?.id,
-);
 const isPersonalSpaceRestricted = computed(
 	() =>
 		homeProject.value?.type === ProjectTypes.Personal &&
@@ -188,14 +181,6 @@ const usedInProjects = computed(() => {
 	return result;
 });
 
-const usedInAccessText = computed(() =>
-	isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.availableToYou')
-		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner', {
-				interpolate: { name: credentialOwnerFirstName.value },
-			}),
-);
-
 /** A personal project is named "Name <email>"; the project row hides the email, so the copy does too. */
 function usedInProjectName(project: Pick<ProjectSharingData, 'name'>) {
 	return splitName(project.name ?? '').name;
@@ -221,18 +206,6 @@ function usedInShareTooltip(project: ProjectSharingData) {
 				interpolate: { project: name },
 			})
 		: '';
-}
-
-function usedInAccessTooltip(project: Pick<ProjectSharingData, 'name'>) {
-	const projectName = project.name ?? '';
-
-	return isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.availableToYou.tooltip', {
-				interpolate: { project: projectName },
-			})
-		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
-				interpolate: { name: credentialOwnerFirstName.value, project: projectName },
-			});
 }
 
 const viewerHasInstanceWideUse = computed(
@@ -339,7 +312,7 @@ function goToUpgrade() {
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			>
 				<template #unshared-actions="{ project }">
-					<div :class="$style.onlyYou">
+					<div :class="$style.usedInActions">
 						<N8nTooltip v-if="hasInstanceWideUse(project)" placement="top">
 							<template #content>
 								{{
@@ -356,9 +329,17 @@ function goToUpgrade() {
 								{{ i18n.baseText('credentialEdit.credentialSharing.usedIn.personalSpace') }}
 							</N8nText>
 						</N8nTooltip>
-						<N8nTooltip v-else :content="usedInAccessTooltip(project)" placement="top">
-							<N8nText :class="$style.accessText" color="text-light">
-								{{ usedInAccessText }}
+						<N8nTooltip
+							v-else
+							:content="i18n.baseText('credentialEdit.credentialSharing.canView.tooltip')"
+							placement="top"
+						>
+							<N8nText
+								:class="$style.accessText"
+								color="text-light"
+								data-test-id="credential-used-in-can-view"
+							>
+								{{ i18n.baseText('credentialEdit.credentialSharing.canView') }}
 							</N8nText>
 						</N8nTooltip>
 						<N8nTooltip
@@ -393,7 +374,7 @@ function goToUpgrade() {
 	}
 }
 
-.onlyYou {
+.usedInActions {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;

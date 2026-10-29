@@ -7,7 +7,7 @@ import type { AuthPrincipal } from '@/types.ee';
 
 const principal: Principal = {
 	id: 'user-1',
-	type: 'human',
+	type: 'person',
 	role: { slug: 'global:member', scopes: [{ slug: 'workflow:read' }] },
 };
 

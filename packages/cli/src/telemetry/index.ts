@@ -96,6 +96,8 @@ interface IAgentSessionMetrics {
 	tool_call_count: number;
 	num_skills: number;
 	turn_count: number;
+	skill_load_count: number;
+	loaded_skill_ids: Set<string>;
 }
 
 interface IAgentSessionMetricsBuffer {
@@ -385,6 +387,13 @@ export class Telemetry {
 			token_count_sum: sessions.reduce((total, session) => total + session.token_count, 0),
 			tool_call_count_sum: sessions.reduce((total, session) => total + session.tool_call_count, 0),
 			num_skills_sum: sessions.reduce((total, session) => total + session.num_skills, 0),
+			skill_load_count_sum: sessions.reduce(
+				(total, session) => total + session.skill_load_count,
+				0,
+			),
+			loaded_skill_ids: [
+				...new Set(sessions.flatMap((session) => [...session.loaded_skill_ids])),
+			].sort(),
 		};
 	}
 
@@ -517,12 +526,18 @@ export class Telemetry {
 				tool_call_count: 0,
 				num_skills: properties.configuration.num_skills,
 				turn_count: 0,
+				skill_load_count: 0,
+				loaded_skill_ids: new Set<string>(),
 			};
 
 			session.latency_ms += properties.latency_ms;
 			session.cost += properties.cost;
 			session.token_count += properties.token_count;
 			session.tool_call_count += properties.tool_call_count;
+			session.skill_load_count += properties.skill_load_count ?? 0;
+			for (const skillId of properties.loaded_skill_ids ?? []) {
+				session.loaded_skill_ids.add(skillId);
+			}
 			session.turn_count++;
 			sessions[properties.thread_id] = session;
 		}

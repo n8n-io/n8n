@@ -33,13 +33,18 @@ const ExecutionStatusSchema = z.enum([
 	'cancelled',
 ]);
 
+/** Which executions a search matches. The search body adds the paging. */
+const ExecutionFilterShape = {
+	workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
+	status: z.array(ExecutionStatusSchema).min(1).optional(),
+	hostMode: z.string().min(1).max(32).optional(),
+	createdAfter: datetimeStringWithOffset().optional(),
+	createdBefore: datetimeStringWithOffset().optional(),
+};
+
 const SearchExecutionsBody = z
 	.object({
-		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
-		status: z.array(ExecutionStatusSchema).min(1).optional(),
-		hostMode: z.string().min(1).max(32).optional(),
-		createdAfter: datetimeStringWithOffset().optional(),
-		createdBefore: datetimeStringWithOffset().optional(),
+		...ExecutionFilterShape,
 		before: z
 			.object({ createdAt: datetimeStringWithOffset(), id: z.string().uuid() })
 			.strict()
@@ -72,6 +77,31 @@ export function createSearchExecutionsHandler(
 		}
 		const result = await executionQuery.searchExecutions(parsed.data);
 		res.status(200).json(result);
+	};
+}
+
+/**
+ * `strict`, so a paging key is refused rather than stripped: the body names
+ * one execution, and a `limit` or `before` would otherwise read as honored.
+ */
+const FindLatestExecutionBody = z.object(ExecutionFilterShape).strict();
+
+/** The newest match, with its steps, as `GET /:id?includeSteps=true` reports it. */
+export function createFindLatestExecutionHandler(
+	executionQuery: ExecutionQueryService,
+): RequestHandler {
+	return async (req, res) => {
+		const parsed = FindLatestExecutionBody.safeParse(req.body);
+		if (!parsed.success) {
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+			return;
+		}
+		const execution = await executionQuery.findLatestExecutionWithSteps(parsed.data);
+		if (!execution) {
+			fail(res, 404, { error: 'not_found' });
+			return;
+		}
+		res.status(200).json(toExecutionSnapshot(execution));
 	};
 }
 

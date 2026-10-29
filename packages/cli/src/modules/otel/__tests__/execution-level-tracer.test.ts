@@ -9,7 +9,11 @@ import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import type { OtelSettingsService } from '../otel-settings.service';
-import type { OtelConfig } from '../otel.config';
+import {
+	type CustomAttributePrefixes,
+	type OtelConfig,
+	OtelCustomAttributesConfig,
+} from '../otel.config';
 import type { OtelService } from '../otel.service';
 import { OtelTestProvider } from './support/otel-test-provider';
 
@@ -25,6 +29,25 @@ describe('ExecutionLevelTracer', () => {
 		} as unknown as OtelSettingsService;
 	};
 
+	const makeTracer = ({
+		otelService = otel.asOtelService(),
+		settings,
+		prefixes,
+	}: {
+		otelService?: OtelService;
+		settings?: Partial<OtelConfig>;
+		prefixes?: CustomAttributePrefixes;
+	} = {}) => {
+		const customAttributesConfig = new OtelCustomAttributesConfig();
+		if (prefixes) customAttributesConfig.prefixes = prefixes;
+		return new ExecutionLevelTracer(
+			otelService,
+			makeOtelSettingsService(settings),
+			logger,
+			customAttributesConfig,
+		);
+	};
+
 	beforeAll(() => {
 		otel = OtelTestProvider.create({ withContextManager: true });
 	});
@@ -35,7 +58,7 @@ describe('ExecutionLevelTracer', () => {
 
 	beforeEach(() => {
 		otel.reset();
-		tracer = new ExecutionLevelTracer(otel.asOtelService(), makeOtelSettingsService(), logger);
+		tracer = makeTracer();
 	});
 
 	const inboundTracingContext = {
@@ -43,6 +66,34 @@ describe('ExecutionLevelTracer', () => {
 	};
 
 	const defaultWorkflow = { id: 'wf-1', name: 'Test', versionId: 'v1', nodeCount: 2 };
+
+	const runSingleNodeExecution = (
+		executionId: string,
+		project?: { id: string; customAttributes?: Record<string, string> },
+		custom: { workflow?: Record<string, string>; node?: Record<string, string> } = {},
+	) => {
+		tracer.startWorkflow({
+			executionId,
+			workflow: { ...defaultWorkflow, customAttributes: custom.workflow },
+			project,
+		});
+		const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
+		tracer.startNode({ executionId, node });
+		tracer.endNode({
+			executionId,
+			node,
+			inputItemCount: 1,
+			outputItemCount: 1,
+			customAttributes: custom.node,
+		});
+		tracer.endWorkflow({ executionId, status: 'success', mode: 'manual', isRetry: false });
+
+		const spans = otel.getFinishedSpans();
+		return {
+			workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
+			nodeSpan: spans.find((s) => s.name === 'node.execute')!,
+		};
+	};
 
 	describe('startWorkflow / endWorkflow', () => {
 		it('should create a workflow span with correct attributes', () => {
@@ -93,23 +144,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.project.custom.env']).toBe('production');
 			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
 		});
-
-		const runSingleNodeExecution = (
-			executionId: string,
-			project?: { id: string; customAttributes?: Record<string, string> },
-		) => {
-			tracer.startWorkflow({ executionId, workflow: defaultWorkflow, project });
-			const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
-			tracer.startNode({ executionId, node });
-			tracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
-			tracer.endWorkflow({ executionId, status: 'success', mode: 'manual', isRetry: false });
-
-			const spans = otel.getFinishedSpans();
-			return {
-				workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
-				nodeSpan: spans.find((s) => s.name === 'node.execute')!,
-			};
-		};
 
 		const projectCustomKeys = (attributes: Record<string, unknown>) =>
 			Object.keys(attributes).filter((k) => k.startsWith('n8n.project.custom.'));
@@ -651,7 +685,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(spans[0].name).toBe('workflow.execute');
 		});
 
-		it('should add custom attributes from tracing metadata', () => {
+		it('should add prefixed custom attributes and unprefixed GenAI attributes', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-7',
 				tracingContext: inboundTracingContext,
@@ -668,6 +702,7 @@ describe('ExecutionLevelTracer', () => {
 				inputItemCount: 1,
 				outputItemCount: 1,
 				customAttributes: { 'llm.model': 'gpt-4o', 'llm.tokens': '500' },
+				genAiAttributes: { 'gen_ai.operation.name': 'chat', 'gen_ai.usage.input_tokens': 5 },
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-7',
@@ -679,6 +714,8 @@ describe('ExecutionLevelTracer', () => {
 			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
+			expect(nodeSpan.attributes['gen_ai.operation.name']).toBe('chat');
+			expect(nodeSpan.attributes['gen_ai.usage.input_tokens']).toBe(5);
 		});
 
 		it('should not apply workflow custom attributes to node spans', () => {
@@ -920,11 +957,7 @@ describe('ExecutionLevelTracer', () => {
 		});
 
 		it('should no-op when injectOutbound is false', () => {
-			const noInjectTracer = new ExecutionLevelTracer(
-				otel.asOtelService(),
-				makeOtelSettingsService({ injectOutbound: false }),
-				logger,
-			);
+			const noInjectTracer = makeTracer({ settings: { injectOutbound: false } });
 
 			noInjectTracer.startWorkflow({
 				executionId: 'exec-12',
@@ -1274,11 +1307,7 @@ describe('ExecutionLevelTracer', () => {
 		} as const;
 
 		it('should take the identity of a reconstructed crash span from the saved identity', () => {
-			const otherProcess = new ExecutionLevelTracer(
-				otel.asOtelService(),
-				makeOtelSettingsService(),
-				logger,
-			);
+			const otherProcess = makeTracer();
 			const saved = otherProcess.startWorkflow({
 				executionId: 'exec-crash',
 				workflow: { ...defaultWorkflow, name: 'Before' },
@@ -1447,7 +1476,7 @@ describe('ExecutionLevelTracer', () => {
 					} as Tracer;
 				},
 			});
-			tracer = new ExecutionLevelTracer(failingMarkers, makeOtelSettingsService(), logger);
+			tracer = makeTracer({ otelService: failingMarkers });
 
 			expect(() => runSegment(true)).not.toThrow();
 
@@ -1463,6 +1492,76 @@ describe('ExecutionLevelTracer', () => {
 				'Failed to emit start marker span',
 				expect.objectContaining({ spanName: 'node.execute.started', error: 'marker failed' }),
 			);
+		});
+	});
+
+	describe('custom attribute prefixes', () => {
+		const noPrefixes = { project: '', workflow: '', node: '' };
+		const project = { id: 'proj-1', customAttributes: { env: 'project' } };
+
+		it('should use the configured prefix for each level', () => {
+			tracer = makeTracer({ prefixes: { project: 'p.', workflow: 'w.', node: 'n.' } });
+
+			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-prefixes', project, {
+				workflow: { team: 'workflow' },
+				node: { model: 'node' },
+			});
+
+			expect(workflowSpan.attributes['p.env']).toBe('project');
+			expect(workflowSpan.attributes['w.team']).toBe('workflow');
+			expect(nodeSpan.attributes['p.env']).toBe('project');
+			expect(nodeSpan.attributes['n.model']).toBe('node');
+		});
+
+		it('should let the more specific level win when keys collide', () => {
+			tracer = makeTracer({ prefixes: noPrefixes });
+
+			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-prefixes', project, {
+				workflow: { env: 'workflow' },
+				node: { env: 'node' },
+			});
+
+			expect(workflowSpan.attributes.env).toBe('workflow');
+			expect(nodeSpan.attributes.env).toBe('node');
+		});
+
+		it('should let workflow attributes win over project attributes on a reconstructed crash span', () => {
+			tracer = makeTracer({ prefixes: noPrefixes });
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crash-prefixes',
+				workflowId: 'wf-1',
+				mode: 'trigger',
+				detector: 'queue-recovery',
+				stoppedAt: new Date(),
+				workflow: { customAttributes: { env: 'workflow' } },
+				project,
+			});
+
+			const span = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+			expect(span.attributes.env).toBe('workflow');
+		});
+
+		it('should keep built-in attributes when custom attributes use the same keys', () => {
+			tracer = makeTracer({ prefixes: noPrefixes });
+
+			const { workflowSpan, nodeSpan } = runSingleNodeExecution(
+				'exec-prefixes',
+				{
+					id: 'proj-1',
+					customAttributes: { 'n8n.project.id': 'forged', 'n8n.node.name': 'forged' },
+				},
+				{
+					workflow: { 'n8n.workflow.version_id': 'forged' },
+					node: { 'n8n.execution.id': 'forged', 'n8n.node.items.output': 'forged' },
+				},
+			);
+
+			expect(workflowSpan.attributes['n8n.project.id']).toBe('proj-1');
+			expect(workflowSpan.attributes['n8n.workflow.version_id']).toBe('v1');
+			expect(nodeSpan.attributes['n8n.node.name']).toBe('MyNode');
+			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-prefixes');
+			expect(nodeSpan.attributes['n8n.node.items.output']).toBe(1);
 		});
 	});
 });

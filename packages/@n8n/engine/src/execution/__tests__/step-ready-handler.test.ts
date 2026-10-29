@@ -810,7 +810,6 @@ describe('StepReadyHandler waits', () => {
 	const timeWait: WaitDeclaration = {
 		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-		acceptsResumeRequest: false,
 	};
 
 	it('suspends the step and announces no settlement when the executor declares a wait', async () => {
@@ -872,7 +871,7 @@ describe('StepReadyHandler waits', () => {
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {
-		const openWait: WaitDeclaration = { acceptsResumeRequest: true };
+		const openWait: WaitDeclaration = { resumeBinding: 'execution' };
 		const stepStore = makeStepStore();
 		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: makeExecutor({ wait: openWait }),
@@ -895,7 +894,6 @@ describe('StepReadyHandler waits', () => {
 				wait: {
 					resumeAt: 'the day after tomorrow',
 					outputsAtDeadline: [[{ json: {} }]],
-					acceptsResumeRequest: false,
 				},
 			}),
 		});
@@ -919,7 +917,7 @@ describe('StepReadyHandler waits', () => {
 		const queue = makeQueue();
 		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: makeExecutor({
-				wait: { resumeAt: '2099-01-01T00:00:00.000Z', acceptsResumeRequest: false },
+				wait: { resumeAt: '2099-01-01T00:00:00.000Z' },
 			}),
 		});
 
@@ -934,39 +932,41 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
-	it('fails the step when the declaration can never resume', async () => {
-		// No deadline and no resume request means nothing would ever end this
-		// wait, so suspending would strand the execution. The declaration comes
-		// across the executor seam, so this is the executor's bug — but the node
-		// has already run, and a step that ran is recorded, not left running.
-		const stepStore = makeStepStore();
-		const queue = makeQueue();
-		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
-			v1StepExecutor: makeExecutor({ wait: { acceptsResumeRequest: false } }),
-		});
+	it.each([{}, { resumeBinding: null }, { resumeBinding: 'bogus' }])(
+		'fails the step when the declaration can never resume %#',
+		async (declaration) => {
+			// No deadline and no resume request means nothing would ever end this
+			// wait, so suspending would strand the execution. The declaration comes
+			// across the executor seam, so this is the executor's bug — but the node
+			// has already run, and a step that ran is recorded, not left running.
+			const stepStore = makeStepStore();
+			const queue = makeQueue();
+			const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+				v1StepExecutor: makeExecutor({ wait: declaration as WaitDeclaration }),
+			});
 
-		await handler.handle(event);
+			await handler.handle(event);
 
-		expect(stepStore.suspendStep).not.toHaveBeenCalled();
-		expect(stepStore.failStep).toHaveBeenCalledWith(
-			'step-a',
-			expect.objectContaining({
-				message: expect.stringContaining('declares a wait that can never resume') as string,
-			}),
-		);
-		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'step:settled',
-			executionId: 'exec-1',
-			stepId: 'step-a',
-		});
-	});
+			expect(stepStore.suspendStep).not.toHaveBeenCalled();
+			expect(stepStore.failStep).toHaveBeenCalledWith(
+				'step-a',
+				expect.objectContaining({
+					message: expect.stringContaining('declares a wait that can never resume') as string,
+				}),
+			);
+			expect(queue.publish).toHaveBeenCalledWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-a',
+			});
+		},
+	);
 });
 
 describe('StepReadyHandler resumes', () => {
 	const timeWait: WaitDeclaration = {
 		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-		acceptsResumeRequest: false,
 	};
 
 	it('emits the captured outputs when a deadline resume dispatches the step', async () => {
@@ -1025,7 +1025,7 @@ describe('StepReadyHandler resumes', () => {
 		const requestOutputs = [[{ json: { approved: true } }]];
 		const stepStore = makeStepStore({
 			status: 'running',
-			waitDeclaration: { acceptsResumeRequest: true },
+			waitDeclaration: { resumeBinding: 'execution' },
 			resumeCause: { kind: 'request', outputs: requestOutputs },
 		});
 		const queue = makeQueue();

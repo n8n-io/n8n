@@ -11,6 +11,10 @@ carry it through all four layers below.** A property that stops at the module
 is invisible to public-API and CLI users — and an out-of-date OpenAPI spec or
 CLI flag is a silent bug, not a compile error.
 
+One exception: a policy that only promotions needs can stop at
+`ImportSelectionRequest`, for example `dataTableSchemaConflictPolicy` and
+`tagConflictPolicy`. The public selection import keeps the fixed default.
+
 ```mermaid
 flowchart LR
   M["1. Module<br/>(this package)"] --> D["2. DTO<br/>@n8n/api-types"]

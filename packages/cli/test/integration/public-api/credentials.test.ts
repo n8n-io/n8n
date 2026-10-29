@@ -148,6 +148,17 @@ describe('POST /credentials', () => {
 		}
 	});
 
+	test('should accept an expression in a number field', async () => {
+		const data = { host: 'ftp.example.com', port: '={{ $vars.PORT }}' };
+
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ name: 'ftp credential', type: 'ftp', data });
+
+		expect(response.statusCode).toBe(200);
+		expect(await getDecryptedCredentialData(response.body.id)).toEqual(data);
+	});
+
 	test('should fail with an unknown credential type', async () => {
 		const response = await authOwnerAgent.post('/credentials').send({
 			name: 'test credential',

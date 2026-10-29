@@ -273,6 +273,9 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	 */
 	token_count: number;
 	tool_call_count: number;
+	/** Successful `load_skill` calls that activated a skill in this turn. */
+	skill_load_count?: number;
+	loaded_skill_ids?: string[];
 }
 
 // ----------------------------------

@@ -185,7 +185,13 @@ export class AiPreferenceService {
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
 	async list(
 		user: User,
-		page: { skip: number; take: number; ids?: string[]; sortBy?: AiPreferenceSortOption },
+		page: {
+			skip: number;
+			take: number;
+			ids?: string[];
+			search?: string;
+			sortBy?: AiPreferenceSortOption;
+		},
 	): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
@@ -193,6 +199,7 @@ export class AiPreferenceService {
 			skip: page.skip,
 			take: page.take,
 			...(page.ids ? { ids: page.ids } : {}),
+			...(page.search ? { search: page.search } : {}),
 			...(page.sortBy ? { sortBy: page.sortBy } : {}),
 		});
 

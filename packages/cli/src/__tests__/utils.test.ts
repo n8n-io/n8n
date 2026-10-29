@@ -9,11 +9,78 @@ import {
 	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
+	rightDiff,
 	satisfiesToolCapability,
 	setMicrosoftObservabilityDefaults,
 	stripToolSuffix,
 	withExpressionIsolate,
 } from '../utils';
+
+describe('rightDiff', () => {
+	it.each([
+		{ description: 'handles two empty arrays', arr1: [], arr2: [], expected: [] },
+		{
+			description: 'keeps all entries when the first array is empty',
+			arr1: [],
+			arr2: ['b', 'a', 'b'],
+			expected: ['b', 'a', 'b'],
+		},
+		{
+			description: 'returns no entries when the second array is empty',
+			arr1: ['a'],
+			arr2: [],
+			expected: [],
+		},
+		{
+			description: 'excludes all matching entries',
+			arr1: ['a', 'b'],
+			arr2: ['b', 'a', 'b'],
+			expected: [],
+		},
+		{
+			description: 'keeps entries when no keys match',
+			arr1: ['a'],
+			arr2: ['c', 'b'],
+			expected: ['c', 'b'],
+		},
+		{
+			description: 'preserves the order of the second array',
+			arr1: ['b'],
+			arr2: ['d', 'b', 'a', 'c'],
+			expected: ['d', 'a', 'c'],
+		},
+		{
+			description: 'preserves duplicate entries from the second array',
+			arr1: ['a', 'a'],
+			arr2: ['b', 'a', 'b', 'c', 'b'],
+			expected: ['b', 'b', 'c', 'b'],
+		},
+	])('$description', ({ arr1, arr2, expected }) => {
+		expect(rightDiff([arr1, (item) => item], [arr2, (item) => item])).toEqual(expected);
+	});
+
+	it('uses different key extractors for different item types', () => {
+		const arr1 = [{ id: 'shared' }];
+		const arr2 = [{ projectId: 'shared' }, { projectId: 'new' }];
+
+		expect(rightDiff([arr1, (item) => item.id], [arr2, (item) => item.projectId])).toEqual([
+			arr2[1],
+		]);
+	});
+
+	it('does not mutate inputs and returns the original items in a new array', () => {
+		const arr1 = [Object.freeze({ id: 'shared' })];
+		const arr2 = [Object.freeze({ id: 'new' }), Object.freeze({ id: 'shared' })];
+		Object.freeze(arr1);
+		Object.freeze(arr2);
+
+		const result = rightDiff([arr1, (item) => item.id], [arr2, (item) => item.id]);
+
+		expect(result).toEqual([arr2[0]]);
+		expect(result[0]).toBe(arr2[0]);
+		expect(result).not.toBe(arr2);
+	});
+});
 
 describe('workflow start selection', () => {
 	const manualTrigger = mock<INode>({

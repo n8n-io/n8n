@@ -3,6 +3,7 @@ import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentsConfig } from '@n8n/config';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import express from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -42,6 +43,13 @@ import {
 } from './test-utils/controller-route-metadata';
 import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { N8N_CHAT_PRODUCTION_SOURCE } from '../utils/agent-thread-access';
+import {
+	createLargeTempFile,
+	disconnectBeforeResponse,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
 function makeController() {
 	const agentsService =
@@ -1185,6 +1193,76 @@ describe('AgentChatController attachment download', () => {
 		await expect(controller.getChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 		// Headers must not be written for a failed stream open.
 		expect((res as { setHeader: ReturnType<typeof vi.fn> }).setHeader).not.toHaveBeenCalled();
+	});
+
+	describe('over a real connection', () => {
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
+
+		beforeAll(async () => {
+			file = await createLargeTempFile();
+		});
+
+		afterEach(async () => {
+			await server?.close();
+			server = undefined;
+		});
+
+		afterAll(async () => {
+			await file.remove();
+		});
+
+		const serveAttachment = async (getStream: () => Promise<Readable>) => {
+			const { controller, agentsService, agentChatAttachmentService } = makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentChatAttachmentService.getForAgent.mockResolvedValue({
+				id: 'att-1',
+				mimeType: 'application/octet-stream',
+				fileName: 'file.bin',
+				fileSizeBytes: file.sizeInBytes,
+			} as never);
+			agentChatAttachmentService.getStream.mockImplementation(getStream as never);
+			const handled: Array<Promise<void>> = [];
+			const responseClosed = createDeferredPromise();
+			const app = express();
+			app.get('/', (_req, res) => {
+				res.once('close', () => responseClosed.resolve());
+				const req = {
+					params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+					user: { id: 'user-1' },
+				} as never;
+				handled.push(controller.getChatAttachment(req, res));
+			});
+			server = await startServer(app);
+			return { url: server.url, handled, responseClosed: responseClosed.promise };
+		};
+
+		it('should send the whole file and close it', async () => {
+			const stream = await file.openStream();
+			const { url, handled } = await serveAttachment(async () => stream);
+
+			expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+			await expect(handled[0]).resolves.toBeUndefined();
+			expect(await waitForClose(stream)).toBe(true);
+		});
+
+		it('should close the file when the client disconnects before the download starts', async () => {
+			const stream = await file.openStream();
+			const streamRequested = createDeferredPromise();
+			const releaseStream = createDeferredPromise();
+			const { url, handled, responseClosed } = await serveAttachment(async () => {
+				streamRequested.resolve();
+				await releaseStream.promise;
+				return stream;
+			});
+
+			await disconnectBeforeResponse(url, streamRequested.promise);
+			await responseClosed;
+			releaseStream.resolve();
+
+			await expect(handled[0]).resolves.toBeUndefined();
+			expect(await waitForClose(stream)).toBe(true);
+		});
 	});
 });
 

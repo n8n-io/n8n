@@ -109,7 +109,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
-			expect(scopeTools['skill:read']).toContain('search_skills');
+			expect(scopeTools['skill:read']).toContain('search_n8n_skills');
 			expect(scopeTools['skill:write']).toContain('create_skill');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});

@@ -160,6 +160,7 @@ export class AgentMessageQueueService {
 			const {
 				modelMessage,
 				author: inputAuthor,
+				integrationOrigin,
 				platformThreadId,
 				messageContext: fullContext,
 				...integrationDispatch
@@ -178,6 +179,7 @@ export class AgentMessageQueueService {
 				integrationConnectionId,
 				platformMessageId,
 				platformThreadId,
+				...(integrationOrigin ? { integration: integrationOrigin } : {}),
 			};
 		} else {
 			queueDispatch = {

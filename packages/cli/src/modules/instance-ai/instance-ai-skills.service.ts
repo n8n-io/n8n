@@ -3,6 +3,7 @@ import {
 	type RuntimeSkillContent,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
+import { AssistantSkillProviderProxy, type AssistantSkillContext } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
@@ -64,6 +65,16 @@ const SKILL_GATES: ReadonlyArray<{
 /** Loads the active skills of Instance AI: the prompt-profile skills that the gates leave on. */
 @Service()
 export class InstanceAiSkillsService {
+	constructor(private readonly hubSkills: AssistantSkillProviderProxy) {}
+
+	async listHubSkills(context: AssistantSkillContext) {
+		return await this.hubSkills.listSkills(context);
+	}
+
+	async readHubSkill(context: AssistantSkillContext, skillId: string) {
+		return await this.hubSkills.readSkill(context, skillId);
+	}
+
 	/** The active skills, and the tools that the prompt profile turns off. */
 	async loadSkills(scope: InstanceAiSkillScope): Promise<InstanceAiRunSkills> {
 		const { source, disabledTools } = await loadInstanceAiPromptSkills(scope.profile);

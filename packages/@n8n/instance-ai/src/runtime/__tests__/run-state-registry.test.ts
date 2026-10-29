@@ -129,6 +129,16 @@ describe('RunStateRegistry', () => {
 	// ── startRun ──────────────────────────────────────────────────────────────
 
 	describe('startRun', () => {
+		it('keeps a persisted run identity', () => {
+			const result = registry.startRun({
+				threadId: 'thread-1',
+				runId: 'persisted-run',
+				user: { id: 'user-1', name: 'Alice' },
+			});
+			expect(result.runId).toBe('persisted-run');
+			expect(registry.getActiveRun('thread-1')?.runId).toBe('persisted-run');
+		});
+
 		it('creates run with generated runId and messageGroupId', () => {
 			const result = registry.startRun({
 				threadId: 'thread-1',

@@ -47,6 +47,8 @@ export const promotionResourceSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	previousName: z.string().optional(),
+	/** Only for tags on Apply: the local tag with this name that Apply moves to the branch id. */
+	previousId: z.string().optional(),
 	/** The project or folder that holds the resource. `null` for instance-wide resources. */
 	parentKey: z.string().nullable(),
 	previousParentKey: z.string().nullable().optional(),
@@ -67,9 +69,18 @@ export const promotionResourceDependencySchema = z.object({
 
 export type PromotionResourceDependency = z.infer<typeof promotionResourceDependencySchema>;
 
+/** Why a promote preview shows no changes. `reviewId` is the open review that holds them. */
+export const promotionBlockerSchema = z.object({
+	code: z.literal('reviewOpen'),
+	reviewId: z.string(),
+});
+
+export type PromotionBlocker = z.infer<typeof promotionBlockerSchema>;
+
 export const promotionPreviewSchema = promotionChangesSchema.extend({
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
+	blocker: promotionBlockerSchema.optional(),
 });
 
 export type PromotionPreview = z.infer<typeof promotionPreviewSchema>;

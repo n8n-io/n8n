@@ -117,6 +117,30 @@ describe('Source Control API', () => {
 				.send({ branchReadOnly: true })
 				.expect(403);
 		});
+
+		describe('when source control is disconnected', () => {
+			beforeAll(async () => {
+				await sourceControlPreferencesService.setPreferences({ connected: false });
+			});
+
+			afterAll(async () => {
+				await sourceControlPreferencesService.setPreferences({
+					connected: true,
+					branchReadOnly: false,
+				});
+			});
+
+			test('should protect the instance when only branchReadOnly is sent', async () => {
+				const res = await authOwnerAgent
+					.patch('/source-control/preferences')
+					.send({ branchReadOnly: true })
+					.expect(200);
+				expect((res.body.data ?? res.body).branchReadOnly).toBe(true);
+
+				const memberRes = await authMemberAgent.get('/source-control/preferences').expect(200);
+				expect((memberRes.body.data ?? memberRes.body).branchReadOnly).toBe(true);
+			});
+		});
 	});
 
 	describe('POST /source-control/disconnect', () => {

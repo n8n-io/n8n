@@ -5,7 +5,6 @@ import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'v
 
 import { VIEWS } from '@/app/constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { PROMOTIONS_MODALS } from './modals';
 import {
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
@@ -86,5 +85,4 @@ export const PromotionsModule = defineFrontendModule({
 		previewRoute('promote'),
 		previewRoute('apply'),
 	],
-	modals: PROMOTIONS_MODALS,
 });

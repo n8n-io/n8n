@@ -223,6 +223,32 @@ describe('InstanceContextService', () => {
 			});
 		});
 
+		it('reads no runs when the user lacks execution:read on the bound project', async () => {
+			userHasScopes.mockImplementation(async (...args: unknown[]) => {
+				const scopes = args[1];
+				return !(Array.isArray(scopes) && scopes.includes('execution:read'));
+			});
+			const service = serviceWith();
+			workflowRepository.findRecentForProjects.mockResolvedValue({
+				total: 1,
+				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: true }],
+			});
+
+			const built = await service.buildBlock({
+				enabled: true,
+				user: USER,
+				scope: BOUND,
+				cursor: null,
+				now: NOW,
+			});
+
+			expect(built).toMatchObject({ state: 'injected', legs: { inventory: 1, runs: 0 } });
+			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
+			expect(userHasScopes).toHaveBeenCalledWith(USER, ['execution:read'], false, {
+				projectId: PROJECT_ID,
+			});
+		});
+
 		it('returns nothing from the tool reads once the user loses project access', async () => {
 			const service = serviceWith();
 			userHasScopes.mockResolvedValue(false);

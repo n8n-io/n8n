@@ -77,7 +77,7 @@ describe('PublicApiControllerRegistry', () => {
 		// mirrors the real strategies, which set `req.user` on success
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
-			return true;
+			return { authenticated: true };
 		});
 		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
@@ -201,7 +201,7 @@ describe('PublicApiControllerRegistry', () => {
 
 	it('emits the Deprecation header even when authentication fails', async () => {
 		const since = new Date('2026-07-23T00:00:00Z');
-		authStrategyRegistry.authenticate.mockResolvedValue(false);
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 
 		@Service()
 		class WidgetsPublicController {
@@ -217,6 +217,49 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/api/v1/widgets').expect(401);
 
 		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
+	});
+
+	it('sets WWW-Authenticate on the 401 from the collected challenges, comma-separated', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({
+			authenticated: false,
+			challenges: ['Bearer resource_metadata="https://n8n.test/.well-known/x"', 'Basic'],
+		});
+
+		const response = await request(activate())
+			.get('/api/v1/widgets')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(response.headers['www-authenticate']).toBe(
+			'Bearer resource_metadata="https://n8n.test/.well-known/x", Basic',
+		);
+	});
+
+	it('sends the 401 without WWW-Authenticate when no strategy offered a challenge', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		const response = await request(activate())
+			.get('/api/v1/widgets')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(response.headers['www-authenticate']).toBeUndefined();
 	});
 
 	it('omits the Deprecation header when @Deprecated is absent', async () => {
@@ -429,7 +472,7 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('keeps 401 ahead of parameter validation for an unauthenticated caller', async () => {
-			authStrategyRegistry.authenticate.mockResolvedValue(false);
+			authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 			registerScopedRoute();
 
 			await request(activate()).get('/api/v1/widgets/abc').expect(401);
@@ -649,7 +692,10 @@ describe('PublicApiControllerRegistry', () => {
 			});
 
 			it('keeps 401 ahead of multipart parsing for an unauthenticated caller', async () => {
-				authStrategyRegistry.authenticate.mockResolvedValue(false);
+				authStrategyRegistry.authenticate.mockResolvedValue({
+					authenticated: false,
+					challenges: [],
+				});
 				registerUploadLimitedRoute(() => ({ fileSize: 2 }));
 
 				// The file is bigger than the configured limit; a 413 here would mean the body was
@@ -665,7 +711,7 @@ describe('PublicApiControllerRegistry', () => {
 				authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 					req.user = authenticatedUser;
 					req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
-					return true;
+					return { authenticated: true };
 				});
 
 				@Service()
@@ -810,7 +856,7 @@ describe('PublicApiControllerRegistry', () => {
 					apiKeyScopes: ['workflow:read'],
 					subject: authenticatedUser,
 				};
-				return true;
+				return { authenticated: true };
 			});
 
 			@Service()

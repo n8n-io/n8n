@@ -1,7 +1,7 @@
 /**
  * Shared LLM-as-judge helpers.
  *
- * Used by both the workflow binary-check factory and the computer-use eval
+ * Used by the workflow binary-check factory
  * graders. Centralizes the "respond with a JSON verdict" instruction suffix,
  * the parsing of fenced/bare JSON, and the verdict shape.
  */

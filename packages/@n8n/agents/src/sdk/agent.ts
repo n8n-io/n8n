@@ -87,7 +87,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
-import { modelConfigToId } from '../utils/model';
+import { getCatalogModelId, modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
@@ -1140,13 +1140,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
 		try {
-			const modelId =
-				typeof modelConfig === 'string'
-					? modelConfig
-					: 'id' in modelConfig && typeof modelConfig.id === 'string'
-						? modelConfig.id
-						: undefined;
-			modelCost = modelId ? await getModelCost(modelId) : undefined;
+			modelCost = await getModelCost(getCatalogModelId(modelConfig));
 		} catch {
 			modelCost = undefined;
 		}

@@ -1,5 +1,7 @@
 import userEvent from '@testing-library/user-event';
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
+
+import type { IconName } from '../N8nIcon/icons';
 
 import N8nButton from './Button.vue';
 
@@ -456,6 +458,19 @@ describe('components', () => {
 				const button = wrapper.getByRole('button');
 				expect(button).toHaveAttribute('data-test-id', 'custom-button');
 				expect(button).toHaveAttribute('aria-describedby', 'help-text');
+			});
+		});
+
+		describe('fallback icon', () => {
+			it('should draw the fallback icon for an icon name no icon set has', async () => {
+				const wrapper = render(N8nButton, {
+					props: { icon: 'not-an-icon' as IconName, fallbackIcon: 'bot', iconOnly: true },
+					attrs: { 'aria-label': 'Change icon' },
+				});
+
+				await waitFor(() =>
+					expect(wrapper.container.querySelector('svg[data-icon="bot"]')).toBeTruthy(),
+				);
 			});
 		});
 

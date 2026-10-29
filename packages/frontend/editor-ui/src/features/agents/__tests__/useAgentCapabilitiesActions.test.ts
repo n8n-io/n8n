@@ -648,6 +648,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			source: 'ui',
 			createdBy: null,
 			latestVersion: 1,
+			availableToAssistant: false,
 			usedByAgents: 0,
 			canEdit: false,
 			canDelete: false,

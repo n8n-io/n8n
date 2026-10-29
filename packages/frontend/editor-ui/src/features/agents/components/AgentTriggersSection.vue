@@ -11,7 +11,9 @@ import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useStorage } from '@n8n/composables/useStorage';
 import { agentsEventBus } from '../agents.eventBus';
+import { N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS } from '../constants';
 import {
 	agentChannelPlatforms,
 	createAgentChannelRuntime,
@@ -26,6 +28,7 @@ import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import N8nChatHintPopover from './N8nChatHintPopover.vue';
 import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 const props = withDefaults(
@@ -63,6 +66,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [{ triggerType: string; triggers: string[] }];
+	'trigger-removed': [{ triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
 	'preview-task': [instructions: string];
@@ -142,6 +146,8 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const channelIssueMessages = computed(() => {
@@ -254,6 +260,10 @@ function openChannelEdit(channelType: string, connected: boolean) {
 	channelModalOpen.value = true;
 }
 
+// The sidebar "New chat" hint shows on a user's first visit; this one follows it, never both at once.
+const newChatHintStorage = useStorage(N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS.new_chat_sidebar);
+const newChatHintDismissed = computed(() => newChatHintStorage.value === 'true');
+
 function handleChannelConnected(channelType: string) {
 	const channels = Array.from(new Set([...props.connectedTriggers, channelType]));
 	emit('update:connected-triggers', channels);
@@ -297,10 +307,9 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 defineExpose({ openChannelModal });
 
 function handleChannelDisconnected(channelType: string) {
-	emit(
-		'update:connected-triggers',
-		props.connectedTriggers.filter((channel) => channel !== channelType),
-	);
+	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
+	emit('update:connected-triggers', channels);
+	emit('trigger-removed', { triggerType: channelType, triggers: channels });
 }
 </script>
 
@@ -323,17 +332,31 @@ function handleChannelDisconnected(channelType: string) {
 				:disabled="props.disabled || removingChannel || !channel.connected"
 				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
-				<AgentChipButton
-					:icon="channel.icon"
-					:deactivated="!channel.connected"
-					:invalid="channel.invalidReasons.length > 0"
-					:invalid-reasons="channel.invalidReasons"
-					:disabled="props.disabled || removingChannel"
-					:class="$style.channelChip"
-					@click="openChannelEdit(channel.type, channel.connected)"
+				<N8nChatHintPopover
+					hint="channel_chip"
+					:active="
+						channel.type === N8N_CHAT_INTEGRATION_TYPE &&
+						channel.connected &&
+						!channelModalOpen &&
+						!props.disabled &&
+						newChatHintDismissed
+					"
+					:title="i18n.baseText('agents.n8nChatHint.channelAdded.title')"
+					:body="i18n.baseText('agents.n8nChatHint.channelAdded.body')"
+					:agent-id="props.agentId"
 				>
-					{{ channel.label }}
-				</AgentChipButton>
+					<AgentChipButton
+						:icon="channel.icon"
+						:deactivated="!channel.connected"
+						:invalid="channel.invalidReasons.length > 0"
+						:invalid-reasons="channel.invalidReasons"
+						:disabled="props.disabled || removingChannel"
+						:class="$style.channelChip"
+						@click="openChannelEdit(channel.type, channel.connected)"
+					>
+						{{ channel.label }}
+					</AgentChipButton>
+				</N8nChatHintPopover>
 			</AgentItemContextMenu>
 		</AgentChipRow>
 

@@ -27,6 +27,11 @@ import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import type { AgentResource } from '@/features/agents/types';
+import {
+	increasedBudgetConfig,
+	type BudgetAmountField,
+} from '@/features/agents/utils/budget-config';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
 import { N8nEmptyState } from '@n8n/design-system';
@@ -45,7 +50,8 @@ const {
 	sendSession,
 } = useAgentSessionLangSmithExport();
 const rootStore = useRootStore();
-const { config: localConfig, fetchConfig } = useAgentConfig();
+const toast = useToast();
+const { config: localConfig, fetchConfig, updateConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -337,6 +343,29 @@ async function onDeletePreviewSession(sessionId: string) {
 	void router.replace(agentExecutionsRoute.value);
 }
 
+/**
+ * Raises a budget cap from the timeline's budget notice. Only a persisted cap
+ * counts: a stale or failed save would stop the next run against the old cap.
+ */
+async function onIncreaseBudget(payload: {
+	field: BudgetAmountField;
+	amount: number;
+}): Promise<boolean> {
+	const current = localConfig.value;
+	if (!canUpdate.value || !current) return false;
+	const update = increasedBudgetConfig(current, payload.field, payload.amount);
+	if (!update) return false;
+	try {
+		const result = await updateConfig(projectId.value, agentId.value, { ...current, ...update });
+		if (result.stale) return false;
+		localConfig.value = result.config;
+		return true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.budget'));
+		return false;
+	}
+}
+
 function togglePreview() {
 	if (!canPreviewSession.value) return;
 	isPreviewOpen.value = !isPreviewOpen.value;
@@ -379,6 +408,7 @@ function viewPreviewTrace() {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
+				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
 				@loaded="onPanelLoaded"
 			/>
 			<div v-else :class="$style.newSessionEmpty">

@@ -87,6 +87,18 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => this.toEvent(r));
 	}
 
+	async getRunFinish(threadId: string, runId: string) {
+		const row = await this.findOne({
+			where: { threadId, runId, type: 'run-finish' },
+			order: { seq: 'DESC' },
+		});
+		if (!row) return null;
+		const event = this.toEvent(row);
+		return event.type === 'run-finish'
+			? { status: event.payload.status, reason: event.payload.reason }
+			: null;
+	}
+
 	/** Read terminal facts before a writer admits more activity for these runs. */
 	async getActivityTerminalEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		if (runIds.length === 0) return [];

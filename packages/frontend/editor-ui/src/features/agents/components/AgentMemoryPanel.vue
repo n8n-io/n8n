@@ -168,6 +168,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							</N8nText>
 						</div>
 						<div :class="$style.credentialPicker">
+							<!-- Keep the dropdown outside the scrollable dialog body. -->
 							<CredentialPicker
 								app-name="OpenAI"
 								size="medium"
@@ -177,7 +178,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 								:project-id="projectId"
 								:show-delete="false"
 								:hide-create-new="false"
-								:teleported="false"
+								teleported
 								credential-modal-append-to-body
 								:class="$style.credentialPicker"
 								data-testid="agent-episodic-memory-credential-picker"

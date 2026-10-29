@@ -526,7 +526,7 @@ describe('TeamsSetupService', () => {
 
 		describe('app icons', () => {
 			const bundled = (name: string) => readFileSync(join(__dirname, '..', 'assets', name));
-			const packageFor = async (icon: string) => {
+			const packageFor = async (icon: string, from = '#2563EB') => {
 				connectTeamsCredential();
 				agentRepository.findByIdAndProjectId.mockResolvedValue(
 					agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }], {
@@ -535,7 +535,7 @@ describe('TeamsSetupService', () => {
 						instructions: '',
 						personalisation: {
 							icon,
-							gradient: { from: '#2563EB', to: '#2563EB', angle: 90, fromStop: 0, toStop: 100 },
+							gradient: { from, to: '#2563EB', angle: 90, fromStop: 0, toStop: 100 },
 						},
 					}),
 				);
@@ -555,13 +555,16 @@ describe('TeamsSetupService', () => {
 				expect(manifest.accentColor).toBe('#2563EB');
 			});
 
-			it('keeps the n8n icons for an icon name Lucide does not have', async () => {
-				const entries = await packageFor('not-a-lucide-icon');
+			it('draws the default icon on the agent colour for an icon name Lucide does not have', async () => {
+				expect(await packageFor('not-a-lucide-icon')).toEqual(await packageFor('bot'));
+			});
+
+			it('takes the accent colour from the default gradient for a stored colour that is not #RRGGBB', async () => {
+				const entries = await packageFor('heart', '#X000FF');
 				const manifest = JSON.parse(Buffer.from(entries['manifest.json']).toString('utf8'));
 
-				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(true);
-				expect(Buffer.from(entries['outline.png']).equals(bundled('outline.png'))).toBe(true);
-				expect(manifest.accentColor).toBe('#EA4B71');
+				// The middle of the default red-orange gradient.
+				expect(manifest.accentColor).toBe('#FF4A00');
 			});
 		});
 

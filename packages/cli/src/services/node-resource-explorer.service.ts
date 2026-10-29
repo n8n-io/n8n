@@ -143,6 +143,17 @@ export class NodeResourceExplorerService {
 	}
 
 	/**
+	 * Run the credential access and type check `exploreResources` runs, without the
+	 * provider lookup. Throws as `exploreResources` does when the check fails.
+	 */
+	async assertExploreCredentialAccess(
+		user: User,
+		params: Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>,
+	): Promise<void> {
+		await this.resolveExploreCredentials(user, params);
+	}
+
+	/**
 	 * Resolve credentials for explore-resources / availability checks.
 	 * The n8n Connect managed tag skips the credential store and passes the
 	 * gateway-managed marker so CredentialsHelper mints a synthetic credential

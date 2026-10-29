@@ -21,7 +21,6 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
@@ -83,7 +82,7 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
-
+		icon: props.projectIcon,
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
@@ -167,9 +166,6 @@ function onMenuSelect(id: string) {
 				theme="medium"
 				@item-selected="onBreadcrumbSelect"
 			>
-				<template #prepend>
-					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
-				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -293,10 +289,6 @@ function onMenuSelect(id: string) {
 
 .left :global(.n8n-breadcrumbs) {
 	min-width: max-content;
-}
-
-.left :global(.n8n-breadcrumbs > ul > li:first-child) {
-	display: none;
 }
 
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {

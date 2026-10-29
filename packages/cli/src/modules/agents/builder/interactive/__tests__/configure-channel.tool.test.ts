@@ -28,7 +28,7 @@ describe('agent_builder_configure_channel tool', () => {
 		return buildConfigureChannelTool({
 			agentId: 'agent-1',
 			projectId: 'project-1',
-			listChatIntegrationTypes: () => availableTypes,
+			listChatIntegrationTypes: async () => availableTypes,
 			track,
 		});
 	}
@@ -110,6 +110,32 @@ describe('agent_builder_configure_channel tool', () => {
 		expect(result).toEqual({ configured: true });
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
 			trigger_type: 'slack',
+		});
+	});
+
+	it('accepts n8n_chat when it is offered and tracks it as the added trigger on approval', async () => {
+		const tool = buildTool(['slack', 'n8n_chat']);
+		const suspendCtx = makeCtx();
+
+		await tool.handler!(
+			{ integrationType: 'n8n_chat' },
+			suspendCtx as unknown as InterruptibleToolContext,
+		);
+
+		expect(suspendCtx.suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				channelConfig: { integrationType: 'n8n_chat', agentId: 'agent-1' },
+			}),
+		);
+
+		const result = await tool.handler!(
+			{ integrationType: 'n8n_chat' },
+			makeCtx({ resumeData: { approved: true } }) as unknown as InterruptibleToolContext,
+		);
+
+		expect(result).toEqual({ configured: true });
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+			trigger_type: 'n8n_chat',
 		});
 	});
 

@@ -506,6 +506,88 @@ describe('AgentModelCatalogService', () => {
 		expect(lookupService.lookup).not.toHaveBeenCalled();
 	});
 
+	describe('azure-openai', () => {
+		it('offers the exact deployment names of the Foundry project, without the catalog', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockResolvedValue({
+				status: 'success',
+				policy: 'endpoint-only',
+				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				models: [{ id: 'my-chat', name: 'my-chat (gpt-4.1)', toolCall: true }],
+			});
+			expect(lookupService.lookupAzureFoundryDeployments).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				credentialId,
+			);
+			expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		});
+
+		it('reports why the deployments are unavailable, without a catalog fallback', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockResolvedValue({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				error: undefined,
+				reason: 'project_missing',
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				unavailable: true,
+				unavailableReason: 'project_missing',
+				models: [],
+			});
+		});
+
+		it('does not send the n8n Connect managed tag to the Foundry lookup', async () => {
+			const { service, lookupService } = makeService();
+
+			await service.getProviderModels(user, 'project-1', 'azure-openai', AI_GATEWAY_MANAGED_TAG);
+
+			expect(lookupService.lookupAzureFoundryDeployments).not.toHaveBeenCalled();
+		});
+
+		it('does not use the catalog when the credential cannot be read', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockRejectedValue(new Error('not accessible'));
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				unavailable: true,
+				models: [],
+			});
+		});
+	});
+
 	it('still returns live models (verified: true) when the catalog fetch fails', async () => {
 		const { service, lookupService } = makeService();
 		fetchProviderCatalog.mockRejectedValue(new Error('models.dev unreachable'));

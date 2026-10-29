@@ -12,12 +12,12 @@ import { UserError } from 'n8n-workflow';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import { buildVectorStore } from '../json-config/vector-store-factory';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
 
-vi.mock('../json-config/vector-store-factory', () => ({
+vi.mock('@/modules/knowledge/vector-stores/factory', () => ({
 	buildVectorStore: vi.fn(),
 }));
 
@@ -1760,7 +1760,7 @@ describe('buildFromJson()', () => {
 				description: vectorStoreConfig.useWhen,
 				handler: vi.fn(),
 			};
-			const mockVectorStore = { asTool: vi.fn().mockReturnValue(fakeTool) };
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
 			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
 
 			const agent = await buildFromJson(
@@ -1778,6 +1778,64 @@ describe('buildFromJson()', () => {
 				description: vectorStoreConfig.useWhen,
 			});
 			expect(agent.snapshot.tools.some((t) => t.name === 'search_product_docs')).toBe(true);
+		});
+
+		async function buildSearchTool(searchHandler: ReturnType<typeof vi.fn>) {
+			const fakeTool = {
+				name: 'search_product_docs',
+				description: vectorStoreConfig.useWhen,
+				handler: searchHandler,
+			};
+			const mockVectorStore = { asTool: vi.fn().mockReturnValue({ build: () => fakeTool }) };
+			vi.mocked(buildVectorStore).mockResolvedValue(mockVectorStore as never);
+			const finishSearch = vi.fn();
+			const onVectorStoreSearch = vi.fn().mockReturnValue(finishSearch);
+
+			const agent = await buildFromJson(
+				makeConfig({ vectorStores: [vectorStoreConfig] }),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					onVectorStoreSearch,
+				},
+			);
+			const searchTool = agent.declaredTools.find((t) => t.name === 'search_product_docs');
+			return { searchTool, onVectorStoreSearch, finishSearch };
+		}
+
+		it('reports each vector store search with the run id and the size of its result', async () => {
+			const result = { results: [{ id: 'doc-1', content: 'Refunds take 5 days.' }] };
+			const searchHandler = vi.fn().mockResolvedValue(result);
+			const { searchTool, onVectorStoreSearch, finishSearch } =
+				await buildSearchTool(searchHandler);
+			const input = { query: 'refund policy' };
+			const ctx = { runId: 'run-1' };
+
+			await expect(searchTool?.handler?.(input, ctx)).resolves.toEqual(result);
+
+			expect(searchHandler).toHaveBeenCalledWith(input, ctx);
+			expect(onVectorStoreSearch).toHaveBeenCalledTimes(1);
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
+			expect(finishSearch).toHaveBeenCalledWith({
+				failed: false,
+				contentChars: JSON.stringify(result).length,
+			});
+		});
+
+		it('reports a failed vector store search as failed, then throws its error', async () => {
+			const error = new Error('vector store unavailable');
+			const searchHandler = vi.fn().mockRejectedValue(error);
+			const { searchTool, onVectorStoreSearch, finishSearch } =
+				await buildSearchTool(searchHandler);
+
+			await expect(
+				searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' }),
+			).rejects.toBe(error);
+
+			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
+			expect(finishSearch).toHaveBeenCalledWith({ failed: true });
 		});
 
 		it.each([

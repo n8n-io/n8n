@@ -16,6 +16,14 @@ import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/**
+ * Loads accounts of both kinds. A full row comes back as the child entity that
+ * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
+ * `ServiceAccountRepository` when only one kind can appear.
+ *
+ * The query methods below predate service accounts. They stay here until their
+ * callers move to `PersonRepository`, so that a caller sees no change.
+ */
 @Service()
 export class UserRepository extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -268,17 +276,23 @@ export class UserRepository extends BaseRepository<User> {
 		projectId,
 		projectRoleSlugs,
 		globalRoleSlugs,
+		userIds,
 	}: {
 		projectId: string;
 		projectRoleSlugs: string[];
 		globalRoleSlugs: string[];
+		userIds?: string[];
 	}): Promise<User[]> {
+		if (userIds?.length === 0) return [];
+
+		const requestedUsers = userIds ? { id: In(userIds) } : {};
 		const where: Array<FindOptionsWhere<User>> = [];
 		if (globalRoleSlugs.length > 0) {
-			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
 		}
 		if (projectRoleSlugs.length > 0) {
 			where.push({
+				...requestedUsers,
 				disabled: false,
 				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
 			});
@@ -377,7 +391,16 @@ export class UserRepository extends BaseRepository<User> {
 	private applyUserListFilter(
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
 	): SelectQueryBuilder<User> {
+		if (roleSlugs !== undefined) {
+			if (roleSlugs.length === 0) {
+				queryBuilder.andWhere('1 = 0');
+			} else {
+				queryBuilder.andWhere('user.role IN (:...roleSlugs)', { roleSlugs });
+			}
+		}
+
 		if (filter?.email !== undefined) {
 			queryBuilder.andWhere('user.email = :email', {
 				email: filter.email,
@@ -511,7 +534,10 @@ export class UserRepository extends BaseRepository<User> {
 		return queryBuilder;
 	}
 
-	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
+	buildUserQuery(
+		listQueryOptions?: UsersListFilterDto,
+		roleSlugs?: string[],
+	): SelectQueryBuilder<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
@@ -522,7 +548,7 @@ export class UserRepository extends BaseRepository<User> {
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
 		this.applyUserListSelect(queryBuilder, select);
-		this.applyUserListFilter(queryBuilder, filter);
+		this.applyUserListFilter(queryBuilder, filter, roleSlugs);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);

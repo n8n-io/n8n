@@ -87,9 +87,108 @@ describe('Lakebase -> error hints', () => {
 		expect(error.message).toHaveLength(500);
 	});
 
+	it('names the Data API setting when the branch has it off', () => {
+		const error = apiError(503, {
+			message: 'The data api is not enabled for this endpoint.',
+			code: null,
+			detail: null,
+			hint: null,
+		});
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.message).toBe('The data api is not enabled for this endpoint.');
+		expect(error.message).not.toContain('try again');
+		expect(error.description).toContain('Data API');
+	});
+
+	it('keeps the Data API hint for a 503 with no code only', () => {
+		const error = apiError(503, { code: 'XX000', message: 'x' });
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.message).toBe('x');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('uses the API message as the headline for a code the map does not know', () => {
+		const error = apiError(400, { code: 'P0001', message: 'bash_fail: boom', hint: null });
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.message).toBe('bash_fail: boom');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('uses the hint the function raised when the map has none', () => {
+		const error = apiError(400, {
+			code: 'P0001',
+			message: 'bash_fail: boom',
+			hint: 'call it with an id',
+		});
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.message).toBe('bash_fail: boom');
+		expect(error.description).toBe('call it with an id');
+	});
+
+	it('drops a body hint that repeats the message', () => {
+		const error = apiError(400, {
+			code: 'P0001',
+			message: 'bash_fail: boom',
+			hint: 'bash_fail: boom',
+		});
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.message).toBe('bash_fail: boom');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('truncates an over-long body hint', () => {
+		const error = apiError(400, { code: 'P0001', message: 'boom', hint: 'y'.repeat(900) });
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.description).toHaveLength(500);
+	});
+
+	it('flattens control characters in a body hint', () => {
+		const error = apiError(400, { code: 'P0001', message: 'boom', hint: 'line one\nline two' });
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.description).toBe('line one line two');
+	});
+
+	it('prefers the map hint over the body hint', () => {
+		const error = apiError(400, { code: '23505', message: 'duplicate key', hint: 'ignored' });
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.description).toBe(LAKEBASE_ERROR_HINTS.get('23505'));
+	});
+
+	it('uses the API message as the headline when there is no code', () => {
+		const error = apiError(400, { message: 'bash_fail: boom', code: null });
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect(error.message).toBe('bash_fail: boom');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('leaves a message-less unknown code alone', () => {
+		const error = apiError(400, { code: 'PGRST999' });
+		const before = { message: error.message, description: error.description };
+
+		makeLakebaseErrorLegible(error, request());
+
+		expect({ message: error.message, description: error.description }).toEqual(before);
+	});
+
 	it.each([
-		['an unknown code', { code: 'PGRST999', message: 'something else' }],
-		['no code at all', { message: 'something else' }],
 		['a string body', 'not json'],
 		['a buffer body', Buffer.from('not json')],
 		['no body', undefined],

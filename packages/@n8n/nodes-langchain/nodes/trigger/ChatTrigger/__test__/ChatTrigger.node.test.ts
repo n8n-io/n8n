@@ -1329,4 +1329,14 @@ describe('ChatTrigger Node', () => {
 			});
 		});
 	});
+
+	describe('trustedSource', () => {
+		// The resolvers read the stored value as the source id, without evaluating it.
+		it('takes no expression, so the stored value is the source id', () => {
+			const property = new ChatTrigger().description.properties.find(
+				(p) => p.name === 'trustedSource',
+			);
+			expect(property).toMatchObject({ default: 'n8n-internal', noDataExpression: true });
+		});
+	});
 });

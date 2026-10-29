@@ -121,8 +121,11 @@ erDiagram
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   varchar pauseRequestId
+  varchar planId FK
+  varchar planTaskId
   TEXT result
   datetime_3_ settledAt
+  varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   datetime_3_ timeoutAt
@@ -204,6 +207,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
+  TEXT taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   INTEGER totalCompletionTokens

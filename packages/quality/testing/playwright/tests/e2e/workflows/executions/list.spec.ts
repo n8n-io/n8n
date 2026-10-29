@@ -209,7 +209,7 @@ test.describe('Workflow Executions', () => {
 			const errorNotification = n8n.executions
 				.getErrorNotificationsInPreview()
 				.filter({ hasText: ERROR_MESSAGES.OUT_OF_MEMORY });
-			await expect(errorNotification).toBeVisible();
+			await expect(errorNotification.first()).toBeVisible();
 		});
 
 		test.fixme(

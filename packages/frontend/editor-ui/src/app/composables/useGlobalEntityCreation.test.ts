@@ -778,7 +778,6 @@ describe('useGlobalEntityCreation', () => {
 			enabled: true,
 			mcpConnectionsAvailable: true,
 			setupCompleted: true,
-			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
@@ -786,6 +785,7 @@ describe('useGlobalEntityCreation', () => {
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
+			workflowSuggestionsEnabled: false,
 		};
 
 		const enableInstanceAi = () => {

@@ -386,6 +386,7 @@ const credentialPolicyViolationIssueSchema = z
 	.object({
 		type: z.literal('credential-policy-violation'),
 		sourceId: z.string().openapi(credentialPolicyViolationFieldDocs.sourceId),
+		targetId: z.string().optional().openapi(credentialPolicyViolationFieldDocs.targetId),
 		name: z.string().optional(),
 		credentialType: z.string(),
 		usedBy: z

@@ -25,6 +25,7 @@ import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
+	AgentsChatHostEvent,
 	ApprovalInput,
 	ChatMessage,
 	ChatMessageAttachment,
@@ -271,6 +272,7 @@ export function convertDbMessages(
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
+		const hostEvents: AgentsChatHostEvent[] = [];
 		let status: ChatMessage['status'];
 		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
@@ -286,6 +288,13 @@ export function convertDbMessages(
 					fileName: part.fileName ?? 'attachment',
 					mimeType: part.mimeType ?? 'application/octet-stream',
 					sizeBytes: part.sizeBytes,
+				});
+			} else if (part.type === 'host-event' && typeof part.name === 'string' && part.name) {
+				hostEvents.push({
+					id: `${msg.id}:host-event:${partIndex}`,
+					name: part.name,
+					...(typeof part.key === 'string' && part.key ? { key: part.key } : {}),
+					payload: part.payload ?? null,
 				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
@@ -362,6 +371,7 @@ export function convertDbMessages(
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
 			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.backgroundTaskSignal

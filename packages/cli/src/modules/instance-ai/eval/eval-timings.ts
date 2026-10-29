@@ -1,9 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
 
 /** LLM-call phases of a mocked eval execution. */
-type EvalTimingPhase = 'hints' | 'bypass-pin' | 'http-mock' | 'ai-turn';
+type EvalTimingPhase = 'hints' | 'bypass-pin' | 'data-table-rows' | 'http-mock' | 'ai-turn';
 
-const PHASE_ORDER: EvalTimingPhase[] = ['hints', 'bypass-pin', 'http-mock', 'ai-turn'];
+const PHASE_ORDER: EvalTimingPhase[] = [
+	'hints',
+	'bypass-pin',
+	'data-table-rows',
+	'http-mock',
+	'ai-turn',
+];
 
 interface LlmCallSample {
 	phase: EvalTimingPhase;

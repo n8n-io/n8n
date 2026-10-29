@@ -156,11 +156,18 @@ const importCredentialSummarySchema = z
 				'data. These credentials need input. The import does not publish the imported version ' +
 				'of workflows that use them (`incomplete-credential`).',
 		}),
+		updated: z.array(z.string()).openapi({
+			description:
+				'Source credential ids whose matched credential this import changed under ' +
+				'`credentialConflictPolicy=overwrite`. These ids are not listed under `matched`. ' +
+				'Empty for other policies.',
+		}),
 	})
 	.openapi({
 		description:
-			'Source credential ids grouped by whether they matched an existing credential or were ' +
-			'created as empty stubs, seeded credentials, or incomplete credentials. Full source→target id mapping is in `bindings.credentials`.',
+			'Source credential ids grouped by whether they matched an existing credential, were ' +
+			'created as empty stubs, seeded credentials, or incomplete credentials, or matched a ' +
+			'credential that this import updated. Full source→target id mapping is in `bindings.credentials`.',
 	});
 
 const importDataTableSummarySchema = z.object({

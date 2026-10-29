@@ -17,7 +17,11 @@ export class CommunityPackagesController {
 		_res: unknown,
 		@Body body: CommunityPackageRequestDto,
 	) {
-		return await this.communityPackagesLifecycle.install(body, req.user, 'ui');
+		const installedPackage = await this.communityPackagesLifecycle.install(body, req.user, 'ui');
+		const policyRestrictions =
+			await this.communityPackagesLifecycle.describePolicyRestrictions(installedPackage);
+
+		return policyRestrictions ? { ...installedPackage, policyRestrictions } : installedPackage;
 	}
 
 	@Get('/')

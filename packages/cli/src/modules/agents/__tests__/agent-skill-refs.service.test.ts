@@ -471,10 +471,22 @@ describe('AgentSkillRefsService', () => {
 			skillService.create.mockResolvedValue('skill_created');
 
 			await expect(
-				service.createSkills(agent, [body], 'user-1', availableTo, ctx),
+				service.createSkills(agent, [body], 'user-1', availableTo, 'agent', ctx),
 			).resolves.toEqual(['skill_created']);
 			expect(skillService.create).toHaveBeenCalledWith(
 				{ target, skill: body, source: 'agent', createdById: 'user-1', checkNameTaken: true },
+				ctx,
+			);
+		});
+
+		it('stores the source the caller passed', async () => {
+			const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
+			skillService.create.mockResolvedValue('skill_created');
+
+			await service.createSkills(agent, [body], 'user-1', 'project', 'mcp', ctx);
+
+			expect(skillService.create).toHaveBeenCalledWith(
+				expect.objectContaining({ source: 'mcp' }),
 				ctx,
 			);
 		});
@@ -632,7 +644,7 @@ describe('AgentSkillRefsService', () => {
 		it('creates skills as bodies on the agent row', async () => {
 			const draft = legacyAgent([], {} as never);
 
-			const ids = await service.createSkills(draft, [notes], 'user-1', 'agent', ctx);
+			const ids = await service.createSkills(draft, [notes], 'user-1', 'agent', 'agent', ctx);
 
 			expect(draft.skills).toEqual({ [ids[0]]: notes });
 			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);

@@ -319,7 +319,7 @@ export default defineConfig({
 				'./src/modules/agents/agent-task.service.ts',
 				'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
 				'./src/modules/agents/integrations/leader-channel-relay.service.ts',
-				'./src/modules/agents/integrations/platforms/discord-integration.ts',
+				'./src/modules/agents/integrations/platforms/discord/discord-integration.ts',
 				'./src/modules/token-exchange/services/trusted-key.service.ts',
 				'./src/services/pruning/workflow-history-compaction.service.ts',
 			],

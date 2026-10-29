@@ -7,6 +7,10 @@ import {
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import {
+	findPlannedTasksBlockedByAdmin,
+	type PlannedTaskBlockedByAdmin,
+} from '../../planned-tasks/planned-task-permissions';
 import { PlanValidationError } from '../../planned-tasks/planned-task-service';
 import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
@@ -153,6 +157,20 @@ function validatePlanningContext(
 	return undefined;
 }
 
+function formatBlockedByAdminError(blocked: PlannedTaskBlockedByAdmin[]): string {
+	const actions = new Set(
+		blocked.map(({ permission }) =>
+			permission === 'createWorkflow' ? 'creating workflows' : 'updating workflows',
+		),
+	);
+	const titles = blocked.map(({ task }) => `"${task.title}"`).join(', ');
+	return (
+		`Error: An admin blocked ${[...actions].join(' and ')} on this instance, so these tasks ` +
+		`cannot run: ${titles}. Do not call ${ORCHESTRATION_TOOL_IDS.CREATE_TASKS} with these tasks. Tell the user which ` +
+		'action is blocked and that an instance admin can change this permission.'
+	);
+}
+
 export function createPlanTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.CREATE_TASKS)
 		.legacyNames(...getLegacyBuilderToolNames(ORCHESTRATION_TOOL_IDS.CREATE_TASKS))
@@ -229,10 +247,33 @@ export function createPlanTool(context: OrchestrationContext) {
 						taskCount: 0,
 					};
 				}
+
+				// Plan approval cannot lift an admin block, so reject plans whose builds
+				// could never save instead of asking the user to approve them.
+				const blocked = findPlannedTasksBlockedByAdmin(
+					input.tasks,
+					context.domainContext?.permissions,
+				);
+				if (blocked.length > 0) {
+					trackPlanningRoute(context, input.tasks, {
+						route: 'permission_blocked',
+						source: input.planningContext.source,
+					});
+					return { result: formatBlockedByAdminError(blocked), taskCount: 0 };
+				}
 			}
 
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
+				// Reject before the review card when a task edits a workflow this conversation cannot save.
+				for (const task of input.tasks) {
+					if (task.kind !== 'build-workflow' || !task.workflowId) continue;
+					await context.domainContext?.assertInThreadProject?.({
+						kind: 'workflow',
+						id: task.workflowId,
+					});
+				}
+
 				try {
 					trackPlanningRoute(context, input.tasks, {
 						route: input.planningContext.source === 'planning-skill' ? 'skill' : 'replan',

@@ -20,6 +20,7 @@ export class RemovedNodesV3Rule implements IBreakingChangeWorkflowRule {
 		'@n8n/n8n-nodes-langchain.vectorStoreZep',
 		'@n8n/n8n-nodes-langchain.vectorStoreZepInsert',
 		'@n8n/n8n-nodes-langchain.vectorStoreZepLoad',
+		'@n8n/n8n-nodes-langchain.code',
 	];
 
 	id: string = 'removed-nodes-v3';

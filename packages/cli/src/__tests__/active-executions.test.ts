@@ -30,6 +30,7 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
+import { ProductionHold } from '@/memory-guard/production-hold';
 import type { Telemetry } from '@/telemetry';
 
 vi.mock('@n8n/utils/sleep', () => ({
@@ -279,6 +280,7 @@ describe('ActiveExecutions', () => {
 					deployment: { type: 'default' },
 				}),
 				mock<License>(),
+				new ProductionHold(),
 			);
 			return service;
 		};

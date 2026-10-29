@@ -26,7 +26,6 @@ function setModuleSettings(overrides: Partial<InstanceAiModuleSettings> = {}) {
 		'instance-ai': {
 			enabled: true,
 			mcpConnectionsAvailable: true,
-			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
@@ -34,6 +33,7 @@ function setModuleSettings(overrides: Partial<InstanceAiModuleSettings> = {}) {
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
+			workflowSuggestionsEnabled: false,
 			setupCompleted: false,
 			...overrides,
 		},

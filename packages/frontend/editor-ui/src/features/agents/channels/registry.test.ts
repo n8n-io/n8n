@@ -24,8 +24,6 @@ describe('agent channel platform registry', () => {
 	it('narrows registered platform keys', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
-		// Registered for its stepper. The channel itself stays hidden from the
-		// catalog through `internal` on the backend, which is a separate switch.
 		expect(isRegisteredAgentChannelPlatform('teams')).toBe(true);
 	});
 

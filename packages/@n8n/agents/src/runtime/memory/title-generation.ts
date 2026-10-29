@@ -9,7 +9,7 @@ import type {
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId } from '../../utils/model';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -279,7 +279,8 @@ export async function generateThreadTitle(opts: {
 		if (usage && opts.onSideCallUsage) {
 			await reportTitleUsage(
 				opts.onSideCallUsage,
-				getModelIdString(titleModelId),
+				// Priced by this id, so report the model a deployment serves.
+				getCatalogModelId(titleModelId),
 				usage,
 				opts.promptCaching,
 			);
@@ -303,8 +304,9 @@ export async function generateThreadTitle(opts: {
 }
 
 /**
- * Price a title-generation model turn and forward it to the host. Best-effort:
- * a catalog lookup or host failure is logged and never breaks title generation.
+ * Price a title-generation model turn and forward it to the host. An unpriced
+ * call is still forwarded without `cost`. Best-effort: a host failure is
+ * logged and never breaks title generation.
  */
 async function reportTitleUsage(
 	onSideCallUsage: (report: SideCallUsageReport) => void | Promise<void>,
@@ -314,12 +316,11 @@ async function reportTitleUsage(
 ): Promise<void> {
 	try {
 		const cost = await computeSideCallCost(modelId, usage, promptCaching);
-		if (cost === undefined) return;
 		await onSideCallUsage({
 			task: 'title',
 			model: modelId,
 			usage,
-			cost,
+			...(cost !== undefined ? { cost } : {}),
 			reportId: crypto.randomUUID(),
 		});
 	} catch (error) {

@@ -792,6 +792,33 @@ describe('VariableModal', () => {
 			expect(environmentsStore.createVariable).not.toHaveBeenCalled();
 		});
 
+		it('should save a new variable when the caller allows it on a protected instance', async () => {
+			mockedStore(useUsersStore).currentUser = {
+				globalScopes: ['variable:create'],
+			} as ReturnType<typeof useUsersStore>['currentUser'];
+			const onCreate = vi.fn().mockResolvedValue({ id: '3', key: 'FIXED_KEY', value: '' });
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: null,
+					initialValues: { key: 'FIXED_KEY', value: '' },
+					fixedKey: true,
+					onCreate,
+					allowOnProtectedInstance: true,
+				},
+				global,
+				pinia,
+			});
+
+			await userEvent.click(getByTestId('variable-modal-value-input').querySelector('textarea')!);
+			await userEvent.tab();
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			await waitFor(() =>
+				expect(onCreate).toHaveBeenCalledWith({ key: 'FIXED_KEY', value: '', projectId: null }),
+			);
+		});
+
 		it('should lock the key and allow editing the value', async () => {
 			const { getByTestId } = renderModal({
 				props: { mode: 'edit', variable: existingVariable },

@@ -145,7 +145,7 @@ vi.mock('../planned-tasks/planned-task-service', () => ({
 	PlannedTaskCoordinator: class PlannedTaskCoordinator {},
 }));
 vi.mock('../planned-tasks/planned-task-permissions', () => ({
-	PLANNED_TASK_PERMISSION_OVERRIDES: { checkpoint: { runWorkflow: 'always_allow' } },
+	applyPlannedTaskPermissionOverrides: () => ({ runWorkflow: 'always_allow' }),
 }));
 vi.mock('../parsers/structured-file-parser', () => ({
 	classifyAttachments: () => [{ index: 0, parseable: true, format: 'csv' }],
@@ -291,9 +291,9 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.PlannedTaskCoordinator)).toBeInstanceOf(
 			entrypoint.PlannedTaskCoordinator,
 		);
-		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint!.runWorkflow).toBe(
-			'always_allow',
-		);
+		expect(call(entrypoint.applyPlannedTaskPermissionOverrides)).toEqual({
+			runWorkflow: 'always_allow',
+		});
 
 		const classified = entrypoint.classifyAttachments([]);
 		expect(classified[0]).toMatchObject({ index: 0, parseable: true, format: 'csv' });

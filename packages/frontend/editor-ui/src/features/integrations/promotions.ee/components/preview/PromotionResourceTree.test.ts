@@ -5,6 +5,7 @@ import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import { billingPreview } from '../../__tests__/preview.fixtures';
+import { indexBlockers } from '../../promotionOperation';
 import { buildSelectionGraph, resolveInclusion } from '../../promotionPreview.selection';
 import { buildPreviewTree } from '../../promotionPreview.tree';
 import PromotionResourceTree from './PromotionResourceTree.vue';
@@ -24,6 +25,10 @@ function render(selectedKeys: string[]) {
 			inclusion: resolveInclusion(graph, selected),
 			includedChanges: 0,
 			totalChanges: 0,
+			disabled: new Set(),
+			locked: false,
+			direction: 'promote',
+			blockers: indexBlockers([]),
 		},
 	});
 }
