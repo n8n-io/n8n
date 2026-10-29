@@ -65,7 +65,7 @@ export class InvalidParentLinkError extends Error {
 
 export type InvalidParentLinkReason =
 	| 'execution-not-found'
-	| 'execution-ended'
+	| 'execution-not-live'
 	| 'step-not-found'
 	| 'step-of-another-execution'
 	| 'step-not-waiting'
@@ -136,7 +136,7 @@ export class StartExecutionService {
 		]);
 		if (!isLiveExecutionStatus(status)) {
 			throw new InvalidParentLinkError(
-				'execution-ended',
+				'execution-not-live',
 				`execution ${parent.executionId} is ${status}`,
 			);
 		}

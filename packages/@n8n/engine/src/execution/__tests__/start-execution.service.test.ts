@@ -131,13 +131,13 @@ describe('StartExecutionService', () => {
 				name: 'the parent execution has ended',
 				executionStatus: 'completed',
 				stepStatus: 'waiting',
-				reason: 'execution-ended',
+				reason: 'execution-not-live',
 			},
 			{
 				name: 'the parent execution has not started',
 				executionStatus: 'queued',
 				stepStatus: 'waiting',
-				reason: 'execution-ended',
+				reason: 'execution-not-live',
 			},
 			{
 				name: 'an awaiting step is not waiting',

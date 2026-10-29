@@ -1280,7 +1280,7 @@ describe('StepReadyHandler sub-executions', () => {
 		const subExecutionStarter: SubExecutionStarter = {
 			start: vi
 				.fn()
-				.mockRejectedValue(new InvalidParentLinkError('execution-ended', 'exec-1 is cancelled')),
+				.mockRejectedValue(new InvalidParentLinkError('execution-not-live', 'exec-1 is cancelled')),
 		};
 		const handler = makeHandler(
 			makeExecutionStore(),
