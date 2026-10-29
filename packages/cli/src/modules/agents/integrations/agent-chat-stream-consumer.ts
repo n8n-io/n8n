@@ -527,10 +527,14 @@ export class AgentChatStreamConsumer {
 			this.options.logger.error('[AgentChatBridge] Failed to post reply files', {
 				error: error instanceof Error ? error.message : String(error),
 			});
-			if (options.throwOnDeliveryError) throw error;
-			// Do not lose the reply text with the files.
-			if (caption.trim()) await this.postBufferedText(thread, caption, state);
-			await this.postError(thread, error, state);
+			// Do not lose the reply text with the files. A wake delivery throws
+			// only when the text or the error notice cannot be posted, so a
+			// retry does not post the text again.
+			const throwOnDeliveryError = options.throwOnDeliveryError;
+			if (caption.trim()) {
+				await this.postBufferedText(thread, caption, state, throwOnDeliveryError);
+			}
+			await this.postError(thread, error, state, throwOnDeliveryError);
 		}
 	}
 

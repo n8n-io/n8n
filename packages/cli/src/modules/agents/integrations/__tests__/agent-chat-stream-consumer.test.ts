@@ -842,4 +842,23 @@ describe('AgentChatStreamConsumer — files queued for the final reply', () => {
 		expect(localThread.post).toHaveBeenCalledWith({ markdown: 'Here is your chart.' });
 		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
 	});
+
+	it('posts the reply text when the files of a wake delivery cannot be sent', async () => {
+		const { consumer, postReplyFiles, postErrorToThread } = makeFilesConsumer(true);
+		const error = new Error('File "file-1" not found in this conversation.');
+		postReplyFiles.mockRejectedValue(error);
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1', throwOnDeliveryError: true },
+		);
+
+		expect(localThread.post).toHaveBeenCalledWith({ markdown: 'Here is your chart.' });
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, true);
+	});
 });
