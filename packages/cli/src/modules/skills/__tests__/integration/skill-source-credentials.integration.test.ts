@@ -216,6 +216,57 @@ describe('Skill Sync with credentials', () => {
 				truncated: false,
 			});
 		});
+
+		describe('refusals', () => {
+			const credentials = (query: string) => `/skill-sources/credentials?${query}`;
+			const repositories = (query: string) => `/skill-sources/repositories?${query}`;
+
+			it('refuses the Global credential list to a member', async () => {
+				await get(member, credentials('scope=instance'), 403);
+			});
+
+			it('refuses the team credential list to a user outside the team, with no names', async () => {
+				const response = await member
+					.get(credentials(`scope=project&projectId=${team.id}`))
+					.expect(403);
+
+				expect(JSON.stringify(response.body)).not.toContain('Team GitHub');
+			});
+
+			it.each([
+				['a credential of another project', () => otherTeamCredential.id],
+				['an unknown credential', () => 'no-such-credential'],
+			])('refuses to list repositories with %s', async (_case, credentialId) => {
+				const { meta } = await get(
+					editor,
+					repositories(`scope=project&projectId=${team.id}&credentialId=${credentialId()}`),
+					403,
+				);
+
+				expect(meta).toEqual({ reason: 'credential_out_of_scope' });
+			});
+
+			it('refuses to list Global repositories with a project credential', async () => {
+				const { meta } = await get(
+					owner,
+					repositories(`scope=instance&credentialId=${teamCredential.id}`),
+					403,
+				);
+
+				expect(meta).toEqual({ reason: 'credential_out_of_scope' });
+			});
+
+			it('answers 404 on both routes with the Skill Sync flag off', async () => {
+				postHog.getFeatureFlags.mockResolvedValue({});
+
+				await get(editor, credentials(`scope=project&projectId=${team.id}`), 404);
+				await get(
+					editor,
+					repositories(`scope=project&projectId=${team.id}&credentialId=${teamCredential.id}`),
+					404,
+				);
+			});
+		});
 	});
 
 	describe('private import', () => {
