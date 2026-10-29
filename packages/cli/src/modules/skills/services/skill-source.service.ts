@@ -8,6 +8,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 	type SkillSourceDuplicate,
+	type SkillScanResult,
 	type SkillSourceReason,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
@@ -23,6 +24,7 @@ import {
 	SkillSourceRepository,
 } from '../database/repositories/skill-source.repository';
 import { SkillRepository } from '../database/repositories/skill.repository';
+import { SkillParseError } from '../errors/skill-parse.error';
 import {
 	SkillSourceRequestError,
 	skillSourceReasonOf,
@@ -40,6 +42,7 @@ import { contentToAgentSkill, toSkillContent, type SkillTarget } from '../utils/
 import { skillContentHash } from '../utils/skill-content-hash';
 import { SkillAccessService } from './skill-access.service';
 import { isNameTaken } from './skill.policy';
+import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
@@ -89,6 +92,8 @@ type ReadSkill = {
 	fetched?: FetchedSkill;
 	skill?: AgentSkill;
 	error?: { reason: SkillSourceReason; message: string };
+	/** Absent when n8n could not fetch the skill. */
+	check?: SkillScanResult;
 };
 
 /**
@@ -107,6 +112,7 @@ export class SkillSourceService {
 		private readonly clients: SkillSourceClientRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly scanner: SkillSecurityScanner,
 	) {}
 
 	/**
@@ -126,6 +132,7 @@ export class SkillSourceService {
 			const discovered = await this.discoverAll(source);
 			const skills = await this.readAll(source, discovered);
 			const names = await this.skillRepository.findLatestNamesInTarget(target);
+			await this.trackFlagged(user, source.type, skills);
 			const { client, locator } = source;
 			if (duplicate.kind === 'blocked') {
 				await this.skillsTelemetry.connectedSource(
@@ -145,6 +152,7 @@ export class SkillSourceService {
 						skippedFiles: read.fetched?.skippedFiles ?? [],
 						nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
 						error: read.error ?? null,
+						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
 					}),
 				),
@@ -175,13 +183,10 @@ export class SkillSourceService {
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
-			const { response, warning } = await this.importSkills(
-				user,
-				source,
-				target,
-				payload.skillKeys,
-				scopeType,
-			);
+			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
+				skillKeys: payload.skillKeys,
+				reviewedWarnings: payload.reviewedWarnings === true,
+			});
 			await this.skillsTelemetry.connectedSource(
 				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
 				user.id,
@@ -202,13 +207,14 @@ export class SkillSourceService {
 		user: User,
 		source: ParsedSource,
 		target: SkillTarget,
-		skillKeys: string[],
 		scopeType: ScopeType,
+		{ skillKeys, reviewedWarnings }: { skillKeys: string[]; reviewedWarnings: boolean },
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
+		let needsReview = 0;
 		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
 			await this.skillsTelemetry.importedFromSource(
 				{
@@ -218,6 +224,8 @@ export class SkillSourceService {
 					selected: keys.length,
 					imported: imported.length,
 					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
+					blocked: failed.filter((failure) => failure.reason === 'blocked_by_check').length,
+					needs_review: needsReview,
 					skipped_files: skippedFiles,
 					status,
 					...(reason ? { reason } : {}),
@@ -237,8 +245,22 @@ export class SkillSourceService {
 				else failed.push({ key, name: null, reason: 'not_found' });
 			}
 			const reads = await this.readAll(source, { ...discovered, refs: picked });
+			const importable: ReadSkill[] = [];
 			for (const read of reads) {
-				if (read.error) failed.push({ key: read.key, name: null, reason: read.error.reason });
+				if (read.error) {
+					failed.push({ key: read.key, name: null, reason: read.error.reason });
+				} else if (read.check?.verdict === 'blocked') {
+					// The source can change after discover, so connect checks the content it imports.
+					failed.push({
+						key: read.key,
+						name: read.skill?.name ?? null,
+						reason: 'blocked_by_check',
+					});
+				} else if (read.check?.verdict === 'needs_review' && !reviewedWarnings) {
+					failed.push({ key: read.key, name: read.skill?.name ?? null, reason: 'review_required' });
+				} else {
+					importable.push(read);
+				}
 			}
 
 			await this.txRunner.run({}, async (ctx) => {
@@ -261,7 +283,7 @@ export class SkillSourceService {
 				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
 				// adds its name, so two picked skills with one name do not both come in.
 				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
-				for (const read of reads) {
+				for (const read of importable) {
 					const { skill, fetched } = read;
 					if (!skill || !fetched) continue;
 					if (isNameTaken(skill.name, names)) {
@@ -295,21 +317,18 @@ export class SkillSourceService {
 					names.push({ skillId, name: skill.name });
 					imported.push({ key: read.key, skillId, name: skill.name });
 					skippedFiles += fetched.skippedFiles.length;
+					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}
 				if (imported.length === 0) {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
-					throw new SkillSourceRequestError(
-						reason,
-						reason === 'name_taken'
-							? 'Every picked skill has a name that this scope already has.'
-							: 'n8n could not import any of the picked skills.',
-					);
+					throw new SkillSourceRequestError(reason, noImportMessage(reason));
 				}
 			});
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
 			imported.length = 0;
 			skippedFiles = 0;
+			needsReview = 0;
 			await track('failure', telemetryReasonOf(error));
 			throw error;
 		}
@@ -322,6 +341,20 @@ export class SkillSourceService {
 			'sync',
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
+	}
+
+	/** One event for each skill that the picker shows as needing review or blocked. */
+	private async trackFlagged(user: User, provider: SkillSourceType, reads: ReadSkill[]) {
+		for (const { check } of reads) {
+			if (!check || check.verdict === 'pass') continue;
+			const ruleCodes = check.findings
+				.filter((finding) => finding.severity !== 'info')
+				.map((finding) => finding.rule);
+			await this.skillsTelemetry.flaggedSkill(
+				{ provider, stage: 'import', verdict: check.verdict, rule_codes: [...new Set(ruleCodes)] },
+				user.id,
+			);
+		}
 	}
 
 	/**
@@ -471,8 +504,14 @@ export class SkillSourceService {
 			if (reason !== 'parse_error' && reason !== 'not_found') {
 				throw toSkillSourceRequestError(error);
 			}
-			return { key, ref, error: { reason, message: getErrorMessage(error) } };
+			return {
+				key,
+				ref,
+				error: { reason, message: getErrorMessage(error) },
+				...(error instanceof SkillParseError ? { check: this.scanner.scanUnreadable(error) } : {}),
+			};
 		}
+		const check = this.scanner.scan(fetched);
 		const parsed = importableSkillSchema.safeParse(contentToAgentSkill(fetched.content));
 		if (!parsed.success) {
 			const issue = parsed.error.issues[0];
@@ -482,9 +521,10 @@ export class SkillSourceService {
 				ref,
 				fetched,
 				error: { reason: 'parse_error', message: `${field}: ${issue?.message ?? 'invalid'}` },
+				check,
 			};
 		}
-		return { key, ref, fetched, skill: parsed.data };
+		return { key, ref, fetched, skill: parsed.data, check };
 	}
 }
 
@@ -517,6 +557,15 @@ function isWebLink(input: string): boolean {
 /** The key of a skill in the picker. The ref is opaque, so its JSON is the key. */
 function refKey(ref: RemoteSkillRef): string {
 	return JSON.stringify(ref);
+}
+
+function noImportMessage(reason: SkillSourceReason): string {
+	if (reason === 'name_taken') return 'Every picked skill has a name that this scope already has.';
+	if (reason === 'blocked_by_check') return 'The security check blocked every picked skill.';
+	if (reason === 'review_required') {
+		return 'Every picked skill needs a review of its warnings before it can come in.';
+	}
+	return 'n8n could not import any of the picked skills.';
 }
 
 function duplicateError(where: 'global' | 'scope'): SkillSourceRequestError {
