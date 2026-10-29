@@ -49,6 +49,18 @@ export interface CallerContext {
 }
 
 /**
+ * The execution that started this one, and the step that asked for it. Only
+ * the engine's own start path sets it: a caller over HTTP cannot claim a
+ * parent.
+ */
+export interface ParentLink {
+	executionId: string;
+	stepId: string;
+	/** Whether the parent step waits for this execution to end. */
+	awaited: boolean;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs. `waiting` is the other extreme: the step ran, but it produced no

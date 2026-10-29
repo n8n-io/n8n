@@ -15,6 +15,7 @@ export function usePromotionChangeCount(
 	const { next } = useLatestFetch();
 	/** All changed resources that the preview page can include. */
 	const changeCount = ref(0);
+	const loading = ref(false);
 	/** True when the last check failed, so the badge can show the failure. */
 	const failed = ref(false);
 	/** Set when an open review already holds the changes. The preview then lists none. */
@@ -27,10 +28,12 @@ export function usePromotionChangeCount(
 		const requestedProjectId = projectId.value;
 		changeCount.value = 0;
 		failed.value = false;
+		loading.value = false;
 		blocker.value = null;
 		if (!enabled.value || !requestedProjectId) {
 			return;
 		}
+		loading.value = true;
 		try {
 			const preview = await getPromotionPreview(
 				rootStore.restApiContext,
@@ -42,10 +45,12 @@ export function usePromotionChangeCount(
 			blocker.value = preview.blocker ?? null;
 		} catch {
 			if (isLatest()) failed.value = true;
+		} finally {
+			if (isLatest()) loading.value = false;
 		}
 	}
 
 	watch([projectId, enabled], fetchCount, { immediate: true });
 
-	return { changeCount, failed, blocker, refetch: fetchCount };
+	return { changeCount, loading, failed, blocker, refetch: fetchCount };
 }

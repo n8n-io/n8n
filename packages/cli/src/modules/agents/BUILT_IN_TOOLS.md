@@ -54,6 +54,15 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 - Attach condition: Always attached.
 - Source: [`tools/environment-tool.ts`](./tools/environment-tool.ts).
 
+### `read_binary_data`
+
+- Purpose: Reads a file by its fileId. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
+  - Images and PDFs go to the model as file parts. The model must support the type: PNG, JPEG, GIF and WebP for images. The limit is the chat attachment size (10 MB). The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows the text `[File "<name>" (fileId: <id>) is not attached now.]`.
+  - The tool description tells the model to read a file that is not attached now again, and not to read a file that is already attached.
+  - Text files (up to 200 KB) go into the tool result as text, one time. The tool result size guard applies to them, and later model calls do not load them again.
+- Attach condition: The agent is not an inline agent.
+- Source: [`tools/read-binary-data.tool.ts`](./tools/read-binary-data.tool.ts).
+
 ## Workspace and knowledge tools
 
 Attach condition: The sandbox is on and the agent is not an inline agent. The runtime attaches them through `agent.workspace(...)` in `attachWorkspaceAndKnowledge`. A delegated sub-agent gets the same tools scoped to its own folder in the parent workspace.

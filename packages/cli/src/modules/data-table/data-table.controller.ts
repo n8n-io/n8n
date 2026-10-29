@@ -37,12 +37,8 @@ import {
 	NotFoundError,
 } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { ProjectService } from '@/services/project.service.ee';
 
-import {
-	assertRowReadAccessIfReturningRows,
-	assertSchemaWriteAccess,
-} from './data-table-permissions';
+import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
@@ -55,7 +51,6 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
-		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
@@ -87,7 +82,7 @@ export class DataTableController {
 	) {
 		try {
 			const { projectId } = req.params;
-			await this.projectService.getProject(projectId);
+			await this.dataTableService.assertProjectExists(projectId);
 			next();
 		} catch (e) {
 			res.status(404).send('Project not found');
@@ -409,7 +404,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpsertDataTableRowDto,
 	) {
-		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
+		await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.upsertRow(
 				dataTableId,
@@ -439,7 +434,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
-		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
+		await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.updateRows(
 				dataTableId,
@@ -469,7 +464,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Query dto: DeleteDataTableRowsDto,
 	) {
-		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
+		await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.deleteRows(
 				dataTableId,

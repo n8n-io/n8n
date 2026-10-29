@@ -1917,6 +1917,77 @@ describe('Apply a project selection', () => {
 	);
 });
 
+describe('Apply leaves publish state to the target', () => {
+	// The source published all three workflows. The target published `live`, left `draft`
+	// unpublished, and has no `added` yet.
+	const seedTarget = async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		const repository = Container.get(WorkflowRepository);
+		const live = await createActiveWorkflow({ name: 'Live' }, project);
+		const draft = await createActiveWorkflow({ name: 'Draft' }, project);
+		const added = await createActiveWorkflow({ name: 'Added' }, project);
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export',
+		});
+
+		await repository.update(live.id, { name: 'Live (target)' });
+		await repository.update(draft.id, { name: 'Draft (target)', activeVersionId: null });
+		await Container.get(WorkflowPublicationTriggerStatusRepository).delete({
+			workflowId: added.id,
+		});
+		await Container.get(WorkflowPublishedVersionRepository).delete({ workflowId: added.id });
+		await repository.update(added.id, { activeVersionId: null });
+		await repository.delete(added.id);
+		return { environments, project, live, draft, added };
+	};
+
+	const expectTargetStateKept = async (
+		{ live, draft, added }: Awaited<ReturnType<typeof seedTarget>>,
+		counts: Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'],
+	) => {
+		expect(counts.workflows).toMatchObject({ created: 1, updated: 2 });
+		expect(counts.workflows.publishing).toMatchObject({
+			published: 0,
+			unpublished: 0,
+			blocked: 0,
+			failed: 0,
+		});
+		const repository = Container.get(WorkflowRepository);
+		const applied = async (id: string) => await repository.findOneByOrFail({ id });
+		expect(await applied(live.id)).toMatchObject({
+			name: 'Live',
+			activeVersionId: live.activeVersionId,
+		});
+		expect(await applied(draft.id)).toMatchObject({ name: 'Draft', activeVersionId: null });
+		expect(await applied(added.id)).toMatchObject({ name: 'Added', activeVersionId: null });
+	};
+
+	it('keeps the target state of each workflow although the source published all of them', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.apply(seeded.environments.apply.id, owner);
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
+
+	it('keeps the target state of each selected workflow in a project apply', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.applyProjectSelection(seeded.project.id, owner, {
+			workflowIds: [seeded.live.id, seeded.draft.id, seeded.added.id],
+		});
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
+});
+
 describe('Apply moves and renames within a project', () => {
 	const connect = async () => {
 		const remote = await createRemote();
