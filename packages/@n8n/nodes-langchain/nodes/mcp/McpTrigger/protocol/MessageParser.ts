@@ -60,15 +60,14 @@ export class MessageParser {
 				typeof params === 'object' &&
 				params !== null &&
 				'name' in params &&
-				typeof params.name === 'string' &&
-				'arguments' in params &&
-				typeof params.arguments === 'object' &&
-				params.arguments !== null
+				typeof params.name === 'string'
 			) {
-				return {
-					toolName: params.name,
-					arguments: params.arguments as Record<string, unknown>,
-				};
+				// `arguments` is optional in tools/call, so a missing one means no arguments.
+				const args = 'arguments' in params ? params.arguments : undefined;
+				if (args === undefined) return { toolName: params.name, arguments: {} };
+				if (typeof args === 'object' && args !== null) {
+					return { toolName: params.name, arguments: args as Record<string, unknown> };
+				}
 			}
 		}
 		return undefined;
