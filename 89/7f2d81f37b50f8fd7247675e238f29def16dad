@@ -85,6 +85,8 @@ packages/modules/inbox/frontend/package.json
   s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,43,54-55
 packages/frontend/@n8n/frontend-module-sdk/package.json
   s_fdd6cf6d79ee0b::t_88562b20cd5121 15-16,31,34-35
+scripts/lint-parity/snapshot.mjs
+  s_fdd6cf6d79ee0b::t_6041169a70afe9 31,37-38,53-56
 ---
 {
   "schema_version": "authorship/3.0.0",
