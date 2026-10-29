@@ -14,6 +14,14 @@ import { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-brow
 
 vi.mock('node:fs/promises', () => ({ mkdir: vi.fn().mockResolvedValue(undefined) }));
 
+// Wraps the real tools in a spy, so a test can check the options the service passes.
+const { createBrowserTools } = vi.hoisted(() => ({ createBrowserTools: vi.fn() }));
+vi.mock('@n8n/mcp-browser', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/mcp-browser')>();
+	createBrowserTools.mockImplementation(actual.createBrowserTools);
+	return { ...actual, createBrowserTools };
+});
+
 describe('InstanceAiCloudBrowserService', () => {
 	let service: InstanceAiCloudBrowserService;
 	const userRepository = mock<UserRepository>();
@@ -110,6 +118,15 @@ describe('InstanceAiCloudBrowserService', () => {
 		expect(
 			server.getAvailableTools().every((tool) => tool.annotations?.category === 'browser'),
 		).toBe(true);
+	});
+
+	it('limits the page events that each page keeps and releases console handles', async () => {
+		await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
+
+		expect(createBrowserTools).toHaveBeenCalledWith(
+			{ mode: 'remote' },
+			expect.objectContaining({ maxPageEventEntries: 1000, releaseConsoleHandles: true }),
+		);
 	});
 
 	it('gives the server the domain gate', async () => {

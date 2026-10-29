@@ -16,6 +16,8 @@ import {
 import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
 
+const MAX_PAGE_EVENT_ENTRIES = 1000;
+
 /** Creates the cloud browser for a background task. Each task gets its own server. */
 @Service()
 export class InstanceAiCloudBrowserService {
@@ -71,7 +73,14 @@ export class InstanceAiCloudBrowserService {
 			scope: { userId, threadId, taskId },
 			sessionProvider: this.getSessionProvider(taskId),
 			createToolkit: (connectUrl) =>
-				createBrowserTools({ mode: 'remote' }, { cdpEndpoint: connectUrl }),
+				createBrowserTools(
+					{ mode: 'remote' },
+					{
+						cdpEndpoint: connectUrl,
+						maxPageEventEntries: MAX_PAGE_EVENT_ENTRIES,
+						releaseConsoleHandles: true,
+					},
+				),
 			toolContext: {
 				// No tool the cloud browser shows reads `dir`. Before you show a tool that reads
 				// or writes files, give each user a folder of their own, as the extension browser does.

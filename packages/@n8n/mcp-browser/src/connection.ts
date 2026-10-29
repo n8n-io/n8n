@@ -37,6 +37,10 @@ export interface BrowserConnectionOptions {
 	cdpEndpoint?: string;
 	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
 	cdpConnectHeaders?: Record<string, string>;
+	/** Remote mode only. Maximum entries that each page keeps for each event type. */
+	maxPageEventEntries?: number;
+	/** Remote mode only. Releases console argument handles after the message text is read. */
+	releaseConsoleHandles?: boolean;
 }
 
 export class BrowserConnection {
@@ -49,6 +53,8 @@ export class BrowserConnection {
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
 	private readonly cdpConnectHeaders?: Record<string, string>;
+	private readonly maxPageEventEntries?: number;
+	private readonly releaseConsoleHandles?: boolean;
 	/** Adapter kept alive after an extension-connect timeout so its relay URL remains valid. */
 	private pendingAdapter: Adapter | null = null;
 
@@ -57,6 +63,8 @@ export class BrowserConnection {
 		this.externalRelay = options?.relay;
 		this.externalCdpEndpoint = options?.cdpEndpoint;
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
+		this.maxPageEventEntries = options?.maxPageEventEntries;
+		this.releaseConsoleHandles = options?.releaseConsoleHandles;
 
 		// Merge auto-discovery with programmatic overrides
 		const discovery = getDefaultDiscovery().discover();
@@ -266,6 +274,8 @@ export class BrowserConnection {
 				relay: this.externalRelay,
 				cdpEndpoint: this.externalCdpEndpoint,
 				cdpConnectHeaders: this.cdpConnectHeaders,
+				maxPageEventEntries: this.maxPageEventEntries,
+				releaseConsoleHandles: this.releaseConsoleHandles,
 			});
 		}
 		if (this.config.adapter === 'agent-browser') {
