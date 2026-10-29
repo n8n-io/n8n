@@ -61,7 +61,7 @@ import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-mem
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
+import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -900,7 +900,10 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence);
+		await this.activeSkills?.restore(list, options?.persistence, {
+			freshRun: ctx.isFreshRun,
+			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
+		});
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
@@ -1124,6 +1127,7 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
+			this.activeSkills?.reportContext();
 			const turn = await sink.callModel(modelCallContext);
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.

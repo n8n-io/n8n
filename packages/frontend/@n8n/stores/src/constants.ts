@@ -62,6 +62,7 @@ export const STORES = {
 	// EOF Experiment cleanup
 	EXPERIMENT_TRIAL_INTRO_MODAL: 'trialIntroModal',
 	EXPERIMENT_INSTANCE_AI_FREE_NUDGE: 'instanceAiFreeNudge',
+	EXPERIMENT_AGENT_BUILDER: 'agentBuilderExperiment',
 	EXPERIMENT_OPEN_WORKFLOW_IN_ASSISTANT: 'openWorkflowInAssistant',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',

@@ -245,7 +245,7 @@ function isSuspendArtifact(output: unknown): boolean {
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
- *  suspend and resume halves of workflow_builder_ask_user / setup-card. Used (with the absence of
+ *  suspend and resume halves of ask_user / setup-card. Used (with the absence of
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (

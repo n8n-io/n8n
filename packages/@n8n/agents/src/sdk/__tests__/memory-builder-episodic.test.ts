@@ -80,7 +80,7 @@ describe('Memory builder — episodic memory', () => {
 		});
 		expect(runtimeConfig.episodicMemory).not.toHaveProperty('halfLifeDays');
 		expect(runtimeConfig.episodicMemory).not.toHaveProperty('maxEntryLength');
-		expect(typeof runtimeConfig.episodicMemory?.reflect).toBe('function');
+		expect(typeof runtimeConfig.episodicMemory?.consolidate).toBe('function');
 		expect(embedder.provider).toBe('openai');
 		expect(embedder.modelId).toBe('text-embedding-3-small');
 		expect(embedder.apiKey).toBe('embedding-key');
@@ -93,13 +93,10 @@ describe('Memory builder — episodic memory', () => {
 			modelId: 'embedding',
 			specificationVersion: 'v2',
 		} as unknown as NonNullable<EpisodicMemoryConfig['embedder']>;
-		const reflect: NonNullable<EpisodicMemoryConfig['reflect']> = async () =>
-			await Promise.resolve({
-				drop: [],
-				merge: [],
-			});
+		const consolidate: NonNullable<EpisodicMemoryConfig['consolidate']> = async () =>
+			await Promise.resolve({ consolidation: { facts: [] }, model: 'custom/model' });
 		const prompts = {
-			reflection: 'reflect prompt',
+			consolidation: 'consolidation prompt',
 			recallToolInstruction: 'recall prompt',
 		};
 		const guidance = { include: ['timezone'], exclude: ['passwords'] };
@@ -112,7 +109,7 @@ describe('Memory builder — episodic memory', () => {
 				maxEntryLength: 400,
 				embedder,
 				embeddingModel: 'custom/model',
-				reflect,
+				consolidate,
 				prompts,
 				guidance,
 			} as unknown as EpisodicMemoryConfig,
@@ -129,7 +126,7 @@ describe('Memory builder — episodic memory', () => {
 		expect(resolved).not.toHaveProperty('halfLifeDays');
 		expect(resolved).not.toHaveProperty('maxEntryLength');
 		expect(resolved.embedder).toBe(embedder);
-		expect(resolved.reflect).toBe(reflect);
+		expect(resolved.consolidate).toBe(consolidate);
 	});
 
 	it('constructs the default embedder without provider options', () => {

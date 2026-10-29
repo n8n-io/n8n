@@ -25,8 +25,7 @@ import {
 	type GlobalRole,
 	type ProjectRole,
 	AssignableProjectRole,
-	GLOBAL_ADMIN_ROLE_SLUG,
-	GLOBAL_OWNER_ROLE_SLUG,
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 	PROJECT_OWNER_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
@@ -117,6 +116,12 @@ export class ProjectService {
 	private get ownershipTransferService() {
 		return import('@/services/ownership-transfer/ownership-transfer.service.js').then(
 			({ OwnershipTransferService }) => Container.get(OwnershipTransferService),
+		);
+	}
+
+	private get variablesService() {
+		return import('@/environments.ee/variables/variables.service.ee.js').then(
+			({ VariablesService }) => Container.get(VariablesService),
 		);
 	}
 
@@ -328,6 +333,16 @@ export class ProjectService {
 
 		// 9. delete project
 		await this.projectRepository.remove(project);
+
+		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
+		try {
+			await (await this.variablesService).updateCache();
+		} catch (error) {
+			this.logger.warn('Failed to refresh the variables cache on project delete', {
+				projectId: project.id,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		// 10. delete project relations
 		// Cascading deletes take care of this.
@@ -804,7 +819,8 @@ export class ProjectService {
 				.filter(
 					(u) =>
 						!u.disabled &&
-						(u.role?.slug === GLOBAL_OWNER_ROLE_SLUG || u.role?.slug === GLOBAL_ADMIN_ROLE_SLUG),
+						!!u.role &&
+						IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS.includes(u.role.slug),
 				)
 				.map((u) => u.id),
 		);
@@ -1010,7 +1026,7 @@ export class ProjectService {
 		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
 			projectId: project.id,
 			projectRoleSlugs: [],
-			globalRoleSlugs: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
+			globalRoleSlugs: IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 		});
 	}
 

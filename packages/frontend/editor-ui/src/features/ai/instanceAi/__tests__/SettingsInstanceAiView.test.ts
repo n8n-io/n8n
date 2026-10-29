@@ -660,14 +660,14 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('Cloud browser settings', () => {
-		const enableGatewayCredits = () => {
+		const enableGatewayCredits = ({ cloudUbbEnabled = true } = {}) => {
 			settingsStore.settings = {
 				...settingsStore.settings,
-				aiGateway: { enabled: true, budget: 0, cloudUbbEnabled: false },
+				aiGateway: { enabled: true, budget: 0, cloudUbbEnabled },
 			};
 		};
 
-		it('shows the cloud browser toggle when the flag is on and Gateway credits are enabled', () => {
+		it('shows the cloud browser toggle when the flag is on and Gateway credits are enabled with Cloud usage-based billing', () => {
 			enableGatewayCredits();
 
 			const { getByTestId } = renderComponent();
@@ -685,6 +685,14 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('hides the cloud browser toggle when Gateway credits are not enabled', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('hides the cloud browser toggle without Cloud usage-based billing', () => {
+			enableGatewayCredits({ cloudUbbEnabled: false });
+
 			const { queryByTestId } = renderComponent();
 
 			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();

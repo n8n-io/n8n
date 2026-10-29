@@ -5,8 +5,8 @@ import { agentsLosingSkill } from '../agentSkill';
 
 const usage: SkillUsedBy = {
 	drafts: [
-		{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1' },
-		{ agentId: 'a2', agentName: 'Ops bot', projectId: 'p2' },
+		{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1', version: 1, pinned: false },
+		{ agentId: 'a2', agentName: 'Ops bot', projectId: 'p2', version: 1, pinned: false },
 	],
 	pins: [{ agentId: 'a2', agentName: 'Ops bot', projectId: 'p2', version: 1 }],
 	hiddenAgents: 1,

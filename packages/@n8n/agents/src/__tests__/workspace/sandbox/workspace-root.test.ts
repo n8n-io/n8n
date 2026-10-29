@@ -1,5 +1,6 @@
 import {
 	DAYTONA_HOME,
+	DAYTONA_WORKSPACE_ROOT,
 	N8N_SANDBOX_HOME,
 	getPromptWorkspaceRoot,
 	getWorkspaceRoot,
@@ -72,12 +73,8 @@ describe('getWorkspaceRoot', () => {
 		expect(executeCommand).toHaveBeenCalledWith('echo $HOME', [], { cwd: undefined });
 	});
 
-	it('uses DAYTONA_HOME when echo $HOME returns empty stdout for Daytona', async () => {
-		const executeCommand = vi.fn().mockResolvedValue({
-			exitCode: 0,
-			stdout: '   \n',
-			stderr: '',
-		});
+	it('returns the Daytona workspace root without running a command', async () => {
+		const executeCommand = vi.fn();
 		const workspace = {
 			sandbox: {
 				provider: 'daytona',
@@ -85,7 +82,9 @@ describe('getWorkspaceRoot', () => {
 			},
 		} as SandboxWorkspace;
 
-		await expect(getWorkspaceRoot(workspace)).resolves.toBe(`${DAYTONA_HOME}/${WORKSPACE_DIR}`);
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(DAYTONA_WORKSPACE_ROOT);
+
+		expect(executeCommand).not.toHaveBeenCalled();
 	});
 
 	it('uses N8N_SANDBOX_HOME when echo $HOME returns empty stdout for n8n-sandbox', async () => {
