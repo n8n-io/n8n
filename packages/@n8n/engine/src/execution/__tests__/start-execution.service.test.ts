@@ -46,7 +46,6 @@ function makeStepStore(loadStep = vi.fn()): StepStore {
 	return { loadStep } as unknown as StepStore;
 }
 
-/** A parent execution and a step of it, in the state that starts a sub-execution. */
 function parentRows(executionStatus: ExecutionStatus, stepStatus: StepStatus) {
 	const execution = { id: 'exec-parent', status: executionStatus } as ExecutionRecord;
 	const step = { id: 'step-1', executionId: 'exec-parent', status: stepStatus } as StepRecord;
