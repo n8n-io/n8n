@@ -1,0 +1,97 @@
+docs/generated/sqlite-schema/agents_resources.md
+  s_7a118b07ee147d::t_3d00b9ed1da9a1 56
+docs/generated/postgres-schema/README.md
+  s_7a118b07ee147d::t_1a5f66a5e87c12 843
+packages/@n8n/db/src/migrations/common/1793204018114-StoreAgentMemoryEmbeddingsAsBinary.ts
+  s_7a118b07ee147d::t_195045f5f99aa5 1-38
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_7a118b07ee147d::t_798d35356bff61 155-156,208,272
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_7a118b07ee147d::t_c3d7b798287523 11
+  s_7a118b07ee147d::t_7ecf0cafe9dff1 88-98,110-113
+  s_7a118b07ee147d::t_cbe32fb5b993df 99-109
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_7a118b07ee147d::t_da49ab718ea638 461,658
+  s_7a118b07ee147d::t_354f6a6f3b69b9 873,876,879,956
+  s_7a118b07ee147d::t_5cae1476bfc173 296,440,659-660
+  s_7a118b07ee147d::t_e0c13bd06451aa 1068
+  s_7a118b07ee147d::t_02460b57aac8c3 438-439,441-445,451-454,456-460,462-465
+  s_7a118b07ee147d::t_22f0a5aa46343d 446-450,455
+  s_7a118b07ee147d::t_baae5162ab5541 661-664,683,698,710,746,786-790,809-813,832
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_7a118b07ee147d::t_2e8958e971297d 744,748-749,757,760-763,767-771,775-779,786-807
+  s_7a118b07ee147d::t_7423a569499c56 754
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_7a118b07ee147d::t_2f9a51df30a054 11,65
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_7a118b07ee147d::t_798d35356bff61 278,291,400,408,428,645-647,690
+docs/generated/postgres-schema/public.agents_resources.md
+  s_7a118b07ee147d::t_520c954b9d843b 47
+docs/generated/postgres-schema/public.agents.md
+  s_7a118b07ee147d::t_1612143ecbd015 280
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_7a118b07ee147d::t_6b4f6cf7deafc6 9,22,68
+packages/cli/src/modules/agents/entities/agent-memory-entry.entity.ts
+  s_7a118b07ee147d::t_984324cd5f4c98 2,5-6,34
+  s_7a118b07ee147d::t_4c9d66011e0c14 35
+packages/cli/src/modules/agents/utils/float32-vector.ts
+  s_7a118b07ee147d::t_495b19e56291c5 6-8,11,13,15,18
+  s_7a118b07ee147d::t_81d9bf38c5fd89 1-2,4-5,9-10,12,14,16,19-20
+  s_7a118b07ee147d::t_5d095fb6d0ef11 3,17
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_43a7961061d072 116
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_7a118b07ee147d::t_535f6d82efbf7d 652,1252,1269,1279,1289,1329-1333,1377
+  s_7a118b07ee147d::t_c8eb8768a2b1a7 1386,1388-1393,1401-1405,1411-1412,1420-1424,1431-1433
+  s_7a118b07ee147d::t_44ade1d176f8f6 1381,1438-1441,1500-1501,1510-1514
+docs/generated/sqlite-schema/agents.md
+  s_7a118b07ee147d::t_3888a9da1db552 281
+packages/@n8n/db/src/index.ts
+  s_7a118b07ee147d::t_a624e26a5da2fa 11
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory-source-message.integration.test.ts
+  s_7a118b07ee147d::t_5cae1476bfc173 61
+  s_7a118b07ee147d::t_6c54e4fd9ca0e6 62-66
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_7a118b07ee147d::t_798d35356bff61 621,710,886,893
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_1ebcbdd27f2754 126,128,148,170,178-180,193-196,205,213,319
+  s_7a118b07ee147d::t_bdb8b2beeb1e5f 1001
+  s_7a118b07ee147d::t_786ccffbb7f7f2 1042-1044,1073,1078,1083,1094
+  s_7a118b07ee147d::t_b94666363a74e4 166-168
+  s_7a118b07ee147d::t_06069aa0e617fb 150
+  s_7a118b07ee147d::t_4ff32abeb8d27e 149,169,172
+  s_7a118b07ee147d::t_563388b1298112 1345-1349,1483
+  s_7a118b07ee147d::t_d16513041c83a3 66,119-124,171,206
+  s_7a118b07ee147d::t_0a2cdb3f6de74c 125,127,132,165,173-174,177,207-209,229,236,247-251,324,407,513-518,568,933,1041,1095-1099,1102,1105-1106,1140,1256-1259,1262
+packages/cli/test/migration/1793204018114-store-agent-memory-embeddings-as-binary.test.ts
+  s_7a118b07ee147d::t_752b733358a03e 1-19,22-53,65-72,82-138
+  s_7a118b07ee147d::t_645ce89ab225f5 20-21,54-64,73-81
+  s_7a118b07ee147d::t_6e604e5ad361d0 139-144
+docs/generated/sqlite-schema/README.md
+  s_7a118b07ee147d::t_4775ec6ac87b32 829
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_7a118b07ee147d::t_798d35356bff61 222-226,317
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_c97ba9f05f433d 8551,8565,8613
+packages/cli/src/modules/agents/utils/__tests__/float32-vector.test.ts
+  s_7a118b07ee147d::t_b89b6a4a2f6bb4 5,8,12-14,16
+  s_7a118b07ee147d::t_c9197031c5c0cd 1-4,6-7,9-11,15,17-25
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_29bc2fd6ca0728 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ea11f1e6fee1c28a055fb0eea7bcd701afb3b9f",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

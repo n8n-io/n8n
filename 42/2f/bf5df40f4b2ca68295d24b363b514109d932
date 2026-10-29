@@ -1,0 +1,40 @@
+packages/modules/apps/frontend/src/views/AppsListView.test.ts
+  s_55fab4d6e7841e::t_83bc0d811415f4 59
+packages/modules/apps/frontend/src/components/AppCard.test.ts
+  s_55fab4d6e7841e::t_a10a6eca859f63 15
+packages/modules/apps/frontend/src/components/AppActions.test.ts
+  s_8ac5b679ef4e76::t_1e3ad960c28382 29
+packages/modules/apps/frontend/src/components/AppHeader.test.ts
+  s_8ac5b679ef4e76::t_87f59d495509da 26
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_8ac5b679ef4e76::t_09e59da49856c8 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "422fbf5df40f4b2ca68295d24b363b514109d932",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55fab4d6e7841e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75b5cb9b-ed1e-4b91-9cb8-d26a0fbb9ba9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8ac5b679ef4e76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f91748e-2fc2-48a3-9edb-f8f0409dd6cc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
