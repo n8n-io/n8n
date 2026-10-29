@@ -24,6 +24,7 @@ import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
+import { linkSkill } from '../test-utils/skill-source-fixtures';
 import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
@@ -764,6 +765,45 @@ describe('SkillSourceController', () => {
 
 			const { body: moved } = await owner.get(`/skills/${skillId}`).expect(200);
 			expect(moved.data).toMatchObject({ scope: 'instance', projectId: null });
+		});
+
+		it('tracks one event for each stop, with whether an update waited', async () => {
+			const stoppedSync = vi.spyOn(Container.get(SkillsTelemetry), 'stoppedSync');
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+			const { id: pending } = await createSkill({
+				projectId: team.id,
+				content: { name: 'pending' },
+			});
+			await linkSkill(
+				pending,
+				{ projectId: team.id, createdById: ownerUser.id },
+				{ pendingContentHash: 'hash-of-update' },
+			);
+
+			await stop(editor, skillId);
+			await stop(editor, skillId, 404);
+			await stop(viewer, pending, 403);
+			await stop(editor, pending);
+
+			expect(stoppedSync.mock.calls).toEqual([
+				[{ provider: 'github', had_pending_update: false }, expect.any(String)],
+				[{ provider: 'github', had_pending_update: true }, expect.any(String)],
+			]);
+			stoppedSync.mockRestore();
+		});
+
+		it('needs the global update permission for a Global synced skill', async () => {
+			const skillId = await importPdf(owner, { scope: 'instance' });
+
+			const { body: list } = await member.get('/skills').expect(200);
+			expect(list.data.data.find((skill: { id: string }) => skill.id === skillId)).toMatchObject({
+				canStopSyncing: false,
+			});
+			await stop(member, skillId, 403);
+			await stop(owner, skillId);
+
+			const { body } = await owner.get(`/skills/${skillId}`).expect(200);
+			expect(body.data).toMatchObject({ scope: 'instance', canEdit: true, syncedFrom: null });
 		});
 
 		it('answers 404 for a skill that is not synced, also after a stop', async () => {

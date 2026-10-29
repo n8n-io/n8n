@@ -637,6 +637,23 @@ describe('SkillService', () => {
 			expect(skills.updateTarget).toHaveBeenCalled();
 		});
 
+		it('refuses to move a synced skill on its own, for every caller', async () => {
+			await givenUsers();
+			links.isLinked.mockResolvedValue(true);
+			skills.findLatestSummaries.mockResolvedValue(
+				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
+			);
+			skills.findByIds.mockResolvedValue([mock<Skill>({ id: 'skill_a', source: 'github' })]);
+
+			await expectError(
+				service.moveTrusted('skill_a', { projectId: null, agentId: null }, undefined),
+				SkillSyncedError,
+				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
+			);
+			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+
 		it('refuses to move a skill into a scope that holds a name like it', async () => {
 			skills.findLatestSummaries.mockResolvedValue(
 				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
