@@ -53,26 +53,14 @@ function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boole
 	return webhooks.elements.length > 0;
 }
 
-/**
- * Returns true when the value supplies an implementation. A method may be
- * written inline or handed over as a reference (`{ checkExists }`,
- * `{ delete: removeWebhook }`, `{ create: hooks.create }`), which is just as
- * implemented as a function expression. `undefined` is an identifier too, but
- * it supplies nothing.
- */
+/** Only explicit nullish values prove that a method is missing. */
 function isImplementation(node: TSESTree.Node): boolean {
 	const value = unwrapTypeAnnotations(node);
 
-	switch (value.type) {
-		case AST_NODE_TYPES.FunctionExpression:
-		case AST_NODE_TYPES.ArrowFunctionExpression:
-		case AST_NODE_TYPES.MemberExpression:
-			return true;
-		case AST_NODE_TYPES.Identifier:
-			return value.name !== 'undefined';
-		default:
-			return false;
-	}
+	if (value.type === AST_NODE_TYPES.Literal && value.value === null) return false;
+	if (value.type === AST_NODE_TYPES.Identifier && value.name === 'undefined') return false;
+	if (value.type === AST_NODE_TYPES.UnaryExpression && value.operator === 'void') return false;
+	return true;
 }
 
 /** Returns true when the property states the key `name`, whatever value it gives it. */
@@ -110,12 +98,12 @@ function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleM
 	const [properties, spreads] = conclusiveProperties(group);
 
 	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
-		const declared = [...properties]
-			.reverse()
-			.find((property): property is TSESTree.Property => declaresKey(property, method));
+		const declared = properties.find((property): property is TSESTree.Property =>
+			declaresKey(property, method),
+		);
 
-		// A key stated last says what the method really is, `delete: undefined`
-		// included. Otherwise a spread leaves it open, and its absence proves
+		// An explicit key supplies the method value, including `delete: undefined`
+		// Otherwise a spread leaves it open, and its absence proves
 		// nothing; without one, an absent key is simply missing.
 		if (declared) return !isImplementation(declared.value);
 		return !spreads;

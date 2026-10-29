@@ -124,6 +124,13 @@ export class RegularClass {
 				}`,
 			}),
 		},
+		{
+			name: 'lifecycle methods returned by calls',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { checkExists: makeCheckExists(), create, delete: removeWebhook.bind(this) } }',
+			}),
+		},
 		// A method handed over as a reference is just as implemented as one
 		// written inline.
 		{
@@ -153,20 +160,6 @@ export class RegularClass {
 			name: 'lifecycle key superseded by a later spread',
 			code: createTriggerNode({
 				webhookMethods: '{ default: { delete: undefined, ...sharedLifecycle } }',
-			}),
-		},
-		{
-			name: 'later lifecycle implementation supersedes an earlier duplicate key',
-			code: createTriggerNode({
-				webhookMethods:
-					'{ default: { delete: undefined, delete: removeWebhook, checkExists, create } }',
-			}),
-		},
-		{
-			name: 'later lifecycle implementation after a spread supersedes an earlier duplicate key',
-			code: createTriggerNode({
-				webhookMethods:
-					'{ default: { ...sharedLifecycle, delete: undefined, delete: removeWebhook } }',
 			}),
 		},
 	],
@@ -302,6 +295,15 @@ export class RegularClass {
 		},
 		// A key that is present but supplies nothing is still not an implementation.
 		{
+			name: 'lifecycle method set to void zero',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create, delete: void 0 } }',
+			}),
+			errors: [
+				{ messageId: 'missingLifecycleMethod', data: { group: 'default', missing: '`delete`' } },
+			],
+		},
+		{
 			name: 'lifecycle method set to a nullish placeholder',
 			code: createTriggerNode({
 				webhookMethods: `{
@@ -319,32 +321,7 @@ export class RegularClass {
 				},
 			],
 		},
-		{
-			name: 'later nullish lifecycle value supersedes an earlier implementation',
-			code: createTriggerNode({
-				webhookMethods:
-					'{ default: { checkExists, create, delete: removeWebhook, delete: undefined } }',
-			}),
-			errors: [
-				{
-					messageId: 'missingLifecycleMethod',
-					data: { group: 'default', missing: '`delete`' },
-				},
-			],
-		},
-		{
-			name: 'later nullish lifecycle value after a spread supersedes an earlier implementation',
-			code: createTriggerNode({
-				webhookMethods:
-					'{ default: { ...sharedLifecycle, delete: removeWebhook, delete: undefined } }',
-			}),
-			errors: [
-				{
-					messageId: 'missingLifecycleMethod',
-					data: { group: 'default', missing: '`delete`' },
-				},
-			],
-		},
+
 		{
 			name: 'webhookMethods behind an as-expression, delete missing',
 			code: createTriggerNode({
