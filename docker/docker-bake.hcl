@@ -117,6 +117,10 @@ target "runners-debian" {
   inherits   = ["_app"]
   dockerfile = "docker/images/runners/Dockerfile.debian"
   tags       = tags(RUNNERS_DEBIAN_TAGS, "${RUNNERS_IMAGE_BASE_NAME}:${IMAGE_TAG}-debian")
+  args = {
+    BUILDER_IMAGE = DEBIAN_BUILDER_IMAGE
+    RUNTIME_IMAGE = DEBIAN_RUNTIME_IMAGE
+  }
 }
 
 target "runners-distroless" {

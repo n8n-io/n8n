@@ -1,18 +1,21 @@
-ARG NODE_VERSION=26.12.1
+# check=skip=InvalidDefaultArgInFrom
 ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
 
 # glibc variant of ./Dockerfile, for Code nodes that load a vendor library that
 # needs glibc (Oracle Instant Client, IBM Db2) on an external runner. The runtime
 # is the Debian base of the n8n image, so the contract (shell, no package
-# manager, libaio, no vendor libraries) is defined once. Repin it with the n8n
-# Debian image.
-ARG RUNTIME_IMAGE=n8nio/base:26.12.1-debian@sha256:9c6631767d1f3a0c5040757d2ff26ac6109988e0630bad1a764310d6571b4f6d
+# manager, libaio, no vendor libraries) is defined once. The builder is the one
+# of the n8n Debian image too.
+# docker/docker-bake.hcl sets these. Build with `pnpm build:docker` or
+# `docker buildx bake`, not plain `docker build`.
+ARG BUILDER_IMAGE
+ARG RUNTIME_IMAGE
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-trixie-slim AS javascript-runner-builder
+FROM ${BUILDER_IMAGE} AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
