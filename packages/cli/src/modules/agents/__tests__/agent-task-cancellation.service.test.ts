@@ -192,6 +192,24 @@ it('creates a new stop identity when work resumes', async () => {
 	expect(second.pause!.id).not.toBe(first.pause!.id);
 });
 
+it('captures new work when Stop is requested again after a clean report', async () => {
+	const { service, repository, messages } = setup();
+
+	await service.request('thread', null);
+	const first = (await repository.findTaskStop('thread'))!;
+
+	await repository.saveStop(
+		{ ...first, pause: { ...first.pause, reportedAt: new Date().toISOString() } },
+		{},
+	);
+
+	await service.request('thread', null);
+
+	expect((await repository.findTaskStop('thread'))!.pause.id).not.toBe(first.pause.id);
+	expect(repository.captureStopTargets).toHaveBeenCalledTimes(2);
+	expect(messages.enqueueStopReport).toHaveBeenCalledTimes(2);
+});
+
 it('shows Stopping until active work has settled and preserves paused checkpoints', async () => {
 	const { service, work } = setup();
 	work.push(

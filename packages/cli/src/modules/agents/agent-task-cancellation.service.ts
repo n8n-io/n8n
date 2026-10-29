@@ -293,20 +293,8 @@ export class AgentTaskCancellationService {
 		});
 	}
 
+	/** Only a retry before the report reuses the stop. A later Stop captures new work. */
 	private canReuseStop(stop: AgentTaskStop, planId: string | null): boolean {
-		if (stop.pause.resumedAt) {
-			return false;
-		}
-
-		if (stop.planId !== planId) {
-			return false;
-		}
-
-		// A retry needs a new acknowledgement after failures were reported.
-		if (stop.pause.reportedAt && stop.failures.length > 0) {
-			return false;
-		}
-
-		return true;
+		return !stop.pause.resumedAt && !stop.pause.reportedAt && stop.planId === planId;
 	}
 }
