@@ -14,7 +14,7 @@ import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
 import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
-import type { SkillSourceLinkRepository } from '../../database/repositories/skill-source-link.repository';
+import type { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
 import { skillContentHash } from '../../utils/skill-content-hash';
 import { FakeSkillUsage } from '../../testing';
@@ -93,7 +93,7 @@ export function createSkillServices() {
 	const users = mock<UserRepository>();
 	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const syncedFrom = mock<SkillSyncedFromService>();
-	const links = mock<SkillSourceLinkRepository>();
+	const links = mock<SkillSourceRepository>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
 	const access = new SkillAccessService(skills, projectScope, skillUsage);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);

@@ -14,10 +14,15 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
+import type { MockInstance } from 'vitest';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
+import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
+import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
+import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
+import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { PostHogClient } from '@/posthog';
 
@@ -109,11 +114,17 @@ describe('SkillSourceController', () => {
 	const keysOf = (discovery: SkillSourceDiscovery, names: string[]) =>
 		discovery.skills.filter((skill) => names.includes(skill.name ?? '')).map((skill) => skill.key);
 
+	const countSources = async () =>
+		await Container.get(DataSource).manager.count(SkillSourceConnection);
+
 	it('answers 404 when the Skill Sync flag is off for the user', async () => {
 		postHog.getFeatureFlags.mockResolvedValue({});
 
 		await discover(owner, { url: REPO, scope: 'instance' }, 404);
 		await connect(owner, { url: REPO, scope: 'instance', skillKeys: ['x'] }, 404);
+		// The flag is checked before the body, so an invalid body does not reveal the route.
+		await discover(owner, {}, 404);
+		await connect(owner, {}, 404);
 	});
 
 	describe('discover', () => {
@@ -159,7 +170,8 @@ describe('SkillSourceController', () => {
 
 		it.each([
 			['not a link', 400, 'invalid_url'],
-			['https://gitlab.com/acme/skills', 400, 'invalid_url'],
+			['https://gitlab.com/acme/skills', 400, 'unsupported_provider'],
+			['https://github.com/acme', 400, 'invalid_url'],
 			['https://github.com/acme/private', 404, 'not_found'],
 		])('refuses %s with %s %s', async (url, status, reason) => {
 			const body = await discover(owner, { url, scope: 'instance' }, status);
@@ -302,6 +314,345 @@ describe('SkillSourceController', () => {
 			});
 			expect(again.duplicate).toEqual({ kind: 'none' });
 		});
+	});
+
+	describe('limits of the listing', () => {
+		const client = () => Container.get(GitHubSkillSourceClient);
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('fails as too deep when the source has skills only below the depth limit', async () => {
+			vi.spyOn(client(), 'discover').mockResolvedValue({
+				items: [],
+				truncated: false,
+				tooDeep: 2,
+				revision: 'a'.repeat(40),
+			});
+
+			const body = await discover(owner, { url: REPO, scope: 'instance' }, 422);
+
+			expect(body.meta).toEqual({ reason: 'too_deep' });
+		});
+
+		it('lists the skills it can reach and says how many were too deep', async () => {
+			const original = client().discover.bind(client());
+			vi.spyOn(client(), 'discover').mockImplementation(async (locator) => ({
+				...(await original(locator)),
+				tooDeep: 1,
+			}));
+
+			const { data } = await discover(owner, { url: REPO, scope: 'instance' });
+
+			expect(data.tooDeep).toBe(1);
+			expect(data.skills).toHaveLength(3);
+		});
+	});
+
+	describe('partial imports', () => {
+		it('flags a picked skill that the source removed after discover, and imports the rest', async () => {
+			const { data: discovery } = await discover(owner, { url: REPO, scope: 'instance' });
+			const { 'skills/docx/SKILL.md': _removed, ...rest } = FILES;
+			github.push('acme/skills', rest);
+
+			const { data } = await connect(owner, {
+				url: REPO,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['pdf', 'docx']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['pdf']);
+			expect(data.failed).toEqual([
+				{ key: keysOf(discovery, ['docx'])[0], name: null, reason: 'not_found' },
+			]);
+		});
+
+		it('answers 404 and stores nothing when every picked skill is gone', async () => {
+			const { data: discovery } = await discover(owner, { url: REPO, scope: 'instance' });
+			github.push('acme/skills', { 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+
+			const body = await connect(
+				owner,
+				{ url: REPO, scope: 'instance', skillKeys: keysOf(discovery, ['pdf', 'docx']) },
+				404,
+			);
+
+			expect(body.meta).toEqual({ reason: 'not_found' });
+			expect(await countSources()).toBe(0);
+		});
+
+		it('imports one of two picked skills with the same name, and reports the other', async () => {
+			github.push('acme/twins', {
+				'one/SKILL.md': skillMd('twin', 'The first'),
+				'two/SKILL.md': skillMd('twin', 'The second'),
+			});
+			const url = 'https://github.com/acme/twins';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: discovery.skills.map((skill) => skill.key),
+			});
+
+			expect(data.imported).toEqual([expect.objectContaining({ name: 'twin' })]);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: 'twin', reason: 'name_taken' },
+			]);
+		});
+	});
+
+	describe('a fetch that fails during connect', () => {
+		const client = () => Container.get(GitHubSkillSourceClient);
+
+		/** Makes the fetch of the `docx` skill throw, and lets the other fetches through. */
+		const failDocxWith = (error: Error) => {
+			const original = client().fetchLatest.bind(client());
+			vi.spyOn(client(), 'fetchLatest').mockImplementation(
+				async (locator, ref: RemoteSkillRef, auth, revision) => {
+					if (ref.path === 'skills/docx') throw error;
+					return await original(locator, ref, auth, revision);
+				},
+			);
+		};
+
+		const connectPdfAndDocx = async (status: number) => {
+			const { data: discovery } = await discover(owner, { url: REPO, scope: 'instance' });
+			failDocxWith(errorToThrow);
+			return await connect(
+				owner,
+				{ url: REPO, scope: 'instance', skillKeys: keysOf(discovery, ['pdf', 'docx']) },
+				status,
+			);
+		};
+
+		let errorToThrow: Error;
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('fails the whole request on a rate limit, and stores nothing', async () => {
+			errorToThrow = new SkillSourceReadError('rate_limited', 'GitHub rate limit.');
+
+			const body = await connectPdfAndDocx(429);
+
+			expect(body.meta).toEqual({ reason: 'rate_limited' });
+			expect(await countSources()).toBe(0);
+		});
+
+		it('flags only the skill that is gone', async () => {
+			errorToThrow = new SkillSourceNotFoundError('The skill is gone.');
+
+			const { data } = await connectPdfAndDocx(200);
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['pdf']);
+			expect(data.failed).toEqual([{ key: expect.any(String), name: null, reason: 'not_found' }]);
+		});
+
+		it('answers 500 for an error with no reason, and stores nothing', async () => {
+			errorToThrow = new Error('A bug.');
+
+			await connectPdfAndDocx(500);
+
+			expect(await countSources()).toBe(0);
+		});
+	});
+
+	describe('telemetry', () => {
+		let connectedSource: MockInstance<SkillsTelemetry['connectedSource']>;
+		let created: MockInstance<SkillsTelemetry['created']>;
+
+		beforeEach(() => {
+			connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			created = vi.spyOn(Container.get(SkillsTelemetry), 'created');
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const connectPdf = async (
+			agent: SuperAgentTest,
+			scope: Record<string, unknown>,
+			status = 200,
+		) => {
+			const { data: discovery } = await discover(agent, { url: REPO, ...scope });
+			return await connect(
+				agent,
+				{ url: REPO, ...scope, skillKeys: keysOf(discovery, ['pdf']) },
+				status,
+			);
+		};
+
+		it('reports a successful connect in Global and the skills it created', async () => {
+			const { data } = await connectPdf(owner, { scope: 'instance' });
+
+			expect(connectedSource.mock.calls).toEqual([
+				[
+					{
+						provider: 'github',
+						access: 'public',
+						scope_type: 'global',
+						duplicate_result: 'none',
+						status: 'success',
+					},
+					ownerUser.id,
+				],
+			]);
+			expect(created).toHaveBeenCalledWith(
+				ownerUser.id,
+				[{ id: data.imported[0].skillId, projectId: null, agentId: null }],
+				'github',
+				'sync',
+			);
+		});
+
+		it('reports a connect in a personal project', async () => {
+			await connectPdf(member, { scope: 'project', projectId: personal.id });
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ scope_type: 'personal', status: 'success' }),
+				memberUser.id,
+			);
+			expect(created).toHaveBeenCalledWith(
+				memberUser.id,
+				[expect.objectContaining({ projectId: personal.id })],
+				'github',
+				'sync',
+			);
+		});
+
+		it('reports a project source that Global blocks, at discover and at connect', async () => {
+			await connectPdf(owner, { scope: 'instance' });
+			connectedSource.mockClear();
+			created.mockClear();
+
+			await discover(editor, { url: REPO, scope: 'project', projectId: team.id });
+			await connect(
+				editor,
+				{ url: REPO, scope: 'project', projectId: team.id, skillKeys: ['x'] },
+				409,
+			);
+
+			const blocked = {
+				provider: 'github',
+				access: 'public',
+				scope_type: 'team',
+				duplicate_result: 'blocked',
+				status: 'failure',
+				reason: 'duplicate_source',
+			};
+			expect(connectedSource.mock.calls).toEqual([
+				[blocked, expect.any(String)],
+				[blocked, expect.any(String)],
+			]);
+			expect(created).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['https://gitlab.com/acme/skills', 400, 'unsupported_provider'],
+			['not a link', 400, 'invalid_url'],
+			['https://github.com/acme/private', 404, 'not_found'],
+		])('reports a discover of %s as a failed connect', async (url, status, reason) => {
+			await discover(owner, { url, scope: 'instance' }, status);
+
+			expect(connectedSource.mock.calls).toEqual([
+				[
+					{
+						provider: 'github',
+						access: 'public',
+						scope_type: 'global',
+						duplicate_result: 'none',
+						status: 'failure',
+						reason,
+					},
+					ownerUser.id,
+				],
+			]);
+		});
+
+		it.each([
+			[
+				'no skills',
+				() => {
+					github.push('acme/skills', { 'README.md': '# Nothing\n' });
+				},
+				422,
+				'no_skills_found',
+			],
+			[
+				'a rate limit',
+				() => {
+					github.failWith = 429;
+				},
+				429,
+				'rate_limited',
+			],
+			[
+				'a failure of GitHub',
+				() => {
+					github.failWith = 502;
+				},
+				503,
+				'unreachable',
+			],
+		])(
+			'reports a discover that finds %s as a failed connect',
+			async (_name, setUp, status, reason) => {
+				setUp();
+
+				await discover(owner, { url: REPO, scope: 'instance' }, status);
+
+				expect(connectedSource).toHaveBeenCalledTimes(1);
+				expect(connectedSource).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'failure', reason }),
+					ownerUser.id,
+				);
+			},
+		);
+
+		it('reports an error with no reason as unexpected', async () => {
+			vi.spyOn(Container.get(GitHubSkillSourceClient), 'discover').mockRejectedValue(
+				new Error('A bug.'),
+			);
+
+			await discover(owner, { url: REPO, scope: 'instance' }, 500);
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'failure', reason: 'unexpected' }),
+				ownerUser.id,
+			);
+		});
+
+		it('reports nothing for a discover that succeeds', async () => {
+			await discover(owner, { url: REPO, scope: 'instance' });
+
+			expect(connectedSource).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[{ truncated: true }, 'too_many_skills'],
+			[{ tooDeep: 3 }, 'too_deep'],
+		])(
+			'reports a connect from a source that listed only part of its skills (%o)',
+			async (extra, reason) => {
+				const client = Container.get(GitHubSkillSourceClient);
+				const original = client.discover.bind(client);
+				vi.spyOn(client, 'discover').mockImplementation(async (locator) => ({
+					...(await original(locator)),
+					...extra,
+				}));
+
+				await connectPdf(owner, { scope: 'instance' });
+
+				expect(connectedSource).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'success', reason }),
+					ownerUser.id,
+				);
+			},
+		);
 	});
 
 	describe('duplicate rules', () => {

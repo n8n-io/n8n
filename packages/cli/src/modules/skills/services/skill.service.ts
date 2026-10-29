@@ -29,13 +29,13 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
+import { SkillSourceRepository } from '../database/repositories/skill-source.repository';
 import {
 	SkillRepository,
 	type SkillListSort,
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
-import { SkillSourceLinkRepository } from '../database/repositories/skill-source-link.repository';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import {
 	isSameSkillTarget,
@@ -143,7 +143,7 @@ export class SkillService {
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
-		private readonly linkRepository: SkillSourceLinkRepository,
+		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 	) {}
 
@@ -489,7 +489,7 @@ export class SkillService {
 			}
 			// Only Skill Sync changes the content of a synced skill: a skill with a link. A save
 			// with unchanged content passes above, so a synced skill still accepts a no-op save.
-			if (!allowSynced && (await this.linkRepository.isLinked(skillId, txCtx))) {
+			if (!allowSynced && (await this.sourceRepository.isLinked(skillId, txCtx))) {
 				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
@@ -548,7 +548,7 @@ export class SkillService {
 				nameAfterMove ??
 				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			// All skills of a source share its scope, so a synced skill moves only with its source.
-			if (await this.linkRepository.isLinked(skillId, txCtx)) {
+			if (await this.sourceRepository.isLinked(skillId, txCtx)) {
 				const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 				throw new SkillSyncedError(
 					name ?? skillId,
@@ -798,7 +798,7 @@ export class SkillService {
 				this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 				this.skillAccess.accessCheck(user, 'update'),
 				this.skillAccess.accessCheck(user, 'delete'),
-				this.linkRepository.findLinkedSkillIds(ids),
+				this.sourceRepository.findLinkedSkillIds(ids),
 				this.skillSyncFlagGate.isEnabled(user),
 			]);
 		const items: SkillListItem[] = [];

@@ -108,7 +108,14 @@ export abstract class SkillSourceClient {
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
 		cursor?: string,
-	): Promise<{ items: RemoteSkillRef[]; next?: string; truncated?: boolean; revision?: string }>;
+	): Promise<{
+		items: RemoteSkillRef[];
+		next?: string;
+		truncated?: boolean;
+		/** Skills that the client did not list, as they are deeper than it looks. */
+		tooDeep?: number;
+		revision?: string;
+	}>;
 
 	/**
 	 * The current content of one skill. Throws `SkillSourceNotFoundError` when it is gone.

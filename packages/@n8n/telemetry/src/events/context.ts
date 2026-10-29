@@ -81,10 +81,10 @@ const skillSourceStatus = z
 	.describe('Whether the action succeeded. A failure carries a reason code');
 
 const skillSourceReason = z
-	.enum(SKILL_SOURCE_REASONS)
+	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
 	.optional()
 	.describe(
-		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. Absent on success',
+		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. `unexpected` is a failure with no known reason. A success carries only `too_many_skills` or `too_deep`, when the source had skills that n8n did not list. Absent on other successes',
 	);
 
 const preferenceExampleId = z
@@ -436,7 +436,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_CONNECTED_SKILL_SOURCE: {
 		name: 'User connected skill source',
 		description:
-			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. The skills it imported are reported by `User imported skills from source`.',
+			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,

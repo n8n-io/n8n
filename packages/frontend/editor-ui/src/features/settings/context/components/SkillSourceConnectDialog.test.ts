@@ -85,6 +85,11 @@ function render() {
 	return renderDialog({ props: { open: true, scopeOptions: SCOPES } });
 }
 
+async function selectScope(view: ReturnType<typeof render>, label: string) {
+	await userEvent.click(view.getByTestId('skill-source-scope-select'));
+	await userEvent.click(await view.findByText(label));
+}
+
 async function pasteLink(view: ReturnType<typeof render>, link: string) {
 	const field = view.getByTestId('skill-source-url-input');
 	const input = field instanceof HTMLInputElement ? field : field.querySelector('input')!;
@@ -178,14 +183,21 @@ describe('SkillSourceConnectDialog', () => {
 		});
 	});
 
-	it('refuses a link that is not a GitHub link without asking the server', async () => {
+	it.each([
+		{
+			link: 'https://gitlab.com/acme/skills',
+			text: 'Only GitHub links work for now. Use https://github.com/owner/repo.',
+		},
+		{
+			link: 'github.com/acme',
+			text: 'This is not a GitHub repository link. Use https://github.com/owner/repo.',
+		},
+	])('refuses $link without asking the server', async ({ link, text }) => {
 		const view = render();
 
-		await pasteLink(view, 'https://gitlab.com/acme/skills');
+		await pasteLink(view, link);
 
-		expect(view.getByTestId('skill-source-link-error')).toHaveTextContent(
-			'This is not a GitHub repository link. Use https://github.com/owner/repo.',
-		);
+		expect(view.getByTestId('skill-source-link-error')).toHaveTextContent(text);
 		expect(skillsStore.discoverSource).not.toHaveBeenCalled();
 	});
 
@@ -217,29 +229,70 @@ describe('SkillSourceConnectDialog', () => {
 				httpStatusCode: 422,
 				meta: { reason: 'no_skills_found' },
 			}),
-			text: 'No SKILL.md found in acme/skills',
+			text: 'n8n found no SKILL.md files at this link.',
 		},
-	])('says why it cannot read $name', async ({ error, text }) => {
+		{
+			name: 'a link while GitHub limits the requests',
+			error: new ResponseError('GitHub answered with status 403.', {
+				httpStatusCode: 429,
+				meta: { reason: 'rate_limited' },
+			}),
+			text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
+		},
+		{
+			name: 'a link in a repository that is too large',
+			error: new ResponseError('The repository is too large. Link to the folder.', {
+				httpStatusCode: 422,
+				meta: { reason: 'archive_too_large' },
+			}),
+			text: 'This repository is too large for n8n to read.',
+		},
+		{
+			name: 'a link with a reason the editor does not know',
+			error: new ResponseError('Something new', {
+				httpStatusCode: 500,
+				meta: { reason: 'something_new' },
+			}),
+			text: 'Could not read the link',
+		},
+		{
+			name: 'a link to a missing branch',
+			link: 'https://github.com/acme/skills/tree/no-such-branch/skills',
+			error: new ResponseError('Branch not found', {
+				httpStatusCode: 400,
+				meta: { reason: 'invalid_url' },
+			}),
+			text: 'n8n cannot find this branch in the repository. Check the branch name in the link.',
+		},
+	])('says why it cannot read $name', async ({ error, text, link }) => {
 		skillsStore.discoverSource.mockRejectedValue(error);
 		const view = render();
 
-		await pasteLink(view, 'https://github.com/acme/skills');
+		await pasteLink(view, link ?? 'https://github.com/acme/skills');
 
-		expect(await view.findByTestId('skill-source-link-error')).toHaveTextContent(text);
+		const callout = await view.findByTestId('skill-source-link-error');
+		expect(callout).toHaveTextContent(text);
+		expect(callout).not.toHaveTextContent(error.message);
 		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
 	});
 
 	it.each([
 		{
 			where: 'global' as const,
+			scope: 'Global',
 			text: 'acme/skills is already connected in Global. Every project can use its skills.',
 		},
-		{ where: 'scope' as const, text: 'acme/skills is already connected in Global.' },
-	])('blocks a source already connected in $where', async ({ where, text }) => {
+		{
+			where: 'scope' as const,
+			scope: 'Marketing',
+			text: 'acme/skills is already connected in Marketing.',
+		},
+	])('blocks a source already connected in $where', async ({ where, scope, text }) => {
 		skillsStore.discoverSource.mockResolvedValue(
 			discovery({ duplicate: { kind: 'blocked', where, sourceId: null } }),
 		);
 		const view = render();
+		if (scope !== 'Global') await selectScope(view, scope);
 
 		await pasteLink(view, 'https://github.com/acme/skills');
 
@@ -293,6 +346,70 @@ describe('SkillSourceConnectDialog', () => {
 		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
 	});
 
+	it('says why n8n cannot read a skill in the list, without the server detail', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [
+					discovered(),
+					discovered({
+						key: 'skills/seo-check',
+						location: 'skills/seo-check',
+						name: null,
+						description: null,
+						error: {
+							reason: 'parse_error',
+							message: 'instructions: Instructions must be 65536 characters or fewer',
+						},
+					}),
+				],
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		const broken = await view.findByTestId('skill-source-skill-skills/seo-check');
+		const reason = within(broken).getByTestId('skill-source-skill-reason');
+		expect(reason).toHaveTextContent(
+			'n8n cannot read this SKILL.md. Check its name and description.',
+		);
+		expect(reason).not.toHaveTextContent('65536');
+		expect(within(broken).getByRole('checkbox')).toBeDisabled();
+		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
+	});
+
+	it('says when n8n lists only the first skills of a source', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery({ truncated: true }));
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		expect(await view.findByTestId('skill-source-truncated')).toHaveTextContent(
+			'This source has more than 200 skills. n8n lists the first 200. Link a folder to see the others.',
+		);
+	});
+
+	it('says when some skills are nested deeper than n8n reads', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery({ tooDeep: 2 }));
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		expect(await view.findByTestId('skill-source-too-deep')).toHaveTextContent(
+			'The skills are nested deeper than n8n reads. n8n reads SKILL.md files up to 8 folders deep.',
+		);
+	});
+
+	it('does not show the truncated notice for a source that n8n lists in full', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		expect(await view.findByText('Choose skills')).toBeInTheDocument();
+		expect(view.queryByTestId('skill-source-truncated')).not.toBeInTheDocument();
+	});
+
 	it('names the files the import skips for each skill', async () => {
 		skillsStore.discoverSource.mockResolvedValue(
 			discovery({
@@ -340,8 +457,7 @@ describe('SkillSourceConnectDialog', () => {
 		const view = render();
 
 		await pasteLink(view, 'https://github.com/acme/skills');
-		await userEvent.click(view.getByTestId('skill-source-scope-select'));
-		await userEvent.click(await view.findByText('Marketing'));
+		await selectScope(view, 'Marketing');
 		answer(discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: null } }));
 		await new Promise(process.nextTick);
 

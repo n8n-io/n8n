@@ -69,6 +69,7 @@ import {
 	parseScope,
 	useSkillDeleteRule,
 	useSkillScopeDisplay,
+	useSkillSourceReasons,
 } from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
@@ -97,6 +98,7 @@ const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
+const { failedSkillReason } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 
@@ -352,31 +354,14 @@ function onCreateMenuSelect(action: CreateAction) {
 
 type FailedSkill = SkillSourceConnected['response']['failed'][number];
 
-/** Why a picked skill did not come in. Only these reasons fail one skill and not the request. */
-function failedReason(reason: FailedSkill['reason']): string | undefined {
-	if (reason === 'name_taken') {
-		return i18n.baseText('settings.context.skills.connect.failed.reason.nameTaken');
-	}
-	if (reason === 'not_found') {
-		return i18n.baseText('settings.context.skills.connect.failed.reason.notFound');
-	}
-	if (reason === 'parse_error') {
-		return i18n.baseText('settings.context.skills.connect.failed.reason.parseError');
-	}
-	return undefined;
-}
-
+/** Names each skill that did not come in, with why. */
 function failedNames(failed: FailedSkill[]): string {
 	return failed
-		.map((item) => {
-			const name = item.name ?? item.key;
-			const reason = failedReason(item.reason);
-			return reason
-				? i18n.baseText('settings.context.skills.connect.failed.item', {
-						interpolate: { name, reason },
-					})
-				: name;
-		})
+		.map((item) =>
+			i18n.baseText('settings.context.skills.connect.failed.item', {
+				interpolate: { name: item.name ?? item.key, reason: failedSkillReason(item.reason) },
+			}),
+		)
 		.join(', ');
 }
 

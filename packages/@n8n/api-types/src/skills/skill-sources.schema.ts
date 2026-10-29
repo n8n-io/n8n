@@ -8,10 +8,13 @@ import { Z } from '../zod-class';
  */
 export const SKILL_SOURCE_REASONS = [
 	'invalid_url',
+	'unsupported_provider',
 	'not_found',
 	'rate_limited',
 	'unreachable',
 	'no_skills_found',
+	'too_many_skills',
+	'too_deep',
 	'archive_too_large',
 	'parse_error',
 	'name_taken',
@@ -86,8 +89,10 @@ export type SkillSourceDiscovery = {
 	source: SkillSourceSummary;
 	duplicate: SkillSourceDuplicate;
 	skills: DiscoveredSkill[];
-	/** True when the source has more skills than n8n lists. */
+	/** True when the source has more skills than n8n lists (`too_many_skills`). */
 	truncated: boolean;
+	/** Skills that n8n did not list, as they are deeper in the source than n8n looks (`too_deep`). */
+	tooDeep?: number;
 };
 
 export type SkillSourceConnectResponse = {

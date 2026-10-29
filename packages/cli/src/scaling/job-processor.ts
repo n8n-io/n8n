@@ -153,6 +153,10 @@ export class JobProcessor {
 		 */
 		if (execution.status === 'crashed') return { success: false };
 
+		// A stop request for a job that still waits in the queue only marks the execution as
+		// canceled: no worker runs it yet, and only the enqueuing process can remove the job.
+		if (execution.status === 'canceled') return { success: false };
+
 		// A correctly enqueued execution always carries a run-data payload. A missing
 		// one means the producer persisted no data, which would otherwise surface as an
 		// opaque `Cannot read properties of undefined` deref further down. Fail with a
@@ -579,6 +583,22 @@ export class JobProcessor {
 
 	stopJob(jobId: JobId) {
 		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
+	}
+
+	/**
+	 * Stop the running top-level job for an execution, if this worker runs it. A main that
+	 * did not enqueue the job has no Bull job handle, so it addresses the job by execution id.
+	 */
+	stopJobByExecutionId(executionId: string): boolean {
+		const entry = Object.entries(this.runningJobs).find(
+			([, runningJob]) => runningJob.executionId === executionId,
+		);
+		if (!entry) return false;
+
+		const [jobId] = entry;
+		this.cancelJob(jobId, 'manual');
+		this.logger.debug('Stopped running job by execution id', { executionId, jobId });
+		return true;
 	}
 
 	private cancelJob(jobId: JobId, reason: CancellationReason) {

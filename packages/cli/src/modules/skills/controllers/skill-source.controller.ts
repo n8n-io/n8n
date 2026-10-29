@@ -1,29 +1,32 @@
 import { ConnectSkillSourceDto, DiscoverSkillSourceDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Middleware, Param, Post, RestController } from '@n8n/decorators';
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
+import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import { SkillSyncService } from '../services/skill-sync.service';
-import { SkillsGate } from '../services/skills-gate';
 
 /**
- * Skill Sync: connect a source and import its skills. Every route also checks the per-user
- * Skill Sync flag in `SkillSourceService`, which answers 404 when it is off. No route scope:
- * the scope of the source decides who may connect it.
+ * Skill Sync: connect a source, import its skills, and stop syncing one skill. The services check
+ * the per-user Skill Sync flag again, for callers other than this controller. No route scope: the
+ * scope of the source decides who may change it.
  */
 @RestController('/skill-sources')
 export class SkillSourceController {
 	constructor(
 		private readonly skillSourceService: SkillSourceService,
 		private readonly skillSyncService: SkillSyncService,
-		private readonly skillsGate: SkillsGate,
+		private readonly flagGate: SkillSyncFlagGate,
 	) {}
 
-	/** Runs before the request is validated, so every request answers 404 while skills are off. */
+	/**
+	 * Runs before the request is validated, so every request answers 404 while skills or the
+	 * Skill Sync flag of the user are off.
+	 */
 	@Middleware()
-	requireSkillsEnabled(_req: Request, res: Response, next: NextFunction) {
-		if (!this.skillsGate.isEnabled) {
+	async requireSkillSyncEnabled(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		if (!(await this.flagGate.isEnabled(req.user))) {
 			res.status(404).send('Not found');
 			return;
 		}

@@ -23,7 +23,7 @@ skills/
   services/            services, gates, the SkillUsage contract and its proxy
   database/
     entities/          Skill, SkillVersion, SkillFile, SkillSourceConnection, SkillSourceLink
-    repositories/      SkillRepository, SkillSourceRepository, SkillSourceLinkRepository
+    repositories/      SkillRepository, SkillSourceRepository (sources and their links)
   errors/              SkillNameTakenError, SkillParseError, SkillSyncedError, SkillSource*Error
   utils/               shared types, content helpers, hashes, name rules
   sources/             (Skill Sync) source clients and their registry
@@ -91,7 +91,7 @@ Split services by capability, never by caller.
 
 - `SkillsGate.isEnabled` reads one fact: the agents module registered its `SkillUsage`. Without the agents module, the delete and move guards cannot see the agents that use a skill. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')` or the proxy in other code.
 - `AssistantSkillsFlagGate.isEnabled()` needs two facts: `SkillsGate` is on, and the PostHog instance flag `ASSISTANT_SKILLS_FLAG` is on. It switches n8n Assistant skills separately from skills.
-- `SkillSyncFlagGate.isEnabled(user)` needs two facts: `SkillsGate` is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. Every Skill Sync route calls `assertEnabled`, which answers 404. The check task has no user, so it reads the flag of the user who created the source. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag through `useSkillSyncFlag`.
+- `SkillSyncFlagGate.isEnabled(user)` needs two facts: `SkillsGate` is on, and the per-user PostHog flag `SKILL_SYNC_FLAG` is on for that user. The Skill Sync controller checks it in a middleware before the body is validated, and the service calls `assertEnabled`. Both answer 404. The check task has no user, so it reads the flag of the user who created the source. Force the flag on with `N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'`. The frontend reads the same flag through `useSkillSyncFlag`.
 
 ## DI and start order
 

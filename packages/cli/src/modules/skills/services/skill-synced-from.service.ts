@@ -4,7 +4,6 @@ import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { SkillSourceLinkRepository } from '../database/repositories/skill-source-link.repository';
 import { SkillSourceRepository } from '../database/repositories/skill-source.repository';
 import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
 import { SkillAccessService } from './skill-access.service';
@@ -15,7 +14,6 @@ import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 export class SkillSyncedFromService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly linkRepository: SkillSourceLinkRepository,
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly clients: SkillSourceClientRegistry,
 		private readonly skillAccess: SkillAccessService,
@@ -28,9 +26,7 @@ export class SkillSyncedFromService {
 		skillId: string,
 		ctx: OperationContext = {},
 	): Promise<SkillSyncedFrom | null> {
-		const link = await this.linkRepository.findBySkillId(skillId, ctx);
-		if (!link) return null;
-		const source = await this.sourceRepository.findById(link.sourceId, ctx);
+		const source = await this.sourceRepository.findSyncedFrom(skillId, ctx);
 		const client = source && this.clients.get(source.type);
 		if (!source || !client) return null;
 		// The route answers 404 while the Skill Sync flag is off for the user.
@@ -39,10 +35,10 @@ export class SkillSyncedFromService {
 			(await this.skillAccess.canOnSource(user, source, 'stopSyncing'));
 		try {
 			return {
-				sourceId: source.id,
+				sourceId: source.sourceId,
 				type: source.type,
 				label: client.describe(source.locator).label,
-				webUrl: client.webUrl(source.locator, link.remoteRef),
+				webUrl: client.webUrl(source.locator, source.remoteRef),
 				canStopSyncing,
 			};
 		} catch (error) {

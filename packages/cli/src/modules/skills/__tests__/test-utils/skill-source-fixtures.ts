@@ -4,7 +4,6 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
-import { SkillSourceLinkRepository } from '../../database/repositories/skill-source-link.repository';
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 
 /** Makes the skill a synced skill of a new GitHub source in its scope. Answers the source id. */
@@ -22,7 +21,7 @@ export async function linkSkill(
 		projectId: scope.projectId,
 		createdById: scope.createdById,
 	});
-	await Container.get(SkillSourceLinkRepository).insertImported({
+	await Container.get(SkillSourceRepository).insertImported({
 		skillId,
 		sourceId,
 		remoteRef: { path: `skills/${skillId}` },

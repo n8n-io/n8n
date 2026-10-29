@@ -6,7 +6,7 @@ import {
 	agentSkillShape,
 	skillCreateMethodSchema,
 } from './agent-skill.schema';
-import type { SkillSyncedFrom } from './skill-sources.schema';
+import type { SkillSyncedFrom } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';

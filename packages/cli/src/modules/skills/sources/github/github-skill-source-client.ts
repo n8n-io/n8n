@@ -5,8 +5,16 @@ import {
 } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { LRUCache } from 'lru-cache';
+import type { Readable } from 'node:stream';
+import pLimit from 'p-limit';
 
-import { ARCHIVE_TOO_LARGE, readRepositoryArchive, type RepositoryArchive } from './github-archive';
+import {
+	DEFAULT_ARCHIVE_LIMITS,
+	archiveSize,
+	readRepositoryArchive,
+	type ArchiveLimits,
+	type RepositoryArchive,
+} from './github-archive';
 import {
 	GITHUB_HOST,
 	gitHubTreeUrl,
@@ -38,11 +46,16 @@ type GitHubLocator = { owner: string; repository: string; branch: string; path: 
 type GitHubSkillRef = { path: string };
 
 const TIMEOUT_MS = 30_000;
-const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
+/** The whole download of an archive, so a large repository cannot keep a request open. */
+const ARCHIVE_DOWNLOAD_MS = 2 * 60_000;
 const MAX_REFS_BYTES = 5 * 1024 * 1024;
 /** A discover and the fetches of an import read one archive. */
 const ARCHIVE_CACHE_MS = 5 * 60_000;
 const ARCHIVE_CACHE_SIZE = 4;
+/** Bytes of paths and text that the cached archives hold together. */
+const ARCHIVE_CACHE_BYTES = 64 * 1024 * 1024;
+/** A download in progress is not in the cache budget, so few run at a time. */
+const MAX_ARCHIVE_DOWNLOADS = 2;
 
 const CANNOT_READ = 'n8n cannot read this repository. It is private or does not exist.';
 
@@ -62,21 +75,30 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		changeDetection: 'source',
 		pinnedFetch: true,
 		history: false,
-		// The files of a skill come in unchanged. Files a skill cannot hold are listed in
-		// `skippedFiles`, not converted.
-		importFidelity: 'lossless',
+		// An import keeps SKILL.md and `references/*.md` only. It lists the other files in
+		// `skippedFiles`.
+		importFidelity: 'lossy',
 	};
 
 	private readonly http: HttpRequestClient;
 
 	private readonly heads = new Map<string, Promise<string>>();
 
-	/** Archives by commit. An expired entry is dropped on its own, so it frees its memory. */
+	/**
+	 * Archives by commit and folder. An expired entry is dropped on its own, so it frees its
+	 * memory. A pending download has size 1 until it resolves.
+	 */
 	private readonly archives = new LRUCache<string, Promise<RepositoryArchive>>({
 		max: ARCHIVE_CACHE_SIZE,
+		maxSize: ARCHIVE_CACHE_BYTES,
 		ttl: ARCHIVE_CACHE_MS,
 		ttlAutopurge: true,
 	});
+
+	private readonly downloads = pLimit(MAX_ARCHIVE_DOWNLOADS);
+
+	/** Protected so that tests can set small limits. */
+	protected readonly archiveLimits: ArchiveLimits = DEFAULT_ARCHIVE_LIMITS;
 
 	constructor(outboundHttp: OutboundHttp) {
 		super();
@@ -99,9 +121,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const split = splitBranchAndPath({ owner, repository, kind, ...link }, [
 			...refs.branches.keys(),
 		]);
+		// ls-refs lists branches only, so a tag, a commit and a typo look the same here.
 		if (!split) {
 			throw new SkillSourceUrlError(
-				'n8n syncs a branch. Use a link to a branch, not to a tag or a commit.',
+				'n8n cannot find this branch. Use a link to a branch, not to a tag or a commit.',
 			);
 		}
 		return { owner, repository, ...split };
@@ -128,7 +151,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 
 	async discover(
 		locator: SkillSourceLocator,
-	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; revision: string }> {
+	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; tooDeep: number; revision: string }> {
 		const parsed = readLocator(locator);
 		const sha = await this.head(parsed);
 		const archive = await this.archiveAt(parsed, sha);
@@ -136,9 +159,9 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		if (path && !archive.paths.some((file) => isInside(file, path) && file !== path)) {
 			throw new SkillSourceNotFoundError('The folder does not exist on this branch.');
 		}
-		const { folders, truncated } = findSkillFolders(archive.paths, path);
+		const { folders, truncated, tooDeep } = findSkillFolders(archive.paths, path);
 		const items = folders.map((folder): GitHubSkillRef => ({ path: folder }));
-		return { items, truncated, revision: sha };
+		return { items, truncated, tooDeep, revision: sha };
 	}
 
 	async fetchLatest(
@@ -222,19 +245,69 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return await sha;
 	}
 
+	/** The archive of the folder of the link. Each link keeps only the files under its folder. */
 	private async archiveAt(locator: GitHubLocator, sha: string): Promise<RepositoryArchive> {
-		const { owner, repository } = locator;
-		const key = `${owner}/${repository}@${sha}`.toLowerCase();
+		const { owner, repository, path } = locator;
+		// The folder keeps its case, as the paths in the archive do.
+		const key = `${owner}/${repository}@${sha}`.toLowerCase() + `:${path}`;
 		const cached = this.archives.get(key);
 		if (cached) return await cached;
-		const path = [owner, repository, 'tar.gz', sha].map(encodeURIComponent).join('/');
-		const archive = this.send(
-			{ url: `https://codeload.${GITHUB_HOST}/${path}`, method: 'GET' },
-			{ bytes: MAX_ARCHIVE_BYTES, message: ARCHIVE_TOO_LARGE, reason: 'archive_too_large' },
-		).then(readRepositoryArchive);
-		this.archives.set(key, archive);
-		archive.catch(() => this.archives.delete(key));
+		const archive = this.downloads(async () => await this.download(locator, sha));
+		this.archives.set(key, archive, { size: 1 });
+		archive.then(
+			(read) => {
+				// The cache sizes an entry only when its value changes, so a new promise replaces
+				// the pending one. Over the budget, the cache drops the entry instead.
+				if (this.archives.peek(key) === archive) {
+					this.archives.set(key, Promise.resolve(read), {
+						size: Math.max(1, archiveSize(read)),
+						noUpdateTTL: true,
+					});
+				}
+			},
+			() => {
+				if (this.archives.peek(key) === archive) this.archives.delete(key);
+			},
+		);
 		return await archive;
+	}
+
+	private async download(locator: GitHubLocator, sha: string): Promise<RepositoryArchive> {
+		const { owner, repository, path } = locator;
+		const segments = [owner, repository, 'tar.gz', sha].map(encodeURIComponent).join('/');
+		const deadline = new AbortController();
+		const timer = setTimeout(() => deadline.abort(), ARCHIVE_DOWNLOAD_MS);
+		try {
+			let response;
+			try {
+				response = await this.http.request<Readable>({
+					url: `https://codeload.${GITHUB_HOST}/${segments}`,
+					method: 'GET',
+					encoding: 'stream',
+					json: false,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
+					abortSignal: deadline.signal,
+				});
+			} catch (error) {
+				throw new SkillSourceReadError('unreachable', 'n8n could not reach GitHub.', {
+					cause: error,
+				});
+			}
+			if (!isSuccess(response.statusCode)) {
+				response.body.destroy();
+				throwForStatus(response.statusCode, response.headers);
+			}
+			return await readRepositoryArchive(response.body, {
+				root: path,
+				signal: deadline.signal,
+				limits: this.archiveLimits,
+			});
+		} finally {
+			clearTimeout(timer);
+			// Frees the connection when the read stopped early.
+			deadline.abort();
+		}
 	}
 
 	private async send(
@@ -265,19 +338,27 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			});
 		}
 		const { statusCode, headers } = response;
-		if (statusCode >= 200 && statusCode < 300) return Buffer.from(response.body as ArrayBuffer);
-		if (statusCode === 429 || (statusCode === 403 && rateLimitSpent(headers))) {
-			throw new SkillSourceReadError(
-				'rate_limited',
-				'GitHub limits how often n8n can read it. Try again in a few minutes.',
-			);
-		}
-		// Smart HTTP answers 401 for a repository that is private or does not exist.
-		if (statusCode === 401 || statusCode === 403 || statusCode === 404 || statusCode === 451) {
-			throw new SkillSourceNotFoundError(CANNOT_READ);
-		}
-		throw new SkillSourceReadError('unreachable', `GitHub answered with status ${statusCode}.`);
+		if (!isSuccess(statusCode)) throwForStatus(statusCode, headers);
+		return Buffer.from(response.body as ArrayBuffer);
 	}
+}
+
+function isSuccess(statusCode: number): boolean {
+	return statusCode >= 200 && statusCode < 300;
+}
+
+function throwForStatus(statusCode: number, headers: Record<string, unknown>): never {
+	if (statusCode === 429 || (statusCode === 403 && rateLimitSpent(headers))) {
+		throw new SkillSourceReadError(
+			'rate_limited',
+			'GitHub limits how often n8n can read it. Try again in a few minutes.',
+		);
+	}
+	// Smart HTTP answers 401 for a repository that is private or does not exist.
+	if (statusCode === 401 || statusCode === 403 || statusCode === 404 || statusCode === 451) {
+		throw new SkillSourceNotFoundError(CANNOT_READ);
+	}
+	throw new SkillSourceReadError('unreachable', `GitHub answered with status ${statusCode}.`);
 }
 
 /** GitHub sends `x-ratelimit-remaining: 0` with a 403 when the limit is spent. */
