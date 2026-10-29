@@ -29,11 +29,11 @@ tags:
     x-parent: InstanceOperations
     description: Operations about security audit
   - name: CommunityPackage
-    x-displayName: Community Package
+    x-displayName: Community Packages
     x-parent: InstanceOperations
     description: Operations about community packages
   - name: Credential
-    x-displayName: Credential
+    x-displayName: Credentials
     x-parent: BuildAndRun
     description: Operations about credentials
   - name: CredentialTypePolicy
@@ -41,7 +41,7 @@ tags:
     x-parent: InstanceSettings
     description: Preview — breaking changes may still occur without major version bump.
   - name: DataTable
-    x-displayName: Data Table
+    x-displayName: Data Tables
     x-parent: BuildAndRun
     description: Operations about data tables and their rows
   - name: Discover
@@ -49,7 +49,7 @@ tags:
     x-parent: InstanceOperations
     description: API capability discovery
   - name: Evaluation
-    x-displayName: Evaluation
+    x-displayName: Evaluations
     x-parent: BuildAndRun
     description: Operations about evaluation test runs
   - name: Executions
@@ -69,7 +69,7 @@ tags:
     x-parent: InstanceSettings
     description: Operations about log streaming destinations
   - name: N8nPackage
-    x-displayName: n8n Package
+    x-displayName: n8n Packages
     x-parent: InstanceOperations
     description: Beta — breaking changes may still occur without major version bump.
   - name: NodeTypePolicy
@@ -85,11 +85,11 @@ tags:
     x-parent: InstanceOperations
     description: Operations about promotion providers, environments, and package operations
   - name: Role
-    x-displayName: Role
+    x-displayName: Roles
     x-parent: AccessAndOrganization
     description: Operations about roles
   - name: RoleMappingRule
-    x-displayName: Role Mapping Rule
+    x-displayName: Role Mapping Rules
     x-parent: AccessAndOrganization
     description: Operations about identity-provider role-mapping rules
   - name: SecurityPolicy
@@ -121,7 +121,7 @@ tags:
     x-parent: BuildAndRun
     description: Operations about tags
   - name: User
-    x-displayName: User
+    x-displayName: Users
     x-parent: AccessAndOrganization
     description: Operations about users
   - name: Variables
@@ -129,7 +129,7 @@ tags:
     x-parent: BuildAndRun
     description: Operations about variables
   - name: Workflow
-    x-displayName: Workflow
+    x-displayName: Workflows
     x-parent: BuildAndRun
     description: Operations about workflows
   # Parent tags (alphabetically sorted)
