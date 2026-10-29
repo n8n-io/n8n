@@ -1,7 +1,10 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+
 import {
 	MfaRequiredError,
 	ResponseError,
 	STREAM_SEPARATOR,
+	makeRestApiRequest,
 	request,
 	requestResponse,
 	setUnauthorizedHandler,
@@ -62,6 +65,38 @@ describe('request', () => {
 		await expect(request(baseConfig)).rejects.toThrow(MfaRequiredError);
 
 		expect(handler).not.toHaveBeenCalled();
+	});
+});
+
+describe('request headers', () => {
+	it('sends the headers from its config with the request', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: {} });
+		const headers = { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI };
+
+		await request({
+			method: 'GET',
+			baseURL: 'https://api.example.com',
+			endpoint: '/workflows',
+			headers,
+		});
+
+		expect(axiosRequest).toHaveBeenCalledWith(expect.objectContaining({ headers }));
+	});
+});
+
+describe('makeRestApiRequest', () => {
+	it('does not send the editor UI client header on a REST API request', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: [] } });
+
+		await makeRestApiRequest(
+			{ baseUrl: 'https://api.example.com', pushRef: 'push-ref' },
+			'GET',
+			'/workflows',
+		);
+
+		const sentHeaders = axiosRequest.mock.lastCall?.[0].headers;
+		expect(sentHeaders).toEqual({ 'push-ref': 'push-ref' });
+		expect(sentHeaders).not.toHaveProperty(N8N_CLIENT_HEADER);
 	});
 });
 

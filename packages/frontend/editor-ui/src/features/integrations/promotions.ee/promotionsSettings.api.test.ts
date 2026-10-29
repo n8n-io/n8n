@@ -1,4 +1,7 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { request, ResponseError } from '@n8n/rest-api-client';
+import { createPinia, setActivePinia } from 'pinia';
 import {
 	applyProjectSelection,
 	continueApplyProjectSelection,
@@ -26,6 +29,18 @@ it('requests repositories with the encoded provider, query, and public API base 
 		endpoint: '/promotions/providers/provider%2Fone/repositories',
 		data: query,
 	});
+});
+
+it('sends the editor UI client header on a request built from the root store public API context', async () => {
+	setActivePinia(createPinia());
+	const context = useRootStore().publicApiContext;
+	vi.mocked(request).mockResolvedValue({ data: [], nextCursor: null });
+
+	await fetchPromotionRepositories(context, 'provider-id');
+
+	expect(request).toHaveBeenLastCalledWith(
+		expect.objectContaining({ headers: { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI } }),
+	);
 });
 
 it('requests branches with the encoded repository path and returns the complete page', async () => {

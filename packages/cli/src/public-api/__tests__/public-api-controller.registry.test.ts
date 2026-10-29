@@ -34,11 +34,43 @@ import {
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
+import { resolveClient } from '@/public-api/public-api-client';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+
+describe('resolveClient', () => {
+	it('returns editor_ui for the editor UI marker value', () => {
+		expect(resolveClient('editor-ui')).toBe('editor_ui');
+	});
+
+	it('ignores case and surrounding whitespace', () => {
+		expect(resolveClient(' Editor-UI ')).toBe('editor_ui');
+	});
+
+	it('returns other for an unknown value', () => {
+		expect(resolveClient('foo')).toBe('other');
+	});
+
+	it('returns other when the header is absent', () => {
+		expect(resolveClient(undefined)).toBe('other');
+	});
+
+	it('returns other for an empty value', () => {
+		expect(resolveClient('')).toBe('other');
+	});
+
+	it('uses the first value of a repeated header', () => {
+		expect(resolveClient(['editor-ui', 'foo'])).toBe('editor_ui');
+		expect(resolveClient(['foo', 'editor-ui'])).toBe('other');
+	});
+
+	it('returns other for an empty list of values', () => {
+		expect(resolveClient([])).toBe('other');
+	});
+});
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
@@ -299,6 +331,48 @@ describe('PublicApiControllerRegistry', () => {
 			'public-api-invoked',
 			expect.objectContaining({ method: 'GET', path: '/widgets/w-1' }),
 		);
+	});
+
+	describe('public-api-invoked client', () => {
+		const emitWidgetCall = async (headers: Record<string, string> = {}) => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate()).get('/api/v1/widgets').set(headers).expect(200);
+
+			return eventService.emit.mock.calls.find(([name]) => name === 'public-api-invoked')?.[1];
+		};
+
+		it('reports editor_ui when the caller sends the editor UI marker header', async () => {
+			const event = await emitWidgetCall({ 'x-n8n-client': 'editor-ui' });
+
+			expect(event).toEqual(expect.objectContaining({ client: 'editor_ui' }));
+		});
+
+		it('reports other when the caller sends no marker header', async () => {
+			const event = await emitWidgetCall();
+
+			expect(event).toEqual(expect.objectContaining({ client: 'other' }));
+		});
+
+		it('reports other when the marker header has an unknown value', async () => {
+			const event = await emitWidgetCall({ 'x-n8n-client': 'foo' });
+
+			expect(event).toEqual(expect.objectContaining({ client: 'other' }));
+		});
+
+		it('reports editor_ui when the marker header differs only in case and whitespace', async () => {
+			const event = await emitWidgetCall({ 'x-n8n-client': ' Editor-UI ' });
+
+			expect(event).toEqual(expect.objectContaining({ client: 'editor_ui' }));
+		});
 	});
 
 	describe('success response without a DTO', () => {

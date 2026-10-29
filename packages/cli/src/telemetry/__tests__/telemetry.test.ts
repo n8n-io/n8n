@@ -1069,7 +1069,7 @@ describe('Telemetry', () => {
 			vi.setSystemTime(testDateTime);
 		});
 
-		test('should count calls per user and endpoint', () => {
+		test('should count calls per user, client and endpoint', () => {
 			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 
 			telemetry.trackApiInvocation({
@@ -1078,6 +1078,7 @@ describe('Telemetry', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
+				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
@@ -1086,6 +1087,7 @@ describe('Telemetry', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
+				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
@@ -1094,16 +1096,17 @@ describe('Telemetry', () => {
 				method: 'POST',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].total_calls).toBe(3);
-			expect(buffer['user1'].first).toEqual(execTime1);
-			expect(buffer['user1'].endpoints['GET /workflows']).toBe(2);
-			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
-			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
-			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
+			expect(buffer['user1'].other?.total_calls).toBe(3);
+			expect(buffer['user1'].other?.first).toEqual(execTime1);
+			expect(buffer['user1'].other?.endpoints['GET /workflows']).toBe(2);
+			expect(buffer['user1'].other?.endpoints['POST /executions']).toBe(1);
+			expect(buffer['user1'].other?.user_agents['n8n-cli/1.0']).toBe(2);
+			expect(buffer['user1'].other?.user_agents['custom-app/2.0']).toBe(1);
 		});
 
 		test('should handle missing user_agent', () => {
@@ -1112,12 +1115,13 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].total_calls).toBe(1);
-			expect(buffer['user1'].user_agents).toEqual({});
+			expect(buffer['user1'].other?.total_calls).toBe(1);
+			expect(buffer['user1'].other?.user_agents).toEqual({});
 		});
 
 		test('should track multiple users independently', () => {
@@ -1127,6 +1131,7 @@ describe('Telemetry', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
+				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
@@ -1135,14 +1140,51 @@ describe('Telemetry', () => {
 				method: 'POST',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].total_calls).toBe(1);
-			expect(buffer['user1'].endpoints['GET /workflows']).toBe(1);
-			expect(buffer['user2'].total_calls).toBe(1);
-			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
+			expect(buffer['user1'].other?.total_calls).toBe(1);
+			expect(buffer['user1'].other?.endpoints['GET /workflows']).toBe(1);
+			expect(buffer['user2'].other?.total_calls).toBe(1);
+			expect(buffer['user2'].other?.endpoints['POST /executions']).toBe(1);
+		});
+
+		test('should count calls separately for each client', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/executions',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].other?.total_calls).toBe(1);
+			expect(buffer['user1'].other?.endpoints).toEqual({ 'GET /workflows': 1 });
+			expect(buffer['user1'].editor_ui?.total_calls).toBe(2);
+			expect(buffer['user1'].editor_ui?.endpoints).toEqual({
+				'GET /workflows': 1,
+				'GET /executions': 1,
+			});
 		});
 
 		test('should not buffer when rudderStack is not initialized', () => {
@@ -1154,6 +1196,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'other',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
@@ -1580,15 +1623,56 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'other',
 			});
 
 			telemetry.flushBuffers();
 
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Public API usage',
-				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+				expect.objectContaining({ user_id: 'user1', client: 'other', total_calls: 1 }),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should send one usage event per user and client', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			telemetry.flushBuffers();
+
+			const usageCalls = spyTrack.mock.calls.filter(([event]) => event === 'Public API usage');
+			expect(usageCalls).toHaveLength(2);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', client: 'other', total_calls: 1 }),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', client: 'editor_ui', total_calls: 2 }),
+			);
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
 		});
 

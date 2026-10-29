@@ -115,5 +115,11 @@ export async function createPublicProject(
 	context: PublicApiContext,
 	data: CreateProjectPublicDto,
 ): Promise<CreatedProjectPublicDto> {
-	return await request({ method: 'POST', baseURL: context.baseUrl, endpoint: '/projects', data });
+	return await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		headers: context.headers,
+		endpoint: '/projects',
+		data,
+	});
 }

@@ -224,6 +224,7 @@ export async function createPublicCredential(
 	return await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: '/credentials',
 		data,
 	});

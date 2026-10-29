@@ -27,6 +27,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
@@ -60,6 +61,7 @@ interface IApiInvocationProperties {
 	method: string;
 	api_version: string;
 	user_agent?: string;
+	client: PublicApiClient;
 }
 
 interface IApiInvocationsBufferEntry {
@@ -69,8 +71,13 @@ interface IApiInvocationsBufferEntry {
 	user_agents: Record<string, number>;
 }
 
+/**
+ * One `Public API usage` event goes out for each user and client. `client` is `editor_ui` when
+ * the editor UI sent its marker header, and `other` otherwise. A caller can fake the header,
+ * so `client` is not an access control.
+ */
 interface IApiInvocationsBuffer {
-	[userId: string]: IApiInvocationsBufferEntry;
+	[userId: string]: Partial<Record<PublicApiClient, IApiInvocationsBufferEntry>>;
 }
 
 interface IAgentExecutionCounts {
@@ -271,16 +278,18 @@ export class Telemetry {
 	}
 
 	private flushApiInvocations() {
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
-			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
-					user_id: userId,
-					total_calls: entry.total_calls,
-					first: entry.first,
-					endpoints: JSON.stringify(entry.endpoints),
-					user_agents: JSON.stringify(entry.user_agents),
-				});
+		for (const [userId, entriesByClient] of Object.entries(this.apiInvocationsBuffer)) {
+			for (const [client, entry] of Object.entries(entriesByClient)) {
+				if (entry && entry.total_calls > 0) {
+					this.track('Public API usage', {
+						user_id: userId,
+						client,
+						total_calls: entry.total_calls,
+						first: entry.first,
+						endpoints: JSON.stringify(entry.endpoints),
+						user_agents: JSON.stringify(entry.user_agents),
+					});
+				}
 			}
 		}
 		this.apiInvocationsBuffer = {};
@@ -546,16 +555,15 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent } = properties;
+		const { user_id, path, method, user_agent, client } = properties;
 
-		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+		const entriesByClient = (this.apiInvocationsBuffer[user_id] ??= {});
+		const entry = (entriesByClient[client] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
 			user_agents: {},
-		};
-
-		const entry = this.apiInvocationsBuffer[user_id];
+		});
 		entry.total_calls++;
 
 		const endpointKey = `${method} ${path}`;

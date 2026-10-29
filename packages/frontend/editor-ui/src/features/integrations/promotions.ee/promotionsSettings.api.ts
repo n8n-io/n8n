@@ -38,6 +38,7 @@ export const fetchPromotionRepositories = async (
 	await request({
 		method: 'GET',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories`,
 		data: query,
 	});
@@ -51,6 +52,7 @@ export const fetchPromotionBranches = async (
 	await request({
 		method: 'GET',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories/${encodeURIComponent(repositoryId)}/branches`,
 		data: query,
 	});
@@ -77,6 +79,7 @@ export const fetchPromotionProvider = async (
 	await request({
 		method: 'GET',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/providers/${id}`,
 	});
 
@@ -87,6 +90,7 @@ export const createPromotionProvider = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/providers`,
 		data: payload,
 	});
@@ -99,6 +103,7 @@ export const updatePromotionProvider = async (
 	await request({
 		method: 'PUT',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/providers/${id}`,
 		data: payload,
 	});
@@ -107,6 +112,7 @@ const deletePromotionProvider = async (context: PublicApiContext, id: string): P
 	await request({
 		method: 'DELETE',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/providers/${id}`,
 	});
 };
@@ -134,6 +140,7 @@ export const fetchPromotionEnvironments = async (
 			await request({
 				method: 'GET',
 				baseURL: context.baseUrl,
+				headers: context.headers,
 				endpoint: `${promotionsApiRoot}/environments`,
 				data: { ...filter, cursor },
 			}),
@@ -147,6 +154,7 @@ export const fetchPromotionEnvironment = async (
 	await request({
 		method: 'GET',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${encodeURIComponent(id)}`,
 	});
 
@@ -157,6 +165,7 @@ export const createPromotionEnvironment = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments`,
 		data: payload,
 	});
@@ -169,6 +178,7 @@ export const updatePromotionEnvironment = async (
 	await request({
 		method: 'PUT',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${id}`,
 		data: payload,
 	});
@@ -180,6 +190,7 @@ export const deletePromotionEnvironment = async (
 	await request({
 		method: 'DELETE',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${id}`,
 	});
 };
@@ -192,6 +203,7 @@ export const connectPromotionCheckout = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${environmentId}/connect`,
 	});
 
@@ -204,6 +216,7 @@ export const promotePackage = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${environmentId}/promote`,
 		data: payload,
 	});
@@ -216,6 +229,7 @@ export const applyPromotion = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${environmentId}/apply`,
 		data: payload,
 	});
@@ -229,6 +243,7 @@ export const continueApplyPromotion = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
 		data: payload,
 	});
@@ -242,6 +257,7 @@ export const applyProjectSelection = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply`,
 		data: payload,
 	});
@@ -255,6 +271,7 @@ export const continueApplyProjectSelection = async (
 	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply/continue`,
 		data: payload,
 	});

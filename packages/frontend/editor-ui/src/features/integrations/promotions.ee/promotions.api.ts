@@ -61,6 +61,7 @@ export async function promoteProjectSelection(
 	return await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
+		headers: context.headers,
 		endpoint: `/promotions/projects/${projectId}/promote`,
 		data: payload,
 	});
