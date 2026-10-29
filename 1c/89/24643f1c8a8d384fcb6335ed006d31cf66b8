@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_7b9d81bdc7e9cf::t_e4907138b579f5 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c8924643f1c8a8d384fcb6335ed006d31cf66b8",
+  "prompts": {},
+  "sessions": {
+    "s_7b9d81bdc7e9cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fef06d-52a3-47ad-98ca-3d80fa470a13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
