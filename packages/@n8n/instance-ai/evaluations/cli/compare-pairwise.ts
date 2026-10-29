@@ -716,7 +716,6 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 		}
 		case DOMAIN_TOOL_IDS.DATA_TABLES:
 		case DOMAIN_TOOL_IDS.NODES:
-		case DOMAIN_TOOL_IDS.WORKFLOWS:
 			return trunc(str(a.action));
 		default:
 			return trunc(scrubSecretsInText(JSON.stringify(a)), 120);

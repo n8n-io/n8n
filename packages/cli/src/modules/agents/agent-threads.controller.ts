@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMemoryTraceService } from './agent-memory-trace.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 import { AgentSessionStopService } from './agent-session-stop.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
@@ -16,6 +17,7 @@ import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly memoryTraceService: AgentMemoryTraceService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly sessionStopService: AgentSessionStopService,
@@ -46,14 +48,15 @@ export class AgentThreadsController {
 	async getThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
+		const { projectId, agentId, threadId } = req.params;
 		const result = await this.agentExecutionService.getThreadDetail(
-			req.params.threadId,
-			req.params.projectId,
-			req.params.agentId,
+			threadId,
+			projectId,
+			agentId,
 			req.user.id,
 		);
 		if (!result) {
-			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
+			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 		const {
 			ownerId: _ownerId,
@@ -70,7 +73,14 @@ export class AgentThreadsController {
 				this.systemAgents.has(result.thread.agentId),
 			),
 		};
-		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
+		const memory = await this.memoryTraceService.getThreadMemory({
+			agentId,
+			projectId,
+			userId: req.user.id,
+			threadId,
+			executions: result.executions,
+		});
+		return { ...result, thread: { ...thread, ...access, source: source ?? null }, memory };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

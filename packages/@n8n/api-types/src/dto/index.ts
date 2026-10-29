@@ -3,6 +3,7 @@ export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-
 export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ListAppsQueryDto } from './app/list-apps-query.dto';
+export { PublishAppDto } from './app/publish-app.dto';
 
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {
@@ -795,7 +796,7 @@ export {
 	PromotionCheckoutPublicDto,
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
-export * from './promotions/promotion-binding-preflight.dto';
+export * from './promotions/promotion-apply-check.dto';
 export * from './promotions/promotion-preview.dto';
 export {
 	CreatePromotionEnvironmentDto,
@@ -823,7 +824,6 @@ export {
 	type PromotionEnvironmentSummary,
 } from './promotions/promotion-environment.dto';
 export {
-	ApplyCheckQueryDto,
 	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ApplySelectionDto,
@@ -838,7 +838,6 @@ export {
 	promotionGitResultSchema,
 	promotionPromoteWarningSchema,
 	type PromotionPromoteWarning,
-	type ApplyCheckResult,
 } from './promotions/promotion-operations.dto';
 export {
 	parsePromotionRunDetails,
@@ -881,8 +880,10 @@ export {
 
 export {
 	ScimConfigPatchDto,
+	ScimDeprovisioningPolicyDto,
 	ScimPatchRequestDto,
 	ScimQueryDto,
+	ScimTransferTargetsQueryDto,
 	ScimUserCreateDto,
 } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';

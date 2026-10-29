@@ -62,7 +62,7 @@ export interface UseAgentCapabilitiesActionsDeps {
 	scheduleConfigUpdate: (updates: Partial<AgentJsonConfig>) => void;
 	/**
 	 * Persists an edit to an *existing* skill's body (name/description/
-	 * instructions/allowedTools/references). Each host owns its own skill
+	 * instructions/references). Each host owns its own skill
 	 * autosave lifecycle (the builder + NDV each run a dedicated
 	 * `useAgentConfigAutosave`), so the seam is injected rather than the
 	 * builder's autosave being hard-wired here. Creating a *new* skill stays in
@@ -353,7 +353,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(id),
 				skillRefsEnabled: skillRefsEnabled.value,
 				outdated: skillRefsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				latestVersion: skillRefsEnabled.value
+					? agent.value?.skillVersions?.[id]?.latest
+					: undefined,
 				projectLabel: projectName.value ?? undefined,
+				agentName: agent.value?.name,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
 				onUseLatestVersion: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
@@ -496,6 +500,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				getAttachedSkills: () =>
 					appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
 				projectLabel: projectName.value ?? undefined,
+				agentName: agent.value?.name,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
 				// The skills module refuses a name that the skill's scope already has, so the default
 				// name comes from the server, for the "available to" choice.

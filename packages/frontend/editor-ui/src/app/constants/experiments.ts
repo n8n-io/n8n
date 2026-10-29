@@ -203,7 +203,33 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 	assistant: 'assistant',
 });
 
+export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
+	'133_agent_builder_experiment_cohort',
+	{
+		outside: 'outside',
+		chatWidth: 'chat-width',
+		testToggle: 'test-toggle',
+	},
+);
+export const AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT = createExperiment(
+	'134_agent_builder_chat_width',
+	{
+		control: 'control',
+		wide: 'wide',
+	},
+);
+export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
+	'135_agent_builder_test_toggle',
+	{
+		control: 'control',
+		wide: 'toggle-wide',
+		current: 'toggle-current',
+	},
+);
+
 export const EXPERIMENTS_TO_TRACK = [
+	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
+	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	MCP_DISCOVERY_EXPERIMENT.name,
 	// EOF Experiment cleanup

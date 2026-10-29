@@ -42,6 +42,8 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
+    "telemetry:sink": "node scripts/telemetry/sink.mjs",
+    "dev:be:telemetry": "cross-env N8N_DIAGNOSTICS_ENABLED=true N8N_DIAGNOSTICS_CONFIG_BACKEND=\"local;http://127.0.0.1:9999\" N8N_DIAGNOSTICS_CONFIG_FRONTEND=\"local;http://127.0.0.1:9999\" N8N_DIAGNOSTICS_POSTHOG_API_HOST=http://127.0.0.1:9999 N8N_DIAGNOSTICS_POSTHOG_API_KEY=local dotenvx run -f .env.local -f .env --ignore=MISSING_ENV_FILE -- pnpm dev:be",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",

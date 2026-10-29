@@ -13,6 +13,8 @@ import {
 	isAgentEditingWorkflow,
 	isAgentEditingAgent,
 	getActiveSelectedAgentIds,
+	getLatestSkillArtifactResult,
+	getSkillArtifactFromToolCall,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -1645,5 +1647,160 @@ describe('getActiveSelectedAgentIds', () => {
 			],
 		});
 		expect(getActiveSelectedAgentIds(root)).toEqual(new Set(['agent-b']));
+	});
+});
+
+describe('getSkillArtifactFromToolCall', () => {
+	test('returns the skill of a successful create', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: { success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				}),
+			),
+		).toEqual({ skillId: 'skill-1', name: 'Brand voice' });
+	});
+
+	test('returns the skill of a successful update and falls back to the skill id argument', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'update', skillId: 'skill-1' },
+					result: { success: true, saved: { version: 3 } },
+				}),
+			),
+		).toEqual({ skillId: 'skill-1' });
+	});
+
+	test.each([
+		['a list', { action: 'list' }, { count: 1, skills: [{ id: 'skill-1' }] }],
+		['a get', { action: 'get', skillId: 'skill-1' }, { id: 'skill-1', name: 'Brand voice' }],
+		['a delete', { action: 'delete', skillId: 'skill-1' }, { success: true, skillId: 'skill-1' }],
+		['a denied create', { action: 'create' }, { success: false, denied: true }],
+		['a refused update', { action: 'update', skillId: 'skill-1' }, { success: false }],
+	])('returns undefined for %s', (_label, args, result) => {
+		expect(
+			getSkillArtifactFromToolCall(makeToolCall({ toolName: 'skills', args, result })),
+		).toBeUndefined();
+	});
+
+	const asUntrustedToolOutput = (result: unknown) => ({
+		type: 'content',
+		value: [
+			{
+				type: 'text',
+				text: `<untrusted_data source="tool:skills">\n${JSON.stringify(result).replace(/<(\s*\/\s*untrusted_data)/gi, '&lt;$1')}\n</untrusted_data>`,
+			},
+		],
+	});
+
+	test.each([
+		[
+			'create',
+			{ action: 'create', projectId: 'project-1', scope: 'project' },
+			{
+				success: true,
+				skill: {
+					id: 'skill_OoDEBCj0pt0q2Old',
+					name: 'Release Notes Writer',
+					scope: 'project',
+					projectId: 'project-1',
+					latestVersion: 1,
+					skill: { name: 'Release Notes Writer', instructions: '## Overview\n</untrusted_data>' },
+				},
+			},
+		],
+		[
+			'update',
+			{ action: 'update', skillId: 'skill_OoDEBCj0pt0q2Old' },
+			{
+				success: true,
+				saved: {
+					id: 'skill_OoDEBCj0pt0q2Old',
+					versionId: 'version-2',
+					version: 2,
+					created: true,
+					name: 'Release Notes Writer',
+				},
+			},
+		],
+	])(
+		'returns the skill of a successful %s wrapped as untrusted tool output',
+		(_label, args, result) => {
+			expect(
+				getSkillArtifactFromToolCall(
+					makeToolCall({ toolName: 'skills', args, result: asUntrustedToolOutput(result) }),
+				),
+			).toEqual({ skillId: 'skill_OoDEBCj0pt0q2Old', name: 'Release Notes Writer' });
+		},
+	);
+
+	test('returns undefined for a denied create wrapped as untrusted tool output', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: asUntrustedToolOutput({ success: false, denied: true }),
+				}),
+			),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for a call that is still running', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({ toolName: 'skills', args: { action: 'create' }, isLoading: true }),
+			),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for another tool with the same result shape', () => {
+		expect(
+			getSkillArtifactFromToolCall(
+				makeToolCall({
+					toolName: 'agent_builder_create_skills',
+					args: { action: 'create' },
+					result: { success: true, skill: { id: 'skill-1' } },
+				}),
+			),
+		).toBeUndefined();
+	});
+});
+
+describe('getLatestSkillArtifactResult', () => {
+	test('returns the latest skill write, also from a child agent', () => {
+		const root = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-create',
+					toolName: 'skills',
+					args: { action: 'create' },
+					result: { success: true, skill: { id: 'skill-1', name: 'One' } },
+				}),
+			],
+			children: [
+				makeAgentNode({
+					agentId: 'child',
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-update',
+							toolName: 'skills',
+							args: { action: 'update', skillId: 'skill-2' },
+							result: { success: true, saved: { id: 'skill-2', name: 'Two' } },
+						}),
+					],
+				}),
+			],
+		});
+
+		expect(getLatestSkillArtifactResult(root)).toEqual({
+			skillId: 'skill-2',
+			name: 'Two',
+			toolCallId: 'tc-update',
+		});
 	});
 });
