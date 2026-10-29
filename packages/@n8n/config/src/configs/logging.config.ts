@@ -62,7 +62,6 @@ export const LOG_SCOPES = [
 	'idempotency-key',
 	'inbound-auth',
 	'knowledge',
-	'execution-ledger',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
