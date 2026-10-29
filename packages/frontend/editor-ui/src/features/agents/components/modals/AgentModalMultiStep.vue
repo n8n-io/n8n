@@ -21,7 +21,6 @@ const props = withDefaults(
 		headerDividerTone?: 'default' | 'warning';
 		bodyFlush?: boolean;
 		fixedSize?: boolean;
-		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -41,7 +40,6 @@ const props = withDefaults(
 		headerDividerTone: 'default',
 		bodyFlush: false,
 		fixedSize: false,
-		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -86,7 +84,6 @@ watch(
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
 		:fixed-size="fixedSize"
-		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"
 		:stacked="stacked"

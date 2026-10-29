@@ -37,8 +37,6 @@ const props = withDefaults(
 		headerDividerTone?: 'default' | 'warning';
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
-		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
-		stableHeight?: boolean;
 		/** A fixed size from the window, so the dialog never resizes when its content changes. */
 		fixedSize?: boolean;
 		busy?: boolean;
@@ -60,7 +58,6 @@ const props = withDefaults(
 		headerDividerTone: 'default',
 		bodyScrollable: true,
 		bodyFlush: false,
-		stableHeight: false,
 		fixedSize: false,
 		busy: false,
 		size: '2xlarge',
@@ -229,7 +226,7 @@ function onOpenAutoFocus(event: Event) {
 			<div :class="$style.main">
 				<N8nDialogBody
 					ref="bodyRoot"
-					:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
+					:class="$style.body"
 					:data-flush="props.bodyFlush ? 'true' : undefined"
 					:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 					data-testid="agent-modal-body"
@@ -292,11 +289,13 @@ function onOpenAutoFocus(event: Event) {
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 [role='dialog'].dialog {
+	--agent-modal--viewport-gap: var(--spacing--3xl);
 	--n8n-dialog-region--padding: 0;
 	--n8n-dialog-close--inset-block-start: calc(
 		var(--spacing--md) + (var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
 	);
 	--n8n-dialog-close--inset-inline-end: var(--spacing--lg);
+	max-height: calc(100dvh - var(--agent-modal--viewport-gap) * 2);
 }
 
 .header {
@@ -403,7 +402,7 @@ function onOpenAutoFocus(event: Event) {
 /* The size of the window less a margin, whatever the content. The body and the side panel scroll. */
 [role='dialog'].dialogFixed {
 	width: min(72rem, calc(100dvw - var(--spacing--lg) * 2));
-	height: calc(100dvh - var(--spacing--3xl) * 2);
+	height: calc(100dvh - var(--agent-modal--viewport-gap) * 2);
 	max-width: none;
 
 	.splitWithPanel {
@@ -493,7 +492,6 @@ function onOpenAutoFocus(event: Event) {
 	--agent-modal-body--padding-block-end: var(--spacing--md);
 	box-sizing: border-box;
 	min-height: 0;
-	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 	padding: 0 var(--agent-modal-body--padding-inline) var(--agent-modal-body--padding-block-end);
@@ -523,10 +521,6 @@ function onOpenAutoFocus(event: Event) {
 .body[data-scrollable='true'] > * {
 	// Keep the bottom inset after scrolling past a tall form.
 	flex-shrink: 0;
-}
-
-.bodyStableHeight {
-	height: min(60dvh, calc(var(--height--5xl) * 5));
 }
 
 .body :global(.n8n-markdown) {
@@ -581,6 +575,7 @@ function onOpenAutoFocus(event: Event) {
 	}
 
 	[role='dialog'].dialog {
+		--agent-modal--viewport-gap: var(--spacing--md);
 		--n8n-dialog-close--inset-inline-end: var(--spacing--md);
 	}
 

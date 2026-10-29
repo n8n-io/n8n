@@ -1229,7 +1229,6 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:title="modalTitle"
 		:title-error="configContent?.titleError"
 		:editable-title="Boolean(configData) && !configIsCustom && !configIsRestricted"
-		stable-height
 		:show-back="Boolean(configData)"
 		:show-footer="Boolean(configData)"
 		:busy="isCredentialModalOpen || isCreatingWorkflow"
