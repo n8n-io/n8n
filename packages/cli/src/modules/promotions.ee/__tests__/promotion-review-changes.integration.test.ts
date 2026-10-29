@@ -422,6 +422,65 @@ describe('when the host dropped the commits of a finished review', () => {
 		});
 	}, 60_000);
 
+	it('keeps the close of n8n when the host still has the review open, and after the host merges it', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			state: 'closed',
+			lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+		});
+		const mergeRequest = hostMergeRequests.get(review.iid);
+		if (!mergeRequest) throw new Error(`Unknown merge request ${review.iid}`);
+		hostMergeRequests.set(review.iid, {
+			...mergeRequest,
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+		const closedByN8n = {
+			state: 'closed',
+			at: '2026-10-05T10:00:00.000Z',
+			by: 'n8n',
+			webUrl: mergeRequest.web_url,
+		};
+
+		expect(await changesOf(review.reviewId)).toEqual({
+			baselineCommitSha: baseSha,
+			headCommitSha: headSha,
+			resources: [],
+			dependencies: [],
+			warnings: ['commitsUnavailable'],
+			outcome: closedByN8n,
+		});
+
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merged_at: '2026-10-06T10:00:00.000Z',
+			merge_user: { name: 'Ada Lovelace' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		expect((await changesOf(review.reviewId)).outcome).toEqual(closedByN8n);
+	}, 60_000);
+
+	it('names the host user when the host closed the review before n8n recorded it', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			state: 'closed',
+			lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+		});
+		finishOnHost(review.iid, {
+			state: 'closed',
+			closed_at: '2026-10-04T10:00:00.000Z',
+			closed_by: { name: 'Grace Hopper' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		expect((await changesOf(review.reviewId)).outcome).toEqual({
+			state: 'closed',
+			at: '2026-10-04T10:00:00.000Z',
+			by: 'Grace Hopper',
+			webUrl: hostMergeRequests.get(review.iid)?.web_url,
+		});
+	}, 60_000);
+
 	it('still fails for an open review, which has no outcome to show', async () => {
 		const { review } = await promoteAndLose();
 
