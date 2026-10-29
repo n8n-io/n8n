@@ -16,9 +16,7 @@ import type { WorkflowEntity } from './workflow-entity';
 // start then reindexes every workflow whose rows carry an older version.
 // Version 2: the indexer records `workflowCall` rows for sub-workflow tool and
 // retriever nodes, not only for the Execute Sub-workflow node.
-// Version 3: the startup scan records `errorWorkflow` rows. It did not read the
-// workflow settings before, so workflows it indexed have no error workflow rows.
-export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 3;
+export const WORKFLOW_DEPENDENCY_INDEX_VERSION = 2;
 
 export type DependencyType =
 	| 'credentialId'

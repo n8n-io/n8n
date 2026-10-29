@@ -8,11 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
-import {
-	WORKFLOW_DEPENDENCY_INDEX_VERSION,
-	WorkflowDependencyRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { ErrorReporter, Tracing } from 'n8n-core';
@@ -213,7 +209,7 @@ describe('WorkflowIndexService Integration', () => {
 						nodeId: 'node-1',
 						nodeVersion: 1,
 					},
-					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+					indexVersionId: 2,
 				});
 			});
 		});
