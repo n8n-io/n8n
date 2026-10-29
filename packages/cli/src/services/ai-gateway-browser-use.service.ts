@@ -107,6 +107,7 @@ export class AiGatewayBrowserUseService {
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
 		});
 		const parsed = liveViewSchema.safeParse(body);
 		if (!parsed.success) {
