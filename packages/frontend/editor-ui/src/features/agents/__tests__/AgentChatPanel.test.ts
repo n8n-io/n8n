@@ -5,6 +5,7 @@ import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
 import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
+import { AGENT_SUMMARY_WAIT_TIMEOUT } from '@/app/constants/durations';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type {
 	AgentChatQueueItem,
@@ -315,6 +316,7 @@ vi.mock('../components/AgentChatMessageList.vue', async () => {
 				'retryDisabled',
 				'taskTraceRoute',
 				'preparingSummary',
+				'summaryMissing',
 			],
 			emits: ['send-to-assistant', 'increase-budget', 'retry'],
 			setup() {
@@ -2791,8 +2793,12 @@ describe('AgentChatPanel', () => {
 					wrapper.getComponent({ name: 'AgentChatMessageList' }).props('preparingSummary'),
 				).toBe(true);
 
-				await vi.advanceTimersByTimeAsync(10_000);
+				await vi.advanceTimersByTimeAsync(AGENT_SUMMARY_WAIT_TIMEOUT);
 
+				const list = wrapper.getComponent({ name: 'AgentChatMessageList' });
+
+				expect(list.props('preparingSummary')).toBe(false);
+				expect(list.props('summaryMissing')).toBe(true);
 				expect(vi.getTimerCount()).toBe(0);
 
 				backgroundJobsMock.value = [];

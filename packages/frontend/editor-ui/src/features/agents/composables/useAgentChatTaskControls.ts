@@ -1,6 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { AGENT_SUMMARY_WAIT_TIMEOUT } from '@/app/constants/durations';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
 import { getAgentPlanTasks, isAgentPlanFinished } from '../utils/agent-plan';
@@ -355,7 +356,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		return null;
 	});
 
-	const preparingSummary = computed(
+	const awaitingSummary = computed(
 		() =>
 			options.backgroundJobsActive() &&
 			!hideStoppedStack.value &&
@@ -366,6 +367,28 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 				['completed', 'failed', 'cancelled'].includes(job.status),
 			),
 	);
+
+	// The results stay pending if the wake gives up, so stop waiting after a limit.
+	const summaryWaitExpired = ref(false);
+
+	watch(
+		awaitingSummary,
+		(awaiting, _, onCleanup) => {
+			summaryWaitExpired.value = false;
+
+			if (!awaiting) return;
+
+			const timer = setTimeout(() => {
+				summaryWaitExpired.value = true;
+			}, AGENT_SUMMARY_WAIT_TIMEOUT);
+
+			onCleanup(() => clearTimeout(timer));
+		},
+		{ immediate: true },
+	);
+
+	const preparingSummary = computed(() => awaitingSummary.value && !summaryWaitExpired.value);
+	const summaryMissing = computed(() => awaitingSummary.value && summaryWaitExpired.value);
 
 	watch(hideStoppedStack, () => {
 		void restoreTaskStopFocus();
@@ -407,6 +430,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		stopDisabled,
 		stopNotice,
 		preparingSummary,
+		summaryMissing,
 		stopTasks,
 		respondToApproval,
 	};

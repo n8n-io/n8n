@@ -82,6 +82,8 @@ const props = defineProps<{
 	retryDisabled?: boolean;
 	taskTraceRoute?: RouteLocationRaw;
 	preparingSummary?: boolean;
+	/** The results were not summarized in time. */
+	summaryMissing?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -1085,8 +1087,8 @@ watch(
 			</div>
 		</template>
 
-		<div v-if="preparingSummary && !tailSummaryId" :class="$style.message">
-			<AgentChatTaskSummary preparing :trace-route="taskTraceRoute" />
+		<div v-if="(preparingSummary || summaryMissing) && !tailSummaryId" :class="$style.message">
+			<AgentChatTaskSummary :preparing="!!preparingSummary" :trace-route="taskTraceRoute" />
 		</div>
 		<div
 			v-else-if="messagingState === 'waitingFirstChunk' && !tailSummaryId"

@@ -311,6 +311,25 @@ describe('AgentChatMessageList', () => {
 		wrapper.unmount();
 	});
 
+	it('shows the summary fallback when the results are not summarized in time', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [],
+				messagingState: 'idle',
+				summaryMissing: true,
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.find('[role="status"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.empty',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
 	it.each(['tool run', 'message'] as const)(
 		'keeps preparing feedback between a completed %s and the summary stream',
 		async (kind) => {

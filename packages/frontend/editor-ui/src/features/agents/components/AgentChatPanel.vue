@@ -478,6 +478,7 @@ const {
 	stopDisabled,
 	stopNotice,
 	preparingSummary,
+	summaryMissing,
 	stopTasks,
 	respondToApproval,
 } = useAgentChatTaskControls({
@@ -1454,7 +1455,13 @@ onBeforeUnmount(() => {
 		</div>
 
 		<template
-			v-if="displayedMessages.length === 0 && !isStreaming && !stopNotice && !preparingSummary"
+			v-if="
+				displayedMessages.length === 0 &&
+				!isStreaming &&
+				!stopNotice &&
+				!preparingSummary &&
+				!summaryMissing
+			"
 		>
 			<slot name="empty-state">
 				<AgentChatEmptyState :agent-config="agentConfig" />
@@ -1464,6 +1471,7 @@ onBeforeUnmount(() => {
 			v-else
 			:messages="displayedMessages"
 			:preparing-summary="preparingSummary"
+			:summary-missing="summaryMissing"
 			:messaging-state="displayedMessagingState"
 			:project-id="projectId"
 			:agent-id="agentId"
