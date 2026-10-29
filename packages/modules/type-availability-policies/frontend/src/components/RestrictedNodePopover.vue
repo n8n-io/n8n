@@ -112,13 +112,10 @@ function dismiss() {
 function requestContactAdmin() {
 	// The dialog gives the focus back to the element that had it when it opened. The button closes with the card.
 	if (contentFocused.value) markerRef.value?.focus();
-	if (parentHandlesContactAdmin) {
-		// The parent's dialog opens at once, so the card must not wait for the pointer to leave.
-		dismiss();
-		emit('contactAdmin', contactCopy.value.audience);
-	} else {
-		isContactAdminOpen.value = true;
-	}
+	// The card closes before the dialog opens. An active row would otherwise show it again when the dialog closes.
+	dismiss();
+	if (parentHandlesContactAdmin) emit('contactAdmin', contactCopy.value.audience);
+	else isContactAdminOpen.value = true;
 }
 
 function onMarkerKeydown(event: KeyboardEvent) {

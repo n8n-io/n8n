@@ -184,6 +184,19 @@ describe('RestrictedNodePopover', () => {
 		otherAnchor.remove();
 	});
 
+	it('keeps the card of an active row closed after its dialog closes, until a new hover', async () => {
+		renderPopover({ anchor, active: true });
+		await screen.findByTestId('node-restricted-popover');
+
+		await user.click(screen.getByTestId('node-restricted-contact-admin'));
+		await user.click(screen.getByTestId('contact-admin-close'));
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument();
+
+		await user.hover(anchor);
+		expect(await screen.findByTestId('node-restricted-popover')).toBeInTheDocument();
+	});
+
 	it('opens while focus is inside the anchor row and closes when focus leaves', async () => {
 		const button = document.createElement('button');
 		anchor.appendChild(button);
