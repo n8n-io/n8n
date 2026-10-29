@@ -18,6 +18,9 @@ const agentSkillReferenceSchema = z
 				const segments = normalized.split('/');
 				return (
 					path === normalized &&
+					// No control characters, such as NUL, which Postgres cannot store.
+					// eslint-disable-next-line no-control-regex
+					!/[\u0000-\u001f\u007f]/.test(path) &&
 					normalized.startsWith('references/') &&
 					(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
 					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
