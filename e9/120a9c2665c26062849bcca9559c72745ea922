@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_5f72bed614ce17::t_de2bc0a6ba0865 159-163
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_5f72bed614ce17::t_9dc8629cfefbbd 1553-1555,1613,1518-1520,1484,1491-1495,1501-1502,1506-1508,1556-1600
+  s_5f72bed614ce17::t_730ae59fa7a944 1513-1517
+  s_5f72bed614ce17::t_e70d57cd9a6d83 1483,1485-1490,1503-1505
+  ai_agent 1496-1500
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_5f72bed614ce17::t_de2bc0a6ba0865 300-302,74,76,260,262-264,266-268,303-315,1269,1274-1275
+  s_5f72bed614ce17::t_51483960982fdd 1,64,73,75,275-277,282,284,287-288,293-296,299,1108,1118,1122,1129,1268
+  s_5f72bed614ce17::t_0e9aed012813f3 730
+  s_5f72bed614ce17::t_55898a77d8cb21 272-273,280,283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e9120a9c2665c26062849bcca9559c72745ea922",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
