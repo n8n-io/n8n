@@ -59,7 +59,8 @@ export class RateLimitsPublicController {
 		_res: Response,
 		@Query _query: RateLimitSettingsQueryPublicDto,
 	): Promise<RateLimitSettingsPublicDto> {
-		return toRateLimitSettingsResponse(await this.settingsService.getSettings());
+		const settings = await this.settingsService.getSettings();
+		return toRateLimitSettingsResponse(settings);
 	}
 
 	@Put('/')
@@ -86,6 +87,7 @@ export class RateLimitsPublicController {
 			);
 		}
 
-		return toRateLimitSettingsResponse(await this.settingsService.saveSettings(body, req.user));
+		const saved = await this.settingsService.saveSettings(body, req.user);
+		return toRateLimitSettingsResponse(saved);
 	}
 }
