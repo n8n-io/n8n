@@ -1,0 +1,132 @@
+{
+	"name": "Code node output in expressions",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5b0a6a3e-0b8e-4f0e-9a51-1f6f3c2d7a01",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    value: 'from_code',\n    when: new Date('2026-01-02T03:04:05.000Z'),\n    map: new Map([['k', 'v']]),\n    err: new TypeError('boom'),\n    re: /ab+/g,\n  },\n];"
+			},
+			"id": "5b0a6a3e-0b8e-4f0e-9a51-1f6f3c2d7a02",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1",
+							"name": "firstValue",
+							"type": "string",
+							"value": "={{ $('Code').first().json.value }}"
+						},
+						{
+							"id": "2",
+							"name": "itemValue",
+							"type": "string",
+							"value": "={{ $('Code').item.json.value }}"
+						},
+						{
+							"id": "3",
+							"name": "allCount",
+							"type": "string",
+							"value": "={{ $('Code').all().length }}"
+						},
+						{
+							"id": "4",
+							"name": "firstWhen",
+							"type": "string",
+							"value": "={{ $('Code').first().json.when.toISOString() }}"
+						},
+						{
+							"id": "5",
+							"name": "jsonWhen",
+							"type": "string",
+							"value": "={{ $json.when.toISOString() }}"
+						},
+						{
+							"id": "6",
+							"name": "nodeWhen",
+							"type": "string",
+							"value": "={{ $node['Code'].json.when.toISOString() }}"
+						},
+						{
+							"id": "7",
+							"name": "mapValue",
+							"type": "string",
+							"value": "={{ $('Code').first().json.map.get('k') }}"
+						},
+						{
+							"id": "8",
+							"name": "errMessage",
+							"type": "string",
+							"value": "={{ $('Code').first().json.err.message }}"
+						},
+						{
+							"id": "9",
+							"name": "regExp",
+							"type": "string",
+							"value": "={{ String($('Code').first().json.re) }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "5b0a6a3e-0b8e-4f0e-9a51-1f6f3c2d7a03",
+			"name": "Read Code output",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0]
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Read Code output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Read Code output": [
+			{
+				"json": {
+					"firstValue": "from_code",
+					"itemValue": "from_code",
+					"allCount": "1",
+					"firstWhen": "2026-01-02T03:04:05.000Z",
+					"jsonWhen": "2026-01-02T03:04:05.000Z",
+					"nodeWhen": "2026-01-02T03:04:05.000Z",
+					"mapValue": "v",
+					"errMessage": "boom",
+					"regExp": "/ab+/g"
+				}
+			}
+		]
+	}
+}

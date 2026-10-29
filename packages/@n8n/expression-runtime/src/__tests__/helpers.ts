@@ -53,3 +53,17 @@ export function createMockObservability(): ObservabilityProvider {
 		},
 	};
 }
+
+/**
+ * Wrap a value the way vm2 hands out objects created in the legacy Code node
+ * sandbox: a Proxy that forwards method calls to the real object.
+ * isolated-vm refuses to copy it.
+ */
+export function asSandboxValue<T extends object>(value: T): T {
+	return new Proxy(value, {
+		get(target, key) {
+			const property: unknown = Reflect.get(target, key);
+			return typeof property === 'function' ? property.bind(target) : property;
+		},
+	});
+}
