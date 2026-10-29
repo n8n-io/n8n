@@ -1,6 +1,7 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { ExecutionLedgerEntity } from '../database/entities/execution-ledger.entity';
 import { ExecutionLedgerModule } from '../execution-ledger.module';
 
 describe('ExecutionLedgerModule', () => {
@@ -11,7 +12,6 @@ describe('ExecutionLedgerModule', () => {
 	});
 
 	it('registers the ledger entity', async () => {
-		const entities = await new ExecutionLedgerModule().entities();
-		expect(entities.map((entity) => entity.name)).toEqual(['ExecutionLedgerEntity']);
+		expect(await new ExecutionLedgerModule().entities()).toEqual([ExecutionLedgerEntity]);
 	});
 });

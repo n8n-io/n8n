@@ -6,8 +6,7 @@ import type { SecurityContext } from '@n8n/permissions';
  *
  * No `@n8n/typeorm` import lives here on purpose: services thread these types around
  * without ever naming a driver type. The concrete driver handle is owned by the adapter
- * (`typeorm-transaction.ts`) and unwrapped only inside the repository layer
- * (`BaseRepository`).
+ * (`typeorm-transaction.ts`) and unwrapped only inside `@n8n/db`, by `entityManagerOf`.
  */
 
 export type IsolationLevel =

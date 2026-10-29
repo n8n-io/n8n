@@ -48,7 +48,6 @@ describe('withSavepoint', () => {
 		expect(queries()).toEqual([
 			'SAVEPOINT fold_step_insights',
 			'ROLLBACK TO SAVEPOINT fold_step_insights',
-			'RELEASE SAVEPOINT fold_step_insights',
 		]);
 	});
 

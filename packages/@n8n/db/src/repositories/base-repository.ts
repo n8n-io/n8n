@@ -6,8 +6,8 @@ import { entityManagerOf } from '../services/typeorm-transaction';
 
 /**
  * Base class for the table behind a repository. It participates in {@link TransactionRunner}
- * transactions and owns the single seam that turns an opaque {@link Transaction} back into a
- * native `EntityManager`: {@link BaseRepository.managerFor}.
+ * transactions. Repositories get a native `EntityManager` for an opaque {@link Transaction}
+ * through {@link BaseRepository.managerFor}.
  *
  * A repository does not extend this class. It declares a file-private subclass (the table),
  * which is never exported or registered with DI, and holds it as a private field. Every data
