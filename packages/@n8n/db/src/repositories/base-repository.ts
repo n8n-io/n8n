@@ -1,9 +1,8 @@
 import { Repository } from '@n8n/typeorm';
 import type { EntityManager, EntityTarget, ObjectLiteral } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type { OperationContext, TransactionRunner } from '../services/transaction';
-import { TypeOrmTransaction } from '../services/typeorm-transaction';
+import { entityManagerOf } from '../services/typeorm-transaction';
 
 /**
  * Base class for the table behind a repository. It participates in {@link TransactionRunner}
@@ -37,14 +36,7 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	 * and business logic never holds a `BaseRepository`.
 	 */
 	managerFor(ctx: OperationContext): EntityManager {
-		const { trx } = ctx;
-		if (!trx) return this.manager;
-
-		if (!(trx instanceof TypeOrmTransaction)) {
-			throw new UnexpectedError('Transaction was not created by the TypeORM runner');
-		}
-
-		return trx.getEntityManager();
+		return ctx.trx ? entityManagerOf(ctx.trx) : this.manager;
 	}
 
 	/**

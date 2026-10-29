@@ -3,6 +3,8 @@ import {
 	dbNowPlusMsLiteral,
 	laterOfColumnAndNowPlusMsLiteral,
 	parseDbTime,
+	toDbTimestamp,
+	toSqliteTimestamp,
 } from '../dialect-time';
 
 describe('dbNowLiteral', () => {
@@ -85,5 +87,29 @@ describe('parseDbTime', () => {
 
 	it('parses sqlite wall-clock text as UTC', () => {
 		expect(parseDbTime('2026-07-03 12:00:00.123')).toEqual(new Date('2026-07-03T12:00:00.123Z'));
+	});
+});
+
+describe('toSqliteTimestamp', () => {
+	it('formats a date as UTC wall-clock text with milliseconds', () => {
+		expect(toSqliteTimestamp(new Date('2026-10-28T10:00:00.123Z'))).toBe('2026-10-28 10:00:00.123');
+	});
+
+	it('round-trips through parseDbTime', () => {
+		const date = new Date('2026-10-28T23:59:59.999Z');
+		expect(parseDbTime(toSqliteTimestamp(date))).toEqual(date);
+	});
+});
+
+describe('toDbTimestamp', () => {
+	it('passes the Date through on postgres', () => {
+		const date = new Date('2026-10-28T10:00:00.123Z');
+		expect(toDbTimestamp(true, date)).toBe(date);
+	});
+
+	it('returns SQLite text on sqlite', () => {
+		expect(toDbTimestamp(false, new Date('2026-10-28T10:00:00.123Z'))).toBe(
+			'2026-10-28 10:00:00.123',
+		);
 	});
 });

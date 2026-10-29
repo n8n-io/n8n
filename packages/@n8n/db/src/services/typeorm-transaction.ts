@@ -24,6 +24,14 @@ export class TypeOrmTransaction extends Transaction {
 	}
 }
 
+/** Unwraps a transaction handle. Internal to `@n8n/db`: not exported from the package. */
+export function entityManagerOf(trx: Transaction): EntityManager {
+	if (!(trx instanceof TypeOrmTransaction)) {
+		throw new UnexpectedError('Transaction was not created by the TypeORM runner');
+	}
+	return trx.getEntityManager();
+}
+
 /** TypeORM implementation of the {@link TransactionRunner} port. */
 @Service()
 export class TypeOrmTransactionRunner extends TransactionRunner {
