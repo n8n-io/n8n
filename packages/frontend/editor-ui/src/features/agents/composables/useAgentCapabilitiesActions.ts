@@ -102,6 +102,8 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
 	flushConfigSave?: () => Promise<unknown>;
+	/** Saves a scheduled skill edit now. A restore waits for it so the editor can list the new version. */
+	flushSkillSave?: () => Promise<unknown>;
 	/**
 	 * Flushes pending agent edits before an API mutation that also writes the
 	 * agent config. This prevents the mutation from advancing the config hash
@@ -137,6 +139,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		supportsToolApproval,
 		ensureAgentPersisted,
 		flushConfigSave,
+		flushSkillSave,
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
@@ -375,14 +378,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
 				},
-				onConfirm: ({
+				onConfirm: async ({
 					id: skillId,
 					skill: updatedSkill,
 					availableTo,
+					restoredFrom,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
+					restoredFrom?: number;
 				}) => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
@@ -410,6 +415,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						skill: sanitizedSkill,
 						...(availableTo ? { availableTo } : {}),
 					});
+					if (restoredFrom !== undefined) await flushSkillSave?.();
 				},
 			},
 		});

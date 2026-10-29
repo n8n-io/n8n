@@ -2177,8 +2177,43 @@ describe('Versions panel', () => {
 		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
 
-	it('saves an older version as a new version', async () => {
+	it('saves an older version as a new version and keeps the editor open on it', async () => {
 		const onConfirm = vi.fn();
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			onConfirm,
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v3', version: 3, createdBy: author, createdAt: '2026-10-28T11:07:00.000Z' },
+			{ id: 'v2', version: 2, createdBy: author, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		await userEvent.click(await findByTestId('agent-skill-version-restore'));
+
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith({ id: 'tone', skill: old, restoredFrom: 1 }),
+		);
+		expect(await findByTestId('skill-version-row-3')).toHaveTextContent(
+			'agents.builder.skills.versions.latest',
+		);
+		expect(useUIStore().closeModal).not.toHaveBeenCalled();
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-versions-button')).toHaveTextContent(
+			'agents.builder.skills.versions.number 3',
+		);
+		expect(getByTestId('agent-skill-description-input').querySelector('input')!).toHaveValue(
+			'Old style',
+		);
+		// The restored content is the saved state, so there is nothing to save.
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+	});
+
+	it('stays on the older version when the restore save fails', async () => {
+		const onConfirm = vi.fn().mockResolvedValue({ saved: false });
 		const { findByTestId } = renderModal({
 			skill: latest,
 			skillId: 'tone',
@@ -2189,7 +2224,10 @@ describe('Versions panel', () => {
 		await userEvent.click(await findByTestId('skill-version-row-1'));
 		await userEvent.click(await findByTestId('agent-skill-version-restore'));
 
-		await waitFor(() => expect(onConfirm).toHaveBeenCalledWith({ id: 'tone', skill: old }));
+		await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		expect(listSkillVersions).toHaveBeenCalledTimes(1);
+		expect(useUIStore().closeModal).not.toHaveBeenCalled();
 	});
 
 	it('lets a read-only user open older versions but not restore them', async () => {

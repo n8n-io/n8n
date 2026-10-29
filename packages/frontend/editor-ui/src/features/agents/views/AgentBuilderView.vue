@@ -2349,6 +2349,7 @@ const caps = useAgentCapabilitiesActions({
 	connectedTriggers,
 	ensureAgentPersisted,
 	flushConfigSave: flushConfigAutosave,
+	flushSkillSave: async () => await skillAutosave.flushAutosave(),
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),

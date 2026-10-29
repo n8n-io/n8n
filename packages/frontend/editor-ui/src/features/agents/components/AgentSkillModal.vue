@@ -143,6 +143,7 @@ export type AgentSkillModalData = {
 	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
 	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
+	 * A restore stays open, so its promise must settle after the new version is saved.
 	 */
 	onConfirm: (payload: {
 		id?: string;
@@ -152,6 +153,8 @@ export type AgentSkillModalData = {
 		availableToAssistant?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
+		/** Set when the save restores this older version. */
+		restoredFrom?: number;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
 	outdated?: boolean;
 	onUseLatestVersion?: (id: string) => void;
@@ -804,12 +807,12 @@ const showAssistantToggle = computed(
 	() => showScope.value && showAssistantAvailability.value && !cannotEdit.value,
 );
 
-const latestVersion = computed(() => (props.data.skillId ? props.data.latestVersion : undefined));
 const versionsOpen = ref(!!props.data.initialVersionsOpen);
 const {
 	versions,
 	viewedVersion,
 	loadVersions,
+	reloadVersions,
 	fetchVersion,
 	openVersion,
 	comparison,
@@ -821,6 +824,11 @@ const {
 } = useSkillVersions(
 	() => props.data.skillId,
 	() => baseVersion.value,
+);
+
+// A restore adds a version while the editor is open, so the loaded list wins over the prop.
+const latestVersion = computed(() =>
+	props.data.skillId ? (versions.value?.[0]?.version ?? props.data.latestVersion) : undefined,
 );
 
 /** The version the editor shows: the one a pinned agent runs, else the latest. */
@@ -880,7 +888,12 @@ const versionOptions = computed(() =>
 /** The agent the builder opened the editor from, for the markers and "Use in <agent>". */
 const timelineAgent = computed(() =>
 	props.data.agentVersions && props.data.agentName
-		? { name: props.data.agentName, ...props.data.agentVersions }
+		? {
+				name: props.data.agentName,
+				...props.data.agentVersions,
+				// A draft that follows the latest version runs the version a restore adds.
+				...(props.data.agentVersions.pinned ? {} : { draft: latestVersion.value ?? 0 }),
+			}
 		: undefined,
 );
 const versionsButtonLabel = computed(() => {
@@ -936,13 +949,20 @@ onMounted(() => {
 	if (props.data.initialCompare) void compareLatestTwo();
 });
 
-/** Saves the content of an older version as the next version, like any other save. */
+/** Saves the content of an older version as the next version and keeps the editor open on it. */
 async function restoreVersion(version: number) {
 	if (!canRestore.value || isSaving.value) return;
 	const detail =
 		viewedVersion.value?.version === version ? viewedVersion.value : await fetchVersion(version);
 	if (!detail) return;
-	await submit(normalizeSkill({ ...detail.skill }), {});
+	const restored = normalizeSkill({ ...detail.skill });
+	if (!(await submit(restored, { restoredFrom: version }, { keepOpen: true }))) return;
+	viewedVersion.value = null;
+	initialSkill.value = cloneDeep(restored);
+	skill.value = cloneDeep(restored);
+	selectedPath.value = SKILL_FILE;
+	submitted.value = false;
+	await reloadVersions();
 }
 
 function onSkillUploaded(importedSkill: AgentSkill) {
@@ -1067,14 +1087,15 @@ async function onSave() {
 async function submit(
 	payload: AgentSkill,
 	extras: Omit<Parameters<AgentSkillModalData['onConfirm']>[0], 'id' | 'skill'>,
-) {
+	{ keepOpen = false }: { keepOpen?: boolean } = {},
+): Promise<boolean> {
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
 	try {
 		result = await props.data.onConfirm({ id: props.data.skillId, skill: payload, ...extras });
 	} catch {
 		// The caller reports its own errors. Keep the modal open with the user's edits.
-		return;
+		return false;
 	} finally {
 		isSaving.value = false;
 	}
@@ -1083,9 +1104,10 @@ async function submit(
 			serverNameError.value = result.nameError;
 			await focusName();
 		}
-		return;
+		return false;
 	}
-	closeModal();
+	if (!keepOpen) closeModal();
+	return true;
 }
 
 const nameField = useTemplateRef<HTMLElement>('nameField');

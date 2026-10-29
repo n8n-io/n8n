@@ -327,6 +327,34 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
+	it('saves a restore before it resolves, and a normal save only on schedule', async () => {
+		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
+		const flushSkillSave = vi.fn().mockResolvedValue(undefined);
+		const { actions, scheduleSkillSave, agent } = makeActions(
+			{ skills: [{ type: 'skill', id: 's1' }] } as Partial<AgentJsonConfig>,
+			undefined,
+			{ flushSkillSave },
+		);
+		agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
+
+		actions.onOpenSkillFromList('s1');
+		const modalData = openModalWithData.mock.calls[0][0] as {
+			data: {
+				onConfirm: (payload: {
+					id?: string;
+					skill: AgentSkill;
+					restoredFrom?: number;
+				}) => Promise<void>;
+			};
+		};
+		await modalData.data.onConfirm({ id: 's1', skill: { ...skill, instructions: 'Edited.' } });
+		expect(flushSkillSave).not.toHaveBeenCalled();
+
+		await modalData.data.onConfirm({ id: 's1', skill, restoredFrom: 1 });
+		expect(scheduleSkillSave).toHaveBeenCalledTimes(2);
+		expect(flushSkillSave).toHaveBeenCalledTimes(1);
+	});
+
 	it('persists a skill rename without scheduling a config save', () => {
 		const skill: AgentSkill = { name: 'PR Reviewer', description: '', instructions: 'Review.' };
 		const { actions, scheduleConfigUpdate, scheduleSkillSave, agent } = makeActions({
