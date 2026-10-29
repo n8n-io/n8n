@@ -269,18 +269,18 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Store the binary output of the last node as files of the parent thread,
-	 * the same output that the job result holds. The job keeps the file list,
+	 * Store the binary output as files of the parent thread. Use the same nodes
+	 * as the job result: all nodes for a job that a stop request paused, else the last node. The job keeps the file list,
 	 * so the wake message and check_background_jobs can show the file IDs.
 	 * The job also keeps the files that were too large to store, so the model
 	 * knows that they are missing. Each list is null when it is empty.
 	 * A storage error must not block the settle, so it logs and returns no files.
 	 */
 	async storeOutputFiles(
-		job: Pick<AgentBackgroundJob, 'id' | 'parentAgentId' | 'parentThreadId'>,
+		job: Pick<AgentBackgroundJob, 'id' | 'parentAgentId' | 'parentThreadId' | 'pauseRequestId'>,
 		runData: IRunData,
 	): Promise<JobOutputFiles> {
-		const items = Object.values(collectResultItems(runData, false)).flat();
+		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
 		if (!items.some((item) => item.binary)) return NO_OUTPUT_FILES;
 		try {
 			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);

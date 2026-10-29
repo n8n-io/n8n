@@ -1573,6 +1573,32 @@ describe('settleWorkflowJobByExecutionId', () => {
 			);
 		});
 
+		it('stores the files of all nodes for a job that a stop request paused', async () => {
+			const { service, jobRepository, fileBridge } = setup();
+			const firstItem = {
+				json: { first: true },
+				binary: { data: { data: '', mimeType: 'image/png' } },
+			};
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(
+				makeWorkflowJob({ pauseRequestId: 'stop-1' }),
+			);
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file], skippedFiles: [] });
+
+			await service.settleWorkflowJobByExecutionId(
+				'exec-1',
+				{ status: 'completed' },
+				{
+					Download: [{ data: { main: [[firstItem]] } } as never],
+					...runData,
+				},
+			);
+
+			expect(fileBridge.adoptFromItems).toHaveBeenCalledWith(
+				[firstItem, binaryItem],
+				expect.anything(),
+			);
+		});
+
 		it('keeps the files that are too large to store', async () => {
 			const { service, jobRepository, fileBridge } = setup();
 			const skipped = { fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' };
