@@ -51,7 +51,6 @@ type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
 	projectCustomAttributes: Record<string, string>;
-	// Sanitized caller `baggage` header. Kept off every context that is or becomes active.
 	baggage?: string;
 };
 
@@ -96,7 +95,6 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
-			// Off: saved caller baggage is neither sent nor copied to later segments.
 			const baggage = this.baggageConfig.propagate ? params.tracingContext?.baggage : undefined;
 
 			this.activeWorkflowSpans.set(params.executionId, {

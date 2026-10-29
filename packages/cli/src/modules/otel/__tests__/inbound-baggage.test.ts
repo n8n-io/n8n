@@ -27,15 +27,11 @@ describe('sanitizeInboundBaggage', () => {
 		expect(sanitizeInboundBaggage('tenant=acme;readonly', logger)).toBe('tenant=acme;readonly');
 	});
 
-	it('drops an entry with a property that is not valid', () => {
-		expect(sanitizeInboundBaggage('tenant=acme;bad property', logger)).toBeUndefined();
-		expect(sanitizeInboundBaggage('tenant=acme;ttl=6 0', logger)).toBeUndefined();
-	});
-
-	it('keeps an entry with an empty property and drops the empty segment', () => {
-		expect(sanitizeInboundBaggage('tenant=acme;', logger)).toBe('tenant=acme');
-		expect(sanitizeInboundBaggage('tenant=acme;;ttl=60', logger)).toBe('tenant=acme;ttl=60');
-		expect(sanitizeInboundBaggage('tenant=acme; ;ttl=60', logger)).toBe('tenant=acme;ttl=60');
+	it('forwards a property that is not valid W3C, because the receiver reads the key anyway', () => {
+		expect(sanitizeInboundBaggage('tenant=acme;bad property', logger)).toBe(
+			'tenant=acme;bad property',
+		);
+		expect(sanitizeInboundBaggage('tenant=acme;;ttl=60', logger)).toBe('tenant=acme;;ttl=60');
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
@@ -96,37 +92,49 @@ describe('sanitizeInboundBaggage', () => {
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
-	it('drops malformed entries', () => {
-		const header = 'tenant=acme,novalue,=empty-key,bad key=1,quote="x",prop=1;badÿ';
+	it('drops an entry that has no key, so it reaches no receiver', () => {
+		const header = 'tenant=acme,novalue,=empty-key';
 
 		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme');
 		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 			kept: 1,
 			reservedPrefix: 0,
-			invalid: 5,
+			invalid: 2,
 			overLimit: 0,
 		});
 	});
 
-	it('keeps at most 180 entries', () => {
-		const header = Array.from({ length: 181 }, (_, i) => `k${i}=v`).join(',');
+	it('forwards an entry that the receiver still reads, whatever its characters', () => {
+		const header = 'bad key=1,quote="x",prop=1;badÿ';
 
-		const sanitized = sanitizeInboundBaggage(header, logger);
+		expect(sanitizeInboundBaggage(header, logger)).toBe(header);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
 
-		expect(sanitized?.split(',')).toHaveLength(180);
+	it('drops a reserved key that hides behind a percent escape', () => {
+		const header = 'tenant=acme,n8n%2Eexecution%2Eid=forged';
+
+		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme');
 		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
-			kept: 180,
-			reservedPrefix: 0,
+			kept: 1,
+			reservedPrefix: 1,
 			invalid: 0,
-			overLimit: 1,
+			overLimit: 0,
 		});
 	});
 
-	it('drops an entry over 4096 bytes', () => {
-		const header = `big=${'v'.repeat(4096)},tenant=acme`;
+	it('drops an entry whose key does not decode, as the receiver does', () => {
+		expect(sanitizeInboundBaggage('tenant=acme,%zz=1', logger)).toBe('tenant=acme');
+	});
 
-		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme');
-		expect(logger.warn).toHaveBeenCalledTimes(1);
+	it('keeps a long entry and many entries while they fit the total', () => {
+		const long = `big=${'v'.repeat(4096)},tenant=acme`;
+		expect(sanitizeInboundBaggage(long, logger)).toBe(long);
+
+		const many = Array.from({ length: 181 }, (_, i) => `k${i}=v`).join(',');
+		expect(sanitizeInboundBaggage(many, logger)).toBe(many);
+
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('stops at 8192 bytes in total', () => {

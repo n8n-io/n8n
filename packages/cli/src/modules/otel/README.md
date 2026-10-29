@@ -115,12 +115,13 @@ telemetry.
 - **Inbound.** When this setting is on, the webhook reads
   `baggage` next to `traceparent`, even when no `traceparent` is sent. The otel module reads it
   through its module context (`extractInboundBaggage`), so the webhook code does not load the
-  module. n8n drops each entry with a key that starts with `n8n.` (case-insensitive), because n8n owns that prefix. n8n also drops entries that are not valid W3C baggage, and entries over the W3C
-  limits: 180 entries, 4096 bytes for each entry and 8192 bytes in total. n8n does not decode or
-  encode the entries that it keeps, so a valid header does not grow. The one change n8n makes is
-  to remove an empty entry property, which a trailing or doubled `;` leaves behind. W3C forbids
-  it, but the OTel parser keeps such an entry, so n8n keeps it too. When n8n drops an entry, it
-  logs one warning for each header, with counts only and no entry content.
+  module. n8n drops an entry in three cases: the key starts with `n8n.` (in any case, and after
+  percent-decoding, because n8n owns that prefix), the entry has no key and so reaches no
+  receiver, or the entry does not fit the W3C total of 8192 bytes, where the receiving parser
+  stops reading. n8n forwards every other entry byte for byte, whatever its characters: the HTTP
+  server rejects a header value that n8n could not send again, and a stricter check would only
+  drop entries that the receiving parser reads anyway. When n8n drops an entry, it logs one
+  warning for each header, with counts only and no entry content.
 - **Persistence.** The result is saved in `tracingContext.baggage` on the execution. Each
   segment saves it again, so a queue-mode worker and a resume after a Wait node send the same
   baggage. The public API does not return it.

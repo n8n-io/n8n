@@ -87,7 +87,7 @@ export class OtelCustomAttributesConfig {
 @Config
 export class OtelBaggageConfig {
 	/**
-	 * Whether n8n forwards the W3C `baggage` header of an incoming webhook call to the HTTP requests that the execution sends, including requests to third-party services. n8n drops entries with keys that start with `n8n.`, entries that aren't valid baggage, and entries over the W3C size limits. Set the same value on all main, worker and webhook instances.
+	 * Whether n8n forwards the W3C `baggage` header of an incoming webhook call to the HTTP requests that the execution sends, including requests to third-party services. n8n drops entries with keys that start with `n8n.`, and stops at the 8192-byte limit that the W3C baggage format sets. Set the same value on all main, worker and webhook instances.
 	 */
 	@Env(PROPAGATE_BAGGAGE_ENV_VAR)
 	propagate: boolean = false;
