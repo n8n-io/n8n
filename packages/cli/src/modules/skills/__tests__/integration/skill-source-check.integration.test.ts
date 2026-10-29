@@ -22,6 +22,9 @@ import { SkillSourceLink } from '../../database/entities/skill-source-link.entit
 import { SkillSourceCheckTask } from '../../services/skill-source-check.task';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
+import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
+import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
+import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { PostHogClient } from '@/posthog';
 
@@ -263,6 +266,11 @@ describe('Skill source checks', () => {
 			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v3') });
 			await sync().checkAll();
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
+
+			// Back to the skipped content: the newer update is gone from the source.
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
 		});
 
 		it('drops a pending update that the source reverted', async () => {
@@ -307,13 +315,15 @@ describe('Skill source checks', () => {
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
 		});
 
-		it.each([
+		it.each<{ failure: FakeGitHub['failWith']; reason: string }>([
 			{ failure: 500, reason: 'unreachable' },
 			{ failure: 401, reason: 'not_found' },
 			{
 				failure: { status: 403, headers: { 'x-ratelimit-remaining': '0' } },
 				reason: 'rate_limited',
 			},
+			// A secondary rate limit sends `retry-after` with a 403.
+			{ failure: { status: 403, headers: { 'retry-after': '1' } }, reason: 'rate_limited' },
 		])('stores $reason on the source when GitHub answers $failure', async ({ failure, reason }) => {
 			const { sourceId, docx } = await importAll();
 			github.failWith = failure;
@@ -341,6 +351,62 @@ describe('Skill source checks', () => {
 
 			expect(github.requests.refs).toBe(requests);
 			expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: 'rate_limited' });
+		});
+
+		it('does not make the wait longer while it waits', async () => {
+			await importAll();
+			github.failWith = { status: 429, headers: { 'retry-after': '600' } };
+			await sync().checkAll();
+			const retryAt = Reflect.get(sync(), 'retryAt') as Map<string, number>;
+			const until = retryAt.get('public:github');
+
+			await sync().checkAll();
+			await sync().checkAll();
+
+			expect(retryAt.get('public:github')).toBe(until);
+		});
+
+		it('keeps the cursor when the source refuses a skill read after the probe', async () => {
+			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
+			const { sourceId, docx } = await importAll();
+			const before = await sourceOf(sourceId);
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			// The tarball answers 403 while ls-refs works.
+			const fetchLatest = vi
+				.spyOn(Container.get(GitHubSkillSourceClient), 'fetchLatest')
+				.mockRejectedValue(new SkillSourceNotFoundError('n8n cannot read this repository.'));
+
+			await sync().checkAll();
+
+			expect(await sourceOf(sourceId)).toMatchObject({
+				lastErrorReason: 'not_found',
+				probeCursor: before.probeCursor,
+			});
+			expect(updateFound).not.toHaveBeenCalled();
+
+			fetchLatest.mockRestore();
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
+		});
+
+		it('clears the cursor when another check moved it first, so the next check reads again', async () => {
+			const { sourceId } = await importAll();
+			const repository = Container.get(SkillSourceRepository);
+			const checkedAt = new Date();
+
+			await repository.recordCheck(sourceId, {
+				checkedAt,
+				errorReason: null,
+				probeCursor: { from: 'an-older-cursor', to: 'b'.repeat(40) },
+			});
+			expect((await sourceOf(sourceId)).probeCursor).toBeNull();
+
+			await repository.recordCheck(sourceId, {
+				checkedAt,
+				errorReason: null,
+				probeCursor: { from: null, to: 'c'.repeat(40) },
+			});
+			expect((await sourceOf(sourceId)).probeCursor).toBe('c'.repeat(40));
 		});
 
 		it('skips a source whose creator does not have Skill Sync', async () => {

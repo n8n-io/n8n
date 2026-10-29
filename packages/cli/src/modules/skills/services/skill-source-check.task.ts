@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
@@ -15,8 +16,9 @@ export class SkillSourceCheckTask implements SystemTask {
 	readonly schedule: SystemTaskSchedule;
 
 	readonly target = clusterTarget({
-		// A missed run is not retried: the next one checks every source again.
-		scheduler: { retryOnFailure: false },
+		// A failed run is not retried: the next run checks every source again. A run may take
+		// half an hour, and the sources it did not reach go first next time.
+		scheduler: { retryOnFailure: false, timeoutSeconds: 30 * Time.minutes.toSeconds },
 		leaderTimer: {},
 	});
 

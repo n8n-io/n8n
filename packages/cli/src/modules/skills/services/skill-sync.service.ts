@@ -17,6 +17,8 @@ import {
 	skillSourceReasonOf,
 	toSkillSourceRequestError,
 } from '../errors/skill-source-request.error';
+import { SkillParseError } from '../errors/skill-parse.error';
+import { SkillSourceNotFoundError } from '../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
 import type {
@@ -163,8 +165,14 @@ export class SkillSyncService {
 			if (!this.clients.get(source.type)) continue;
 			// The check has no user, so it reads the flag of the user who connected the source.
 			const creator = source.createdById ? creators.get(source.createdById) : undefined;
-			if (!creator || !(await this.flagGate.isEnabled(creator))) continue;
+			if (!creator) {
+				this.logger.debug('Skill source check skipped: its creator is gone', {
+					sourceId: source.id,
+				});
+				continue;
+			}
 			try {
+				if (!(await this.flagGate.isEnabled(creator))) continue;
 				await this.check(source, 'background');
 			} catch (error) {
 				this.logger.debug('Skill source check failed', {
@@ -197,13 +205,18 @@ export class SkillSyncService {
 		if (!client) return;
 		const access = accessKey(source);
 		const checkedAt = new Date();
+		// Still waiting after a rate limit: no request, and the wait does not grow.
+		if ((this.retryAt.get(access) ?? 0) > checkedAt.getTime()) {
+			await this.sourceRepository.recordCheck(source.id, {
+				checkedAt,
+				errorReason: 'rate_limited',
+			});
+			throw new SkillSourceReadError(
+				'rate_limited',
+				'The source limits how often n8n can read it. n8n checks again later.',
+			);
+		}
 		try {
-			if ((this.retryAt.get(access) ?? 0) > checkedAt.getTime()) {
-				throw new SkillSourceReadError(
-					'rate_limited',
-					'The source limits how often n8n can read it. n8n checks again later.',
-				);
-			}
 			const auth = await this.authOf(source, client);
 			const cursor = client.probe ? await client.probe(source.locator, auth) : undefined;
 			if (cursor !== undefined && cursor === source.probeCursor) {
@@ -215,7 +228,7 @@ export class SkillSyncService {
 			await this.sourceRepository.recordCheck(source.id, {
 				checkedAt,
 				errorReason: null,
-				...(cursor !== undefined ? { probeCursor: cursor } : {}),
+				...(cursor !== undefined ? { probeCursor: { from: source.probeCursor, to: cursor } } : {}),
 			});
 			const found = counts.pass + counts.needs_review + counts.blocked;
 			if (found > 0) {
@@ -286,9 +299,10 @@ export class SkillSyncService {
 	): Promise<VerdictCounts> {
 		const counts: VerdictCounts = { pass: 0, needs_review: 0, blocked: 0 };
 		if (links.length === 0) return counts;
-		const latest = await this.skillRepository.findLatestSaved(links.map((link) => link.skillId));
 		for (let start = 0; start < links.length; start += FETCH_CONCURRENCY) {
 			const batch = links.slice(start, start + FETCH_CONCURRENCY);
+			// Per batch, so a source with many large skills never holds all of them at once.
+			const latest = await this.skillRepository.findLatestSaved(batch.map((link) => link.skillId));
 			const verdicts = await Promise.all(
 				batch.map(async (link) => {
 					const fetched = await this.fetch(source, client, link, auth, revision);
@@ -303,9 +317,10 @@ export class SkillSyncService {
 	}
 
 	/**
-	 * The skill at the revision. Undefined when the skill is gone from the source or n8n
-	 * cannot read it: the skill keeps its version, and the health of a source and of its
-	 * missing skills comes later. Any other failure fails the whole check.
+	 * The skill at the revision. Undefined when its folder is gone from the source or n8n
+	 * cannot parse it: the skill keeps its version, and the health of missing skills comes
+	 * later. A source that refuses the read, such as a tarball that answers 403, fails the
+	 * whole check, so the cursor stays and the next check reads the source again.
 	 */
 	private async fetch(
 		source: SkillSourceConnection,
@@ -317,16 +332,19 @@ export class SkillSyncService {
 		try {
 			return await client.fetchLatest(source.locator, link.remoteRef, auth, revision);
 		} catch (error) {
-			const reason = skillSourceReasonOf(error);
-			if (reason === 'not_found' || reason === 'parse_error') return undefined;
+			if (error instanceof SkillSourceNotFoundError && error.skill) return undefined;
+			if (error instanceof SkillParseError) return undefined;
 			throw error;
 		}
 	}
 
 	/**
-	 * Stores what changed for one skill, and answers the verdict of a new update:
-	 * - content of the latest version: the base moves, and a pending update is dropped;
-	 * - content of the pending update, or of an update the user skipped: nothing changes;
+	 * Stores what changed for one skill, and answers the verdict of a new update. It compares
+	 * with `baseContentHash`, the content of the latest version, as a synced skill changes only
+	 * when Skill Sync accepts an update, and accept moves the base:
+	 * - the base content: the base moves, and a pending update is dropped;
+	 * - the content of the pending update: nothing changes;
+	 * - the content of an update the user skipped: a newer pending update is dropped;
 	 * - other content: the security check rates it against the latest version, and it waits
 	 *   for review in place of an older update.
 	 */
@@ -344,7 +362,14 @@ export class SkillSyncService {
 			}
 			return undefined;
 		}
-		if (hash === link.pendingContentHash || hash === link.skippedContentHash) return undefined;
+		if (hash === link.pendingContentHash) return undefined;
+		if (hash === link.skippedContentHash) {
+			// The source went back to the content that the user skipped: a newer update is gone.
+			if (link.pendingContentHash !== null) {
+				await this.sourceRepository.moveBase(link.skillId, link.baseRevision);
+			}
+			return undefined;
+		}
 		const scan = this.scanner.scan({ ...fetched, content }, previous);
 		const stored = await this.sourceRepository.storePending(link.skillId, {
 			content,

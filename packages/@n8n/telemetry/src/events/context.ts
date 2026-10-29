@@ -508,12 +508,14 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	SKILL_SOURCE_UPDATE_FOUND: {
 		name: 'Skill source update found',
 		description:
-			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the hourly check and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
 		properties: z.object({
 			provider: skillSourceProvider,
 			trigger: z
 				.enum(['background', 'manual'])
-				.describe('`background` is the hourly check. `manual` is Check now'),
+				.describe(
+					'`background` is the check that runs on its own, every hour by default. `manual` is Check now',
+				),
 			skills_with_updates: z.number().describe('Synced skills with a new update in this check'),
 			pass: z.number().describe('New updates that the security check passed'),
 			needs_review: z.number().describe('New updates that the security check flagged for review'),

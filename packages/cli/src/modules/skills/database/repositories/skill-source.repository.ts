@@ -185,11 +185,14 @@ export class SkillSourceRepository {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/** Every source, oldest first, for the check task. */
+	/**
+	 * Every source, the longest unchecked first, for the check task. A run that times out
+	 * checks the others first next time.
+	 */
 	async findAllSources(): Promise<SkillSourceConnection[]> {
-		return await this.sources
-			.managerFor({})
-			.find(SkillSourceConnection, { order: { createdAt: 'ASC' } });
+		const sources = await this.sources.managerFor({}).find(SkillSourceConnection);
+		const time = (source: SkillSourceConnection) => source.lastCheckedAt?.getTime() ?? 0;
+		return sources.sort((a, b) => time(a) - time(b));
 	}
 
 	async findLinksBySource(sourceId: string): Promise<SkillSourceLink[]> {
@@ -218,27 +221,40 @@ export class SkillSourceRepository {
 	}
 
 	/**
-	 * The result of one check of a source. A cursor is stored only when the check read every
-	 * skill at it, so a failed check reads the source again next time.
+	 * The result of one check of a source. `probeCursor` moves only from the cursor that the
+	 * check started from. When another check, such as one on another main, moved it first, the
+	 * cursor is cleared instead, so the next check reads every skill again and fixes a link
+	 * that the slower check wrote last.
 	 */
 	async recordCheck(
 		sourceId: string,
-		result: { checkedAt: Date; errorReason: string | null; probeCursor?: string },
+		result: {
+			checkedAt: Date;
+			errorReason: string | null;
+			probeCursor?: { from: string | null; to: string };
+		},
 	): Promise<void> {
-		await this.sources.managerFor({}).update(
+		const manager = this.sources.managerFor({});
+		const { checkedAt, errorReason, probeCursor } = result;
+		await manager.update(
 			SkillSourceConnection,
 			{ id: sourceId },
-			{
-				lastCheckedAt: result.checkedAt,
-				lastErrorReason: result.errorReason,
-				...(result.probeCursor !== undefined ? { probeCursor: result.probeCursor } : {}),
-			},
+			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
 		);
+		if (!probeCursor) return;
+		const moved = await manager.update(
+			SkillSourceConnection,
+			{ id: sourceId, probeCursor: probeCursor.from === null ? IsNull() : probeCursor.from },
+			{ probeCursor: probeCursor.to },
+		);
+		if ((moved.affected ?? 0) === 0) {
+			await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
+		}
 	}
 
 	/**
-	 * The source has the content of the latest version at a newer revision: the base moves to
-	 * it, and an update that waited for review is dropped, as the source reverted it.
+	 * The source has the base content at this revision: the base moves to it, and an update
+	 * that waited for review is dropped, as the source reverted it.
 	 */
 	async moveBase(skillId: string, revision: string): Promise<void> {
 		await this.links.managerFor({}).update(
@@ -257,8 +273,8 @@ export class SkillSourceRepository {
 
 	/**
 	 * Stores an update that waits for review, in place of an older one. Answers false when the
-	 * link already holds this content, such as after a check on another main at the same time,
-	 * so the caller reports each update once.
+	 * link already holds this content, such as after a check on another main with the same
+	 * content, so the caller reports each update once, or when the link is gone.
 	 */
 	async storePending(skillId: string, pending: PendingUpdate): Promise<boolean> {
 		const manager = this.links.managerFor({});
@@ -271,7 +287,7 @@ export class SkillSourceRepository {
 			state: pending.state,
 		} as QueryDeepPartialEntity<SkillSourceLink>;
 		// Two conditional updates in place of one with OR: the first that matches sets the hash,
-		// so the other one, and a check on another main, match nothing.
+		// so the other one, and a check with the same content, match nothing.
 		const first = await manager.update(
 			SkillSourceLink,
 			{ skillId, pendingContentHash: IsNull() },

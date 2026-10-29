@@ -235,7 +235,9 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
 		}
 		if (!archive.text.has(skillFile)) {
-			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`);
+			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
+				skill: true,
+			});
 		}
 		// A reference over the size limit has no text, so it is skipped, not imported empty.
 		const all = filesOfSkill(archive.paths, path);
@@ -483,7 +485,11 @@ function throwForStatus(
 	headers: Record<string, unknown>,
 	auth?: SkillSourceAuth,
 ): never {
-	if (statusCode === 429 || (statusCode === 403 && rateLimitSpent(headers))) {
+	// A 403 with `retry-after` is a secondary rate limit, such as too many requests at once.
+	if (
+		statusCode === 429 ||
+		(statusCode === 403 && (rateLimitSpent(headers) || headers['retry-after'] !== undefined))
+	) {
 		throw new SkillSourceReadError(
 			'rate_limited',
 			'GitHub limits how often n8n can read it. Try again in a few minutes.',
