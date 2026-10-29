@@ -17,6 +17,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
@@ -101,7 +102,7 @@ const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
-const { failedSkillReason } = useSkillSourceReasons();
+const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 
@@ -665,6 +666,50 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	await load();
 }
 
+/**
+ * Check now: checks the whole source of the skill. The list reloads, so the badges of every
+ * skill of the source show what the check found.
+ */
+async function onCheckForUpdates(skill: SkillListItem) {
+	let result;
+	try {
+		result = await skillsStore.checkForUpdates(skill.id);
+	} catch (error) {
+		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+		// The user cannot pick another credential here, so that reason gets its own text.
+		const text =
+			reason === 'credential_missing'
+				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
+				: reason !== undefined
+					? reasonText(reason)
+					: undefined;
+		showError(
+			text ? new Error(text) : error,
+			i18n.baseText('settings.context.skills.checkForUpdates.error'),
+		);
+		return;
+	}
+	const { label, updatesFound, throttled } = result;
+	showMessage({
+		title: throttled
+			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
+					interpolate: { label },
+				})
+			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
+					interpolate: { label },
+				}),
+		message:
+			updatesFound === 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.none')
+				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
+						interpolate: { count: updatesFound },
+						adjustToNumber: updatesFound,
+					}),
+		type: 'success',
+	});
+	await load();
+}
+
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
@@ -836,6 +881,7 @@ onMounted(async () => {
 			@timeline="openEditModal($event, 'versions')"
 			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
+			@check-for-updates="onCheckForUpdates($event)"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"

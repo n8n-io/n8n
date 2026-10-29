@@ -6,14 +6,15 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import {
 	SkillSourceConnection,
 	type OpaqueSourceValue,
 	type SkillSourceType,
 } from '../entities/skill-source-connection.entity';
-import { SkillSourceLink } from '../entities/skill-source-link.entity';
+import { SkillSourceLink, type SkillSourceLinkState } from '../entities/skill-source-link.entity';
 
 class SkillSourceTable extends BaseRepository<SkillSourceConnection> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -34,6 +35,15 @@ export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
 export type SyncedFromRow = Pick<SkillSourceConnection, 'type' | 'locator' | 'projectId'> & {
 	sourceId: string;
 	remoteRef: Record<string, unknown>;
+};
+
+/** An update from the source that waits for review on one link. */
+export type PendingUpdate = {
+	content: Record<string, unknown>;
+	contentHash: string;
+	scan: Record<string, unknown>;
+	revision: string;
+	state: Extract<SkillSourceLinkState, 'update_available' | 'update_blocked'>;
 };
 
 /** Two sources for one identity in one scope. The partial unique indexes refuse the second. */
@@ -76,6 +86,8 @@ export class SkillSourceRepository {
 			/** Null for a public source. */
 			credentialId: string | null;
 			createdById: string;
+			/** The revision that the import read, so the first check fetches nothing if it holds. */
+			probeCursor: string | null;
 		},
 		ctx: OperationContext = {},
 	): Promise<void> {
@@ -86,7 +98,6 @@ export class SkillSourceRepository {
 				manager.create(SkillSourceConnection, {
 					...source,
 					status: 'connected',
-					probeCursor: null,
 					lastCheckedAt: new Date(),
 					lastErrorReason: null,
 				}),
@@ -158,20 +169,6 @@ export class SkillSourceRepository {
 		return await this.links.managerFor(ctx).existsBy(SkillSourceLink, { skillId });
 	}
 
-	/** The skills among `skillIds` that are synced skills. */
-	async findLinkedSkillIds(skillIds: string[], ctx: OperationContext = {}): Promise<Set<string>> {
-		const manager = this.links.managerFor(ctx);
-		const linked = new Set<string>();
-		for (const chunk of chunkIds(skillIds)) {
-			const links = await manager.find(SkillSourceLink, {
-				select: ['skillId'],
-				where: { skillId: In(chunk) },
-			});
-			for (const { skillId } of links) linked.add(skillId);
-		}
-		return linked;
-	}
-
 	async findLinkBySkillId(
 		skillId: string,
 		ctx: OperationContext = {},
@@ -185,6 +182,107 @@ export class SkillSourceRepository {
 	 */
 	async deleteLink(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
 		const result = await this.links.managerFor(ctx).delete(SkillSourceLink, { skillId });
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** Every source, oldest first, for the check task. */
+	async findAllSources(): Promise<SkillSourceConnection[]> {
+		return await this.sources
+			.managerFor({})
+			.find(SkillSourceConnection, { order: { createdAt: 'ASC' } });
+	}
+
+	async findLinksBySource(sourceId: string): Promise<SkillSourceLink[]> {
+		return await this.links.managerFor({}).find(SkillSourceLink, { where: { sourceId } });
+	}
+
+	/** The sync state of each synced skill among `skillIds`. A skill without a link is absent. */
+	async findSyncStates(skillIds: string[]): Promise<Map<string, SkillSourceLinkState>> {
+		const states = new Map<string, SkillSourceLinkState>();
+		for (const chunk of chunkIds(skillIds)) {
+			const links = await this.links.managerFor({}).find(SkillSourceLink, {
+				select: ['skillId', 'state'],
+				where: { skillId: In(chunk) },
+			});
+			for (const { skillId, state } of links) states.set(skillId, state);
+		}
+		return states;
+	}
+
+	/** Synced skills of the source with an update that waits for review. */
+	async countPendingUpdates(sourceId: string): Promise<number> {
+		return await this.links.managerFor({}).countBy(SkillSourceLink, {
+			sourceId,
+			pendingContentHash: Not(IsNull()),
+		});
+	}
+
+	/**
+	 * The result of one check of a source. A cursor is stored only when the check read every
+	 * skill at it, so a failed check reads the source again next time.
+	 */
+	async recordCheck(
+		sourceId: string,
+		result: { checkedAt: Date; errorReason: string | null; probeCursor?: string },
+	): Promise<void> {
+		await this.sources.managerFor({}).update(
+			SkillSourceConnection,
+			{ id: sourceId },
+			{
+				lastCheckedAt: result.checkedAt,
+				lastErrorReason: result.errorReason,
+				...(result.probeCursor !== undefined ? { probeCursor: result.probeCursor } : {}),
+			},
+		);
+	}
+
+	/**
+	 * The source has the content of the latest version at a newer revision: the base moves to
+	 * it, and an update that waited for review is dropped, as the source reverted it.
+	 */
+	async moveBase(skillId: string, revision: string): Promise<void> {
+		await this.links.managerFor({}).update(
+			SkillSourceLink,
+			{ skillId },
+			{
+				baseRevision: revision,
+				pendingContent: null,
+				pendingContentHash: null,
+				pendingScan: null,
+				pendingRevision: null,
+				state: 'up_to_date',
+			},
+		);
+	}
+
+	/**
+	 * Stores an update that waits for review, in place of an older one. Answers false when the
+	 * link already holds this content, such as after a check on another main at the same time,
+	 * so the caller reports each update once.
+	 */
+	async storePending(skillId: string, pending: PendingUpdate): Promise<boolean> {
+		const manager = this.links.managerFor({});
+		// The partial-entity type of `update` rejects free-form JSON, as for `insert` above.
+		const set = {
+			pendingContent: pending.content,
+			pendingContentHash: pending.contentHash,
+			pendingScan: pending.scan,
+			pendingRevision: pending.revision,
+			state: pending.state,
+		} as QueryDeepPartialEntity<SkillSourceLink>;
+		// Two conditional updates in place of one with OR: the first that matches sets the hash,
+		// so the other one, and a check on another main, match nothing.
+		const first = await manager.update(
+			SkillSourceLink,
+			{ skillId, pendingContentHash: IsNull() },
+			set,
+		);
+		if ((first.affected ?? 0) > 0) return true;
+		const result = await manager.update(
+			SkillSourceLink,
+			{ skillId, pendingContentHash: Not(pending.contentHash) },
+			set,
+		);
 		return (result.affected ?? 0) > 0;
 	}
 }

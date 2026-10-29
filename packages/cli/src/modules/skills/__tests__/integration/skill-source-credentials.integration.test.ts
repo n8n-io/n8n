@@ -24,7 +24,9 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
+import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
 import { PostHogClient } from '@/posthog';
 
 import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
@@ -460,6 +462,91 @@ describe('Skill Sync with credentials', () => {
 				},
 				200,
 			);
+		});
+	});
+
+	describe('the check of a private source', () => {
+		const db = () => Container.get(DataSource).manager;
+
+		/** Imports the private repository into the team with the credential. */
+		const importPrivate = async () => {
+			const body = {
+				url: PRIVATE,
+				scope: 'project',
+				projectId: team.id,
+				credentialId: teamCredential.id,
+			};
+			const { data: discovery } = await post<SkillSourceDiscovery>(
+				editor,
+				'/skill-sources/discover',
+				body,
+			);
+			const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+				...body,
+				skillKeys: discovery.skills.map(({ key }) => key),
+			});
+			return { sourceId: data.sourceId, skillId: data.imported[0].skillId };
+		};
+
+		const lastErrorOf = async (sourceId: string) =>
+			(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).lastErrorReason;
+
+		it('reads the source with its stored credential, without a user', async () => {
+			const { sourceId, skillId } = await importPrivate();
+			github.push(
+				'acme/private',
+				{ 'skills/pdf/SKILL.md': skillMd('pdf').replace('Follow', 'Use') },
+				'main',
+				{
+					private: true,
+				},
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBeNull();
+			expect(await db().findOneByOrFail(SkillSourceLink, { skillId })).toMatchObject({
+				state: 'update_available',
+			});
+		});
+
+		it('reports credential_missing when the scope no longer accepts the credential', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: otherTeamCredential.id },
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBe('credential_missing');
+		});
+
+		it('reports credential_invalid when GitHub refuses the token', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: badCredential.id },
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBe('credential_invalid');
+		});
+
+		it('reports host_blocked for a credential of another GitHub server', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: enterpriseAppCredential.id },
+			);
+
+			await Container.get(SkillSyncService).checkAll();
+
+			expect(await lastErrorOf(sourceId)).toBe('host_blocked');
 		});
 	});
 });

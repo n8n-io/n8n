@@ -214,6 +214,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return { items, truncated, tooDeep, revision: sha };
 	}
 
+	/** The commit at the head of the branch: one `ls-refs` request, no archive. */
+	async probe(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string> {
+		return await this.head(readLocator(locator), auth);
+	}
+
 	async fetchLatest(
 		locator: SkillSourceLocator,
 		ref: RemoteSkillRef,
@@ -482,6 +487,7 @@ function throwForStatus(
 		throw new SkillSourceReadError(
 			'rate_limited',
 			'GitHub limits how often n8n can read it. Try again in a few minutes.',
+			{ retryAfterSeconds: retryAfterSeconds(headers) },
 		);
 	}
 	// With a token, 401 means GitHub refused the token itself.
@@ -535,6 +541,21 @@ function sortRepositories(repositories: SkillSourceRepository[]): SkillSourceRep
 function rateLimitSpent(headers: Record<string, unknown>): boolean {
 	const remaining = headers['x-ratelimit-remaining'];
 	return remaining === '0' || remaining === 0;
+}
+
+/**
+ * How long GitHub asked n8n to wait: `retry-after` in seconds, else the reset time of the
+ * spent limit. Undefined when the answer says neither.
+ */
+export function retryAfterSeconds(
+	headers: Record<string, unknown>,
+	now = Date.now(),
+): number | undefined {
+	const retryAfter = Number(headers['retry-after']);
+	if (Number.isFinite(retryAfter) && retryAfter >= 0) return retryAfter;
+	const reset = Number(headers['x-ratelimit-reset']);
+	if (Number.isFinite(reset) && reset > 0) return Math.max(0, Math.ceil(reset - now / 1000));
+	return undefined;
 }
 
 function readLocator(locator: SkillSourceLocator): GitHubLocator {
