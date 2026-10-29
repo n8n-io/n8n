@@ -38,6 +38,7 @@ minimumReleaseAgeExclude:
   - '@ai-sdk/anthropic'
   # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
   - '@xmldom/xmldom'
+  - '@ai-sdk/provider-utils@5.0.70'
 
 packages:
   - packages/*
@@ -154,6 +155,8 @@ catalog:
   '@tiptap/starter-kit': 3.30.5
   '@tiptap/vue-3': 3.30.5
   '@types/basic-auth': ^1.1.3
+  '@types/compression': ^1.7.5
+  '@types/cookie-parser': ^1.4.8
   '@types/estree': ^1.0.8
   '@types/express': ^5.0.1
   '@types/jsdom': ^21.1.7
@@ -200,7 +203,9 @@ catalog:
   cheerio: 1.1.0
   chokidar: 4.0.3
   citty: ^0.1.6
+  compression: 1.8.2
   consola: ^3.4.2
+  cookie-parser: 1.4.7
   cron: 4.4.0
   cron-parser: 5.6.1
   cronstrue: ^3.27.0
@@ -300,6 +305,7 @@ catalog:
   rate-limit-redis: 4.3.1
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
+  '@microsoft/opentelemetry': 1.5.0
 
 catalogMode: strict
 

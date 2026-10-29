@@ -12,6 +12,7 @@ import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { useSkillsStore } from '../skills.store';
 
 const HIDDEN_AGENTS_ITEM = 'hidden-agents';
+const USED_BY_HEADER = 'used-by';
 
 const props = defineProps<{
 	skill: Pick<SkillListItem, 'id' | 'usedByAgents'>;
@@ -25,23 +26,48 @@ const { showError } = useToast();
 const usage = ref<SkillUsedBy | null>(null);
 const loading = ref(false);
 
-/** A draft and a published version of the same agent count once, as `usedByAgents` does. */
+type AgentRow = { agentName: string; projectId: string; caption?: string };
+
+/**
+ * A draft and a published version of the same agent count once, as `usedByAgents` does.
+ * The caption is the version the draft runs.
+ */
 const agents = computed(() => {
-	const byId = new Map<string, { agentName: string; projectId: string }>();
-	for (const agent of [...(usage.value?.drafts ?? []), ...(usage.value?.pins ?? [])]) {
-		if (!byId.has(agent.agentId)) byId.set(agent.agentId, agent);
+	const byId = new Map<string, AgentRow>();
+	for (const draft of usage.value?.drafts ?? []) {
+		byId.set(draft.agentId, {
+			agentName: draft.agentName,
+			projectId: draft.projectId,
+			caption: i18n.baseText(
+				draft.pinned
+					? 'settings.context.skills.versions.agents.pinned'
+					: 'settings.context.skills.versions.agents.latest',
+				{ interpolate: { version: draft.version } },
+			),
+		});
+	}
+	for (const pin of usage.value?.pins ?? []) {
+		if (!byId.has(pin.agentId)) byId.set(pin.agentId, pin);
 	}
 	return byId;
 });
 
-const items = computed<Array<DropdownMenuItemProps<string>>>(() => {
-	const list = [...agents.value].map(
-		([id, agent]): DropdownMenuItemProps<string> => ({
-			id,
-			label: agent.agentName,
-			icon: { type: 'icon', value: 'bot' },
-		}),
-	);
+const items = computed<Array<DropdownMenuItemProps<string, AgentRow>>>(() => {
+	const list: Array<DropdownMenuItemProps<string, AgentRow>> = [
+		{
+			id: USED_BY_HEADER,
+			label: i18n.baseText('settings.context.skills.versions.agents.title'),
+			header: true,
+		},
+		...[...agents.value].map(
+			([id, agent]): DropdownMenuItemProps<string, AgentRow> => ({
+				id,
+				label: agent.agentName,
+				icon: { type: 'icon', value: 'bot' },
+				data: agent,
+			}),
+		),
+	];
 	const hidden = usage.value?.hiddenAgents ?? 0;
 	if (hidden > 0) {
 		list.push({
@@ -69,13 +95,15 @@ async function onOpenChange(open: boolean) {
 	}
 }
 
-async function onSelect(agentId: string) {
+/** Opens the agent in a new tab, so the skills list keeps its search and page. */
+function onSelect(agentId: string) {
 	const agent = agents.value.get(agentId);
 	if (!agent) return;
-	await router.push({
+	const { href } = router.resolve({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: agent.projectId, agentId },
 	});
+	window.open(href, '_blank', 'noopener');
 }
 </script>
 
@@ -100,6 +128,16 @@ async function onSelect(agentId: string) {
 			@update:model-value="onOpenChange"
 			@select="onSelect"
 		>
+			<template #item-trailing="{ item }">
+				<N8nText
+					v-if="item.data?.caption"
+					size="small"
+					color="text-light"
+					data-test-id="skill-agents-version"
+				>
+					{{ item.data.caption }}
+				</N8nText>
+			</template>
 			<template #trigger>
 				<button
 					type="button"

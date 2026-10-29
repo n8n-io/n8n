@@ -29,6 +29,10 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		/** Text of the Cancel button. Defaults to "Cancel". */
+		cancelLabel?: string;
+		/** Draws a line under the header, for a body whose columns start at the top edge. */
+		headerDivider?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
 		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
@@ -47,6 +51,8 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		cancelLabel: undefined,
+		headerDivider: false,
 		bodyScrollable: true,
 		bodyFlush: false,
 		stableHeight: false,
@@ -68,7 +74,6 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const bodyRoot = useTemplateRef<ComponentPublicInstance>('bodyRoot');
-const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 
 function bodyElement(): HTMLElement | null {
 	const element = bodyRoot.value?.$el;
@@ -111,13 +116,6 @@ function onInteractOutside(event: Event) {
 const bodyAutofocusSelector =
 	'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
 
-/** Puts the editable title in edit mode. */
-function focusTitle() {
-	titleEdit.value?.forceFocus();
-}
-
-defineExpose({ focusTitle });
-
 function onOpenAutoFocus(event: Event) {
 	const body =
 		bodyElement() ?? document.querySelector<HTMLElement>('[data-testid="agent-modal-body"]');
@@ -151,7 +149,7 @@ function onOpenAutoFocus(event: Event) {
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogHeader :class="$style.header">
+		<N8nDialogHeader :class="[$style.header, props.headerDivider && $style.headerDivider]">
 			<div :class="$style.headerContent">
 				<N8nIconButton
 					v-if="props.showBack"
@@ -170,10 +168,9 @@ function onOpenAutoFocus(event: Event) {
 				</div>
 
 				<N8nDialogTitle as-child>
-					<div :class="$style.titleGroup">
+					<div :class="[$style.titleGroup, $slots.titleSuffix && $style.titleGroupWithSuffix]">
 						<N8nInlineTextEdit
 							v-if="props.editableTitle"
-							ref="titleEdit"
 							:model-value="props.title"
 							:max-length="props.titleMaxLength"
 							:max-width="'100%'"
@@ -193,6 +190,10 @@ function onOpenAutoFocus(event: Event) {
 					</div>
 				</N8nDialogTitle>
 
+				<div v-if="$slots.titleSuffix" :class="$style.titleSuffix">
+					<slot name="titleSuffix" />
+				</div>
+
 				<div v-if="$slots.headerActions" :class="$style.headerActions">
 					<slot name="headerActions" />
 				</div>
@@ -207,41 +208,55 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<N8nDialogBody
-			ref="bodyRoot"
-			:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
-			:data-flush="props.bodyFlush ? 'true' : undefined"
-			:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
-			data-testid="agent-modal-body"
-		>
-			<FocusScope v-if="!trapFocus" as-child @mount-auto-focus.prevent @unmount-auto-focus.prevent>
-				<span hidden aria-hidden="true" />
-			</FocusScope>
-			<slot />
-		</N8nDialogBody>
+		<div :class="[$style.split, $slots.sidePanel && $style.splitWithPanel]">
+			<div :class="$style.main">
+				<N8nDialogBody
+					ref="bodyRoot"
+					:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
+					:data-flush="props.bodyFlush ? 'true' : undefined"
+					:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
+					data-testid="agent-modal-body"
+				>
+					<FocusScope
+						v-if="!trapFocus"
+						as-child
+						@mount-auto-focus.prevent
+						@unmount-auto-focus.prevent
+					>
+						<span hidden aria-hidden="true" />
+					</FocusScope>
+					<slot />
+				</N8nDialogBody>
 
-		<N8nDialogFooter v-if="hasFooter" :class="$style.footer">
-			<slot name="footer">
-				<div :class="$style.footerLayout">
-					<div :class="$style.footerLeft">
-						<slot name="footerLeft" />
-					</div>
-					<div :class="$style.footerActions" data-testid="agent-modal-footer-actions">
-						<slot name="footerBeforeCancel" />
-						<N8nButton
-							v-if="props.showCancel"
-							variant="outline"
-							:disabled="dismissalBlocked"
-							data-testid="agent-modal-cancel"
-							@click="close"
-						>
-							{{ i18n.baseText('generic.cancel') }}
-						</N8nButton>
-						<slot name="footerActions" />
-					</div>
+				<N8nDialogFooter v-if="hasFooter" :class="$style.footer">
+					<slot name="footer">
+						<div :class="$style.footerLayout">
+							<div :class="$style.footerLeft">
+								<slot name="footerLeft" />
+							</div>
+							<div :class="$style.footerActions" data-testid="agent-modal-footer-actions">
+								<slot name="footerBeforeCancel" />
+								<N8nButton
+									v-if="props.showCancel"
+									variant="outline"
+									:disabled="dismissalBlocked"
+									data-testid="agent-modal-cancel"
+									@click="close"
+								>
+									{{ props.cancelLabel ?? i18n.baseText('generic.cancel') }}
+								</N8nButton>
+								<slot name="footerActions" />
+							</div>
+						</div>
+					</slot>
+				</N8nDialogFooter>
+			</div>
+			<aside v-if="$slots.sidePanel" :class="$style.sidePanel" data-testid="agent-modal-side-panel">
+				<div :class="$style.sidePanelScroll">
+					<slot name="sidePanel" />
 				</div>
-			</slot>
-		</N8nDialogFooter>
+			</aside>
+		</div>
 	</N8nDialog>
 </template>
 
@@ -263,6 +278,10 @@ function onOpenAutoFocus(event: Event) {
 	padding-inline-end: calc(
 		var(--spacing--lg) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs)
 	);
+}
+
+.headerDivider {
+	border-bottom: var(--border);
 }
 
 .titleError {
@@ -304,6 +323,17 @@ function onOpenAutoFocus(event: Event) {
 	}
 }
 
+/* Keeps the suffix beside the title instead of at the far end of the header. */
+.titleGroupWithSuffix {
+	flex: 0 1 auto;
+}
+
+.titleSuffix {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+}
+
 .title {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -329,6 +359,41 @@ function onOpenAutoFocus(event: Event) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	margin-left: auto;
+}
+
+/* Without a side panel the wrappers add no boxes, so the layout stays as before. */
+.split,
+.main {
+	display: contents;
+}
+
+/* A side panel runs beside the body and the footer, from the header to the bottom edge. */
+.splitWithPanel {
+	display: flex;
+	min-height: 0;
+
+	> .main {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	}
+}
+
+.sidePanel {
+	position: relative;
+	flex-shrink: 0;
+	width: var(--agent-modal-side-panel--width, calc(var(--spacing--5xl) * 1.25));
+	border-left: var(--border);
+}
+
+/* The panel takes the height of the body and the footer, and a long panel scrolls. */
+.sidePanelScroll {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+
+	@include scrollbar-mixins.scroll-bar;
 }
 
 .footer {
@@ -357,6 +422,8 @@ function onOpenAutoFocus(event: Event) {
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
 	padding: 0;
+	/* Full-width strips reach the edge, so no space is kept for a scrollbar. */
+	scrollbar-gutter: auto;
 }
 
 .body[data-scrollable='false'] {
@@ -393,6 +460,29 @@ function onOpenAutoFocus(event: Event) {
 
 .footerActions {
 	margin-left: auto;
+}
+
+/* A narrow window has no room beside the body, so the side panel goes under it. */
+@media (max-width: 768px) {
+	.splitWithPanel {
+		flex-direction: column;
+	}
+
+	.sidePanel {
+		width: auto;
+		border-left: none;
+		border-top: var(--border);
+	}
+
+	/* The body and the panel share the height of the window. */
+	.splitWithPanel .body {
+		max-height: 40dvh;
+	}
+
+	.sidePanelScroll {
+		position: static;
+		max-height: 30dvh;
+	}
 }
 
 @media (max-width: 480px) {

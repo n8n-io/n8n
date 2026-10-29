@@ -35,8 +35,6 @@ import {
 vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
 	applyCredentialHints: vi.fn(),
-	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
-	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
 	buildCompletedReport: vi.fn().mockReturnValue([]),
 }));

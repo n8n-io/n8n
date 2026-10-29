@@ -637,6 +637,7 @@ export class ScalingService {
 									// for a finished one and delete it when the workflow does not
 									// save successful executions
 									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+									nodeTimeSavedMinutes: msg.nodeTimeSavedMinutes,
 								}
 							: undefined,
 					);
