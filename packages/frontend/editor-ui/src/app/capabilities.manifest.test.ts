@@ -1,6 +1,9 @@
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
 
 import { registerShellCapabilities } from './capabilities.manifest';
 
@@ -8,10 +11,30 @@ import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { mockedStore } from '@/__tests__/utils';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-const { openDocumentStores } = vi.hoisted(() => ({
-	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
+const { openDocumentStores, offerToExposeAllWorkflows, createSelfHealingChatHandoff } = vi.hoisted(
+	() => ({
+		openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
+		offerToExposeAllWorkflows: vi.fn(),
+		createSelfHealingChatHandoff: vi.fn(),
+	}),
+);
+
+vi.mock('@/features/ai/instanceAi/composables/useSelfHealingChatHandoff', () => ({
+	useSelfHealingChatHandoff: createSelfHealingChatHandoff,
 }));
+
+vi.mock(
+	'@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer',
+	() => ({
+		useExposeAllWorkflowsToMcpOffer: () => ({ offerToExposeAllWorkflows }),
+	}),
+);
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useExistingWorkflowDocumentStore: vi.fn((id: string) => openDocumentStores.get(id)),
@@ -38,6 +61,15 @@ describe('registerShellCapabilities', () => {
 		registerShellCapabilities();
 
 		expect(capabilityRegistry.has(capabilities.modalOpeners)).toBe(true);
+	});
+
+	it('provides the chat setup factory without initializing it at registration', () => {
+		registerShellCapabilities();
+
+		expect(capabilityRegistry.use(capabilities.createSelfHealingChatHandoff)).toBe(
+			createSelfHealingChatHandoff,
+		);
+		expect(createSelfHealingChatHandoff).not.toHaveBeenCalled();
 	});
 
 	it('forwards openModal to the UI store', () => {
@@ -125,6 +157,57 @@ describe('registerShellCapabilities', () => {
 			expect(openStore.mergeSettings).toHaveBeenCalledWith({ availableInMCP: false });
 			expect(otherOpenStore.mergeSettings).not.toHaveBeenCalled();
 			expect(useExistingWorkflowDocumentStore).toHaveBeenCalledWith('wf-2');
+		});
+	});
+
+	describe('mcpExposeAllOffer', () => {
+		beforeEach(() => {
+			registerShellCapabilities();
+		});
+
+		it('reads enrollment from the experiment store', () => {
+			const experimentStore = mockedStore(useExposeAllWorkflowsToMcpStore);
+			const offer = capabilityRegistry.use(capabilities.mcpExposeAllOffer);
+
+			experimentStore.isEnabled = false;
+			expect(offer.isEnabled()).toBe(false);
+
+			experimentStore.isEnabled = true;
+			expect(offer.isEnabled()).toBe(true);
+		});
+
+		it('forwards the offer and its result', async () => {
+			offerToExposeAllWorkflows.mockResolvedValue(true);
+			const onExposed = vi.fn();
+
+			const opened = await capabilityRegistry.use(capabilities.mcpExposeAllOffer).offer(onExposed);
+
+			expect(opened).toBe(true);
+			expect(offerToExposeAllWorkflows).toHaveBeenCalledWith(onExposed);
+		});
+	});
+
+	describe('project permissions', () => {
+		beforeEach(() => {
+			registerShellCapabilities();
+		});
+
+		it('combines the global scopes with the scopes of the project', () => {
+			mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['app:list'] });
+			mockedStore(useProjectsStore).myProjects = [
+				mock<ProjectListItem>({ id: 'project-1', scopes: ['app:delete'] }),
+				mock<ProjectListItem>({ id: 'project-2', scopes: ['app:update'] }),
+			];
+
+			const scopes = capabilityRegistry.use(capabilities.projectPermissions).scopesFor('project-1');
+
+			expect(scopes).toEqual(['app:list', 'app:delete']);
+		});
+
+		it('reads the read-only state from source control', () => {
+			mockedStore(useSourceControlStore).preferences = mock({ branchReadOnly: true });
+
+			expect(capabilityRegistry.use(capabilities.projectPermissions).isReadOnly()).toBe(true);
 		});
 	});
 });

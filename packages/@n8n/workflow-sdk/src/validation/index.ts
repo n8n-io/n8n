@@ -43,5 +43,13 @@ export {
 	type DisplayOptionsContext,
 } from './display-options';
 
+export {
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type AddedSubnodeConnection,
+	type ClearedSubnodeInput,
+	type WorkflowForSubnodeWiring,
+} from './required-subnode-connections';
+
 export { resolveMainInputCount } from './node-port-resolvers/resolve-main-input-count';
 export { resolveMainOutputCount } from './node-port-resolvers/resolve-main-output-count';

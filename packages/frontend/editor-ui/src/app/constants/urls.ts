@@ -8,6 +8,7 @@ export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-a
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/connect/create-nodes`;
+export const AI_GATEWAY_CREDITS_DOCS_URL = `https://${DOCS_DOMAIN}/deploy/use-n8n-cloud/gateway-credits`;
 export const CUSTOM_ROLES_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/rbac/custom-roles/`;
 export const END_USER_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/administer/manage-credentials/end-user-credentials`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
@@ -16,6 +17,7 @@ export const ERROR_WORKFLOW_DOCS_URL = `https://${DOCS_DOMAIN}/flow-logic/error-
 export const EXECUTION_DATA_REDACTION_DOCS_URL = `https://${DOCS_DOMAIN}/workflows/executions/execution-data-redaction/`;
 export const EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL = `${EXECUTION_DATA_REDACTION_DOCS_URL}#instance-level-enforcement`;
 export const SECURITY_POLICIES_DOCS_URL = `https://${DOCS_DOMAIN}/deploy/host-n8n/configure-n8n/security/manage-security-policies`;
+export const AUTHENTICATION_DOCS_URL = `https://${DOCS_DOMAIN}/administer/manage-users-and-access/verify-user-identity`;
 export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 export const RELEASE_NOTES_URL = 'https://docs.n8n.io/changelog/release-notes';

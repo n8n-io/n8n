@@ -47,15 +47,15 @@ export class EngineV2Module implements ModuleInterface {
 		await Container.get(EngineControlPlaneServer).start();
 
 		const logger = Container.get(Logger).scoped('engine-v2');
-		const { EngineV2WebhookResponder } = await import(
-			'@/services/engine-v2-webhook-responder.service.js'
+		const { EngineV2WebhookResponseRegistry } = await import(
+			'./webhook-response/webhook-response-registry.service.js'
 		);
 
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
 			// before `startExecution` returns, and responses are not replayed.
 			const { responseSender, responseReceiver } = await this.initInMemoryResponseChannel(logger);
-			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			this.responseSender = responseSender;
 			this.responseReceiver = responseReceiver;
 
@@ -68,7 +68,7 @@ export class EngineV2Module implements ModuleInterface {
 				'./response-channel/redis-execution-response-channel.js'
 			);
 			const responseReceiver = await startRedisExecutionResponseReceiver(logger);
-			Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
+			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 			this.responseReceiver = responseReceiver;
 		}
 
@@ -129,6 +129,12 @@ function assertRemoteConfig(config: EngineConfig): void {
 	if (!config.baseUrl) {
 		throw new UserError(
 			'N8N_ENGINE_MODE=remote needs N8N_ENGINE_BASE_URL. The default points at this process, which does not run the data plane.',
+		);
+	}
+
+	if (config.resumeSecret) {
+		throw new UserError(
+			'N8N_ENGINE_MODE=remote must not set N8N_ENGINE_RESUME_SECRET on this main. The data plane runs elsewhere; set the secret in its environment only.',
 		);
 	}
 }

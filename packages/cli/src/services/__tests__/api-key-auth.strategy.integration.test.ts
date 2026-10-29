@@ -14,7 +14,7 @@ import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { retryUntil } from '@test-integration/retry-until';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
-import { JwtService } from '../jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { API_KEY_ISSUER } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string): AuthenticatedRequest =>
@@ -32,10 +32,9 @@ const mockReqWithoutApiKey = (): AuthenticatedRequest => {
 };
 
 async function signAndStoreMcpApiKey(owner: User): Promise<string> {
-	const apiKey = Container.get(JwtService).sign({
+	const apiKey = Container.get(JwtService).sign('mcpApiKey', {
 		sub: owner.id,
 		iss: API_KEY_ISSUER,
-		aud: 'mcp-server-api',
 		jti: randomUUID(),
 	});
 
@@ -76,7 +75,7 @@ describe('ApiKeyAuthStrategy', () => {
 	describe('buildTokenGrant', () => {
 		it('returns a grant with subject, role scopes, and apiKeyScopes for a valid public API key', async () => {
 			const owner = await createOwnerWithApiKey({ scopes: ['workflow:read', 'workflow:list'] });
-			const [{ apiKey }] = owner.apiKeys;
+			const [{ id: apiKeyId, apiKey }] = owner.apiKeys;
 
 			const grant = await strategy.buildTokenGrant(apiKey);
 
@@ -86,6 +85,7 @@ describe('ApiKeyAuthStrategy', () => {
 			// role scopes come from the user's role and are independent of the key's apiKeyScopes
 			expect(grant.scopes.length).toBeGreaterThan(1);
 			expect(grant.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
+			expect(grant.apiKeyId).toBe(apiKeyId);
 		});
 
 		it('accepts legacy (non-JWT) api keys by looking up the record directly', async () => {
@@ -106,7 +106,10 @@ describe('ApiKeyAuthStrategy', () => {
 		});
 
 		it('returns null for a JWT whose issuer does not match (abstain)', async () => {
-			const tokenExchangeJwt = jwtService.sign({ iss: TOKEN_EXCHANGE_ISSUER, sub: '123' });
+			const tokenExchangeJwt = jwtService.sign('tokenExchange', {
+				iss: TOKEN_EXCHANGE_ISSUER,
+				sub: '123',
+			});
 			expect(await strategy.buildTokenGrant(tokenExchangeJwt)).toBeNull();
 		});
 
@@ -115,7 +118,7 @@ describe('ApiKeyAuthStrategy', () => {
 			// Each is a short setup with the same expected outcome — folded into one.
 			expect(await strategy.buildTokenGrant('invalid')).toBe(false);
 
-			const unknownKey = jwtService.sign({ sub: '123', iss: API_KEY_ISSUER });
+			const unknownKey = jwtService.sign('publicApiKey', { sub: '123', iss: API_KEY_ISSUER });
 			expect(await strategy.buildTokenGrant(unknownKey)).toBe(false);
 
 			const expiredOwner = await createOwnerWithApiKey({
@@ -203,21 +206,21 @@ describe('ApiKeyAuthStrategy', () => {
 	});
 
 	describe('authenticate (wrapper)', () => {
-		it('returns null when no x-n8n-api-key header is present', async () => {
-			expect(await strategy.authenticate(mockReqWithoutApiKey())).toBeNull();
+		it('abstains when no x-n8n-api-key header is present', async () => {
+			expect(await strategy.authenticate(mockReqWithoutApiKey())).toEqual({ outcome: 'abstained' });
 		});
 
-		it('returns true and populates req.user + req.tokenGrant on success', async () => {
+		it('authenticates and populates req.user + req.tokenGrant on success', async () => {
 			const owner = await createOwnerWithApiKey();
 			const [{ apiKey }] = owner.apiKeys;
 			const req = mockReqWith(apiKey);
 
-			expect(await strategy.authenticate(req)).toBe(true);
+			expect(await strategy.authenticate(req)).toEqual({ outcome: 'authenticated' });
 			expect(req.user.id).toBe(owner.id);
 			expect(req.tokenGrant?.subject.id).toBe(owner.id);
 		});
 
-		it('abstains (returns null) when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
+		it('abstains when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
 			const globalConfig = Container.get(GlobalConfig);
 			globalConfig.publicApi.disabled = true;
 
@@ -226,7 +229,7 @@ describe('ApiKeyAuthStrategy', () => {
 				const [{ apiKey }] = owner.apiKeys;
 				const req = mockReqWith(apiKey);
 
-				expect(await strategy.authenticate(req)).toBeNull();
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
 			} finally {
 				globalConfig.publicApi.disabled = false;
 			}

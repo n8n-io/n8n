@@ -62,11 +62,26 @@ interface ChipVM {
 	key: string;
 	testid: 'nodes-chip-group' | 'nodes-chip-bundle' | 'nodes-chip-node';
 	label: string;
-	icon?: 'layers';
+	/** Tooltip path: the owning workflow, then the label. */
+	breadcrumbs: string[];
+	/** `group` marks a canvas group; `layers` a plain stack of nodes. */
+	icon?: 'layers' | 'group';
 	nodeType?: INodeTypeDescription | null;
 	setIndex: number;
 	nodeIndex?: number;
 	panel?: ResolvedAttachedNode[];
+}
+
+const workflowName = computed(
+	() => props.attachment.workflowName || workflowDocumentStore.value.name || undefined,
+);
+
+function toBreadcrumbs(label: string): string[] {
+	return workflowName.value ? [workflowName.value, label] : [label];
+}
+
+function bundleLabel(count: number): string {
+	return i18n.baseText('instanceAi.nodeContext.nodesBundle', { interpolate: { count } });
 }
 
 const chips = computed<ChipVM[]>(() => {
@@ -74,27 +89,25 @@ const chips = computed<ChipVM[]>(() => {
 
 	return sets.map((set, setIndex): ChipVM => {
 		if (set.canvasGroupId) {
+			// A group without a name would render an empty label; fall back to the
+			// node-count bundle label so the chip stays readable and accessible.
+			const label = set.canvasGroupName || bundleLabel(set.nodes.length);
 			return {
 				key: `set-${setIndex}`,
 				testid: 'nodes-chip-group',
-				// A group without a name would render an empty label; fall back to the
-				// node-count bundle label so the chip stays readable and accessible.
-				label:
-					set.canvasGroupName ||
-					i18n.baseText('instanceAi.nodeContext.nodesBundle', {
-						interpolate: { count: set.nodes.length },
-					}),
-				icon: 'layers',
+				label,
+				breadcrumbs: toBreadcrumbs(label),
+				icon: 'group',
 				setIndex,
 			};
 		}
 		if (set.nodes.length >= NODE_BUNDLE_THRESHOLD) {
+			const label = bundleLabel(set.nodes.length);
 			return {
 				key: `set-${setIndex}`,
 				testid: 'nodes-chip-bundle',
-				label: i18n.baseText('instanceAi.nodeContext.nodesBundle', {
-					interpolate: { count: set.nodes.length },
-				}),
+				label,
+				breadcrumbs: toBreadcrumbs(label),
 				icon: 'layers',
 				setIndex,
 				panel: set.nodes.map((node) => resolveAttachedNode(node)),
@@ -105,6 +118,7 @@ const chips = computed<ChipVM[]>(() => {
 			key: `set-${setIndex}`,
 			testid: 'nodes-chip-node',
 			label: resolved.name,
+			breadcrumbs: toBreadcrumbs(resolved.name),
 			nodeType: resolved.nodeType,
 			setIndex,
 		};
@@ -273,6 +287,7 @@ const showCollapseToggle = computed(() => chips.value.length > COLLAPSE_CHIP_THR
 const totalNodeCount = computed(() =>
 	props.attachment.sets.reduce((sum, set) => sum + set.nodes.length, 0),
 );
+const collapsedLabel = computed(() => bundleLabel(totalNodeCount.value));
 
 // inputNode/outputNode are send-time context only — intentionally never rendered.
 </script>
@@ -282,11 +297,8 @@ const totalNodeCount = computed(() =>
 		<NodeChip
 			v-if="isCollapsed"
 			testid="nodes-chips-collapsed-summary"
-			:label="
-				i18n.baseText('instanceAi.nodeContext.nodesBundle', {
-					interpolate: { count: totalNodeCount },
-				})
-			"
+			:label="collapsedLabel"
+			:breadcrumbs="toBreadcrumbs(collapsedLabel)"
 			icon="layers"
 			:removable="isRemovable"
 			:expanded="null"
@@ -303,6 +315,7 @@ const totalNodeCount = computed(() =>
 				<NodeChip
 					:ref="(el) => setChipRef(chip.setIndex, el as NodeChipInstance | null)"
 					:label="chip.label"
+					:breadcrumbs="chip.breadcrumbs"
 					:testid="chip.testid"
 					:icon="chip.icon"
 					:node-type="chip.nodeType"

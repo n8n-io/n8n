@@ -1,4 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { AgentTeamsIntegrationSettings } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -42,7 +44,12 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
+	/** Every activity the adapter attempted, in order, refused ones included. */
+	activities: () => ReplayApiCall[];
+	/** Every edit of an already-posted message, in order. */
+	edits: () => ReplayApiCall[];
 	lastDelete: () => ReplayApiCall | undefined;
+	reactions: () => ReplayApiCall[];
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -90,7 +97,16 @@ function buildBotFrameworkSigner() {
 	};
 }
 
-function installTeamsApiStub(jwks: object, accessToken: string) {
+/** The `streaminfo` entity that ties an activity to an open Teams stream. */
+export function streamInfo(body: Record<string, unknown>): Record<string, unknown> | undefined {
+	const entities = body.entities;
+	if (!Array.isArray(entities)) return undefined;
+	return entities.find((entity) => isRecord(entity) && entity.type === 'streaminfo') as
+		| Record<string, unknown>
+		| undefined;
+}
+
+function installTeamsApiStub(jwks: object, accessToken: string, succeedingEdits?: number) {
 	const apiCalls: ReplayApiCall[] = [];
 	const serviceUrl = new URL(TEAMS_SERVICE_URL);
 
@@ -108,15 +124,17 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 
 	// Recorded as `sendActivity` so `lastPost()` reads like the other platforms'.
 	let nextMessageId = 1000;
+	let editCount = 0;
 	const postedMessageIds: string[] = [];
 	nock(serviceUrl.origin)
 		.persist()
 		.post(/\/v3\/conversations\/.+\/activities.*/)
 		.reply(function (_uri, body) {
-			apiCalls.push({
-				method: 'sendActivity',
-				body: (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>,
-			});
+			const activity = (typeof body === 'object' && body !== null ? body : {}) as Record<
+				string,
+				unknown
+			>;
+			apiCalls.push({ method: 'sendActivity', body: activity });
 			const id = `message-${nextMessageId++}`;
 			postedMessageIds.push(id);
 			return [200, { id }];
@@ -130,6 +148,15 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 			return [200, {}];
 		});
 
+	// Registered before the edit stub, whose pattern would also match it.
+	nock(serviceUrl.origin)
+		.persist()
+		.put(/\/v3\/conversations\/.+\/activities\/.+\/reactions\/.+/)
+		.reply(function (uri) {
+			apiCalls.push({ method: 'addReaction', body: { uri } });
+			return [200, {}];
+		});
+
 	nock(serviceUrl.origin)
 		.persist()
 		.put(/\/v3\/conversations\/.+\/activities\/.+/)
@@ -138,6 +165,9 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 				method: 'updateActivity',
 				body: (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>,
 			});
+			if (succeedingEdits !== undefined && editCount++ >= succeedingEdits) {
+				return [429, { error: { message: 'Too many requests' } }];
+			}
 			return [200, { id: 'message-edited' }];
 		});
 
@@ -145,10 +175,16 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 }
 
 export async function createTeamsReplayContext(
-	options: { stream?: StreamChunk[] } = {},
+	options: {
+		stream?: StreamChunk[];
+		streamGapMs?: number;
+		/** Reject every edit past this many, so a rejection can be provoked. */
+		succeedingEdits?: number;
+		settings?: AgentTeamsIntegrationSettings;
+	} = {},
 ): Promise<TeamsReplayContext> {
 	const signer = createBotFrameworkSigner();
-	const stub = installTeamsApiStub(signer.jwks, signer.accessToken());
+	const stub = installTeamsApiStub(signer.jwks, signer.accessToken(), options.succeedingEdits);
 
 	// Dynamic imports — the chat packages are ESM-only. Production routes through
 	// esm-loader to dodge the CJS transform; vitest loads ESM natively.
@@ -166,12 +202,18 @@ export async function createTeamsReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { teams: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		// Mirrors what ChatIntegrationService gives a Teams connection; without it
+		// the adapter buffers instead of handing back to the post-and-edit path.
+		fallbackStreamingPlaceholderText: '…',
+		streamingUpdateIntervalMs: 20,
 	});
 
+	const integrationImpl = new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>());
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>()),
-		integration: { type: 'teams', credentialId: 'cred-teams', settings: undefined },
+		integrationImpl,
+		streamGapMs: options.streamGapMs,
+		integration: { type: 'teams', credentialId: 'cred-teams', settings: options.settings },
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
 	});
@@ -205,7 +247,10 @@ export async function createTeamsReplayContext(
 		latestThreadId: setup.latestThreadId,
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
+		activities: () => stub.apiCalls.filter((call) => call.method === 'sendActivity'),
+		edits: () => stub.apiCalls.filter((call) => call.method === 'updateActivity'),
 		lastDelete: () => lastCall('deleteActivity'),
+		reactions: () => stub.apiCalls.filter((call) => call.method === 'addReaction'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();

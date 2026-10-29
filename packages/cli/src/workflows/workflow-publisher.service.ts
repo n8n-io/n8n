@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 
 /**
  * Resolves who a triggered execution should be attributed to.
@@ -29,9 +28,6 @@ export class WorkflowPublisherService {
 	 * behaves exactly as it does today, so callers need no fallback: this only
 	 * ever adds attribution where there was none.
 	 *
-	 * Returns `undefined` while the feature flag is off, which is the single
-	 * gate for this behaviour — call sites stay unconditional.
-	 *
 	 * @param executedVersionId - the version whose nodes the run executes, which
 	 * every caller already holds. Deliberately not the workflow row's
 	 * `activeVersionId`: publication writes that row before it swaps the
@@ -40,12 +36,35 @@ export class WorkflowPublisherService {
 	 * activation" — an unpublished or stale workflow must not inherit the
 	 * identity of whoever published something else.
 	 */
+	/**
+	 * Who a stored execution acts as when it is started again — a wait resume, or
+	 * recovery after a restart. A manual run recorded its user in `manualData`; a
+	 * triggered one is attributed to the publisher of the version it is running,
+	 * which is the same answer it had when it first started.
+	 *
+	 * Restarts rebuild {@link IWorkflowExecutionDataProcess} from the stored row,
+	 * and the acting user is not a stored field, so it has to be derived again or
+	 * the run comes back without an identity.
+	 */
+	async findActingUserIdForRestart(execution: {
+		workflowData: Pick<IWorkflowBase, 'id' | 'versionId'>;
+		data: Pick<IRunExecutionData, 'manualData'>;
+	}): Promise<string | undefined> {
+		const manualUserId = execution.data.manualData?.userId;
+		if (manualUserId) return manualUserId;
+
+		if (!execution.workflowData.id) return undefined;
+
+		return await this.findPublisherUserId(
+			execution.workflowData.id,
+			execution.workflowData.versionId,
+		);
+	}
+
 	async findPublisherUserId(
 		workflowId: string,
 		executedVersionId: string | null | undefined,
 	): Promise<string | undefined> {
-		if (!isCredSharingEnabled()) return undefined;
-
 		if (!executedVersionId) {
 			// Nothing to attribute to. The latest activation belongs to whichever
 			// version was published last, which is not the one running here, so

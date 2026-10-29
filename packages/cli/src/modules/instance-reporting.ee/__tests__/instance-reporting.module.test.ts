@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { License } from '@/license';
 
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
-import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
+import { InstanceReportingTask } from '../instance-reporting.task';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import { InstanceReportingModule } from '../instance-reporting.module';
@@ -51,10 +51,7 @@ function setUpContainer({
 	reportRepository.findLastDeliveryTime.mockResolvedValue(lastDelivery);
 	Container.set(InstanceMonitoringReportRepository, reportRepository);
 
-	const scheduler = mock<InstanceReportingScheduler>();
-	Container.set(InstanceReportingScheduler, scheduler);
-
-	return { settingsService, reportRepository, scheduler };
+	return { settingsService, reportRepository };
 }
 
 describe('InstanceReportingModule', () => {
@@ -98,43 +95,37 @@ describe('InstanceReportingModule', () => {
 		});
 	});
 
-	describe('init()', () => {
-		it('starts the scheduler', async () => {
-			const { scheduler } = setUpContainer();
+	describe('systemTasks()', () => {
+		it('returns the reporting task', async () => {
+			setUpContainer();
 
-			await new InstanceReportingModule().init();
-
-			expect(scheduler.init).toHaveBeenCalled();
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
 		});
 
+		it('returns no task when no receiver is configured', async () => {
+			setUpContainer({ baseUrl: '' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
+		});
+
+		it('returns no task when the instance has no license certificate', async () => {
+			setUpContainer({ licenseCert: '' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([]);
+		});
+
+		it('returns the task with an auth token but no license certificate', async () => {
+			setUpContainer({ licenseCert: '', authToken: 'secret-token' });
+
+			expect(await new InstanceReportingModule().systemTasks()).toEqual([InstanceReportingTask]);
+		});
+	});
+
+	describe('init()', () => {
 		it('fails when the insights module is disabled', async () => {
 			setUpContainer({ disabledModules: ['insights'] });
 
 			await expect(new InstanceReportingModule().init()).rejects.toThrow(UserError);
-		});
-
-		it('leaves the scheduler alone when no receiver is configured', async () => {
-			const { scheduler } = setUpContainer({ baseUrl: '' });
-
-			await new InstanceReportingModule().init();
-
-			expect(scheduler.init).not.toHaveBeenCalled();
-		});
-
-		it('leaves the scheduler alone when the instance has no license certificate', async () => {
-			const { scheduler } = setUpContainer({ licenseCert: '' });
-
-			await new InstanceReportingModule().init();
-
-			expect(scheduler.init).not.toHaveBeenCalled();
-		});
-
-		it('starts the scheduler with an auth token but no license certificate', async () => {
-			const { scheduler } = setUpContainer({ licenseCert: '', authToken: 'secret-token' });
-
-			await new InstanceReportingModule().init();
-
-			expect(scheduler.init).toHaveBeenCalled();
 		});
 
 		// The route belongs to the loaded module, not to the receiver, so a client

@@ -493,7 +493,7 @@ describe('workflow review repositories', () => {
 				expect.stringContaining('review.projectId'),
 				expect.anything(),
 			);
-			expect(queryBuilder.orderBy).toHaveBeenCalledWith('review.createdAt', 'DESC');
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('review.updatedAt', 'DESC');
 			expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('review.id', 'ASC');
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.state = :state', {
 				state: 'open',
@@ -609,21 +609,36 @@ describe('workflow review repositories', () => {
 		it('applies the keyset boundary carried in the cursor without an anchor lookup', async () => {
 			const findOneSpy = vi.spyOn(inboxRepository, 'findOne');
 			queryBuilder.getMany.mockResolvedValueOnce([]);
-			const createdAt = new Date('2024-01-02T00:00:00.000Z');
+			const updatedAt = new Date('2024-01-02T00:00:00.000Z');
 
 			await inboxRepository.findRequests({
 				visibility: involvedVisibility(),
 				limit: 10,
-				cursor: { createdAt, id: 'req-cursor' },
+				boundary: { mode: 'afterItem', updatedAt, id: 'req-cursor' },
 			});
 
 			expect(findOneSpy).not.toHaveBeenCalled();
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				'(review.createdAt < :createdAt OR (review.createdAt = :createdAt AND review.id > :id))',
-				{ createdAt, id: 'req-cursor' },
+				'(review.updatedAt < :updatedAt OR (review.updatedAt = :updatedAt AND review.id > :id))',
+				{ updatedAt, id: 'req-cursor' },
 			);
 		});
 
+		it.each([
+			{ mode: 'beforeTime', operator: '<' },
+			{ mode: 'beforeOrAtTime', operator: '<=' },
+		] as const)('applies the $mode boundary from another source', async ({ mode, operator }) => {
+			const updatedAt = new Date('2026-10-07T00:00:00.000Z');
+			await inboxRepository.findRequests({
+				visibility: allVisibility,
+				limit: 10,
+				boundary: { mode, updatedAt },
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				`review.updatedAt ${operator} :updatedAt`,
+				{ updatedAt },
+			);
+		});
 		describe('category filter', () => {
 			it('leaves the query untouched when no category is requested', async () => {
 				await inboxRepository.findRequests({
@@ -697,14 +712,14 @@ describe('workflow review repositories', () => {
 			});
 
 			it('applies the category filter before the limit and the cursor boundary', async () => {
-				const createdAt = new Date('2024-01-02T00:00:00.000Z');
+				const updatedAt = new Date('2024-01-02T00:00:00.000Z');
 
 				await inboxRepository.findRequests({
 					visibility: allVisibility,
 					category: { userId: 'user-1', category: 'authored' },
 					state: 'open',
 					limit: 15,
-					cursor: { createdAt, id: 'req-cursor' },
+					boundary: { mode: 'afterItem', updatedAt, id: 'req-cursor' },
 				});
 
 				const categoryCall = queryBuilder.andWhere.mock.invocationCallOrder[0];

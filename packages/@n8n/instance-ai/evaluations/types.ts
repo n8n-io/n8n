@@ -6,6 +6,8 @@ import type {
 	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalFailedExecutionEnvelope,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
 	InstanceAiPromptConfiguration,
@@ -39,6 +41,24 @@ export interface ChecklistResult {
 	strategy: VerificationStrategy;
 	failureCategory?: string;
 	rootCause?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Build conversation timeouts
+// ---------------------------------------------------------------------------
+
+/** Which budget ended a build conversation. `turn`: one user turn overran its
+ *  budget. `conversation`: the whole conversation overran its budget.
+ *  `inactivity`: a run in flight emitted no event for the inactivity bound (a
+ *  stalled model stream). */
+export type RunTimeoutKind = 'turn' | 'conversation' | 'inactivity';
+
+export interface BuildTimeout {
+	kind: RunTimeoutKind;
+	/** User turn (1-based) in flight, or about to start, when the budget fired. */
+	turn: number;
+	/** Time measured by the budget that fired. */
+	elapsedMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +204,8 @@ export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
+	/** The project the build ran in. Absent means the owner's personal project. */
+	projectId?: string;
 }
 
 /** Structured agent preview. Capture redacts it; persistence validates and caps it. */
@@ -305,6 +327,17 @@ export interface ExecutionScenarioResult {
  * execution history is unreachable as a premise: the harness only ever executes a
  * workflow *after* a build.
  */
+/**
+ * A failed run recorded on another instance (`/eval/export-execution`), restored as-is
+ * BEFORE the graded turn. Nothing runs, so every eval sees the same failure, unlike a
+ * `SeedPriorRun`, which the mock layer generates again each time.
+ */
+export interface SeedRecordedRun {
+	/** Seeded workflow the run belongs to, by the `id` the seed declares. */
+	workflow: string;
+	envelope: InstanceAiEvalFailedExecutionEnvelope;
+}
+
 export interface SeedPriorRun {
 	/** Seeded workflow to run, by the `id` the seed declares — the same key
 	 *  `conversation[0].attach.workflow` uses. */
@@ -343,6 +376,9 @@ export interface WorkflowTestCaseResult {
 	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
+	/** Set when a budget ended the conversation. The build fields describe what
+	 *  was saved before it fired; the scenarios ran against that. */
+	buildTimeout?: BuildTimeout;
 	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
@@ -364,6 +400,8 @@ export interface WorkflowTestCaseResult {
 	n8nBaseUrl?: string;
 	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
 	runDebug?: InstanceAiRunDebugResponse[];
+	/** Usage of the eval's own model calls in this iteration: judges, simulated user, mocks. */
+	harnessUsage?: InstanceAiEvalLlmUsage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -391,7 +429,6 @@ export const USER_TURN_EVENT = 'eval-user-turn';
 export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
-	| { kind: 'plan'; tasks: PlanTask[] }
 	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
 	| {
 			kind: 'setup-card';
@@ -417,7 +454,7 @@ export type ToolInteraction =
 			approved?: boolean;
 			/** Prompt the agent showed when requesting confirmation. */
 			message?: string;
-			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			/** Free-text the user sent with their decision. */
 			feedback?: string;
 	  }
 	| {
@@ -429,11 +466,6 @@ export type ToolInteraction =
 			result?: unknown;
 			error?: string;
 	  };
-
-export interface PlanTask {
-	title?: string;
-	description?: string;
-}
 
 export interface AskUserQuestion {
 	id: string;

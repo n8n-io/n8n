@@ -151,7 +151,7 @@ watch(
 		@leave="leave"
 	>
 		<slot />
-		<div v-for="item in elements" :key="item.uuid">
+		<div v-for="(item, index) in elements" :key="item.uuid">
 			<div v-if="renderedItems.includes(item)">
 				<CategorizedItemsRenderer
 					v-if="item.type === 'section'"
@@ -174,6 +174,7 @@ watch(
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid && highlightActiveItem,
 						[$style.iteratorItem]: !communityNode,
+						[$style.withSeparator]: item.type === 'command' && index > 0 && !activeViewStack.search,
 						[$style[item.type]]: true,
 						[$style.preview]: isPreview,
 						// Borderless is only applied to views
@@ -207,8 +208,9 @@ watch(
 					<AgentItem v-if="item.type === 'agent'" :agent="item.properties" />
 
 					<ViewItem
-						v-else-if="item.type === 'view'"
+						v-else-if="item.type === 'view' || item.type === 'command'"
 						:view="item.properties"
+						:show-action-arrow="item.type === 'view'"
 						:class="$style.viewItem"
 					/>
 
@@ -274,7 +276,8 @@ watch(
 	}
 }
 
-.view {
+.view,
+.withSeparator {
 	position: relative;
 
 	&:last-child {

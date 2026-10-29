@@ -1,4 +1,10 @@
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import {
+	SCHEDULED_JOB_NAME_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
@@ -43,7 +49,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * Human-readable job name, unique across all jobs, and the key provisioning
 	 * matches existing rows on.
 	 */
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_NAME_MAX_LENGTH })
 	name: string;
 
 	/**
@@ -53,7 +59,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * A plain string, not an enum: the scheduler only ever compares it, so a new
 	 * kind of owner needs no schema change.
 	 */
-	@Column({ type: 'varchar', length: 32 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH })
 	ownerType: string;
 
 	/**
@@ -62,14 +68,14 @@ export class ScheduledJob extends WithTimestamps {
 	 * Deleting the owner does not delete this row. The owning module must
 	 * deprovision explicitly, with the reconciliation sweep as the backstop.
 	 */
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_ID_MAX_LENGTH })
 	ownerId: string;
 
 	/**
 	 * Which part of the owner, e.g. a workflow's trigger node id. `null` when the
 	 * owner has no parts.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH, nullable: true })
 	ownerMemberId: string | null;
 
 	/**
@@ -157,6 +163,16 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
+
+	/**
+	 * How long, in seconds, one attempt of an occurrence may run before the executor
+	 * stops it. Copied onto each occurrence this job materializes.
+	 *
+	 * Pinned to a literal, not the config default, so a later change to the default
+	 * can't retroactively change what this entity declares.
+	 */
+	@Column({ type: 'int', default: 300 })
+	timeoutSeconds: number;
 
 	/**
 	 * How many of this job's occurrences may run at the same time. `null` means no

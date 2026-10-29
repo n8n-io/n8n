@@ -74,6 +74,30 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('markAsCompleted with a verdict', () => {
+		// Completion and verdict land in one write, so a finished case never reads as
+		// a pass while its verdict is still on the way.
+		it('writes the verdict together with the completion', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+			const verdict = { status: 'completed', outcome: 'fail', reasoning: 'Broke the rule.' };
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' }, verdict });
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({
+				status: 'success',
+				verdict,
+			});
+		});
+
+		it('defaults the verdict to null when none was graded', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' } });
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({ verdict: null });
+		});
+	});
+
 	describe('markAsError', () => {
 		it('stores the error code and details', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
@@ -89,6 +113,33 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('updateVerdict', () => {
+		it('stores the judge verdict without touching status', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateVerdict('res-1', {
+				status: 'completed',
+				outcome: 'fail',
+				reasoning: 'Off-task.',
+			});
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toEqual({
+				verdict: { status: 'completed', outcome: 'fail', reasoning: 'Off-task.' },
+			});
+		});
+
+		it('accepts null to record that judging never ran', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateVerdict('res-1', null);
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[2]).toEqual({ verdict: null });
+		});
+	});
+
 	describe('markAsRunning', () => {
 		it('marks the case running and stamps runAt', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
@@ -97,8 +148,45 @@ describe('AgentEvalResultRepository', () => {
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toBe('res-1');
-			expect(callArgs?.[2]).toMatchObject({ status: 'running' });
-			expect((callArgs?.[2] as { runAt: Date }).runAt).toBeInstanceOf(Date);
+			expect(callArgs?.[2]).toMatchObject({ status: 'running', runAt: expect.any(Date) });
+		});
+
+		// A rerun reuses the row, so a failed attempt's error must not survive into a
+		// successful one, nor a successful attempt's answer into a failed one.
+		it('clears every field a previous attempt left behind', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsRunning('res-1');
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toEqual({
+				status: 'running',
+				runAt: expect.any(Date),
+				completedAt: null,
+				output: null,
+				toolCalls: null,
+				metrics: null,
+				verdict: null,
+				errorCode: null,
+				errorDetails: null,
+			});
+		});
+	});
+
+	describe('claimForRerun', () => {
+		it('claims only a settled row, clearing the previous attempt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1')).resolves.toBe(true);
+
+			const [, where, patch] = entityManager.update.mock.calls[0] ?? [];
+			expect(where).toMatchObject({ id: 'res-1' });
+			expect(patch).toMatchObject({ status: 'running', output: null, errorCode: null });
+		});
+
+		it('reports false when no row matched, because it was already running or claimed', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1')).resolves.toBe(false);
 		});
 	});
 
@@ -110,8 +198,40 @@ describe('AgentEvalResultRepository', () => {
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toBe('res-1');
-			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled' });
-			expect((callArgs?.[2] as { completedAt: Date }).completedAt).toBeInstanceOf(Date);
+			expect(callArgs?.[2]).toMatchObject({ status: 'cancelled', completedAt: expect.any(Date) });
+		});
+	});
+
+	describe('updateInput', () => {
+		it('overwrites the persisted snapshot', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateInput('res-1', { input: 'Q', criteria: 'Mentions the refund window.' });
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toEqual({
+				input: { input: 'Q', criteria: 'Mentions the refund window.' },
+			});
+		});
+	});
+
+	describe('deleteById', () => {
+		it('scopes the delete to the id and its own run, reporting whether a row was removed', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+
+			await expect(repo.deleteById('res-1', 'run-1')).resolves.toBe(true);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentEvalResult, {
+				id: 'res-1',
+				runId: 'run-1',
+			});
+		});
+
+		it('reports false when nothing matched', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 0, raw: [] });
+
+			await expect(repo.deleteById('res-1', 'run-1')).resolves.toBe(false);
 		});
 	});
 

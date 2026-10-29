@@ -83,4 +83,15 @@ describe('N8nBinaryLoader with real PDF data', () => {
 			PDFParse.setWorker(originalWorker);
 		}
 	});
+
+	it('releases a real PDF after parsing', async () => {
+		const parser = new PDFParse({
+			data: readFileSync(
+				join(__dirname, '../../../../../nodes-base/nodes/ReadPdf/test/sample.pdf'),
+			),
+		});
+
+		await expect(parser.getText()).resolves.toMatchObject({ total: 1 });
+		await expect(parser.destroy()).resolves.toBeUndefined();
+	});
 });

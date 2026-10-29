@@ -34,10 +34,10 @@ export function listWorkflowToolInputFields(
 	if (!trigger || trigger.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE) return [];
 
 	const params = trigger.parameters ?? {};
-	// Mirror the runtime fallback `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`:
-	// absent inputSource (legacy / imported triggers) means passthrough, so no
-	// field bindings are offered.
-	const inputSource = (params.inputSource as string | undefined) ?? 'passthrough';
+	// Saved nodes can omit defaults. Field definitions are the default from version 1.1.
+	const defaultInputSource = trigger.typeVersion >= 1.1 ? 'workflowInputs' : 'passthrough';
+	const inputSource =
+		typeof params.inputSource === 'string' ? params.inputSource : defaultInputSource;
 
 	if (inputSource === 'passthrough') return [];
 

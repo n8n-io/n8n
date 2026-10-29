@@ -10,7 +10,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 
 /** What an active trigger asks for when it hands items over. */
 export type EngineV2ActiveTriggerEmit = {
@@ -36,7 +36,7 @@ export type EngineV2ActiveTriggerEmit = {
 export class EngineV2ActiveTriggers {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
-		private readonly payloadGuard: EngineV2PayloadGuard,
+		private readonly payloadFiles: EngineV2PayloadFiles,
 	) {}
 
 	/** Whether this trigger run starts on the engine v2 data plane. */
@@ -45,34 +45,28 @@ export class EngineV2ActiveTriggers {
 	}
 
 	/**
-	 * Rejects an emit that waits for its own run.
+	 * Rejects an emit that waits for its own run, and deletes the files the
+	 * trigger stored for it, because no run will own them.
 	 *
 	 * A node passes either promise when it settles its source only once the run
 	 * finishes — a broker ack, a consumer offset. A v2 run keeps no control-plane
 	 * execution row, so `getPostExecutePromise` has nothing to await and neither
 	 * promise can carry a result. Starting the run anyway would leave the node
 	 * waiting, and its source would redeliver the same message forever.
+	 *
+	 * The delete runs detached: the refusal is the answer, and `discard` never
+	 * throws.
 	 */
-	assertSupported({ responsePromise, donePromise }: EngineV2ActiveTriggerEmit): void {
+	assertSupported(
+		{ responsePromise, donePromise }: EngineV2ActiveTriggerEmit,
+		slots: Array<INodeExecutionData[] | null>,
+	): void {
 		if (responsePromise === undefined && donePromise === undefined) return;
+
+		void this.payloadFiles.discard(slots);
 
 		throw new UserError(
 			'Engine v2 cannot run a trigger that waits for its execution to finish yet. Set the node to hand off without waiting.',
 		);
-	}
-
-	/**
-	 * Rejects an emit that carries files, deleting any the trigger already stored.
-	 *
-	 * The engine takes its payload as JSON, so a file cannot travel with it. Only
-	 * the node's own output says whether it produced one, so this runs on the emit
-	 * rather than at activation. Email Read IMAP is the case that matters today:
-	 * it downloads attachments and passes no promise, so nothing else refuses it.
-	 *
-	 * Refuses synchronously, so a poll's `__emit` can call it before it takes the
-	 * staged cursor.
-	 */
-	assertPayloadSupported(slots: Array<INodeExecutionData[] | null>): void {
-		this.payloadGuard.assertNoFiles(slots, 'Engine v2 cannot receive files from a trigger yet.');
 	}
 }

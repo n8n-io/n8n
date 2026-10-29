@@ -16,11 +16,17 @@ import type {
 	StartNodeData,
 } from '..';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
+import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
 export interface RedactionInfo {
 	isRedacted: boolean;
 	reason: string;
 	canReveal: boolean;
+	/**
+	 * With the `credential_inaccessible` reason: the credentials the viewer cannot
+	 * use, so the editor can point to where access is granted.
+	 */
+	credentialIds?: string[];
 	/**
 	 * True when the info is synthesized from live push markers before the
 	 * authoritative executionFinished metadata arrives. `canReveal` is a
@@ -62,6 +68,8 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Keep the caller's output policy when a child execution resumes. */
+	subWorkflowOutput?: SubWorkflowOutputPolicy;
 	/** Suspended agent tool call to resume once this execution finishes. */
 	parentAgentRun?: RelatedAgentRun;
 	/**
@@ -70,6 +78,16 @@ export interface IRunExecutionDataV1 {
 	 */
 	resumeToken?: string;
 	waitTill?: Date;
+	/**
+	 * Why the execution is waiting, when the last node did not pause it itself.
+	 * Absent: the head of `nodeExecutionStack` already executed and was pushed
+	 * back (Wait node, Form, send-and-wait), so resume disables it to pass its
+	 * input through and pops its duplicate runData entry. 'suspended': the
+	 * engine parked the run at a node boundary, so the head has not executed yet
+	 * and must run normally. The WaitTracker ignores this field and resumes
+	 * every due waiting execution; the resume endpoints refuse a suspended one.
+	 */
+	waitReason?: 'suspended';
 	pushRef?: string;
 
 	/** Data needed for a worker to run a manual execution. */

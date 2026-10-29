@@ -26,7 +26,7 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 			description:
 				'ExecuteCommand and LocalFileTrigger nodes are now disabled by default for security reasons',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#disable-executecommand-and-localfiletrigger-nodes-by-default',
 		};

@@ -7,6 +7,7 @@ import {
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { type InstanceSettings, type Credentials, Cipher, EncryptionKeyProxy } from 'n8n-core';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 import { WekanApi } from 'n8n-nodes-base/credentials/WekanApi.credentials';
 import type {
@@ -215,6 +216,85 @@ describe('CredentialsHelper', () => {
 				headerName: 'X-Workflow-Id',
 			});
 			expect(result).not.toHaveProperty('headerValue');
+		});
+
+		describe('managed app version', () => {
+			const credentialType: ICredentialType = {
+				name: 'managedOAuth2Api',
+				displayName: 'Managed OAuth2',
+				properties: [{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' }],
+			};
+
+			const createHelper = (credentialsOverwrites: CredentialsOverwrites) => {
+				mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+					type: credentialType,
+					sourcePath: '',
+				});
+				return new CredentialsHelper(
+					new CredentialTypes(mockNodesAndCredentials),
+					credentialsOverwrites,
+					credentialsRepository,
+					dynamicCredentialProxy,
+					secretsProviderRepository,
+					licenseState,
+					externalSecretsConfig,
+					mock<AiGatewayService>(),
+					policyEnforcementService,
+				);
+			};
+
+			test('passes the managed version to the overwrites', async () => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+				const helper = createHelper(credentialsOverwrites);
+
+				await helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ clientId: '' },
+					credentialType.name,
+					'internal',
+					undefined,
+					undefined,
+					2,
+				);
+
+				expect(credentialsOverwrites.applyOverwrite).toHaveBeenCalledWith(
+					credentialType.name,
+					{ clientId: '' },
+					2,
+				);
+			});
+
+			test('leaves the version to the credential when none is given', async () => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+				const helper = createHelper(credentialsOverwrites);
+
+				await helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ clientId: '' },
+					credentialType.name,
+					'internal',
+				);
+
+				expect(credentialsOverwrites.applyOverwrite).toHaveBeenCalledWith(
+					credentialType.name,
+					{ clientId: '' },
+					undefined,
+				);
+			});
+
+			test('gets the version of a new connection from the overwrites', () => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.getNewConnectionVersion.mockReturnValue(2);
+				const helper = createHelper(credentialsOverwrites);
+
+				expect(helper.getNewConnectionVersion(credentialType.name, { clientId: '' })).toBe(2);
+				expect(credentialsOverwrites.getNewConnectionVersion).toHaveBeenCalledWith(
+					credentialType.name,
+					{ clientId: '' },
+				);
+			});
 		});
 
 		test('throws when an unmarked credential field cannot resolve without execution context', async () => {
@@ -458,6 +538,213 @@ describe('CredentialsHelper', () => {
 				grantType: 'authorizationCode',
 				authentication: 'body',
 				usePkce: true,
+			});
+		});
+	});
+
+	describe('applyDefaultsAndOverwrites - $self data', () => {
+		const credentialType: ICredentialType = {
+			name: 'selfDataTestApi',
+			displayName: 'Self Data Test API',
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				{ displayName: 'Region', name: 'region', type: 'string', default: '' },
+				{
+					displayName: 'Password',
+					name: 'password',
+					type: 'string',
+					typeOptions: { password: true },
+					default: '',
+				},
+				{ displayName: 'Echo', name: 'echo', type: 'string', default: '' },
+				{
+					displayName: 'Optional',
+					name: 'optional',
+					type: 'string',
+					default: '',
+					typeOptions: { ignoreCredentialExpressionResolveError: true },
+				},
+				{
+					displayName: 'Token',
+					name: 'token',
+					type: 'hidden',
+					typeOptions: { expirable: true },
+					default: '',
+				},
+			],
+		};
+
+		const overwrites: ICredentialDataDecryptedObject = {
+			password: 'instance-secret',
+			region: 'eu',
+			token: 'instance-token',
+		};
+
+		const buildHelper = () => {
+			mockNodesAndCredentials.getCredential
+				.calledWith(credentialType.name)
+				.mockReturnValue({ type: credentialType, sourcePath: '' });
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			// Mirrors the real applyOverwrite: fill a field only when the stored value is empty
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => {
+				const result = { ...data };
+				for (const [key, value] of Object.entries(overwrites)) {
+					if (result[key] === undefined || result[key] === '') result[key] = value;
+				}
+				return result;
+			});
+			return new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+		};
+
+		const storedData = {
+			url: '=https://example.com/{{ $self.password }}',
+			echo: '={{ $self.region }}',
+		};
+
+		test('should not expose overwrite-provided secret fields to $self', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				storedData,
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				echo: 'eu',
+				password: 'instance-secret',
+			});
+		});
+
+		test('should not expose overwrite-provided secret fields to $self when resolving per item', async () => {
+			const node: INode = {
+				id: 'node-id',
+				name: 'Node',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			};
+			const workflow = new Workflow({ nodes: [node], connections: {}, active: false, nodeTypes });
+
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				storedData,
+				credentialType.name,
+				'internal',
+				undefined,
+				{
+					workflow,
+					runExecutionData: null,
+					runIndex: 0,
+					itemIndex: 0,
+					node,
+					connectionInputData: [],
+				},
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				echo: 'eu',
+				password: 'instance-secret',
+			});
+		});
+
+		test('should not expose overwrite-provided expirable fields to $self', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ url: '=https://example.com/{{ $self.token }}' },
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				token: 'instance-token',
+			});
+		});
+
+		test('should not expose overwrite-provided secret fields to $self when resolving each field separately', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ ...storedData, optional: '={{$workflow.id}}' },
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).not.toHaveProperty('optional');
+			expect(result).toMatchObject({
+				url: 'https://example.com/',
+				echo: 'eu',
+				password: 'instance-secret',
+			});
+		});
+
+		test('should not expose an overwrite-provided OAuth2 private key to $self', async () => {
+			const oAuth2Api = new OAuth2Api();
+			const childType: ICredentialType = {
+				name: 'childOAuth2Api',
+				displayName: 'Child OAuth2 API',
+				extends: ['oAuth2Api'],
+				properties: [],
+			};
+			mockNodesAndCredentials.getCredential
+				.calledWith(oAuth2Api.name)
+				.mockReturnValue({ type: oAuth2Api, sourcePath: '' });
+			mockNodesAndCredentials.getCredential
+				.calledWith(childType.name)
+				.mockReturnValue({ type: childType, sourcePath: '' });
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => ({
+				...data,
+				privateKey: 'instance-private-key',
+			}));
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ authUrl: '=https://example.com/{{ $self.privateKey }}' },
+				childType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				authUrl: 'https://example.com/',
+				privateKey: 'instance-private-key',
+			});
+		});
+
+		test('should expose a user-stored secret field to $self', async () => {
+			const result = await buildHelper().applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ ...storedData, password: 'user-secret' },
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				url: 'https://example.com/user-secret',
+				password: 'user-secret',
 			});
 		});
 	});
@@ -1088,6 +1375,83 @@ describe('CredentialsHelper', () => {
 			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
 		});
 
+		describe('managed app version of the first token', () => {
+			const nodeCredentials: INodeCredentialsDetails = { id: 'cred-1', name: 'Managed' };
+			const newToken = { oauthTokenData: { access_token: 'token' } };
+
+			const save = async (
+				storedData: Record<string, unknown>,
+				overwriteVersion?: number,
+				supportsManagedAuth = true,
+			) => {
+				const credentialsOverwrites = mock<CredentialsOverwrites>();
+				credentialsOverwrites.supportsManagedAuth.mockReturnValue(supportsManagedAuth);
+				credentialsOverwrites.getNewConnectionVersion.mockReturnValue(overwriteVersion);
+				const helper = new CredentialsHelper(
+					new CredentialTypes(mockNodesAndCredentials),
+					credentialsOverwrites,
+					credentialsRepository,
+					dynamicCredentialProxy,
+					secretsProviderRepository,
+					licenseState,
+					externalSecretsConfig,
+					mock<AiGatewayService>(),
+					policyEnforcementService,
+				);
+				credentialsRepository.update.mockClear();
+				credentialsRepository.findOneByOrFail.mockResolvedValue({
+					id: 'cred-1',
+					name: 'Managed',
+					type: 'oAuth2Api',
+					data: cipher.encryptWithInstanceKey(storedData),
+					usageScope: 'project',
+				} as CredentialsEntity);
+
+				await helper.updateCredentialsOauthTokenData(
+					nodeCredentials,
+					'oAuth2Api',
+					newToken,
+					{} as IWorkflowExecuteAdditionalData,
+				);
+
+				const saved = credentialsRepository.update.mock.calls[0][1].data as string;
+				return { saved: JSON.parse(cipher.decryptWithInstanceKey(saved)), credentialsOverwrites };
+			};
+
+			test('stores the default app version with the first token of a managed credential', async () => {
+				const { saved } = await save({ clientId: '', clientSecret: '' }, 2);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token', n8n_managed_version: 2 });
+			});
+
+			test('does not store a version for a credential with its own client', async () => {
+				const { saved } = await save({ clientId: 'own', clientSecret: 'own' }, undefined);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+			});
+
+			test('does not read the stored data for a type without an overwrite', async () => {
+				const { saved, credentialsOverwrites } = await save(
+					{ clientId: '', clientSecret: '' },
+					undefined,
+					false,
+				);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+				expect(credentialsOverwrites.getNewConnectionVersion).not.toHaveBeenCalled();
+			});
+
+			test('does not add a version when the credential already holds a token', async () => {
+				const { saved, credentialsOverwrites } = await save(
+					{ clientId: '', clientSecret: '', oauthTokenData: { access_token: 'old' } },
+					2,
+				);
+
+				expect(saved.oauthTokenData).toEqual({ access_token: 'token' });
+				expect(credentialsOverwrites.getNewConnectionVersion).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('dynamic credential resolution', () => {
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: 'cred-789',
@@ -1332,6 +1696,129 @@ describe('CredentialsHelper', () => {
 				const parsedData = JSON.parse(updatedData);
 				expect(parsedData.oauthTokenData.access_token).toBe('new-token');
 			});
+		});
+	});
+
+	describe('updateCredentialsOauthTokenData after the credential was read', () => {
+		const nodeCredentials: INodeCredentialsDetails = { id: 'cred-cas', name: 'Acme OAuth2' };
+		const additionalData = {} as IWorkflowExecuteAdditionalData;
+		const mintedToken = { access_token: 'tok-for-app-one', token_type: 'bearer' };
+
+		const storedRow = (data: ICredentialDataDecryptedObject) =>
+			({
+				id: 'cred-cas',
+				name: 'Acme OAuth2',
+				type: 'oAuth2Api',
+				data: cipher.encryptWithInstanceKey(data),
+				isResolvable: false,
+				usageScope: 'project',
+			}) as CredentialsEntity;
+
+		/** Reads the credential the way an execution does, then mints a token into that object. */
+		async function readAndMint(row: CredentialsEntity) {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(row);
+			const decrypted = await credentialsHelper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'oAuth2Api',
+				'internal',
+				undefined,
+				true,
+			);
+			decrypted.oauthTokenData = mintedToken;
+			return decrypted;
+		}
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			credentialsRepository.updateDataIfUnchanged.mockResolvedValue(true);
+		});
+
+		test('writes the token only while the row still holds the ciphertext that was read', async () => {
+			const row = storedRow({ grantType: 'clientCredentials', clientId: 'app-one' });
+			const decrypted = await readAndMint(row);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+
+			expect(credentialsRepository.updateDataIfUnchanged).toHaveBeenCalledExactlyOnceWith(
+				'cred-cas',
+				'oAuth2Api',
+				row.data,
+				expect.any(String),
+			);
+			expect(credentialsRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('drops a token minted for a client that a save replaced in the meantime', async () => {
+			const decrypted = await readAndMint(
+				storedRow({ grantType: 'clientCredentials', clientId: 'app-one' }),
+			);
+			// The user saved a new client after the read, so the row now holds other ciphertext.
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				storedRow({ grantType: 'clientCredentials', clientId: 'app-two' }),
+			);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+
+			expect(credentialsRepository.updateDataIfUnchanged).not.toHaveBeenCalled();
+			expect(credentialsRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('compares a later write in the same execution against the ciphertext it wrote', async () => {
+			const row = storedRow({ grantType: 'clientCredentials', clientId: 'app-one' });
+			const decrypted = await readAndMint(row);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+			const [, , , writtenData] = credentialsRepository.updateDataIfUnchanged.mock.calls[0];
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...row,
+				data: writtenData,
+			} as CredentialsEntity);
+
+			decrypted.oauthTokenData = { ...mintedToken, access_token: 'tok-for-app-one-refreshed' };
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+
+			expect(credentialsRepository.updateDataIfUnchanged).toHaveBeenCalledTimes(2);
+			expect(credentialsRepository.updateDataIfUnchanged.mock.calls[1][2]).toBe(writtenData);
+		});
+
+		test('keeps the unconditional write for token data that was not read through getDecrypted', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				storedRow({ grantType: 'clientCredentials', clientId: 'app-one' }),
+			);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				{ oauthTokenData: mintedToken },
+				additionalData,
+			);
+
+			expect(credentialsRepository.update).toHaveBeenCalledExactlyOnceWith(
+				{ id: 'cred-cas', type: 'oAuth2Api' },
+				{ data: expect.any(String), updatedAt: expect.any(Date) },
+			);
+			expect(credentialsRepository.updateDataIfUnchanged).not.toHaveBeenCalled();
 		});
 	});
 
@@ -3002,7 +3489,7 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
-	describe('getDecrypted - credentialDecrypt policy enforcement', () => {
+	describe('getDecrypted', () => {
 		const nodeCredentials: INodeCredentialsDetails = {
 			id: 'cred-policy',
 			name: 'Policy Test Credential',
@@ -3016,6 +3503,19 @@ describe('CredentialsHelper', () => {
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
+
+		const executeDataFor = (nodeType: string): IExecuteData => ({
+			node: {
+				id: nodeType,
+				name: nodeType,
+				type: nodeType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			data: {},
+			source: null,
+		});
 
 		let helper: CredentialsHelper;
 
@@ -3036,103 +3536,228 @@ describe('CredentialsHelper', () => {
 			);
 		});
 
-		test('calls enforceCredentialDecrypt with the credential, consumer and project context', async () => {
-			const executeData = {
-				node: {
-					name: 'Slack1',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
+		describe('managed credential access', () => {
+			const useManagedCredential = (type: string) => {
+				credentialsRepository.findOneByOrFail.mockResolvedValue(
+					mock<CredentialsEntity>({
+						...credentialEntity,
+						type,
+						isManaged: true,
+					}),
+				);
+			};
+
+			test.each([
+				['openAiApi', 'n8n-nodes-base.httpRequest'],
+				['slackApi', 'n8n-nodes-base.httpRequest'],
+			])(
+				'does not resolve managed %s credentials for full-access nodes',
+				async (credentialType, nodeType) => {
+					useManagedCredential(credentialType);
+
+					await expect(
+						helper.getDecrypted(
+							mock<IWorkflowExecuteAdditionalData>(),
+							nodeCredentials,
+							credentialType,
+							'manual',
+							executeDataFor(nodeType),
+							true,
+						),
+					).rejects.toThrow('Managed credentials are not supported by this node');
+					expect(policyEnforcementService.enforceCredentialDecrypt).not.toHaveBeenCalled();
 				},
-				data: {},
-				source: null,
-			} as IExecuteData;
-
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' });
-
-			await helper.getDecrypted(
-				additionalData,
-				nodeCredentials,
-				'testApi',
-				'manual',
-				executeData,
-				true,
 			);
 
-			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith({
-				credentialType: 'testApi',
-				credentialId: 'cred-policy',
-				consumer: { nodeType: 'n8n-nodes-base.slack' },
-				projectId: 'proj-1',
+			test.each([
+				['managed credentials in regular nodes', 'slackApi', 'n8n-nodes-base.slack'],
+				['managed OpenAI credentials in regular nodes', 'openAiApi', 'n8n-nodes-base.openAi'],
+			])('resolves %s', async (_scenario, credentialType, nodeType) => {
+				useManagedCredential(credentialType);
+
+				const result = await helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>({
+						projectId: 'proj-1',
+						executionId: undefined,
+						userId: undefined,
+					}),
+					nodeCredentials,
+					credentialType,
+					'manual',
+					executeDataFor(nodeType),
+					true,
+				);
+
+				expect(result).toEqual({ apiKey: 'test' });
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					{
+						credentialType,
+						credentialId: 'cred-policy',
+						consumer: { nodeType },
+						projectId: 'proj-1',
+					},
+					{ kind: 'system', reason: 'execution' },
+				);
 			});
 		});
 
-		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: undefined });
+		describe('credentialDecrypt policy enforcement', () => {
+			test('calls enforceCredentialDecrypt with the credential, consumer and project context', async () => {
+				const executeData = {
+					node: {
+						name: 'Slack1',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					data: {},
+					source: null,
+				} as IExecuteData;
 
-			await helper.getDecrypted(
-				additionalData,
-				nodeCredentials,
-				'testApi',
-				'manual',
-				undefined,
-				true,
-			);
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: 'proj-1',
+					executionId: 'exec-1',
+					userId: 'user-1',
+				});
 
-			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ consumer: null, projectId: null }),
-			);
-		});
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'manual',
+					executeData,
+					true,
+				);
 
-		test('resolves the credential before enforcing the policy check', async () => {
-			const callOrder: string[] = [];
-			credentialsRepository.findOneByOrFail.mockImplementation(async () => {
-				callOrder.push('findOneByOrFail');
-				return credentialEntity;
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					{
+						credentialType: 'testApi',
+						credentialId: 'cred-policy',
+						consumer: { nodeType: 'n8n-nodes-base.slack' },
+						projectId: 'proj-1',
+					},
+					{ kind: 'system', reason: 'execution', executionId: 'exec-1' },
+				);
 			});
-			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async () => {
-				callOrder.push('enforceCredentialDecrypt');
-				return await mock();
+
+			test('names the user when the decrypt is outside a run, e.g. an OAuth flow', async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: undefined,
+					executionId: undefined,
+					userId: 'user-1',
+				});
+
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'internal',
+					undefined,
+					true,
+				);
+
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					expect.anything(),
+					{ kind: 'user', user: { id: 'user-1' } },
+				);
 			});
 
-			await helper.getDecrypted(
-				mock<IWorkflowExecuteAdditionalData>(),
-				nodeCredentials,
-				'testApi',
-				'manual',
-				undefined,
-				true,
-			);
+			test('uses the actor the caller names over the derived one', async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: undefined,
+					executionId: undefined,
+					userId: undefined,
+				});
 
-			expect(callOrder).toEqual(['findOneByOrFail', 'enforceCredentialDecrypt']);
-		});
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'internal',
+					undefined,
+					true,
+					undefined,
+					{ actor: { kind: 'system', reason: 'log-streaming' } },
+				);
 
-		test('blocks decryption when the policy check throws', async () => {
-			const violation = new Error('blocked by policy');
-			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValueOnce(violation);
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					expect.anything(),
+					{ kind: 'system', reason: 'log-streaming' },
+				);
+			});
 
-			await expect(
-				helper.getDecrypted(
+			test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: undefined,
+					executionId: undefined,
+					userId: undefined,
+				});
+
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'manual',
+					undefined,
+					true,
+				);
+
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ consumer: null, projectId: null }),
+					{ kind: 'system', reason: 'execution' },
+				);
+			});
+
+			test('resolves the credential before enforcing the policy check', async () => {
+				const callOrder: string[] = [];
+				credentialsRepository.findOneByOrFail.mockImplementation(async () => {
+					callOrder.push('findOneByOrFail');
+					return credentialEntity;
+				});
+				policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async () => {
+					callOrder.push('enforceCredentialDecrypt');
+					return await mock();
+				});
+
+				await helper.getDecrypted(
 					mock<IWorkflowExecuteAdditionalData>(),
 					nodeCredentials,
 					'testApi',
 					'manual',
-				),
-			).rejects.toThrow(violation);
-		});
+					undefined,
+					true,
+				);
 
-		test('decryption behavior is unchanged when the policy check clears', async () => {
-			const result = await helper.getDecrypted(
-				mock<IWorkflowExecuteAdditionalData>(),
-				nodeCredentials,
-				'testApi',
-				'manual',
-				undefined,
-				true,
-			);
+				expect(callOrder).toEqual(['findOneByOrFail', 'enforceCredentialDecrypt']);
+			});
 
-			expect(result).toEqual({ apiKey: 'test' });
+			test('blocks decryption when the policy check throws', async () => {
+				const violation = new Error('blocked by policy');
+				policyEnforcementService.enforceCredentialDecrypt.mockRejectedValueOnce(violation);
+
+				await expect(
+					helper.getDecrypted(
+						mock<IWorkflowExecuteAdditionalData>(),
+						nodeCredentials,
+						'testApi',
+						'manual',
+					),
+				).rejects.toThrow(violation);
+			});
+
+			test('decryption behavior is unchanged when the policy check clears', async () => {
+				const result = await helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>(),
+					nodeCredentials,
+					'testApi',
+					'manual',
+					undefined,
+					true,
+				);
+
+				expect(result).toEqual({ apiKey: 'test' });
+			});
 		});
 	});
 });

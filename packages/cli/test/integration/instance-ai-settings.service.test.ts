@@ -173,11 +173,14 @@ describe('InstanceAiSettingsService (integration)', () => {
 		);
 
 		// A real clearance, so the row is protected by its usage scope alone, not by the seal.
-		const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave({
-			credential: { id: workflowCredential.id, type: workflowCredential.type },
-			storedCredential: { id: workflowCredential.id, type: workflowCredential.type },
-			projectId: null,
-		});
+		const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave(
+			{
+				credential: { id: workflowCredential.id, type: workflowCredential.type },
+				storedCredential: { id: workflowCredential.id, type: workflowCredential.type },
+				projectId: null,
+			},
+			{ kind: 'system', reason: 'integration' },
+		);
 
 		const updated = await credentialsRepository.updateInstanceCredential(
 			workflowCredential.id,

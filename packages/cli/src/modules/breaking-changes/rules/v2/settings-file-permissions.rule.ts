@@ -21,7 +21,7 @@ export class SettingsFilePermissionsRule implements IBreakingChangeInstanceRule 
 			description:
 				'n8n now enforces stricter permissions on configuration files for improved security',
 			category: BreakingChangeCategory.infrastructure,
-			severity: 'low',
+			impact: 'behaviorChanges',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#enforce-settings-file-permissions',
 		};

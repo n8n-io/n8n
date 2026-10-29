@@ -12,7 +12,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+vi.mock('../utils/browserUseSupport', () => ({
 	isBrowserUseSupportedForBrowser: isBrowserSupported,
 }));
 

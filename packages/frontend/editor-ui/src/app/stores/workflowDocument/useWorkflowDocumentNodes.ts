@@ -10,7 +10,6 @@ import {
 import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import type {
-	INode,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeIssueData,
@@ -575,31 +574,30 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		type: string;
 	}) {
 		nodes.value.forEach((node: INodeUi) => {
-			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
-			if (!nodeCredentials?.[data.type]) {
+			const nodeCredentialDetails: INodeCredentialsDetails | string | undefined =
+				node.credentials?.[data.type];
+			if (!nodeCredentialDetails) {
 				return;
 			}
 
-			const nodeCredentialDetails: INodeCredentialsDetails | string = nodeCredentials[data.type];
-
-			if (
-				typeof nodeCredentialDetails === 'string' &&
-				nodeCredentialDetails === data.invalid.name
-			) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				return;
-			}
-
-			if (nodeCredentialDetails.id === null) {
-				if (nodeCredentialDetails.name === data.invalid.name) {
-					(node.credentials as INodeCredentials)[data.type] = data.credentials;
+			if (typeof nodeCredentialDetails === 'string') {
+				if (nodeCredentialDetails !== data.invalid.name) {
+					return;
 				}
+			} else if (nodeCredentialDetails.id === null) {
+				if (nodeCredentialDetails.name !== data.invalid.name) {
+					return;
+				}
+			} else if (nodeCredentialDetails.id !== data.invalid.id) {
 				return;
 			}
 
-			if (nodeCredentialDetails.id === data.invalid.id) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-			}
+			updateNodeProperties({
+				name: node.name,
+				properties: {
+					credentials: { ...node.credentials, [data.type]: data.credentials },
+				},
+			});
 		});
 	}
 

@@ -58,11 +58,17 @@ export type ComboboxProps = Omit<ComboboxRootProps<ComboboxValue>, 'dir' | 'open
 		contentClass?: string;
 		id?: string;
 		clearable?: boolean;
+		loading?: boolean;
 		teleported?: boolean;
 		portalTarget?: string | HTMLElement;
 	};
 
-export type ComboboxEmits = ComboboxRootEmits<ComboboxValue | ComboboxValue[] | undefined>;
+export type ComboboxEmits = ComboboxRootEmits<ComboboxValue | ComboboxValue[] | undefined> & {
+	/**
+	 * Text in the combobox input. Fires as the user types and when a selection resets that text.
+	 */
+	'update:searchTerm': [value: string];
+};
 
 export type ComboboxSizes = InputSize;
 

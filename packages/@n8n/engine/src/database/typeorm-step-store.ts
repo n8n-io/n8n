@@ -254,6 +254,10 @@ export class TypeOrmStepStore implements StepStore {
 		);
 	}
 
+	async cancelStep(id: string): Promise<boolean> {
+		return await this.transition(id, 'running', 'cancelled');
+	}
+
 	async failStep(id: string, error: StepError): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
@@ -358,6 +362,10 @@ export class TypeOrmStepStore implements StepStore {
 			where: { executionId },
 			order: { nodeId: 'ASC', iteration: 'ASC' },
 		});
+	}
+
+	async loadWaitingSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({ where: { executionId, status: 'waiting' } });
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {

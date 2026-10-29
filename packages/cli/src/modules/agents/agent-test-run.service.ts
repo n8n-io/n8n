@@ -14,8 +14,11 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	AgentExecutionOrchestratorService,
@@ -25,6 +28,7 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 
@@ -46,6 +50,7 @@ export type PrepareDraftRunResult =
 interface DraftRunState {
 	response: string;
 	suspensions: AgentTestRunSuspension[];
+	maxIterations: boolean;
 	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
 	observerFailed: boolean;
 	observerError?: unknown;
@@ -53,7 +58,7 @@ interface DraftRunState {
 
 interface DraftRunConsumptionOptions {
 	errorMode?: 'throw' | 'forward';
-	onChunk?: (chunk: StreamChunk) => void;
+	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
 }
 
 export interface ExecutePreparedDraftRunInput
@@ -63,9 +68,11 @@ export interface ExecutePreparedDraftRunInput
 }
 
 export interface ResumePreparedDraftRunInput
-	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion'>,
+	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion' | 'chatSurface'>,
 		DraftRunConsumptionOptions {
 	user: User;
+	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
+	chatSurface?: 'preview';
 	initialResponse?: string;
 }
 
@@ -75,10 +82,16 @@ type ExecuteDraftRunInput = PrepareDraftRunInput &
 interface ResumeDraftRunInput
 	extends Omit<
 		ResumeForChatConfig,
-		'expectedMemory' | 'integrationType' | 'usePublishedVersion' | 'onExecutionRecorded'
+		| 'expectedMemory'
+		| 'integrationType'
+		| 'usePublishedVersion'
+		| 'onExecutionRecorded'
+		| 'chatSurface'
 	> {
 	sessionId: string;
 	user: User;
+	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
+	chatSurface?: 'preview';
 	response: string;
 }
 
@@ -109,6 +122,8 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 export type PreparedDraftRunResult = {
 	response: string;
 	executionId: string;
+	/** The run stopped on the iteration cap. It did not finish its work. */
+	maxIterations?: true;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
@@ -176,6 +191,7 @@ export class AgentTestRunService {
 		newSession,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
+		await this.assertCanRunDraft(user, projectId);
 		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
 		if (sessionId) {
 			if (
@@ -200,9 +216,21 @@ export class AgentTestRunService {
 
 		return {
 			status: 'ready',
-			sessionId: sessionId ?? randomUUID(),
+			// An empty id means a new session, like an omitted one.
+			sessionId: sessionId || randomUUID(),
 			sessionMode,
 		};
+	}
+
+	/**
+	 * A draft is unpublished config, so running it needs `agent:read` on top of
+	 * the `agent:execute` the routes check. A chat-only member reaches published
+	 * agents through n8n Chat instead.
+	 */
+	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
+		}
 	}
 
 	async executePreparedDraftRun({
@@ -235,6 +263,7 @@ export class AgentTestRunService {
 		onExecutionRecorded,
 		...execution
 	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
+		await this.assertCanRunDraft(execution.user, execution.projectId);
 		let executionId: string | undefined;
 		const stream = this.agentExecutionOrchestratorService.resumeForChat({
 			...execution,
@@ -278,7 +307,7 @@ export class AgentTestRunService {
 				input.projectId,
 				input.agentId,
 				input.user.id,
-				{ previewChat: input.previewChat, sessionMode: 'existing' },
+				{ previewChat: input.chatSurface === 'preview', sessionMode: 'existing' },
 			))
 		) {
 			return { status: 'session_not_found' };
@@ -351,7 +380,7 @@ export class AgentTestRunService {
 	}
 
 	private async collectDraftRun(
-		stream: AsyncIterable<StreamChunk>,
+		stream: AsyncIterable<AgentExecutionStreamChunk>,
 		initialResponse: string,
 		getExecutionId: () => string | undefined,
 		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
@@ -359,6 +388,7 @@ export class AgentTestRunService {
 		const state: DraftRunState = {
 			response: initialResponse,
 			suspensions: [],
+			maxIterations: false,
 			observerFailed: false,
 		};
 		try {
@@ -375,7 +405,11 @@ export class AgentTestRunService {
 		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
-		const metadata = { response: state.response, executionId };
+		const metadata = {
+			response: state.response,
+			executionId,
+			...(state.maxIterations ? { maxIterations: true as const } : {}),
+		};
 		if (state.suspensions.length > 0) {
 			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
 		}
@@ -417,7 +451,7 @@ export class AgentTestRunService {
 	}
 
 	private observeDraftChunk(
-		chunk: StreamChunk,
+		chunk: AgentExecutionStreamChunk,
 		onChunk: DraftRunConsumptionOptions['onChunk'],
 		state: DraftRunState,
 	): void {
@@ -431,7 +465,7 @@ export class AgentTestRunService {
 	}
 
 	private collectDraftChunk(
-		chunk: StreamChunk,
+		chunk: AgentExecutionStreamChunk,
 		errorMode: DraftRunConsumptionOptions['errorMode'],
 		state: DraftRunState,
 	): void {
@@ -442,6 +476,8 @@ export class AgentTestRunService {
 		if (state.errorChunk) return;
 		if (chunk.type === 'text-delta') {
 			state.response += chunk.delta;
+		} else if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
+			state.maxIterations = true;
 		} else if (chunk.type === 'tool-call-suspended') {
 			state.suspensions.push({
 				runId: chunk.runId,

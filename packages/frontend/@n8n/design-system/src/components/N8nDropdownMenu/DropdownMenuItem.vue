@@ -60,6 +60,10 @@ const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
+// True when the parent menu opened this sub-menu (keyboard: ArrowRight or Enter).
+// Pointer and chevron opens start inside this item and set internalSubMenuOpen first,
+// so the parent's prop never finds it closed.
+const subMenuOpenedByParent = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
 const subContentMaxHeight = ref<string>();
 
@@ -79,13 +83,13 @@ const hasChildren = computed(() => props.children && props.children.length > 0);
 const hasSubMenu = computed(() => hasChildren.value || props.loading || props.searchable);
 
 const handleSubMenuOpenChange = (open: boolean) => {
+	if (internalSubMenuOpen.value === open) return;
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
 };
 
 const closeSubMenu = () => {
-	internalSubMenuOpen.value = false;
-	emit('update:subMenuOpen', false);
+	handleSubMenuOpenChange(false);
 };
 
 const leadingProps = computed(() => ({
@@ -223,9 +227,9 @@ const handleResize = () => {
 watch(
 	() => props.subMenuOpen,
 	(newValue) => {
-		if (newValue !== undefined) {
-			internalSubMenuOpen.value = newValue;
-		}
+		if (newValue === undefined) return;
+		subMenuOpenedByParent.value = newValue && !internalSubMenuOpen.value;
+		internalSubMenuOpen.value = newValue;
 	},
 	{ immediate: true },
 );
@@ -325,27 +329,27 @@ onBeforeUnmount(() => {
 						:ui="trailingProps"
 					/>
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
 					/>
 				</span>
 				<span v-else-if="slots['item-trailing']" :class="$style['sub-indicator-action']">
 					<slot name="item-trailing" :item="props" :ui="trailingProps" />
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
 					/>
 				</span>
 				<Icon
 					v-else
-					icon="chevron-right"
+					icon="chevron-right-12"
 					:class="$style['sub-indicator']"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="12"
 				/>
 			</DropdownMenuSubTrigger>
 
@@ -371,6 +375,7 @@ onBeforeUnmount(() => {
 						:search-placeholder="searchPlaceholder"
 						:search-mode="searchMode"
 						:is-sub-menu="true"
+						:highlight-first-item-on-open="searchMode === 'external' && subMenuOpenedByParent"
 						@select="handleSelect"
 						@search="(term: string, itemId?: T) => emit('search', term, itemId ?? props.id)"
 						@close="closeSubMenu"
@@ -588,11 +593,11 @@ onBeforeUnmount(() => {
 	color: var(--text-color);
 
 	&:not([data-disabled]) {
-		&:hover,
+		cursor: pointer;
+
 		&[data-highlighted],
 		&[data-virtual-highlighted] {
 			background-color: var(--background--hover);
-			cursor: pointer;
 		}
 	}
 
@@ -602,7 +607,6 @@ onBeforeUnmount(() => {
 	}
 
 	&.destructive.destructive:not([data-disabled]) {
-		&:hover,
 		&[data-highlighted],
 		&[data-virtual-highlighted] {
 			.item-label.item-label {
@@ -617,10 +621,23 @@ onBeforeUnmount(() => {
 		}
 	}
 
+	// Searchable menus keep Reka focus on the row under the pointer.
+	// Hide that highlight when keyboard focus is on a different row.
 	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
-		&:hover,
 		&[data-highlighted] {
 			background-color: transparent;
+
+			&.destructive.destructive {
+				.item-label.item-label {
+					color: var(--text-color);
+				}
+
+				.icon.icon,
+				.item-check.item-check,
+				.sub-indicator.sub-indicator {
+					color: var(--color--text--tint-1) !important;
+				}
+			}
 		}
 	}
 }

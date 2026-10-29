@@ -61,6 +61,26 @@ describe('WorkflowFinderService', () => {
 				]),
 			);
 		});
+
+		it('also returns archived workflows when asked to', async () => {
+			const project = await createTeamProject('Target', owner);
+			const active = await createWorkflow({ name: 'Active' }, project);
+			const archived = await createWorkflow({ name: 'Archived', isArchived: true }, project);
+
+			const candidates = await workflowFinderService.findOwnedWorkflowRemovalCandidates(
+				project.id,
+				[active.id, archived.id],
+				{ includeArchived: true },
+			);
+
+			expect(candidates).toHaveLength(2);
+			expect(candidates).toEqual(
+				expect.arrayContaining([
+					{ id: active.id, name: 'Active', parentFolderId: null },
+					{ id: archived.id, name: 'Archived', parentFolderId: null },
+				]),
+			);
+		});
 	});
 
 	describe('findWorkflowHeadForUser', () => {
@@ -115,6 +135,62 @@ describe('WorkflowFinderService', () => {
 			]);
 
 			expect(head).toBeNull();
+		});
+	});
+
+	describe('findWorkflowsForUser', () => {
+		const createListingFixtures = async (projectName: string) => {
+			const project = await createTeamProject(projectName, owner);
+			const folder = await createFolder(project, { name: 'Listed' });
+
+			const [workflowInFolder, workflowInRoot] = await Promise.all([
+				createWorkflow({ parentFolder: folder }, project),
+				createWorkflow({}, project),
+			]);
+
+			return { folder, workflowInFolder, workflowInRoot };
+		};
+
+		it('loads each parent folder when asked for it', async () => {
+			const { folder, workflowInFolder, workflowInRoot } =
+				await createListingFixtures('Listing with folders');
+
+			const { workflows } = await workflowFinderService.findWorkflowsForUser(
+				owner,
+				['workflow:read'],
+				{ includeParentFolder: true },
+			);
+
+			expect(workflows).toHaveLength(2);
+
+			const folderedWorkflow = workflows.find((w) => w.id === workflowInFolder.id);
+			assert(folderedWorkflow, 'Expected to find workflow in folder');
+			expect(folderedWorkflow.parentFolder).toEqual(
+				expect.objectContaining({ id: folder.id, name: 'Listed' }),
+			);
+
+			const rootWorkflow = workflows.find((w) => w.id === workflowInRoot.id);
+			assert(rootWorkflow, 'Expected to find workflow in root');
+			expect(rootWorkflow.parentFolder).toBeNull();
+		});
+
+		it('does not load parent folders unless asked for them', async () => {
+			const { workflowInFolder, workflowInRoot } =
+				await createListingFixtures('Listing without folders');
+
+			const { workflows } = await workflowFinderService.findWorkflowsForUser(owner, [
+				'workflow:read',
+			]);
+
+			expect(workflows).toHaveLength(2);
+
+			const folderedWorkflow = workflows.find((w) => w.id === workflowInFolder.id);
+			assert(folderedWorkflow, 'Expected to find workflow in folder');
+			expect(folderedWorkflow.parentFolder).toBeUndefined();
+
+			const rootWorkflow = workflows.find((w) => w.id === workflowInRoot.id);
+			assert(rootWorkflow, 'Expected to find workflow in root');
+			expect(rootWorkflow.parentFolder).toBeUndefined();
 		});
 	});
 });

@@ -45,6 +45,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -430,6 +431,12 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
+		// With the default batch size of 1, this is the last line before a crash during registration
+		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowName: dbWorkflow.name,
+			workflowId: dbWorkflow.id,
+		});
+
 		try {
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,
@@ -540,7 +547,10 @@ export class ActiveWorkflowManager {
 		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ shouldPublish } = { shouldPublish: true },
+		{
+			shouldPublish = true,
+			actor = { kind: 'system', reason: 'activation' },
+		}: { shouldPublish?: boolean; actor?: PolicyActor } = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -554,21 +564,6 @@ export class ActiveWorkflowManager {
 
 		if (dbWorkflow.isArchived) {
 			this.logger.debug('Cannot publish archived Workflow', { workflowId: dbWorkflow.id });
-			return added;
-		}
-
-		if (this.instanceSettings.isMultiMain && shouldPublish) {
-			if (!dbWorkflow?.activeVersionId) {
-				throw new UnexpectedError('Active version ID not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-
-			void this.publisher.publishCommand({
-				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
-			});
-
 			return added;
 		}
 
@@ -601,11 +596,27 @@ export class ActiveWorkflowManager {
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.
-			await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
-				id: dbWorkflow.id,
-				name: dbWorkflow.name,
-				nodes,
-			});
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
+				actor,
+			);
+
+			// This check answers the caller. The leader checks again as `system` before it
+			// registers, so a check that depends on the actor can still refuse there.
+			if (this.instanceSettings.isMultiMain && shouldPublish) {
+				void this.publisher.publishCommand({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: {
+						workflowId,
+						activeVersionId: dbWorkflow.activeVersion.versionId,
+						activationMode,
+					},
+				});
+
+				return added;
+			}
 
 			workflow = new Workflow({
 				id: dbWorkflow.id,

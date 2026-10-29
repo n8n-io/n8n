@@ -1,4 +1,4 @@
-import type { DataSource } from '@n8n/typeorm';
+import type { DataSource, Repository } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { ExecutionNotFoundError } from '../../execution/execution-store';
 import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
+import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
 import { TypeOrmExecutionStore } from '../typeorm-execution-store';
@@ -43,6 +44,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: {},
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'stepResponse' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -58,6 +60,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(found.mode).toBe('production');
 		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
 		expect(found.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(found.responseExpectation).toEqual({ kind: 'stepResponse' });
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);
@@ -75,6 +78,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
 			finishedAt,
 		});
 		await repo.save(created);
@@ -110,6 +114,7 @@ describe('workflow_execution table (integration)', () => {
 			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -125,6 +130,8 @@ describe('workflow_execution table (integration)', () => {
 			graph: { nodes: [], edges: [] },
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
+			finishedAt: null,
 		});
 	});
 
@@ -155,6 +162,7 @@ describe('workflow_execution table (integration)', () => {
 				workflow: {},
 				triggerOutputs: null,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 				finishedAt: null,
 			}),
 		);
@@ -168,6 +176,7 @@ describe('workflow_execution table (integration)', () => {
 				workflow: {},
 				triggerOutputs: null,
 				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
 				finishedAt: new Date(),
 			}),
 		);
@@ -191,16 +200,17 @@ describe('workflow_execution table (integration)', () => {
 				graph: { nodes: [], edges: [] },
 				workflow: {},
 				triggerOutputs: null,
+				responseExpectation: { kind: 'none' },
 				finishedAt: null,
 			}),
 		);
 
 		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
 
-		expect(finished).toBe(true);
 		const row = await repo.findOneOrFail({ where: { id: created.id } });
 		expect(row.status).toBe('failed');
 		expect(row.finishedAt).toBeInstanceOf(Date);
+		expect(finished).toEqual({ finishedAt: row.finishedAt });
 	});
 
 	it.each<ExecutionStatus>(['completed', 'queued'])(
@@ -218,14 +228,47 @@ describe('workflow_execution table (integration)', () => {
 					graph: { nodes: [], edges: [] },
 					workflow: {},
 					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
 					finishedAt,
 				}),
 			);
 
 			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
 
-			expect(finished).toBe(false);
+			expect(finished).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id: created.id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
+	it.each<ExecutionStatus>(['queued', 'running', 'waiting'])(
+		'TypeOrmExecutionStore.cancelExecution ends a %j execution',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status, finishedAt: null });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe('cancelled');
+			expect(row.finishedAt).toBeInstanceOf(Date);
+			// the caller reports the time the row records, not a second reading of the clock
+			expect(cancelled).toEqual({ finishedAt: row.finishedAt });
+		},
+	);
+
+	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
+		'TypeOrmExecutionStore.cancelExecution leaves a %j execution alone',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
+			const { id } = await saveExecution(repo, { status, finishedAt });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			expect(cancelled).toBeNull();
+			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(status);
 			expect(row.finishedAt).toEqual(finishedAt);
 		},
@@ -245,6 +288,7 @@ describe('workflow_execution table (integration)', () => {
 					graph: { nodes: [], edges: [] },
 					workflow: {},
 					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
 					finishedAt: null,
 				}),
 			);
@@ -308,4 +352,64 @@ describe('workflow_execution table (integration)', () => {
 			expect(after.updatedAt).toEqual(before.updatedAt);
 		});
 	});
+
+	it('TypeOrmExecutionStore.createExecution stores seeded outputs by node and pass, read back by key', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const id = generateId();
+		await store.createExecution({
+			id,
+			workflowId: 'wf-5',
+			status: 'queued',
+			mode: 'manual',
+			graph: { nodes: [], edges: [], seeded: [] },
+			workflow: sampleWorkflow,
+			triggerOutputs: null,
+			seededSteps: {
+				a: [[[{ json: { pass: 0 } }]], [[{ json: { pass: 1 } }]]],
+				b: [[[{ json: { b: true } }]]],
+			},
+			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
+		});
+
+		// Only the keys asked for, and nothing for a key that was never seeded.
+		const outputs = await store.loadSeededOutputs(id, [
+			{ nodeId: 'a', iteration: 1 },
+			{ nodeId: 'b', iteration: 0 },
+			{ nodeId: 'c', iteration: 0 },
+		]);
+		expect(Object.fromEntries(outputs)).toEqual({
+			'a@1': [[{ json: { pass: 1 } }]],
+			'b@0': [[{ json: { b: true } }]],
+		});
+		expect(await store.loadSeededOutputs(id, [])).toEqual(new Map());
+
+		// The outputs go with the execution.
+		await dataSource.getRepository(WorkflowExecution).delete({ id });
+		const remaining = await dataSource
+			.getRepository(WorkflowSeededStep)
+			.createQueryBuilder('seeded')
+			.where('seeded.execution_id = :id', { id })
+			.getCount();
+		expect(remaining).toBe(0);
+	});
 });
+
+async function saveExecution(
+	repo: Repository<WorkflowExecution>,
+	fields: { status: ExecutionStatus; finishedAt: Date | null },
+): Promise<WorkflowExecution> {
+	return await repo.save(
+		repo.create({
+			id: generateId(),
+			workflowId: 'wf-7',
+			mode: 'production',
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: null,
+			...fields,
+		}),
+	);
+}

@@ -1,8 +1,9 @@
+import { TransactionRunner } from '@n8n/db';
 import { type ToolDescriptor } from '@n8n/agents';
 import {
-	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 	CUSTOM_TOOL_ID_REGEX,
+	type StoredAgentConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -10,14 +11,14 @@ import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentDefinitionService } from './agent-definition.service';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
@@ -29,10 +30,19 @@ export class AgentCustomToolsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly definitionService: AgentDefinitionService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
+
+	validateDescriptor(descriptor: ToolDescriptor): void {
+		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
+			throw new UserError(
+				`Custom tool name "${descriptor.name}" contains invalid characters. Only letters, numbers, and underscores are allowed.`,
+			);
+		}
+	}
 
 	/**
 	 * Validate and persist a custom tool for an agent.
@@ -54,11 +64,7 @@ export class AgentCustomToolsService {
 			'Agent not found',
 		);
 
-		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
-			throw new UserError(
-				`Custom tool name "${descriptor.name}" contains invalid characters. Only letters, numbers, and underscores are allowed.`,
-			);
-		}
+		this.validateDescriptor(descriptor);
 
 		const toolId = descriptor.name;
 		const nextEntry = { code, descriptor };
@@ -66,19 +72,14 @@ export class AgentCustomToolsService {
 			return { ok: true, id: toolId, descriptor, changed: false };
 		}
 
-		const previous = captureAgentMutation(entity);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 
 		entity.tools = {
 			...entity.tools,
 			[toolId]: nextEntry,
 		};
 
-		const saved = await this.saveToolChanges(entity, projectId, context);
-		if (options.recordTelemetry !== false) {
-			this.modificationTelemetry.record(
-				buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
-			);
-		}
+		await this.saveToolChanges(entity, skillRefs, projectId, context, options.recordTelemetry);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
@@ -102,7 +103,7 @@ export class AgentCustomToolsService {
 		);
 		if (!entity.tools?.[toolId]) return;
 
-		const previous = captureAgentMutation(entity);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 
 		const tools = { ...entity.tools };
 		delete tools[toolId];
@@ -114,16 +115,13 @@ export class AgentCustomToolsService {
 			);
 		}
 
-		const saved = await this.saveToolChanges(entity, projectId, context);
-		this.modificationTelemetry.record(
-			buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
-		);
+		await this.saveToolChanges(entity, skillRefs, projectId, context);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
 	}
 
 	private getMissingCustomToolIds(
-		config: AgentJsonConfig | null,
+		config: StoredAgentConfig | null,
 		tools: AgentToolEntries,
 	): string[] {
 		const refs = (config?.tools ?? []).filter(
@@ -133,6 +131,7 @@ export class AgentCustomToolsService {
 		const missing: string[] = [];
 
 		for (const ref of refs) {
+			if (ref.enabled === false) continue;
 			if (seen.has(ref.id)) continue;
 			seen.add(ref.id);
 			if (!tools[ref.id]) missing.push(ref.id);
@@ -142,7 +141,7 @@ export class AgentCustomToolsService {
 	}
 
 	snapshotConfiguredTools(
-		config: AgentJsonConfig | null,
+		config: StoredAgentConfig | null,
 		tools: AgentToolEntries,
 	): AgentToolEntries | null {
 		if (!config) return null;
@@ -159,18 +158,24 @@ export class AgentCustomToolsService {
 		}
 		return snapshot;
 	}
+	/** Custom tool writes keep the skill refs: the fenced save keeps them as they are. */
 	private async saveToolChanges(
 		entity: Agent,
+		skillRefs: AgentSkillRefs,
 		projectId: string,
 		context: AgentMutationTelemetryContext,
-	): Promise<Agent> {
+		recordTelemetry = true,
+	): Promise<void> {
 		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(entity.id);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.agentUpdateBroadcaster.notify(
-			{ projectId, agentId: entity.id, source: context.modifiedBy },
+		const saved = await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
+			await this.definitionService.captureVersion(entity, context.user, ctx, context.modifiedBy);
+			return entity;
+		});
+		await this.saveCompletion.bodySaved(
+			buildAgentMutationEvent(saved, skillRefs, projectId, context, ['tools']),
 			context.pushRef,
+			recordTelemetry,
 		);
-		return saved;
 	}
 }

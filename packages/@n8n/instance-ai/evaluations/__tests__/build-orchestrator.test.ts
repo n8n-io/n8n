@@ -644,6 +644,45 @@ describe('createBuildOrchestrator', () => {
 		expect(verdicts?.[0].attribution).toBe('framework_issue');
 	});
 
+	it("fails, without judging, the expectations of a build that read another build's workflow", async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const building = vi.fn().mockResolvedValue(okBuild({ foreignWorkflowReads: ['other-wf'] }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['builds the digest'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts?.[0]).toMatchObject({ pass: false, attribution: 'framework_issue' });
+		// Counted, like the row: only `incomplete` keeps a verdict out of the pass rate.
+		expect(verdicts?.[0].incomplete).toBeFalsy();
+		expect(verdicts?.[0].reason).toContain('another build');
+	});
+
+	it("keeps a timed-out build that read another build's workflow neutral", async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const timeout = { kind: 'turn' as const, turn: 1, elapsedMs: 900_001 };
+		const building = vi
+			.fn()
+			.mockResolvedValue(okBuild({ foreignWorkflowReads: ['other-wf'], timeout }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['builds the digest'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts?.[0]).toMatchObject({ incomplete: true, attribution: 'timeout' });
+	});
+
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const lane = makeLane(1, tracedBuild);
@@ -778,6 +817,86 @@ describe('expectation judging context', () => {
 	});
 });
 
+describe('a build a budget ended', () => {
+	// Same rule as the iteration's scenario rows (`attachExpectations`): kept for
+	// the record, counted neither way.
+	const timeout = { kind: 'turn' as const, turn: 2, elapsedMs: 900_001 };
+
+	it('keeps the judged verdicts but stamps them incomplete and timed out', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const deps = makeDeps(
+			[
+				makeLane(
+					1,
+					vi
+						.fn()
+						.mockResolvedValue(okBuild({ threadId: 'thread-1', transcript: [] as never, timeout })),
+				),
+			],
+			{
+				testCaseByFileSlug: new Map([
+					['case-a', baseCase({ outcomeExpectations: ['sends a digest'] })],
+				]),
+			},
+		);
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		// The judge runs inside the stored promise; settle it before counting calls.
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledTimes(1);
+		expect(verdicts).toEqual([
+			expect.objectContaining({
+				expectation: 'sends a digest',
+				pass: true,
+				incomplete: true,
+				attribution: 'timeout',
+			}),
+		]);
+	});
+
+	it('stamps the verdicts of a build whose prior-run staging also failed, matching its row', async () => {
+		// The fast path for a missing premise returns before `attribute`; the
+		// iteration's scenario row is re-stamped `timeout`, so the verdicts must be too.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const build = okBuild({ priorRunFailed: 'sEeDeDwF1234567a: fetch failed', timeout });
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['reads the failed execution'] })],
+			]),
+		});
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toEqual([
+			expect.objectContaining({ pass: false, incomplete: true, attribution: 'timeout' }),
+		]);
+	});
+
+	it('stamps the unjudged verdicts of a build that saved nothing the same way, not as infra', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const build: BuildResult = {
+			...failedBuild('Run timed out after 900001ms (turn budget, user turn 2)'),
+			timeout,
+		};
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ outcomeExpectations: ['sends a digest'] })],
+			]),
+		});
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toEqual([
+			expect.objectContaining({ pass: false, incomplete: true, attribution: 'timeout' }),
+		]);
+	});
+});
+
 describe('credential-setup check wiring', () => {
 	// Call counts between tests are reset by the file-level afterEach.
 
@@ -826,6 +945,31 @@ describe('credential-setup check wiring', () => {
 		await orchestrator.getOrBuild(0, 'case-a');
 
 		expect(runCredentialSetupChecks).not.toHaveBeenCalled();
+	});
+
+	it('stamps the deterministic verdicts of a build a budget ended as neutral too', async () => {
+		// Measurements, so they skip `attribute`; without this stamp a timed-out
+		// iteration would still score on them.
+		vi.mocked(runCredentialSetupChecks).mockResolvedValueOnce([
+			{ expectation: 'the key never appears in the transcript', pass: false, reason: 'leaked' },
+		] as never);
+		const build: BuildResult = {
+			...credentialSetupBuild(),
+			timeout: { kind: 'turn', turn: 1, elapsedMs: 900_001 },
+		};
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))]);
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toEqual([
+			expect.objectContaining({
+				expectation: 'the key never appears in the transcript',
+				pass: false,
+				incomplete: true,
+				attribution: 'timeout',
+			}),
+		]);
 	});
 });
 

@@ -24,7 +24,7 @@ export class ChatHubDeprecatedRule implements IBreakingChangeInstanceRule {
 			description:
 				'In v3, the chat hub module is off by default and the Chat section disappears from the UI. You can turn it on again with the N8N_ENABLED_MODULES environment variable, but the feature is removed in v4.',
 			category: BreakingChangeCategory.instance,
-			severity: 'medium',
+			impact: 'capabilityRemoved',
 			documentationUrl: 'https://docs.n8n.io/changelog/v30-breaking-changes',
 		};
 	}

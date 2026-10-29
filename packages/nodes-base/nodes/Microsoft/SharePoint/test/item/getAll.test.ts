@@ -12,7 +12,7 @@ describe('Microsoft SharePoint Node', () => {
 			mocks: [
 				{
 					method: 'get',
-					path: '/sites/site1/lists/list1/items?%24select%5B0%5D=contentType&%24select%5B1%5D=createdDateTime&%24select%5B2%5D=createdBy&%24select%5B3%5D=fields&%24select%5B4%5D=id&%24select%5B5%5D=lastModifiedDateTime&%24select%5B6%5D=lastModifiedBy&%24select%5B7%5D=parentReference&%24select%5B8%5D=webUrl',
+					path: '/sites/site1/lists/list1/items?%24filter=fields%2FTitle%20eq%20%27item1%27&%24expand=fields&%24select%5B0%5D=contentType&%24select%5B1%5D=createdDateTime&%24select%5B2%5D=createdBy&%24select%5B3%5D=fields&%24select%5B4%5D=id&%24select%5B5%5D=lastModifiedDateTime&%24select%5B6%5D=lastModifiedBy&%24select%5B7%5D=parentReference&%24select%5B8%5D=webUrl',
 					statusCode: 200,
 					responseBody: {
 						value: [

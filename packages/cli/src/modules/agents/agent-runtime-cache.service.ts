@@ -17,17 +17,17 @@ import {
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -45,6 +45,7 @@ export interface GetRuntimeParams {
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/** Disable background-job tools and wake hints for task-triggered runtimes. */
 	allowBackgroundTasks?: boolean;
+	attributionUserId?: string;
 	/**
 	 * Build for the in-app preview chat, which gets an extra instruction saying
 	 * the agent cannot change its own setup. It makes the runtime unusable for
@@ -65,10 +66,11 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
-	 * Grants baked into the runtime's tool list by `filterToolsForUser`.
+	 * Grants baked into the runtime's tool list and draft integrations at build.
 	 * The sliding TTL can keep an active runtime alive indefinitely, so these
 	 * are re-checked on cache hits (debounced) rather than waiting for
-	 * eviction. Absent when no user-gated tools made it into the runtime.
+	 * eviction. Absent when no user-gated tool or integration made it into the
+	 * runtime.
 	 */
 	userToolAccessSnapshot?: UserToolAccessSnapshot;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
@@ -121,6 +123,7 @@ export class AgentRuntimeCacheService {
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -132,6 +135,7 @@ export class AgentRuntimeCacheService {
 		if (params.previewChat) parts.push('preview');
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
+		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -309,6 +313,7 @@ export class AgentRuntimeCacheService {
 			sandboxPrincipalHash,
 			allowBackgroundTasks,
 			previewChat,
+			attributionUserId,
 		} = params;
 
 		const agentEntity = await getAgentOrThrow(
@@ -318,9 +323,12 @@ export class AgentRuntimeCacheService {
 			`Agent ${agentId} not found`,
 		);
 
-		const agentData: Agent = usePublishedVersion
-			? getPublishedAgentSnapshot(agentEntity)
-			: agentEntity;
+		const runSource = await resolveAgentRunSource(
+			agentEntity,
+			usePublishedVersion === true,
+			this.agentSkillRefs,
+			{},
+		);
 
 		// `user` here is whatever `computeRuntimeCacheKey` above already keyed
 		// this build on — undefined for published/integration runs, set for
@@ -335,7 +343,7 @@ export class AgentRuntimeCacheService {
 			agentId,
 		);
 		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-			agentData,
+			runSource,
 			credentialProvider,
 			usePublishedVersion ? 'production' : 'test',
 			integrationType,
@@ -343,13 +351,14 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks },
+			{ previewChat, allowBackgroundTasks, attributionUserId },
 		);
 		const {
 			agent: agentInstance,
 			toolRegistry,
 			mcpServerAttributions,
 			userToolAccessSnapshot,
+			budget,
 		} = await reconstruction;
 
 		return {
@@ -357,8 +366,9 @@ export class AgentRuntimeCacheService {
 			agentId,
 			toolRegistry,
 			mcpServerAttributions,
+			...(budget !== undefined ? { budget } : {}),
 			projectId,
-			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 			toolAccessCheckedAt: Date.now(),
 		};

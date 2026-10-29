@@ -1,6 +1,7 @@
 import { OtelModule } from '@n8n/frontend-module-otel';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useUIStore } from '@/app/stores/ui.store';
@@ -47,5 +48,41 @@ describe('uiStore.settingsSidebarItems', () => {
 		const uiStore = registerOtel({ moduleActive: false });
 
 		expect(otelItem(uiStore)).toBeUndefined();
+	});
+});
+
+describe('uiStore.settingsSidebarItems with a placeholder page', () => {
+	const item: IMenuSettingItem = {
+		id: 'settings-with-placeholder',
+		label: 'With placeholder',
+		icon: 'lock',
+	};
+	const setLicensed = (licensed: boolean) => {
+		const settingsStore = useSettingsStore();
+		settingsStore.settings = {
+			...settingsStore.settings,
+			activeModules: [],
+			enterprise: { ...settingsStore.settings.enterprise, logStreaming: licensed },
+		};
+	};
+
+	const itemIds = () => useUIStore().settingsSidebarItems.map(({ id }) => id);
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('should keep the pages of an inactive, unlicensed module that declares a placeholder page', () => {
+		setLicensed(false);
+		useUIStore().registerSettingsPages('with-placeholder', [item], 'logStreaming');
+
+		expect(itemIds()).toEqual(['settings-with-placeholder']);
+	});
+
+	it('should hide the pages of an inactive, licensed module that declares a placeholder page', () => {
+		setLicensed(true);
+		useUIStore().registerSettingsPages('with-placeholder', [item], 'logStreaming');
+
+		expect(itemIds()).toEqual([]);
 	});
 });

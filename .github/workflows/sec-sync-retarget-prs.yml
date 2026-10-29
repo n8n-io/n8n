@@ -9,8 +9,8 @@
 # to exist by the time the PRs are moved. Also dispatchable on its own.
 #
 # Every open PR on a bundle branch's base is treated as a fix that belongs on the bundle
-# branch. The one exception is the bundle cut PR itself (bundle/2.x -> master), which is
-# excluded by its head branch — it must keep pointing at the base.
+# branch. Bundle cut PRs are excluded by their head branch. GitHub also prevents changing
+# the base of PRs that belong to a stack, so those PRs stay on the base.
 
 name: 'Security: Retarget bundle PRs'
 
@@ -63,9 +63,12 @@ jobs:
 
           FAILED=0
           for PR in $PRS; do
-            if gh pr edit "$PR" --repo "$REPO" --base "$BUNDLE"; then
+            if OUTPUT=$(gh pr edit "$PR" --repo "$REPO" --base "$BUNDLE" 2>&1); then
               echo "ok   #$PR -> $BUNDLE"
+            elif [[ "$OUTPUT" == *"part of a stack"* ]]; then
+              echo "skip #$PR (stacked PR)"
             else
+              echo "$OUTPUT" >&2
               echo "FAIL #$PR" >&2
               FAILED=$((FAILED + 1))
             fi

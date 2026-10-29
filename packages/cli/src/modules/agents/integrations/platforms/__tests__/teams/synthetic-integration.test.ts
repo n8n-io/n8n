@@ -1,11 +1,28 @@
+import type { StreamChunk } from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
 import { isRecord } from '@n8n/utils/is-record';
+import { mock } from 'vitest-mock-extended';
 
-import { createTeamsReplayContext } from '../../../__tests__/helpers/teams/replay-test-context';
+import type { AgentRepository } from '../../../../repositories/agent.repository';
+import { ChatIntegrationRegistry } from '../../../agent-chat-integration';
+import { ChannelRateLimitGuard } from '../../../channel-rate-limit.guard';
+import type { ChatIntegrationService } from '../../../chat-integration.service';
+import { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
+import { getIntegrationToolConnectionDescriptors } from '../../../integration-tools';
+import { TeamsIntegration } from '../../teams/teams-integration';
+
+import {
+	createTeamsReplayContext,
+	streamInfo,
+} from '../../../__tests__/helpers/teams/replay-test-context';
 import {
 	cardAction,
+	channelBotPost,
 	channelFollowUp,
 	channelMention,
+	channelRootPost,
 	channelSecondThreadMention,
+	channelUnjoinedReply,
 	dmFollowUp,
 	dmMessage,
 	groupChatFollowUp,
@@ -28,6 +45,15 @@ vi.mock('../../../esm-loader', () => ({
 	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
 	loadTeamsAdapter: async () => await import('@chat-adapter/teams'),
 }));
+
+const READ_ALL = {
+	teamChannels: true,
+	readAllChannelMessages: true,
+	groupChats: true,
+	readAllGroupMessages: true,
+};
+
+const SILENT: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }];
 
 function cardActions(body: unknown): Array<Record<string, unknown>> {
 	const found: Array<Record<string, unknown>> = [];
@@ -69,11 +95,13 @@ describe('Microsoft Teams integration scenarios', () => {
 					integrationType: 'teams',
 				}),
 			);
+			// A direct message renders progressively, so the text lands as an edit
+			// of the placeholder rather than on the first post.
 			expect(ctx.lastPost()?.body).toMatchObject({
 				type: 'message',
-				text: 'Got it',
 				conversation: { id: TEAMS_DM_CONVERSATION_ID },
 			});
+			expect(ctx.lastEdit()?.body).toMatchObject({ text: 'Got it' });
 		} finally {
 			await ctx.shutdown();
 		}
@@ -371,7 +399,7 @@ describe('Microsoft Teams integration scenarios', () => {
 	});
 
 	it('routes an unmentioned follow-up in a subscribed channel thread to the same session', async () => {
-		const ctx = await createTeamsReplayContext();
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
 			await ctx.sendWebhook(channelMention);
 			const firstThreadId = ctx.latestThreadId();
@@ -404,7 +432,7 @@ describe('Microsoft Teams integration scenarios', () => {
 	});
 
 	it('keeps one session for a whole group chat', async () => {
-		const ctx = await createTeamsReplayContext();
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
 			await ctx.sendWebhook(groupChatMention);
 			const firstThreadId = ctx.latestThreadId();
@@ -430,7 +458,7 @@ describe('Microsoft Teams integration scenarios', () => {
 
 	it('reads a group chat whose id does not start with 19: as a group chat', async () => {
 		const { decodeThreadId } = await import('@chat-adapter/teams');
-		const ctx = await createTeamsReplayContext();
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
 			await ctx.sendWebhook(legacyGroupChatMention);
 			const firstThreadId = ctx.latestThreadId();
@@ -512,6 +540,431 @@ describe('Microsoft Teams integration scenarios', () => {
 			});
 			// Removed rather than relabelled, so a stale button cannot be clicked.
 			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+});
+
+const threeDeltas: StreamChunk[] = [
+	{ type: 'text-delta', id: 't-1', delta: 'Looking ' },
+	{ type: 'text-delta', id: 't-1', delta: 'into it ' },
+	{ type: 'text-delta', id: 't-1', delta: 'now' },
+	{ type: 'finish', finishReason: 'stop' },
+];
+
+describe('Microsoft Teams streaming', () => {
+	it('renders a direct message reply progressively, then settles on the full text', async () => {
+		// A gap between deltas so the renderer's timer actually ticks; without one
+		// the whole reply drains before the first interval and only the final edit
+		// runs, which would not exercise progressive rendering at all.
+		const ctx = await createTeamsReplayContext({ stream: threeDeltas, streamGapMs: 40 });
+		try {
+			await ctx.sendWebhook(dmMessage);
+
+			const activities = ctx.activities();
+			// Teams' own streaming protocol needs a handle that only exists while
+			// the inbound request is open, so this is post-and-edit instead.
+			expect(activities.every((call) => streamInfo(call.body) === undefined)).toBe(true);
+
+			const posts = activities.filter((call) => call.body.type === 'message');
+			expect(posts).toHaveLength(1);
+			expect(posts[0].body.text).toBe('…');
+
+			const edits = ctx.edits().map((call) => String(call.body.text));
+			expect(edits.length).toBeGreaterThan(1);
+			// Each edit carries what came before it, ending on the whole reply.
+			expect(edits.at(-1)).toBe('Looking into it now');
+			expect(edits.at(-1)?.startsWith(edits[0])).toBe(true);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('still delivers the reply when every edit is rejected', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: threeDeltas,
+			streamGapMs: 40,
+			// Nothing reaches the placeholder, so the reply would be lost behind it.
+			succeedingEdits: 0,
+		});
+		try {
+			await expect(ctx.sendWebhook(dmMessage)).resolves.toMatchObject({ status: 200 });
+
+			const texts = ctx
+				.activities()
+				.map((call) => call.body.text)
+				.filter((text): text is string => typeof text === 'string');
+			expect(texts).toContain('Looking into it now');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	/**
+	 * The known cost of that recovery. The SDK guards its interval edits but not
+	 * its last one, and it reports one promise for all of them, so a turn whose
+	 * earlier edits landed cannot be told apart from one where nothing did. The
+	 * reply is repeated rather than lost, which is the better of the two.
+	 */
+	it('repeats a reply whose earlier edits landed before one was rejected', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: threeDeltas,
+			streamGapMs: 40,
+			succeedingEdits: 1,
+		});
+		try {
+			await ctx.sendWebhook(dmMessage);
+
+			// The edit that landed left part of the reply in the placeholder.
+			const edits = ctx.edits().map((call) => String(call.body.text));
+			expect(edits[0]).not.toBe('');
+			expect('Looking into it now'.startsWith(edits[0])).toBe(true);
+
+			// The whole reply then arrives again, as its own message.
+			const messages = ctx
+				.activities()
+				.filter((call) => call.body.type === 'message' && call.body.text !== '…');
+			expect(messages).toHaveLength(1);
+			expect(messages[0].body.text).toBe('Looking into it now');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('shows a plain typing indicator before the reply starts', async () => {
+		const ctx = await createTeamsReplayContext({ stream: threeDeltas });
+		try {
+			await ctx.sendWebhook(dmMessage);
+
+			const activities = ctx.activities();
+			const indicators = activities.filter(
+				(call) => call.body.type === 'typing' && !streamInfo(call.body),
+			);
+			expect(indicators).toHaveLength(1);
+			// It has to arrive before anything else, or it tells the user nothing.
+			expect(activities.indexOf(indicators[0])).toBe(0);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('sends a channel reply as one message, with no placeholder and no edits', async () => {
+		const ctx = await createTeamsReplayContext({ stream: threeDeltas });
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			const messages = ctx.activities().filter((call) => call.body.type === 'message');
+			expect(messages).toHaveLength(1);
+			expect(messages[0].body.text).toContain('Looking into it now');
+			expect(ctx.edits()).toHaveLength(0);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('posts text after a card as its own message', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{ type: 'text-delta', id: 't-1', delta: 'Deploying now.' },
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-order-1',
+					toolCallId: 'tool-order-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+				},
+				{ type: 'text-delta', id: 't-2', delta: 'Waiting on you.' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(dmMessage);
+
+			// The trailing text is its own message rather than an edit folded back
+			// into the bubble that sits above the card.
+			const trailing = ctx
+				.activities()
+				.filter(
+					(call) =>
+						call.body.type === 'message' &&
+						typeof call.body.text === 'string' &&
+						call.body.text.includes('Waiting on you.'),
+				);
+			expect(trailing).toHaveLength(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+});
+
+describe('Microsoft Teams messages without a mention', () => {
+	it('runs a new channel post and a reply in an unjoined thread, with an optional reply', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+			// The same published-chat run a mention gets, so the agent budget applies.
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1', integrationType: 'teams' }),
+			);
+
+			await ctx.sendWebhook(channelUnjoinedReply);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('runs an unmentioned group chat message', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(groupChatFollowUp);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it.each([
+		['a new post', [channelRootPost]],
+		['a follow-up in a joined thread', [channelMention, channelFollowUp]],
+	])('tells the model to answer %s as plain text, not through respond', async (_label, posts) => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			for (const post of posts) await ctx.sendWebhook(post);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					modelMessage: expect.stringContaining('Do not use the respond action for it.'),
+				}),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('tells the model that a message without a mention may go unanswered', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'anyone seen the build fail?',
+					modelMessage: expect.stringContaining('do_not_respond'),
+				}),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('tells the model a follow-up in a joined thread may continue its conversation', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelMention);
+			await ctx.sendWebhook(channelFollowUp);
+
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					modelMessage: expect.stringContaining('a conversation you joined earlier'),
+				}),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('keeps a reply required for a mention when reading all messages', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.latestContext()?.replyExpectation).toBe('required');
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ modelMessage: expect.not.stringContaining('do_not_respond') }),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('stays mention-only on a surface whose read-all setting is off', async () => {
+		const ctx = await createTeamsReplayContext({
+			settings: { teamChannels: true, readAllChannelMessages: false, groupChats: true },
+		});
+		try {
+			await ctx.sendWebhook(channelRootPost);
+			await ctx.sendWebhook(groupChatFollowUp);
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+
+			await ctx.sendWebhook(channelMention);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+
+			// The mention subscribed the thread, but read-all is off.
+			await ctx.sendWebhook(channelFollowUp);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('does not let one surface open the other', async () => {
+		const ctx = await createTeamsReplayContext({
+			settings: { teamChannels: true, readAllChannelMessages: true, groupChats: true },
+		});
+		try {
+			await ctx.sendWebhook(groupChatFollowUp);
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+
+			await ctx.sendWebhook(channelRootPost);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('ignores a post from another bot and from itself', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelBotPost);
+			await ctx.sendWebhook(selfMessage);
+
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	const FAILED: StreamChunk[] = [
+		{ type: 'error', error: { type: 'api_error', message: 'provider down' } },
+		{ type: 'finish', finishReason: 'error' },
+	];
+
+	it('posts no error when a run fails on a message without a mention', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: FAILED });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.activities()).toEqual([]);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('still posts the error when a run fails on a mention', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: FAILED });
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			expect(ctx.lastPost()?.body).toMatchObject({
+				type: 'message',
+				conversation: { id: TEAMS_CHANNEL_CONVERSATION_ID },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('posts nothing at all when the agent stays silent', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: SILENT });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			// No typing indicator either: every activity, typing included, is a post.
+			expect(ctx.activities()).toEqual([]);
+			expect(ctx.edits()).toEqual([]);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+});
+
+describe('Microsoft Teams reactions', () => {
+	async function react(ctx: Awaited<ReturnType<typeof createTeamsReplayContext>>, emoji: string) {
+		const registry = new ChatIntegrationRegistry();
+		const teams = new TeamsIntegration(mock<Logger>(), mock<AgentRepository>());
+		registry.register(teams);
+		const service = mock<ChatIntegrationService>();
+		service.getChatInstanceForTools.mockResolvedValue(ctx.chat);
+		const executor = new ChatIntegrationActionExecutor(
+			service,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
+		const [descriptor] = getIntegrationToolConnectionDescriptors(
+			[{ type: 'teams', credentialId: 'cred-teams' }],
+			'agent-1',
+		);
+		return await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji },
+			awaitResponse: false,
+			currentMessageContext: ctx.latestContext(),
+		});
+	}
+
+	function reactionPath(ctx: Awaited<ReturnType<typeof createTeamsReplayContext>>) {
+		const uri = ctx.reactions().at(-1)?.body.uri;
+		return typeof uri === 'string' ? decodeURIComponent(uri) : undefined;
+	}
+
+	it('offers add_reaction and do_not_respond', () => {
+		const teams = new TeamsIntegration(mock<Logger>(), mock<AgentRepository>());
+
+		expect(teams.actionToolDefinitions.map(({ name }) => name)).toEqual(
+			expect.arrayContaining(['add_reaction', 'do_not_respond']),
+		);
+	});
+
+	it('reacts to the current message in mention-only mode', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			await expect(react(ctx, 'thumbs_up')).resolves.toMatchObject({ ok: true });
+
+			expect(reactionPath(ctx)).toMatch(
+				`/v3/conversations/${TEAMS_CHANNEL_CONVERSATION_ID}/activities/${channelMention.id}/reactions/like`,
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it.each([
+		['thumbs_up', 'like'],
+		['eyes', '1f440_eyes'],
+		['check', '2705_whiteheavycheckmark'],
+		['x', '274c_crossmark'],
+		['rocket', 'launch'],
+		['thinking', 'think'],
+		['pin', '1f4cc_pushpin'],
+	])('maps %s to the Teams reaction %s when reading all messages', async (emoji, teamsType) => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: SILENT });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			await expect(react(ctx, emoji)).resolves.toMatchObject({ ok: true });
+
+			expect(reactionPath(ctx)).toMatch(
+				new RegExp(`/activities/${channelRootPost.id}/reactions/${teamsType}$`),
+			);
 		} finally {
 			await ctx.shutdown();
 		}

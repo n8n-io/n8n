@@ -4,7 +4,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
@@ -229,6 +229,27 @@ describe('AgentSessionLangSmithExportService', () => {
 				name: 'Background task results received',
 				run_type: 'chain',
 				inputs: { tasks },
+			}),
+		);
+	});
+
+	it('exports additional input from its canonical message reference', async () => {
+		const message = {
+			id: 'steered',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'Use the newer file' }],
+		};
+		const { service } = setupSession(
+			makeExecution({
+				inputMessages: [message],
+				timeline: [{ type: 'input', messageId: message.id, timestamp: 100 }],
+			}),
+		);
+		await service.exportSession(input);
+		expect(submittedRuns()).toContainEqual(
+			expect.objectContaining({
+				name: 'Additional user input',
+				inputs: { message },
 			}),
 		);
 	});
@@ -545,6 +566,35 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(hitlRun).toMatchObject({
 			inputs: { toolCallId: 'tool-approval' },
 			outputs: { approved: false, reason: 'Needs changes' },
+		});
+	});
+
+	it('exports host events with their name, payload and key', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread(),
+			executions: [
+				makeExecution({
+					timeline: [
+						{
+							type: 'host-event',
+							name: 'test.progress',
+							key: 'build',
+							payload: { done: 1 },
+							timestamp: Date.parse('2026-08-14T09:00:00.500Z'),
+						},
+					],
+				}),
+			],
+		});
+		threadRepository.findByParentThreadId.mockResolvedValue([]);
+
+		await service.exportSession(input);
+
+		const hostEventRun = submittedRuns().find(({ name }) => name === 'Host event: test.progress');
+		expect(hostEventRun).toMatchObject({
+			outputs: { payload: { done: 1 } },
+			extra: { metadata: expect.objectContaining({ key: 'build' }) },
 		});
 	});
 

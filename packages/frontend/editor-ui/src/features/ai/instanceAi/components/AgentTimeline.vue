@@ -5,22 +5,22 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltAgentArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 	type ArtifactInfo,
+	type TimelineBlock,
 } from '../agentTimeline.utils';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useThread } from '../instanceAi.store';
-import { resolvePlanTasks } from '../planReview.utils';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
-import PlanReviewPanel, { type PlanReviewStatus } from './PlanReviewPanel.vue';
 import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
@@ -29,8 +29,7 @@ import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
 const thread = useThread();
-const telemetry = useTelemetry();
-const rootStore = useRootStore();
+const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -104,7 +103,7 @@ const props = withDefaults(
 /**
  * A preference card acts only from the transcript tail, and only when the
  * message carries the run the endpoints must append the card fact to. A later
- * turn strands the card (same rule as pendingPlanReview).
+ * turn strands the card.
  */
 const canActOnPreferenceCard = computed(
 	() =>
@@ -156,31 +155,75 @@ const renderBlocks = computed(() =>
 	),
 );
 
-function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
-	const requestId = tc.confirmation?.requestId;
-	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
-
-	if (localStatus === 'approved' || tc.confirmationStatus === 'approved') return 'approved';
-	if (localStatus === 'denied') return 'denied';
-	// `confirmationStatus === 'denied'` covers re-renders where the local action
-	// was lost (e.g. page reload): default to changes-requested since
-	// create-tasks emits a revised plan card on top of the old one in that flow.
-	if (localStatus === 'changes-requested' || tc.confirmationStatus === 'denied') {
-		return 'changes-requested';
-	}
-
-	return 'pending';
+/** The host page already shows its subject, so a card for it is redundant. */
+function visibleArtifacts(artifacts: ArtifactInfo[]): ArtifactInfo[] {
+	return artifacts.filter(
+		(artifact) => !isEmbedSubject(embedSubject?.value, artifact.type, artifact.resourceId),
+	);
 }
 
-function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId || getPlanReviewStatus(tc) !== 'changes-requested') return false;
-	return thread.updatingPlanRequestIds.has(requestId);
+function blockToolCalls(block: TimelineBlock): InstanceAiToolCallState[] {
+	// A finish-setup call that ends on its questions phase renders as a questions block.
+	if (block.type === 'questions') return [block.toolCall];
+	if (block.type !== 'thinking') return [];
+	return block.entries.flatMap((entry) =>
+		entry.type === 'tool-call' && toolCallsById.value[entry.toolCallId]
+			? [toolCallsById.value[entry.toolCallId]]
+			: [],
+	);
+}
+
+/**
+ * Workflows and Agents built by this agent's own tool calls, keyed by the
+ * thinking or questions block that built them. A workflow card shows only in the embedded
+ * panel, because the full view opens the built workflow in its preview panel.
+ * An Agent card shows in both views, after the last block that changed it,
+ * once the run settles: mid-build the preview tab shows progress, and the
+ * block the card anchors to can still change.
+ */
+const builtArtifactsByBlock = computed(() => {
+	const byBlock = new Map<string, ArtifactInfo[]>();
+	if (props.visibleEntries) return byBlock;
+
+	const showAgentCards = props.agentNode.status !== 'active';
+	const seenWorkflowIds = new Set<string>();
+	const latestAgents = new Map<string, { blockKey: string; artifact: ArtifactInfo }>();
+	for (const block of renderBlocks.value) {
+		const toolCalls = blockToolCalls(block);
+		if (toolCalls.length === 0) continue;
+
+		if (embedSubject) {
+			const workflows = visibleArtifacts(extractBuiltWorkflowArtifacts(toolCalls)).filter(
+				(artifact) => !seenWorkflowIds.has(artifact.resourceId),
+			);
+			for (const artifact of workflows) seenWorkflowIds.add(artifact.resourceId);
+			if (workflows.length > 0) byBlock.set(block.key, workflows);
+		}
+
+		if (!showAgentCards) continue;
+		for (const artifact of visibleArtifacts(extractBuiltAgentArtifacts(toolCalls))) {
+			const previous = latestAgents.get(artifact.resourceId)?.artifact;
+			latestAgents.set(artifact.resourceId, {
+				blockKey: block.key,
+				artifact: { ...artifact, projectId: artifact.projectId ?? previous?.projectId },
+			});
+		}
+	}
+
+	for (const { blockKey, artifact } of latestAgents.values()) {
+		byBlock.set(blockKey, [...(byBlock.get(blockKey) ?? []), artifact]);
+	}
+	return byBlock;
+});
+
+function blockArtifacts(block: TimelineBlock): ArtifactInfo[] {
+	if (block.type === 'child') return visibleArtifacts(extractArtifacts(block.child));
+	return builtArtifactsByBlock.value.get(block.key) ?? [];
 }
 
 /** An in-transcript card is read-only once its tool call has settled OR its
  *  confirmation was resolved client-side. Without the resolvedConfirmationIds
- *  check, a freshly-loading create-tasks call could briefly re-enable the old
+ *  check, a freshly-loading tool call could briefly re-enable the old
  *  card's footer (toolCall.isLoading flips back to true on tool-call-start
  *  before the previous card's read-only catches up). */
 function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
@@ -188,80 +231,30 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	const requestId = tc.confirmation?.requestId;
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
-
-/**
- * A plan card acts only for the review the composer routes into. Once a newer
- * turn strands it, `pendingPlanReview` drops it, and resuming its requestId
- * would revive a run the thread has moved on from.
- */
-function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
-	if (isCardReadOnly(tc)) return true;
-	return thread.pendingPlanReview?.requestId !== tc.confirmation?.requestId;
-}
-
-function handlePlanApprove(tc: InstanceAiToolCallState) {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId) return;
-
-	telemetry.track('User finished providing input', {
-		thread_id: thread.id,
-		input_thread_id: tc.confirmation?.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: 'plan-review',
-		provided_inputs: [
-			{
-				label: 'plan',
-				options: ['approve', 'ask-for-edits', 'deny'],
-				option_chosen: 'approve',
-			},
-		],
-		skipped_inputs: [],
-		num_tasks: resolvePlanTasks(tc).length,
-		plan_feedback_type: 'accept',
-	});
-
-	thread.resolveConfirmation(requestId, 'approved');
-	void thread.confirmAction(requestId, { kind: 'approval', approved: true });
-}
-
-function handlePlanDeny(tc: InstanceAiToolCallState) {
-	const requestId = tc.confirmation?.requestId;
-	if (!requestId) return;
-
-	const numTasks = resolvePlanTasks(tc).length;
-	telemetry.track('User finished providing input', {
-		thread_id: thread.id,
-		input_thread_id: tc.confirmation?.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: 'plan-review',
-		provided_inputs: [
-			{
-				label: 'plan',
-				options: ['approve', 'ask-for-edits', 'deny'],
-				option_chosen: 'deny',
-			},
-		],
-		skipped_inputs: [],
-		num_tasks: numTasks,
-		plan_feedback_type: 'deny',
-	});
-
-	thread.resolveConfirmation(requestId, 'denied');
-	void thread.confirmAction(requestId, { kind: 'planDeny' });
-}
 </script>
 
 <template>
 	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
 		<template v-for="block in renderBlocks" :key="block.key">
 			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
-			<ThinkingBlock
-				v-if="block.type === 'thinking'"
-				:agent-node="props.agentNode"
-				:entries="block.entries"
-				:active="block.active"
-				:awaiting-input="block.active && thread.isAwaitingConfirmation"
-			/>
+			<template v-if="block.type === 'thinking'">
+				<ThinkingBlock
+					:agent-node="props.agentNode"
+					:entries="block.entries"
+					:active="block.active"
+					:awaiting-input="block.active && thread.isAwaitingConfirmation"
+				/>
+				<ArtifactCard
+					v-for="artifact in blockArtifacts(block)"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="resolveArtifactName(artifact)"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
+					:metadata="formatArtifactMetadata(artifact)"
+				/>
+			</template>
 
 			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
@@ -274,18 +267,6 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 
 			<TaskChecklist v-else-if="block.type === 'tasks'" :tasks="props.agentNode.tasks" />
 
-			<PlanReviewPanel
-				v-else-if="block.type === 'plan-review'"
-				:key="block.toolCall.confirmation?.requestId"
-				:planned-tasks="resolvePlanTasks(block.toolCall)"
-				:status="getPlanReviewStatus(block.toolCall)"
-				:updating="isPlanReviewUpdating(block.toolCall)"
-				:read-only="isPlanCardReadOnly(block.toolCall)"
-				:expired="block.toolCall.confirmation?.expired"
-				@approve="handlePlanApprove(block.toolCall)"
-				@deny="handlePlanDeny(block.toolCall)"
-			/>
-
 			<InstanceAiMcpConnect
 				v-else-if="block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest"
 				:key="block.toolCall.confirmation.requestId"
@@ -297,7 +278,19 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 			/>
 
 			<!-- Answered questions (read-only after resolution) -->
-			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+			<template v-else-if="block.type === 'questions'">
+				<AnsweredQuestions :tool-call="block.toolCall" />
+				<ArtifactCard
+					v-for="artifact in blockArtifacts(block)"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="resolveArtifactName(artifact)"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
+					:metadata="formatArtifactMetadata(artifact)"
+				/>
+			</template>
 
 			<!-- A preference the assistant saved: edit or undo it from the latest turn -->
 			<PreferenceCard
@@ -321,7 +314,7 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
 				<template v-if="!props.visibleEntries">
 					<ArtifactCard
-						v-for="artifact in extractArtifacts(block.child)"
+						v-for="artifact in blockArtifacts(block)"
 						:key="artifact.resourceId"
 						:type="artifact.type"
 						:name="resolveArtifactName(artifact)"

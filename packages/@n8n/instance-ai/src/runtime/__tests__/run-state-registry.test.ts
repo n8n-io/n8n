@@ -2,9 +2,9 @@ import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext } from '../../types';
 import { InstanceAiLivenessPolicy } from '../liveness-policy';
+import type { ConfirmationData } from '../confirmation-payload';
 import type {
 	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
 	PendingConfirmation,
 	SuspendedRunState,
 } from '../run-state-registry';
@@ -129,6 +129,16 @@ describe('RunStateRegistry', () => {
 	// ── startRun ──────────────────────────────────────────────────────────────
 
 	describe('startRun', () => {
+		it('keeps a persisted run identity', () => {
+			const result = registry.startRun({
+				threadId: 'thread-1',
+				runId: 'persisted-run',
+				user: { id: 'user-1', name: 'Alice' },
+			});
+			expect(result.runId).toBe('persisted-run');
+			expect(registry.getActiveRun('thread-1')?.runId).toBe('persisted-run');
+		});
+
 		it('creates run with generated runId and messageGroupId', () => {
 			const result = registry.startRun({
 				threadId: 'thread-1',
@@ -339,6 +349,35 @@ describe('RunStateRegistry', () => {
 
 			it('returns undefined for unknown thread', () => {
 				expect(registry.getThreadUser('unknown')).toBeUndefined();
+			});
+		});
+
+		describe('listLiveThreadIdsForUser', () => {
+			it('lists active threads before suspended threads and skips duplicates', () => {
+				registry.startRun({
+					threadId: 'thread-active',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.startRun({
+					threadId: 'thread-other',
+					user: { id: 'user-2', name: 'Bob' },
+				});
+				registry.startRun({
+					threadId: 'thread-suspended',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.suspendRun(
+					'thread-suspended',
+					createSuspendedRunState({
+						threadId: 'thread-suspended',
+						user: { id: 'user-1', name: 'Alice' },
+					}),
+				);
+
+				expect(registry.listLiveThreadIdsForUser('user-1')).toEqual([
+					'thread-active',
+					'thread-suspended',
+				]);
 			});
 		});
 	});

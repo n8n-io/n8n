@@ -2,20 +2,18 @@ operationId: promotePackage
 tags:
   - Promotions
 summary: Promote all team projects
-description: Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.
-x-required-scope: gitConnection:push
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
+description: Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. A workflow on the branch that moved to a personal project is refused with 400, because the destination would delete it. A workflow or folder on the branch that moved to another team project is refused with 400 while its old project still exists, because Apply can't move it between projects. Requires a connected Promote environment with instance scope. The API key also needs variable:list when the workflows reference variables.
+x-required-scope: promotions:promote
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
+      format: uuid
     required: true
-    description: The ID of the promotion connection.
-    name: promotionConnectionId
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
     in: path
 requestBody:
-  required: true
   content:
     application/json:
       schema:
@@ -25,10 +23,9 @@ requestBody:
             type: string
             minLength: 1
             maxLength: 1000
+            description: Message for the promotion commit. If you omit it, the commit uses a generated message.
           force:
             type: boolean
-        required:
-          - commitMessage
         additionalProperties: false
 responses:
   '200':
@@ -45,7 +42,11 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

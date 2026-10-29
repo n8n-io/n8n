@@ -1,7 +1,7 @@
 import type { ExecutionDataStorageLocation } from '@n8n/db';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { hasControlCharacter } from './agent-knowledge-storage';
 
@@ -206,12 +206,6 @@ export interface AgentKnowledgeCitation extends AgentKnowledgeFileIdentity {
 	endLine: number;
 }
 
-export interface AgentKnowledgeLine {
-	lineNumber: number;
-	text: string;
-	truncated: boolean;
-}
-
 export interface SearchKnowledgeMatch extends AgentKnowledgeFileIdentity {
 	lineNumber: number;
 	text: string;
@@ -273,6 +267,7 @@ export interface ReadKnowledgeRangeResult {
 }
 
 export interface ReadKnowledgeResult extends AgentKnowledgeFileIdentity {
+	createdAt: string;
 	ranges: ReadKnowledgeRangeResult[];
 	truncated: boolean;
 }

@@ -3,9 +3,8 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { AiPreferenceService } from '@/services/ai-preference.service';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { AiPreferenceService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -31,6 +30,7 @@ const removedRow = (): AiPreferenceDto => ({
 	projectId: null,
 	project: null,
 	source: 'mcp',
+	createdBy: null,
 	scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 	createdAt: new Date(Date.now() - 120_000).toISOString(),
 	updatedAt: new Date().toISOString(),
@@ -76,6 +76,7 @@ describe('undo_user_preference MCP tool', () => {
 		await tool.handler({ id: 'pref-1' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: 'user-1',
 			count: 1,
 			source: 'rejected',
 			scope_types: ['user'],
@@ -98,6 +99,7 @@ describe('undo_user_preference MCP tool', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
 			{
+				user_id: 'user-1',
 				surface: 'mcp',
 				outcome: 'rejected',
 				scope_type: 'user',

@@ -17,9 +17,9 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Compression node limits are lowered',
 			description:
-				'The default maximum decompressed size is reduced from 2 GiB to 256 MiB and the default maximum number of ZIP entries from 5000 to 1000. Compression nodes handling archives beyond the new limits will fail.',
+				'The default maximum decompressed size goes down from 2 GiB to 256 MiB, and the default maximum number of ZIP entries goes down from 5000 to 1000. Only the defaults change. You can set the limits to keep the current values.',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'executionsMightFail',
 		};
 	}
 
@@ -30,7 +30,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			instanceIssues.push({
 				title: 'Instance relies on the current default decompressed size limit',
 				description:
-					'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES is not set, so this instance uses the default of 2 GiB. After the update, decompressing more than 256 MiB will fail.',
+					'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES is not set, so this instance uses the default of 2 GiB. After the update, the default is 256 MiB. If you do not set the variable, the Compression node fails on archives that decompress to more than that.',
 				level: 'info',
 			});
 		}
@@ -39,7 +39,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			instanceIssues.push({
 				title: 'Instance relies on the current default ZIP entries limit',
 				description:
-					'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES is not set, so this instance uses the default of 5000 entries. After the update, ZIP archives with more than 1000 entries will fail to decompress.',
+					'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES is not set, so this instance uses the default of 5000 entries. After the update, the default is 1000 entries. If you do not set the variable, the Compression node fails on ZIP archives with more entries than that.',
 				level: 'info',
 			});
 		}
@@ -53,9 +53,9 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			instanceIssues,
 			recommendations: [
 				{
-					action: 'Set the compression limits explicitly',
+					action: 'Set the compression limits if your workflows handle large archives',
 					description:
-						'If your workflows decompress large archives, set N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES to keep the current limits.',
+						'The new defaults apply only when these variables are not set. If your workflows decompress more than 256 MiB, or ZIP archives with more than 1000 entries, set N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES to the limits you need. Otherwise, you do not need to do anything.',
 				},
 			],
 		};

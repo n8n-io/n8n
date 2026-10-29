@@ -119,6 +119,49 @@ describe('FormTrigger', () => {
 		);
 	});
 
+	describe('trustedSource', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const trustedSource = formTriggerV2.description.properties.find(
+			(property) => property.name === 'trustedSource',
+		);
+
+		it("should default to the instance's own OAuth2 server, loaded from the directory", () => {
+			expect(trustedSource).toMatchObject({
+				type: 'options',
+				default: 'n8n-internal',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+			});
+			expect(formTriggerV2.methods.loadOptions.listTrustedSources).toBeDefined();
+		});
+
+		it.each<[string, number, boolean]>([
+			['n8nUserAuth', 2.6, true],
+			['none', 2.6, false],
+			['basicAuth', 2.6, false],
+			['n8nUserAuth', 2.5, false],
+		])(
+			'should be shown for authentication %s on typeVersion %s: %s',
+			(authentication, typeVersion, shown) => {
+				expect(trustedSource).toBeDefined();
+				expect(
+					NodeHelpers.displayParameter(
+						{ [FORM_TRIGGER_AUTHENTICATION_PROPERTY]: authentication },
+						trustedSource as INodeProperties,
+						{ typeVersion },
+						formTriggerV2.description,
+					),
+				).toBe(shown);
+			},
+		);
+	});
+
 	it('should render a form template with correct fields', async () => {
 		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
@@ -628,6 +671,21 @@ describe('FormTrigger', () => {
 				defaultVersion: 2.5,
 			});
 			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
+	});
+
+	describe('trustedSource', () => {
+		// The resolvers read the stored value as the source id, without evaluating it.
+		it('takes no expression, so the stored value is the source id', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			const property = formTriggerV2.description.properties.find((p) => p.name === 'trustedSource');
+			expect(property).toMatchObject({ default: 'n8n-internal', noDataExpression: true });
 		});
 	});
 });

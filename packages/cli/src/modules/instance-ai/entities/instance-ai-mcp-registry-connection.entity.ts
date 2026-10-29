@@ -1,10 +1,6 @@
 import { JsonColumn, WithTimestamps } from '@n8n/db';
+import type { McpToolPermissions } from '@n8n/api-types';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
-
-export type InstanceAiMcpToolFilter = {
-	mode: 'allow' | 'exclude';
-	tools: string[];
-};
 
 @Entity({ name: 'instance_ai_mcp_registry_connections' })
 @Index(['userId', 'serverSlug', 'credentialId'], { unique: true })
@@ -21,6 +17,6 @@ export class InstanceAiMcpRegistryConnection extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36 })
 	credentialId: string;
 
-	@JsonColumn({ nullable: true })
-	toolFilter: InstanceAiMcpToolFilter | null;
+	@JsonColumn()
+	toolPermissions: McpToolPermissions;
 }

@@ -121,11 +121,13 @@ describe('useAssistantMentionAttachments', () => {
 		mentions.select(nodeSelection());
 
 		expect(mentions.snapshotCounts()).toEqual({
-			mentionCount: 2,
-			workflowMentionCount: 1,
-			nodeMentionCount: 1,
-			groupMentionCount: 0,
+			total: 2,
+			workflow: 1,
+			node: 1,
+			group: 0,
 		});
+		// Both mentions point at the same workflow: one tab, listed once.
+		expect(mentions.snapshotMentionedWorkflowIds()).toEqual(['w1']);
 		scope.stop();
 	});
 

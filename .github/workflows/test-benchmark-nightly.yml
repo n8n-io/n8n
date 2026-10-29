@@ -62,11 +62,11 @@ jobs:
 
       - name: Destroy any existing environment
         run: pnpm destroy-cloud-env
-        working-directory: packages/@n8n/benchmark
+        working-directory: packages/quality/efficiency/scale/benchmark
 
       - name: Provision the environment
         run: pnpm provision-cloud-env ${{ env.DEBUG }}
-        working-directory: packages/@n8n/benchmark
+        working-directory: packages/quality/efficiency/scale/benchmark
 
       - name: Run the benchmark
         id: benchmark
@@ -81,7 +81,7 @@ jobs:
             --n8nTag ${{ env.N8N_TAG }} \
             --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} \
             ${{ env.DEBUG }}
-        working-directory: packages/@n8n/benchmark
+        working-directory: packages/quality/efficiency/scale/benchmark
 
         # We need to login again because the access token expires
       - name: Azure login
@@ -95,7 +95,7 @@ jobs:
       - name: Destroy the environment
         if: always()
         run: pnpm destroy-cloud-env ${{ env.DEBUG }}
-        working-directory: packages/@n8n/benchmark
+        working-directory: packages/quality/efficiency/scale/benchmark
 
       - name: Fail `build` job if `benchmark` step failed
         if: steps.benchmark.outcome == 'failure'

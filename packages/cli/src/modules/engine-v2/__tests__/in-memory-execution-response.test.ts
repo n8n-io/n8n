@@ -70,19 +70,6 @@ describe('in-memory execution responses', () => {
 		);
 	});
 
-	it('stamps the execution ID on a response from a step', () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const publish = vi.spyOn(channel, 'publish');
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-
-		sender.emitterFor('exec-1').send({ ok: true });
-
-		expect(publish).toHaveBeenCalledExactlyOnceWith(
-			'exec-1',
-			JSON.stringify({ type: 'response', executionId: 'exec-1', payload: { ok: true } }),
-		);
-	});
-
 	it('delivers a base64 Buffer envelope unchanged', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
@@ -95,9 +82,30 @@ describe('in-memory execution responses', () => {
 			statusCode: 200,
 		};
 
-		sender.emitterFor('exec-1').send(payload);
+		sender.send({ type: 'response', executionId: 'exec-1', payload });
 
 		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload }]);
+	});
+
+	it('sends a chunk with the execution ID', () => {
+		const channel = new InMemoryExecutionResponseChannel();
+		const publish = vi.spyOn(channel, 'publish');
+		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+
+		sender.send({
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hello' },
+		});
+
+		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			JSON.stringify({
+				type: 'chunk',
+				executionId: 'exec-1',
+				payload: { type: 'item', content: 'hello' },
+			}),
+		);
 	});
 
 	it('validates a response before delivering it', async () => {

@@ -1,3 +1,4 @@
+import { type SerializedTag, serializedTagSchema } from '@n8n/api-types';
 import type { TagEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -5,7 +6,6 @@ import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageTagRequirement } from '../../spec/requirements.schema';
-import { serializedTagSchema, type SerializedTag } from '../../spec/serialized/tag.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName, type WorkflowTagUsage } from './tag.types';
 
@@ -25,6 +25,11 @@ const serializePayload = definePackageSerializationPayload<
 	TagPackageKeyHandling
 >();
 
+/** The content of a tag file in the package. */
+export function serializeTag({ id, name }: { id: string; name: string }): SerializedTag {
+	return serializedTagSchema.parse(serializePayload({ id, name }));
+}
+
 export interface TagExportRequest {
 	usages: WorkflowTagUsage[];
 	writer: PackageWriter;
@@ -41,13 +46,13 @@ export class TagExporter {
 		const requirementsByTagId = new Map<string, PackageTagRequirement>();
 
 		for (const { workflowId, tag } of request.usages) {
-			const requirement = requirementsByTagId.get(tag.id) ?? {
+			const requirement: PackageTagRequirement = requirementsByTagId.get(tag.id) ?? {
 				id: tag.id,
 				name: tag.name,
-				usedByWorkflows: [],
+				usedBy: [],
 			};
-			if (!requirement.usedByWorkflows.includes(workflowId)) {
-				requirement.usedByWorkflows.push(workflowId);
+			if (!requirement.usedBy.some(({ id }) => id === workflowId)) {
+				requirement.usedBy.push({ kind: 'workflow', id: workflowId });
 			}
 			requirementsByTagId.set(tag.id, requirement);
 		}
@@ -58,9 +63,14 @@ export class TagExporter {
 		const entries: ManifestEntry[] = [];
 
 		for (const { id, name } of requirements) {
-			const serializedTag = serializedTagSchema.parse(serializePayload({ id, name }));
 			entries.push(
-				await writeManifestEntry(request.writer, 'tags', tagsDir, { id, name }, serializedTag),
+				await writeManifestEntry(
+					request.writer,
+					'tags',
+					tagsDir,
+					{ id, name },
+					serializeTag({ id, name }),
+				),
 			);
 		}
 

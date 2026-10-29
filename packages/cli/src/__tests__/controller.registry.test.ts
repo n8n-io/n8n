@@ -28,7 +28,7 @@ import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';
@@ -88,6 +88,58 @@ describe('ControllerRegistry', () => {
 				await request(app).get('/rest/test/rate-limited').expect(200);
 			}
 			await request(app).get('/rest/test/rate-limited').expect(429);
+		});
+	});
+
+	describe('controller surfaces', () => {
+		const rejectUnauthenticated = vi.fn<express.RequestHandler>((_req, res) => {
+			res.sendStatus(401);
+		});
+
+		@RootLevelController('/apps-only', { surface: 'apps' })
+		class AppsOnlyController {
+			@Get('/', { skipAuth: true, middlewares: [rejectUnauthenticated] })
+			read() {
+				return { ok: true };
+			}
+		}
+
+		it('keeps apps controllers off the main surface', () => {
+			const target = mock<express.Application>();
+			new ControllerRegistry(
+				license,
+				authService,
+				globalConfig,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+			).activate(target);
+			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
+		});
+
+		it('uses route middleware to reject unauthenticated apps requests', async () => {
+			const target = express();
+			const use = vi.spyOn(target, 'use');
+			const read = vi.spyOn(Container.get(AppsOnlyController), 'read');
+			rejectUnauthenticated.mockImplementation((_req, res) => {
+				res.sendStatus(401);
+			});
+			authService.createAuthMiddleware.mockClear();
+			new ControllerRegistry(
+				license,
+				authService,
+				globalConfig,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+			).activate(target, { surface: 'apps' });
+
+			await request(target).get('/apps-only').expect(401);
+
+			expect(use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
+			expect(rejectUnauthenticated).toHaveBeenCalledOnce();
+			expect(authService.createAuthMiddleware).not.toHaveBeenCalled();
+			expect(read).not.toHaveBeenCalled();
 		});
 	});
 

@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Request, Response } from 'express';
 import request from 'supertest';
 
 import type { ContentSecurityPolicies } from '@/security/content-security-policy';
@@ -25,8 +26,11 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.type('html').send('<p>sandboxed</p>');
 	});
 
-	// Handlers that pass their headers to `writeHead` rather than setting them on `res`,
-	// as the streaming webhook and chat responses do.
+	app.get('/self-reporting', (_req, res) => {
+		res.setHeader('Content-Security-Policy-Report-Only', "script-src 'none'");
+		res.type('html').send('<p>self-reporting</p>');
+	});
+
 	app.get('/raw-page', (_req, res) => {
 		res.writeHead(200, { 'Content-Type': 'text/html' });
 		res.end(`<script nonce="${res.locals.cspNonce}"></script>`);
@@ -45,9 +49,84 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('<p>sandboxed</p>');
 	});
 
-	app.get('/raw-stream', (_req, res) => {
-		res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-		res.end('{"ok":true}');
+	app.get('/raw-script', (_req, res) => {
+		res.writeHead(200, { 'Content-Type': 'application/javascript' });
+		res.end('export {};');
+	});
+
+	app.get('/raw-script-array-headers', (_req, res) => {
+		res.writeHead(200, [['Content-Type', 'application/javascript']]);
+		res.end('export {};');
+	});
+
+	app.get('/raw-sandboxed-array-headers', (_req, res) => {
+		res.writeHead(200, [
+			['Content-Type', 'text/html'],
+			['Content-Security-Policy', 'sandbox allow-scripts'],
+		]);
+		res.end('<p>sandboxed</p>');
+	});
+
+	app.get('/raw-script-flat-headers', (_req, res) => {
+		res.writeHead(200, ['Content-Type', 'application/javascript']);
+		res.end('export {};');
+	});
+
+	app.get('/raw-script-with-status-message', (_req, res) => {
+		res.writeHead(200, 'OK', [['Content-Type', 'application/javascript']]);
+		res.end('export {};');
+	});
+
+	app.get('/raw-cookies-array-headers', (_req, res) => {
+		res.writeHead(200, [
+			['Content-Type', 'text/html'],
+			['Set-Cookie', 'a=1'],
+			['Set-Cookie', 'b=2'],
+		]);
+		res.end('<p>cookies</p>');
+	});
+
+	app.get('/raw-cookies-flat-headers', (_req, res) => {
+		res.writeHead(200, ['Content-Type', 'text/html', 'Set-Cookie', 'a=1', 'Set-Cookie', 'b=2']);
+		res.end('<p>cookies</p>');
+	});
+
+	app.get('/typed', (req, res) => {
+		res.setHeader('Content-Type', String(req.query.type));
+		res.end('<p>typed</p>');
+	});
+
+	app.get('/untyped', (_req, res) => {
+		res.end('<p>untyped</p>');
+	});
+
+	app.get('/script-and-page', (_req, res) => {
+		res.setHeader('Content-Type', ['text/javascript', 'text/html']);
+		res.end('<p>page</p>');
+	});
+
+	app.get('/scripts', (_req, res) => {
+		res.setHeader('Content-Type', ['text/javascript', 'application/javascript']);
+		res.end('export {};');
+	});
+
+	app.get('/empty-type', (_req, res) => {
+		res.setHeader('Content-Type', []);
+		res.end('<p>page</p>');
+	});
+
+	app.get('/raw-empty-type', (_req, res) => {
+		res.writeHead(200, { 'Content-Type': [] });
+		res.end('<p>page</p>');
+	});
+
+	app.get('/error', (_req, res) => {
+		res.status(500).json({ message: 'error' });
+	});
+
+	app.get('/raw-not-modified', (_req, res) => {
+		res.writeHead(304);
+		res.end();
 	});
 
 	return app;
@@ -81,10 +160,10 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(nonceOf(first.headers[ENFORCED])).not.toBe(nonceOf(second.headers[ENFORCED]));
 		});
 
-		it('should not serve a policy on a non-HTML response', async () => {
+		it('should serve the policy on a non-HTML response', async () => {
 			const response = await request(app).get('/api');
 
-			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[ENFORCED]).toMatch(/^script-src 'nonce-[\w-]+' 'strict-dynamic'$/);
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
 		});
 
@@ -118,11 +197,159 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
 		});
 
-		it('should not serve a policy when writeHead carries a non-html content type', async () => {
-			const response = await request(app).get('/raw-stream');
+		it('should not serve a policy when writeHead carries a JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should not serve a policy when writeHead carries an array-form JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script-array-headers');
+
+			expect(response.headers['content-type']).toBe('application/javascript');
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should leave an array-form policy that writeHead carries untouched', async () => {
+			const response = await request(app).get('/raw-sandboxed-array-headers');
+
+			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
+		});
+
+		it('should not serve a policy when writeHead carries a flat-array JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script-flat-headers');
+
+			expect(response.headers['content-type']).toBe('application/javascript');
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should not serve a policy when writeHead with a status message carries an array-form JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script-with-status-message');
+
+			expect(response.headers['content-type']).toBe('application/javascript');
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should keep every value of a repeated array-form header', async () => {
+			const response = await request(app).get('/raw-cookies-array-headers');
+
+			expect(response.headers['set-cookie']).toEqual(['a=1', 'b=2']);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+		});
+
+		it('should keep every value of a repeated flat-array header', async () => {
+			const response = await request(app).get('/raw-cookies-flat-headers');
+
+			expect(response.headers['set-cookie']).toEqual(['a=1', 'b=2']);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+		});
+
+		it('should not serve a policy when writeHead carries a 304 status', async () => {
+			const response = await request(app).get('/raw-not-modified');
+
+			expect(response.status).toBe(304);
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+	});
+
+	describe('content types', () => {
+		const app = setupApp({
+			enforced: "script-src <nonce> 'strict-dynamic'",
+			reportOnly: "script-src <nonce>; object-src 'none'",
+		});
+
+		it('should serve both headers on a script-capable non-HTML type', async () => {
+			const response = await request(app).get('/typed').query({ type: 'image/svg+xml' });
+
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+		});
+
+		it('should serve both headers on a response without a content type', async () => {
+			const response = await request(app).get('/untyped');
+
+			expect(response.headers['content-type']).toBeUndefined();
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+		});
+
+		it('should serve both headers on an error response', async () => {
+			const response = await request(app).get('/error');
+
+			expect(response.status).toBe(500);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+		});
+
+		it.each([
+			'text/javascript',
+			'application/javascript',
+			'text/javascript; charset=utf-8',
+			'Application/JavaScript',
+		])('should serve neither header on %s', async (type) => {
+			const response = await request(app).get('/typed').query({ type });
 
 			expect(response.headers[ENFORCED]).toBeUndefined();
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it.each(['/empty-type', '/raw-empty-type'])(
+			'should serve both headers when the content type header has no value (%s)',
+			async (path) => {
+				const response = await request(app).get(path);
+
+				expect(response.headers['content-type']).toBeUndefined();
+				expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+				expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+			},
+		);
+
+		it('should serve neither header when every content type value is JavaScript', async () => {
+			const response = await request(app).get('/scripts');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it('should serve neither header on a comma-separated JavaScript list with spaces', async () => {
+			const response = await request(app)
+				.get('/typed')
+				.query({ type: 'text/javascript, application/javascript' });
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it.each([
+			['several headers', '/script-and-page', {}],
+			['a comma-separated header', '/typed', { type: 'text/javascript, text/html' }],
+		])(
+			'should serve both headers when %s mix JavaScript with another type',
+			async (_label, path, query) => {
+				const response = await request(app).get(path).query(query);
+
+				expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+				expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+			},
+		);
+	});
+
+	describe('304 Not Modified', () => {
+		const app = setupApp({
+			enforced: "script-src <nonce> 'strict-dynamic'",
+			reportOnly: "script-src <nonce>; object-src 'none'",
+		});
+
+		it('should serve neither header when a conditional request revalidates a response', async () => {
+			const original = await request(app).get('/api');
+			const revalidated = await request(app)
+				.get('/api')
+				.set('If-None-Match', original.headers.etag);
+
+			expect(original.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(revalidated.status).toBe(304);
+			expect(revalidated.headers[ENFORCED]).toBeUndefined();
+			expect(revalidated.headers[REPORT_ONLY]).toBeUndefined();
 		});
 	});
 
@@ -140,6 +367,27 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			const response = await request(app).get('/sandboxed');
 
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it("should defer to a response's own report-only policy", async () => {
+			const response = await request(app).get('/self-reporting');
+
+			expect(response.headers[REPORT_ONLY]).toBe("script-src 'none'");
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+	});
+
+	describe('a response that sets only a report-only policy', () => {
+		const app = setupApp({
+			enforced: "script-src <nonce> 'strict-dynamic'",
+			reportOnly: "script-src <nonce>; object-src 'none'",
+		});
+
+		it("should still serve the enforced policy and keep the response's report-only one", async () => {
+			const response = await request(app).get('/self-reporting');
+
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toBe("script-src 'none'");
 		});
 	});
 
@@ -202,6 +450,36 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			const response = await request(app).get('/page');
 
 			expect(response.headers[ENFORCED]).toBe("script-src 'self'");
+		});
+	});
+
+	describe('a repeated writeHead call', () => {
+		it('should throw from writeHead itself, not from setting a header', () => {
+			const res = {
+				locals: {},
+				headersSent: false,
+				setHeader: vi.fn(),
+				getHeader: vi.fn().mockReturnValue(undefined),
+				hasHeader: vi.fn().mockReturnValue(false),
+				writeHead: vi.fn(),
+			};
+			res.writeHead.mockImplementation(() => {
+				res.headersSent = true;
+				return res;
+			});
+			const writeHead = res.writeHead;
+
+			void createContentSecurityPolicyMiddleware({ enforced: "script-src 'self'" })(
+				{} as Request,
+				res as unknown as Response,
+				vi.fn(),
+			);
+
+			void res.writeHead(200);
+			void res.writeHead(200);
+
+			expect(writeHead).toHaveBeenCalledTimes(2);
+			expect(res.setHeader).toHaveBeenCalledTimes(1);
 		});
 	});
 });

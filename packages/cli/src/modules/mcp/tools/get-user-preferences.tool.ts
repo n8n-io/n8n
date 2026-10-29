@@ -2,8 +2,11 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import { flattenAiPreferences, renderAiPreferences } from '@/services/ai-preference.service';
+import {
+	type AiPreferenceService,
+	flattenAiPreferences,
+	renderAiPreferences,
+} from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import {
@@ -145,6 +148,7 @@ export const createGetUserPreferencesTool = (
 			// The registered twin of the tool-call event: an MCP read is the one place a rendered
 			// block leaves n8n without a turn to attach it to.
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP, {
+				user_id: user.id,
 				count: items.length,
 				scope_types: scopes,
 				rendered_length: renderedLength,

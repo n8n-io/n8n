@@ -1,5 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -12,6 +13,8 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	type ProjectListOptions,
+	type OperationContext,
+	RoleRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -22,25 +25,17 @@ import {
 	type GlobalRole,
 	type ProjectRole,
 	AssignableProjectRole,
-	GLOBAL_ADMIN_ROLE_SLUG,
-	GLOBAL_OWNER_ROLE_SLUG,
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 	PROJECT_OWNER_ROLE_SLUG,
-	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
-import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
@@ -103,6 +98,7 @@ export class ProjectService {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	private get workflowService() {
@@ -114,6 +110,18 @@ export class ProjectService {
 	private get credentialsService() {
 		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
+		);
+	}
+
+	private get ownershipTransferService() {
+		return import('@/services/ownership-transfer/ownership-transfer.service.js').then(
+			({ OwnershipTransferService }) => Container.get(OwnershipTransferService),
+		);
+	}
+
+	private get variablesService() {
+		return import('@/environments.ee/variables/variables.service.ee.js').then(
+			({ VariablesService }) => Container.get(VariablesService),
 		);
 	}
 
@@ -214,6 +222,14 @@ export class ProjectService {
 					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
 				);
 			}
+		}
+
+		if (targetProject) {
+			const ownershipTransferService = await this.ownershipTransferService;
+			await ownershipTransferService.enforceTransferPolicy(project.id, targetProject.id, {
+				kind: 'user',
+				user,
+			});
 		}
 
 		// 1. delete or migrate workflows owned by this project
@@ -318,6 +334,16 @@ export class ProjectService {
 		// 9. delete project
 		await this.projectRepository.remove(project);
 
+		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
+		try {
+			await (await this.variablesService).updateCache();
+		} catch (error) {
+			this.logger.warn('Failed to refresh the variables cache on project delete', {
+				projectId: project.id,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+
 		// 10. delete project relations
 		// Cascading deletes take care of this.
 
@@ -344,6 +370,10 @@ export class ProjectService {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
+	async findTeamProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findTeamProjectIds(workflowId);
+	}
+
 	/**
 	 * Enrich projects with the requesting user's role and scopes.
 	 * Mirrors the logic in getMyProjects controller: for each project,
@@ -355,13 +385,10 @@ export class ProjectService {
 	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
 		if (projects.length === 0) return [];
 
-		const relations = await this.projectRelationRepository.find({
-			where: {
-				userId: user.id,
-				projectId: In(projects.map((p) => p.id)),
-			},
-			relations: ['role'],
-		});
+		const relations = await this.projectRelationRepository.findByUserAndProjects(
+			user.id,
+			projects.map((p) => p.id),
+		);
 		const relationsByProject = new Map(relations.map((r) => [r.projectId, r]));
 		const globalScopes = getAuthPrincipalScopes(user);
 
@@ -561,11 +588,13 @@ export class ProjectService {
 		return await this.projectRepository.getPersonalProjectForUser(user.id);
 	}
 
+	/**
+	 * The user's project relations with project, role and role scopes. This runs on
+	 * most editor requests (scope resolution for lists and single resources), so the
+	 * repository keeps the row count proportional to the number of relations.
+	 */
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
-		return await this.projectRelationRepository.find({
-			where: { userId: user.id },
-			relations: ['project', 'role'],
-		});
+		return await this.projectRelationRepository.findAllByUser(user.id, { withProject: true });
 	}
 
 	async syncProjectRelations(
@@ -790,7 +819,8 @@ export class ProjectService {
 				.filter(
 					(u) =>
 						!u.disabled &&
-						(u.role?.slug === GLOBAL_OWNER_ROLE_SLUG || u.role?.slug === GLOBAL_ADMIN_ROLE_SLUG),
+						!!u.role &&
+						IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS.includes(u.role.slug),
 				)
 				.map((u) => u.id),
 		);
@@ -904,65 +934,30 @@ export class ProjectService {
 		user: User,
 		projectId: string,
 		scopes: Scope[],
-		entityManager?: EntityManager,
+		ctx: OperationContext = {},
 	) {
-		const em = entityManager ?? this.projectRepository.manager;
-		let where: FindOptionsWhere<Project> = {
-			id: projectId,
-		};
+		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? undefined
+			: await this.roleService.rolesWithScope(
+					'project',
+					scopes,
+					async () => await this.roleRepository.findAll(ctx),
+				);
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			// Use the same EntityManager as the project lookup (including when callers pass a
-			// transaction manager). Otherwise role resolution can open a second pooled connection
-			// while a transaction already holds a connection
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes, em);
-
-			where = {
-				...where,
-				projectRelations: {
-					role: In(projectRoles),
-					userId: user.id,
-				},
-			};
-		}
-
-		return await em.findOne(Project, {
-			where,
-		});
+		return await this.projectRepository.findOneWithUserRoles(projectId, user.id, projectRoles, ctx);
 	}
 
 	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
-		const where: FindOptionsWhere<Project> = {};
-		if (projectIds) {
-			where.id = In(projectIds);
-		}
+		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? undefined
+			: await this.roleService.rolesWithScope('project', scopes);
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			// if we're not checking specific projects, restrict to team projects
-			if (!projectIds) {
-				where.type = 'team';
-			}
-			where.projectRelations = {
-				role: In(projectRoles),
-				userId: user.id,
-			};
-		}
-
-		const projects = await this.projectRepository.find({
-			where,
-			select: ['id'],
-		});
-		return projects.map((p) => p.id);
+		return await this.projectRepository.findIdsWithUserRoles(user.id, projectRoles, projectIds);
 	}
 
 	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
 		if (projectIds.length === 0) return new Set();
-		const projects = await this.projectRepository.find({
-			select: ['id'],
-			where: { id: In(projectIds) },
-		});
-		return new Set(projects.map(({ id }) => id));
+		return new Set(await this.projectRepository.findExistingIds(projectIds));
 	}
 
 	async findProjectsByIdsForUser(
@@ -974,22 +969,11 @@ export class ProjectService {
 			return [];
 		}
 
-		const where: FindOptionsWhere<Project> = {
-			id: In(projectIds),
-		};
+		const projectRoles = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? undefined
+			: await this.roleService.rolesWithScope('project', scopes);
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.projectRelations = {
-				role: In(projectRoles),
-				userId: user.id,
-			};
-		}
-
-		return await this.projectRepository.find({
-			where,
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		return await this.projectRepository.findByIdsWithUserRoles(projectIds, user.id, projectRoles);
 	}
 
 	/**
@@ -1042,7 +1026,7 @@ export class ProjectService {
 		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
 			projectId: project.id,
 			projectRoleSlugs: [],
-			globalRoleSlugs: [GLOBAL_OWNER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG],
+			globalRoleSlugs: IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 		});
 	}
 
@@ -1085,14 +1069,7 @@ export class ProjectService {
 	}
 
 	async getUserOwnedOrAdminProjects(userId: string): Promise<Project[]> {
-		return await this.projectRepository.find({
-			where: {
-				projectRelations: {
-					userId,
-					role: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]),
-				},
-			},
-		});
+		return await this.projectRepository.findOwnedOrAdminByUser(userId);
 	}
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {

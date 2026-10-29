@@ -79,12 +79,19 @@ function onTakeOver() {
 </script>
 
 <template>
-	<div v-if="showBanner" data-test-id="agent-collaboration-banner">
-		<N8nCallout theme="warning" :icon-tooltip="tooltip" :round-corners="false">
+	<div v-if="showBanner" :class="$style.banner" data-test-id="agent-collaboration-banner">
+		<N8nCallout
+			theme="warning"
+			:class="$style.callout"
+			:icon-tooltip="tooltip"
+			:round-corners="false"
+			:only-bottom-border="true"
+		>
 			{{ bannerMessage }}
 			<template #actions>
 				<N8nButton
 					v-if="agentCollaborationStore.isCurrentUserWriter"
+					:class="$style.takeOverButton"
 					size="small"
 					data-test-id="agent-collaboration-take-over"
 					@click="onTakeOver"
@@ -102,3 +109,17 @@ function onTakeOver() {
 		</N8nCallout>
 	</div>
 </template>
+
+<style lang="scss" module>
+.banner {
+	flex-shrink: 0;
+}
+
+.callout {
+	padding: var(--spacing--2xs) var(--spacing--md);
+}
+
+.takeOverButton {
+	margin-inline-start: var(--spacing--2xs);
+}
+</style>

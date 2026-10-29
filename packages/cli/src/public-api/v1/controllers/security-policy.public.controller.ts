@@ -17,7 +17,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import type { SecurityPolicyReadResult } from '@/services/security-settings.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 

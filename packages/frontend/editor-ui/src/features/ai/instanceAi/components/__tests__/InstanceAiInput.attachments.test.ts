@@ -3,14 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
 
@@ -18,6 +20,11 @@ const telemetryTrack = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: vi.fn() }),
+}));
+
+const showMessageMock = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock, showError: vi.fn() }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -32,7 +39,6 @@ const defaultProps = () => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
-	isAwaitingPlanReview: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -50,10 +56,11 @@ describe('InstanceAiInput — staged node attachments', () => {
 		telemetryTrack.mockClear();
 	});
 
-	it('keeps the existing input menu enabled outside the mentions rollout', () => {
-		const { getByTestId } = renderComponent();
+	it('keeps the existing input menu enabled outside the mentions rollout, with no paperclip', () => {
+		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-input-menu')).toBeEnabled();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('consumes staged attachments into the draft without touching already-typed text', async () => {
@@ -109,48 +116,51 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(restoreDraft()).toBe(true);
 		await findAllByTestId('nodes-chip-node');
 	});
+});
 
-	// Plan feedback is resumed as a plain string, so attachments cannot ride along.
-	// They must stay staged for the next real message rather than vanish on send.
-	it('keeps staged chips out of plan feedback instead of dropping them', async () => {
-		const { emitted, findAllByTestId, findByTestId, getByRole, rerender } = renderComponent();
-		const store = useInstanceAiStore();
-
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
-		await findAllByTestId('nodes-chip-node');
-
-		await rerender({ ...defaultProps(), isAwaitingPlanReview: true, isStreaming: true });
-		await userEvent.type(getByRole('textbox'), 'Drop the third workflow');
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
-
-		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
-		const [message, attachments] = emitted().submit[0] as [string, unknown];
-		expect(message).toBe('Drop the third workflow');
-		expect(attachments).toBeUndefined();
-
-		// Still staged, so the user can see them and send them deliberately later.
-		await findAllByTestId('nodes-chip-node');
+describe('attach-only composer', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
-	// Attachments are never submitted with plan feedback, so `isDirty()` stays true
-	// from the staged chips alone — the text restore must not depend on it.
-	it('restores plan feedback text on a failed send even with chips still staged', async () => {
-		const { emitted, findAllByTestId, findByTestId, getByRole, rerender } = renderComponent();
-		const store = useInstanceAiStore();
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
-		await findAllByTestId('nodes-chip-node');
+	it('replaces the "+" menu with a paperclip restricted to the agent\'s file types', () => {
+		const { getByTestId, queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*,application/pdf' },
+		});
 
-		await rerender({ ...defaultProps(), isAwaitingPlanReview: true, isStreaming: true });
-		const textbox = getByRole('textbox');
-		await userEvent.type(textbox, 'Drop the third workflow');
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+		const fileInput = container.querySelector('input[type="file"]');
+		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
+	});
 
-		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
-		const [, , restoreDraft] = emitted().submit[0] as [string, unknown, () => boolean];
+	it('tells the user when a dropped file type is not accepted', async () => {
+		const { getByRole } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
 
-		expect(restoreDraft).toBeTypeOf('function');
-		expect(restoreDraft()).toBe(true);
-		await waitFor(() => expect(textbox).toHaveValue('Drop the third workflow'));
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'report.pdf is not a supported file type',
+		});
+	});
+
+	it('hides attaching entirely when the agent accepts no file types', () => {
+		const { queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: '' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 	});
 });
 
@@ -223,14 +233,27 @@ const nodeMentionSelection: AssistantMentionSelection = {
 	telemetry: { mode: 'search', resultPosition: 2, queryLength: 3 },
 };
 
+const stubOpenMetrics = {
+	mode: 'search',
+	queryLength: 3,
+	resultCount: 4,
+	ambiguousResultCount: 2,
+	submenuOpenCount: 1,
+} as const;
+
 const MentionPickerStub = defineComponent({
 	name: 'AssistantAtMentionPicker',
 	props: {
 		modelValue: { type: Boolean, default: false },
 		query: { type: String, default: '' },
 	},
-	emits: ['select'],
-	setup(props, { emit }) {
+	emits: ['select', 'update:modelValue', 'empty-search'],
+	setup(props, { emit, expose }) {
+		expose({
+			getOpenMetrics: () => stubOpenMetrics,
+			handleExternalKeydown: () => false,
+			flushEmptySearch: () => {},
+		});
 		return () =>
 			h('div', { 'data-test-id': 'mention-picker-stub', 'data-query': props.query }, [
 				h(
@@ -249,6 +272,31 @@ const MentionPickerStub = defineComponent({
 					},
 					'Select node',
 				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-dismiss',
+						onClick: () => emit('update:modelValue', false),
+					},
+					'Dismiss',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-empty-search',
+						onClick: () => emit('empty-search', 'Slack'),
+					},
+					'Report empty search',
+				),
+				// The real menu opens itself on its trigger and reports it through v-model.
+				h(
+					'button',
+					{
+						'data-test-id': 'mention-picker-open',
+						onClick: () => emit('update:modelValue', true),
+					},
+					'Open from button',
+				),
 			]);
 	},
 });
@@ -258,7 +306,7 @@ const renderMentionsInput = createComponentRenderer(InstanceAiInput, {
 		...defaultProps(),
 		mentionsEnabled: true,
 		mentionProjectId: 'project-1',
-		mentionArtifacts: [{ id: 'w1', name: 'Orders' }],
+		mentionArtifacts: [{ id: 'w1', name: 'Orders', origin: 'built' }],
 	},
 	global: { stubs: { AssistantAtMentionPicker: MentionPickerStub } },
 });
@@ -276,7 +324,87 @@ describe('InstanceAiInput — mention attachments', () => {
 
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
-			{ source: 'typed' },
+			{ thread_id: 'thread-1', source: 'typed' },
+		);
+	});
+
+	it('tracks a dismissed picker with the list snapshot and thread id', async () => {
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@ord');
+
+		await userEvent.click(getByTestId('mention-picker-dismiss'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER,
+			{
+				thread_id: 'thread-1',
+				source: 'typed',
+				reason: 'closed_menu',
+				mode: 'search',
+				query_length: 3,
+				result_count: 4,
+				ambiguous_result_count: 2,
+				submenu_open_count: 1,
+			},
+		);
+	});
+
+	it('tracks a button open, and attributes a later empty search to the button', async () => {
+		const { getByTestId } = renderMentionsInput();
+
+		await userEvent.click(getByTestId('mention-picker-open'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
+			{ thread_id: 'thread-1', source: 'button' },
+		);
+
+		await userEvent.click(getByTestId('mention-picker-empty-search'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS,
+			expect.objectContaining({ source: 'button' }),
+		);
+	});
+
+	it('tracks an empty search with the redacted query, its node type match and the tab count', async () => {
+		useNodeTypesStore().setNodeTypes([
+			// A plain object: a mock proxy answers `hidden` with a truthy function.
+			{ name: 'n8n-nodes-base.slack', displayName: 'Slack', version: 1 } as INodeTypeDescription,
+		]);
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@sla');
+
+		await userEvent.click(getByTestId('mention-picker-empty-search'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SEARCHED_AI_ASSISTANT_MENTIONS_WITHOUT_RESULTS,
+			{
+				thread_id: 'thread-1',
+				source: 'typed',
+				query: 'Slack',
+				query_length: 5,
+				matched_node_type: 'n8n-nodes-base.slack',
+				artifact_count: 1,
+			},
+		);
+	});
+
+	it('does not track a dismissal when a mention is selected', async () => {
+		const { getByRole, getByTestId } = renderMentionsInput();
+		await userEvent.type(getByRole('textbox'), '@');
+
+		await userEvent.click(getByTestId('mention-picker-select'));
+		// The menu reports its own close after the selection landed.
+		await userEvent.click(getByTestId('mention-picker-dismiss'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
+			expect.objectContaining({ kind: 'workflow' }),
+		);
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_DISMISSED_AI_ASSISTANT_MENTION_PICKER,
+			expect.anything(),
 		);
 	});
 
@@ -303,7 +431,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_AI_ASSISTANT_MENTION_PICKER,
-			{ source: 'typed' },
+			{ thread_id: 'thread-1', source: 'typed' },
 		);
 	});
 
@@ -320,27 +448,30 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
+				thread_id: 'thread-1',
 				kind: 'workflow',
 				mode: 'browse',
 				source: 'workflows',
 				result_position: 1,
 				query_length: 0,
 				already_artifact: true,
+				artifact_origin: 'built',
 			},
 		);
 	});
 
-	it('does not track a duplicate selection as newly staged context', async () => {
-		const { getByTestId } = renderMentionsInput();
+	it('tracks a duplicate pick as a selection without staging it twice', async () => {
+		const { getByTestId, emitted } = renderMentionsInput();
 
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(getByTestId('mention-picker-select'));
 
+		expect(emitted()['mention-reference-added']).toHaveLength(1);
 		expect(
 			telemetryTrack.mock.calls.filter(
 				([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			),
-		).toHaveLength(1);
+		).toHaveLength(2);
 	});
 
 	it('keeps mention context on failed send and releases it after an accepted send', async () => {
@@ -356,14 +487,16 @@ describe('InstanceAiInput — mention attachments', () => {
 			number,
 			() => void,
 			unknown,
+			string[],
 		];
 		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
 		expect(firstSubmit[6]).toEqual({
-			mentionCount: 1,
-			workflowMentionCount: 1,
-			nodeMentionCount: 0,
-			groupMentionCount: 0,
+			total: 1,
+			workflow: 1,
+			node: 0,
+			group: 0,
 		});
+		expect(firstSubmit[7]).toEqual(['w1']);
 		expect(firstSubmit[2]()).toBe(true);
 		await findByTestId('attachment-preview-resource');
 		expect(emitted()['mention-reference-removed']).toBeUndefined();
@@ -381,7 +514,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ kind: 'workflow' },
+			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
 	});
 
@@ -405,12 +538,14 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
+				thread_id: 'thread-1',
 				kind: 'node',
 				mode: 'search',
 				source: 'artifacts',
 				result_position: 2,
 				query_length: 3,
 				already_artifact: false,
+				artifact_origin: null,
 			},
 		);
 	});
@@ -423,7 +558,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		expect(emitted()['mention-reference-removed']).toHaveLength(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ kind: 'workflow' },
+			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
 	});
 });

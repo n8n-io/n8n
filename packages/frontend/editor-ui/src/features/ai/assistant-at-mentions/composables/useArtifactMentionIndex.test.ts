@@ -73,6 +73,30 @@ describe('projectWorkflowArtifact', () => {
 		expect(index.groups).toEqual([{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }]);
 		expect(index.nodeIdToGroupId.get('node-1')).toBe('group-1');
 	});
+
+	it('leaves out sticky notes and groups that held nothing else', () => {
+		const sticky = (id: string) => ({
+			id,
+			name: id,
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		});
+		const workflow = makeWorkflow('1', {
+			nodes: [...makeWorkflow('1').nodes, sticky('note-1'), sticky('note-2')],
+			nodeGroups: [
+				{ id: 'group-1', name: 'Mixed', nodeIds: ['node-1', 'note-1'] },
+				{ id: 'group-2', name: 'Notes only', nodeIds: ['note-2'] },
+			],
+		});
+
+		const index = projectWorkflowArtifact(workflow);
+
+		expect(index.nodes.map((node) => node.id)).toEqual(['node-1']);
+		expect(index.groups).toEqual([{ id: 'group-1', name: 'Mixed', nodeIds: ['node-1'] }]);
+		expect(index.groupsById.has('group-2')).toBe(false);
+	});
 });
 
 describe('useArtifactMentionIndex', () => {

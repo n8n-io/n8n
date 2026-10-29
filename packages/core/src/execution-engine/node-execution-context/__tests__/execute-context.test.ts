@@ -254,6 +254,46 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('logNodeOutput', () => {
+		// NODE-5746: Forward valid Code node logs to the editor without server warnings.
+		it.each([
+			{ logCall: 'console.log("x", 42)', args: ['x', 42], messages: ['x', 42] },
+			{ logCall: 'console.log(null)', args: [null], messages: ['null'] },
+			{ logCall: 'console.log(undefined)', args: [undefined], messages: ['undefined'] },
+			{ logCall: 'console.log("x", null)', args: ['x', null], messages: ['x', 'null'] },
+		])(
+			'should forward $logCall to the editor in manual mode without warnings',
+			({ args, messages }) => {
+				const sendDataToUI = vi.fn();
+				const codeNode = mock<INode>({
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+				});
+				const context = new ExecuteContext(
+					mock<Workflow>({ settings: { redactionPolicy: 'none' } }),
+					codeNode,
+					mock<IWorkflowExecuteAdditionalData>({ sendDataToUI }),
+					'manual',
+					mock<IRunExecutionData>(),
+					runIndex,
+					connectionInputData,
+					inputData,
+					executeData,
+					[],
+				);
+				const warnSpy = vi.spyOn(context.logger, 'warn').mockImplementation(() => {});
+
+				context.logNodeOutput(...args);
+
+				expect.soft(warnSpy).not.toHaveBeenCalled();
+				expect(sendDataToUI).toHaveBeenCalledTimes(1);
+				expect(sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+					source: '[Node: "Code"]',
+					messages,
+				});
+			},
+		);
+
 		it('when in manual mode, should parse JSON', () => {
 			const json = '{"key": "value", "nested": {"foo": "bar"}}';
 			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
@@ -395,29 +435,6 @@ describe('ExecuteContext', () => {
 	describe('isToolExecution', () => {
 		it('should return false for regular workflow execution', () => {
 			expect(executeContext.isToolExecution()).toBe(false);
-		});
-	});
-
-	describe('getRuntimeCredential', () => {
-		beforeEach(() => {
-			additionalData.getRuntimeCredential.mockReset();
-		});
-
-		it('forwards the alias to the additionalData callback and returns its value', async () => {
-			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
-
-			const result = await executeContext.getRuntimeCredential('api_key');
-
-			expect(result).toBe('Bearer xyz');
-			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
-		});
-
-		it('returns undefined when the underlying callback yields undefined', async () => {
-			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
-
-			const result = await executeContext.getRuntimeCredential('missing');
-
-			expect(result).toBeUndefined();
 		});
 	});
 
@@ -856,6 +873,19 @@ describe('ExecuteContext', () => {
 				source: `[Node: "${node.name}"]`,
 				messages: ['hello', 42],
 			});
+		});
+
+		it('redacts console messages when a sub-workflow reported the channel', () => {
+			const context = makeContext('manual', {
+				executionData: {
+					runtimeData: {
+						redaction: { version: 2, production: false, manual: false },
+						subWorkflowRedaction: { production: true, manual: true },
+					},
+				},
+			} as unknown as IRunExecutionData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
 		});
 
 		it('fails closed when resolving the policy throws', () => {

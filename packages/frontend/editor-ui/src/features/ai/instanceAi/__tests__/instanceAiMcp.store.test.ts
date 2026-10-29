@@ -51,13 +51,16 @@ const mockFetchAllMcpConnectionTools = vi.fn();
 const mockFetchMcpConnectionTools = vi.fn();
 
 vi.mock('../instanceAi.mcp.api', () => ({
-	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	fetchMcpConnections: (...args: unknown[]) => mockFetchMcpConnections(...args),
 	fetchAllMcpConnectionTools: (...args: unknown[]) => mockFetchAllMcpConnectionTools(...args),
 	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
+	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
 	deleteMcpConnection: (...args: unknown[]) => mockDeleteMcpConnection(...args),
+}));
+vi.mock('@/features/shared/toolsConnection/mcpRegistry.api', () => ({
+	fetchMcpRegistryCatalog: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 }));
 
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
@@ -72,13 +75,18 @@ const makeConnection = (
 	credentialId: overrides.credentialId ?? 'cred-1',
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',
-	toolFilter: overrides.toolFilter ?? null,
+	toolPermissions: overrides.toolPermissions ?? {
+		categories: { read: 'always_allow', write: 'require_approval' },
+	},
 	createdAt: '2026-05-01T00:00:00.000Z',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 });
 
-const makeServer = (slug: string): McpRegistryServerResponse => ({
+const readTool = (name: string) => ({ name, category: 'read' as const });
+
+const makeServer = (slug: string, isTemplated = false): McpRegistryServerResponse => ({
 	slug,
+	nodeTypeName: `@n8n/mcp-registry.${slug}`,
 	name: `com.test/${slug}`,
 	title: slug,
 	description: `${slug} description`,
@@ -88,6 +96,7 @@ const makeServer = (slug: string): McpRegistryServerResponse => ({
 	icons: [],
 	credentials: [{ credentialType: `${slug}McpOAuth2Api`, name: 'OAuth2', value: 'oAuth2' }],
 	tools: [],
+	isTemplated,
 	isOfficial: true,
 	status: 'active',
 });
@@ -143,7 +152,7 @@ describe('useInstanceAiMcpStore', () => {
 				makeConnection({ id: 'conn-2', serverSlug: 'notion' }),
 			]);
 			mockFetchAllMcpConnectionTools.mockResolvedValue([
-				{ id: 'conn-1', status: 'connected', tools: [{ name: 'search' }] },
+				{ id: 'conn-1', status: 'connected', tools: [readTool('search')] },
 				{ id: 'conn-2', status: 'disconnected', tools: [], failureReason: 'unknown' },
 			] satisfies InstanceAiMcpConnectionToolsResponse[]);
 
@@ -155,7 +164,7 @@ describe('useInstanceAiMcpStore', () => {
 					{ id: 'conn-2', status: 'disconnected' },
 				]);
 			});
-			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
+			expect(store.connectionToolsById.get('conn-1')).toEqual([readTool('search')]);
 			expect(store.connectionToolsById.has('conn-2')).toBe(false);
 			expect(mockShowMessage).not.toHaveBeenCalled();
 		});
@@ -214,7 +223,7 @@ describe('useInstanceAiMcpStore', () => {
 			await store.fetchConnections();
 
 			staleBulkRequest.resolve([
-				{ id: 'conn-1', status: 'connected', tools: [{ name: 'stale_tool' }] },
+				{ id: 'conn-1', status: 'connected', tools: [readTool('stale_tool')] },
 			]);
 			currentBulkRequest.resolve([
 				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'server_unavailable' },
@@ -255,6 +264,34 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
 			expect(store.catalog).toHaveLength(1);
+		});
+
+		it('filters templated servers from the Instance AI catalog', async () => {
+			mockFetchMcpRegistryServers.mockResolvedValue([
+				makeServer('linear'),
+				makeServer('databricks', true),
+			]);
+
+			await store.fetchCatalogLazy();
+
+			expect(store.catalog?.map((server) => server.slug)).toEqual(['linear']);
+		});
+
+		it('never offers Gateway credits in the Instance AI catalog', async () => {
+			const aiGatewayOption = {
+				credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+				name: 'Gateway credits',
+				value: 'aiGateway',
+			};
+			const paired = makeServer('firecrawl');
+			mockFetchMcpRegistryServers.mockResolvedValue([
+				{ ...paired, credentials: [...paired.credentials, aiGatewayOption] },
+				{ ...makeServer('n8n-connect-brave-search'), credentials: [aiGatewayOption] },
+			]);
+
+			await store.fetchCatalogLazy();
+
+			expect(store.catalog).toEqual([paired]);
 		});
 
 		it('fetches once for concurrent callers', async () => {
@@ -339,12 +376,12 @@ describe('useInstanceAiMcpStore', () => {
 			toolsRequest.resolve({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'search' }],
+				tools: [readTool('search')],
 			});
 			await retry;
 
 			expect(store.connections[0].status).toBe('connected');
-			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
+			expect(store.connectionToolsById.get('conn-1')).toEqual([readTool('search')]);
 		});
 
 		it('refreshes tools after credential changes and ignores the stale response', async () => {
@@ -373,7 +410,7 @@ describe('useInstanceAiMcpStore', () => {
 			staleToolsRequest.resolve({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'old_tool' }],
+				tools: [readTool('old_tool')],
 			});
 			await staleFetch;
 			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
@@ -381,10 +418,10 @@ describe('useInstanceAiMcpStore', () => {
 			freshToolsRequest.resolve({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'fresh_tool' }],
+				tools: [readTool('fresh_tool')],
 			});
 			await vi.waitFor(() => {
-				expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'fresh_tool' }]);
+				expect(store.connectionToolsById.get('conn-1')).toEqual([readTool('fresh_tool')]);
 			});
 		});
 	});
@@ -407,7 +444,7 @@ describe('useInstanceAiMcpStore', () => {
 			firstRequest.resolve({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'old_tool' }],
+				tools: [readTool('old_tool')],
 			});
 			await firstFetch;
 			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
@@ -415,11 +452,11 @@ describe('useInstanceAiMcpStore', () => {
 			secondRequest.resolve({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'fresh_tool' }],
+				tools: [readTool('fresh_tool')],
 			});
 			await secondFetch;
 
-			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'fresh_tool' }]);
+			expect(store.connectionToolsById.get('conn-1')).toEqual([readTool('fresh_tool')]);
 		});
 	});
 
@@ -484,7 +521,9 @@ describe('useInstanceAiMcpStore', () => {
 			await store.fetchConnections();
 			mockUpdateMcpConnection.mockResolvedValue(updated);
 
-			const result = await store.updateConnection('conn-1', { inclusionMode: 'except' });
+			const result = await store.updateConnection('conn-1', {
+				toolPermissions: { categories: { read: 'always_allow', write: 'blocked' } },
+			});
 
 			expect(result).toEqual({ ...updated, status: 'connecting' });
 			expect(store.connections[0].credentialName).toBe('Renamed');
@@ -527,7 +566,7 @@ describe('useInstanceAiMcpStore', () => {
 				makeConnection({ id: 'conn-2', serverSlug: 'notion', credentialId: 'cred-2' }),
 			]);
 			await store.fetchConnections();
-			store.connectionToolsById.set('conn-1', [{ name: 'search' }]);
+			store.connectionToolsById.set('conn-1', [readTool('search')]);
 		});
 
 		it('drops connections that used the deleted credential', () => {
@@ -541,7 +580,7 @@ describe('useInstanceAiMcpStore', () => {
 			emitCredentialDeleted('cred-other');
 
 			expect(store.connections.map((c) => c.id)).toEqual(['conn-1', 'conn-2']);
-			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
+			expect(store.connectionToolsById.get('conn-1')).toEqual([readTool('search')]);
 		});
 	});
 });

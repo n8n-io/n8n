@@ -44,7 +44,7 @@ const handleButtonClick = () => {
 		</template>
 		<span :class="$style.content">
 			{{ message }}
-			<N8nButton v-if="isAnotherTab" variant="subtle" size="xsmall" @click="handleButtonClick">
+			<N8nButton v-if="isAnotherTab" variant="outline" size="xsmall" @click="handleButtonClick">
 				{{ t('collaboration.canvas.acquireEditing') }}
 			</N8nButton>
 		</span>

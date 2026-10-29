@@ -1,10 +1,9 @@
-import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	INode,
 	IRun,
 	IRunData,
-	IWebhookResponseData,
 	IWorkflowBase,
 	WebhookResponseMode,
 	WorkflowExecuteMode,
@@ -17,20 +16,18 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	UserError,
-	WAIT_NODE_TYPE,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
-import type { WebhookRunOutcome } from '@/services/pending-webhook-response';
+import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
- * path does not: a seeded execution stack, MCP relay fields, multi-page forms,
- * or a resume URL.
+ * path does not: a seeded execution stack, MCP relay fields, or multi-page
+ * forms.
  */
 const UNSUPPORTED_TRIGGERS = new Set<string>([
 	CHAT_TRIGGER_NODE_TYPE,
@@ -38,7 +35,6 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-	WAIT_NODE_TYPE,
 ]);
 
 /**
@@ -50,6 +46,7 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'onReceived',
 	'lastNode',
 	'responseNode',
+	'streaming',
 ]);
 
 /** What the request says about a run, before the webhook node has produced anything. */
@@ -71,9 +68,7 @@ export type EngineV2WebhookRequest = {
 export class EngineV2Webhooks {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
-		private readonly payloadGuard: EngineV2PayloadGuard,
 		private readonly proxy: EngineDataPlaneProxyService,
-		private readonly engineConfig: EngineConfig,
 	) {}
 
 	/** Whether this webhook run starts on the engine v2 data plane. */
@@ -97,7 +92,7 @@ export class EngineV2Webhooks {
 	 * Ordered so the user hears the most fundamental reason first.
 	 */
 	assertSupported({ workflowStartNode, responseMode, executionId }: EngineV2WebhookRequest): void {
-		// Checked first: `EngineV2WebhookResponder.waitForResponse` assumes the module
+		// Checked first: `EngineV2WebhookResponseRegistry.waitForResponse` assumes the module
 		// registered its channel, and throws an internal error otherwise. Only a check
 		// that precedes that call can turn "module off" into a 400 instead of a 500.
 		if (!this.proxy.isAvailable()) {
@@ -106,9 +101,11 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// A v2 run keeps no control-plane execution row, so there is nothing to resume.
+		// A resume runs the waiting node, not a trigger. The trigger checks below
+		// ran when the run started.
 		if (executionId !== undefined) {
-			throw new UserError('Engine v2 cannot resume a waiting execution yet.');
+			this.assertResumeResponseSupported(responseMode);
+			return;
 		}
 
 		if (UNSUPPORTED_TRIGGERS.has(workflowStartNode.type)) {
@@ -133,16 +130,59 @@ export class EngineV2Webhooks {
 				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
-		if (this.engineConfig.mode === 'remote' && responseMode !== 'onReceived') {
+
+		// With the raw body, a streaming Webhook node outputs a file after it sent
+		// the stream headers. `assertPayloadSupported` then cannot answer with a
+		// 400, so refuse the configuration here.
+		if (responseMode === 'streaming' && this.keepsRawBody(workflowStartNode)) {
 			throw new UserError(
-				`Engine v2 does not support the '${responseMode}' response mode with a remote data plane yet. Respond immediately instead.`,
+				`Engine v2 cannot stream a response for the "${workflowStartNode.name}" trigger with the Raw Body option yet.`,
 			);
 		}
 	}
 
+	/**
+	 * On engine v2 a Respond to Webhook node answers the request that started the
+	 * run, and so does the next form page. The end of the run is also answered
+	 * only to that request. With any of these modes, a resume request would wait
+	 * for an answer that goes elsewhere.
+	 *
+	 * TODO(CET-476): answer all three modes once the data plane can answer a
+	 * resume request.
+	 */
+	private assertResumeResponseSupported(responseMode: WebhookResponseMode): void {
+		if (responseMode === 'responseNode' || responseMode === 'formPage') {
+			throw new UserError(
+				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			);
+		}
+
+		if (responseMode === 'lastNode') {
+			throw new UserError(
+				'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+			);
+		}
+
+		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
+			throw new UserError(
+				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
+			);
+		}
+	}
+
+	private keepsRawBody(node: INode): boolean {
+		const options: unknown = node.parameters.options;
+		if (!isRecord(options)) return false;
+		// An expression can turn the option on, so only a missing or `false` value is safe.
+		return options.rawBody !== undefined && options.rawBody !== false;
+	}
+
 	/** Converts the data plane's answer to the shape the v1 response path reads. */
 	async toRun(
-		outcome: Exclude<WebhookRunOutcome, { status: 'response' | 'timeout' | 'undeliverable' }>,
+		outcome: Exclude<
+			WebhookRunOutcome,
+			{ status: 'response' | 'timeout' | 'undeliverable' | 'cancelled' }
+		>,
 		executionMode: WorkflowExecuteMode,
 	): Promise<IRun> {
 		const runData: IRunData = {};
@@ -180,18 +220,5 @@ export class EngineV2Webhooks {
 				},
 			}),
 		};
-	}
-
-	/**
-	 * Rejects a payload the engine cannot carry.
-	 *
-	 * Only the webhook node's own output says whether the request brought a file,
-	 * so this runs after the node, unlike {@link assertSupported}.
-	 */
-	assertPayloadSupported(webhookResultData: IWebhookResponseData): void {
-		this.payloadGuard.assertNoFiles(
-			webhookResultData.workflowData ?? [],
-			'Engine v2 cannot receive files from a webhook yet.',
-		);
 	}
 }

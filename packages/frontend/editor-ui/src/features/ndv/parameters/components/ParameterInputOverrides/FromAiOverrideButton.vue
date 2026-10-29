@@ -1,15 +1,15 @@
 <script setup lang="ts">
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
 
-import { N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();
 
 withDefaults(
 	defineProps<{
 		position?: 'inline' | 'standalone';
+		size?: 'small' | 'medium';
 	}>(),
-	{ position: 'inline' },
+	{ position: 'inline', size: 'medium' },
 );
 
 const emit = defineEmits<{
@@ -23,13 +23,16 @@ const emit = defineEmits<{
 			<div>{{ i18n.baseText('parameterOverride.applyOverrideButtonTooltip') }}</div>
 		</template>
 
-		<div
-			:class="[$style.overrideButton, $style[position]]"
+		<N8nIconButton
+			icon="sparkles"
+			variant="ghost"
+			:size="size"
+			icon-size="small"
+			:class="[$style.overrideButton, $style[position], $style[size]]"
+			:aria-label="i18n.baseText('parameterOverride.applyOverrideButtonTooltip')"
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
-		>
-			<AiStarsIcon size="large" />
-		</div>
+		/>
 	</N8nTooltip>
 </template>
 
@@ -38,8 +41,8 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 30px;
-	width: 30px;
+	height: var(--from-ai-button-size);
+	width: var(--from-ai-button-size);
 	background-color: var(--color--foreground);
 	color: var(--color--foreground--shade-2);
 	cursor: pointer;
@@ -55,16 +58,22 @@ const emit = defineEmits<{
 	}
 }
 
-.inline {
-	border-left: 0;
-	border-top-right-radius: var(--radius);
-	border-bottom-right-radius: var(--radius);
+.small {
+	--from-ai-button-size: var(--height--sm);
 }
 
-.standalone {
+.medium {
+	--from-ai-button-size: var(--height--md);
+}
+
+.overrideButton.inline {
+	border-left: 0;
+	border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.overrideButton.standalone {
 	background-color: var(--color--foreground);
 	border-top: 0;
-	border-top-left-radius: var(--radius);
-	border-top-right-radius: var(--radius);
+	border-radius: var(--radius) var(--radius) 0 0;
 }
 </style>

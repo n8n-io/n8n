@@ -5,8 +5,8 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
@@ -26,6 +26,14 @@ const props = withDefaults(
 	}>(),
 	{ awaitingInput: false },
 );
+
+const i18n = useI18n();
+
+function skillUpdateLabel(entry: Extract<InstanceAiTimelineEntry, { type: 'skill-update' }>) {
+	return entry.name
+		? i18n.baseText(`instanceAi.skillUpdate.${entry.change}`, { interpolate: { name: entry.name } })
+		: i18n.baseText(`instanceAi.skillUpdate.${entry.change}.unnamed`);
+}
 
 const { getToolLabel } = useToolLabel();
 const { getInstanceContextLabel } = useInstanceContextLabel();
@@ -56,6 +64,7 @@ const activityLabel = computed<string | undefined>(() => {
 
 	if (!props.active || props.awaitingInput) return undefined;
 	const last = props.entries[props.entries.length - 1];
+	if (last?.type === 'skill-update') return skillUpdateLabel(last);
 	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
 });
 
@@ -73,7 +82,10 @@ const durationSec = computed<number | undefined>(() => {
 		const toolCall = toolCallFor(entry);
 		if (!toolCall) continue;
 		const startedAt = toolCall.startedAt ? Date.parse(toolCall.startedAt) : NaN;
-		const completedAt = toolCall.completedAt ? Date.parse(toolCall.completedAt) : NaN;
+		// An interrupted call is stamped when the restarted process sweeps it, which can
+		// be hours after the work stopped, so its end time says nothing about the duration.
+		const completedAt =
+			toolCall.completedAt && !toolCall.interrupted ? Date.parse(toolCall.completedAt) : NaN;
 		if (!Number.isNaN(startedAt))
 			start = start === undefined ? startedAt : Math.min(start, startedAt);
 		if (!Number.isNaN(completedAt))
@@ -94,25 +106,48 @@ const durationSec = computed<number | undefined>(() => {
 		test-id="instance-ai-thinking-block"
 	>
 		<template v-for="(entry, index) in props.entries" :key="index">
-			<div v-if="entry.type === 'text'" :class="$style.thought">
+			<!-- Reasoning renders inline: the header already shows its first sentence. -->
+			<div v-if="entry.type === 'text' || entry.type === 'reasoning'" :class="$style.thought">
 				<InstanceAiMarkdown
 					:content="entry.content"
 					:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				/>
 			</div>
 
-			<AiReasoningBlock
-				v-else-if="entry.type === 'reasoning'"
-				:entry="entry"
-				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
-			/>
-
 			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
+
+			<N8nAiActivityStep
+				v-else-if="entry.type === 'skill-update'"
+				:label="skillUpdateLabel(entry)"
+				data-test-id="instance-ai-skill-update"
+			>
+				<template v-if="entry.change !== 'unavailable' && entry.content !== undefined">
+					<ToolResultJson :value="{ skillId: entry.skillId, name: entry.name }" />
+					<ToolResultJson
+						:value="{
+							success: true,
+							skillId: entry.skillId,
+							name: entry.name,
+							hash: entry.version,
+							content: entry.content,
+						}"
+					/>
+				</template>
+				<p v-else :class="$style.thought">
+					{{
+						i18n.baseText(
+							entry.change === 'unavailable'
+								? 'instanceAi.skillUpdate.unavailable.description'
+								: 'instanceAi.skillUpdate.loaded.description',
+						)
+					}}
+				</p>
+			</N8nAiActivityStep>
 
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"
 				:label="getToolLabel(toolCallFor(entry)!.toolName, toolCallFor(entry)!.args)"
-				:loading="toolCallFor(entry)!.isLoading"
+				:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
 				:error="toolCallFor(entry)!.error"
 			>
 				<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />

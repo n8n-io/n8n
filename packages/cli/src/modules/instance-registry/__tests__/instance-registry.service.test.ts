@@ -6,6 +6,9 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from '../storage/instance-storage.interface';
@@ -57,6 +60,11 @@ vi.mock('../storage/redis-instance-storage', () => {
 
 	return { RedisInstanceStorage: MockRedisStorage };
 });
+
+vi.mock('@/utils/container-limits', () => ({
+	getMemoryLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'unreadable', weight: null })),
+}));
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -235,60 +243,162 @@ describe('InstanceRegistryService', () => {
 				}),
 			);
 		});
+
+		it.each(['main', 'worker', 'webhook'] as const)(
+			'should log the aligned cluster version on a %s instance',
+			async (instanceType) => {
+				service = createService({ instanceType });
+
+				await service.init();
+
+				expect(logger.info).toHaveBeenCalledWith(`Cluster aligned on version ${N8N_VERSION}`, {
+					instances: [
+						expect.objectContaining({
+							hostId: 'main-abc123',
+							instanceType,
+							instanceRole: 'unset',
+							version: N8N_VERSION,
+						}),
+					],
+				});
+			},
+		);
+
+		it('should log both versions and all instances on a non-leader main', async () => {
+			const storage = new (RedisInstanceStorage as unknown as new () => RedisInstanceStorage)();
+			Container.set(RedisInstanceStorage, storage);
+			service = createService({ isMultiMain: true, instanceRole: 'follower' });
+			await storage.register({
+				...service.getLocalInstance(),
+				instanceKey: 'old-key',
+				hostId: 'old-main',
+				instanceRole: 'leader',
+				version: '2.27.4',
+			});
+			const read = vi.spyOn(storage, 'getAllRegistrations');
+
+			await service.init();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				`Cluster is running multiple n8n versions: 2.27.4, ${N8N_VERSION}`,
+				{
+					instances: expect.arrayContaining([
+						{
+							hostId: 'old-main',
+							instanceType: 'main',
+							instanceRole: 'leader',
+							version: '2.27.4',
+						},
+						{
+							hostId: 'main-abc123',
+							instanceType: 'main',
+							instanceRole: 'follower',
+							version: N8N_VERSION,
+						},
+					]),
+				},
+			);
+			await service.heartbeat();
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('should continue startup when the cluster version read fails', async () => {
+			const storage = new (RedisInstanceStorage as unknown as new () => RedisInstanceStorage)();
+			Container.set(RedisInstanceStorage, storage);
+			service = createService({ isMultiMain: true });
+			const error = new Error('Redis down');
+			vi.spyOn(storage, 'getAllRegistrations').mockRejectedValueOnce(error);
+
+			await expect(service.init()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to inspect cluster versions after registration',
+				{ error },
+			);
+			expect(logger.info).not.toHaveBeenCalledWith(
+				expect.stringContaining('Cluster aligned'),
+				expect.anything(),
+			);
+		});
+
+		it('should not start a heartbeat timer', async () => {
+			service = createService();
+			await service.init();
+			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
+			const heartbeatSpy = vi.spyOn(storage, 'heartbeat');
+
+			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
+
+			expect(heartbeatSpy).not.toHaveBeenCalled();
+		});
 	});
 
-	describe('heartbeat', () => {
-		it('should update storage after heartbeat interval', async () => {
+	describe('resource limits', () => {
+		beforeEach(() => {
+			vi.mocked(getMemoryLimit).mockReturnValue(null);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: null, source: 'unreadable', weight: null });
+		});
+
+		it('should register the memory and CPU limits', async () => {
+			vi.mocked(getMemoryLimit).mockReturnValue(1_073_741_824);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 0.5, source: 'cgroup_v2', weight: 100 });
+			service = createService();
+
+			await service.init();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg).toMatchObject({ memoryLimit: 1_073_741_824, cpuLimit: 0.5 });
+		});
+
+		it('should register null for a process without limits', async () => {
+			service = createService();
+
+			await service.init();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg.memoryLimit).toBeNull();
+			expect(reg.cpuLimit).toBeNull();
+		});
+
+		it('should write the current limits on every heartbeat', async () => {
 			service = createService();
 			await service.init();
 
-			const regBefore = await service.getAllInstances();
-			const lastSeenBefore = regBefore[0].lastSeen;
+			vi.mocked(getMemoryLimit).mockReturnValue(2_147_483_648);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 2, source: 'cgroup_v2', weight: 100 });
+			await service.heartbeat();
 
-			// Advance past heartbeat interval
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
+			const [reg] = await service.getAllInstances();
+			expect(reg).toMatchObject({ memoryLimit: 2_147_483_648, cpuLimit: 2 });
+		});
+	});
 
-			const regAfter = await service.getAllInstances();
-			expect(regAfter[0].lastSeen).toBeGreaterThanOrEqual(lastSeenBefore);
+	describe('heartbeat', () => {
+		it('should refresh lastSeen in storage', async () => {
+			service = createService();
+			await service.init();
+			const [before] = await service.getAllInstances();
+
+			vi.advanceTimersByTime(1_000);
+			await service.heartbeat();
+
+			const [after] = await service.getAllInstances();
+			expect(after.lastSeen).toBeGreaterThan(before.lastSeen);
 		});
 
 		it('should preserve registeredAt across heartbeats', async () => {
 			service = createService();
 			await service.init();
+			const [before] = await service.getAllInstances();
 
-			const regBefore = await service.getAllInstances();
-			const registeredAt = regBefore[0].registeredAt;
+			vi.advanceTimersByTime(1_000);
+			await service.heartbeat();
 
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			const regAfter = await service.getAllInstances();
-			expect(regAfter[0].registeredAt).toBe(registeredAt);
+			const [after] = await service.getAllInstances();
+			expect(after.registeredAt).toBe(before.registeredAt);
 		});
 
-		it('should continue after heartbeat failure', async () => {
-			service = createService();
-			await service.init();
-
-			// Access the storage via getAllInstances to get a reference for spying
-			// We need to spy on the storage's heartbeat method
-			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
-			const heartbeatSpy = vi
-				.spyOn(storage, 'heartbeat')
-				.mockRejectedValueOnce(new Error('Redis down'));
-
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			expect(logger.warn).toHaveBeenCalledWith('Heartbeat failed', expect.any(Object));
-
-			// Restore and verify heartbeat continues
-			heartbeatSpy.mockRestore();
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-
-			const regs = await service.getAllInstances();
-			expect(regs).toHaveLength(1);
-		});
-
-		it('should reflect instanceRole changes in heartbeat', async () => {
+		it('should write the live instanceRole to storage', async () => {
 			const settings = makeInstanceSettings({ instanceRole: 'unset' });
 			service = new InstanceRegistryService(
 				settings,
@@ -298,35 +408,26 @@ describe('InstanceRegistryService', () => {
 			);
 			await service.init();
 
-			// Simulate role change (e.g., leader election completed)
-			Object.defineProperty(settings, 'instanceRole', {
-				value: 'leader',
-				writable: true,
-			});
+			Object.defineProperty(settings, 'instanceRole', { value: 'leader', writable: true });
+			await service.heartbeat();
 
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
+			const [registration] = await service.getAllInstances();
+			expect(registration.instanceRole).toBe('leader');
+		});
 
-			const local = service.getLocalInstance();
-			expect(local.instanceRole).toBe('leader');
+		it('should let a storage failure reach the caller', async () => {
+			service = createService();
+			await service.init();
+			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
+			const error = new Error('Redis down');
+			vi.spyOn(storage, 'heartbeat').mockRejectedValueOnce(error);
+
+			await expect(service.heartbeat()).rejects.toBe(error);
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('shutdown', () => {
-		it('should stop heartbeat timer', async () => {
-			service = createService();
-			await service.init();
-
-			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
-
-			await service.shutdown();
-
-			const heartbeatSpy = vi.spyOn(storage, 'heartbeat');
-			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
-
-			expect(heartbeatSpy).not.toHaveBeenCalled();
-			heartbeatSpy.mockRestore();
-		});
-
 		it('should unregister from storage', async () => {
 			service = createService();
 			await service.init();
@@ -390,6 +491,21 @@ describe('InstanceRegistryService', () => {
 			const local = service.getLocalInstance();
 			expect(local.hostId).toBe('main-local');
 			expect(local.schemaVersion).toBe(1);
+		});
+
+		it('should read the live instanceRole when building the local registration', async () => {
+			const settings = makeInstanceSettings({ instanceRole: 'unset' });
+			service = new InstanceRegistryService(
+				settings,
+				makeExecutionsConfig(),
+				makeScalingModeConfig(),
+				logger,
+			);
+			await service.init();
+
+			Object.defineProperty(settings, 'instanceRole', { value: 'leader', writable: true });
+
+			expect(service.getLocalInstance().instanceRole).toBe('leader');
 		});
 
 		it('getLastKnownState should delegate to storage', async () => {
@@ -480,6 +596,57 @@ describe('InstanceRegistryService', () => {
 			const [reg] = await service.getAllInstances();
 
 			expect(reg.poolName).toBeUndefined();
+		});
+	});
+
+	describe('storage failures', () => {
+		const storageOf = (s: InstanceRegistryService): InstanceStorage =>
+			(s as unknown as { storage: InstanceStorage }).storage;
+
+		it('getAllInstances returns an empty list when the storage read fails', async () => {
+			service = createService();
+			await service.init();
+			vi.spyOn(storageOf(service), 'getAllRegistrations').mockRejectedValueOnce(
+				new Error('Redis down'),
+			);
+
+			await expect(service.getAllInstances()).resolves.toEqual([]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to get all registrations',
+				expect.any(Object),
+			);
+		});
+
+		it('getLastKnownState returns an empty map when the storage read fails', async () => {
+			service = createService();
+			await service.init();
+			vi.spyOn(storageOf(service), 'getLastKnownState').mockRejectedValueOnce(
+				new Error('Redis down'),
+			);
+
+			await expect(service.getLastKnownState()).resolves.toEqual(new Map());
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to get last known state',
+				expect.any(Object),
+			);
+		});
+
+		it('readClusterState rejects when the registrations read fails', async () => {
+			service = createService();
+			await service.init();
+			const error = new Error('Redis down');
+			vi.spyOn(storageOf(service), 'getAllRegistrations').mockRejectedValueOnce(error);
+
+			await expect(service.readClusterState()).rejects.toBe(error);
+		});
+
+		it('readClusterState rejects when the baseline read fails', async () => {
+			service = createService();
+			await service.init();
+			const error = new Error('Redis down');
+			vi.spyOn(storageOf(service), 'getLastKnownState').mockRejectedValueOnce(error);
+
+			await expect(service.readClusterState()).rejects.toBe(error);
 		});
 	});
 });
