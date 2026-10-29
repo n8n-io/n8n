@@ -54,6 +54,7 @@ function traceContext() {
 	const withActiveSpan = vi.fn(
 		async (_run: InstanceAiTraceRun, fn: () => Promise<unknown>) => await fn(),
 	);
+	const keepOpenUntilSettled = vi.fn((_operation: Promise<unknown>) => {});
 	// A plain object: a deep mock would answer `endTime` with a function.
 	const context = {
 		projectName: 'instance-ai',
@@ -66,8 +67,17 @@ function traceContext() {
 		finishRun,
 		failRun,
 		withActiveSpan,
+		keepOpenUntilSettled,
 	} as unknown as InstanceAiTraceContext;
-	return { context, rootRun, actorRun, startChildRun, finishRun, withActiveSpan };
+	return {
+		context,
+		rootRun,
+		actorRun,
+		startChildRun,
+		finishRun,
+		withActiveSpan,
+		keepOpenUntilSettled,
+	};
 }
 
 function logger() {
@@ -194,6 +204,49 @@ describe('AssistantTurnTrace', () => {
 			success: true,
 			phase: 'message',
 		});
+	});
+
+	it('records a steered message as a span in the turn and counts it on the root', async () => {
+		const { context, rootRun, actorRun, startChildRun, finishRun, keepOpenUntilSettled } =
+			traceContext();
+		const trace = new AssistantTurnTrace(context, 'run-1', logger());
+		await trace.startOrchestratorRun();
+
+		trace.observeChunk({
+			type: 'message-steered',
+			queueId: 'queue-1',
+			executionId: 'exec-1',
+			message: {
+				id: 'msg-2',
+				role: 'user',
+				content: [
+					{ type: 'text', text: 'Use #general instead' },
+					{ type: 'file', fileId: 'file-1', fileName: 'notes.txt' },
+				],
+			},
+		});
+		// The span exports in the background, and the trace stays open until it does.
+		expect(keepOpenUntilSettled).toHaveBeenCalledTimes(1);
+		await keepOpenUntilSettled.mock.calls[0][0];
+
+		const recorded = { message: 'Use #general instead', fileCount: 1 };
+		expect(startChildRun).toHaveBeenLastCalledWith(actorRun, {
+			name: 'user: steered message',
+			canonicalName: 'instance-ai.steered_message',
+			runType: 'chain',
+			tags: ['steered-message'],
+			metadata: { queue_id: 'queue-1', message_id: 'msg-2' },
+			inputs: recorded,
+		});
+		expect(finishRun).toHaveBeenCalledWith(actorRun, { outputs: recorded });
+
+		await trace.finish({ status: 'completed' });
+		expect(finishRun).toHaveBeenCalledWith(
+			rootRun,
+			expect.objectContaining({
+				metadata: expect.objectContaining({ steered_message_count: 1 }),
+			}),
+		);
 	});
 
 	it('marks a task card from the Assistant tools as the first visible state', async () => {
