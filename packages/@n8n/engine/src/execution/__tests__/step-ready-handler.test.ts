@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
-import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+	type LifecycleEvent,
+} from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
@@ -75,7 +79,7 @@ function makeHandler(
 		stepStore,
 		queue,
 		dependencies,
-		lifecycleEventPublisher,
+		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 		responseSender,
 		subExecutionStarter as StartExecutionService,
 		onStepSuspended,
@@ -95,6 +99,7 @@ function makeExecutionStore(
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		lifecycleEvents: { kind: 'all' },
 		finishedAt: null,
 		...overrides,
 		graph: { seeded: [], ...(overrides.graph ?? graph) },
@@ -1472,6 +1477,59 @@ describe('StepReadyHandler lifecycle events', () => {
 		await handler.handle(event);
 
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	describe('when the caller does not subscribe to lifecycle events', () => {
+		const unsubscribed = [
+			['is missing', { lifecycleEvents: undefined }],
+			['is null', { lifecycleEvents: null }],
+			['is none', { lifecycleEvents: { kind: 'none' as const } }],
+		] as const;
+
+		it.each(unsubscribed)(
+			'announces neither the start nor the completion when the subscription %s',
+			async (_name, overrides) => {
+				const lifecycleEventPublisher = makeLifecycleEventPublisher();
+				const queue = makeQueue();
+				const handler = makeHandler(
+					makeExecutionStore(overrides),
+					makeStepStore(),
+					queue,
+					{ v1StepExecutor: makeExecutor() },
+					lifecycleEventPublisher,
+				);
+
+				await handler.handle(event);
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				// The step still settles.
+				expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
+					type: 'step:settled',
+					executionId: 'exec-1',
+					stepId: 'step-a',
+				});
+			},
+		);
+
+		it.each(unsubscribed)(
+			'announces no failure when the subscription %s',
+			async (_name, overrides) => {
+				const lifecycleEventPublisher = makeLifecycleEventPublisher();
+				const queue = makeQueue();
+				const handler = makeHandler(
+					makeExecutionStore(overrides),
+					makeStepStore(),
+					queue,
+					{ v1StepExecutor: { execute: vi.fn().mockRejectedValue(new Error('boom')) } },
+					lifecycleEventPublisher,
+				);
+
+				await handler.handle(event);
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				expect(queue.publish).toHaveBeenCalledOnce();
+			},
+		);
 	});
 });
 

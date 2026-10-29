@@ -15,8 +15,15 @@ import {
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
-import { noopLifecycleEventPublisher } from '../../lifecycle-events';
-import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../../lifecycle-events';
+import type {
+	LifecycleEventCallback,
+	LifecycleEvent,
+	LifecycleEventSubscription,
+} from '../../lifecycle-events';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
@@ -70,7 +77,10 @@ describe('step execution (integration)', () => {
 			waitSweepIntervalMs,
 			resolveOn = 'finish',
 			finishCount = 1,
+			lifecycleEvents = { kind: 'all' },
 		}: {
+			/** `null` leaves the subscription out of the start request. */
+			lifecycleEvents?: LifecycleEventSubscription | null;
 			workflowId?: string;
 			graph?: WorkflowGraph;
 			seededSteps?: SeededSteps;
@@ -135,6 +145,7 @@ describe('step execution (integration)', () => {
 				seededSteps,
 				executionId: generateId(),
 				callerContext: { hostMode: 'trigger' },
+				lifecycleEvents: lifecycleEvents ?? undefined,
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -212,6 +223,23 @@ describe('step execution (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 		});
+	});
+
+	it.each([
+		['leaves the subscription out', null],
+		['subscribes to none', { kind: 'none' as const }],
+	])('announces nothing when the caller %s', async (_name, lifecycleEvents) => {
+		const executor: IStepExecutor = {
+			execute: async () => {
+				await Promise.resolve();
+				return { outputs: [[{ json: { greeting: 'hi' } }]] };
+			},
+		};
+
+		const { execution, events } = await runWorkflow(executor, [{}], { lifecycleEvents });
+
+		expect(execution.status).toBe('completed');
+		expect(events).toEqual([]);
 	});
 
 	it('records the error when a step throws', async () => {
@@ -314,13 +342,23 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, [{}], {
+		const { execution, steps, events } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-wait-fires',
 			graph: waitGraph,
 			waitSweepIntervalMs: 20,
 		});
 
 		expect(execution.status).toBe('completed');
+		// The subscription is read from the row, so it still applies after the resume.
+		expect(events.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:started',
+			'step:completed',
+			'step:started',
+			'step:completed',
+			'execution:completed',
+		]);
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 
 		const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
@@ -693,7 +731,7 @@ describe('step execution (integration)', () => {
 			stepStore,
 			orchestrationQueue,
 			{ v1StepExecutor: { execute } },
-			noopLifecycleEventPublisher,
+			new LifecycleEventPublisherFactory(noopLifecycleEventPublisher),
 			noopExecutionResponseSender,
 			{ start: vi.fn() } as unknown as StartExecutionService,
 		);

@@ -248,6 +248,25 @@ describe('EngineV2Dispatcher', () => {
 			},
 		);
 
+		it('subscribes to lifecycle events for a run with a push ref', async () => {
+			await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ lifecycleEvents: { kind: 'all' } }),
+			);
+		});
+
+		it.each([
+			['a manual run without a push ref', runData()],
+			['an active trigger run', triggerRunData()],
+			['a webhook run', webhookRunData()],
+		])('does not subscribe to lifecycle events for %s', async (_name, data) => {
+			await dispatcher.start(data);
+
+			const [request] = proxy.startExecution.mock.calls[0];
+			expect(request.lifecycleEvents).toBeUndefined();
+		});
+
 		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {
 			const workflowData = workflow();
 

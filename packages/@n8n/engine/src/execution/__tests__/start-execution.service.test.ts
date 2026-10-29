@@ -274,6 +274,46 @@ describe('StartExecutionService', () => {
 		);
 	});
 
+	it('stores the lifecycle event subscription as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'manual' },
+			lifecycleEvents: { kind: 'all' },
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ lifecycleEvents: { kind: 'all' } }),
+		);
+	});
+
+	it('stores no lifecycle event subscription when the caller sends none', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'trigger' },
+		});
+
+		const [record] = vi.mocked(store.createExecution).mock.calls[0];
+		expect(record.lifecycleEvents).toBeUndefined();
+	});
+
 	it('defaults mode to production, triggerOutputs to null and the expectation to none', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
