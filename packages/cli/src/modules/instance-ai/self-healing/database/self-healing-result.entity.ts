@@ -9,12 +9,9 @@ import {
 } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
-import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
-
 import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 
 @Entity('self_healing_result')
-@Index(['suggestionId'], { unique: true, where: '"suggestionId" IS NOT NULL' })
 export class SelfHealingResult extends WithTimestampsAndStringId {
 	@Index()
 	@Column({ type: 'int' })
@@ -63,13 +60,6 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	// Execution references can outlive v1 pruning and can point to the v2 data plane.
 	@Column({ type: 'varchar', length: 36 })
 	executionId: string;
-
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	suggestionId: string | null;
-
-	@ManyToOne(() => WorkflowSuggestion, { nullable: true, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'suggestionId' })
-	suggestion: Relation<WorkflowSuggestion> | null;
 
 	@JsonColumn()
 	usage: SelfHealingResultUsage;

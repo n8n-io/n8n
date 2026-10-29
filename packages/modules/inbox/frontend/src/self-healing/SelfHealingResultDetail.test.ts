@@ -110,9 +110,9 @@ it.each([
 	async ({ outcome, destination, withSuggestion }) => {
 		const detail = result({
 			outcome,
-			suggestion: withSuggestion
-				? suggestion({ resultKind: outcome === 'fix_ready' ? 'fix_ready' : 'needs_you' })
-				: null,
+			suggestions: withSuggestion
+				? [suggestion({ resultKind: outcome === 'fix_ready' ? 'fix_ready' : 'needs_you' })]
+				: [],
 		});
 		const closedResult = result({
 			...detail,
@@ -243,7 +243,7 @@ it.each([
 	async ({ withSuggestion, reviewState }) => {
 		const detail = result({
 			outcome: 'needs_you',
-			suggestion: withSuggestion ? suggestion({ resultKind: 'needs_you' }) : null,
+			suggestions: withSuggestion ? [suggestion({ resultKind: 'needs_you' })] : [],
 		});
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
 		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(

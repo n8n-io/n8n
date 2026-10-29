@@ -43,6 +43,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		payload: WorkflowSuggestionContent,
 		ctx: OperationContext,
 		resultKind: WorkflowSuggestion['resultKind'],
+		selfHealingResultId: string | null = null,
 	) {
 		const manager = this.managerFor(ctx);
 		const suggestion = manager.create(WorkflowSuggestion, {
@@ -59,6 +60,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			appliedAction: null,
 			appliedActorId: null,
 			payload,
+			selfHealingResultId,
 		});
 		try {
 			return await manager.save(suggestion);
@@ -132,6 +134,13 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		return await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
 			workflowId,
 			state: 'pending',
+		});
+	}
+
+	async getForResult(selfHealingResultId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).find(WorkflowSuggestion, {
+			where: { selfHealingResultId },
+			order: { workflowId: 'ASC' },
 		});
 	}
 

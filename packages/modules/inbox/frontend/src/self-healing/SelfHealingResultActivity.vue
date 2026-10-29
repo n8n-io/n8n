@@ -16,8 +16,9 @@ type Activity = Omit<WorkflowSuggestionActivity, 'action'> & {
 const entries = computed<Activity[]>(() => {
 	const result = props.detail;
 	let activity: Activity[];
-	if (result.suggestion) {
-		activity = [...result.suggestion.activity];
+	const [suggestion] = result.suggestions;
+	if (suggestion) {
+		activity = [...suggestion.activity];
 	} else {
 		activity = [
 			{

@@ -99,7 +99,7 @@ export function result(overrides: Partial<SelfHealingResultDetail> = {}): SelfHe
 		dismissedAt: null,
 		dismissedById: null,
 		reviewState: 'open',
-		suggestion: suggestion(),
+		suggestions: [suggestion()],
 		execution: { status: 'available', id: 'execution-1' },
 		...overrides,
 	};

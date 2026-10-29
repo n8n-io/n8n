@@ -125,8 +125,7 @@ There is no public launch endpoint.
 ## Investigate again
 
 Admission blocks new investigations while a Fix ready or Needs attention result is Open.
-An undismissed Fix ready or Needs attention result stays Open when it has no suggestion or its
-suggestion is pending. Could not fix results are Closed immediately and return the `closed`
+An undismissed Fix ready or Needs attention result stays Open while none of its suggestions is closed. Could not fix results are Closed immediately and return the `closed`
 review state. Automatic closure leaves `dismissedAt` and `dismissedById` empty.
 
 For a Fix ready or Needs attention result, dismissal, discard, or outdated reconciliation permits
@@ -214,9 +213,9 @@ The Assistant runtime routes cancellation to local runs and runs on other main p
 Re-enabling permits future investigations. It does not resume canceled agents.
 Saved results remain available to assigned reviewers while the configuration is paused.
 
-A result can reference one independent suggestion. Reports without changes have no suggestion.
-Removal deletes linked suggestions and the configuration in one transaction. Foreign keys
-cascade deletion to suggestion activity, selections, reviewers, investigations, and results.
+A result groups its suggestions, one for each changed workflow. Reports without changes have no suggestion.
+Removal deletes the configuration. Foreign keys cascade deletion to selections, reviewers,
+investigations, results, their suggestions, and suggestion activity.
 Removal collects unfinished thread IDs before deletion and requests cancellation after commit.
 Cancellation is best-effort. A failed request does not fail a committed pause or removal.
 A rolled-back pause or removal does not request cancellation.
@@ -259,9 +258,9 @@ A credit-claim failure leaves unknown credits and does not discard valid output.
 
 `SelfHealingResultService.complete(...)` receives the captured baseline from the run and prepares
 the optional suggestion through `WorkflowSuggestionService`. It rejects a baseline from another
-investigation. It rechecks access and the captured baseline, then saves the result,
-suggestion, submission activity, and investigation completion in one transaction.
-Cancellation before acceptance rolls back the result and suggestion.
+investigation. It rechecks access and the captured baseline, then saves the result, its
+suggestions with `selfHealingResultId`, submission activity, and investigation completion in one
+transaction. Cancellation before acceptance rolls back the result and its suggestions.
 Once the completion commits, a later cancellation does not change it to a canceled run.
 A repeated completion returns the saved result.
 A failed transaction releases the investigation claim. The report is not saved for retry.
@@ -305,7 +304,7 @@ Credit billing still uses token counts from the existing runtime billing path.
 Recovery closes interrupted investigations without a result. It does not infer a new usage shape.
 
 Configuration, workflow, original-project, and background-user deletion cascade to the result.
-Suggestion deletion cascades to its referencing result. Result deletion alone keeps the suggestion.
+Result deletion cascades to its suggestions. Suggestion deletion keeps the result.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
 Execution references can point to either execution engine. Reads check current workflow and
 execution read access and workflow association. Missing or inaccessible execution references
@@ -322,21 +321,26 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/dismiss`
 
 Project members who are assigned reviewers or, when selected, part of the project members group
-can review results with current workflow edit access. Approval also requires
-publish access. Approval accepts only Fix ready results. Apply accepts Fix ready and Needs attention
-results that have a suggestion. Reviewer filtering applies to Inbox lists, counts, details, and actions.
-Each action resolves its suggestion from the result and returns the updated review.
+can review results with current edit access to the triggering workflow and every suggestion
+workflow. Approval also requires publish access. Approval accepts only Fix ready results. Apply
+accepts Fix ready and Needs attention results that have a suggestion. Apply and approval reject a
+result with more than one suggestion. Reviewer filtering applies to Inbox lists, counts, details,
+and actions. Each action resolves its suggestions from the result and returns the updated review.
+The detail lists the suggestions with the triggering workflow first.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
 The first successful action closes the result. Later Apply, approval, and dismissal requests return
 a conflict and do not save or publish again. An outdated suggestion returns `outdated`.
 Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
-check the current workflow before writing. If Apply fails, keep the review open and show the error.
+check the current workflow before writing. When one suggestion becomes outdated, every pending
+suggestion of its result closes as outdated. If Apply fails, keep the review open and show the error.
 
 The Discard and close button calls `POST /:resultId/dismiss`.
-Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
-from the suggestion. Needs attention results also record dismissal in the same transaction.
+Dismissal discards every pending suggestion of the result in one transaction. If one suggestion is
+outdated, dismissal closes all of them as outdated and discards none. Fix-ready results derive
+their discarded state from the suggestions. Needs attention results also record dismissal in the
+same transaction.
 Dismissal leaves automatically closed Could not fix results unchanged and returns `closed`.
 A dismissal recorded before automatic closure still returns `dismissed`.
 Already applied, discarded, or outdated suggestions keep their existing closure.

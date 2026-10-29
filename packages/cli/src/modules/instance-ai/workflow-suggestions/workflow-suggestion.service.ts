@@ -213,7 +213,11 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
-	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
+	async createSuggestion(
+		prepared: PreparedWorkflowSuggestion,
+		ctx: OperationContext = {},
+		selfHealingResultId: string | null = null,
+	) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
@@ -232,6 +236,7 @@ export class WorkflowSuggestionService {
 				payload,
 				ctx,
 				prepared.resultKind,
+				selfHealingResultId,
 			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;
@@ -275,12 +280,17 @@ export class WorkflowSuggestionService {
 		if (suggestion.state !== 'pending' || (await this.matchesBaseline(suggestion, target))) {
 			return suggestion;
 		}
-		await this.suggestions.closePending(
-			suggestion,
-			'outdated',
-			{ author: 'system', actorId: null },
-			ctx,
-		);
+		const group = suggestion.selfHealingResultId
+			? await this.suggestions.getForResult(suggestion.selfHealingResultId, ctx)
+			: [suggestion];
+		for (const member of group) {
+			await this.suggestions.closePending(
+				member,
+				'outdated',
+				{ author: 'system', actorId: null },
+				ctx,
+			);
+		}
 		return await this.suggestions.getSuggestion(suggestion.id, suggestion, ctx);
 	}
 
@@ -308,12 +318,34 @@ export class WorkflowSuggestionService {
 			workflowId,
 			projectId,
 		});
-		const activity = await this.suggestions.getActivity(suggestionId);
+		return await this.toProposal(suggestion);
+	}
+
+	async getProposals(
+		viewer: User,
+		projectId: string,
+		suggestions: WorkflowSuggestion[],
+	): Promise<WorkflowSuggestionProposalDetail[]> {
+		if (suggestions.some((suggestion) => suggestion.projectId !== projectId)) {
+			throw new NotFoundError('Proposal not found.');
+		}
+		for (const { workflowId } of suggestions) {
+			await this.requireProposalAccess(viewer, projectId, workflowId);
+		}
+		return await Promise.all(
+			suggestions.map(async (suggestion) => await this.toProposal(suggestion)),
+		);
+	}
+
+	private async toProposal(
+		suggestion: WorkflowSuggestion,
+	): Promise<WorkflowSuggestionProposalDetail> {
+		const activity = await this.suggestions.getActivity(suggestion.id);
 		const { appliedVersionId, appliedChecksum, appliedAction, appliedActorId } = suggestion;
 		return {
-			suggestionId,
+			suggestionId: suggestion.id,
 			workflowId: suggestion.workflowId,
-			projectId,
+			projectId: suggestion.projectId,
 			backgroundUserId: suggestion.backgroundUserId,
 			expectedBaseline: suggestion.expectedBaseline,
 			state: suggestion.state,

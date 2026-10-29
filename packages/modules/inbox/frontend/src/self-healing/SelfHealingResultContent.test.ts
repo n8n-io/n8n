@@ -168,13 +168,13 @@ describe('SelfHealingResultContent', () => {
 	);
 
 	it.each([
-		{ proposal: null, notice: false },
-		{ proposal: suggestion({ resultKind: 'needs_you' }), notice: true },
+		{ proposals: [], notice: false },
+		{ proposals: [suggestion({ resultKind: 'needs_you' })], notice: true },
 	])(
 		'offers both continuations without publishing for Needs attention',
-		async ({ proposal, notice }) => {
+		async ({ proposals, notice }) => {
 			const { getByRole, queryByRole, getByTestId, emitted } = renderContent({
-				detail: result({ outcome: 'needs_you', suggestion: proposal }),
+				detail: result({ outcome: 'needs_you', suggestions: proposals }),
 			});
 
 			expect(getByTestId('self-healing-outcome-notice')).toHaveTextContent(
@@ -182,7 +182,7 @@ describe('SelfHealingResultContent', () => {
 			);
 			expect(getByTestId('self-healing-status-card')).toHaveTextContent(/^StatusNeeds attention$/);
 			expect(queryByRole('button', { name: /Review/ })).not.toBeInTheDocument();
-			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposal !== null);
+			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposals.length > 0);
 
 			const menu = await openMenu('Continue in…');
 			expect(
@@ -200,7 +200,7 @@ describe('SelfHealingResultContent', () => {
 
 	it('shows a closed Could not fix result without review actions', () => {
 		const { getByTestId, queryByRole } = renderContent({
-			detail: result({ outcome: 'could_not_fix', suggestion: null, reviewState: 'closed' }),
+			detail: result({ outcome: 'could_not_fix', suggestions: [], reviewState: 'closed' }),
 		});
 
 		expect(getByTestId('self-healing-status-card')).toHaveTextContent(/^StatusCould not fix$/);
@@ -218,7 +218,7 @@ describe('SelfHealingResultContent', () => {
 		const { getByTestId, getAllByText } = renderContent({
 			detail: result({
 				outcome: 'could_not_fix',
-				suggestion: null,
+				suggestions: [],
 				reviewState: 'dismissed',
 				dismissedAt: '2026-10-09T09:01:00.000Z',
 				dismissedById: 'human-1',
@@ -237,7 +237,7 @@ describe('SelfHealingResultContent', () => {
 
 	it('keeps the editor and discard available when chat is unavailable', async () => {
 		const { getByRole } = renderContent({
-			detail: result({ outcome: 'needs_you', suggestion: null }),
+			detail: result({ outcome: 'needs_you', suggestions: [] }),
 			canChat: false,
 		});
 
@@ -298,7 +298,7 @@ describe('SelfHealingResultContent', () => {
 		const proposal = suggestion({ state: 'closed', closedReason: 'outdated' });
 		proposal.payload.original.settings = { executionOrder: 'v1' };
 		const { getByTestId } = renderContent({
-			detail: result({ suggestion: proposal, reviewState: 'outdated' }),
+			detail: result({ suggestions: [proposal], reviewState: 'outdated' }),
 			tab: 'changes',
 		});
 
@@ -317,7 +317,10 @@ describe('SelfHealingResultContent', () => {
 
 	it('keeps continuation available while reviewing the suggested changes', async () => {
 		const { queryByTestId, emitted } = renderContent({
-			detail: result({ outcome: 'needs_you', suggestion: suggestion({ resultKind: 'needs_you' }) }),
+			detail: result({
+				outcome: 'needs_you',
+				suggestions: [suggestion({ resultKind: 'needs_you' })],
+			}),
 			tab: 'changes',
 		});
 
@@ -329,7 +332,7 @@ describe('SelfHealingResultContent', () => {
 
 	it('falls back to Activity when a linked Changes tab has no proposal', () => {
 		const { getByTestId, queryByTestId } = renderContent({
-			detail: result({ outcome: 'could_not_fix', suggestion: null }),
+			detail: result({ outcome: 'could_not_fix', suggestions: [] }),
 			tab: 'changes',
 		});
 
@@ -454,7 +457,7 @@ describe('SelfHealingResultContent', () => {
 			},
 		];
 		const { getAllByTestId, getByTestId } = renderContent({
-			detail: result({ suggestion: suggestion({ activity }) }),
+			detail: result({ suggestions: [suggestion({ activity })] }),
 		});
 		const entries = getAllByTestId('self-healing-activity-entry');
 

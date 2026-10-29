@@ -61,7 +61,8 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 	dismissedAt: string | null;
 	dismissedById: string | null;
 	reviewState: SelfHealingReviewState;
-	suggestion: WorkflowSuggestionProposalDetail | null;
+	/** One suggestion for each changed workflow. The triggering workflow comes first. */
+	suggestions: WorkflowSuggestionProposalDetail[];
 	execution: SelfHealingExecutionReference;
 };
 

@@ -18,9 +18,6 @@ import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
 
-import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
-
-import { SelfHealingResult } from './self-healing-result.entity';
 import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from './self-healing-configuration-workflow.entity';
@@ -378,21 +375,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	}
 
 	async deleteConfiguration(id: number, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const linkedSuggestions = manager
-			.createQueryBuilder(SelfHealingResult, 'result')
-			.select('result.suggestionId')
-			.where('result.configurationId = :id', { id });
-
-		// Delete suggestions first. Deleting a result does not delete its suggestion.
-		await manager
-			.createQueryBuilder()
-			.delete()
-			.from(WorkflowSuggestion)
-			.where(`id IN (${linkedSuggestions.getQuery()})`)
-			.setParameters(linkedSuggestions.getParameters())
-			.execute();
-		await manager.delete(SelfHealingConfiguration, { id });
+		await this.managerFor(ctx).delete(SelfHealingConfiguration, { id });
 	}
 
 	async isReviewer(configurationId: number, userId: string, ctx: OperationContext) {

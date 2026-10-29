@@ -210,6 +210,7 @@ it('stores the exact final graph and activity in the caller transaction', async 
 		},
 		ctx,
 		'fix_ready',
+		null,
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
 	expect(workflowRepository.findByIdInContext).toHaveBeenCalledWith(workflow.id, ctx);
@@ -339,6 +340,7 @@ it.each([
 		expect.objectContaining({ candidate }),
 		ctx,
 		'needs_you',
+		null,
 	);
 	expect(prepared.payload).not.toHaveProperty('validation');
 });

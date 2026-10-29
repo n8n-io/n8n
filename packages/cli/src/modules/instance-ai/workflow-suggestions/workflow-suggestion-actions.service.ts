@@ -99,38 +99,46 @@ export class WorkflowSuggestionActionsService {
 		workflowId: string,
 		suggestionId: string,
 	): Promise<WorkflowSuggestionActionResult> {
-		const outcome = await this.discardPending(actor, projectId, workflowId, suggestionId);
+		const outcome = await this.discardPending(actor, projectId, [{ id: suggestionId, workflowId }]);
 		// Commit the outdated closure before rejecting the old project.
 		if (outcome === 'unavailable') throw new NotFoundError('Suggestion not found.');
 		return await this.service.getProposal(actor, projectId, workflowId, suggestionId);
 	}
 
-	// Result dismissal joins this write so both records commit together.
+	// Result dismissal joins this write so the result and its suggestions commit together.
 	async discardPending(
 		actor: User,
 		projectId: string,
-		workflowId: string,
-		suggestionId: string,
+		group: Array<Pick<WorkflowSuggestion, 'id' | 'workflowId'>>,
 		ctx: OperationContext = {},
 	): Promise<'discarded' | 'outdated' | 'already_closed' | 'unavailable'> {
 		return await this.txRunner.run(ctx, async (ctx) => {
-			const user = await this.service.requireEditor(actor.id, workflowId, ctx);
-			const { suggestion, target } = await this.service.reconcilePending(
-				suggestionId,
-				{ workflowId, projectId },
-				ctx,
-			);
-			if (!target.workflow || target.projectId !== projectId) return 'unavailable';
-			if (suggestion.state === 'pending') {
-				const closed = await this.suggestions.closePending(
-					suggestion,
-					'discarded',
-					{ author: 'human', actorId: user.id },
+			const suggestions: WorkflowSuggestion[] = [];
+			for (const { id, workflowId } of group) {
+				await this.service.requireEditor(actor.id, workflowId, ctx);
+				const { suggestion, target } = await this.service.reconcilePending(
+					id,
+					{ workflowId, projectId },
 					ctx,
 				);
-				return closed ? 'discarded' : 'already_closed';
+				if (!target.workflow || target.projectId !== projectId) return 'unavailable';
+				suggestions.push(suggestion);
 			}
-			return suggestion.closedReason === 'outdated' ? 'outdated' : 'already_closed';
+			if (suggestions.some(({ closedReason }) => closedReason === 'outdated')) return 'outdated';
+			if (suggestions.some(({ state }) => state !== 'pending')) return 'already_closed';
+
+			for (const [index, suggestion] of suggestions.entries()) {
+				const discarded = await this.suggestions.closePending(
+					suggestion,
+					'discarded',
+					{ author: 'human', actorId: actor.id },
+					ctx,
+				);
+				if (discarded) continue;
+				if (index === 0) return 'already_closed';
+				throw new ConflictError('This suggestion is already closed.');
+			}
+			return 'discarded';
 		});
 	}
 
