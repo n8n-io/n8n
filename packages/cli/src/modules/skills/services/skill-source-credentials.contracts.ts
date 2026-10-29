@@ -2,7 +2,12 @@ import type { SkillSourceCredentialOption } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 
 /** The data of one credential, decrypted, with a fresh token when the type mints one. */
-export type ResolvedSkillSourceCredential = { type: string; data: Record<string, unknown> };
+/** `id` lets a client key its caches by credential, as a fresh token changes on every resolve. */
+export type ResolvedSkillSourceCredential = {
+	id: string;
+	type: string;
+	data: Record<string, unknown>;
+};
 
 export type SkillSourceCredentialScope = {
 	projectId: string | null;

@@ -25,7 +25,12 @@ export type SkillSourceIdentity = {
  * Access for a private source. The service resolves the n8n credential, and the client turns
  * it into this with `authFrom`. `credentialType` tells the client what kind of token it is.
  */
-export type SkillSourceAuth = { token: string; credentialType: string };
+export type SkillSourceAuth = {
+	token: string;
+	credentialType: string;
+	/** The n8n credential. A client keys its caches by it, as a fresh token changes each time. */
+	credentialId?: string;
+};
 
 /** One repository that a credential can read, for the repository select. */
 export type SkillSourceRepository = {
@@ -82,7 +87,11 @@ export abstract class SkillSourceClient {
 	 * `SkillSourceReadError` with `credential_invalid` for a credential that this client cannot
 	 * use, such as one without a token or for another host.
 	 */
-	abstract authFrom(credential: { type: string; data: Record<string, unknown> }): SkillSourceAuth;
+	abstract authFrom(credential: {
+		id?: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): SkillSourceAuth;
 
 	/**
 	 * Refuses a decrypted credential that this client cannot use, such as one for another

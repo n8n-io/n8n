@@ -22,6 +22,7 @@ const STATUS: Record<SkillSourceReason, number> = {
 	credential_invalid: 400,
 	credential_missing: 404,
 	credential_out_of_scope: 403,
+	host_blocked: 400,
 	unreachable: 503,
 };
 

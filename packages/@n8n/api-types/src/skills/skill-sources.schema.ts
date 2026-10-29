@@ -22,6 +22,7 @@ export const SKILL_SOURCE_REASONS = [
 	'credential_invalid',
 	'credential_missing',
 	'credential_out_of_scope',
+	'host_blocked',
 ] as const;
 
 export type SkillSourceReason = (typeof SKILL_SOURCE_REASONS)[number];

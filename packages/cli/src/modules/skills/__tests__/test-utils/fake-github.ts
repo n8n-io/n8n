@@ -135,25 +135,26 @@ export class FakeGitHub {
 		const failure = this.failure();
 		if (failure) return failure;
 		if (!token || !this.tokens.has(token)) return [401, ''];
-		// One page holds every granted repository. Later pages are empty.
-		const page = Number(new URL(uri, 'https://api.github.com').searchParams.get('page') ?? '1');
-		const items =
-			page > 1
-				? []
-				: [...(this.tokens.get(token) ?? [])].flatMap((key) => {
-						const repo = this.repositories.get(key);
-						const [owner, name] = key.split('/');
-						return repo
-							? [
-									{
-										name,
-										private: repo.private,
-										html_url: `https://github.com/${key}`,
-										owner: { login: owner },
-									},
-								]
-							: [];
-					});
+		// Pages of `per_page` granted repositories, as GitHub sends them.
+		const params = new URL(uri, 'https://api.github.com').searchParams;
+		const page = Number(params.get('page') ?? '1');
+		const perPage = Number(params.get('per_page') ?? '30');
+		const items = [...(this.tokens.get(token) ?? [])]
+			.slice((page - 1) * perPage, page * perPage)
+			.flatMap((key) => {
+				const repo = this.repositories.get(key);
+				const [owner, name] = key.split('/');
+				return repo
+					? [
+							{
+								name,
+								private: repo.private,
+								html_url: `https://github.com/${key}`,
+								owner: { login: owner },
+							},
+						]
+					: [];
+			});
 		return [200, uri.startsWith('/installation') ? { repositories: items } : items];
 	}
 

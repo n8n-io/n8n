@@ -403,6 +403,14 @@ export class SkillSourceService {
 				check: (resolved) => this.clientFor(resolved.type)?.checkCredential?.(resolved),
 			});
 		} catch (error) {
+			// A failure without a reason comes from decrypting the credential or from minting
+			// its token, such as a GitHub App with a wrong key: the credential cannot be used.
+			if (skillSourceReasonOf(error) === undefined) {
+				throw new SkillSourceRequestError(
+					'credential_invalid',
+					'n8n could not get a token from this credential. Check its settings.',
+				);
+			}
 			throw toSkillSourceRequestError(error);
 		}
 		if (!credential) {

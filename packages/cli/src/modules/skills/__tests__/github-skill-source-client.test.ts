@@ -204,6 +204,48 @@ describe('GitHubSkillSourceClient', () => {
 			else expect(read).toThrow(SkillSourceReadError);
 		});
 
+		it('refuses a credential for another GitHub server as host_blocked', () => {
+			expect(() =>
+				client.authFrom({
+					type: 'githubApi',
+					data: { accessToken: 't', server: 'https://git.acme.dev/api/v3' },
+				}),
+			).toThrow(expect.objectContaining({ reason: 'host_blocked' }));
+		});
+
+		it.each([
+			{ count: 999, truncated: false },
+			{ count: 1000, truncated: false },
+			{ count: 1001, truncated: true },
+		])('lists $count repositories with truncated $truncated', async ({ count, truncated }) => {
+			const names = Array.from(
+				{ length: count },
+				(_, i) => `acme/repo-${String(i).padStart(4, '0')}`,
+			);
+			for (const name of names) github.push(name, { 'README.md': '#\n' });
+			github.grant('ghp_many', names);
+
+			const list = await client.listRepositories({
+				token: 'ghp_many',
+				credentialType: 'githubApi',
+			});
+
+			expect(list.repositories).toHaveLength(Math.min(count, 1000));
+			expect(list.truncated).toBe(truncated);
+		});
+
+		it('shares one archive across the fresh tokens of one credential', async () => {
+			github.grant('ghp_second', ['acme/private']);
+			const first = { token: TOKEN, credentialType: 'githubAppApi', credentialId: 'app-1' };
+			const second = { token: 'ghp_second', credentialType: 'githubAppApi', credentialId: 'app-1' };
+			const locator = await client.parseLocator('https://github.com/acme/private', first);
+			const { items, revision } = await client.discover(locator, first);
+
+			await client.fetchLatest(locator, items[0], second, revision);
+
+			expect(github.requests.archives).toBe(1);
+		});
+
 		it('checks a GitHub App before it has a token, and refuses one for another server', () => {
 			const app = { appId: '1', installationId: '42', privateKey: 'key' };
 

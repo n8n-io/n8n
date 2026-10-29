@@ -21,6 +21,9 @@ import {
 
 import { decryptAgentCredential } from './utils/decrypt-agent-credential';
 
+/** The most a GitHub App token mint may take, as the GitHub client limits its own requests. */
+const TOKEN_TIMEOUT_MS = 30_000;
+
 /**
  * The credentials that a skill source may use, with the rules of the credential select of a
  * workflow. A project source accepts the credentials that its project can use. A Global source
@@ -62,11 +65,13 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 		scope: SkillSourceCredentialScope,
 	): Promise<ResolvedSkillSourceCredential | null> {
 		const { projectId, user, types, check } = scope;
-		const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
-		if (!credential || !types.includes(credential.type)) return null;
+		// The user check runs first, so a missing credential and one the user cannot see take the
+		// same path, and the response time does not tell that a credential exists.
 		if (user && !(await this.usableBy(user, projectId)).some(({ id }) => id === credentialId)) {
 			return null;
 		}
+		const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
+		if (!credential || !types.includes(credential.type)) return null;
 		if (!(await this.acceptedIds([credentialId], projectId)).has(credentialId)) return null;
 		// Decrypts in the project of the source, or for Global in the project that owns it.
 		const decryptIn =
@@ -77,8 +82,12 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 			projectId: decryptIn,
 			userId: user?.id,
 		});
-		check?.({ type: credential.type, data });
-		return { type: credential.type, data: await this.withFreshToken(credential.type, data) };
+		check?.({ id: credential.id, type: credential.type, data });
+		return {
+			id: credential.id,
+			type: credential.type,
+			data: await this.withFreshToken(credential.type, data),
+		};
 	}
 
 	/** The credentials the user can use in the scope, as the workflow credential select lists them. */
@@ -98,14 +107,20 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 			const inProject = await this.credentialsService.findAllCredentialIdsForProject(projectId);
 			return new Set(inProject.map(({ id }) => id).filter((id) => ids.includes(id)));
 		}
-		const accepted = new Set<string>();
-		for (const id of ids) {
-			const owner = await this.sharedCredentialsRepository.findCredentialOwningProject(id);
-			if (owner?.type !== 'personal') continue;
-			const user = await this.userRepository.findPersonalOwnerForProject(owner.id);
-			if (user && hasGlobalScope(user, 'skill:create')) accepted.add(id);
+		// One query for the owners of all credentials, then one per owning personal project.
+		const owners = (
+			await this.sharedCredentialsRepository.getAllRelationsForCredentials(ids)
+		).filter(({ role, project }) => role === 'credential:owner' && project.type === 'personal');
+		const adminProjects = new Set<string>();
+		for (const projectId of new Set(owners.map(({ projectId }) => projectId))) {
+			const owner = await this.userRepository.findPersonalOwnerForProject(projectId);
+			if (owner && hasGlobalScope(owner, 'skill:create')) adminProjects.add(projectId);
 		}
-		return accepted;
+		return new Set(
+			owners
+				.filter(({ projectId }) => adminProjects.has(projectId))
+				.map(({ credentialsId }) => credentialsId),
+		);
 	}
 
 	/**
@@ -117,7 +132,7 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<Record<string, unknown>> {
-		const http = this.outboundHttp.requests();
+		const http = this.outboundHttp.requests({ timeout: TOKEN_TIMEOUT_MS });
 		const helper: IHttpRequestHelper = {
 			helpers: { httpRequest: async (options) => await http.request(options) },
 		};

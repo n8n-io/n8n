@@ -3852,6 +3852,7 @@
 	"settings.context.skills.connect.error.credentialInvalid": "GitHub rejected this credential. The token is wrong or has expired.",
 	"settings.context.skills.connect.error.credentialMissing": "This credential no longer exists. Pick another one.",
 	"settings.context.skills.connect.error.credentialOutOfScope": "This scope cannot use this credential. Pick one that it owns or that is shared with it.",
+	"settings.context.skills.connect.error.hostBlocked": "Skill Sync reads github.com only. This credential is for another GitHub server.",
 	"settings.context.skills.connect.error.invalidUrl": "This is not a GitHub repository link. Use https://github.com/owner/repo.",
 	"settings.context.skills.connect.error.notFound": "n8n cannot read this repository. It is private or does not exist.",
 	"settings.context.skills.connect.error.branchNotFound": "n8n cannot find this branch in the repository. Check the branch name in the link.",

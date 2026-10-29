@@ -4,6 +4,7 @@ import {
 	type HttpRequestClient,
 } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
 import { LRUCache } from 'lru-cache';
 import type { Readable } from 'node:stream';
@@ -71,9 +72,11 @@ const MAX_REPOSITORY_PAGES = 10;
 const APP_CREDENTIAL = 'githubAppApi';
 
 /**
- * Reads skills from public GitHub repositories. Branches come from `ls-refs` over git smart
- * HTTP, and the files from the tarball of one commit, so no call uses the REST API and its
- * rate limit. Every request goes to a fixed GitHub host. The user only fills path segments.
+ * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
+ * public tarball comes from codeload, so a public source makes no REST call. A private source
+ * reads its tarball through the REST API with the token of its credential, and the repository
+ * select lists repositories through the REST API, so both count against the REST rate limit of
+ * that token. Every request goes to a fixed GitHub host. The user only fills path segments.
  */
 @Service()
 export class GitHubSkillSourceClient extends SkillSourceClient {
@@ -125,13 +128,17 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/** Both credential types hold the token in `accessToken`. A GitHub App gets a fresh one. */
-	authFrom(credential: { type: string; data: Record<string, unknown> }): SkillSourceAuth {
+	authFrom(credential: {
+		id?: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): SkillSourceAuth {
 		this.checkCredential(credential);
-		const { type, data } = credential;
+		const { id, type, data } = credential;
 		if (typeof data.accessToken !== 'string' || data.accessToken === '') {
 			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
 		}
-		return { token: data.accessToken, credentialType: type };
+		return { token: data.accessToken, credentialType: type, ...(id ? { credentialId: id } : {}) };
 	}
 
 	/** A credential of another type, or for another GitHub server, is refused. */
@@ -144,7 +151,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const server = typeof data.server === 'string' ? data.server.replace(/\/+$/, '') : '';
 		if (server !== '' && server !== API) {
 			throw new SkillSourceReadError(
-				'credential_invalid',
+				'host_blocked',
 				'Skill Sync reads github.com only. This credential is for another GitHub server.',
 			);
 		}
@@ -244,7 +251,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	): Promise<{ repositories: SkillSourceRepository[]; truncated: boolean }> {
 		const app = auth.credentialType === APP_CREDENTIAL;
 		const repositories: SkillSourceRepository[] = [];
-		for (let page = 1; page <= MAX_REPOSITORY_PAGES; page++) {
+		// One page more than the select lists, to tell a full last page from more to come.
+		for (let page = 1; page <= MAX_REPOSITORY_PAGES + 1; page++) {
 			const url = app
 				? `${API}/installation/repositories?per_page=100&page=${page}`
 				: `${API}/user/repos?per_page=100&page=${page}&sort=full_name&affiliation=owner,collaborator,organization_member`;
@@ -253,9 +261,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			if (!Array.isArray(items)) {
 				throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.');
 			}
+			if (page > MAX_REPOSITORY_PAGES) {
+				return { repositories: sortRepositories(repositories), truncated: items.length > 0 };
+			}
 			repositories.push(...items.flatMap(toRepository));
-			if (items.length < 100)
+			if (items.length < 100) {
 				return { repositories: sortRepositories(repositories), truncated: false };
+			}
 		}
 		return { repositories: sortRepositories(repositories), truncated: true };
 	}
@@ -330,8 +342,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	): Promise<RepositoryArchive> {
 		const { owner, repository, path } = locator;
 		// The folder keeps its case, as the paths in the archive do.
-		const key =
-			`${owner}/${repository}@${sha}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
+		const key = `${owner}/${repository}@${sha}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
 		const cached = this.archives.get(key);
 		if (cached) return await cached;
 		const archive = this.downloads(async () => await this.download(locator, sha, auth));
@@ -415,7 +426,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			{ bytes: MAX_REFS_BYTES, message: 'GitHub sent too much data.', reason: 'unreachable' },
 		);
 		try {
-			return JSON.parse(body.toString('utf8')) as unknown;
+			return jsonParse<unknown>(body.toString('utf8'));
 		} catch (error) {
 			throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.', {
 				cause: error,
@@ -489,9 +500,15 @@ function basic(token: string): string {
 	return Buffer.from(`x-access-token:${token}`).toString('base64');
 }
 
-/** A short hash of the token, so cache keys never hold the token itself. Empty for public. */
+/**
+ * The access part of a cache key: the credential when known, as a GitHub App token changes on
+ * every resolve, else a short hash of the token, so a key never holds the token itself. Empty
+ * for public.
+ */
 function accessKey(auth: SkillSourceAuth | undefined): string {
-	return auth ? createHash('sha256').update(auth.token).digest('hex').slice(0, 16) : '';
+	if (!auth) return '';
+	if (auth.credentialId) return `credential:${auth.credentialId}`;
+	return createHash('sha256').update(auth.token).digest('hex').slice(0, 16);
 }
 
 function toRepository(item: unknown): SkillSourceRepository[] {

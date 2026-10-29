@@ -24,9 +24,10 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { PostHogClient } from '@/posthog';
 
-import { saveCredential } from '@test-integration/db/credentials';
+import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { initCredentialsTypes, setupTestServer } from '@test-integration/utils';
@@ -72,6 +73,7 @@ describe('Skill Sync with credentials', () => {
 	let appCredential: CredentialsEntity;
 	let enterpriseAppCredential: CredentialsEntity;
 	let restrictedAppCredential: CredentialsEntity;
+	let sharedCredential: CredentialsEntity;
 
 	const ghCredential = (name: string, accessToken: string, type = 'githubApi') => ({
 		name,
@@ -102,6 +104,12 @@ describe('Skill Sync with credentials', () => {
 			inProject(team),
 		);
 		badCredential = await saveCredential(ghCredential('Expired', 'ghp_expired'), inProject(team));
+		// Owned by another project and shared with the team: the team accepts it too.
+		sharedCredential = await saveCredential(
+			ghCredential('Shared GitHub', TOKEN),
+			inProject(otherTeam),
+		);
+		await shareCredentialWithProjects(sharedCredential, [team]);
 		ownerCredential = await saveCredential(ghCredential('Owner GitHub', TOKEN), {
 			user: ownerUser,
 			role: 'credential:owner',
@@ -176,6 +184,7 @@ describe('Skill Sync with credentials', () => {
 				'Enterprise GitHub App',
 				'Expired',
 				'Restricted GitHub App',
+				'Shared GitHub',
 				'Team GitHub',
 				'Team GitHub App',
 			]);
@@ -266,6 +275,61 @@ describe('Skill Sync with credentials', () => {
 			expect(meta).toEqual({ reason: 'credential_out_of_scope' });
 		});
 
+		it('accepts a credential that another project shares with the project', async () => {
+			const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+				url: PRIVATE,
+				...scope(),
+				credentialId: sharedCredential.id,
+			});
+
+			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+		});
+
+		it('reports access: credential to telemetry, on a connect and on a refused discover', async () => {
+			const connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			const body = { url: PRIVATE, ...scope(), credentialId: teamCredential.id };
+			const { data: discovery } = await post<SkillSourceDiscovery>(
+				editor,
+				'/skill-sources/discover',
+				body,
+			);
+			await post(editor, '/skill-sources', {
+				...body,
+				skillKeys: discovery.skills.map(({ key }) => key),
+			});
+			await post(
+				editor,
+				'/skill-sources/discover',
+				{ ...body, credentialId: otherTeamCredential.id },
+				403,
+			);
+
+			expect(connectedSource.mock.calls.map(([props]) => props)).toEqual([
+				expect.objectContaining({ access: 'credential', status: 'success' }),
+				expect.objectContaining({
+					access: 'credential',
+					status: 'failure',
+					reason: 'credential_out_of_scope',
+				}),
+			]);
+			connectedSource.mockRestore();
+		});
+
+		it('reports a GitHub App that cannot get a token as credential_invalid', async () => {
+			nock('https://api.github.com')
+				.post('/app/installations/42/access_tokens')
+				.reply(401, { message: 'A JSON web token could not be decoded' });
+
+			const { meta } = await post(
+				editor,
+				'/skill-sources/discover',
+				{ url: PRIVATE, ...scope(), credentialId: appCredential.id },
+				400,
+			);
+
+			expect(meta).toEqual({ reason: 'credential_invalid' });
+		});
+
 		it('mints a fresh installation token for a GitHub App credential', async () => {
 			const exchange = nock('https://api.github.com')
 				.post('/app/installations/42/access_tokens')
@@ -292,7 +356,7 @@ describe('Skill Sync with credentials', () => {
 				400,
 			);
 
-			expect(meta).toEqual({ reason: 'credential_invalid' });
+			expect(meta).toEqual({ reason: 'host_blocked' });
 			expect(exchange.isDone()).toBe(false);
 		});
 
