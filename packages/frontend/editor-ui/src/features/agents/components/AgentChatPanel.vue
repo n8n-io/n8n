@@ -26,6 +26,7 @@ import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
+	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
 	type AgentSseEvent,
 	type ProviderAttachmentCapabilities,
@@ -66,6 +67,7 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
+import SessionFilesList from './SessionFilesList.vue';
 import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import {
@@ -89,7 +91,11 @@ import {
 } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
 import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControls';
-import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
+import {
+	getChatAttachmentUrl,
+	getSessionFiles,
+	type AgentChatChannel,
+} from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ApprovalCard from './interactive/ApprovalCard.vue';
 
@@ -1381,6 +1387,63 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
+// Session files: only the preview chat has the list route.
+const showSessionFilesToggle = computed(
+	() => props.channel === 'chat' && Boolean(props.continueSessionId),
+);
+const sessionFilesOpen = ref(false);
+const sessionFiles = ref<AgentSessionFile[]>([]);
+const sessionFilesLoading = ref(false);
+const sessionFilesError = ref(false);
+
+function sessionFileHref(fileId: string) {
+	return getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		fileId,
+		props.channel,
+		props.continueSessionId,
+	);
+}
+
+async function loadSessionFiles() {
+	const threadId = props.continueSessionId;
+	if (!threadId) return;
+	sessionFilesLoading.value = true;
+	sessionFilesError.value = false;
+	try {
+		const { files } = await getSessionFiles(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			threadId,
+		);
+		if (props.continueSessionId === threadId) sessionFiles.value = files;
+	} catch {
+		sessionFilesError.value = true;
+	} finally {
+		sessionFilesLoading.value = false;
+	}
+}
+
+async function toggleSessionFiles() {
+	sessionFilesOpen.value = !sessionFilesOpen.value;
+	if (sessionFilesOpen.value) await loadSessionFiles();
+}
+
+// A turn stores its sandbox files before it ends, so reload when the stream stops.
+watch(isStreaming, async (streaming) => {
+	if (!streaming && sessionFilesOpen.value) await loadSessionFiles();
+});
+watch(
+	() => props.continueSessionId,
+	() => {
+		sessionFilesOpen.value = false;
+		sessionFiles.value = [];
+	},
+);
+
 defineExpose({
 	focusInput,
 	getConversationMarkdown,
@@ -1533,6 +1596,13 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<slot name="above-input" />
+			<SessionFilesList
+				v-if="sessionFilesOpen"
+				:files="sessionFiles"
+				:file-href="sessionFileHref"
+				:loading="sessionFilesLoading"
+				:error="sessionFilesError"
+			/>
 			<div
 				v-if="showBackgroundJobs"
 				ref="backgroundJobCard"
@@ -1772,6 +1842,21 @@ onBeforeUnmount(() => {
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
 								data-test-id="chat-input-attach-button"
 								@click.stop="chatInput?.openFilePicker()"
+							/>
+						</N8nTooltip>
+						<N8nTooltip
+							v-if="showSessionFilesToggle"
+							:content="locale.baseText('agents.chat.sessionFiles.title')"
+							placement="top"
+						>
+							<N8nIconButton
+								variant="ghost"
+								:icon="sessionFilesOpen ? 'folder-open' : 'folder'"
+								icon-size="large"
+								:aria-label="locale.baseText('agents.chat.sessionFiles.title')"
+								:aria-expanded="sessionFilesOpen"
+								data-test-id="agent-session-files-toggle"
+								@click.stop="toggleSessionFiles"
 							/>
 						</N8nTooltip>
 						<slot name="footer-start" />
