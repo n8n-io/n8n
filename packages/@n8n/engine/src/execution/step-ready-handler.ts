@@ -220,18 +220,15 @@ export class StepReadyHandler {
 		});
 	}
 
-	/**
-	 * Starts a detached sub-execution. One that cannot start fails the step: the
-	 * node reported an id that will not run. A refused link is the one exception:
-	 * the step is running and its own, so the link can only be refused because
-	 * the execution has ended, and an ended execution is owed no sub-execution.
-	 */
+	/** Starts a detached sub-execution. */
 	private async handleDetachedSubExecution(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		subExecution: SubExecutionDeclaration,
 	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
 		const started = await this.startSubExecution(step, execution, subExecution);
+		// The step is running and its own, so a refused link means the execution
+		// has ended, and an ended execution is owed no sub-execution.
 		if (started.kind === 'error' && started.error instanceof InvalidParentLinkError) {
 			return { kind: 'parent-ended' };
 		}
