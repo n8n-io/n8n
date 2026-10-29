@@ -11,6 +11,7 @@ import type {
 	AuthStrategy,
 	AuthStrategyOptions,
 	AuthStrategyResult,
+	PublicApiAuthType,
 } from '@n8n/backend-services/auth';
 import { JwtService, API_KEY_PURPOSES } from '@n8n/backend-services';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
@@ -20,6 +21,8 @@ const LAST_USED_AT_THROTTLE_MS = 1 * Time.minutes.toMilliseconds;
 
 @Service()
 export class ApiKeyAuthStrategy implements AuthStrategy {
+	readonly authType: PublicApiAuthType = 'api_key';
+
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,

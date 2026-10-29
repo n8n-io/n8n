@@ -77,7 +77,7 @@ describe('PublicApiControllerRegistry', () => {
 		// mirrors the real strategies, which set `req.user` on success
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
-			return { authenticated: true };
+			return { authenticated: true, authType: 'api_key' };
 		});
 		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
@@ -279,6 +279,30 @@ describe('PublicApiControllerRegistry', () => {
 		expect(eventService.emit).toHaveBeenCalledWith(
 			'public-api-invoked',
 			expect.objectContaining({ method: 'GET', path: '/widgets' }),
+		);
+	});
+
+	it('reports the auth type of the strategy that authenticated the call', async () => {
+		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+			req.user = authenticatedUser;
+			return { authenticated: true, authType: 'session_cookie' };
+		});
+
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).get('/api/v1/widgets').expect(200);
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'public-api-invoked',
+			expect.objectContaining({ authType: 'session_cookie' }),
 		);
 	});
 
@@ -711,7 +735,7 @@ describe('PublicApiControllerRegistry', () => {
 				authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 					req.user = authenticatedUser;
 					req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
-					return { authenticated: true };
+					return { authenticated: true, authType: 'api_key' };
 				});
 
 				@Service()
@@ -856,7 +880,7 @@ describe('PublicApiControllerRegistry', () => {
 					apiKeyScopes: ['workflow:read'],
 					subject: authenticatedUser,
 				};
-				return { authenticated: true };
+				return { authenticated: true, authType: 'api_key' };
 			});
 
 			@Service()

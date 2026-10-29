@@ -48,7 +48,7 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
-import type { McpCallerAuth } from '@n8n/backend-services/auth';
+import type { McpCallerAuth, PublicApiAuthType } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
@@ -489,6 +489,8 @@ export type RelayEventMap = {
 		method: string;
 		apiVersion: string;
 		userAgent?: string;
+		/** How the caller authenticated. `session_cookie` is a browser session, for example the editor UI. */
+		authType: PublicApiAuthType;
 	};
 
 	// #endregion

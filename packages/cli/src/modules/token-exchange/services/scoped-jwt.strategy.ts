@@ -8,6 +8,7 @@ import type {
 	AuthStrategy,
 	AuthStrategyOptions,
 	AuthStrategyResult,
+	PublicApiAuthType,
 } from '@n8n/backend-services/auth';
 import { JwtService } from '@n8n/backend-services';
 
@@ -18,6 +19,8 @@ const API_KEY_HEADER = 'x-n8n-api-key';
 
 @Service()
 export class ScopedJwtStrategy implements AuthStrategy {
+	readonly authType: PublicApiAuthType = 'token_exchange';
+
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,

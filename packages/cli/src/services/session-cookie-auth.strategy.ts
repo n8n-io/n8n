@@ -11,6 +11,7 @@ import type {
 	AuthStrategy,
 	AuthStrategyOptions,
 	AuthStrategyResult,
+	PublicApiAuthType,
 } from '@n8n/backend-services/auth';
 
 /**
@@ -19,6 +20,8 @@ import type {
  */
 @Service()
 export class SessionCookieAuthStrategy implements AuthStrategy {
+	readonly authType: PublicApiAuthType = 'session_cookie';
+
 	constructor(private readonly authService: AuthService) {}
 
 	/**

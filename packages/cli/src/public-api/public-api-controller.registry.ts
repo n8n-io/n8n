@@ -356,6 +356,7 @@ export class PublicApiControllerRegistry {
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
+					authType: result.authType,
 				});
 			}
 

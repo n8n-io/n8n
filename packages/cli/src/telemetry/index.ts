@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { InstanceRegistryProxyService } from '@n8n/backend-services';
+import type { PublicApiAuthType } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -60,6 +61,7 @@ interface IApiInvocationProperties {
 	method: string;
 	api_version: string;
 	user_agent?: string;
+	auth_type: PublicApiAuthType;
 }
 
 interface IApiInvocationsBufferEntry {
@@ -69,8 +71,12 @@ interface IApiInvocationsBufferEntry {
 	user_agents: Record<string, number>;
 }
 
+/**
+ * One `Public API usage` event goes out for each user and auth type. Hex splits UI calls
+ * (`session_cookie`) from automation calls with this value.
+ */
 interface IApiInvocationsBuffer {
-	[userId: string]: IApiInvocationsBufferEntry;
+	[userId: string]: Partial<Record<PublicApiAuthType, IApiInvocationsBufferEntry>>;
 }
 
 interface IAgentExecutionCounts {
@@ -271,16 +277,18 @@ export class Telemetry {
 	}
 
 	private flushApiInvocations() {
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
-			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
-					user_id: userId,
-					total_calls: entry.total_calls,
-					first: entry.first,
-					endpoints: JSON.stringify(entry.endpoints),
-					user_agents: JSON.stringify(entry.user_agents),
-				});
+		for (const [userId, entriesByAuthType] of Object.entries(this.apiInvocationsBuffer)) {
+			for (const [authType, entry] of Object.entries(entriesByAuthType)) {
+				if (entry && entry.total_calls > 0) {
+					this.track('Public API usage', {
+						user_id: userId,
+						auth_type: authType,
+						total_calls: entry.total_calls,
+						first: entry.first,
+						endpoints: JSON.stringify(entry.endpoints),
+						user_agents: JSON.stringify(entry.user_agents),
+					});
+				}
 			}
 		}
 		this.apiInvocationsBuffer = {};
@@ -546,16 +554,15 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent } = properties;
+		const { user_id, path, method, user_agent, auth_type } = properties;
 
-		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+		const entriesByAuthType = (this.apiInvocationsBuffer[user_id] ??= {});
+		const entry = (entriesByAuthType[auth_type] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
 			user_agents: {},
-		};
-
-		const entry = this.apiInvocationsBuffer[user_id];
+		});
 		entry.total_calls++;
 
 		const endpointKey = `${method} ${path}`;

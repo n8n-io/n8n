@@ -3,6 +3,7 @@ export {
 	type AuthStrategyOptions,
 	type AuthStrategy,
 	type AuthStrategyResult,
+	type PublicApiAuthType,
 } from './services/auth-strategy.types';
 export {
 	type ProtectedResource,

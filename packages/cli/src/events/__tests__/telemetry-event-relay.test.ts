@@ -1877,6 +1877,7 @@ describe('TelemetryEventRelay', () => {
 				method: 'GET',
 				apiVersion: 'v1',
 				userAgent: 'n8n-cli',
+				authType: 'api_key',
 			};
 
 			eventService.emit('public-api-invoked', event);
@@ -1887,6 +1888,7 @@ describe('TelemetryEventRelay', () => {
 				method: 'GET',
 				api_version: 'v1',
 				user_agent: 'n8n-cli',
+				auth_type: 'api_key',
 			});
 		});
 

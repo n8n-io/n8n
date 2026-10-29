@@ -24,6 +24,7 @@ describe('AuthStrategyRegistry', () => {
 
 		/** A strategy without a `challenge` method, which the registry must tolerate. */
 		const bare = (outcome: 'authenticated' | 'rejected' | 'abstained'): AuthStrategy => ({
+			authType: 'api_key',
 			authenticate: vi.fn().mockResolvedValue({ outcome }),
 			buildTokenGrant: vi.fn().mockResolvedValue(null),
 		});
@@ -41,20 +42,39 @@ describe('AuthStrategyRegistry', () => {
 
 		// `Required`: `challenge` is optional on the contract, the mock needs it as a function.
 		it('answers authenticated when the first strategy succeeds, without calling the next', async () => {
-			const strategy1 = mock<Required<AuthStrategy>>();
-			const strategy2 = mock<Required<AuthStrategy>>();
+			const strategy1 = mock<Required<AuthStrategy>>({ authType: 'api_key' });
+			const strategy2 = mock<Required<AuthStrategy>>({ authType: 'session_cookie' });
 			strategy1.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(req)).toEqual({ authenticated: true });
+			expect(await registry.authenticate(req)).toEqual({
+				authenticated: true,
+				authType: 'api_key',
+			});
 			expect(strategy2.authenticate).not.toHaveBeenCalled();
+		});
+
+		it('answers with the auth type of the strategy that authenticated', async () => {
+			const strategy1 = mock<Required<AuthStrategy>>({ authType: 'api_key' });
+			const strategy2 = mock<Required<AuthStrategy>>({ authType: 'session_cookie' });
+			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained' });
+			strategy2.authenticate.mockResolvedValue({ outcome: 'authenticated' });
+
+			registry.register(strategy1);
+			registry.register(strategy2);
+
+			expect(await registry.authenticate(req)).toEqual({
+				authenticated: true,
+				authType: 'session_cookie',
+			});
 		});
 
 		it('evaluates strategies in registration order', async () => {
 			const order: number[] = [];
 			const strategy1: AuthStrategy = {
+				authType: 'api_key',
 				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(1);
 					return { outcome: 'abstained' };
@@ -62,6 +82,7 @@ describe('AuthStrategyRegistry', () => {
 				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
 			const strategy2: AuthStrategy = {
+				authType: 'api_key',
 				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(2);
 					return { outcome: 'abstained' };
@@ -78,15 +99,18 @@ describe('AuthStrategyRegistry', () => {
 		});
 
 		it('passes the request to the next strategy when the current one abstains', async () => {
-			const strategy1 = mock<Required<AuthStrategy>>();
-			const strategy2 = mock<Required<AuthStrategy>>();
+			const strategy1 = mock<Required<AuthStrategy>>({ authType: 'api_key' });
+			const strategy2 = mock<Required<AuthStrategy>>({ authType: 'api_key' });
 			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained' });
 			strategy2.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(req)).toEqual({ authenticated: true });
+			expect(await registry.authenticate(req)).toEqual({
+				authenticated: true,
+				authType: 'api_key',
+			});
 			expect(strategy1.authenticate).toHaveBeenCalledWith(req);
 			expect(strategy2.authenticate).toHaveBeenCalledWith(req);
 		});
@@ -205,8 +229,8 @@ describe('AuthStrategyRegistry', () => {
 		});
 
 		it('asks no strategy for a challenge when one authenticates', async () => {
-			const strategy1 = mock<Required<AuthStrategy>>();
-			const strategy2 = mock<Required<AuthStrategy>>();
+			const strategy1 = mock<Required<AuthStrategy>>({ authType: 'api_key' });
+			const strategy2 = mock<Required<AuthStrategy>>({ authType: 'api_key' });
 			strategy1.authenticate.mockResolvedValue({ outcome: 'abstained' });
 			strategy2.authenticate.mockResolvedValue({ outcome: 'authenticated' });
 			strategy1.challenge.mockResolvedValue('Bearer');
@@ -214,7 +238,10 @@ describe('AuthStrategyRegistry', () => {
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(req)).toEqual({ authenticated: true });
+			expect(await registry.authenticate(req)).toEqual({
+				authenticated: true,
+				authType: 'api_key',
+			});
 			expect(strategy1.challenge).not.toHaveBeenCalled();
 		});
 

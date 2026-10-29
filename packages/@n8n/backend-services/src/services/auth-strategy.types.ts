@@ -7,6 +7,12 @@ export type AuthStrategyOptions = {
 };
 
 /**
+ * How a request authenticated on the public API. Usage telemetry reports this value as
+ * `auth_type`. Do not rename a value. Add new values only.
+ */
+export type PublicApiAuthType = 'api_key' | 'session_cookie' | 'oauth' | 'token_exchange';
+
+/**
  * What one strategy decided for a request.
  * A `rejected` outcome may carry an RFC 7235 challenge specific to the refused credential, for
  * example `Bearer …, error="invalid_token"`. The strategy's generic challenge comes from
@@ -29,6 +35,9 @@ export type AuthStrategyResult =
  *                   (and req.tokenGrant if applicable) before returning.
  */
 export interface AuthStrategy {
+	/** The auth type that this strategy reports when it authenticates a request. */
+	readonly authType: PublicApiAuthType;
+
 	authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult>;
 
 	/**

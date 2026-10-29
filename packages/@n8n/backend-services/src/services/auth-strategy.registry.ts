@@ -2,10 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
+import type { AuthStrategy, AuthStrategyOptions, PublicApiAuthType } from './auth-strategy.types';
 
 export type AuthenticationOutcome =
-	| { authenticated: true }
+	| { authenticated: true; authType: PublicApiAuthType }
 	| { authenticated: false; challenges: string[] };
 
 /**
@@ -57,7 +57,9 @@ export class AuthStrategyRegistry {
 		let specificChallenge: string | undefined;
 		for (const strategy of this.strategies) {
 			const result = await strategy.authenticate(req);
-			if (result.outcome === 'authenticated') return { authenticated: true };
+			if (result.outcome === 'authenticated') {
+				return { authenticated: true, authType: strategy.authType };
+			}
 			if (result.outcome === 'rejected') {
 				rejectedBy = strategy;
 				specificChallenge = result.challenge;

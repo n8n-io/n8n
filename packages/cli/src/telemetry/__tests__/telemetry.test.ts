@@ -1077,6 +1077,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				auth_type: 'api_key',
 				user_agent: 'n8n-cli/1.0',
 			});
 
@@ -1085,6 +1086,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				auth_type: 'api_key',
 				user_agent: 'n8n-cli/1.0',
 			});
 
@@ -1093,17 +1095,18 @@ describe('Telemetry', () => {
 				path: '/executions',
 				method: 'POST',
 				api_version: 'v1',
+				auth_type: 'api_key',
 				user_agent: 'custom-app/2.0',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].total_calls).toBe(3);
-			expect(buffer['user1'].first).toEqual(execTime1);
-			expect(buffer['user1'].endpoints['GET /workflows']).toBe(2);
-			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
-			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
-			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
+			expect(buffer['user1'].api_key?.total_calls).toBe(3);
+			expect(buffer['user1'].api_key?.first).toEqual(execTime1);
+			expect(buffer['user1'].api_key?.endpoints['GET /workflows']).toBe(2);
+			expect(buffer['user1'].api_key?.endpoints['POST /executions']).toBe(1);
+			expect(buffer['user1'].api_key?.user_agents['n8n-cli/1.0']).toBe(2);
+			expect(buffer['user1'].api_key?.user_agents['custom-app/2.0']).toBe(1);
 		});
 
 		test('should handle missing user_agent', () => {
@@ -1112,12 +1115,13 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				auth_type: 'api_key',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].total_calls).toBe(1);
-			expect(buffer['user1'].user_agents).toEqual({});
+			expect(buffer['user1'].api_key?.total_calls).toBe(1);
+			expect(buffer['user1'].api_key?.user_agents).toEqual({});
 		});
 
 		test('should track multiple users independently', () => {
@@ -1126,6 +1130,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				auth_type: 'api_key',
 				user_agent: 'n8n-cli/1.0',
 			});
 
@@ -1134,15 +1139,52 @@ describe('Telemetry', () => {
 				path: '/executions',
 				method: 'POST',
 				api_version: 'v1',
+				auth_type: 'api_key',
 				user_agent: 'custom-app/2.0',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].total_calls).toBe(1);
-			expect(buffer['user1'].endpoints['GET /workflows']).toBe(1);
-			expect(buffer['user2'].total_calls).toBe(1);
-			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
+			expect(buffer['user1'].api_key?.total_calls).toBe(1);
+			expect(buffer['user1'].api_key?.endpoints['GET /workflows']).toBe(1);
+			expect(buffer['user2'].api_key?.total_calls).toBe(1);
+			expect(buffer['user2'].api_key?.endpoints['POST /executions']).toBe(1);
+		});
+
+		test('should count calls separately for each auth type', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				auth_type: 'api_key',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				auth_type: 'session_cookie',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/executions',
+				method: 'GET',
+				api_version: 'v1',
+				auth_type: 'session_cookie',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].api_key?.total_calls).toBe(1);
+			expect(buffer['user1'].api_key?.endpoints).toEqual({ 'GET /workflows': 1 });
+			expect(buffer['user1'].session_cookie?.total_calls).toBe(2);
+			expect(buffer['user1'].session_cookie?.endpoints).toEqual({
+				'GET /workflows': 1,
+				'GET /executions': 1,
+			});
 		});
 
 		test('should not buffer when rudderStack is not initialized', () => {
@@ -1154,6 +1196,7 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				auth_type: 'api_key',
 			});
 
 			const buffer = telemetry.getApiInvocationsBuffer();
@@ -1580,15 +1623,56 @@ describe('Telemetry', () => {
 				path: '/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				auth_type: 'api_key',
 			});
 
 			telemetry.flushBuffers();
 
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Public API usage',
-				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+				expect.objectContaining({ user_id: 'user1', auth_type: 'api_key', total_calls: 1 }),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should send one usage event per user and auth type', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				auth_type: 'api_key',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				auth_type: 'session_cookie',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				auth_type: 'session_cookie',
+			});
+
+			telemetry.flushBuffers();
+
+			const usageCalls = spyTrack.mock.calls.filter(([event]) => event === 'Public API usage');
+			expect(usageCalls).toHaveLength(2);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', auth_type: 'api_key', total_calls: 1 }),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', auth_type: 'session_cookie', total_calls: 2 }),
+			);
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
 		});
 

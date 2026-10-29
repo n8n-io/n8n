@@ -15,7 +15,11 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 
-import type { AuthStrategy, AuthStrategyResult } from '@n8n/backend-services/auth';
+import type {
+	AuthStrategy,
+	AuthStrategyResult,
+	PublicApiAuthType,
+} from '@n8n/backend-services/auth';
 import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
@@ -31,6 +35,8 @@ const isApiKeyScopeName = (scope: string): scope is ApiKeyScope =>
  */
 @Service()
 export class PublicApiOAuthStrategy implements AuthStrategy {
+	readonly authType: PublicApiAuthType = 'oauth';
+
 	constructor(
 		private readonly resource: PublicApiProtectedResource,
 		private readonly admission: ResourceAdmission,
