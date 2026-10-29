@@ -207,7 +207,24 @@ describe('diffMigrationFindings', () => {
 	describe('published version', () => {
 		const publishedHit = { ruleId: 'rule-a', workflowId: 'wf-1' };
 
-		it.each<MigrationFindingStatus>(['open', 'notified', 'wont_fix', 'fixed'])(
+		it('keeps a wont_fix row as it is while the published version has the hit', () => {
+			const diff = diffMigrationFindings({
+				targetVersion: TARGET_VERSION,
+				workflowIds: ['wf-1'],
+				hits: [],
+				publishedHits: [publishedHit],
+				existing: [existingRow(1, 'rule-a', 'wf-1', 'wont_fix')],
+			});
+
+			expect(diff).toEqual({
+				toInsert: [],
+				toMarkFixed: [],
+				toMarkFixedUnpublished: [],
+				toReopen: [],
+			});
+		});
+
+		it.each<MigrationFindingStatus>(['open', 'notified', 'fixed'])(
 			'marks a %s row fixed_unpublished when only the published version has the hit',
 			(status) => {
 				const diff = diffMigrationFindings({

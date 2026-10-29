@@ -49,11 +49,12 @@ const hitKey = (ruleId: string, workflowId: string) => `${ruleId}\u0000${workflo
  * A hit in the latest version means the finding is open: a new pair is inserted,
  * and a `fixed` or `fixed_unpublished` row is reopened. Without that hit, the
  * finding is `fixed_unpublished` while the published version still has the hit,
- * and `fixed` otherwise. Rows in any status move to these two, so a won't fix
- * choice does not outlive the issue. A pair that only the published version
- * hits is inserted as `fixed_unpublished`. A pair listed in `unknown` is never inserted or changed:
- * a missing hit there means the pair was not decided, not that the workflow is
- * clean. The other rules on the same workflow are handled as usual.
+ * and `fixed` otherwise. A `wont_fix` row stays as it is while the published
+ * version has the hit, and becomes `fixed` once no version has it, so a won't
+ * fix choice does not outlive the issue. A pair that only the published version
+ * hits is inserted as `fixed_unpublished`. A pair listed in `unknown` is never
+ * inserted or changed: a missing hit there means the pair was not decided, not
+ * that the workflow is clean. The other rules on the same workflow are handled as usual.
  */
 const RESOLVED_STATUSES = new Set<MigrationFindingStatus>(['fixed', 'fixed_unpublished']);
 
@@ -90,7 +91,9 @@ export function diffMigrationFindings(input: MigrationFindingDiffInput): Migrati
 		if (hitKeys.has(key)) {
 			if (RESOLVED_STATUSES.has(row.status)) diff.toReopen.push(row.id);
 		} else if (publishedHitKeys.has(key)) {
-			if (row.status !== 'fixed_unpublished') diff.toMarkFixedUnpublished.push(row.id);
+			if (row.status !== 'fixed_unpublished' && row.status !== 'wont_fix') {
+				diff.toMarkFixedUnpublished.push(row.id);
+			}
 		} else if (row.status !== 'fixed') {
 			diff.toMarkFixed.push(row.id);
 		}
