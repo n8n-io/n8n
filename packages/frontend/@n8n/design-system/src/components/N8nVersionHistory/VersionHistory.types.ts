@@ -1,6 +1,6 @@
 import type { ActionToggleItem } from '../N8nActionToggle/ActionToggle.types';
 
-/** Dot on the timeline. `default` is an empty ring. */
+/** Dot on the timeline. `default` is a neutral ring. */
 export type VersionHistoryStatus = 'published' | 'latest' | 'default';
 
 /**
@@ -26,16 +26,14 @@ export interface VersionHistoryItem {
 	statusLabel?: string;
 	/**
 	 * Menu items for the row.
-	 * Add an entry here to extend the menu. The row hides the menu when this list is empty.
-	 * Use the `actions` slot to replace the controls instead.
+	 * The row hides the menu when this list is empty.
+	 * The compare control stays. Use the `actions` slot to replace both controls.
 	 */
 	actions?: Array<ActionToggleItem<string>>;
 	/** Disable the compare control for this row. */
 	compareDisabled?: boolean;
 	/** Disable the menu for this row. */
 	actionsDisabled?: boolean;
-	/** Accessible name for the compare control. Overrides the panel label. */
-	compareLabel?: string;
 }
 
 export interface VersionHistoryActionPayload {
@@ -59,8 +57,4 @@ export interface VersionHistoryProps {
 	loading?: boolean;
 	/** Accessible name for the loading state. */
 	loadingLabel?: string;
-	/** Show a compare control on each row. */
-	showCompare?: boolean;
-	/** Accessible name for the compare control. */
-	compareLabel?: string;
 }

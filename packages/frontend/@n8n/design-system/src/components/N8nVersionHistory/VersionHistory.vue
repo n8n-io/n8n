@@ -15,7 +15,6 @@ defineOptions({ name: 'N8nVersionHistory' });
 
 const props = withDefaults(defineProps<VersionHistoryProps>(), {
 	items: () => [],
-	showCompare: false,
 	loading: false,
 });
 
@@ -45,7 +44,6 @@ const { t } = useI18n();
 
 const listLabel = computed(() => props.label ?? t('versionHistory.label'));
 const loadingLabel = computed(() => props.loadingLabel ?? t('versionHistory.loading'));
-const compareLabel = computed(() => props.compareLabel ?? t('versionHistory.compare'));
 
 function onAction(id: string, action: string) {
 	emit('action', { id, action });
@@ -95,8 +93,6 @@ function onAction(id: string, action: string) {
 					:key="item.id"
 					:item="item"
 					:selected="item.id === selectedId"
-					:show-compare="showCompare"
-					:compare-label="compareLabel"
 					@select="emit('select', $event)"
 					@compare="emit('compare', $event)"
 					@action="onAction(item.id, $event)"

@@ -57,7 +57,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A version list. The caller formats each time, supplies the empty state, and can replace the row actions. Add menu entries on each item. The parent sets the height and the background.',
+					'A version list. The caller formats each time and supplies the empty state. Each row has a compare control and a menu. The actions slot replaces both. The parent sets the height and the background.',
 			},
 		},
 	},
@@ -115,7 +115,6 @@ export const Default: Story = {
 	}),
 	args: {
 		items: versions,
-		showCompare: true,
 	},
 };
 
@@ -186,7 +185,6 @@ export const Disabled: Story = {
 	...Default,
 	args: {
 		items: disabledVersions,
-		showCompare: true,
 	},
 };
 

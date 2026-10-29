@@ -29,7 +29,7 @@ const items: VersionHistoryItem[] = [
 
 function renderHistory(props: Record<string, unknown> = {}, slots: Record<string, string> = {}) {
 	return render(N8nVersionHistory, {
-		props: { items, showCompare: true, ...props },
+		props: { items, ...props },
 		slots,
 	});
 }
@@ -37,18 +37,18 @@ function renderHistory(props: Record<string, unknown> = {}, slots: Record<string
 describe('N8nVersionHistory', () => {
 	it('renders a version row with its detail and time', () => {
 		const { getByRole } = renderHistory({ selectedId: 'v1' });
-		const latest = getByRole('button', { name: /v2/ });
+		const latest = getByRole('menuitem', { name: /v2/ });
 
 		expect(latest).toHaveTextContent('Latest');
 		expect(latest).toHaveTextContent('Alex');
 		expect(latest).toHaveTextContent('Oct 28 at 09:14');
-		expect(getByRole('button', { name: /v1/ })).toHaveAttribute('aria-current', 'true');
+		expect(getByRole('menuitem', { name: /v1/ })).toHaveAttribute('aria-current', 'true');
 	});
 
 	it('emits select when a version is opened', async () => {
 		const { getByRole, emitted } = renderHistory({ selectedId: 'v1' });
 
-		await fireEvent.click(getByRole('button', { name: /v2/ }));
+		await fireEvent.click(getByRole('menuitem', { name: /v2/ }));
 
 		expect(emitted('select')).toEqual([['v2']]);
 	});

@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { VersionHistoryItem } from './VersionHistory.types';
+import type { VersionHistoryItem, VersionHistoryStatus } from './VersionHistory.types';
+import { useI18n } from '../../composables/useI18n';
+import type { IMenuItem } from '../../types';
 import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
+import N8nMenuItem from '../N8nMenuItem';
+import N8nStatusDot, { type StatusDotAppearance, type StatusDotVariant } from '../N8nStatusDot';
 import N8nText from '../N8nText/Text.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 const props = defineProps<{
 	item: VersionHistoryItem;
 	selected?: boolean;
-	showCompare?: boolean;
-	compareLabel: string;
 }>();
 
 const emit = defineEmits<{
@@ -25,9 +27,46 @@ defineSlots<{
 	actions?: (props: { item: VersionHistoryItem }) => unknown;
 }>();
 
-const status = computed(() => props.item.status ?? 'default');
+// Published and latest are filled. Every other row uses a neutral ring.
+const STATUS_DOT: Record<
+	VersionHistoryStatus,
+	{ variant: StatusDotVariant; appearance: StatusDotAppearance }
+> = {
+	published: { variant: 'success', appearance: 'fill' },
+	latest: { variant: 'warning', appearance: 'fill' },
+	default: { variant: 'neutral', appearance: 'outline' },
+};
+
+/**
+ * The compare control is this icon button on every row.
+ * A custom actions slot replaces it.
+ */
+const compareButtonProps = {
+	variant: 'ghost' as const,
+	icon: 'file-diff' as const,
+	size: 'medium' as const,
+};
+
+const { t } = useI18n();
+
+const statusDot = computed(() => STATUS_DOT[props.item.status ?? 'default']);
 const actions = computed(() => props.item.actions ?? []);
-const compareLabel = computed(() => props.item.compareLabel ?? props.compareLabel);
+const compareLabel = computed(() => t('versionHistory.compare'));
+const menuItem = computed<IMenuItem>(() => ({
+	id: props.item.id,
+	label: props.item.label,
+}));
+const accessibleName = computed(() =>
+	[
+		props.item.label,
+		props.item.detail,
+		props.item.author,
+		props.item.createdAt,
+		props.item.statusLabel,
+	]
+		.filter((part): part is string => Boolean(part))
+		.join(', '),
+);
 
 function onSelect() {
 	emit('select', props.item.id);
@@ -49,50 +88,45 @@ function onAction(action: string) {
 		data-test-id="version-history-item"
 		:data-version-id="item.id"
 	>
-		<button
-			type="button"
+		<N8nMenuItem
 			:class="$style.select"
+			flush
+			:item="menuItem"
+			:active="selected"
+			:aria-label="accessibleName"
 			:aria-current="selected ? 'true' : undefined"
 			@click="onSelect"
 		>
-			<span :class="$style.timelineColumn">
-				<span
-					:class="[$style.indicator, $style[status]]"
-					:aria-label="item.statusLabel"
-					:aria-hidden="item.statusLabel ? undefined : 'true'"
-				/>
-			</span>
-			<span :class="$style.content">
-				<span :class="$style.mainRow">
-					<N8nText bold size="small" color="text-dark" :class="$style.label">
-						{{ item.label }}
-					</N8nText>
-					<N8nText v-if="item.detail" size="small" color="text-light" :class="$style.detail">
-						<span aria-hidden="true">· </span>{{ item.detail }}
-					</N8nText>
+			<template #icon>
+				<N8nStatusDot :variant="statusDot.variant" :appearance="statusDot.appearance" />
+			</template>
+			<template #label>
+				<span :class="$style.content">
+					<span :class="$style.mainRow">
+						<N8nText bold size="small" color="text-dark" :class="$style.label">
+							{{ item.label }}
+						</N8nText>
+						<N8nText v-if="item.detail" size="small" color="text-light" :class="$style.detail">
+							<span aria-hidden="true">· </span>{{ item.detail }}
+						</N8nText>
+					</span>
+					<span v-if="item.author || item.createdAt" :class="$style.metaRow">
+						<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
+							{{ item.author }}<template v-if="item.createdAt">, </template>
+						</N8nText>
+						<time v-if="item.createdAt" :datetime="item.createdAtIso" :class="$style.time">
+							<N8nText size="small" color="text-base">{{ item.createdAt }}</N8nText>
+						</time>
+					</span>
 				</span>
-				<span v-if="item.author || item.createdAt" :class="$style.metaRow">
-					<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
-						{{ item.author }}<template v-if="item.createdAt">, </template>
-					</N8nText>
-					<time v-if="item.createdAt" :datetime="item.createdAtIso" :class="$style.time">
-						<N8nText size="small" color="text-base">{{ item.createdAt }}</N8nText>
-					</time>
-				</span>
-			</span>
-		</button>
-		<div v-if="showCompare || actions.length || $slots.actions" :class="$style.actions">
+			</template>
+		</N8nMenuItem>
+		<!-- Actions stay outside the menu item. A click on them does not select the version. -->
+		<div :class="$style.actions">
 			<slot name="actions" :item="item">
-				<N8nTooltip
-					v-if="showCompare"
-					placement="top"
-					:content="compareLabel"
-					:disabled="item.compareDisabled"
-				>
+				<N8nTooltip placement="top" :content="compareLabel" :disabled="item.compareDisabled">
 					<N8nIconButton
-						variant="ghost"
-						icon="file-diff"
-						size="medium"
+						v-bind="compareButtonProps"
 						:disabled="item.compareDisabled"
 						:aria-label="compareLabel"
 						data-test-id="version-history-compare"
@@ -114,11 +148,9 @@ function onAction(action: string) {
 <style lang="scss" module>
 .item {
 	display: flex;
-	position: relative;
 	align-items: center;
 	padding: 0 var(--spacing--3xs);
 	border-radius: var(--radius);
-	line-height: var(--line-height--xl);
 
 	&:hover,
 	&.selected {
@@ -127,52 +159,8 @@ function onAction(action: string) {
 }
 
 .select {
-	all: unset;
-	display: flex;
 	flex: 1;
-	align-items: center;
 	min-width: 0;
-	cursor: pointer;
-	text-align: start;
-
-	&:focus-visible {
-		// Same focus ring as other design-system triggers. No token exists for this width.
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
-		border-radius: var(--radius);
-	}
-}
-
-.timelineColumn {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--lg);
-	min-width: var(--spacing--lg);
-	align-self: stretch;
-}
-
-.indicator {
-	display: inline-block;
-	box-sizing: border-box;
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	flex-shrink: 0;
-}
-
-.published {
-	background-color: var(--color--mint-600);
-}
-
-.latest {
-	background-color: var(--color--yellow-500);
-}
-
-.default {
-	border: var(--border);
-	border-color: var(--color--text--tint-2);
 }
 
 .content {
@@ -180,7 +168,6 @@ function onAction(action: string) {
 	flex-direction: column;
 	flex: 1 1 auto;
 	min-width: 0;
-	padding: var(--spacing--3xs);
 }
 
 .mainRow {
