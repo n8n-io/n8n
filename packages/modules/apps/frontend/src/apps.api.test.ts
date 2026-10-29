@@ -7,6 +7,8 @@ import {
 	getAppBuild,
 	listApps,
 	listAppVersions,
+	publishApp,
+	unpublishApp,
 } from './apps.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -63,6 +65,7 @@ describe('apps.api', () => {
 			'GET',
 			'/projects/project-1/apps/app-1/versions/v-1/build',
 		],
+		['unpublishes an app', unpublishApp, 'POST', '/projects/project-1/apps/app-1/unpublish'],
 		[
 			'creates a preview grant for a version',
 			async (ctx: IRestApiContext, p: string, a: string) =>
@@ -74,5 +77,16 @@ describe('apps.api', () => {
 		await request(context, 'project-1', 'app-1');
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(context, method, endpoint);
+	});
+
+	it('publishes a version of an app', async () => {
+		await publishApp(context, 'project-1', 'app-1', 'v-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'POST',
+			'/projects/project-1/apps/app-1/publish',
+			{ versionId: 'v-1' },
+		);
 	});
 });
