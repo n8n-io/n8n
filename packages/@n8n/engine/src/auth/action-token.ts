@@ -7,12 +7,7 @@ import {
 } from './shared-secret-token';
 
 /** What an action token authorizes. Scoped, so a leaked token buys only one of them. */
-export const ACTION_SCOPES = [
-	'lifecycle-events:write',
-	'credentials:read',
-	'data-tables:use',
-	'sub-workflows:resolve',
-] as const;
+export const ACTION_SCOPES = ['credentials:read', 'data-tables:use', 'sub-workflows:resolve'] as const;
 
 export type ActionScope = (typeof ACTION_SCOPES)[number];
 

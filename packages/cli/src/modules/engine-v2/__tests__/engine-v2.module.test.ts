@@ -85,7 +85,7 @@ describe('EngineV2Module', () => {
 			expect(client.startExecution).toHaveBeenCalledWith(request);
 		});
 
-		it('starts the control plane server before the engine, so a report always lands', async () => {
+		it('starts the control plane server before the engine, so the first step can resolve credentials', async () => {
 			await module.init();
 
 			expect(controlPlaneServer.start).toHaveBeenCalled();
@@ -273,7 +273,7 @@ describe('EngineV2Module', () => {
 			expect(runtime.shutdown).toHaveBeenCalled();
 		});
 
-		it('stops the control plane server after the engine, so a final flush still lands', async () => {
+		it('stops the control plane server after the engine, so a running step can still resolve credentials', async () => {
 			await module.shutdown();
 
 			expect(controlPlaneServer.stop).toHaveBeenCalled();

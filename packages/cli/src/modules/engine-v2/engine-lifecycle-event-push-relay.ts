@@ -70,6 +70,9 @@ export class EngineLifecycleEventPushRelay {
 			case 'execution:completed':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'success', session);
 			case 'execution:failed':
+				// TODO(CAT-2877 follow-up): dispatch the error workflow on `execution:failed`
+				// once the failure reason and run data are available. Only the events of runs
+				// that an editor watches reach the relay, so that work needs its own delivery.
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'error', session);
 			case 'execution:cancelled':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'canceled', session);
