@@ -19,11 +19,9 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	createRunExecutionData,
 	type IDataObject,
-	type IExecuteResponsePromiseData,
 	type INode,
 	type IPinData,
 	type IRun,
@@ -41,13 +39,11 @@ import {
 	detectTriggerNode,
 	formatResult,
 	inferInputSchema,
-	isWorkflowToolResponse,
 	listWorkflowInputFields,
 	validateCompatibility,
 } from '@/modules/agents/tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
-import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -99,7 +95,6 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly webhookResponseRelay: WebhookResponseRelay,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly appsConfig: AppsConfig,
 		private readonly globalConfig: GlobalConfig,
@@ -273,22 +268,8 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			}),
 		};
 
-		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
-		let webhookResponse: IExecuteResponsePromiseData | undefined;
-		void responsePromise.promise
-			.then((response) => {
-				webhookResponse = response;
-			})
-			.catch(() => {});
-
 		const { executionId, run } = await this.holdRun(async () => {
-			const executionId = await this.workflowRunner.run(
-				runData,
-				undefined,
-				undefined,
-				undefined,
-				responsePromise,
-			);
+			const executionId = await this.workflowRunner.run(runData);
 			return { executionId, run: await this.waitForRun(executionId) };
 		});
 		if (run === 'running') return { executionId, status: 'running' };
@@ -301,22 +282,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			}));
 		if (!execution) return { executionId, status: 'unknown', output: [] };
 
-		const result = this.toRunResult(
-			ctx,
-			executionId,
-			execution.status,
-			execution.data,
-			workflow.nodes,
-		);
-		if (result.status !== 'success' || !isWorkflowToolResponse(webhookResponse)) return result;
-
-		const { body } = await this.webhookResponseRelay.restoreOffloadedBody(webhookResponse, {
-			reclaim: true,
-			context: { workflowId: workflow.id, executionId },
-		});
-		return Buffer.isBuffer(body)
-			? { ...result, output: null, outputTruncated: true }
-			: { ...result, output: body };
+		return this.toRunResult(ctx, executionId, execution.status, execution.data, workflow.nodes);
 	}
 
 	private toRunResult(

@@ -149,6 +149,8 @@ export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
 	author?: AgentMessageAuthor;
 	integrationType?: string;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
+	/** Set to false when the channel cannot receive background job wakes. Defaults to true. */
+	allowBackgroundTasks?: boolean;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
 	// session — there is no n8n `User` to attach. The admin who published the
@@ -192,6 +194,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/** Set to false when the channel cannot receive background job wakes. Defaults to true. */
+	allowBackgroundTasks?: boolean;
 	/** The chat surface this resume runs under. Undefined for integrations. */
 	chatSurface?: AgentChatSurface;
 	/** Preview chat sends the approaching-budget card. The run continues. */
@@ -730,6 +734,7 @@ export class AgentExecutionOrchestratorService {
 						integrationType,
 						usePublishedVersion: true,
 						sandboxPrincipalHash,
+						allowBackgroundTasks: config.allowBackgroundTasks,
 					},
 					{
 						threadId: memory.threadId,
@@ -1259,6 +1264,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded,
 			abortSignal,
 			chatSurface,
+			allowBackgroundTasks,
 		} = config;
 		const previewChat = chatSurface === 'preview';
 		const { memoryScope, sandboxPrincipalHash, scope } = checkpoint;
@@ -1268,6 +1274,7 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				usePublishedVersion,
 				integrationType,
+				allowBackgroundTasks,
 				user: scope.runtime.user,
 				attributionUserId: scope.runtime.attributionUserId,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),

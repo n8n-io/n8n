@@ -11,7 +11,6 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
-import type { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -70,7 +69,6 @@ function setup() {
 		mock<SubworkflowPolicyChecker>(),
 		runner,
 		activeExecutions,
-		mock<WebhookResponseRelay>(),
 		executions,
 		mock<AppsConfig>({ apiMaxConcurrentRuns: 20, apiRunWaitMs: 60_000 }),
 		mock<GlobalConfig>(),

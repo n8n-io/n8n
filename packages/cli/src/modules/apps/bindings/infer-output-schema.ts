@@ -12,12 +12,12 @@ export const UNKNOWN_OUTPUT_SCHEMA: AppJsonSchema = {
 
 type Kind = 'null' | 'array' | 'string' | 'number' | 'boolean' | 'object';
 
-/** The items of the last run of the node that ran last, first main output. */
+/** The items of the last run of the node that ran last, from all main outputs, like a run's `output`. */
 export function sampleOutputItems(data: IRunExecutionData | undefined): IDataObject[] {
 	const lastNode = data?.resultData?.lastNodeExecuted;
 	const runs = lastNode ? data?.resultData?.runData?.[lastNode] : undefined;
 	const lastRun = runs?.[runs.length - 1];
-	return (lastRun?.data?.main?.[0] ?? []).map((item) => item.json);
+	return (lastRun?.data?.main ?? []).flatMap((items) => items ?? []).map((item) => item.json);
 }
 
 function kindOf(value: unknown): Kind {

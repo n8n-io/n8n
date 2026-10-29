@@ -19,6 +19,14 @@ describe('sampleOutputItems', () => {
 		expect(sampleOutputItems(data)).toEqual([{ run: 2 }]);
 	});
 
+	it('reads the items of every main output, like the run output', () => {
+		const data = runData('Switch', {
+			Switch: [{ data: { main: [[{ json: { branch: 0 } }], null, [{ json: { branch: 2 } }]] } }],
+		});
+
+		expect(sampleOutputItems(data)).toEqual([{ branch: 0 }, { branch: 2 }]);
+	});
+
 	it('returns no items when nothing ran', () => {
 		expect(sampleOutputItems(undefined)).toEqual([]);
 		expect(sampleOutputItems(runData('Missing', {}))).toEqual([]);

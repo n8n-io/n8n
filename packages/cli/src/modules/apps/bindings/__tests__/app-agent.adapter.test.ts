@@ -206,6 +206,7 @@ describe('AppAgentAdapter', () => {
 		expect(second.memory.threadId).not.toBe(first.memory.threadId);
 		expect(first.projectId).toBe('project-1');
 		expect(first.integrationType).toBe('app');
+		expect(first.allowBackgroundTasks).toBe(false);
 	});
 
 	it('stores a hash of an anonymous visitor ID', async () => {
@@ -275,6 +276,7 @@ describe('AppAgentAdapter', () => {
 			expect.objectContaining({
 				expectedMemory: { threadId: `agent-1:app:app-1:user:user-1:${SESSION}` },
 				usePublishedVersion: true,
+				allowBackgroundTasks: false,
 			}),
 		);
 	});

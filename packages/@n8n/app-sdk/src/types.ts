@@ -51,9 +51,8 @@ export type RunStatus = 'success' | 'error' | 'waiting' | 'canceled' | 'running'
 export interface RunResult<T> {
 	executionId: string;
 	status: RunStatus;
+	/** The items of the node that ran last. Set when `status` is `success`. */
 	output?: T;
-	/** Set when the workflow answered with binary data. `output` is then `null`. */
-	outputTruncated?: true;
 	error?: string;
 }
 
@@ -96,14 +95,45 @@ export interface ToolSuspendedPayload {
 	input: unknown;
 }
 
-/** One `data:` line of the chat stream. A turn ends with `done` or `tool-call-suspended`. */
+/** Token use of the model calls of one turn. `cost` is an estimate in USD. */
+export interface AgentTokenUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost?: number;
+}
+
+/** One content part of a stored message, for example `{ type: 'text', text }`. */
+export interface AgentMessageContentPart {
+	type: string;
+	text?: string;
+	toolName?: string;
+	toolCallId?: string;
+	input?: unknown;
+	output?: unknown;
+	[key: string]: unknown;
+}
+
+/**
+ * One `data:` line of the chat stream. A turn ends with `done` or `tool-call-suspended`.
+ * It mirrors the n8n agent chat stream, so new event types can appear. Ignore the ones you do not know.
+ */
 export type AgentSseEvent =
-	| { type: 'message-queued'; queueId: string; sessionId: string }
-	| { type: 'execution-started'; executionId: string; sessionId: string }
 	| {
-			type: 'usage';
-			usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+			type: 'message-steered';
+			queueId: string;
+			executionId: string;
+			message: { id: string; role: string; content: AgentMessageContentPart[] };
 	  }
+	| { type: 'message-queued'; queueId: string; sessionId: string }
+	| {
+			type: 'execution-started';
+			executionId: string;
+			sessionId: string;
+			message?: string;
+			inputMessageIds?: string[];
+	  }
+	| { type: 'usage'; usage: AgentTokenUsage }
 	| { type: 'start-step' }
 	| { type: 'finish-step' }
 	| { type: 'text-start'; id: string }
@@ -132,19 +162,30 @@ export type AgentSseEvent =
 			canceled?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
-	| { type: 'warning'; message: string; code?: string }
-	| { type: 'error'; message: string; errorCode?: string }
+	| {
+			/** Live progress of a sub-agent, for the parent `delegate_subagent` tool call. */
+			type: 'subagent-chunk';
+			parentToolCallId: string;
+			taskPath: string;
+			chunk: { type: string; [key: string]: unknown };
+	  }
+	| { type: 'message'; message: { role: string; content: AgentMessageContentPart[] } }
+	| { type: 'host-event'; name: string; key?: string; payload: unknown }
+	| { type: 'warning'; message: string; code?: string; source?: 'mcp'; server?: string }
+	| {
+			/** The run ended. A `guardrail` stop carries the code of the hook that ended it. */
+			type: 'finish';
+			finishReason: string;
+			usage?: AgentTokenUsage;
+			guardrail?: { code: string };
+	  }
+	| {
+			type: 'budget-notice';
+			code: 'budget.alert' | 'budget.session' | 'budget.monthly';
+			agentId?: string;
+	  }
+	| { type: 'error'; message: string; errorCode?: string; missing?: string[] }
 	| { type: 'done'; sessionId?: string; executionId?: string };
-
-export interface AgentMessageContentPart {
-	type: string;
-	text?: string;
-	toolName?: string;
-	toolCallId?: string;
-	input?: unknown;
-	output?: unknown;
-	[key: string]: unknown;
-}
 
 export interface AgentChatMessagesResponse {
 	messages: Array<{ id: string; role: string; content: AgentMessageContentPart[] }>;

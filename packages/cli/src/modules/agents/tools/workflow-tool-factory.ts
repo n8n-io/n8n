@@ -142,7 +142,7 @@ export interface WorkflowToolExecutionResult extends WorkflowToolResult {
 	wait?: WorkflowWaitState;
 }
 
-export function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
+function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
 

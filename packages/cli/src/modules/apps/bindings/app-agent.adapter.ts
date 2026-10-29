@@ -1,4 +1,5 @@
 import type {
+	AgentChatMessagesResponse,
 	AgentSseEvent,
 	AppAgentBinding,
 	AppAgentChatRequest,
@@ -62,6 +63,7 @@ async function agentServices() {
 /**
  * Agent chat for app bindings. Runs act as the app project. Memory is scoped to
  * the app and the visitor, so a visitor never reads another visitor's thread.
+ * Background tasks are off: a background job wake cannot reach an app visitor.
  */
 @Service()
 export class AppAgentAdapter extends AppAgentPort {
@@ -125,6 +127,7 @@ export class AppAgentAdapter extends AppAgentPort {
 			message: request.message,
 			memory,
 			integrationType: APP_AGENT_INTEGRATION_TYPE,
+			allowBackgroundTasks: false,
 			sandboxPrincipalHash: services.hashAgentSandboxPrincipal({
 				type: 'project-session',
 				projectId: bound.projectId,
@@ -155,6 +158,7 @@ export class AppAgentAdapter extends AppAgentPort {
 			resumeData: request.resumeData,
 			usePublishedVersion: true,
 			integrationType: APP_AGENT_INTEGRATION_TYPE,
+			allowBackgroundTasks: false,
 			expectedMemory: { threadId },
 			source: APP_AGENT_INTEGRATION_TYPE,
 			abortSignal: signal,
@@ -163,7 +167,11 @@ export class AppAgentAdapter extends AppAgentPort {
 	}
 
 	/** An unknown session reads as empty, so the app cannot learn which sessions exist. */
-	async messages(ctx: AppCallContext, agentId: string, sessionId: string) {
+	async messages(
+		ctx: AppCallContext,
+		agentId: string,
+		sessionId: string,
+	): Promise<AgentChatMessagesResponse> {
 		const services = await agentServices();
 		const bound = await this.resolve(ctx, agentId);
 		const { threadId, resourceId } = this.memoryScope(ctx, bound, sessionId);

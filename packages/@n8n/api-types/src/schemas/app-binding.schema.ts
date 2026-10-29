@@ -198,9 +198,8 @@ export type AppWorkflowRunStatus =
 export type AppWorkflowRunResult = {
 	executionId: string;
 	status: AppWorkflowRunStatus;
+	/** The items of the node that ran last, from all of its main outputs. */
 	output?: unknown;
-	/** Set when a Respond to Webhook node answered with binary data. */
-	outputTruncated?: true;
 	error?: string;
 };
 

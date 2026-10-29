@@ -1,4 +1,5 @@
 import type {
+	AgentChatMessagesResponse,
 	AgentSseEvent,
 	AppAgentBinding,
 	AppAgentChatRequest,
@@ -142,5 +143,9 @@ export abstract class AppAgentPort {
 		signal: AbortSignal,
 	): Promise<AppAgentTurn>;
 
-	abstract messages(ctx: AppCallContext, agentId: string, sessionId: string): Promise<unknown>;
+	abstract messages(
+		ctx: AppCallContext,
+		agentId: string,
+		sessionId: string,
+	): Promise<AgentChatMessagesResponse>;
 }

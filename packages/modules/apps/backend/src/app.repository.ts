@@ -55,9 +55,11 @@ export class AppRepository extends BaseRepository<App> {
 		ctx: OperationContext = {},
 	): Promise<App | null> {
 		const where = { id: appId, projectId };
-		const result = await this.managerFor(ctx).update(App, where, { bindings });
-		if (!result.affected) return null;
-		return await this.managerFor(ctx).findOneBy(App, where);
+		return await this.runInTransaction(ctx, async (manager) => {
+			const result = await manager.update(App, where, { bindings });
+			if (!result.affected) return null;
+			return await manager.findOneBy(App, where);
+		});
 	}
 
 	async advanceDraft(
