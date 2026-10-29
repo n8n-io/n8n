@@ -61,6 +61,8 @@ export interface IntegrationMessageContext {
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
 	replyTarget?: IntegrationMessageTarget;
 	replyMessageId?: string;
+	/** Files that respond queued for the final reply of a run. */
+	queuedFiles?: { runId: string; fileIds: string[] };
 	updatedAt: string;
 }
 

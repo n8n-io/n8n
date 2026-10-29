@@ -68,7 +68,17 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 			context.replyExpectation === 'optional') &&
 		(context.replyTarget === undefined || isIntegrationMessageTarget(context.replyTarget)) &&
 		(context.replyMessageId === undefined || typeof context.replyMessageId === 'string') &&
+		(context.queuedFiles === undefined || isQueuedFiles(context.queuedFiles)) &&
 		typeof context.updatedAt === 'string'
+	);
+}
+
+function isQueuedFiles(value: unknown): value is { runId: string; fileIds: string[] } {
+	return (
+		isRecord(value) &&
+		typeof value.runId === 'string' &&
+		Array.isArray(value.fileIds) &&
+		value.fileIds.every((fileId) => typeof fileId === 'string')
 	);
 }
 

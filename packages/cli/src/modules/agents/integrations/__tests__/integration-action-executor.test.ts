@@ -1986,6 +1986,83 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
+		it('records the queued files of the run in the message context', async () => {
+			const { executor, descriptor } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				runId: 'run-1',
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				queuedFileIds: ['file-1'],
+				messageContext: { queuedFiles: { runId: 'run-1', fileIds: ['file-1'] } },
+			});
+		});
+
+		it('returns the limit error when the files of all responds of the run are too many', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor, thread } = buildExecutor(slack, files);
+			const earlierFileIds = files.slice(0, 30).map((file) => file.id);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'run-1',
+				currentMessageContext: {
+					...currentMessageContext,
+					queuedFiles: { runId: 'run-1', fileIds: earlierFileIds },
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+					message: expect.stringContaining('the 30 files that you queued before'),
+				},
+			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('ignores files that another run queued', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor } = buildExecutor(slack, files);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'run-2',
+				currentMessageContext: {
+					...currentMessageContext,
+					queuedFiles: { runId: 'run-1', fileIds: files.slice(0, 30).map((file) => file.id) },
+				},
+				fileScope,
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				messageContext: { queuedFiles: { runId: 'run-2', fileIds: ['file-30'] } },
+			});
+		});
+
 		it('posts the files of a respond outside chat-triggered turns at once', async () => {
 			const { executor, descriptor, thread } = buildExecutor();
 

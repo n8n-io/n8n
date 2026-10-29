@@ -272,11 +272,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			(replyTargetThreadId === undefined || replyTargetThreadId === threadId);
 		if (!input.message.card && isAutomaticReplyTarget && files.length > 0) {
 			// The bridge posts the files with the final reply, so the user gets one message.
-			return {
-				ok: true,
-				queuedFileIds: files.map((file) => file.id),
-				note: 'The files go with your final reply. Write your reply as the message for the files, and do not mention fileIds.',
-			};
+			return await this.queueReplyFiles(params, files);
 		}
 		if (!input.message.card && isAutomaticReplyTarget) {
 			return integrationError(
@@ -431,6 +427,44 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		);
 
 		return { card };
+	}
+
+	/**
+	 * Queue files for the final reply. The platform limits apply to all files
+	 * that the run queued, because the final reply sends them together.
+	 */
+	private async queueReplyFiles(
+		params: IntegrationActionParams,
+		files: AgentChatAttachment[],
+	): Promise<IntegrationActionResult> {
+		const context = params.currentMessageContext;
+		const queuedFileIds = files.map((file) => file.id);
+		const earlier =
+			params.runId && context?.queuedFiles?.runId === params.runId
+				? context.queuedFiles.fileIds
+				: [];
+		const fileIds = [...new Set([...earlier, ...queuedFileIds])];
+		if (earlier.length > 0 && params.fileScope) {
+			const checked = await this.outboundFiles.check(
+				params.descriptor.integration.type,
+				fileIds,
+				params.fileScope,
+			);
+			if (!Array.isArray(checked)) {
+				return integrationError(
+					checked.error.code,
+					`${checked.error.message} The limit counts the ${earlier.length} files that you queued before for your final reply.`,
+				);
+			}
+		}
+		return {
+			ok: true,
+			queuedFileIds,
+			note: 'The files go with your final reply. Write your reply as the message for the files, and do not mention fileIds.',
+			...(params.runId && context
+				? { messageContext: { ...context, queuedFiles: { runId: params.runId, fileIds } } }
+				: {}),
+		};
 	}
 
 	/**
