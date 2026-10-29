@@ -411,7 +411,14 @@ export class SkillRepository {
 
 	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
-		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
+		skill: {
+			id: string;
+			target: SkillTarget;
+			source: SkillSource;
+			createdById: string | null;
+			/** The source revision of a synced skill, such as a commit SHA. */
+			sourceRevision?: string | null;
+		},
 		content: SkillContent,
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -423,7 +430,8 @@ export class SkillRepository {
 				source: skill.source,
 				createdById: skill.createdById,
 			});
-			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
+			const { id, createdById, sourceRevision = null } = skill;
+			return await insertVersion(manager, id, 1, content, createdById, sourceRevision);
 		});
 	}
 
@@ -436,44 +444,53 @@ export class SkillRepository {
 		ctx: OperationContext = {},
 	): Promise<string> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById);
+			const id = await insertVersion(manager, skillId, version, content, createdById, null);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
 	}
 
-	/** The skill of each version, keyed by version id, without its content. */
-	async findSkillIdsOfVersions(
+	/** The skill and number of each version, keyed by version id, without its content. */
+	async findVersionRefs(
 		versionIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
-		const manager = this.table.managerFor(ctx);
-		const versions = await inChunks(
-			unique(versionIds),
-			async (chunk) =>
-				await manager.find(SkillVersion, {
-					select: ['id', 'skillId'],
-					where: { id: In(chunk) },
-				}),
-		);
-		return new Map(versions.map((version) => [version.id, version.skillId]));
-	}
-
-	/** The number of each version, keyed by version id. */
-	async findVersionNumbers(
-		versionIds: string[],
-		ctx: OperationContext = {},
-	): Promise<Map<string, number>> {
+	): Promise<Map<string, { skillId: string; version: number }>> {
 		const manager = this.table.managerFor(ctx);
 		const versions = await inChunks(
 			versionIds,
 			async (chunk) =>
 				await manager.find(SkillVersion, {
-					select: ['id', 'version'],
+					select: ['id', 'skillId', 'version'],
 					where: { id: In(chunk) },
 				}),
 		);
-		return new Map(versions.map((version) => [version.id, version.version]));
+		return new Map(versions.map(({ id, skillId, version }) => [id, { skillId, version }]));
+	}
+
+	/** Every version of a skill, newest first, without its content. */
+	async findVersionList(
+		skillId: string,
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<SkillVersion, 'id' | 'version' | 'createdById' | 'createdAt'>>> {
+		return await this.table.managerFor(ctx).find(SkillVersion, {
+			select: ['id', 'version', 'createdById', 'createdAt'],
+			where: { skillId },
+			order: { version: 'DESC' },
+		});
+	}
+
+	/** One version of a skill by its number, with its files. */
+	async findVersionByNumber(
+		skillId: string,
+		version: number,
+		ctx: OperationContext = {},
+	): Promise<ResolvedSkillRow | undefined> {
+		const row = await this.table
+			.managerFor(ctx)
+			.findOne(SkillVersion, { where: { skillId, version } });
+		if (!row) return undefined;
+		const [resolved] = await this.resolve([row], ctx);
+		return resolved;
 	}
 
 	/** Moves a skill to a project, one agent or the instance. */
@@ -667,6 +684,7 @@ async function insertVersion(
 	version: number,
 	content: SkillContent,
 	createdById: string | null,
+	sourceRevision: string | null,
 ): Promise<string> {
 	const id = randomUUID();
 	// `save`, not `insert`: the partial-entity type of `insert` rejects free-form JSON.
@@ -681,6 +699,7 @@ async function insertVersion(
 			frontmatter: content.frontmatter,
 			contentHash: skillContentHash(content),
 			createdById,
+			sourceRevision,
 		}),
 	);
 	await insertFiles(manager, id, content.files);

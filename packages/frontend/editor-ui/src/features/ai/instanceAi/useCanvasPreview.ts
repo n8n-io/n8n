@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -10,6 +11,7 @@ import {
 	getLatestDeletedDataTableId,
 	getLatestAgentArtifactResult,
 	getLatestAgentBuilderTarget,
+	getLatestSkillArtifactResult,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -21,11 +23,11 @@ import {
 	useOpenArtifactTabs,
 	type ThreadTabsStorage,
 } from './composables/useOpenArtifactTabs';
-import type { ThreadRuntime } from './instanceAi.store';
+import type { ArtifactThread } from './artifactThread';
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'skill';
 	name: string;
 	icon: IconName;
 	projectId?: string;
@@ -36,7 +38,7 @@ export interface ArtifactTab {
 }
 
 interface UseCanvasPreviewOptions {
-	thread: ThreadRuntime;
+	thread: ArtifactThread;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
@@ -60,6 +62,8 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 }
 
 export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
+	const recentWorkflowsStore = useRecentWorkflowsStore();
+
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	// The stored tabs of the thread remember this. It applies once they load.
@@ -91,7 +95,12 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		const result: ArtifactTab[] = [];
 		const linkedAgent = linkedAgentTarget.value;
 		for (const entry of thread.producedArtifacts.values()) {
-			if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+			if (
+				entry.type === 'workflow' ||
+				entry.type === 'data-table' ||
+				entry.type === 'agent' ||
+				entry.type === 'skill'
+			) {
 				result.push({
 					id: entry.id,
 					type: entry.type,
@@ -164,6 +173,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		return tab?.type === 'agent' && tab.pending === true;
 	});
 
+	const activeSkillId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'skill' ? tab.id : null;
+	});
+
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -181,6 +195,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	});
 
 	const dataTableRefreshKey = ref(0);
+	const skillRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(
 		() =>
@@ -278,9 +293,19 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 
 	// --- Actions ---
 
+	// The user opened the workflow, so it shows in their recent workflows, as from the editor.
+	function recordWorkflowOpen(workflowId: string) {
+		const tab = openTabs.value.find(({ id }) => id === workflowId);
+		recentWorkflowsStore.registerWorkflowOpen(workflowId, tab?.projectId ?? thread.projectId);
+	}
+
+	/** Show a tab the user picked. Agent changes use `showAgentArtifact` instead. */
 	function selectTab(tabId: string) {
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
+		if (openTabs.value.find(({ id }) => id === tabId)?.type === 'workflow') {
+			recordWorkflowOpen(tabId);
+		}
 		activeTabId.value = tabId;
 		userTabId.value = isAgentWorking.value ? tabId : undefined;
 		setPreviewOpen(true);
@@ -331,7 +356,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openWorkflowPreview(workflowId: string): boolean {
-		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
+		if (activeTabId.value === workflowId && isPreviewOpen.value) {
+			// Already on screen, for example after the agent opened it. The user still opened it.
+			recordWorkflowOpen(workflowId);
+			return false;
+		}
 		selectTab(workflowId);
 		return true;
 	}
@@ -356,6 +385,17 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		linkedAgentTarget.value = { agentId, projectId };
 		if (activeTabId.value === agentId && isPreviewOpen.value) return false;
 		selectTab(agentId);
+		return true;
+	}
+
+	/**
+	 * Open or switch the preview to a skill.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openSkillPreview(skillId: string): boolean {
+		if (activeTabId.value === skillId && isPreviewOpen.value) return false;
+		selectTab(skillId);
 		return true;
 	}
 
@@ -529,10 +569,9 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		},
 	);
 
-	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
-	// The `workflows` tool's update / restore-version / setup actions mutate the
-	// workflow definition but surface under tool name 'workflows', so
-	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// --- Refresh preview when `restore_workflow_version` or `setup_workflow` completes ---
+	// These tools mutate the workflow definition, but getLatestBuildResult
+	// doesn't detect them. Refresh the preview so the canvas
 	// shows the latest state.
 
 	const latestUpdateResult = computed(() => {
@@ -590,6 +629,36 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		{ flush: 'sync' },
 	);
 
+	// --- Auto-open skill preview when the assistant creates or saves a skill ---
+	// Only a successful `skills` create or update counts. Reading, listing or
+	// mentioning a skill does not open it.
+
+	const latestSkillResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestSkillArtifactResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestSkillResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSkillResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			const targetId = latestSkillResult.value.skillId;
+			showAgentArtifact(targetId);
+			if (activeTabId.value === targetId) {
+				skillRefreshKey.value++;
+			}
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- Close data table preview if the active table is deleted ---
 
 	const latestDeletedDataTableId = computed(() => {
@@ -627,8 +696,10 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeSkillId,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
+		skillRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
 		selectTab,
@@ -639,5 +710,6 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		openWorkflowPreview,
 		openDataTablePreview,
 		openAgentPreview,
+		openSkillPreview,
 	};
 }

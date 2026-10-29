@@ -870,6 +870,24 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('names the system and the deleted user on a `user-deleted` event without a user', () => {
+			const event: RelayEventMap['user-deleted'] = {
+				user: null,
+				source: 'scim',
+				targetUserOldStatus: 'active',
+				publicApi: false,
+				migrationStrategy: 'delete_data',
+				targetUserId: '456',
+			};
+
+			eventService.emit('user-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.deleted',
+				payload: { userId: null, source: 'scim', targetUserId: '456' },
+			});
+		});
+
 		it('should log on `user-invited` event', () => {
 			const event: RelayEventMap['user-invited'] = {
 				user: {

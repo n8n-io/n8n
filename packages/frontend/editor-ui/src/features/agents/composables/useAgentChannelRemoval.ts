@@ -72,7 +72,9 @@ export function useAgentChannelRemoval(options: {
 			if (result.warning) {
 				const presentation = getAgentChannelPlatform(
 					pending.channelType,
-				).presentDisconnectWarning?.(result.warning, { text: (key) => i18n.baseText(key) });
+				).presentDisconnectWarning?.(result.warning, {
+					text: (key, interpolate) => i18n.baseText(key, interpolate ? { interpolate } : undefined),
+				});
 				if (presentation) {
 					toast.showMessage({ type: 'warning', ...presentation, duration: 0 });
 				}

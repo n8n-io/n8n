@@ -6,6 +6,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.ask_user': 'Asking user',
+				'instanceAi.tools.agent_builder_ask_questions': 'Asking questions',
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.agent_builder_build_agent': 'Working with agent',
@@ -19,6 +21,9 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.setup_credentials': 'Setting up credentials',
 				'instanceAi.tools.delete_credential': 'Deleting credential',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
+				'instanceAi.tools.setup_workflow': 'Setting up workflow',
+				'instanceAi.tools.workflow_builder_workflows': 'Workflows',
+				'instanceAi.tools.workflow_builder_workflows.get-version': 'Reading workflow version',
 				'instanceAi.tools.workflow_builder_nodes': 'Search nodes',
 				'instanceAi.tools.workflow_builder_executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
@@ -122,6 +127,16 @@ describe('getToolIcon', () => {
 		expect(getToolLabel(toolName, { action })).toBe(label);
 	});
 
+	test.each([
+		['workflow_builder_workflows', 'setup', 'Setting up workflow'],
+		['workflow_builder_workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'unknown', 'Workflows'],
+	])('labels a former %s call with action %s', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
+	});
+
 	test('returns file-text for filesystem tools', () => {
 		expect(getToolIcon('filesystem')).toBe('file-text');
 	});
@@ -157,7 +172,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('keeps the wrench icon for prefixed builder tools without a dedicated mapping', () => {
-		expect(getToolIcon('workflow_builder_ask_user')).toBe('wrench');
+		expect(getToolIcon('ask_user')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_build_workflow')).toBe('workflow');
 	});
 
@@ -242,6 +257,13 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
 	});
 
+	test('getToolLabel resolves legacy question tools to the ask_user label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('agent_builder_ask_questions')).toBe('Asking user');
+		expect(getToolLabel('ask-user')).toBe('Asking user');
+		expect(getToolLabel('ask_user')).toBe('Asking user');
+	});
+
 	test('getToolLabel formats the tool name when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('unknown-tool')).toBe('Unknown tool');
@@ -250,7 +272,7 @@ describe('useToolLabel', () => {
 
 	test('getToolLabel drops the builder prefix when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('workflow_builder_search_models')).toBe('Search models');
+		expect(getToolLabel('search_models')).toBe('Search models');
 		expect(getToolLabel('finish_setup')).toBe('Finish setup');
 	});
 

@@ -497,6 +497,17 @@ const REDACTED_RESULT_GUIDANCE =
 	'personal credential. Tell the user so. Do not read the empty result as a bug, ' +
 	'and do not try to get the data another way.';
 
+/**
+ * Appended to every description: the user's own canvas runs are often not
+ * saved, and `list` does not show them.
+ */
+const UNSAVED_EXECUTION_GUIDANCE =
+	' When saving manual executions is turned off, n8n can keep a finished manual run ' +
+	'for a short time, only for the user who ran it, and `list` does not show it. ' +
+	'Read such a run by its execution id. When the execution the user means is not ' +
+	'found, tell the user that you cannot read that run. Do not debug a different ' +
+	'execution from `list` in its place.';
+
 export function createExecutionsTool(
 	context: InstanceAiContext,
 	options: ExecutionsToolOptions = {},
@@ -510,7 +521,7 @@ export function createExecutionsTool(
 				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 					'get node output, get resolved node parameters for a past run, and stop. ' +
 					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-					'workflow_builder_workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+					"list_workflows, then run it here with the user's values as inputData — " +
 					'do not treat such a request as a request to build something. ' +
 					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
 					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
@@ -518,7 +529,9 @@ export function createExecutionsTool(
 					'"Execute step" button. Use it to see what one node really returns — when ' +
 					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
 					'the node re-runs on the data it actually received. It runs for real, so do ' +
-					'not point it at a node that writes.') + REDACTED_RESULT_GUIDANCE,
+					'not point it at a node that writes.') +
+				REDACTED_RESULT_GUIDANCE +
+				UNSAVED_EXECUTION_GUIDANCE,
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

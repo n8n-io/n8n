@@ -1349,6 +1349,81 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		},
 	);
 
+	it('runs the onAccepted callback of a resume once the server starts the run', async () => {
+		globalThis.fetch = vi.fn(async () =>
+			makeSseResponse([{ type: 'text-delta', id: 't-1', delta: 'ok' }, { type: 'done' }]),
+		) as unknown as typeof fetch;
+		const onAccepted = vi.fn();
+
+		const hook = buildHook();
+		const result = await hook.resume(
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+			onAccepted,
+		);
+
+		expect(result).toBe('sent');
+		expect(onAccepted).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		[
+			'refuses a busy turn',
+			() =>
+				makeSseResponse([{ type: 'error', message: 'Busy', errorCode: 'turn_already_running' }]),
+		],
+		[
+			'rejects the resume before the run starts',
+			() => makeSseResponse([{ type: 'error', message: 'Invalid' }], false),
+		],
+		[
+			'answers with an HTTP error',
+			() => new Response(null, { status: 500, statusText: 'Server error' }),
+		],
+	] as const)(
+		'does not run the onAccepted callback of a resume when the server %s',
+		async (_case, response) => {
+			globalThis.fetch = vi.fn(async () => response()) as unknown as typeof fetch;
+			const onAccepted = vi.fn();
+
+			const hook = buildHook();
+			await hook.resume(
+				{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+				onAccepted,
+			);
+			await flushPromises();
+
+			expect(onAccepted).not.toHaveBeenCalled();
+		},
+	);
+
+	it('does not send a resume or run its onAccepted callback while a turn streams', async () => {
+		let signal: AbortSignal | null = null;
+		const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+			signal = init?.signal ?? null;
+			return makeAbortableSseResponse(
+				[{ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' }],
+				signal,
+			);
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const onAccepted = vi.fn();
+
+		const hook = buildHook();
+		void hook.sendMessage('hi');
+		await flushPromises();
+		expect(hook.isStreaming.value).toBe(true);
+
+		const result = await hook.resume(
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } },
+			onAccepted,
+		);
+
+		expect(result).toBe('busy');
+		expect(onAccepted).not.toHaveBeenCalled();
+		expect(fetchMock).toHaveBeenCalledOnce();
+		hook.detachStream();
+	});
+
 	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
