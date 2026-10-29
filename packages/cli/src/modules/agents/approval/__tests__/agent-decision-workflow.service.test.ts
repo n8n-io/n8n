@@ -111,32 +111,34 @@ describe('Agent decision workflow approval', () => {
 				status: 'running',
 			} as AgentBackgroundJob);
 			executions.findSingleExecution.mockResolvedValue({ status: 'waiting' } as IExecutionResponse);
-			const result = await wrapped.handler?.(
-				{ value: 'review me' },
-				{
-					...context,
-					continuation: undefined,
-					suspendPayload: undefined,
-					runId: 'run',
-					toolCallId: 'call',
-					persistence: {
-						threadId: 'thread',
-						resourceId: 'resource',
-						hostMetadata: {
-							...encodeAgentSandboxHostMetadata({
-								projectId: 'project',
-								principalHash: hashAgentSandboxPrincipal({
-									type: 'workflow-execution',
-									workflowId: 'caller',
-									executionId: 'parent',
-								}),
+			const input = {
+				value: 'review me',
+				recipients: ['reviewer@example.com', 'owner@example.com'],
+				changes: { count: 4, enabled: false, details: { note: 'Review this change' } },
+			};
+			const result = await wrapped.handler?.(input, {
+				...context,
+				continuation: undefined,
+				suspendPayload: undefined,
+				runId: 'run',
+				toolCallId: 'call',
+				persistence: {
+					threadId: 'thread',
+					resourceId: 'resource',
+					hostMetadata: {
+						...encodeAgentSandboxHostMetadata({
+							projectId: 'project',
+							principalHash: hashAgentSandboxPrincipal({
+								type: 'workflow-execution',
+								workflowId: 'caller',
+								executionId: 'parent',
 							}),
-							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-							approvalArgumentsRedacted: redacted,
-						},
+						}),
+						workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
+						approvalArgumentsRedacted: redacted,
 					},
 				},
-			);
+			});
 			expect(result).toBe('waiting');
 			expect(handler).not.toHaveBeenCalled();
 			expect(loader.loadWorkflow).toHaveBeenCalledWith(
@@ -152,7 +154,7 @@ describe('Agent decision workflow approval', () => {
 				expect.objectContaining({
 					requestId: 'run:call',
 					toolName: 'write',
-					...(redacted ? { argumentsRedacted: true } : { arguments: { value: 'review me' } }),
+					...(redacted ? { argumentsRedacted: true } : { arguments: input }),
 				}),
 				expect.objectContaining({
 					agentRun: expect.objectContaining({

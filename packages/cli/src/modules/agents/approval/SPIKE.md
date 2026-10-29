@@ -54,6 +54,9 @@ Earlier node versions keep their behavior.
 The workflow input includes a request ID, Agent ID, tool name, arguments, and request
 time. Arguments use the existing approval sanitization. Caller redaction suppresses
 arguments. Child redaction and private credential markers pass back to the parent.
+The trigger exposes the request fields in its setup notice. Review steps use
+`$json.arguments` to analyze the tool input. Its Test Request field supplies example
+output for manual tests. Agent requests always use their actual input.
 
 ## Limits to investigate before delivery
 
