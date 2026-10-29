@@ -43,7 +43,7 @@ const SOURCE_CHANGED_RESULT = { ...IDENTITY, status: 'source-changed' };
 const BLOCKED_RESULT = {
 	...IDENTITY,
 	status: 'blocked',
-	preflight: {
+	check: {
 		missingProjects: [{ id: 'p-1', name: 'Sales' }],
 		missingBindings: [
 			{ kind: 'credential', sourceId: 'c-1' },
@@ -220,8 +220,8 @@ describe('promotion-environment apply command', () => {
 	it('exits 4 and tells how to confirm a destructive data table change', async () => {
 		const { run, logToStderr, exit } = runApply({
 			...BLOCKED_RESULT,
-			preflight: {
-				...BLOCKED_RESULT.preflight,
+			check: {
+				...BLOCKED_RESULT.check,
 				conflicts: [{ kind: 'data-table', code: 'destructive-change' }],
 			},
 		});
@@ -239,8 +239,8 @@ describe('promotion-environment apply command', () => {
 	it('exits 4 and lists the projects that a confirmed Apply deletes', async () => {
 		const { run, logToStderr, exit } = runApply({
 			...BLOCKED_RESULT,
-			preflight: {
-				...BLOCKED_RESULT.preflight,
+			check: {
+				...BLOCKED_RESULT.check,
 				conflicts: [
 					{
 						kind: 'project',

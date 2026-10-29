@@ -543,10 +543,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region User
 
 	@Redactable()
-	private userDeleted({ user }: RelayEventMap['user-deleted']) {
+	private userDeleted({ user, source, targetUserId }: RelayEventMap['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
-			payload: user,
+			// A system deletion has no acting user, so name the system and the
+			// deleted user.
+			payload: user ?? { userId: null, source, targetUserId },
 		});
 	}
 

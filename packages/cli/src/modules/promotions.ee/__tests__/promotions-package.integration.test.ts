@@ -5,7 +5,7 @@ import {
 	type ContinueApplyPackageDto,
 	type PromotionProviderType,
 } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
@@ -50,13 +50,11 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
-import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -89,7 +87,8 @@ import { PromotionEnvironmentRepository } from '../database/repositories/promoti
 import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
-import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
+import { ApplyPreviewService } from '../apply-preview.service';
+import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
@@ -203,7 +202,7 @@ beforeEach(async () => {
 		projectService,
 		Container.get(FolderService),
 		packagesService,
-		Container.get(PromotionBindingPreflightService),
+		Container.get(ApplyPreviewService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
 		Container.get(PromotionRunRepository),
@@ -479,23 +478,36 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 }
 
 /** The Apply preview, read through the test's `service` and its working directory. */
-async function listApplyChanges(projectId: string) {
-	const changeService = new PromotionChangeService(
+async function loadApplyPreview(projectId: string) {
+	const preview = await changeService().getPreview(owner, projectId, 'apply', {
+		sort: 'name',
+		order: 'asc',
+	});
+	assert(preview.check && preview.commitSha && preview.revision);
+	return {
+		...preview,
+		check: preview.check,
+		commitSha: preview.commitSha,
+		revision: preview.revision,
+	};
+}
+
+function changeService() {
+	return new PromotionChangeService(
 		service,
 		packagesService,
+		Container.get(ApplyPreviewService),
 		Container.get(WorkflowRepository),
 		Container.get(SharedWorkflowRepository),
-		Container.get(VariablesRepository),
-		Container.get(CredentialsRepository),
-		Container.get(TagImporter),
-		Container.get(DataTableService),
-		Container.get(DataTableSerializer),
-		Container.get(ModuleRegistry),
+		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(PromotionReviewGateService),
 		mockLogger(),
 	);
-	const { changes } = await changeService.getChanges(owner, projectId, 'apply', {
+}
+
+async function listApplyChanges(projectId: string) {
+	const { changes } = await changeService().getChanges(owner, projectId, 'apply', {
 		sort: 'name',
 		order: 'asc',
 	});
@@ -1011,7 +1023,7 @@ describe('Promote and Apply', () => {
 
 		const blocked = await service.apply(environments.apply.id, owner);
 		assert(blocked.status === 'blocked');
-		expect(blocked.preflight.conflicts).toEqual([
+		expect(blocked.check.conflicts).toEqual([
 			{
 				kind: 'project',
 				code: 'project-deletion',
@@ -1148,7 +1160,7 @@ describe('Promote and Apply', () => {
 				.expect(200);
 			const blocked = applyResponse.body;
 			assert(blocked.status === 'blocked');
-			expect(blocked.preflight.missingBindings).toEqual(
+			expect(blocked.check.missingBindings).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 					expect.objectContaining({
@@ -1175,7 +1187,7 @@ describe('Promote and Apply', () => {
 			expect(await snapshotApplyState()).toEqual(before);
 
 			if (missingProject) {
-				expect(blocked.preflight.missingProjects).toEqual([
+				expect(blocked.check.missingProjects).toEqual([
 					{
 						id: project.id,
 						name: project.name,
@@ -1184,11 +1196,11 @@ describe('Promote and Apply', () => {
 						customTelemetryTags: project.customTelemetryTags,
 					},
 				]);
-				await agent.post('/projects').send(blocked.preflight.missingProjects[0]).expect(201);
+				await agent.post('/projects').send(blocked.check.missingProjects[0]).expect(201);
 				// A failed binding request must leave the created project in place.
 				await agent.post('/credentials').send({ projectId: project.id }).expect(400);
 				expect(await projectRepository.findOneBy({ id: project.id })).toMatchObject(
-					blocked.preflight.missingProjects[0],
+					blocked.check.missingProjects[0],
 				);
 			} else {
 				await projectRepository.update(project.id, {
@@ -1218,7 +1230,7 @@ describe('Promote and Apply', () => {
 					.expect(200)
 			).body;
 			expect(wrongId.status).toBe('blocked');
-			expect(wrongId.preflight.missingBindings).toContainEqual(
+			expect(wrongId.check.missingBindings).toContainEqual(
 				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 			);
 			const created = await agent.post('/credentials').send(createBody).expect(200);
@@ -1284,7 +1296,7 @@ describe('Promote and Apply', () => {
 		await testServer
 			.publicApiAgentFor(owner)
 			.post('/projects')
-			.send(blocked.preflight.missingProjects[0])
+			.send(blocked.check.missingProjects[0])
 			.expect(201);
 		const before = await snapshotApplyState();
 		await remote.git.pull('origin', 'main');
@@ -1328,7 +1340,7 @@ describe('Promote and Apply', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
-	it('keeps the missing-manifest import error after a clear preflight', async () => {
+	it('keeps the missing-manifest import error after a clear check', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.apply.id, owner);
@@ -1754,18 +1766,18 @@ describe('Apply a project selection', () => {
 			workflowIds: [workflow.id],
 		});
 		assert(blocked.status === 'blocked');
-		expect(blocked.preflight.missingBindings).toHaveLength(2);
-		expect(blocked.preflight.missingBindings).toEqual(
+		expect(blocked.check.missingBindings).toHaveLength(2);
+		expect(blocked.check.missingBindings).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 				expect.objectContaining({ kind: 'variable', name: variable.key }),
 			]),
 		);
-		expect(blocked.preflight.missingBindings).not.toContainEqual(
+		expect(blocked.check.missingBindings).not.toContainEqual(
 			expect.objectContaining({ kind: 'variable', name: unselectedVariable.key }),
 		);
 		expect(
-			blocked.preflight.missingBindings.flatMap(({ consumers }) =>
+			blocked.check.missingBindings.flatMap(({ consumers }) =>
 				consumers.flatMap(({ workflows }) => workflows.map(({ id }) => id)),
 			),
 		).toEqual([workflow.id, workflow.id]);
@@ -1903,6 +1915,77 @@ describe('Apply a project selection', () => {
 			expect(await listApplyChanges(project.id)).toEqual([]);
 		},
 	);
+});
+
+describe('Apply leaves publish state to the target', () => {
+	// The source published all three workflows. The target published `live`, left `draft`
+	// unpublished, and has no `added` yet.
+	const seedTarget = async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		const repository = Container.get(WorkflowRepository);
+		const live = await createActiveWorkflow({ name: 'Live' }, project);
+		const draft = await createActiveWorkflow({ name: 'Draft' }, project);
+		const added = await createActiveWorkflow({ name: 'Added' }, project);
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export',
+		});
+
+		await repository.update(live.id, { name: 'Live (target)' });
+		await repository.update(draft.id, { name: 'Draft (target)', activeVersionId: null });
+		await Container.get(WorkflowPublicationTriggerStatusRepository).delete({
+			workflowId: added.id,
+		});
+		await Container.get(WorkflowPublishedVersionRepository).delete({ workflowId: added.id });
+		await repository.update(added.id, { activeVersionId: null });
+		await repository.delete(added.id);
+		return { environments, project, live, draft, added };
+	};
+
+	const expectTargetStateKept = async (
+		{ live, draft, added }: Awaited<ReturnType<typeof seedTarget>>,
+		counts: Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'],
+	) => {
+		expect(counts.workflows).toMatchObject({ created: 1, updated: 2 });
+		expect(counts.workflows.publishing).toMatchObject({
+			published: 0,
+			unpublished: 0,
+			blocked: 0,
+			failed: 0,
+		});
+		const repository = Container.get(WorkflowRepository);
+		const applied = async (id: string) => await repository.findOneByOrFail({ id });
+		expect(await applied(live.id)).toMatchObject({
+			name: 'Live',
+			activeVersionId: live.activeVersionId,
+		});
+		expect(await applied(draft.id)).toMatchObject({ name: 'Draft', activeVersionId: null });
+		expect(await applied(added.id)).toMatchObject({ name: 'Added', activeVersionId: null });
+	};
+
+	it('keeps the target state of each workflow although the source published all of them', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.apply(seeded.environments.apply.id, owner);
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
+
+	it('keeps the target state of each selected workflow in a project apply', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.applyProjectSelection(seeded.project.id, owner, {
+			workflowIds: [seeded.live.id, seeded.draft.id, seeded.added.id],
+		});
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
 });
 
 describe('Apply moves and renames within a project', () => {
@@ -2122,14 +2205,14 @@ describe('Apply moves and renames within a project', () => {
 		expect((await folderOf(archive.id)).name).toBe('Local archive');
 	});
 
-	it('only offers the source fix when the branch project does not exist here yet', async () => {
+	it('says when the branch project of a moved workflow does not exist here yet', async () => {
 		const { environments, promote } = await connect();
 		const {
 			project: archive,
 			workflows: [moved],
 		} = await setupProjectWithWorkflows('Archive', ['Old order']);
 		const { project: orders } = await setupProjectWithWorkflows('Orders', []);
-		const promoted = await promote();
+		await promote();
 		// The workflow left Archive, and Archive is gone from this instance.
 		await Container.get(SharedWorkflowRepository).update(
 			{ workflowId: moved.id, role: 'workflow:owner' },
@@ -2137,41 +2220,50 @@ describe('Apply moves and renames within a project', () => {
 		);
 		await projectService.deleteProject(owner, archive.id);
 
-		await expect(service.apply(environments.apply.id, owner)).rejects.toMatchObject({
-			httpStatusCode: 409,
-			message: expect.stringContaining(
-				`workflow "${moved.name}" (${moved.id}) is in project "Orders" here and in project "Archive" on the branch, and project "Archive" does not exist on this instance yet. Move them back on the source instance, then promote again.`,
-			),
+		expect(await service.apply(environments.apply.id, owner)).toMatchObject({
+			status: 'blocked',
+			check: {
+				conflicts: expect.arrayContaining([
+					expect.objectContaining({
+						kind: 'workflow',
+						code: 'moved',
+						id: moved.id,
+						project: { id: archive.id, name: 'Archive' },
+						projectExists: false,
+						instanceProject: { id: orders.id, name: 'Orders' },
+					}),
+				]),
+			},
 		});
-		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
-		expect(check.movedWorkflows).toEqual([
+		expect((await loadApplyPreview(orders.id)).check.movedWorkflows).toEqual([
 			expect.objectContaining({ id: moved.id, projectExists: false }),
 		]);
 	});
 });
 
-describe('Check Apply blockers', () => {
+describe('Check of the Apply preview', () => {
 	it('reports the same blockers as Apply for all workflows of the project and changes nothing', async () => {
-		const { commitSha, project, workflow, unselectedWorkflow } =
-			await prepareBindingApply('UNSELECTED_URL');
+		const { project, workflow, unselectedWorkflow } = await prepareBindingApply('UNSELECTED_URL');
 		assert(unselectedWorkflow);
 		const before = await snapshotApplyState();
 
-		const check = await service.checkApplyBlockers(project.id, commitSha);
+		const preview = await loadApplyPreview(project.id);
 
 		expect(await snapshotApplyState()).toEqual(before);
-		expect(check.preflight.missingBindings).toHaveLength(3);
-		expect(check.movedWorkflows).toEqual([]);
+		expect(preview.check.missingBindings).toHaveLength(3);
+		// The blocked result holds the check without the lists of moves.
+		const { movedWorkflows, movedFolders, ...applyCheck } = preview.check;
 		expect(
 			await service.applyProjectSelection(project.id, owner, {
 				workflowIds: [workflow.id, unselectedWorkflow.id],
-				expectedSource: { environmentId: check.environmentId, ...check.git },
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
 			}),
 		).toEqual({
 			status: 'blocked',
-			environmentId: check.environmentId,
-			git: check.git,
-			preflight: check.preflight,
+			environmentId: preview.source.environmentId,
+			git: { commitSha: preview.commitSha, branchName: preview.source.branchName },
+			check: applyCheck,
 		});
 	});
 
@@ -2197,7 +2289,7 @@ describe('Check Apply blockers', () => {
 			{ workflowId: moved.id, role: 'workflow:owner' },
 			{ projectId: billing.id },
 		);
-		const promoted = await service.promote(environments.promote.id, owner, {
+		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
 			commitMessage: 'Move a workflow to Billing',
 		});
@@ -2208,7 +2300,7 @@ describe('Check Apply blockers', () => {
 		await Container.get(VariablesRepository).delete(variable.id);
 		await Container.get(VariablesService).updateCache();
 
-		const check = await service.checkApplyBlockers(orders.id, promoted.git.commitSha);
+		const { check } = await loadApplyPreview(orders.id);
 
 		expect(check.movedWorkflows).toEqual([
 			{
@@ -2219,7 +2311,7 @@ describe('Check Apply blockers', () => {
 				instanceProject: { id: orders.id, name: orders.name },
 			},
 		]);
-		expect(check.preflight.missingBindings).toEqual([
+		expect(check.missingBindings).toEqual([
 			expect.objectContaining({
 				kind: 'variable',
 				name: 'API_URL',
@@ -2234,13 +2326,12 @@ describe('Check Apply blockers', () => {
 	});
 
 	it('reports a data table change that removes column values, with the workflow that uses the table', async () => {
-		const { commitSha, project, workflow, orders, dataTableService } =
-			await promoteDataTableWorkflows();
+		const { project, workflow, orders, dataTableService } = await promoteDataTableWorkflows();
 		await dataTableService.addColumn(orders.id, project.id, { name: 'extra', type: 'string' });
 
-		const check = await service.checkApplyBlockers(project.id, commitSha);
+		const { check } = await loadApplyPreview(project.id);
 
-		expect(check.preflight.conflicts).toEqual([
+		expect(check.conflicts).toEqual([
 			expect.objectContaining({
 				code: 'destructive-change',
 				id: orders.id,
@@ -2252,7 +2343,7 @@ describe('Check Apply blockers', () => {
 				],
 			}),
 		]);
-		expect(check.preflight.missingBindings).toEqual([]);
+		expect(check.missingBindings).toEqual([]);
 	});
 
 	it('reports a global variable that a project variable overrides as a warning, not a blocker', async () => {
@@ -2267,15 +2358,15 @@ describe('Check Apply blockers', () => {
 			project,
 			variableNames: [variable.key],
 		});
-		const promoted = await service.promote(environments.promote.id, owner, {
+		await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: true,
 			commitMessage: 'Export orders',
 		});
 		await createProjectVariable(variable.key, 'project value', project);
 
-		const check = await service.checkApplyBlockers(project.id, promoted.git.commitSha);
+		const { check } = await loadApplyPreview(project.id);
 
-		expect(check.preflight).toMatchObject({
+		expect(check).toMatchObject({
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],
@@ -2346,7 +2437,7 @@ describe('Apply a project selection over the public API', () => {
 				.expect(200)
 		).body;
 		expect(blocked.status).toBe('blocked');
-		expect(blocked.preflight.missingBindings).toEqual(
+		expect(blocked.check.missingBindings).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
 				expect.objectContaining({ kind: 'variable', name: variable.key }),
@@ -2447,7 +2538,7 @@ describe('Apply a project selection over the public API', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
-	it('maps a move between projects to 409 without importing', async () => {
+	it('reports a move between projects as blocked without importing', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id, owner);
@@ -2478,8 +2569,23 @@ describe('Apply a project selection over the public API', () => {
 			.post(`/promotions/projects/${orders.id}/apply`)
 			.send({ workflowIds: [moved.id] });
 
-		expect(response.status, JSON.stringify(response.body)).toBe(409);
-		expect(response.body.message).toContain(`workflow "${moved.name}" (${moved.id})`);
+		expect(response.status, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			status: 'blocked',
+			check: {
+				conflicts: [
+					{
+						kind: 'workflow',
+						code: 'moved',
+						id: moved.id,
+						name: moved.name,
+						project: { id: billing.id, name: billing.name },
+						projectExists: true,
+						instanceProject: { id: orders.id, name: orders.name },
+					},
+				],
+			},
+		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 });
@@ -2580,24 +2686,25 @@ describe('Apply credential changes', () => {
 		await linkUserToProject(member, project, role.slug);
 		const before = await snapshotApplyState();
 
-		const error = await service
-			.applyProjectSelection(project.id, member, { workflowIds: [workflow.id] })
-			.then(
-				() => undefined,
-				(e: unknown) => e,
-			);
-
-		expect(error).toBeInstanceOf(UnprocessableRequestError);
-		expect((error as UnprocessableRequestError).meta).toEqual({
-			issues: [
-				{
-					type: 'credential-update-forbidden',
-					targetId: credential.id,
-					sourceIds: [credential.id],
-					name: credential.name,
-					usedBy: [{ kind: 'workflow', id: workflow.id }],
-				},
-			],
+		expect(
+			await service.applyProjectSelection(project.id, member, { workflowIds: [workflow.id] }),
+		).toMatchObject({
+			status: 'blocked',
+			check: {
+				conflicts: [
+					{
+						kind: 'workflow',
+						code: 'workflow-forbidden',
+						reason: 'credential-update-forbidden',
+						consumers: [
+							{
+								project: { id: project.id, name: project.name },
+								workflows: [{ id: workflow.id, name: workflow.name }],
+							},
+						],
+					},
+				],
+			},
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 	});
@@ -2640,7 +2747,7 @@ describe('Apply data table changes', () => {
 			const result = await applyFlow(flow, promoted);
 
 			assert(result.status === 'blocked');
-			expect(result.preflight.conflicts).toEqual([
+			expect(result.check.conflicts).toEqual([
 				expect.objectContaining({
 					kind: 'data-table',
 					code: 'destructive-change',
@@ -2654,8 +2761,8 @@ describe('Apply data table changes', () => {
 					],
 				}),
 			]);
-			const [conflict] = result.preflight.conflicts;
-			assert(conflict.kind === 'data-table');
+			const [conflict] = result.check.conflicts;
+			assert(conflict.code === 'destructive-change');
 			const { changes } = conflict;
 			const removeExtra = {
 				kind: 'remove-column',

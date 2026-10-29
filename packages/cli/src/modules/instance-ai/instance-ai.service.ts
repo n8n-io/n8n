@@ -107,6 +107,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
+import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
 import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
@@ -369,6 +370,7 @@ const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 /** Bind identity, gate results, and injection once for all segments of a turn. */
 type InstanceContextTurnBinding = {
+	skills?: InstanceAiSkillTelemetry;
 	userId: string;
 	threadId: string;
 	runId: string;
@@ -1742,6 +1744,7 @@ export class InstanceAiService {
 
 	async shutdown(): Promise<void> {
 		this.liveness.shutdown();
+		this.cloudBrowserTaskService.shutdown();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
@@ -1750,7 +1753,7 @@ export class InstanceAiService {
 			if (run.abortController.signal.aborted) continue;
 
 			// Runs holding an inline HITL confirmation (for example
-			// `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
+			// `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2592,6 +2595,7 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
+		const skillTelemetry = new InstanceAiSkillTelemetry(orchestratorAgentId(runId));
 
 		try {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
@@ -2740,7 +2744,12 @@ export class InstanceAiService {
 				instanceContextEnabled,
 				nodeUsageEnabled,
 			} = environment;
-			const contextEventBus = this.createRunEventBus(observedContextWork, orchestrationContext);
+			skillTelemetry.bind(orchestrationContext.skills);
+			const contextEventBus = this.createRunEventBus(
+				observedContextWork,
+				orchestrationContext,
+				skillTelemetry,
+			);
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -2796,6 +2805,7 @@ export class InstanceAiService {
 				// Bound before the input build ends, so a later failure still reports the segment.
 				onInstanceContextInjection: (injection) => {
 					contextTurn = {
+						skills: skillTelemetry,
 						userId: user.id,
 						threadId,
 						runId,
@@ -2949,6 +2959,7 @@ export class InstanceAiService {
 				});
 				if (result.suspension) {
 					const suspendedContext = {
+						hubSkills: skillTelemetry.save(),
 						injection: contextInjection,
 						instanceContextEnabled,
 						nodeUsageEnabled,
@@ -3923,12 +3934,21 @@ export class InstanceAiService {
 		let resumeClaimed = false;
 		let resumeTraceRegistered = false;
 		let errorReporterExecutionToken: symbol | undefined;
+		const skillTelemetry = new InstanceAiSkillTelemetry(
+			orchestratorAgentId(opts.runId),
+			opts.instanceContext?.hubSkills,
+		);
 		const contextTurn = this.instanceContextTurnBinding(opts);
+		if (contextTurn) contextTurn.skills = skillTelemetry;
 		let contextResult: StreamRunResult | undefined;
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.createRunEventBus(observedContextWork, opts.orchestrationContext);
+		const contextEventBus = this.createRunEventBus(
+			observedContextWork,
+			opts.orchestrationContext,
+			skillTelemetry,
+		);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -3939,6 +3959,7 @@ export class InstanceAiService {
 		const onResumeClaimed = async () => {
 			if (resumeClaimed) return;
 			resumeClaimed = true;
+			skillTelemetry.bind(opts.orchestrationContext?.skills);
 
 			if (opts.resumeTracing && !resumeTraceRegistered) {
 				this.tracing.registerTraceContext(
@@ -4035,7 +4056,7 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
-				// Telemetry reports this segment only. The trace retains reads across all suspensions.
+				// Context reads describe this segment. The trace retains reads across all suspensions.
 				const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
 				const resumedSuspendedReach = mergeInstanceContextReach(
 					opts.instanceContext?.reachSoFar,
@@ -4054,7 +4075,11 @@ export class InstanceAiService {
 				if (result.suspension) {
 					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
 					const suspendedContext = opts.instanceContext
-						? { ...opts.instanceContext, reachSoFar: resumedSuspendedReach }
+						? {
+								...opts.instanceContext,
+								reachSoFar: resumedSuspendedReach,
+								hubSkills: skillTelemetry.save(),
+							}
 						: undefined;
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
@@ -5116,10 +5141,12 @@ export class InstanceAiService {
 	private createRunEventBus(
 		workSummary: WorkSummaryAccumulator,
 		context?: OrchestrationContext,
+		skills?: InstanceAiSkillTelemetry,
 	): InstanceAiEventBus {
 		return {
 			publish: (threadId, event) => {
 				workSummary.observe(event);
+				skills?.observe(event);
 				this.eventBus.publish(threadId, context?.mapSkillEventForDisplay?.(event) ?? event);
 			},
 			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
@@ -5141,6 +5168,7 @@ export class InstanceAiService {
 		if (!turn) return;
 		const { injection } = turn;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
+			...turn.skills?.snapshot(),
 			user_id: turn.userId,
 			thread_id: turn.threadId,
 			run_id: turn.runId,

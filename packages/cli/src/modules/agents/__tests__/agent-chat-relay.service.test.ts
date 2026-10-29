@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
-import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
+import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 
 function makeSseResponse(writes: string[]) {
@@ -40,7 +40,7 @@ function sentEvents(writes: string[]): unknown[] {
 describe('AgentChatRelayService', () => {
 	const relay = new AgentChatRelayService(
 		mock<AgentMessageQueueService>(),
-		mock<AgentQueuedPreviewStreamService>(),
+		mock<AgentQueuedTestStreamService>(),
 		mock<AgentChatAttachmentService>(),
 	);
 

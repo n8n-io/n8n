@@ -1,7 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, ref, computed, reactive } from 'vue';
+import { nextTick, ref, computed, reactive, type Component } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { N8nToggle } from '@n8n/design-system';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type {
 	AgentJsonConfig,
@@ -21,6 +22,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
+import AgentMarkdownChunk from '../components/AgentMarkdownChunk.vue';
 import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
@@ -37,6 +39,17 @@ import {
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
 
+const builderExperimentMock = reactive({
+	layout: { chatWidth: 'current', testChat: 'dock' },
+	enrollment: undefined,
+});
+const trackExperimentExposure = vi.fn();
+vi.mock('@/experiments/agentBuilder/stores/agentBuilder.store', () => ({
+	useAgentBuilderExperimentStore: () => ({
+		...builderExperimentMock,
+		trackExposure: trackExperimentExposure,
+	}),
+}));
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const routeQuery = reactive<Record<string, string | undefined>>({});
@@ -82,6 +95,7 @@ const {
 	setCredentialsMock: vi.fn(),
 	agentPermissionsMock: {
 		canCreate: { value: true },
+		canExecute: { value: true },
 		canUpdate: { value: true },
 		canDelete: { value: false },
 		canPublish: { value: true },
@@ -517,12 +531,14 @@ async function renderView({
 	waitForAsyncSetup = true,
 	props,
 	seedStores,
+	stubs,
 }: {
 	knowledgeBaseEnabled?: boolean;
 	waitForAsyncSetup?: boolean;
 	props?: Record<string, unknown>;
 	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
 	seedStores?: () => void;
+	stubs?: Record<string, Component>;
 } = {}) {
 	const pinia = createPinia();
 	setActivePinia(pinia);
@@ -541,10 +557,10 @@ async function renderView({
 	useNodeTypesStore().loadNodeTypesIfNotLoaded = loadNodeTypesIfNotLoadedMock;
 	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
-		props,
+		props: { builderLayout: { chatWidth: 'current', testChat: 'dock' }, ...props },
 		global: {
 			plugins: [pinia],
-			stubs: commonStubs,
+			stubs: { ...commonStubs, ...stubs },
 		},
 	});
 	mountedWrappers.push(wrapper);
@@ -581,7 +597,7 @@ async function startArtifactPreviewSend(
 	).openArtifactPreview(sessionId);
 	await nextTick();
 	const beforeSend = wrapper
-		.findComponent({ name: 'AgentPreviewDock' })
+		.findComponent({ name: 'AgentTestDock' })
 		.props('beforeSend') as () => Promise<void>;
 	return { pending: beforeSend() };
 }
@@ -655,11 +671,16 @@ const commonStubs = {
 			'toggle-instance-ai',
 		],
 	},
-	AgentPreviewDock: {
-		name: 'AgentPreviewDock',
-		template: '<aside data-testid="stub-agent-preview-dock" />',
+	AgentTestDock: {
+		name: 'AgentTestDock',
+		template:
+			'<aside data-testid="stub-agent-preview-dock"><slot name="composer-start" /><slot name="composer-footer" /></aside>',
 		props: [
 			'isOpen',
+			'overlay',
+			'inline',
+			'closable',
+			'placeholder',
 			'sessionTitle',
 			'sessionOptions',
 			'hasSession',
@@ -707,10 +728,20 @@ const commonStubs = {
 			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
 			'<button data-testid="ai-panel-stop-building" @click="$emit(\'update:building\', false)" />' +
 			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
-			'<slot name="empty" />' +
+			'<slot name="empty" /><slot name="composer-start" /><slot name="composer-footer" />' +
 			'</div>',
-		props: ['subject', 'launch', 'threadId', 'beforeNewThread', 'beforeSend'],
-		emits: ['update:threadId', 'update:building', 'close'],
+		props: [
+			'subject',
+			'launch',
+			'threadId',
+			'beforeNewThread',
+			'beforeSend',
+			'visible',
+			'closable',
+			'showOpenFullAssistant',
+			'placeholder',
+		],
+		emits: ['update:threadId', 'update:building', 'update:working', 'close', 'message-sent'],
 		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
 		methods: {
@@ -831,7 +862,8 @@ function resetViewMocks() {
 		if (
 			key?.startsWith('N8N_AGENT_PREVIEW_OPEN') ||
 			key?.startsWith('N8N_AGENT_AI_PANEL_OPEN') ||
-			key === 'N8N_AGENT_AI_PANEL_WIDTH'
+			key === 'N8N_AGENT_AI_PANEL_WIDTH' ||
+			key?.startsWith('N8N_AGENT_BUILDER_')
 		) {
 			localStorage.removeItem(key);
 		}
@@ -1427,7 +1459,7 @@ describe('AgentBuilderView — preview routing', () => {
 		routeQuery[NEW_SESSION_PARAM] = 'true';
 
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 
 		expect(preview.props('isOpen')).toBe(true);
 		expect(preview.props('effectiveSessionId')).toEqual(expect.any(String));
@@ -1446,7 +1478,7 @@ describe('AgentBuilderView — preview routing', () => {
 		fetchedPreviewThreads.push({ id: 'thread-latest', updatedAt: '2026-01-01T00:00:00Z' });
 
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 
 		expect(preview.props()).toEqual(
 			expect.objectContaining({ isOpen: true, effectiveSessionId: 'thread-latest' }),
@@ -1469,9 +1501,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 
 		expect(updateConfigMock).not.toHaveBeenCalled();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('canDeleteSession')).toBe(
-			false,
-		);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('canDeleteSession')).toBe(false);
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {
@@ -1525,7 +1555,7 @@ describe('AgentBuilderView — preview routing', () => {
 			});
 
 			const wrapper = await renderView();
-			const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 
 			expect(preview.props('canSendToAssistant')).toBe(true);
 			preview.vm.$emit('send-to-assistant', event);
@@ -1576,7 +1606,7 @@ describe('AgentBuilderView — preview routing', () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant');
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('send-to-assistant');
 		await flushPromises();
 
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe(expectedStored);
@@ -1589,10 +1619,10 @@ describe('AgentBuilderView — preview routing', () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant');
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('send-to-assistant');
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('canSendToAssistant')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('canSendToAssistant')).toBe(
 			false,
 		);
 		expect(routerPush).not.toHaveBeenCalled();
@@ -1772,20 +1802,20 @@ describe('AgentBuilderView — preview routing', () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00.000Z' });
 
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(preview.props('dismissedFixToolCallIds')).toEqual([]);
 
 		preview.vm.$emit('send-to-assistant', fixEvent);
 		await flushPromises();
 		expect(
-			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('dismissedFixToolCallIds'),
+			wrapper.findComponent({ name: 'AgentTestDock' }).props('dismissedFixToolCallIds'),
 		).toEqual([]);
 
 		agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
 		await nextTick();
 
 		expect(
-			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('dismissedFixToolCallIds'),
+			wrapper.findComponent({ name: 'AgentTestDock' }).props('dismissedFixToolCallIds'),
 		).toEqual(['call-1', 'call-2']);
 	});
 
@@ -1796,7 +1826,7 @@ describe('AgentBuilderView — preview routing', () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00.000Z' });
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant', fixEvent);
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('send-to-assistant', fixEvent);
 		await flushPromises();
 		expect(handoffMock).toHaveBeenCalled();
 
@@ -1804,7 +1834,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await nextTick();
 
 		expect(
-			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('dismissedFixToolCallIds'),
+			wrapper.findComponent({ name: 'AgentTestDock' }).props('dismissedFixToolCallIds'),
 		).toEqual([]);
 	});
 
@@ -1830,7 +1860,7 @@ describe('AgentBuilderView — preview routing', () => {
 				artifactPreviewSessionId: 'thread-1',
 			},
 		});
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 
 		expect(preview.props('effectiveSessionId')).toBe('thread-1');
 		preview.vm.$emit('send-to-assistant', fixEvent);
@@ -1873,7 +1903,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await wrapper.setProps({ artifactPreviewSessionId: 'thread-1' });
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 			'thread-1',
 		);
 	});
@@ -1891,7 +1921,7 @@ describe('AgentBuilderView — preview routing', () => {
 		});
 
 		await vi.waitFor(() =>
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 				'thread-latest',
 			),
 		);
@@ -1920,7 +1950,7 @@ describe('AgentBuilderView — preview routing', () => {
 			},
 		});
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialized')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(false);
 		previewSessionsLoading.value = true;
 		await nextTick();
 		previewSessionsLoading.value = false;
@@ -1928,7 +1958,7 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(getSessionThreadDetailMock).toHaveBeenCalledTimes(1);
 		detail.resolve({ thread: olderThread, executions: [] });
 		await vi.waitFor(() => expect(upsertSessionThreadMock).toHaveBeenCalledWith(olderThread));
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(preview.props('initialized')).toBe(true);
 		expect(preview.props('effectiveSessionId')).toBe('thread-older-than-first-page');
 		expect(preview.props('sessionTitle')).toBe('Older debugging session');
@@ -1989,7 +2019,7 @@ describe('AgentBuilderView — preview routing', () => {
 						: {},
 			});
 
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialized')).toBe(false);
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(false);
 			expect(routerReplace).toHaveBeenCalledWith({
 				name: AGENT_SESSION_DETAIL_VIEW,
 				params: { projectId: 'p1', agentId: 'a1', threadId: thread.id },
@@ -2366,7 +2396,7 @@ describe('AgentBuilderView — preview routing', () => {
 		wrapper.findComponent({ name: component }).vm.$emit('open-preview', source);
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
 			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
@@ -2374,17 +2404,103 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('closes Preview from the primary action beside the Agent title', async () => {
+	it('renders the artifact test chat in the Assistant column without reserving editor space', async () => {
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		try {
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactPreviewOpen: true,
+					artifactPreviewChatTarget: target,
+				},
+			});
+			const dock = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(target.contains(dock.element)).toBe(true);
+			expect(dock.props('overlay')).toBe(true);
+			expect(dock.props('isOpen')).toBe(true);
+			expect(wrapper.get('[data-testid="agent-builder-container"]').classes()).not.toContain(
+				'previewOpen',
+			);
+			const previewWrapper = wrapper
+				.findAllComponents({ name: 'ResizeWrapper' })
+				.find((component) => component.element.contains(dock.element));
+			expect(previewWrapper?.props('isResizingEnabled')).toBe(false);
+			dock.vm.$emit('close');
+			await flushPromises();
+			expect(wrapper.emitted('preview-open-change')?.at(-1)).toEqual([false]);
+		} finally {
+			target.remove();
+		}
+	});
+
+	it('uses the full editor area for the building indicator when the test chat has a host', async () => {
 		const wrapper = await renderView();
+		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview', 'primary');
+		await flushPromises();
+		wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:building', true);
+		await nextTick();
+		const indicator = wrapper.getComponent({ name: 'AgentBuildingIndicator' });
+		expect(indicator.element.parentElement?.style.right).not.toBe('');
+
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		try {
+			await wrapper.setProps({ artifactPreviewChatTarget: target });
+			expect(indicator.element.parentElement?.style.right).toBe('');
+		} finally {
+			target.remove();
+		}
+	});
+
+	it('disables legacy Test entries while the embedded Assistant works', async () => {
+		const wrapper = await renderView();
+		async function setWorking(working: boolean) {
+			if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
+				await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			}
+			wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:working', working);
+			await nextTick();
+		}
+		await setWorking(true);
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
+		const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
+		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
+		const primary = wrapper.get('[data-testid="agent-header-preview-btn"]');
+		expect(primary.attributes('disabled')).toBeDefined();
+		editor.vm.$emit('open-preview');
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		await setWorking(false);
+		expect(editor.props('previewDisabledReason')).toBeUndefined();
+		expect(primary.attributes('disabled')).toBeUndefined();
+		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+	});
+
+	it('closes an artifact Preview while editing is locked', async () => {
+		const wrapper = await renderView({
+			props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+		});
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		editor.vm.$emit('open-preview', 'primary');
 		await flushPromises();
 		expect(editor.props('isPreviewOpen')).toBe(true);
 
-		editor.vm.$emit('close-preview');
+		await wrapper.setProps({ artifactEditingLocked: true });
+		expect(
+			wrapper.get('[data-testid="agent-header-preview-btn"]').attributes('disabled'),
+		).toBeUndefined();
+		await wrapper.get('[data-testid="agent-header-preview-btn"]').trigger('click');
 		await flushPromises();
 		expect(editor.props('isPreviewOpen')).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
 	});
 
 	it('opens Preview with the selected task instructions', async () => {
@@ -2395,7 +2511,7 @@ describe('AgentBuilderView — preview routing', () => {
 		editor.vm.$emit('preview-task', 'Test these instructions');
 		await flushPromises();
 
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(preview.props()).toEqual(
 			expect.objectContaining({
 				isOpen: true,
@@ -2419,16 +2535,14 @@ describe('AgentBuilderView — preview routing', () => {
 
 		editor.vm.$emit('preview-task', 'Test these instructions');
 		await flushPromises();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toBe(
 			'Test these instructions',
 		);
 
 		routeParams.agentId = 'a2';
 		await flushPromises();
 
-		expect(
-			wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialPrompt'),
-		).toBeUndefined();
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toBeUndefined();
 	});
 
 	it('opens the preview dock with the latest thread when prior sessions exist', async () => {
@@ -2443,7 +2557,7 @@ describe('AgentBuilderView — preview routing', () => {
 		editor.vm.$emit('open-preview');
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props()).toEqual(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props()).toEqual(
 			expect.objectContaining({ isOpen: true, effectiveSessionId: 'thread-latest' }),
 		);
 		expect(routerPush).not.toHaveBeenCalled();
@@ -2464,7 +2578,7 @@ describe('AgentBuilderView — preview routing', () => {
 		editor.vm.$emit('open-preview');
 		await flushPromises();
 
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(dock.props('effectiveSessionId')).toBe('thread-1');
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
 
@@ -2487,7 +2601,7 @@ describe('AgentBuilderView — preview routing', () => {
 				artifactPreviewOpen: false,
 			},
 		});
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 
 		expect(dock.props('isOpen')).toBe(false);
 
@@ -2508,12 +2622,12 @@ describe('AgentBuilderView — preview routing', () => {
 			},
 		});
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 
 		await wrapper.setProps({ artifactProjectId: 'p3', artifactAgentId: 'a3' });
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 	});
 
 	it.each([
@@ -2533,7 +2647,7 @@ describe('AgentBuilderView — preview routing', () => {
 			});
 			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
 			await flushPromises();
-			const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+			const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 			routerPush.mockClear();
 			expect(trackMock).not.toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
@@ -2557,7 +2671,7 @@ describe('AgentBuilderView — preview routing', () => {
 				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
 				{ agent_id: agentId, push_ref: 'tab-1' },
 			);
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 				'thread-1',
 			);
 		},
@@ -2580,7 +2694,7 @@ describe('AgentBuilderView — preview routing', () => {
 		).openArtifactPreview('ephemeral-thread');
 		await nextTick();
 		const beforeSend = wrapper
-			.findComponent({ name: 'AgentPreviewDock' })
+			.findComponent({ name: 'AgentTestDock' })
 			.props('beforeSend') as () => Promise<void>;
 
 		await beforeSend();
@@ -2626,7 +2740,7 @@ describe('AgentBuilderView — preview routing', () => {
 			wrapper.vm as unknown as { openArtifactPreview: (sessionId?: string) => void }
 		).openArtifactPreview();
 		await nextTick();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 		const dockVm = dock.vm;
 		const sessionId = dock.props('effectiveSessionId') as string;
 		const beforeSend = dock.props('beforeSend') as () => Promise<void>;
@@ -2636,7 +2750,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await wrapper.setProps({ artifactAgentPending: false });
 		await flushPromises();
 
-		const mountedDock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const mountedDock = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(mountedDock.vm).toBe(dockVm);
 		expect(mountedDock.props('effectiveSessionId')).toBe(sessionId);
 		expect(mountedDock.props('initialized')).toBe(true);
@@ -2669,7 +2783,7 @@ describe('AgentBuilderView — preview routing', () => {
 			});
 			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
 			await flushPromises();
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 				'previous-agent-thread',
 			);
 
@@ -2679,7 +2793,7 @@ describe('AgentBuilderView — preview routing', () => {
 			await wrapper.setProps(nextProps);
 			await flushPromises();
 
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
 			expect(wrapper.emitted('preview-open-change')).toEqual([[false], [true], [false]]);
 			expect(routerPush).not.toHaveBeenCalled();
 			expect(routerReplace).not.toHaveBeenCalled();
@@ -2851,7 +2965,7 @@ describe('AgentBuilderView — preview routing', () => {
 		const wrapper = await renderView();
 		await flushPromises();
 		const effectiveSessionId = wrapper
-			.findComponent({ name: 'AgentPreviewDock' })
+			.findComponent({ name: 'AgentTestDock' })
 			.props('effectiveSessionId') as string;
 
 		expect(routerReplace).toHaveBeenCalledWith(
@@ -2895,7 +3009,7 @@ describe('AgentBuilderView — preview routing', () => {
 		await flushPromises();
 
 		expect(routerReplace).not.toHaveBeenCalled();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 			'faulty-thread',
 		);
 	});
@@ -2906,7 +3020,7 @@ describe('AgentBuilderView — preview routing', () => {
 
 		const wrapper = await renderView();
 		expect(getSessionThreadDetailMock).toHaveBeenCalledWith('p1', 'a1', 'stale-missing-thread');
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialized')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(true);
 
 		expect(routerReplace).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -2917,7 +3031,7 @@ describe('AgentBuilderView — preview routing', () => {
 			continueSessionId: string;
 		};
 		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(dock.props('hasSession')).toBe(false);
 		trackMock.mockClear();
 		routerPush.mockClear();
@@ -2939,18 +3053,18 @@ describe('AgentBuilderView — preview routing', () => {
 
 		routeQuery.continueSessionId = 'stale-route-thread';
 		await nextTick();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 			'stale-route-thread',
 		);
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('initialized')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(false);
 		detail.reject({ httpStatusCode: 404 });
 		await flushPromises();
 
 		expect(routerReplace).toHaveBeenCalledWith({
 			query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
 		});
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 			'thread-latest',
 		);
 	});
@@ -2961,7 +3075,7 @@ describe('AgentBuilderView — preview routing', () => {
 		const detail = Promise.withResolvers<{ thread: SessionThread; executions: [] }>();
 		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		routerReplace.mockClear();
 
 		preview.vm.$emit('new-session');
@@ -2994,7 +3108,7 @@ describe('AgentBuilderView — preview routing', () => {
 		const detail = Promise.withResolvers<{ thread: SessionThread; executions: [] }>();
 		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		routerReplace.mockClear();
 
 		preview.vm.$emit('close');
@@ -3022,7 +3136,7 @@ describe('AgentBuilderView — preview routing', () => {
 			'a1',
 		);
 
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('new-session');
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
 		await nextTick();
 		await flushPromises();
 
@@ -3171,7 +3285,7 @@ describe('AgentBuilderView — configuration validation', () => {
 
 			const wrapper = await renderView();
 			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-			const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 			const vm = wrapper.vm as unknown as { setupTasks: SetupTask[] };
 			const testTask = vm.setupTasks.find((task) => task.id === 'test-agent');
 
@@ -3193,7 +3307,6 @@ describe('AgentBuilderView — configuration validation', () => {
 	it('hides setup tasks while the embedded assistant builds the agent', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		expect(header.props('tasks')).toBeDefined();
 
 		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
@@ -3513,7 +3626,6 @@ describe('AgentBuilderView — configuration validation', () => {
 		'recovers a skipped save before history publication with intervening edits=%s',
 		async (changedRemotely) => {
 			const wrapper = await renderView();
-			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
 			wrapper
 				.getComponent({ name: 'AgentBuilderHeader' })
@@ -3833,10 +3945,6 @@ describe('AgentBuilderView — three-column shell', () => {
 				savedWrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
 			).not.toBeNull(),
 		);
-		// The header toggle button moved out of this stub on master. Call the
-		// same handler the button uses so this still opens the panel after merge.
-		(savedWrapper.vm as unknown as { toggleAiPanel: () => void }).toggleAiPanel();
-		await flushPromises();
 		expect(savedWrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 		expect(savedWrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
 	});
@@ -4140,11 +4248,128 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(submitSuggestionMock).not.toHaveBeenCalled();
 	});
 
-	it('keeps the embedded AI panel closed by default for an existing agent', async () => {
+	it.each([null, 'false', 'true'])(
+		'opens the AI panel for an unpublished agent with saved preference %s',
+		async (savedPreference) => {
+			if (savedPreference !== null) {
+				localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', savedPreference);
+			}
+			const wrapper = await renderView();
+
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe(savedPreference);
+		},
+	);
+
+	it.each([null, 'false', 'true'])(
+		'uses saved AI panel preference %s for an unpublished agent without edit permission',
+		async (savedPreference) => {
+			const canUpdate = agentPermissionsMock.canUpdate.value;
+			agentPermissionsMock.canUpdate.value = false;
+			try {
+				if (savedPreference !== null) {
+					localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', savedPreference);
+				}
+				const wrapper = await renderView();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(
+					savedPreference === 'true',
+				);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe(savedPreference);
+			} finally {
+				agentPermissionsMock.canUpdate.value = canUpdate;
+			}
+		},
+	);
+
+	it('lets an unpublished agent close the AI panel until the next visit', async () => {
+		const wrapper = await renderView();
+		await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe('false');
+		wrapper.unmount();
+
+		const reopened = await renderView();
+		expect(reopened.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it('keeps the AI panel closed after an unpublished agent saves', async () => {
+		const wrapper = await renderView();
+		await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+		wrapper
+			.getComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Updated instructions' });
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<unknown> }).flushAutosave();
+		await flushPromises();
+
+		expect(updateConfigMock).toHaveBeenCalled();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it.each(['agentId', 'projectId'] as const)(
+		'applies the AI panel default on each visit when %s changes',
+		async (field) => {
+			getAgentMock.mockImplementation(async (_context, projectId: string, id: string) =>
+				makeAgentResponse({
+					id,
+					projectId,
+					activeVersionId: id === 'a2' || projectId === 'p2' ? null : 'v1',
+				}),
+			);
+			const wrapper = await renderView();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+
+			routeParams[field] = field === 'agentId' ? 'a2' : 'p2';
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+			routeParams[field] = field === 'agentId' ? 'a1' : 'p1';
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+
+			routeParams[field] = field === 'agentId' ? 'a2' : 'p2';
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		},
+	);
+
+	it.each([true, false])('keeps the AI panel state %s when an agent is published', async (open) => {
+		const wrapper = await renderView();
+		if (!open) await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+		wrapper
+			.getComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(open);
+	});
+
+	it('keeps the embedded AI panel closed by default for a published agent', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		const wrapper = await renderView();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it.each(['true', 'false'])('uses saved preference %s for a published agent', async (saved) => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', saved);
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(saved === 'true');
+	});
+
+	it('keeps the AI panel closed for an unpublished agent when Instance AI is not ready', async () => {
+		instanceAiReadyRef.value = false;
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
 	});
 
 	it('keeps the embedded AI panel closed by default for a pending agent when Instance AI is not ready, and writes nothing to storage', async () => {
@@ -4157,6 +4382,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('persists an explicit toggle of the AI panel', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 
@@ -4191,6 +4417,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		it.each(platforms)(
 			'toggles with $modifier and tracks only opening',
 			async function ({ userAgent, modifier }) {
+				getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
 				const wrapper = await renderView();
 				trackMock.mockClear();
@@ -4262,7 +4489,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		async function ({ savedWidth, expectedWidth }) {
 			if (savedWidth !== null) localStorage.setItem('N8N_AGENT_AI_PANEL_WIDTH', savedWidth);
 			const wrapper = await renderView();
-			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 			const dock = wrapper.get('[data-testid="agent-ai-dock"]');
 			const resizer = dock.getComponent({ name: 'ResizeWrapper' });
 
@@ -4283,11 +4509,12 @@ describe('AgentBuilderView — three-column shell', () => {
 		},
 	);
 
-	it('closes the AI panel by default after switching to a different, non-pending agent', async () => {
+	it('closes the AI panel by default after switching to a published agent', async () => {
 		// `useStorage`'s default is captured once and reused for every later key
 		// this computed storage key produces — a non-constant default would leak
 		// "open" from the pending agent onto every agent visited afterward.
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		getAgentMock.mockResolvedValue(makeAgentResponse({ id: 'a2', activeVersionId: 'v1' }));
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 
@@ -4298,7 +4525,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('opens the AI panel and skips the fetch when the switcher hands off a pending agent in place', async () => {
-		// Mounted on an existing, non-pending agent A.
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 		getAgentMock.mockClear();
@@ -4361,7 +4588,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				},
 			});
 			if (!artifactMode) {
-				expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+				expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 			}
 			expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
 
@@ -4527,6 +4754,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('hides the AI panel button while open and restores it after closing', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 
@@ -4550,7 +4778,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			const vm = wrapper.vm as unknown as { builderContainerWidth: number };
 			vm.builderContainerWidth = containerWidth;
 			await nextTick();
-			await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 			const aiResizer = wrapper
 				.get('[data-testid="agent-ai-dock"]')
 				.getComponent({ name: 'ResizeWrapper' });
@@ -4583,7 +4810,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		const vm = wrapper.vm as unknown as { builderContainerWidth: number };
 		vm.builderContainerWidth = 1200;
 		await nextTick();
-		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		const resizer = wrapper
 			.get('[data-testid="agent-ai-dock"]')
 			.getComponent({ name: 'ResizeWrapper' });
@@ -4625,6 +4851,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('closes the preview when opening the AI panel would make the editor too narrow', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -4633,13 +4860,13 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		vm.builderContainerWidth = 1100;
 		await nextTick();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 
 		vm.toggleAiPanel();
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
 	});
 
 	it('closes the AI panel when opening the preview would make the editor too narrow', async () => {
@@ -4652,11 +4879,12 @@ describe('AgentBuilderView — three-column shell', () => {
 		await (wrapper.vm as unknown as { onOpenPreview: () => Promise<boolean> }).onOpenPreview();
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 	});
 
 	it('shrinks both side panels before closing either one', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -4670,7 +4898,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 		const builder = wrapper.get('[data-testid="agent-builder-container"]').element as HTMLElement;
 		const aiWidth = Number.parseFloat(builder.style.getPropertyValue('--agent-ai-panel-width'));
 		const previewWidth = Number.parseFloat(
@@ -4756,7 +4984,6 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	it('closes the AI panel when the embedded panel emits close', async () => {
 		const wrapper = await renderView();
-		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 
 		await wrapper.find('[data-testid="ai-panel-emit-close"]').trigger('click');
@@ -6189,7 +6416,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			],
 		};
 		// Skills drop allowed tools: the edit keeps everything else.
-		const editedSkill = { ...updatedSkill, allowedTools: ['load_workflow'] };
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -6217,9 +6443,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof editedSkill }) => void;
+			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
 		};
-		modalData.onConfirm({ id: 'summarize_notes', skill: editedSkill });
+		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
 		await nextTick();
 
 		expect(
@@ -6245,58 +6471,58 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('omits allowed tools before saving a skill when none are attached', async () => {
-		const skill = {
-			name: 'summarize_notes',
-			description: 'Use when summarizing notes',
-			instructions: 'Read the notes and produce a concise summary.',
-			allowedTools: ['missing_tool'],
-		};
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-			skills: [{ type: 'skill', id: 'summarize_notes' }],
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValueOnce(
-			makeAgentResponse({
-				skills: {
-					summarize_notes: skill,
-				},
-				skillHashes: { summarize_notes: 'skill-hash-1' },
-			}),
-		);
-		updateAgentSkillMock.mockResolvedValueOnce({
-			id: 'summarize_notes',
-			skill: {
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			skillHash: 'skill-hash-2',
-			versionId: 'v2',
-		});
+	it.each([
+		{ pinned: false, expected: { draft: 3, published: 1, latest: 3, pinned: false } },
+		{ pinned: true, expected: { draft: 1, published: 1, latest: 3, pinned: true } },
+	])(
+		'counts the new skill version after a save that changed it (pinned: $pinned)',
+		async ({ pinned, expected }) => {
+			const skill = {
+				name: 'summarize_notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Read the notes and produce a concise summary.',
+			};
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				skills: [{ type: 'skill', id: 'summarize_notes' }],
+			};
+			mockConfig.value = withDefaultLlm(intendedConfig);
+			getAgentMock.mockResolvedValueOnce(
+				makeAgentResponse({
+					skills: { summarize_notes: skill },
+					skillHashes: { summarize_notes: 'skill-hash-1' },
+					skillVersions: {
+						summarize_notes: { draft: pinned ? 1 : 2, published: 1, latest: 2, pinned },
+					},
+				}),
+			);
+			const editedSkill = { ...skill, instructions: 'Summarize in one line.' };
+			updateAgentSkillMock.mockResolvedValueOnce({
+				id: 'summarize_notes',
+				skill: editedSkill,
+				skillHash: 'skill-hash-2',
+				versionId: 'v2',
+			});
 
-		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
-		await nextTick();
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
-		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			const wrapper = await renderView();
+			wrapper
+				.findComponent({ name: 'AgentSkillsSection' })
+				.vm.$emit('open-skill', 'summarize_notes');
+			await nextTick();
+			openModalWithDataMock.mock.calls[0][0].data.onConfirm({
+				id: 'summarize_notes',
+				skill: editedSkill,
+			});
+			await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			await nextTick();
 
-		expect(updateAgentSkillMock).toHaveBeenCalledWith(
-			expect.anything(),
-			'p1',
-			'a1',
-			'summarize_notes',
-			{
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			'skill-hash-1',
-			undefined,
-		);
-	});
+			expect(
+				(wrapper.vm as unknown as { agent: { skillVersions: Record<string, unknown> } }).agent
+					.skillVersions.summarize_notes,
+			).toEqual(expected);
+		},
+	);
 
 	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {
 		// A promise that we control — lets us capture the intermediate loading state.
@@ -6494,6 +6720,7 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 	});
 
 	it('reacts to writeAccessAcquired from another client by showing the read-only banner', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		// Start with no lock — lazy acquisition means the tab is writable
 		// until someone else acquires the lock.
 		getAgentWriteLockMock.mockResolvedValue(null);
@@ -6590,7 +6817,7 @@ describe(
 		function dockIncreaseBudget(
 			wrapper: Awaited<ReturnType<typeof renderView>>,
 		): IncreaseBudget | undefined {
-			return wrapper.findComponent({ name: 'AgentPreviewDock' }).props('increaseBudget') as
+			return wrapper.findComponent({ name: 'AgentTestDock' }).props('increaseBudget') as
 				| IncreaseBudget
 				| undefined;
 		}
@@ -6858,3 +7085,251 @@ describe(
 		});
 	},
 );
+
+describe('chat-first builder', () => {
+	beforeEach(() => {
+		builderExperimentMock.layout = { chatWidth: 'wide', testChat: 'inline' };
+	});
+	afterEach(() => {
+		builderExperimentMock.layout = { chatWidth: 'current', testChat: 'dock' };
+	});
+	beforeEach(() => {
+		resetViewMocks();
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canExecute.value = true;
+	});
+	async function renderWithPreviewLink(href: string) {
+		return await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				InstanceAiChatPanel: {
+					...commonStubs.InstanceAiChatPanel,
+					components: { AgentMarkdownChunk },
+					template: `<div><AgentMarkdownChunk source="[Preview](${href})" /><slot name="composer-start" /></div>`,
+				},
+			},
+		});
+	}
+	it.each(['/projects/p1/agents/a1/preview', '/projects/p1/agents/a1?openPreview=true'])(
+		'selects Test from an Assistant Preview link without navigation: %s',
+		async (href) => {
+			const wrapper = await renderWithPreviewLink(href);
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+			await assistant.get('a').trigger('click');
+			await flushPromises();
+			expect(preview.props('isOpen')).toBe(true);
+			expect(assistant.props('visible')).toBe(false);
+			expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+	it.each(['building', 'not runnable', 'no permission'])(
+		'keeps Build selected when a Preview link is blocked: %s',
+		async (reason) => {
+			if (reason === 'not runnable') {
+				getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+			}
+			if (reason === 'no permission') agentPermissionsMock.canExecute.value = false;
+			const wrapper = await renderWithPreviewLink('/projects/p1/agents/a1/preview');
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			if (reason === 'building') assistant.vm.$emit('update:working', true);
+			await nextTick();
+			await assistant.get('a').trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+			expect(assistant.props('visible')).toBe(true);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+	it('routes Preview links for another agent without opening the current Test chat', async () => {
+		const wrapper = await renderWithPreviewLink('/projects/p2/agents/a2/preview');
+		await wrapper.getComponent({ name: 'InstanceAiChatPanel' }).get('a').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/projects/p2/agents/a2?openPreview=true');
+	});
+	it('opens the wide builder by default and keeps both chats mounted across mode changes', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+		expect(assistant.props('closable')).toBe(false);
+		expect(assistant.props('showOpenFullAssistant')).toBe(false);
+		expect(preview.props('inline')).toBe(true);
+		expect(assistant.props('visible')).toBe(true);
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(preview.props('isOpen')).toBe(true);
+		expect(assistant.props('visible')).toBe(false);
+		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+		await preview.get('[data-testid="agent-builder-mode-build"]').trigger('click');
+		await flushPromises();
+		expect(assistant.props('visible')).toBe(true);
+		expect(preview.props('isOpen')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(preview.vm);
+	});
+	it('ignores a pending Test transition after the user selects Build', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const save = Promise.withResolvers<{
+			config: TestAgentConfig;
+			versionId: string;
+			stale: boolean;
+		}>();
+		updateConfigMock.mockImplementationOnce(() => save.promise);
+		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:config', {
+			instructions: 'Answer support questions.',
+		});
+		await nextTick();
+		const transition = wrapper.vm.setChatMode('test');
+		await flushPromises();
+		expect(updateConfigMock).toHaveBeenCalled();
+		await wrapper.vm.setChatMode('build');
+		if (!mockConfig.value) throw new Error('Agent config is missing');
+		save.resolve({ config: mockConfig.value, versionId: 'v2', stale: false });
+		expect(await transition).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+	});
+
+	it('keeps the standalone selector visible when the agent cannot run', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const selector = wrapper.getComponent({ name: 'AgentBuilderChatMode' });
+		expect(selector.props('testDisabled')).toBe(true);
+		expect(selector.props('testDisabledReason')).toBe('agents.builder.preview.disabledTooltip');
+		expect(
+			selector.get('[data-testid="agent-builder-mode-test"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			selector.get('[data-testid="agent-builder-mode-build"]').attributes('disabled'),
+		).toBeUndefined();
+	});
+
+	it.each([
+		{ chatWidth: 'current', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'dock' },
+	])('keeps the Assistant artifact layout unchanged for $chatWidth / $testChat', async (layout) => {
+		builderExperimentMock.layout = layout;
+		trackExperimentExposure.mockClear();
+		const wrapper = await renderView({
+			props: {
+				builderLayout: undefined,
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+			},
+		});
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatMode' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('chatFirst')).toBe(
+			false,
+		);
+		expect(trackExperimentExposure).not.toHaveBeenCalled();
+	});
+
+	it('keeps both mode selectors visible and disabled while the Assistant works', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		assistant.vm.$emit('update:working', true);
+		await nextTick();
+		for (const selector of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+			expect(selector.props('disabled')).toBe(true);
+			for (const button of selector.findAll('button'))
+				expect(button.attributes('disabled')).toBeDefined();
+		}
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		assistant.vm.$emit('update:working', false);
+		await nextTick();
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+	});
+
+	it.each([true, false])(
+		'switches from Test to Build only after an accepted handoff (%s)',
+		async (accepted) => {
+			handoffMock.mockReturnValueOnce(accepted);
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+			await flushPromises();
+			const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+			preview.vm.$emit('send-to-assistant');
+			await flushPromises();
+			expect(handoffMock).toHaveBeenCalled();
+			expect(preview.props('isOpen')).toBe(!accepted);
+			expect(assistant.props('visible')).toBe(accepted);
+			expect(
+				assistant.get('[data-testid="agent-builder-mode-build"]').attributes('aria-pressed'),
+			).toBe(String(accepted));
+		},
+	);
+
+	it('keeps width and test placement independent', async () => {
+		const wrapper = await renderView({
+			props: { builderLayout: { chatWidth: 'current', testChat: 'inline' } },
+		});
+		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1440;
+		await nextTick();
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-ai-panel-width: 432px',
+		);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(true);
+		await wrapper.setProps({ builderLayout: { chatWidth: 'wide', testChat: 'dock' } });
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-ai-panel-width: 936px',
+		);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(false);
+	});
+
+	it('keeps configuration accessible on a narrow screen without unmounting chat', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		(wrapper.vm as unknown as { builderHostWidth: number }).builderHostWidth = 375;
+		await nextTick();
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		expect(assistant.props('closable')).toBe(true);
+		assistant.vm.$emit('close');
+		await nextTick();
+		expect(assistant.props('visible')).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		expect(assistant.props('visible')).toBe(true);
+		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+		expect(preview.props('closable')).toBe(true);
+		preview.vm.$emit('close');
+		await nextTick();
+		expect(preview.props('isOpen')).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		expect(assistant.props('visible')).toBe(false);
+		expect(preview.props('isOpen')).toBe(true);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(preview.vm);
+	});
+
+	it('shows the same disclaimer in both empty chats', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		for (const name of ['InstanceAiChatPanel', 'AgentTestDock']) {
+			expect(
+				wrapper.getComponent({ name }).get('[data-testid="agent-builder-chat-disclaimer"]').text(),
+			).toBe('instanceAi.input.disclaimer');
+		}
+	});
+
+	it.each(['InstanceAiChatPanel', 'AgentTestDock'])(
+		'ends the discovery hint after a message from %s',
+		async (source) => {
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			if (source === 'AgentTestDock') await wrapper.vm.setChatMode('test');
+			const chat = wrapper.getComponent({ name: source });
+			expect(chat.getComponent({ name: 'AgentBuilderChatMode' }).props('discovery')).toBe(true);
+			chat.vm.$emit('message-sent');
+			await nextTick();
+			for (const mode of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+				expect(mode.props('discovery')).toBe(false);
+			}
+		},
+	);
+});

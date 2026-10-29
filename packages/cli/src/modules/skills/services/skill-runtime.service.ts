@@ -14,6 +14,7 @@ import {
 	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
 	type ResolvedSkillRow,
+	type RuntimeVersion,
 	type SkillRef,
 	type SkillTarget,
 } from '../utils/skill-content';
@@ -120,8 +121,9 @@ export class SkillRuntimeService {
 		);
 	}
 
-	async findVersionNumbers(versionIds: string[], ctx: OperationContext = {}) {
-		return await this.skillRepository.findVersionNumbers(versionIds, ctx);
+	/** The skill and number of each version, keyed by version id. Reads no content. */
+	async findVersionRefs(versionIds: string[], ctx: OperationContext = {}) {
+		return await this.skillRepository.findVersionRefs(versionIds, ctx);
 	}
 
 	/** The names agents see: those of the latest versions. */
@@ -152,19 +154,47 @@ export class SkillRuntimeService {
 		};
 	}
 
+	/**
+	 * The version number each ref runs and whether a pin decides it, by the same rule as
+	 * `resolveRows`: a pin to a version of another skill counts as following. Reads no content.
+	 */
+	async runtimeVersions(
+		refs: Array<{ id: string; versionId?: string | null }>,
+		ctx: OperationContext,
+	): Promise<(ref: { id: string; versionId?: string | null }) => RuntimeVersion | undefined> {
+		const [latest, pins] = await Promise.all([
+			this.skillRepository.findLatestSummaries(
+				refs.map((ref) => ref.id),
+				ctx,
+			),
+			this.skillRepository.findVersionRefs(
+				refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+				ctx,
+			),
+		]);
+		return (ref) => {
+			const newest = latest.get(ref.id)?.version;
+			if (newest === undefined) return undefined;
+			const pin = ref.versionId ? pins.get(ref.versionId) : undefined;
+			return pin?.skillId === ref.id
+				? { version: pin.version, pinned: true, latest: newest }
+				: { version: newest, pinned: false, latest: newest };
+		};
+	}
+
 	/** Read immutable skill versions without reversing the skill-edit lock order. */
 	async snapshotForSave(refs: SkillRef[], ctx: OperationContext): Promise<Map<string, string>> {
 		const refIds = [...new Set(refs.map((ref) => ref.id))];
 		// Use the same resolution rule as `resolveRows` without loading skill content.
 		const latest = await this.skillRepository.findLatestVersionIds(refIds, ctx);
-		const pinnedSkillIds = await this.skillRepository.findSkillIdsOfVersions(
+		const pins = await this.skillRepository.findVersionRefs(
 			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
 			ctx,
 		);
 		const versionByRef = new Map<string, string>();
 		for (const ref of refs) {
 			const versionId =
-				ref.versionId && pinnedSkillIds.get(ref.versionId) === ref.id
+				ref.versionId && pins.get(ref.versionId)?.skillId === ref.id
 					? ref.versionId
 					: latest.get(ref.id);
 			if (versionId) versionByRef.set(ref.id, versionId);

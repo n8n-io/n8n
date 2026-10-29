@@ -203,6 +203,24 @@ describe('BrowserConnection modes', () => {
 		expect(connection.isConnected).toBe(true);
 	});
 
+	it('passes the page event options to the Playwright adapter in remote mode', async () => {
+		const connection = new BrowserConnection(
+			{ mode: 'remote' },
+			{
+				cdpEndpoint: 'wss://connect.example.com',
+				maxPageEventEntries: 1000,
+				releaseConsoleHandles: true,
+			},
+		);
+
+		await connection.connect();
+
+		expect(constructed).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'remote' }),
+			expect.objectContaining({ maxPageEventEntries: 1000, releaseConsoleHandles: true }),
+		);
+	});
+
 	it('connects the Playwright adapter through the relay in remote mode', async () => {
 		const relay = {} as CDPRelayServer;
 		const connection = new BrowserConnection(

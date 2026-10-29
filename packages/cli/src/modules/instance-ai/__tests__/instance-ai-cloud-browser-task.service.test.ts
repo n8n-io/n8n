@@ -98,19 +98,22 @@ function setup() {
 	const logger = mock<Logger>();
 	const tracing = { finalizeBackgroundTaskTracing: vi.fn(async () => {}) };
 
-	const service = new InstanceAiCloudBrowserTaskService({
-		logger,
-		eventBus,
-		backgroundTaskManager,
-		cloudBrowserService,
-		agentMemory,
-		runState,
-		suspendedThreads,
-		creditService,
-		tracing,
-		resolveTracingProxyConfig: async () => undefined,
-		startFollowUpRun,
-	});
+	/** A service on the same stored records, as after a restart. */
+	const createService = () =>
+		new InstanceAiCloudBrowserTaskService({
+			logger,
+			eventBus,
+			backgroundTaskManager,
+			cloudBrowserService,
+			agentMemory,
+			runState,
+			suspendedThreads,
+			creditService,
+			tracing,
+			resolveTracingProxyConfig: async () => undefined,
+			startFollowUpRun,
+		});
+	const service = createService();
 	const run: CloudBrowserRunOptions = {
 		runId: 'run-1',
 		user: mock<User>({ id: 'user-1' }),
@@ -145,6 +148,7 @@ function setup() {
 		suspendedThreads,
 		creditService,
 		startFollowUpRun,
+		createService,
 		spawnOptions,
 		runSpawnedTask,
 		records,
@@ -573,6 +577,33 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 
 			expect(startFollowUpRun).toHaveBeenCalledTimes(1);
 			expect(startFollowUpRun.mock.calls[0][2]).toContain('outcome="cancelled"');
+		});
+
+		it('keeps a task stopped during shutdown for the next delivery after the restart', async () => {
+			const { service, run, startFollowUpRun, createService, spawnOptions, records } = setup();
+			vi.mocked(runCloudBrowserAgent).mockResolvedValue(
+				agentResult({ outcome: 'cancelled', status: 'cancelled' }),
+			);
+			await service.startTask(task, run);
+			service.shutdown();
+			const controller = new AbortController();
+			controller.abort();
+
+			await spawnOptions().run(
+				controller.signal,
+				() => [],
+				async () => {},
+				{},
+			);
+
+			expect(startFollowUpRun).not.toHaveBeenCalled();
+			expect(await records()).toHaveLength(1);
+
+			await createService().deliverPendingResults(run.user, THREAD_ID);
+
+			expect(startFollowUpRun).toHaveBeenCalledTimes(1);
+			expect(startFollowUpRun.mock.calls[0][2]).toContain('outcome="cancelled"');
+			expect(await records()).toHaveLength(0);
 		});
 
 		it('delivers a stopped task whose agent threw', async () => {

@@ -713,20 +713,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	get snapshot(): AgentSnapshot {
 		let model: AgentSnapshot['model'];
-		const rawModelId =
-			typeof this.modelConfig === 'string'
-				? this.modelConfig
-				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
-					? this.modelConfig.id
-					: undefined;
+		const rawModelId = this.modelConfig ? modelConfigToId(this.modelConfig) : undefined;
 
 		if (rawModelId) {
 			const slashIdx = rawModelId.indexOf('/');
 			if (slashIdx === -1) {
 				model = { provider: null, name: rawModelId };
 			} else {
+				// A pre-built model reports `<provider>.<api>`, for example `anthropic.messages`.
+				const provider = rawModelId.slice(0, slashIdx).split('.')[0];
 				model = {
-					provider: rawModelId.slice(0, slashIdx),
+					provider: provider || null,
 					name: rawModelId.slice(slashIdx + 1),
 				};
 			}

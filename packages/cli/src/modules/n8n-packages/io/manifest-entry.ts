@@ -9,6 +9,7 @@ import type {
 	PackageManifest,
 	WorkflowManifestEntry,
 } from '../spec/manifest.schema';
+import { skillIdSchema } from '../spec/serialized/skill.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -29,6 +30,7 @@ export const PACKAGE_ENTITY_LAYOUT = {
 	folders: { directory: 'folders', fileName: 'folder.json' },
 	workflows: { directory: 'workflows', fileName: 'workflow.json' },
 	agents: { directory: 'agents', fileName: 'agent.json' },
+	skills: { directory: 'skills', fileName: 'skill.json' },
 	credentials: { directory: 'credentials', fileName: 'credential.json' },
 	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
 	variables: { directory: 'variables', fileName: 'variable.json' },
@@ -47,6 +49,7 @@ const FALLBACK_SLUGS = {
 	folders: 'folder',
 	workflows: 'workflow',
 	agents: 'agent',
+	skills: 'skill',
 	credentials: 'credential',
 	dataTables: 'data-table',
 	variables: 'variable',
@@ -89,16 +92,30 @@ export function agentMetadataFilePath(target: string): string {
 	return `${target}/agent-metadata.json`;
 }
 
+/**
+ * Skill IDs follow the skill ref ID rule, which allows hyphens. No reader takes a skill ID
+ * from its path: import reads it from the manifest, and promotions carry no skills.
+ */
+function isSafeId(collection: ManifestEntityCollection, id: string): boolean {
+	if (collection === 'skills') return skillIdSchema.safeParse(id).success;
+	return SAFE_ID.test(id);
+}
+
+function allowedIdCharacters(collection: ManifestEntityCollection): string {
+	if (collection === 'skills') return 'letters, digits, underscores, and hyphens';
+	return 'letters, digits, and underscores';
+}
+
 export function createManifestEntry(
 	collection: ManifestEntityCollection,
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
-	if (!SAFE_ID.test(entity.id)) {
+	if (!isSafeId(collection, entity.id)) {
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
 			{
-				description: `Id "${entity.id}" may contain only letters, digits, and underscores.`,
+				description: `Id "${entity.id}" may contain only ${allowedIdCharacters(collection)}.`,
 			},
 		);
 	}
