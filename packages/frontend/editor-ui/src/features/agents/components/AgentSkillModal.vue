@@ -102,6 +102,7 @@ export type AgentSkillModalData = {
 	initialScope?: string;
 	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
+	availableToMCP?: boolean;
 	/**
 	 * A default name that no skill in the scope has yet, as new workflows get one. Called
 	 * when the user starts a skill by hand, with the Settings scope value or, in the agent
@@ -151,6 +152,7 @@ export type AgentSkillModalData = {
 		availableTo?: AgentSkillAvailability;
 		scope?: string;
 		availableToAssistant?: boolean;
+		availableToMCP?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
 		/** Set when the save restores this older version. */
@@ -231,6 +233,15 @@ const assistantAvailabilityChanged = computed(
 	() =>
 		showAssistantAvailability.value &&
 		availableToAssistant.value !== props.data.availableToAssistant,
+);
+const availableToMCP = ref(props.data.availableToMCP ?? false);
+const showAvailableToMCP = computed(
+	() =>
+		props.data.availableToMCP !== undefined &&
+		(scope.value === 'instance' || scope.value.startsWith('project:')),
+);
+const availableToMCPChanged = computed(
+	() => showAvailableToMCP.value && availableToMCP.value !== props.data.availableToMCP,
 );
 
 /** The last default name the server gave. A name the user typed is never replaced. */
@@ -697,6 +708,7 @@ const hasChanges = computed(
 		!isEditing.value ||
 		!isEqual(skill.value, initialSkill.value) ||
 		assistantAvailabilityChanged.value ||
+		availableToMCPChanged.value ||
 		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
 		(canChangeScope.value && scope.value !== props.data.initialScope),
 );
@@ -805,6 +817,9 @@ onMounted(() => {
 
 const showAssistantToggle = computed(
 	() => showScope.value && showAssistantAvailability.value && !cannotEdit.value,
+);
+const showMcpToggle = computed(
+	() => showScope.value && showAvailableToMCP.value && !cannotEdit.value,
 );
 
 const versionsOpen = ref(!!props.data.initialVersionsOpen);
@@ -1080,6 +1095,7 @@ async function onSave() {
 		...(assistantAvailabilityChanged.value
 			? { availableToAssistant: availableToAssistant.value }
 			: {}),
+		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
 	if (saved) closeModal();
@@ -1246,7 +1262,10 @@ function onRemove() {
 				</template>
 			</N8nActionDropdown>
 		</template>
-		<template v-if="isFormStep && (showAssistantToggle || latestVersion)" #headerActions>
+		<template
+			v-if="isFormStep && (showAssistantToggle || showMcpToggle || latestVersion)"
+			#headerActions
+		>
 			<N8nSwitch
 				v-if="showAssistantToggle"
 				id="skill-assistant-availability"
@@ -1255,6 +1274,21 @@ function onRemove() {
 				:disabled="editorLocked"
 				data-testid="skill-assistant-availability"
 			/>
+			<N8nSwitch
+				v-if="showMcpToggle"
+				id="skill-available-to-mcp"
+				v-model="availableToMCP"
+				:label="i18n.baseText('settings.context.skills.modal.mcp.toggle')"
+				:disabled="editorLocked"
+				data-testid="skill-available-to-mcp"
+			>
+				<template #label="{ label }">
+					{{ label }}
+					<N8nTooltip :content="i18n.baseText('settings.context.skills.modal.mcp.tooltip')">
+						<N8nIcon icon="circle-help" size="small" data-testid="skill-available-to-mcp-help" />
+					</N8nTooltip>
+				</template>
+			</N8nSwitch>
 			<N8nButton
 				v-if="latestVersion"
 				variant="ghost"

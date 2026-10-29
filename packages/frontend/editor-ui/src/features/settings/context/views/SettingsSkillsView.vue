@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import {
+	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
 	type AgentSkill,
 	type SkillCreateMethod,
@@ -37,6 +38,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -94,6 +96,7 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
 const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const posthogStore = usePostHog();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
@@ -120,6 +123,7 @@ const agentFilterOptions = computed(() =>
 );
 const creators = ref<SkillUserDto[]>([]);
 const loadFailed = ref(false);
+const mcpSkillsEnabled = computed(() => posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG));
 
 // The empty states describe the rows on screen, so they follow the query that loaded
 // them, not the live search input.
@@ -319,14 +323,15 @@ function openCreateModal() {
 	openModal({
 		scopeOptions: options,
 		initialScope: options[0].value,
+		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
 		existingSkillNames: [],
 		getDefaultName: async (scopeValue) =>
 			await skillsStore.fetchNewSkillName({
 				...parseScope(scopeValue),
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
-		onConfirm: async ({ skill, scope, method }) =>
-			await onCreate(skill, scope ?? options[0].value, method),
+		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
+			await onCreate(skill, scope ?? options[0].value, method, availableToMCP),
 	});
 }
 
@@ -432,6 +437,7 @@ async function onCreate(
 	skill: AgentSkill,
 	scopeValue: string,
 	method?: SkillCreateMethod,
+	availableToMCP?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -440,6 +446,7 @@ async function onCreate(
 				...parseScope(scopeValue),
 				skill,
 				...(method ? { method } : {}),
+				availableToMCP,
 			})
 		).id;
 	} catch (error) {
@@ -509,6 +516,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
@@ -523,13 +531,14 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 							await onStopSyncing(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 					}
 				: {}),
-			onConfirm: async ({ skill, scope, availableToAssistant }) =>
+			onConfirm: async ({ skill, scope, availableToAssistant, availableToMCP }) =>
 				await onSave(
 					detail.id,
 					skill,
 					baseSkillHash,
 					scope !== currentValue ? scope : undefined,
 					availableToAssistant,
+					availableToMCP,
 					(skillHash) => (baseSkillHash = skillHash),
 				),
 		});
@@ -546,6 +555,7 @@ async function onSave(
 	baseSkillHash: string,
 	newScope?: string,
 	availableToAssistant?: boolean,
+	availableToMCP?: boolean,
 	onSaved?: (skillHash: string) => void,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
@@ -559,6 +569,7 @@ async function onSave(
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
 			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
+			availableToMCP,
 		});
 		created = saved.created;
 		onSaved?.(saved.skillHash);
@@ -566,7 +577,12 @@ async function onSave(
 		return saveFailed(error);
 	}
 	// Scope and availability changes do not create a content version.
-	if (created || newScope !== undefined || availableToAssistant !== undefined) {
+	if (
+		created ||
+		newScope !== undefined ||
+		availableToAssistant !== undefined ||
+		availableToMCP !== undefined
+	) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {
@@ -821,6 +837,7 @@ onMounted(async () => {
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none'"
 			:show-assistant-availability="assistantSkillsEnabled"
+			:show-mcp-availability="mcpSkillsEnabled"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
 			@compare="openEditModal($event, 'compare')"

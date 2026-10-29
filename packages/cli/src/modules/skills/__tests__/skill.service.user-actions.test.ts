@@ -35,6 +35,7 @@ function skill(
 		agentId: target.agentId ?? null,
 		source: 'ui',
 		availableToAssistant: false,
+		availableToMCP: false,
 		createdById: target.createdById ?? null,
 		createdAt: DATE,
 		updatedAt: DATE,
@@ -94,6 +95,7 @@ describe('SkillService user actions', () => {
 	let saveTrusted: MockInstance<SkillService['saveTrusted']>;
 	let moveTrusted: MockInstance<SkillService['moveTrusted']>;
 	let setAssistantAvailability: MockInstance<SkillService['setAssistantAvailability']>;
+	let setMcpAvailability: MockInstance<SkillService['setMcpAvailability']>;
 	let refreshFollowingAgents: MockInstance<SkillService['refreshFollowingAgents']>;
 	let visible: Skill[];
 
@@ -141,6 +143,7 @@ describe('SkillService user actions', () => {
 		saveTrusted = vi.spyOn(service, 'saveTrusted').mockResolvedValue(undefined as never);
 		moveTrusted = vi.spyOn(service, 'moveTrusted').mockResolvedValue();
 		setAssistantAvailability = vi.spyOn(service, 'setAssistantAvailability').mockResolvedValue();
+		setMcpAvailability = vi.spyOn(service, 'setMcpAvailability').mockResolvedValue();
 		refreshFollowingAgents = vi.spyOn(service, 'refreshFollowingAgents').mockResolvedValue();
 	});
 
@@ -392,6 +395,7 @@ describe('SkillService user actions', () => {
 				latestVersion: 2,
 				usedByAgents: 2,
 				availableToAssistant: false,
+				availableToMCP: false,
 				canEdit: true,
 				canDelete: false,
 				canStopSyncing: false,
@@ -622,6 +626,17 @@ describe('SkillService user actions', () => {
 			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
 		});
 
+		it('makes the new skill available to MCP clients in the create transaction', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({ availableToMCP: true }));
+
+			const target = { projectId: null, agentId: null };
+			expect(createTrusted).toHaveBeenCalledWith(expect.objectContaining({ target }), TX_CTX);
+			expect(setMcpAvailability).toHaveBeenCalledWith('skill_new', true, target, TX_CTX);
+			expect(setAssistantAvailability).not.toHaveBeenCalled();
+		});
+
 		it('reports the create with the method the client sent', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -844,6 +859,26 @@ describe('SkillService user actions', () => {
 				3,
 				false,
 			);
+		});
+
+		it('stores an MCP availability change in the transaction of the save, without a move', async () => {
+			saveTrusted.mockResolvedValue({ ...saved, created: false });
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ availableToMCP: true, baseSkillHash: 'base' }),
+			);
+
+			expect(setMcpAvailability).toHaveBeenCalledWith('skill_a', true, visible[0], TX_CTX);
+			expect(saveTrusted).toHaveBeenCalledWith(
+				'skill_a',
+				{ baseSkillHash: 'base' },
+				user.id,
+				TX_CTX,
+			);
+			expect(moveTrusted).not.toHaveBeenCalled();
+			expect(skillsTelemetry.updated).not.toHaveBeenCalled();
 		});
 
 		it('refuses a user who may not edit the skill', async () => {
