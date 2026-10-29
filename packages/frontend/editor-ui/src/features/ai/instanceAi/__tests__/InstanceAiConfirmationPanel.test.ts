@@ -486,6 +486,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				'User finished providing input',
 				expect.objectContaining({
 					type: 'credential-destination',
+					runtime: 'instance-ai',
 					provided_inputs: [
 						{
 							label: 'Review where this credential will be used',

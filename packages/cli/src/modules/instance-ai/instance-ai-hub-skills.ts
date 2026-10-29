@@ -294,9 +294,7 @@ function prepareSkill(
 	if (
 		paths.length > AGENT_SKILL_REFERENCE_MAX_COUNT ||
 		new Set(paths).size !== paths.length ||
-		paths.some(
-			(path) => !agentSkillReferencePathSchema.safeParse(path).success || path.includes('\0'),
-		)
+		paths.some((path) => !agentSkillReferencePathSchema.safeParse(path).success)
 	) {
 		return {
 			message:

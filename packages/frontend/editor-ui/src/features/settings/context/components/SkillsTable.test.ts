@@ -161,7 +161,9 @@ describe('SkillsTable', () => {
 				hiddenAgents: 0,
 			},
 		} as SkillDetail);
-		const { getByTestId, findAllByText, findByTestId } = render([skill({ usedByAgents: 1 })]);
+		const { getByTestId, findAllByText, findByTestId, findByText } = render([
+			skill({ usedByAgents: 1 }),
+		]);
 
 		expect(getByTestId('skill-agents-trigger')).toHaveTextContent('1');
 		await userEvent.click(getByTestId('skill-agents-trigger'));
@@ -169,7 +171,30 @@ describe('SkillsTable', () => {
 		expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1');
 		// A draft and a published version of one agent show as one entry.
 		expect(await findAllByText('FirstClassDarwin')).toHaveLength(1);
-		expect(await findByTestId('skill-agents-version')).toHaveTextContent('Latest (v2)');
+		const badge = await findByTestId('skill-agents-version');
+		expect(badge).toHaveTextContent('Latest (v2)');
+		// The published agent still runs v1, so the badge warns and names that version on hover.
+		expect(badge).toHaveAttribute('data-variant', 'warning');
+		await userEvent.hover(badge);
+		expect(await findByText('Published agent uses v1')).toBeInTheDocument();
+	});
+
+	it('shows a green badge when the published agent runs the version the draft runs', async () => {
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{ agentId: 'a1', agentName: 'Darwin', projectId: 'p1', version: 2, pinned: false },
+				],
+				pins: [{ agentId: 'a1', agentName: 'Darwin', projectId: 'p1', version: 2 }],
+				hiddenAgents: 0,
+			},
+		} as SkillDetail);
+		const { getByTestId, findByTestId } = render([skill({ usedByAgents: 1 })]);
+
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+
+		expect(await findByTestId('skill-agents-version')).toHaveAttribute('data-variant', 'success');
 	});
 
 	it('shows the pinned version of an agent and opens the agent in a new tab', async () => {
@@ -187,7 +212,9 @@ describe('SkillsTable', () => {
 		const { getByTestId, findByTestId, findByText } = render([skill({ usedByAgents: 1 })]);
 
 		await userEvent.click(getByTestId('skill-agents-trigger'));
-		expect((await findByTestId('skill-agents-version')).textContent?.trim()).toBe('v3');
+		const pinnedBadge = await findByTestId('skill-agents-version');
+		expect(pinnedBadge.textContent?.trim()).toBe('v3');
+		expect(pinnedBadge).toHaveAttribute('data-variant', 'outline');
 		await userEvent.click(await findByText('Pinned bot'));
 
 		expect(open).toHaveBeenCalledWith('/projects/p1/agents/a1', '_blank', 'noopener');

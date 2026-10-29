@@ -1,6 +1,7 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { DbLock, DbLockService, type OperationContext, type User } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -10,15 +11,30 @@ import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppWorkspaceService } from '../build/app-workspace.service';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
+import { AppsConfig } from '../apps.config';
 import { AppsService } from '../apps.service';
+import { AppHostService } from '../serving/app-host.service';
 
-function createService() {
+function createService({ deploymentType = 'default', host = 'n8n.example.net' } = {}) {
 	const appRepository = mock<AppRepository>();
 	const appVersions = mock<AppVersionRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const locks = mock<DbLockService>();
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
+	const configuredHosts = new AppHostService(
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<GlobalConfig>({
+			host,
+			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+		}),
+		mock<UrlService>({
+			getInstanceBaseUrl: () => 'https://n8n.example.net',
+			getWebhookBaseUrl: () => 'https://hooks.example.net',
+		}),
+	);
+	const hosts = mock<AppHostService>();
+	hosts.origin.mockImplementation((namespace) => configuredHosts.origin(namespace));
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	appVersions.hasRunningBuild.mockResolvedValue(false);
 	const service = new AppsService(
@@ -28,8 +44,18 @@ function createService() {
 		locks,
 		workspaces,
 		logger,
+		hosts,
 	);
-	return { service, appRepository, appVersions, projectScopeService, locks, workspaces, logger };
+	return {
+		service,
+		appRepository,
+		appVersions,
+		projectScopeService,
+		locks,
+		workspaces,
+		logger,
+		hosts,
+	};
 }
 
 describe('AppsService', () => {
@@ -97,7 +123,7 @@ describe('AppsService', () => {
 	});
 
 	it('updates an app and maps the returned row to the response', async () => {
-		const { service, appRepository } = createService();
+		const { service, appRepository, hosts } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
@@ -114,10 +140,12 @@ describe('AppsService', () => {
 			updatedAt: new Date('2026-10-14T00:00:00.000Z'),
 		});
 		appRepository.updateApp.mockResolvedValue(app);
+		hosts.origin.mockReturnValue('https://updated-app.apps.example.com');
 
 		const response = await service.updateApp('project-1', appId, dto);
 
 		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, dto);
+		expect(hosts.origin).toHaveBeenCalledWith('updated-app');
 		expect(response).toEqual({
 			id: appId,
 			projectId: 'project-1',
@@ -127,8 +155,89 @@ describe('AppsService', () => {
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
+			publishedUrl: 'https://updated-app.apps.example.com',
 			updatedAt: '2026-10-14T00:00:00.000Z',
 		});
+	});
+
+	it.each([
+		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 57 },
+		{ deploymentType: 'cloud', host: 'foo--bar.app.n8n.cloud', maxLength: 53 },
+		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 63 },
+	])('accepts namespaces at the limit for $deploymentType host $host', async (config) => {
+		const { service, appRepository } = createService(config);
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const namespace = 'a'.repeat(config.maxLength);
+		const dto = CreateAppDto.parse({ name: 'App', namespace });
+		const app = mock<App>({
+			id: appId,
+			...dto,
+			publishedVersionId: null,
+			createdAt: new Date('2026-10-13T00:00:00.000Z'),
+			updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+		});
+		appRepository.projectExists.mockResolvedValue(true);
+		appRepository.createApp.mockResolvedValue(app);
+		appRepository.updateApp.mockResolvedValue(app);
+
+		await expect(service.createApp('project-1', dto)).resolves.toMatchObject({ namespace });
+		await expect(service.updateApp('project-1', appId, { namespace })).resolves.toMatchObject({
+			namespace,
+		});
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
+			namespace,
+		});
+	});
+
+	it.each([
+		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(58) },
+		{ host: 'foo--bar.app.n8n.cloud', namespace: 'a'.repeat(54) },
+	])(
+		'rejects namespace "$namespace" before writing for Cloud host $host',
+		async ({ host, namespace }) => {
+			const { service, appRepository } = createService({ deploymentType: 'cloud', host });
+			const appId = '11111111-1111-4111-8111-111111111111';
+			const dto = CreateAppDto.parse({ name: 'App', namespace });
+			appRepository.projectExists.mockResolvedValue(true);
+			const message =
+				'This namespace produces an invalid app URL for this instance. Choose another namespace.';
+
+			await expect(service.createApp('project-1', dto)).rejects.toThrow(message);
+			await expect(
+				service.updateApp('project-1', appId, { namespace: dto.namespace }),
+			).rejects.toThrow(message);
+			expect(appRepository.createApp).not.toHaveBeenCalled();
+			expect(appRepository.updateApp).not.toHaveBeenCalled();
+		},
+	);
+
+	it('updates other fields without validating the existing namespace', async () => {
+		const { service, appRepository, hosts } = createService({
+			deploymentType: 'cloud',
+			host: 'test.app.n8n.cloud',
+		});
+		const appId = '11111111-1111-4111-8111-111111111111';
+		appRepository.updateApp.mockResolvedValue(
+			mock<App>({
+				id: appId,
+				name: 'Updated app',
+				namespace: 'a'.repeat(63),
+				publishedVersionId: null,
+				createdAt: new Date('2026-10-13T00:00:00.000Z'),
+				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+			}),
+		);
+
+		await expect(
+			service.updateApp('project-1', appId, { name: 'Updated app' }),
+		).resolves.toMatchObject({
+			name: 'Updated app',
+		});
+		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
+			name: 'Updated app',
+		});
+		expect(hosts.origin).not.toHaveBeenCalled();
 	});
 
 	it('rejects empty metadata updates', async () => {

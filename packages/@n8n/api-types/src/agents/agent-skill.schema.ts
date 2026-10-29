@@ -18,6 +18,9 @@ const agentSkillReferenceSchema = z
 				const segments = normalized.split('/');
 				return (
 					path === normalized &&
+					// No control characters, such as NUL, which Postgres cannot store.
+					// eslint-disable-next-line no-control-regex
+					!/[\u0000-\u001f\u007f]/.test(path) &&
 					normalized.startsWith('references/') &&
 					(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
 					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
@@ -66,6 +69,8 @@ const agentSkillReferencesSchema = z
  * intentionally not part of the body.
  */
 export const AGENT_SKILL_NAME_MAX_LENGTH = 128;
+/** The limit of the Agent Skills format, so skills from other tools fit without cuts. */
+export const AGENT_SKILL_DESCRIPTION_MAX_LENGTH = 1024;
 
 export const SKILL_INSTRUCTIONS_REQUIRED_MESSAGE = 'Skill instructions are required.';
 
@@ -76,7 +81,13 @@ export function hasSkillInstructions(instructions: string): boolean {
 
 export const agentSkillShape = {
 	name: z.string().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
-	description: z.string().min(1).max(512),
+	description: z
+		.string()
+		.min(1)
+		.max(
+			AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
+			`Description must be ${AGENT_SKILL_DESCRIPTION_MAX_LENGTH} characters or fewer`,
+		),
 	// Measured in characters like the name, description and reference limits,
 	// so the editor can show the user the same count the server enforces.
 	instructions: z

@@ -813,6 +813,15 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).not.toMatch(/^<thread-artifacts>\n\[/);
 	});
 
+	it('lists an open skill tab', () => {
+		const block = buildThreadArtifactsBlock({
+			artifacts: [{ type: 'skill', id: 'skill-1', name: 'Brand voice' }],
+			activeId: 'skill-1',
+		});
+
+		expect(block).toContain('Skill "Brand voice" (id: `skill-1`) [current]');
+	});
+
 	it('folds resource attachments into the same block with a durable JSON line', () => {
 		const block = buildThreadArtifactsBlock(
 			{

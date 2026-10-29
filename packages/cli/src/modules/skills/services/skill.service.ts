@@ -1,5 +1,4 @@
 import {
-	AGENT_SKILL_NAME_MAX_LENGTH,
 	hasSkillInstructions,
 	SKILL_INSTRUCTIONS_REQUIRED_MESSAGE,
 	skillNameKey,
@@ -36,9 +35,11 @@ import {
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
+import { SkillSyncedError } from '../errors/skill-synced.error';
 import {
 	isSameSkillTarget,
 	skillScopeOf,
+	syncedSourceLabel,
 	toAgentSkill,
 	toLatestSkill,
 	toSkillContent,
@@ -57,6 +58,15 @@ import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
+import {
+	blocksDelete,
+	deleteRefusalMessage,
+	findLosingAgents,
+	isNameTaken,
+	losingAgentsMessage,
+	nextFreeName,
+	type VisibleProjects,
+} from './skill.policy';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import {
 	SkillsTelemetry,
@@ -95,11 +105,6 @@ function assertHasInstructions(skill: AgentSkill): void {
 	if (!hasSkillInstructions(skill.instructions)) {
 		throw new UserError(SKILL_INSTRUCTIONS_REQUIRED_MESSAGE);
 	}
-}
-
-/** How a refusal counts the agents in projects the user may not read. */
-function agentsInOtherProjects(count: number): string {
-	return `${count} ${count === 1 ? 'agent' : 'agents'} in other projects`;
 }
 
 function toVersionSummary(
@@ -385,7 +390,8 @@ export class SkillService {
 	/**
 	 * Creates a skill with its v1. Returns the new id. `checkNameTaken` is for a name that a
 	 * user or the builder chose. A copy of an agent skill for a new agent keeps the name of
-	 * the skill it copies, so it skips the check.
+	 * the skill it copies, so it skips the check. `frontmatter` holds the SKILL.md keys
+	 * other than name and description, stored as given.
 	 */
 	async createTrusted(
 		input: {
@@ -423,13 +429,16 @@ export class SkillService {
 	 *
 	 * When `ctx` has a transaction, the caller calls `refreshFollowingAgents` after its
 	 * commit. `pushRef` is the tab that saved: it gets no reload push.
+	 *
+	 * The content of a synced skill changes only with `allowSynced`. Only Skill Sync passes
+	 * it, with content that it fetched from the source and the user accepted.
 	 */
 	async saveTrusted(
 		skillId: string,
 		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
-		pushRef?: string,
+		{ pushRef, allowSynced = false }: { pushRef?: string; allowSynced?: boolean } = {},
 	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -463,6 +472,12 @@ export class SkillService {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
+			}
+			// Only Skill Sync changes the content of a synced skill. A save with unchanged
+			// content passes above, so a synced skill still accepts a no-op save.
+			const sourceLabel = syncedSourceLabel(latest.skill.source);
+			if (sourceLabel && !allowSynced) {
+				throw new SkillSyncedError(latest.version.name, sourceLabel);
 			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
@@ -580,26 +595,13 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- rules
 
-	/**
-	 * The requested name if its scope has no name like it, else the name with the first
-	 * free number after it ("New skill 2"), as workflow names get.
-	 */
+	/** A free name in the scope of `target`. The rule is `nextFreeName`. */
 	private async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
-		const taken = new Set(
-			(
-				await this.skillRepository.findLatestNamesInTarget(
-					{ projectId: target.projectId, agentId: target.agentId },
-					ctx,
-				)
-			).map(({ name }) => skillNameKey(name)),
+		const names = await this.skillRepository.findLatestNamesInTarget(
+			{ projectId: target.projectId, agentId: target.agentId },
+			ctx,
 		);
-		const base = requested.trim();
-		if (!taken.has(skillNameKey(base))) return base;
-		for (let n = 2; ; n++) {
-			const suffix = ` ${n}`;
-			const candidate = `${base.slice(0, AGENT_SKILL_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
-			if (!taken.has(skillNameKey(candidate))) return candidate;
-		}
+		return nextFreeName(requested, new Set(names.map(({ name }) => skillNameKey(name))));
 	}
 
 	/**
@@ -636,56 +638,36 @@ export class SkillService {
 		await this.skillUsage.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
 	}
 
-	/** Whether another skill in the scope has a name that is hard to tell apart from `name`. */
+	/**
+	 * Whether another skill in the scope has a name that is hard to tell apart from `name`.
+	 * The rule is `isNameTaken`.
+	 */
 	async isNameTaken(
 		name: string,
 		target: SkillTarget,
 		exceptSkillId: string | undefined,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const key = skillNameKey(name);
 		const names = await this.skillRepository.findLatestNamesInTarget(
 			{ projectId: target.projectId, agentId: target.agentId },
 			ctx,
 		);
-		return names.some(
-			(other) => other.skillId !== exceptSkillId && skillNameKey(other.name) === key,
-		);
+		return isNameTaken(name, names, exceptSkillId);
 	}
 
-	/**
-	 * Refuses a move that takes the skill away from one of `agentIds`. An agent can add an
-	 * instance skill, a skill of its own project and its own agent skills.
-	 */
+	/** Refuses a move that takes the skill away from one of `agentIds`. The rule is `findLosingAgents`. */
 	private async assertAgentsKeepAccess(
 		agentIds: string[],
 		target: SkillTarget,
-		agentProjectIds: string[] | 'all',
+		agentProjectIds: VisibleProjects,
 		ctx: OperationContext,
 	): Promise<void> {
 		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
 		const agents = await this.skillUsage.findAgents(agentIds, ctx);
-		const losing = agentIds.filter((id) =>
-			target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
-		);
-		if (losing.length === 0) return;
-		const named: string[] = [];
-		let hidden = 0;
-		for (const id of losing) {
-			const agent = agents.get(id);
-			if (agent && (agentProjectIds === 'all' || agentProjectIds.includes(agent.projectId))) {
-				named.push(`"${agent.name}"`);
-			} else {
-				hidden++;
-			}
+		const losing = findLosingAgents(agentIds, target, agents);
+		if (losing.length > 0) {
+			throw new ConflictError(losingAgentsMessage(losing, agents, agentProjectIds));
 		}
-		if (hidden > 0) named.push(agentsInOtherProjects(hidden));
-		const one = losing.length === 1;
-		throw new ConflictError(
-			`${named.join(', ')} would lose access to this skill. Choose a scope that includes ${
-				one ? 'that agent' : 'those agents'
-			}, or detach the skill from ${one ? 'it' : 'them'} first.`,
-		);
 	}
 
 	/**
@@ -694,7 +676,7 @@ export class SkillService {
 	 */
 	private async deleteSkill(
 		skillId: string,
-		agentProjectIds: string[] | 'all',
+		agentProjectIds: VisibleProjects,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
@@ -702,20 +684,10 @@ export class SkillService {
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
 			const usage = await this.skillUsage.findUsage(skillId, agentProjectIds, txCtx);
-			if (usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0) {
+			if (blocksDelete(usage)) {
 				const name =
 					(await this.skillRuntime.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
-				const users = [
-					...usage.drafts.map((draft) => `${draft.agentName} (draft)`),
-					...usage.pins.map(
-						(pin) =>
-							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
-					),
-				];
-				if (usage.hiddenAgents > 0) users.push(agentsInOtherProjects(usage.hiddenAgents));
-				throw new ConflictError(
-					`Skill "${name}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`,
-				);
+				throw new ConflictError(deleteRefusalMessage(name, usage));
 			}
 			await this.skillRepository.deleteSkill(skillId, txCtx);
 		});

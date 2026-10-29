@@ -12,7 +12,7 @@ const BASE_BRANCH_ENTITIES = {
 	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
 } as const satisfies Record<
-	Exclude<ManifestEntityCollection, 'agents'>,
+	Exclude<ManifestEntityCollection, 'agents' | 'skills'>,
 	{ type: string; includeRoot: boolean }
 >;
 

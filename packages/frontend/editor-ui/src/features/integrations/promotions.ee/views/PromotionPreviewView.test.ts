@@ -1,4 +1,3 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
 import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -18,6 +17,7 @@ import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import type { ApplyCheckResult } from '../promotions.types';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
 
@@ -40,7 +40,7 @@ vi.mock('../promotionsSettings.api');
 vi.mock('@/features/collaboration/projects/projects.api');
 // The editors are modals of the app. The test answers for them.
 vi.mock('../composables/usePromotionBindingCreation', () => ({
-	usePromotionBindingCreation: () => ({ createBinding, updatePreflight: vi.fn() }),
+	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
 }));
 vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
 vi.mock('@n8n/composables/useToast', () => ({
@@ -105,26 +105,30 @@ const consumers = (...ids: string[]) => [
 	{ project: { id: 'p1', name: 'Billing' }, workflows: ids.map((id) => ({ id, name: id })) },
 ];
 
-const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
+const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-apply',
 	git: { branchName: 'main', commitSha: COMMIT_SHA },
-	preflight: {
-		missingProjects: [],
-		missingBindings: [],
-		accessRequirements: [],
-		conflicts: [],
-		warnings: [],
-		...preflight,
-	},
+	missingProjects: [],
+	missingBindings: [],
+	accessRequirements: [],
+	conflicts: [],
+	warnings: [],
 	movedWorkflows: [],
 	movedFolders: [],
+	...fields,
 });
 
-const expectedSource = {
-	environmentId: 'environment-apply',
-	branchName: 'main',
-	commitSha: COMMIT_SHA,
-};
+const REVISION = 'a'.repeat(64);
+
+/** The Apply preview carries its blockers and its revision. */
+const previewWithCheck = ({ environmentId, git, ...previewCheck } = check()) => ({
+	...billingPreview(),
+	check: previewCheck,
+	revision: REVISION,
+});
+
+// Apply names the source of the preview it shows.
+const expectedSource = { ...billingPreview().source, commitSha: COMMIT_SHA };
 
 async function renderApply() {
 	vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('apply')]);
@@ -179,10 +183,9 @@ describe('PromotionPreviewView', () => {
 		invalidateInstancePromotionConnection();
 		Element.prototype.scrollIntoView = vi.fn();
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('promote')]);
-		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(previewWithCheck());
 		vi.mocked(api.getPromotionResourceDetails).mockReset();
 		vi.mocked(api.getPromotionResourceDetails).mockResolvedValue({ details: [], missingKeys: [] });
-		vi.mocked(api.getApplyBlockers).mockResolvedValue(check());
 		confirm.mockResolvedValue(MODAL_CONFIRM);
 	});
 
@@ -583,8 +586,10 @@ describe('PromotionPreviewView', () => {
 
 	it('should apply only the workflows without blockers, once, at the commit of the check', async () => {
 		// "Weekly KPI report" needs a variable that this instance does not have.
-		vi.mocked(api.getApplyBlockers).mockResolvedValue(
-			check({ missingBindings: [{ ...variable, name: 'API_URL', consumers: consumers('w3') }] }),
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck(
+				check({ missingBindings: [{ ...variable, name: 'API_URL', consumers: consumers('w3') }] }),
+			),
 		);
 		let answer: (value: string) => void = () => {};
 		confirm.mockReturnValue(new Promise((resolve) => (answer = resolve)));
@@ -605,14 +610,19 @@ describe('PromotionPreviewView', () => {
 		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
 			expectedSource,
+			expectedPreviewRevision: REVISION,
 		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
 	it('should confirm a data table change only when the selection imports it, and keep the selection when the branch moves', async () => {
 		// Both invoice workflows include the "Invoices" table. The apply removes a column.
-		vi.mocked(api.getApplyBlockers).mockResolvedValue(
-			check({ conflicts: [{ ...destructiveChange, id: 't1', consumers: consumers('w1', 'w2') }] }),
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck(
+				check({
+					conflicts: [{ ...destructiveChange, id: 't1', consumers: consumers('w1', 'w2') }],
+				}),
+			),
 		);
 		const { environmentId, git } = check();
 		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
@@ -634,6 +644,7 @@ describe('PromotionPreviewView', () => {
 		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
 			expectedSource,
+			expectedPreviewRevision: REVISION,
 		});
 		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
 			'The branch changed',
@@ -650,6 +661,7 @@ describe('PromotionPreviewView', () => {
 			{
 				workflowIds: ['w1', 'w3', 'w4'],
 				expectedSource,
+				expectedPreviewRevision: REVISION,
 				confirmDestructiveChanges: true,
 			},
 		);
@@ -661,20 +673,40 @@ describe('PromotionPreviewView', () => {
 		);
 	});
 
-	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {
-		vi.mocked(api.getApplyBlockers).mockResolvedValue({
-			...check(),
-			// The branch holds "Payments" in this project, while this instance holds it in Ops.
-			movedFolders: [
-				{
-					id: 'f1',
-					name: 'Payments',
-					project: { id: 'p1', name: 'Billing' },
-					projectExists: true,
-					instanceProject: { id: 'p2', name: 'Ops' },
-				},
-			],
+	it('should say why when this instance changed after the page loaded', async () => {
+		const { environmentId, git } = check();
+		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
+			environmentId,
+			git,
+			status: 'preview-changed',
 		});
+
+		const { getAllByTestId, getByTestId } = await renderApply();
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
+			'This instance changed',
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+	});
+
+	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck({
+				...check(),
+				// The branch holds "Payments" in this project, while this instance holds it in Ops.
+				movedFolders: [
+					{
+						id: 'f1',
+						name: 'Payments',
+						project: { id: 'p1', name: 'Billing' },
+						projectExists: true,
+						instanceProject: { id: 'p2', name: 'Ops' },
+					},
+				],
+			}),
+		);
 
 		const { getByTestId } = await renderApply();
 
@@ -685,18 +717,20 @@ describe('PromotionPreviewView', () => {
 	});
 
 	it('should offer only the source fix when the branch project of a moved workflow does not exist here', async () => {
-		vi.mocked(api.getApplyBlockers).mockResolvedValue({
-			...check(),
-			movedWorkflows: [
-				{
-					id: 'w2',
-					name: 'Payment reminders',
-					project: { id: 'p3', name: 'Archive' },
-					projectExists: false,
-					instanceProject: { id: 'p1', name: 'Billing' },
-				},
-			],
-		});
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck({
+				...check(),
+				movedWorkflows: [
+					{
+						id: 'w2',
+						name: 'Payment reminders',
+						project: { id: 'p3', name: 'Archive' },
+						projectExists: false,
+						instanceProject: { id: 'p1', name: 'Billing' },
+					},
+				],
+			}),
+		);
 
 		const { getByTestId, getByRole } = await renderApply();
 		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
@@ -711,7 +745,7 @@ describe('PromotionPreviewView', () => {
 
 	it('should apply a workflow that the branch holds in another folder of the project', async () => {
 		// The branch holds "Payment reminders" at the project root. This instance holds it in "Payments".
-		const preview = billingPreview();
+		const preview = previewWithCheck();
 		vi.mocked(api.getPromotionPreview).mockResolvedValue({
 			...preview,
 			resources: preview.resources.map((resource) =>
@@ -761,9 +795,9 @@ describe('PromotionPreviewView', () => {
 
 	it('should apply a blocked workflow after the user adds the missing variable', async () => {
 		const missing = { ...variable, name: 'API_URL', consumers: consumers('w3') };
-		vi.mocked(api.getApplyBlockers)
-			.mockResolvedValueOnce(check({ missingBindings: [missing] }))
-			.mockResolvedValue(check());
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce(previewWithCheck(check({ missingBindings: [missing] })))
+			.mockResolvedValue(previewWithCheck());
 		createBinding.mockResolvedValue({
 			kind: 'variable',
 			id: 'v1',

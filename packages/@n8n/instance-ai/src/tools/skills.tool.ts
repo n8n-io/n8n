@@ -237,6 +237,11 @@ async function audience(
 	return `in the project "${project?.name ?? projectId}"`;
 }
 
+/** Tell the host that the assistant created or changed a skill, so it shows the skill's tab. */
+async function reportChangedSkill(context: InstanceAiContext, skill: { id: string; name: string }) {
+	await context.onArtifactChanged?.({ type: 'skill', id: skill.id, name: skill.name });
+}
+
 function movesSkill(
 	current: SkillDetail,
 	scope: 'project' | 'instance',
@@ -263,9 +268,11 @@ async function handleCreate(
 			resourceName: input.skill.name,
 			severity: 'info',
 		}),
-		async () => ({
-			skill: details(await service.create(input), service.assistantSkillsEnabled),
-		}),
+		async () => {
+			const created = details(await service.create(input), service.assistantSkillsEnabled);
+			await reportChangedSkill(context, created);
+			return { skill: created };
+		},
 	);
 }
 
@@ -304,8 +311,10 @@ async function handleUpdate(
 			};
 		},
 		async () => {
-			const { skill: _skill, ...saved } = await service.update(skillId, update);
-			return { saved };
+			const { skill, ...saved } = await service.update(skillId, update);
+			await reportChangedSkill(context, { id: saved.id, name: skill.name });
+			// The name lets the assistant show the skill tab without a second read.
+			return { saved: { ...saved, name: skill.name } };
 		},
 	);
 }
