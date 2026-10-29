@@ -19,8 +19,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
-import type { SystemAgentTurnOutcome } from '@/modules/agents/system-agents/system-agent.types';
+import type {
+	AgentExecutionStreamChunk,
+	SystemAgentTurnOutcome,
+} from '@/modules/agents/system-agents/system-agent.types';
 
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import {

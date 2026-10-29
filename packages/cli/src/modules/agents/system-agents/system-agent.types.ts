@@ -23,6 +23,9 @@ import type {
 } from '../types/agent-turn-outcome';
 import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
+/** The stream chunks that a system-agent provider sees through `onChunk`. */
+export type { AgentExecutionStreamChunk, SteeredMessageEvent } from '../types/agent-steering';
+
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
 
