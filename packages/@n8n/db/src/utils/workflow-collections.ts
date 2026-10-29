@@ -1,10 +1,17 @@
-import { In } from '@n8n/typeorm';
-import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
+import type {
+	DataSource,
+	EntityTarget,
+	FindOptionsRelations,
+	FindOptionsWhere,
+	ObjectLiteral,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
+import { DriverUtils } from '@n8n/typeorm/driver/DriverUtils';
 
-import { chunkIds } from './chunk-ids';
+import { Project } from '../entities/project';
 import { SharedWorkflow } from '../entities/shared-workflow';
 import { TagEntity } from '../entities/tag-entity';
-import { WorkflowEntity } from '../entities/workflow-entity';
+import type { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
 /**
@@ -22,73 +29,183 @@ export type WorkflowCollections = {
 type WorkflowRelations = FindOptionsRelations<WorkflowEntity>;
 type WorkflowWhere = FindOptionsWhere<WorkflowEntity> | Array<FindOptionsWhere<WorkflowEntity>>;
 
+/** Raw column names the aggregated collections come back under. */
+const TAGS_COLUMN = 'workflow_collection_tags';
+const SHARED_COLUMN = 'workflow_collection_shared';
+
+type AnyQueryBuilder = SelectQueryBuilder<ObjectLiteral>;
+
+const isPostgres = (qb: AnyQueryBuilder) => qb.connection.driver.options.type === 'postgres';
+
+/** `"alias"."column"`, quoted for the current dialect. */
+const quoted = (qb: AnyQueryBuilder, alias: string, column: string) =>
+	`${qb.escape(alias)}.${qb.escape(column)}`;
+
 /**
- * Loads tags and shares for `workflows` with one query per relation (per batch of ids) and
- * assigns them, so each workflow row is read once. A workflow with no tags or shares gets an
- * empty list. Tags are ordered by creation, like the workflow list.
- *
- * Runs on `manager`, so it reads the caller's transaction.
+ * A JSON object holding every column of `target` read from `alias`, keyed by column name,
+ * plus `nested` objects. Values keep the form the driver returns for the column, so
+ * {@link hydrate} can convert them the way a normal read does.
  */
-export async function loadWorkflowCollections(
-	manager: EntityManager,
-	workflows: WorkflowEntity[],
-	collections: WorkflowCollections,
-): Promise<void> {
-	const ids = [...new Set(workflows.map(({ id }) => id))];
-	if (ids.length === 0) return;
+function jsonObject(
+	qb: AnyQueryBuilder,
+	target: EntityTarget<ObjectLiteral>,
+	alias: string,
+	nested: Record<string, string> = {},
+) {
+	const entries: Array<[string, string]> = [
+		...qb.connection
+			.getMetadata(target)
+			.columns.map((column): [string, string] => [
+				column.databaseName,
+				quoted(qb, alias, column.databaseName),
+			]),
+		...Object.entries(nested),
+	];
+	const args = entries.flatMap(([key, value]) => [`'${key}'`, value]).join(', ');
+	return isPostgres(qb) ? `json_build_object(${args})` : `json_object(${args})`;
+}
+
+/** A JSON array of `element` over the subquery rows, in `orderBy` order. Empty, not null. */
+function jsonArray(qb: AnyQueryBuilder, element: string, orderBy: string) {
+	return isPostgres(qb)
+		? `COALESCE(json_agg(${element} ORDER BY ${orderBy}), '[]'::json)`
+		: `json_group_array(${element} ORDER BY ${orderBy})`;
+}
+
+/**
+ * Adds the requested collections of the workflow at `workflowAlias` to `qb`, each as a JSON
+ * array built by a correlated subquery. They come back in the same statement as the workflow
+ * row, so the result is one consistent read of the database, and the row is not repeated per
+ * tag or share as a join would repeat it. Read them with {@link readWorkflowCollections}
+ * after `getRawAndEntities()`.
+ *
+ * Tags are ordered by creation, like the workflow list, and shares by creation, then project.
+ * `sharedProjectId` keeps only that project's share, as a join filtered on the project did.
+ */
+export function selectWorkflowCollections<Entity extends ObjectLiteral>(
+	qb: SelectQueryBuilder<Entity>,
+	workflowAlias: string,
+	collections: WorkflowCollections & { sharedProjectId?: string },
+): SelectQueryBuilder<Entity> {
+	const builder = qb as unknown as AnyQueryBuilder;
+	const workflowId = quoted(builder, workflowAlias, 'id');
 
 	if (collections.tags) {
-		const tagsByWorkflow = new Map<string, TagEntity[]>();
-		for (const chunk of chunkIds(ids)) {
-			const mappings = (await manager
-				.createQueryBuilder(WorkflowTagMapping, 'mapping')
-				.innerJoinAndMapOne('mapping.tag', TagEntity, 'tag', 'tag.id = mapping.tagId')
-				.where('mapping.workflowId IN (:...ids)', { ids: chunk })
-				.orderBy('tag.createdAt', 'ASC')
-				.addOrderBy('tag.id', 'ASC')
-				.getMany()) as Array<WorkflowTagMapping & { tag: TagEntity }>;
-
-			for (const { workflowId, tag } of mappings) {
-				const tags = tagsByWorkflow.get(workflowId) ?? [];
-				tags.push(tag);
-				tagsByWorkflow.set(workflowId, tags);
-			}
-		}
-		for (const workflow of workflows) workflow.tags = tagsByWorkflow.get(workflow.id) ?? [];
+		const tags = builder
+			.subQuery()
+			.select(
+				jsonArray(
+					builder,
+					jsonObject(builder, TagEntity, 'wc_tag'),
+					`${quoted(builder, 'wc_tag', 'createdAt')}, ${quoted(builder, 'wc_tag', 'id')}`,
+				),
+			)
+			.from(WorkflowTagMapping, 'wc_mapping')
+			.innerJoin(
+				TagEntity,
+				'wc_tag',
+				`${quoted(builder, 'wc_tag', 'id')} = ${quoted(builder, 'wc_mapping', 'tagId')}`,
+			)
+			.where(`${quoted(builder, 'wc_mapping', 'workflowId')} = ${workflowId}`);
+		qb.addSelect(tags.getQuery(), TAGS_COLUMN);
 	}
 
 	if (collections.shared) {
 		const withProject = typeof collections.shared === 'object' && collections.shared.project;
-		const sharesByWorkflow = new Map<string, SharedWorkflow[]>();
-		for (const chunk of chunkIds(ids)) {
-			const shares = await manager.find(SharedWorkflow, {
-				where: { workflowId: In(chunk) },
-				relations: { project: withProject },
-				order: { createdAt: 'ASC', projectId: 'ASC' },
-			});
-
-			for (const share of shares) {
-				const workflowShares = sharesByWorkflow.get(share.workflowId) ?? [];
-				workflowShares.push(share);
-				sharesByWorkflow.set(share.workflowId, workflowShares);
-			}
+		const nested: Record<string, string> = withProject
+			? { project: jsonObject(builder, Project, 'wc_project') }
+			: {};
+		const shares = builder
+			.subQuery()
+			.select(
+				jsonArray(
+					builder,
+					jsonObject(builder, SharedWorkflow, 'wc_share', nested),
+					`${quoted(builder, 'wc_share', 'createdAt')}, ${quoted(builder, 'wc_share', 'projectId')}`,
+				),
+			)
+			.from(SharedWorkflow, 'wc_share')
+			.where(`${quoted(builder, 'wc_share', 'workflowId')} = ${workflowId}`);
+		if (withProject) {
+			shares.innerJoin(
+				Project,
+				'wc_project',
+				`${quoted(builder, 'wc_project', 'id')} = ${quoted(builder, 'wc_share', 'projectId')}`,
+			);
 		}
-		for (const workflow of workflows) workflow.shared = sharesByWorkflow.get(workflow.id) ?? [];
+		if (collections.sharedProjectId !== undefined) {
+			shares.andWhere(`${quoted(builder, 'wc_share', 'projectId')} = :wcSharedProjectId`);
+			qb.setParameter('wcSharedProjectId', collections.sharedProjectId);
+		}
+		qb.addSelect(shares.getQuery(), SHARED_COLUMN);
 	}
+
+	return qb;
+}
+
+const parseJson = (value: unknown): unknown =>
+	typeof value === 'string' ? JSON.parse(value) : value;
+
+/**
+ * Postgres returns the aggregate as parsed JSON. SQLite returns it as text, and its aggregate
+ * `ORDER BY` drops the JSON subtype, so each element is itself JSON text.
+ */
+export const parseJsonArray = (value: unknown): Array<Record<string, unknown>> => {
+	const parsed = parseJson(value);
+	return Array.isArray(parsed)
+		? parsed.map((element) => parseJson(element) as Record<string, unknown>)
+		: [];
+};
+
+/** Builds an entity from a JSON object of its columns, converting each value as a read would. */
+function hydrate<Entity extends ObjectLiteral>(
+	dataSource: DataSource,
+	target: EntityTarget<Entity>,
+	values: Record<string, unknown>,
+): Entity {
+	const metadata = dataSource.getMetadata(target);
+	const entity = metadata.create() as Entity;
+	for (const column of metadata.columns) {
+		if (!(column.databaseName in values)) continue;
+		column.setEntityValue(
+			entity,
+			dataSource.driver.prepareHydratedValue(values[column.databaseName], column),
+		);
+	}
+	return entity;
 }
 
 /**
- * Whether `workflow`, whose shares {@link loadWorkflowCollections} just loaded, was deleted
- * after it was read. A workflow always has an owner share, so no shares usually means the
- * delete landed between the two reads. Only then does it check the row: a workflow that still
- * exists without shares is broken data, and callers have always loaded it as it is.
+ * Assigns the collections {@link selectWorkflowCollections} added to each workflow, from the
+ * raw rows of the same query. A workflow without tags or shares gets an empty list.
  */
-export async function wasDeletedAfterRead(
-	manager: EntityManager,
-	workflow: WorkflowEntity,
-): Promise<boolean> {
-	if (workflow.shared.length > 0) return false;
-	return !(await manager.existsBy(WorkflowEntity, { id: workflow.id }));
+export function readWorkflowCollections(
+	dataSource: DataSource,
+	raw: Array<Record<string, unknown>>,
+	workflows: WorkflowEntity[],
+	workflowAlias: string,
+	collections: WorkflowCollections,
+): void {
+	const idColumn = DriverUtils.buildAlias(dataSource.driver, undefined, workflowAlias, 'id');
+	const rowsById = new Map(raw.map((row) => [String(row[idColumn]), row]));
+
+	for (const workflow of workflows) {
+		const row = rowsById.get(workflow.id);
+		if (collections.tags) {
+			workflow.tags = parseJsonArray(row?.[TAGS_COLUMN]).map((values) =>
+				hydrate(dataSource, TagEntity, values),
+			);
+		}
+		if (collections.shared) {
+			workflow.shared = parseJsonArray(row?.[SHARED_COLUMN]).map((values) => {
+				const share = hydrate(dataSource, SharedWorkflow, values);
+				if (values.project) {
+					share.project = hydrate(dataSource, Project, values.project as Record<string, unknown>);
+				}
+				return share;
+			});
+		}
+	}
 }
 
 /** `['shared', 'shared.project']` → `{ shared: { project: true } }`, as TypeORM reads them. */
@@ -125,11 +242,11 @@ function isFlatRelation(
 
 /**
  * Splits find-option relations for a workflow query into the ones safe to join and the
- * collections to load with {@link loadWorkflowCollections}.
+ * collections to aggregate with {@link selectWorkflowCollections}.
  *
  * A collection stays joined when `where` filters on it, because TypeORM then returns only
- * the matching related rows, and loading it separately would return all of them. It also
- * stays joined when it asks for nested relations the loader does not cover.
+ * the matching related rows, and aggregating it would return all of them. It also stays
+ * joined when it asks for nested relations the aggregate does not cover.
  */
 export function splitWorkflowRelations(
 	relations: string[] | WorkflowRelations | undefined,

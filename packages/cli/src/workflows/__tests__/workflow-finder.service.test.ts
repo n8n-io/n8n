@@ -5,6 +5,8 @@ import type {
 	RoleRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	User,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
@@ -181,6 +183,49 @@ describe('WorkflowFinderService', () => {
 		});
 	});
 
+	describe('findWorkflowsByIdsForUser', () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		it('reads the workflows with the access check in the same query', async () => {
+			const { service, workflowRepository, sharedWorkflowRepository, roleService } = makeService();
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:editor'] : ['workflow:editor'],
+			);
+			const found = [mock<WorkflowEntity>({ id: 'wf-1' })];
+			workflowRepository.findAccessibleByIds.mockResolvedValue(found);
+			const options = { includeTags: true, includeActiveVersion: true };
+
+			const result = await service.findWorkflowsByIdsForUser(
+				['wf-1', 'wf-2'],
+				user,
+				['workflow:read'],
+				options,
+			);
+
+			expect(result).toBe(found);
+			expect(workflowRepository.findAccessibleByIds).toHaveBeenCalledWith(
+				user,
+				{
+					scopes: ['workflow:read'],
+					projectRoles: ['project:editor'],
+					workflowRoles: ['workflow:editor'],
+				},
+				['wf-1', 'wf-2'],
+				options,
+			);
+			// A separate access query could let a share revoked in between return the workflow.
+			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('runs no query for an empty list', async () => {
+			const { service, workflowRepository, roleService } = makeService();
+
+			expect(await service.findWorkflowsByIdsForUser([], user, ['workflow:read'])).toEqual([]);
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(workflowRepository.findAccessibleByIds).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findWorkflowsForUser', () => {
 		const user = {
 			id: 'user-1',
@@ -214,6 +259,7 @@ describe('WorkflowFinderService', () => {
 					workflowRoles: ['workflow:owner'],
 				},
 				expect.objectContaining({ skip: 0, take: 10 }),
+				expect.anything(),
 			);
 			// The whole point: no `shared_workflow` scan feeding a `WHERE id IN (...)`.
 			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
@@ -235,6 +281,7 @@ describe('WorkflowFinderService', () => {
 				expect.objectContaining({
 					filter: expect.objectContaining({ tags: ['prod'] }),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -249,6 +296,7 @@ describe('WorkflowFinderService', () => {
 				user,
 				expect.anything(),
 				expect.objectContaining({ filter: { projectId: 'project-1' } }),
+				expect.anything(),
 			);
 			expect(folderRepository.getAllFolderIdsInHierarchy).not.toHaveBeenCalled();
 		});
@@ -274,6 +322,7 @@ describe('WorkflowFinderService', () => {
 						parentFolderIds: ['folder-1', 'folder-2', 'folder-3'],
 					},
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -305,18 +354,20 @@ describe('WorkflowFinderService', () => {
 						activeVersion: true,
 					}),
 				}),
+				expect.anything(),
 			);
 			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
 			assert(options);
 			expect(options.select).not.toHaveProperty('pinData');
-			expect(workflowRepository.loadCollections).toHaveBeenCalledWith([{ id: 'wf-1' }], {
+			expect(workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0][3]).toEqual({
 				shared: true,
 				tags: true,
+				sharedProjectId: undefined,
 			});
 			expect(result.count).toBe(1);
 		});
 
-		it('loads shares and tags after the list query instead of joining them', async () => {
+		it('aggregates shares and tags instead of selecting them through joins', async () => {
 			const { service, workflowRepository } = setup();
 
 			await service.findWorkflowsForUser(user, ['workflow:read'], { includeTags: true });
@@ -329,39 +380,29 @@ describe('WorkflowFinderService', () => {
 			expect(options.select).not.toHaveProperty('ownedBy');
 		});
 
-		it('loads bare share rows by default and the home project on request', async () => {
+		it('asks for bare share rows by default and the home project on request', async () => {
 			const { service, workflowRepository } = setup();
 
 			await service.findWorkflowsForUser(user, ['workflow:read']);
 			await service.findWorkflowsForUser(user, ['workflow:read'], { includeProjects: true });
 
-			expect(workflowRepository.loadCollections).toHaveBeenNthCalledWith(1, [], {
-				shared: true,
-				tags: false,
-			});
-			expect(workflowRepository.loadCollections).toHaveBeenNthCalledWith(2, [], {
-				shared: { project: true },
-				tags: false,
-			});
+			const [first, second] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			expect(first[3]).toMatchObject({ shared: true, tags: false });
+			expect(second[3]).toMatchObject({ shared: { project: true }, tags: false });
 		});
 
 		it('keeps only the filtered project share when filtering by project', async () => {
 			const { service, workflowRepository } = setup();
-			workflowRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-				workflows: [{ id: 'wf-1' }] as never,
-				count: 1,
-			});
-			workflowRepository.loadCollections.mockImplementation(async (workflows) => {
-				for (const workflow of workflows) {
-					workflow.shared = [{ projectId: 'project-a' }, { projectId: 'project-b' }] as never;
-				}
-			});
 
-			const { workflows } = await service.findWorkflowsForUser(user, ['workflow:read'], {
+			await service.findWorkflowsForUser(user, ['workflow:read'], {
 				filters: { projectId: 'project-b' },
 			});
+			await service.findWorkflowsForUser(user, ['workflow:read'], { filters: { projectId: '' } });
 
-			expect(workflows[0].shared).toEqual([{ projectId: 'project-b' }]);
+			const [filtered, unfiltered] =
+				workflowRepository.getManyAndCountWithSharingSubquery.mock.calls;
+			expect(filtered[3]).toMatchObject({ sharedProjectId: 'project-b' });
+			expect(unfiltered[3]).toMatchObject({ sharedProjectId: undefined });
 		});
 
 		it('sorts by id by default for public-list compatibility', async () => {

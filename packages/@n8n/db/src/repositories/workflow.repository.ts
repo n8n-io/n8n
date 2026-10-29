@@ -44,9 +44,9 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 import {
-	loadWorkflowCollections,
+	readWorkflowCollections,
+	selectWorkflowCollections,
 	splitWorkflowRelations,
-	wasDeletedAfterRead,
 	type WorkflowCollections,
 } from '../utils/workflow-collections';
 
@@ -222,8 +222,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * `tags` and `shared` are loaded with separate queries, not joined: a join would repeat
-	 * the workflow row, with its nodes JSON, once per tag and share.
+	 * `tags` and `shared` come back as JSON arrays in the same statement instead of joined:
+	 * a join would repeat the workflow row, with its nodes JSON, once per tag and share.
 	 */
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
@@ -232,22 +232,81 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	) {
 		const manager = this.managerFor(ctx);
 		const { relations, collections } = splitWorkflowRelations(options?.relations, where);
-		const workflow = await manager.findOne(WorkflowEntity, { where, relations });
-		if (workflow) await loadWorkflowCollections(manager, [workflow], collections);
+		const qb = manager
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.setFindOptions({ where, relations })
+			.take(1);
+		selectWorkflowCollections(qb, 'workflow', collections);
+
+		const {
+			entities: [workflow],
+			raw,
+		} = await qb.getRawAndEntities();
+		if (!workflow) return null;
+		readWorkflowCollections(manager.connection, raw, [workflow], 'workflow', collections);
 		return workflow;
 	}
 
 	/**
-	 * Loads tags and shares onto already-loaded workflows, one query per relation. Use this
-	 * instead of joining them: a join repeats each workflow row, with its nodes JSON, once
-	 * per tag and share.
+	 * Workflows matching `options`, with the requested tags and shares, in one statement. Tags
+	 * and shares come back as JSON arrays instead of joined: a join would repeat each workflow
+	 * row, with its nodes JSON, once per tag and share.
 	 */
-	async loadCollections(
-		workflows: WorkflowEntity[],
-		collections: WorkflowCollections,
+	async findWithCollections(
+		options: Pick<FindManyOptions<WorkflowEntity>, 'where' | 'select' | 'relations'>,
+		collections: WorkflowCollections & { sharedProjectId?: string },
 		ctx: OperationContext = {},
-	) {
-		await loadWorkflowCollections(this.managerFor(ctx), workflows, collections);
+	): Promise<WorkflowEntity[]> {
+		const manager = this.managerFor(ctx);
+		const qb = manager.createQueryBuilder(WorkflowEntity, 'workflow').setFindOptions(options);
+		selectWorkflowCollections(qb, 'workflow', collections);
+
+		const { entities, raw } = await qb.getRawAndEntities();
+		readWorkflowCollections(manager.connection, raw, entities, 'workflow', collections);
+		return entities;
+	}
+
+	/**
+	 * Workflows with the given ids that `user` can reach with `sharingOptions`, in no particular
+	 * order. The access check and the workflow come from one statement per batch of ids, so a
+	 * share revoked mid-read cannot return the workflow. Tags come back as a JSON array.
+	 */
+	async findAccessibleByIds(
+		user: User,
+		sharingOptions: { scopes: Scope[]; projectRoles: string[]; workflowRoles: string[] },
+		workflowIds: string[],
+		options: {
+			includeParentFolder?: boolean;
+			includeActiveVersion?: boolean;
+			includeTags?: boolean;
+		},
+	): Promise<WorkflowEntity[]> {
+		const collections = { tags: options.includeTags };
+		const workflows: WorkflowEntity[] = [];
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const accessible = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
+				...sharingOptions,
+				globalScopes: sharingOptions.scopes,
+			});
+			const qb = this.createQueryBuilder('workflow')
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
+				.andWhere(`workflow.id IN (${accessible.getQuery()})`)
+				.setParameters(accessible.getParameters());
+			if (options.includeParentFolder) {
+				qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+			}
+			if (options.includeActiveVersion) {
+				qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+			}
+			selectWorkflowCollections(qb, 'workflow', collections);
+
+			const { entities, raw } = await qb.getRawAndEntities();
+			readWorkflowCollections(this.manager.connection, raw, entities, 'workflow', collections);
+			workflows.push(...entities);
+		}
+
+		return workflows;
 	}
 
 	/**
@@ -615,18 +674,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	async findById(workflowId: string) {
-		// `find` rather than `findOne`: the id is unique and the only joined relation has one
-		// row, so TypeORM's extra DISTINCT query for `findOne` with joins is not needed.
-		const [workflow] = await this.find({
-			where: { id: workflowId },
-			relations: { activeVersion: true },
-		});
-		if (!workflow) return null;
+		// One statement for the workflow, its active version and its shares, which come back as
+		// a JSON array: joining them would repeat the workflow row once per share. The id is
+		// unique and the join has one row, so no LIMIT and no extra DISTINCT query is needed.
+		const collections = { shared: { project: true } };
+		const qb = this.createQueryBuilder('workflow')
+			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
+			.where('workflow.id = :workflowId', { workflowId });
+		selectWorkflowCollections(qb, 'workflow', collections);
 
-		await loadWorkflowCollections(this.manager, [workflow], { shared: { project: true } });
-		// Report a workflow deleted between the two reads as not found, as a single joined read
-		// would have.
-		if (await wasDeletedAfterRead(this.manager, workflow)) return null;
+		const {
+			entities: [workflow],
+			raw,
+		} = await qb.getRawAndEntities();
+		if (!workflow) return null;
+		readWorkflowCollections(this.manager.connection, raw, [workflow], 'workflow', collections);
 		return workflow;
 	}
 
@@ -698,22 +760,22 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		for (const chunk of chunkIds(folderIds)) {
 			workflows.push(
-				...(await this.find({
-					select: [
-						'id',
-						'name',
-						'activeVersionId',
-						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
-					],
-					relations: { activeVersion: withNodes },
-					where: { parentFolder: { id: In(chunk) } },
-				})),
+				...(await this.findWithCollections(
+					{
+						select: [
+							'id',
+							'name',
+							'activeVersionId',
+							...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+						],
+						relations: { activeVersion: withNodes },
+						where: { parentFolder: { id: In(chunk) } },
+					},
+					{ shared: { project: true } },
+				)),
 			);
 		}
 
-		// Loaded separately: joining shares would repeat each workflow's nodes and published
-		// version once per share.
-		await loadWorkflowCollections(this.manager, workflows, { shared: { project: true } });
 		return workflows;
 	}
 
@@ -1334,11 +1396,23 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		/**
+		 * Tags and shares to return as JSON arrays in the same statement, instead of selecting
+		 * them through `options.select`, which joins them and repeats each workflow per row.
+		 */
+		collections?: WorkflowCollections & { sharedProjectId?: string },
 	): Promise<WorkflowListResult> {
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
-		const [workflows, count] = await query.getManyAndCount();
-		return { workflows, count };
+		if (!collections) {
+			const [workflows, count] = await query.getManyAndCount();
+			return { workflows, count };
+		}
+
+		selectWorkflowCollections(query, 'workflow', collections);
+		const { entities, raw } = await query.getRawAndEntities();
+		readWorkflowCollections(this.manager.connection, raw, entities, 'workflow', collections);
+		return { workflows: entities, count: await query.getCount() };
 	}
 
 	/**

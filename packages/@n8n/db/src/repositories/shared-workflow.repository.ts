@@ -22,7 +22,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
-import { loadWorkflowCollections } from '../utils/workflow-collections';
+import { readWorkflowCollections, selectWorkflowCollections } from '../utils/workflow-collections';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -373,30 +373,28 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.managerFor(ctx),
 		} = options;
 
-		// Only single-row relations are joined, so the workflow and its active version come
-		// from one row. Shares and tags are loaded separately: joining them would repeat that
-		// row, with its nodes JSON, once per share and tag.
-		const sharedWorkflow = await em.findOne(SharedWorkflow, {
-			where: {
-				workflowId,
-				...where,
-			},
-			relations: {
-				workflow: {
-					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion,
-				},
-			},
-		});
-		if (!sharedWorkflow?.workflow) return null;
+		// One statement reads the share the user reaches the workflow through, the workflow, its
+		// one-row relations and its shares and tags, so the result is one consistent read and
+		// the access check covers it. Shares and tags come back as JSON arrays: joining them
+		// would repeat the workflow row, with its nodes JSON, once per share and tag.
+		const collections = { shared: { project: true }, tags: includeTags };
+		const qb = em
+			.createQueryBuilder(SharedWorkflow, 'sharedWorkflow')
+			.innerJoinAndSelect('sharedWorkflow.workflow', 'workflow')
+			.setFindOptions({ where: { workflowId, ...where } })
+			// Every join has at most one row per share row, so a plain LIMIT picks one share
+			// without the extra DISTINCT query TypeORM runs for `findOne` with joins.
+			.limit(1);
+		if (includeParentFolder) qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+		if (includeActiveVersion) qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+		selectWorkflowCollections(qb, 'workflow', collections);
 
-		await loadWorkflowCollections(em, [sharedWorkflow.workflow], {
-			shared: { project: true },
-			tags: includeTags,
-		});
-		// A workflow always has an owner share, so no shares means it was deleted after the
-		// read above. Report it as not found, as a single joined read would have.
-		if (sharedWorkflow.workflow.shared.length === 0) return null;
+		const {
+			entities: [sharedWorkflow],
+			raw,
+		} = await qb.getRawAndEntities();
+		if (!sharedWorkflow) return null;
+		readWorkflowCollections(em.connection, raw, [sharedWorkflow.workflow], 'workflow', collections);
 
 		const activeVersion = sharedWorkflow.workflow.activeVersion;
 		if (activeVersion && publishHistory !== 'none') {

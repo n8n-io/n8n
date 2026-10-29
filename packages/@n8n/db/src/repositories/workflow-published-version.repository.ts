@@ -5,7 +5,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { loadWorkflowCollections, wasDeletedAfterRead } from '../utils/workflow-collections';
+import { readWorkflowCollections, selectWorkflowCollections } from '../utils/workflow-collections';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -83,23 +83,30 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 	async getPublishedVersionWithRelations(
 		workflowId: string,
 	): Promise<WorkflowPublishedVersion | null> {
-		// `find` rather than `findOne`: `workflowId` is the primary key and both joined relations
-		// have one row, so TypeORM's extra DISTINCT query for `findOne` with joins is not needed.
-		const [record] = await this.find({
-			where: { workflowId },
-			relations: { workflow: true, publishedVersion: true },
-		});
-		if (!record) return null;
+		// One statement for the published version, its workflow and the workflow's shares, which
+		// come back as a JSON array: joining them would repeat the workflow and published version
+		// JSON once per share. `workflowId` is the primary key and both joins have one row, so no
+		// LIMIT and no extra DISTINCT query is needed.
+		const collections = { shared: { project: true } };
+		const qb = this.createQueryBuilder('record')
+			.leftJoinAndSelect('record.workflow', 'workflow')
+			.leftJoinAndSelect('record.publishedVersion', 'publishedVersion')
+			.where('record.workflowId = :workflowId', { workflowId });
+		selectWorkflowCollections(qb, 'workflow', collections);
 
-		// Shares are loaded separately: joining them would repeat the workflow and published
-		// version JSON once per share.
+		const {
+			entities: [record],
+			raw,
+		} = await qb.getRawAndEntities();
+		if (!record) return null;
 		if (record.workflow) {
-			await loadWorkflowCollections(this.manager, [record.workflow], {
-				shared: { project: true },
-			});
-			// Report a workflow deleted between the two reads as not found, as a single joined
-			// read would have.
-			if (await wasDeletedAfterRead(this.manager, record.workflow)) return null;
+			readWorkflowCollections(
+				this.manager.connection,
+				raw,
+				[record.workflow],
+				'workflow',
+				collections,
+			);
 		}
 		return record;
 	}

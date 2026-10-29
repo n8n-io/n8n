@@ -10,7 +10,6 @@ import {
 import type { Folder, Project, User, WorkflowEntity } from '@n8n/db';
 import {
 	ProjectRepository,
-	SharedWorkflow,
 	SharedWorkflowRepository,
 	TagEntity,
 	WorkflowPublishedVersionRepository,
@@ -27,6 +26,7 @@ import {
 	captureStatements,
 	countCopies,
 	statementContaining,
+	type CapturedStatement,
 } from '@test-integration/utils/query-capture';
 
 import { createFolder } from '../../shared/db/folders';
@@ -38,8 +38,9 @@ import { createWorkflowPublishHistoryItem } from '../../shared/db/workflow-publi
  * Loading a workflow with a to-many relation (tags, shares) in the same JOIN as the
  * workflow row repeats every workflow column, including the nodes JSON, once per
  * related row. These tests count how many copies of the draft and published JSON
- * the database sends back for each read path, and check that the loaded shape does
- * not change.
+ * the database sends back for each read path, check that the workflow, its published
+ * version, tags and shares come from one statement (one consistent read), and check
+ * that the loaded shape does not change.
  */
 
 const DRAFT_MARKER = 'draft-json-marker';
@@ -66,22 +67,14 @@ async function measure<T>(load: () => Promise<T>) {
 }
 
 /**
- * Deletes the workflow just before its shares are read, as a concurrent request would between
- * the workflow read and the share read. Removes the published version mapping first, as
- * unpublishing does: its foreign key blocks deleting a published workflow. Restore the returned
- * spy when done.
+ * Every text in `texts` came back in the same statement. Reading a workflow and its tags or
+ * shares in separate statements can combine rows that never existed together, for example the
+ * content of one save with the tags of the next.
  */
-function deleteBeforeShareRead(workflowId: string) {
-	const workflowRepository = Container.get(WorkflowRepository);
-	const { manager } = workflowRepository;
-	const find = manager.find.bind(manager);
-	return vi.spyOn(manager, 'find').mockImplementation(async (entityClass, options) => {
-		if (entityClass === SharedWorkflow) {
-			await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflowId);
-			await workflowRepository.delete(workflowId);
-		}
-		return await find(entityClass, options);
-	});
+function expectOneStatement(statements: CapturedStatement[], texts: string[]) {
+	const first = statementContaining(statements, texts[0]);
+	expect(first).toBeGreaterThanOrEqual(0);
+	for (const text of texts) expect(statementContaining(statements, text)).toBe(first);
 }
 
 describe('Workflow relation loading', () => {
@@ -146,6 +139,14 @@ describe('Workflow relation loading', () => {
 	const sortedProjectIds = (shares: { projectId: string }[]) =>
 		shares.map((share) => share.projectId).sort();
 	const allProjectIds = () => [ownerProject.id, opsProject.id, auditProject.id].sort();
+	/** Project ids that only the shares carry, not the share row the read goes through. */
+	const sharedProjectIds = () => [opsProject.id, auditProject.id];
+	const allTexts = () => [
+		DRAFT_MARKER,
+		PUBLISHED_MARKER,
+		...expectedTagNames,
+		...sharedProjectIds(),
+	];
 
 	describe('opening a workflow (SharedWorkflowRepository.findWorkflowWithOptions)', () => {
 		const editorOptions = {
@@ -168,12 +169,11 @@ describe('Workflow relation loading', () => {
 
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
-			// The workflow row and its published version come from the same statement,
-			// so `activeVersionId` and `activeVersion` cannot disagree.
-			expect(statementContaining(statements, DRAFT_MARKER)).toBe(
-				statementContaining(statements, PUBLISHED_MARKER),
-			);
-			expect(statements.length).toBeLessThanOrEqual(5);
+			// One statement for the workflow, its published version, tags and shares, so
+			// `activeVersionId`, `activeVersion`, the tags and the shares all come from the same
+			// state of the database. The second statement is the publish history.
+			expectOneStatement(statements, allTexts());
+			expect(statements).toHaveLength(2);
 
 			expect(result?.versionId).toBe(draftVersionId);
 			expect(result?.activeVersionId).toBe(publishedVersionId);
@@ -200,7 +200,12 @@ describe('Workflow relation loading', () => {
 
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
-			expect(statements.length).toBeLessThanOrEqual(5);
+			expectOneStatement(statements, allTexts());
+			expect(statements).toHaveLength(2);
+			// The access check runs in the same statement as the read.
+			expect(statements[statementContaining(statements, DRAFT_MARKER)].sql).toMatch(
+				/project_relation/,
+			);
 			expect(result?.projectId).toBe(ownerProject.id);
 			expect(result?.workflow.tags?.map((tag) => tag.name)).toEqual(expectedTagNames);
 			expect(sortedProjectIds(result?.workflow.shared ?? [])).toEqual(allProjectIds());
@@ -219,7 +224,8 @@ describe('Workflow relation loading', () => {
 
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
-			expect(statements.length).toBeLessThanOrEqual(4);
+			expectOneStatement(statements, [DRAFT_MARKER, PUBLISHED_MARKER, ...sharedProjectIds()]);
+			expect(statements).toHaveLength(2);
 			expect(result?.tags).toBeUndefined();
 			expect(sortedProjectIds(result?.shared ?? [])).toEqual(allProjectIds());
 		});
@@ -265,23 +271,6 @@ describe('Workflow relation loading', () => {
 			});
 			expect(afterRollback?.workflow.tags?.map(({ id }) => id)).not.toContain(newTagId);
 		});
-
-		it('returns null when the workflow is deleted between the workflow and share reads', async () => {
-			const deleted = await createWorkflowWithHistory({ name: 'Deleted mid-read' }, ownerProject);
-			const findSpy = deleteBeforeShareRead(deleted.id);
-
-			try {
-				const result = await Container.get(SharedWorkflowRepository).findWorkflowWithOptions(
-					deleted.id,
-					{ includeTags: true, includeActiveVersion: true },
-				);
-
-				expect(findSpy).toHaveBeenCalledWith(SharedWorkflow, expect.anything());
-				expect(result).toBeNull();
-			} finally {
-				findSpy.mockRestore();
-			}
-		});
 	});
 
 	describe('saving and sub-workflow loading (WorkflowRepository.get)', () => {
@@ -296,7 +285,9 @@ describe('Workflow relation loading', () => {
 
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
-			expect(statements.length).toBeLessThanOrEqual(3);
+			expectOneStatement(statements, [DRAFT_MARKER, PUBLISHED_MARKER, ...expectedTagNames]);
+			// TypeORM adds a DISTINCT query for `findOne`-style reads with joins.
+			expect(statements).toHaveLength(2);
 			expect(result?.tags?.map((tag) => tag.name)).toEqual(expectedTagNames);
 			expect(result?.activeVersion?.versionId).toBe(publishedVersionId);
 			expect(result?.shared).toBeUndefined();
@@ -345,7 +336,8 @@ describe('Workflow relation loading', () => {
 
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
-			expect(statements.length).toBeLessThanOrEqual(2);
+			expectOneStatement(statements, [DRAFT_MARKER, PUBLISHED_MARKER, ...sharedProjectIds()]);
+			expect(statements).toHaveLength(1);
 			expect(result?.activeVersion?.versionId).toBe(publishedVersionId);
 			expect(sortedProjectIds(result?.shared ?? [])).toEqual(allProjectIds());
 			expect(result?.shared.every((share) => share.project?.id === share.projectId)).toBe(true);
@@ -353,20 +345,6 @@ describe('Workflow relation loading', () => {
 
 		it('returns null for an unknown id', async () => {
 			expect(await Container.get(WorkflowRepository).findById('does-not-exist')).toBeNull();
-		});
-
-		it('returns null when the workflow is deleted between the workflow and share reads', async () => {
-			const deleted = await createWorkflowWithHistory({ name: 'Deleted mid-read' }, ownerProject);
-			const findSpy = deleteBeforeShareRead(deleted.id);
-
-			try {
-				const result = await Container.get(WorkflowRepository).findById(deleted.id);
-
-				expect(findSpy).toHaveBeenCalledWith(SharedWorkflow, expect.anything());
-				expect(result).toBeNull();
-			} finally {
-				findSpy.mockRestore();
-			}
 		});
 
 		it('still loads a workflow that exists without shares', async () => {
@@ -395,7 +373,8 @@ describe('Workflow relation loading', () => {
 
 			expect(draftCopies).toBe(1);
 			expect(publishedCopies).toBe(1);
-			expect(statements.length).toBeLessThanOrEqual(2);
+			expectOneStatement(statements, [DRAFT_MARKER, PUBLISHED_MARKER, ...sharedProjectIds()]);
+			expect(statements).toHaveLength(1);
 			expect(result?.publishedVersion.versionId).toBe(publishedVersionId);
 			expect(result?.workflow.versionId).toBe(draftVersionId);
 			expect(sortedProjectIds(result?.workflow.shared ?? [])).toEqual(allProjectIds());
@@ -410,24 +389,6 @@ describe('Workflow relation loading', () => {
 					untaggedWorkflow.id,
 				),
 			).toBeNull();
-		});
-
-		it('returns null when the workflow is deleted between the workflow and share reads', async () => {
-			const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
-			const deleted = await createWorkflowWithHistory({ name: 'Deleted mid-read' }, ownerProject);
-			await publishedVersionRepository.setPublishedVersion(deleted.id, deleted.versionId);
-			const findSpy = deleteBeforeShareRead(deleted.id);
-
-			try {
-				const result = await publishedVersionRepository.getPublishedVersionWithRelations(
-					deleted.id,
-				);
-
-				expect(findSpy).toHaveBeenCalledWith(SharedWorkflow, expect.anything());
-				expect(result).toBeNull();
-			} finally {
-				findSpy.mockRestore();
-			}
 		});
 	});
 
@@ -591,30 +552,31 @@ describe('Workflow relation loading', () => {
 		});
 	});
 
-	describe('loading tags and shares for many workflows (WorkflowRepository.loadCollections)', () => {
-		it('reads ids in batches the database accepts and merges the results', async () => {
+	describe('reading many workflows by id (WorkflowFinderService.findWorkflowsByIdsForUser)', () => {
+		it('reads ids in batches the database accepts, each with its access check', async () => {
 			// 10,001 ids span two batches. Only the first and the last exist.
-			const stubs = Array.from({ length: 10_001 }, (_, index) =>
-				Object.assign(Container.get(WorkflowRepository).create(), {
-					id: index === 0 ? workflow.id : index === 10_000 ? untaggedWorkflow.id : uuid(),
-				}),
+			const ids = Array.from({ length: 10_001 }, (_, index) =>
+				index === 0 ? workflow.id : index === 10_000 ? untaggedWorkflow.id : uuid(),
 			);
 
-			const { statements } = await measure(
+			const { result, statements } = await measure(
 				async () =>
-					await Container.get(WorkflowRepository).loadCollections(stubs, {
-						tags: true,
-						shared: { project: true },
-					}),
+					await Container.get(WorkflowFinderService).findWorkflowsByIdsForUser(
+						ids,
+						member,
+						['workflow:read'],
+						{ includeTags: true },
+					),
 			);
 
-			expect(statements).toHaveLength(4);
-			expect(stubs[0].tags?.map((tag) => tag.name)).toEqual(expectedTagNames);
-			expect(sortedProjectIds(stubs[0].shared)).toEqual(allProjectIds());
-			expect(stubs[10_000].tags).toEqual([]);
-			expect(stubs[10_000].shared.map((share) => share.project.id)).toEqual([ownerProject.id]);
-			expect(stubs[5_000].tags).toEqual([]);
-			expect(stubs[5_000].shared).toEqual([]);
+			const workflowReads = statements.filter(({ sql }) => /workflow_entity/.test(sql));
+			expect(workflowReads).toHaveLength(2);
+			expect(workflowReads.every(({ sql }) => /project_relation/.test(sql))).toBe(true);
+			expect(result.map(({ id }) => id).sort()).toEqual([workflow.id, untaggedWorkflow.id].sort());
+			expect(result.find(({ id }) => id === workflow.id)?.tags?.map(({ name }) => name)).toEqual(
+				expectedTagNames,
+			);
+			expect(result.find(({ id }) => id === untaggedWorkflow.id)?.tags).toEqual([]);
 		});
 	});
 

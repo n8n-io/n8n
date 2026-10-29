@@ -12,6 +12,7 @@ export {
 
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { chunkIds } from './utils/chunk-ids';
+export { readWorkflowCollections, selectWorkflowCollections } from './utils/workflow-collections';
 export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';

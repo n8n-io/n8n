@@ -222,29 +222,20 @@ export class WorkflowFinderService {
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
-		// Resolve access first and read each workflow once. A workflow can be reachable
-		// through several shares, and reading it through every share row would repeat its
-		// nodes JSON per share.
-		const accessibleIds = await this.findWorkflowIdsWithScopeForUser(workflowIds, user, scopes);
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', scopes),
+			this.roleService.rolesWithScope('workflow', scopes),
+		]);
 
-		const workflows: WorkflowEntity[] = [];
-		for (const chunk of chunkIds([...accessibleIds])) {
-			workflows.push(
-				...(await this.workflowRepository.find({
-					where: { id: In(chunk) },
-					relations: {
-						parentFolder: options.includeParentFolder,
-						activeVersion: options.includeActiveVersion,
-					},
-				})),
-			);
-		}
-
-		if (options.includeTags) {
-			await this.workflowRepository.loadCollections(workflows, { tags: true });
-		}
-
-		return workflows;
+		// Reads each workflow once, with the access check in the same statement. A workflow can
+		// be reachable through several shares, and reading it through every share row would
+		// repeat its nodes JSON per share.
+		return await this.workflowRepository.findAccessibleByIds(
+			user,
+			{ scopes, projectRoles, workflowRoles },
+			workflowIds,
+			options,
+		);
 	}
 
 	async findWorkflowIdsByFolder(
@@ -483,8 +474,8 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			// Shares and tags are loaded after the list query instead of selected through it:
-			// joining them would repeat each workflow's nodes JSON once per share and tag.
+			// Shares and tags come back as JSON arrays instead of selected here: selecting them
+			// joins them and repeats each workflow's nodes JSON once per share and tag.
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
 			...(includeParentFolder && { parentFolder: true }),
@@ -505,23 +496,16 @@ export class WorkflowFinderService {
 				sortBy: 'id:asc',
 				...(limit !== undefined && { skip: offset, take: limit }),
 			},
+			{
+				shared: includeProjects ? { project: true } : true,
+				tags: includeTags,
+				// The project filter joins `shared` on that project, and the list used to read
+				// shares through the same join, so a filtered list has always returned only the
+				// filtered project's share. Keep that.
+				sharedProjectId: projectId || undefined,
+			},
 		);
 
-		const listed = workflows as WorkflowEntity[];
-		await this.workflowRepository.loadCollections(listed, {
-			shared: includeProjects ? { project: true } : true,
-			tags: includeTags,
-		});
-
-		if (projectId) {
-			// The project filter joins `shared` on that project, and the list query used to read
-			// shares through the same join, so a filtered list has always returned only the
-			// filtered project's share. Keep that.
-			for (const workflow of listed) {
-				workflow.shared = workflow.shared.filter((share) => share.projectId === projectId);
-			}
-		}
-
-		return { workflows: listed, count };
+		return { workflows: workflows as WorkflowEntity[], count };
 	}
 }
