@@ -192,7 +192,9 @@ describe('StartExecutionService', () => {
 					...base,
 					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
 				}),
-			).rejects.toMatchObject({ reason: 'step-of-another-execution' });
+			).rejects.toThrow(
+				'Invalid parent link (step-of-another-execution): step step-1 belongs to execution exec-other, not exec-parent',
+			);
 		});
 
 		it.each([
