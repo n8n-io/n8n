@@ -414,6 +414,38 @@ describe('SkillSourceConnectDialog', () => {
 		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 2');
 	});
 
+	it('shows the findings of a blocked skill that n8n cannot read, not the read error', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [
+					discovered({
+						error: { reason: 'parse_error', message: 'Server text' },
+						check: {
+							verdict: 'blocked',
+							findings: [
+								{
+									rule: 'over_limit',
+									severity: 'blocked',
+									file: 'SKILL.md',
+									detail: 'Server text',
+								},
+							],
+						},
+					}),
+				],
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		const row = await view.findByTestId('skill-source-skill-skills/brand-voice');
+		expect(within(row).getByTestId('skill-source-skill-findings')).toHaveTextContent(
+			'Over the size limits in SKILL.md',
+		);
+		expect(within(row).queryByTestId('skill-source-skill-reason')).not.toBeInTheDocument();
+	});
+
 	it('imports a skill that needs review only after "I reviewed the warnings"', async () => {
 		const review = discovered({
 			key: 'skills/web-scraper',

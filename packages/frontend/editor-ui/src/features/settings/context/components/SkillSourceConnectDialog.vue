@@ -165,9 +165,12 @@ const CHECK_BADGES = {
 	blocked: { variant: 'danger', label: 'settings.context.skills.connect.check.blocked' },
 } as const;
 
-/** The findings line of a skill that n8n could read. A read error has its own line. */
+/**
+ * The findings line of a skill. A SKILL.md that n8n cannot read is blocked, and its findings
+ * name the cause, so they replace the read error.
+ */
 function checkFindings(skill: DiscoveredSkill): string {
-	if (!skill.check || skill.nameTaken || skill.error) return '';
+	if (!skill.check || skill.nameTaken) return '';
 	return findingsText(skill.check.findings);
 }
 
@@ -416,7 +419,7 @@ const title = computed(() =>
 							{{ nameTakenReason(item) }}
 						</N8nText>
 						<N8nText
-							v-else-if="item.error"
+							v-else-if="item.error && !checkFindings(item)"
 							size="small"
 							color="danger"
 							data-test-id="skill-source-skill-reason"
