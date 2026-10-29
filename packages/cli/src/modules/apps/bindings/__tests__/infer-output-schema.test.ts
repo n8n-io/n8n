@@ -88,7 +88,7 @@ describe('inferOutputSchema', () => {
 		const items = Array.from({ length: OUTPUT_SAMPLE_LIMIT }, (_, id) => ({ id }));
 		items.push({ id: 0, late: 'x' } as never);
 
-		expect(inferOutputSchema(items)?.items?.properties).not.toHaveProperty('late');
+		expect(inferOutputSchema(items)).not.toHaveProperty('items.properties.late');
 	});
 
 	it('never copies values into the schema', () => {
