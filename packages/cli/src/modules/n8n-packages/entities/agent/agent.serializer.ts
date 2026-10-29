@@ -17,6 +17,7 @@ type AgentPackageKeyHandling = {
 	id: 'copy';
 	name: 'copy';
 	schema: 'transform';
+	onlineRubric: 'exclude';
 	integrations: 'transform';
 	tools: 'transform';
 	skills: 'transform';

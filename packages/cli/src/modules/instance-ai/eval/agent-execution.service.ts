@@ -3,6 +3,7 @@ import {
 	raceWithAbort,
 	throwIfAborted,
 	type Agent as RuntimeAgent,
+	type AgentMessage,
 	type GenerateResult,
 } from '@n8n/agents';
 import type {
@@ -189,6 +190,116 @@ export class EvalAgentExecutionService {
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const precheck = this.mockedRunPrecheck();
+		if (precheck) return precheck;
+		const run = await this.prepareMockedRun(agentId, user, options.projectId, {
+			scenarioHints: options.scenarioHints,
+			caseInput,
+		});
+		if ('error' in run) return run.error;
+		return await this.executePreparedRuntime(
+			run.preparation,
+			run.instrumentation,
+			run.seed,
+			run.evidence,
+			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+		);
+	}
+
+	/**
+	 * Replays a recorded conversation on the agent's current draft, with every
+	 * tool mocked. Each user message is sent in order on one runtime, after the
+	 * replayed conversation so far, so later turns see this version's own
+	 * earlier replies. Returns one result for each user message that ran. A
+	 * failed turn ends the replay.
+	 */
+	async replayWithLlmMock(
+		agentId: string,
+		user: User,
+		options: InstanceAiEvalAgentExecutionRequest,
+		userMessages: string[],
+	): Promise<InstanceAiEvalAgentExecutionResult[]> {
+		if (userMessages.length === 0) return [];
+		const precheck = this.mockedRunPrecheck();
+		if (precheck) return [precheck];
+		const run = await this.prepareMockedRun(agentId, user, options.projectId, {
+			scenarioHints: truncateForLlm(
+				redactSecretValuePatterns(userMessages.join('\n')),
+				MAX_SCENARIO_HINT_CHARS,
+			),
+			caseInput: userMessages[0],
+		});
+		if ('error' in run) return [run.error];
+		const { preparation, instrumentation, seed, evidence } = run;
+		const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+		const budgetSignal = AbortSignal.timeout(timeoutMs);
+		let agent: RuntimeAgent;
+		try {
+			agent = await raceWithAbort(async () => {
+				const runtime = await preparation.buildRuntime(instrumentation, budgetSignal);
+				if (budgetSignal.aborted) await this.closeRuntime(runtime);
+				throwIfAborted(budgetSignal);
+				return runtime;
+			}, budgetSignal);
+		} catch (error) {
+			return [
+				this.errorResult(
+					this.runErrorMessage(error, budgetSignal, timeoutMs, 'Failed to build agent runtime'),
+					seed,
+					preparation.skippedFeatures,
+				),
+			];
+		}
+
+		const maxIterations = Math.min(
+			preparation.config.config?.maxIterations ?? DEFAULT_MAX_ITERATIONS,
+			MAX_ITERATIONS_CAP,
+		);
+		const history: AgentMessage[] = [];
+		const results: InstanceAiEvalAgentExecutionResult[] = [];
+		try {
+			for (const message of userMessages) {
+				const turnStart = evidence.recorder.turns.length;
+				// Each turn reports only its own tool traffic.
+				evidence.toolLedger.clear();
+				history.push({ role: 'user', content: [{ type: 'text', text: message }] });
+				let output: AgentRunOutput;
+				try {
+					output = await this.generateWithAutoApprovals(agent, [...history], {
+						abortSignal: budgetSignal,
+						maxIterations,
+					});
+				} catch (error) {
+					await evidence.recorder.flush();
+					results.push(
+						this.errorResult(
+							this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed'),
+							seed,
+							preparation.skippedFeatures,
+							{
+								modelTurns: evidence.recorder.turns.slice(turnStart),
+								toolLedger: evidence.toolLedger,
+								credentialHelpers: evidence.credentialHelpers,
+							},
+						),
+					);
+					break;
+				}
+				await evidence.recorder.flush();
+				const result = this.executionResult(output, preparation, seed, evidence);
+				results.push({ ...result, modelTurns: result.modelTurns.slice(turnStart) });
+				if (!result.success) break;
+				history.push({ role: 'assistant', content: [{ type: 'text', text: result.finalText }] });
+			}
+		} finally {
+			if (budgetSignal.aborted) void this.closeRuntime(agent);
+			else await this.closeRuntime(agent);
+		}
+		return results;
+	}
+
+	/** Returns an error result when this process cannot run a mocked agent. */
+	private mockedRunPrecheck(): InstanceAiEvalAgentExecutionResult | undefined {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
 		// HTTP can't leak to real services.
@@ -197,13 +308,28 @@ export class EvalAgentExecutionService {
 				'Agent eval execution requires main process mode — queue mode is not supported.',
 			);
 		}
-
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
-		const { projectId } = options;
+		return undefined;
+	}
+
+	private async prepareMockedRun(
+		agentId: string,
+		user: User,
+		projectId: string,
+		{ scenarioHints, caseInput }: { scenarioHints?: string; caseInput?: string },
+	): Promise<
+		| { error: InstanceAiEvalAgentExecutionResult }
+		| {
+				preparation: AgentEvaluationPreparation;
+				instrumentation: Parameters<AgentEvaluationPreparation['buildRuntime']>[0];
+				seed: InstanceAiEvalAgentScenarioSeed;
+				evidence: AgentRunEvidence;
+		  }
+	> {
 		const prepared = await Container.get(AgentEvaluationService).prepare(user, projectId, agentId);
-		if (prepared.error !== undefined) return this.errorResult(prepared.error);
+		if (prepared.error !== undefined) return { error: this.errorResult(prepared.error) };
 		const preparation = prepared.preparation;
 		const { config, tools: toolSummaries } = preparation;
 
@@ -214,7 +340,7 @@ export class EvalAgentExecutionService {
 		// auxiliary LLM calls (which never need the real value); the opening
 		// message the agent actually runs stays verbatim.
 		const scenarioSignal =
-			options.scenarioHints ??
+			scenarioHints ??
 			(caseInput !== undefined
 				? truncateForLlm(redactSecretValuePatterns(caseInput), MAX_SCENARIO_HINT_CHARS)
 				: undefined);
@@ -229,9 +355,11 @@ export class EvalAgentExecutionService {
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			return this.errorResult(
-				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
-			);
+			return {
+				error: this.errorResult(
+					message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+				),
+			};
 		}
 
 		// A fixed eval case overrides the generated opening message: keep the
@@ -261,13 +389,7 @@ export class EvalAgentExecutionService {
 			mockHandler,
 			evidence,
 		);
-		return await this.executePreparedRuntime(
-			preparation,
-			instrumentation,
-			seed,
-			evidence,
-			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-		);
+		return { preparation, instrumentation, seed, evidence };
 	}
 
 	private async createRuntimeInstrumentation(
@@ -458,7 +580,7 @@ export class EvalAgentExecutionService {
 
 	private async generateWithAutoApprovals(
 		agent: RuntimeAgent,
-		openingMessage: string,
+		openingMessage: AgentMessage[] | string,
 		options: { abortSignal: AbortSignal; maxIterations: number },
 	): Promise<AgentRunOutput> {
 		const autoApprovedToolNames = new Set<string>();

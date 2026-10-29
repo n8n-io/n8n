@@ -27,6 +27,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
+| [public.agent_online_check_case](public.agent_online_check_case.md) | 7 |  | BASE TABLE |
+| [public.agent_online_check_result](public.agent_online_check_result.md) | 6 |  | BASE TABLE |
+| [public.agent_online_check_review](public.agent_online_check_review.md) | 6 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
 | [public.agent_skill_dependency](public.agent_skill_dependency.md) | 4 |  | BASE TABLE |
@@ -36,7 +39,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 15 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 16 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -237,6 +240,12 @@ erDiagram
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_online_check_case" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.agent_online_check_case" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_online_check_case" }o--o| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE SET NULL"
+"public.agent_online_check_result" }o--|| "public.agent_online_check_case" : "FOREIGN KEY (#quot;caseId#quot;) REFERENCES agent_online_check_case(id) ON DELETE CASCADE"
+"public.agent_online_check_review" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_online_check_review" }o--|| "public.agent_online_check_result" : "FOREIGN KEY (#quot;resultId#quot;) REFERENCES agent_online_check_result(id) ON DELETE CASCADE"
 "public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_plan_history" }o--|| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE CASCADE"
 "public.agent_skill_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -722,6 +731,31 @@ erDiagram
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.agent_online_check_case" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  integer id
+  uuid ownerId FK
+  varchar_36_ threadId FK
+  text title
+  json turns
+}
+"public.agent_online_check_result" {
+  integer caseId FK
+  text configHash
+  timestamp_3__with_time_zone createdAt
+  integer id
+  json rubric
+  json verdicts
+}
+"public.agent_online_check_review" {
+  text checkId
+  timestamp_3__with_time_zone createdAt
+  varchar_4_ feedback
+  integer id
+  integer resultId FK
+  uuid userId FK
+}
 "public.agent_plan" {
   timestamp_3__with_time_zone closedAt
   timestamp_3__with_time_zone createdAt
@@ -799,6 +833,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
+  json onlineRubric
   varchar_255_ projectId FK
   integer revision
   json schema

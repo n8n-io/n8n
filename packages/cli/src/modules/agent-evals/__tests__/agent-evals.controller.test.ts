@@ -128,6 +128,15 @@ describe('AgentEvalsController', () => {
 			applySuggestions: 'agent:update',
 			applyPreviewSuggestion: 'agent:update',
 			runOnlineChecks: 'agent:update',
+			getOnlineRubric: 'agent:read',
+			listOnlineSessions: 'agent:read',
+			listOnlineCases: 'agent:read',
+			listOnlineActivity: 'agent:read',
+			updateOnlineCheck: 'agent:update',
+			reviewOnlineCheck: 'agent:update',
+			listOnlineCaseResults: 'agent:read',
+			recheckOnlineCase: 'agent:update',
+			generateOnlineRubric: 'agent:update',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -154,6 +163,57 @@ describe('AgentEvalsController', () => {
 	// reach the service.
 	describe('flag gating', () => {
 		const calls: Array<[string, () => Promise<unknown>]> = [
+			[
+				'listOnlineCases',
+				async () => await controller.listOnlineCases(agentReq(), undefined, PAGE),
+			],
+			[
+				'listOnlineCaseResults',
+				async () =>
+					await controller.listOnlineCaseResults(
+						makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, caseId: '1' }),
+						undefined,
+						PAGE,
+					),
+			],
+			[
+				'recheckOnlineCase',
+				async () =>
+					await controller.recheckOnlineCase(
+						makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, caseId: '1' }),
+					),
+			],
+			[
+				'listOnlineActivity',
+				async () => await controller.listOnlineActivity(agentReq(), undefined, PAGE),
+			],
+			[
+				'updateOnlineCheck',
+				async () =>
+					await controller.updateOnlineCheck(
+						makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, checkId: 'promise:1' }),
+						undefined,
+						{
+							question: 'Was the tone playful?',
+							reason: 'Use the requested tone',
+							appliesWhen: null,
+						},
+					),
+			],
+			[
+				'reviewOnlineCheck',
+				async () =>
+					await controller.reviewOnlineCheck(
+						makeReq({
+							projectId: PROJECT_ID,
+							agentId: AGENT_ID,
+							resultId: '1',
+							checkId: 'promise:1',
+						}),
+						undefined,
+						{ feedback: 'good' },
+					),
+			],
 			['listDatasets', async () => await controller.listDatasets(agentReq())],
 			['getDataset', async () => await controller.getDataset(datasetReq())],
 			[
@@ -207,6 +267,9 @@ describe('AgentEvalsController', () => {
 			['listRatingsForResult', async () => await controller.listRatingsForResult(resultReq())],
 			['listLatestRatingsForRun', async () => await controller.listLatestRatingsForRun(runReq())],
 			['runOnlineChecks', async () => await controller.runOnlineChecks(agentReq())],
+			['getOnlineRubric', async () => await controller.getOnlineRubric(agentReq())],
+			['listOnlineSessions', async () => await controller.listOnlineSessions(agentReq())],
+			['generateOnlineRubric', async () => await controller.generateOnlineRubric(agentReq())],
 		];
 
 		it.each(calls)('%s 404s when the flag is off for the user', async (_name, call) => {
@@ -223,10 +286,32 @@ describe('AgentEvalsController', () => {
 	});
 
 	describe('delegation', () => {
+		it('passes the test case and pagination to the history service', async () => {
+			await controller.listOnlineCaseResults(
+				makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, caseId: '12' }),
+				undefined,
+				PAGE,
+			);
+			expect(onlineChecksService.listCaseResults).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				12,
+				PAGE.take,
+				PAGE.skip,
+			);
+		});
+		it.each(['0', '-1', '1.5', 'invalid'])('rejects invalid test case ID %s', async (caseId) => {
+			await expect(
+				controller.recheckOnlineCase(makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, caseId })),
+			).rejects.toThrow('Invalid test case ID');
+			expect(onlineChecksService.recheckCase).not.toHaveBeenCalled();
+		});
+
 		it('runs online checks for the path agent as the caller', async () => {
 			await controller.runOnlineChecks(agentReq());
 
-			expect(onlineChecksService.run).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID);
+			expect(onlineChecksService.run).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID, undefined);
 		});
 
 		it('lists datasets for the path agent', async () => {

@@ -376,3 +376,28 @@ failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.
+
+## Online check details
+
+Keep session selection and check progress in the Evals section. Show saved test
+cases in a table with their latest result and check date. Show the five most
+recent assessments as status dots, from oldest to newest. Each dot opens its
+assessment in the sidebar. Use a dated accessible label for each dot.
+
+Use Test cases, Rubric, and Activity as the three test views. Keep the current
+rubric visible in the Rubric view. Separate built-in checks from editable checks.
+Show each editable check's condition and recent verdicts. Expand a rule to show
+its reason and source instruction. Editing a check keeps the source instruction
+and earlier assessment snapshots unchanged.
+
+Open case and activity results in a right sidebar. Reserve space beside the
+editor on wide screens. Keep the activity table available. Use the full width
+on narrow screens. Let the sidebar body scroll. Keep Close visible. Show the
+pass count and a segment for each check. Collapse passing checks. Expand issues
+with their evidence and review actions. Keep human feedback separate from the
+original judge verdict.
+
+A saved test case keeps the recorded conversation from its first check. Each
+assessment keeps its check date, rubric, and verdicts. Open the latest assessment
+first. Let the user select earlier assessments. Opening a case or its history
+must not run checks. Use an explicit `Recheck test case` action.

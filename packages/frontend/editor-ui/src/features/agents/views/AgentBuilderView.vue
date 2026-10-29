@@ -50,7 +50,7 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
 import {
@@ -914,6 +914,37 @@ async function onSetupTaskAction(task: SetupTask) {
 
 function onSetupTaskPublishAgent() {
 	void builderHeader.value?.publishAgent();
+}
+
+/** Publishes from the replay comparison. The user has seen the evals, so skip the warning. */
+function onPublishReplayedChanges() {
+	if (agent.value?.versionId) agentEvalsStore.markReplayReviewed(agent.value.versionId);
+	agentEvalsStore.replaySetupAgentId = null;
+	void builderHeader.value?.publishAgent();
+}
+
+/**
+ * Before a change to a published agent goes live, offer to replay past sessions
+ * on it. Returns false when the user picks evals or closes the warning.
+ */
+async function confirmPublishWithoutEvals(): Promise<boolean> {
+	const current = agent.value;
+	if (!current?.activeVersionId || !current.versionId) return true;
+	if (current.versionId === current.activeVersionId) return true;
+	if (agentEvalsStore.replayReviewedVersionIds.includes(current.versionId)) return true;
+	// The warning leads to the Tests tab, so skip it when that tab is hidden.
+	if (!visibleMainTabOptions.value.some((option) => option.value === 'evals')) return true;
+	const choice = await openAgentConfirmationModal({
+		title: locale.baseText('agents.publish.evalsWarning.title'),
+		description: locale.baseText('agents.publish.evalsWarning.description'),
+		confirmButtonText: locale.baseText('agents.publish.evalsWarning.setUp'),
+		cancelButtonText: locale.baseText('agents.publish.evalsWarning.publishAnyway'),
+	});
+	if (choice === MODAL_CONFIRM) {
+		agentEvalsStore.requestReplaySetup(current.id);
+		return false;
+	}
+	return choice === MODAL_CANCEL;
 }
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
@@ -2010,7 +2041,7 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 		});
 		return false;
 	}
-	return true;
+	return await confirmPublishWithoutEvals();
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
@@ -3427,6 +3458,7 @@ useKeybindings({
 					@preview-task="onPreviewTask"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
+					@publish-changes="onPublishReplayedChanges"
 					@open-preview="onOpenPreview"
 					@publish-agent="onSetupTaskPublishAgent"
 				/>

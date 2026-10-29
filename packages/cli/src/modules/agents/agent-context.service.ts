@@ -1,5 +1,5 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema, type AgentOnlineRubric } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -108,6 +108,30 @@ export class AgentContextService {
 	): Promise<string | undefined> {
 		await this.assertReadAccess(user, projectId);
 		return (await this.agentsService.findById(agentId, projectId))?.name;
+	}
+
+	async readOnlineRubric(
+		user: User,
+		projectId: string,
+		agentId: string,
+	): Promise<AgentOnlineRubric | null> {
+		await this.assertReadAccess(user, projectId);
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		return agent.onlineRubric ?? null;
+	}
+
+	async saveOnlineRubric(
+		user: User,
+		projectId: string,
+		agentId: string,
+		rubric: AgentOnlineRubric,
+	): Promise<void> {
+		await this.assertReadAccess(user, projectId);
+		if (!(await userHasScopes(user, ['agent:update'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to update agents in this project.');
+		}
+		await this.agentsService.saveOnlineRubric(agentId, projectId, rubric);
 	}
 
 	async readArtifact(user: User, projectId: string, agentId: string) {

@@ -1,6 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -154,22 +153,6 @@ vi.mock('../views/AgentSessionsListView.vue', () => ({
 // First mount of this SFC eats the Vite transform cost; give it headroom.
 vi.setConfig({ testTimeout: 30_000 });
 
-/**
- * The Evals tab renders the real `AgentEvalsSection`, which reads the eval store.
- * A bare `createTestingPinia` stubs every store function to return `undefined`, so
- * the reads it makes on mount have to be given the shapes it expects — otherwise
- * this file fails on an uncaught error from a component it is not even testing.
- */
-function createPiniaWithEvalStore() {
-	const pinia = createTestingPinia({ createSpy: vi.fn });
-	const evals = useAgentEvalsStore();
-	vi.mocked(evals.getDatasets).mockReturnValue([]);
-	vi.mocked(evals.isLoaded).mockReturnValue(true);
-	vi.mocked(evals.fetchDatasets).mockResolvedValue([]);
-	vi.mocked(evals.isStartingRun).mockReturnValue(false);
-	return pinia;
-}
-
 async function mountColumn(
 	overrides: Partial<{
 		activeMainTab: AgentBuilderMainTab;
@@ -185,7 +168,7 @@ async function mountColumn(
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
-	const pinia = createPiniaWithEvalStore();
+	const pinia = createTestingPinia({ createSpy: vi.fn });
 
 	return mount(AgentBuilderEditorColumn, {
 		props: {
@@ -227,6 +210,12 @@ async function mountColumn(
 					emits: ['update:config'],
 				},
 				AgentAdvancedPanel: true,
+				AgentOnlineChecksPanel: {
+					name: 'AgentOnlineChecksPanel',
+					props: ['projectId', 'agentId', 'disabled'],
+					emits: ['details-open'],
+					template: '<div />',
+				},
 				AgentSessionsListView: true,
 			},
 		},
@@ -382,6 +371,16 @@ describe('AgentBuilderEditorColumn', () => {
 
 	// The eval routes are agent-scoped, so the section can't read anything unless
 	// it is told which agent to read.
+
+	it('reserves editor space while assessment details are open', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+		wrapper.getComponent({ name: 'AgentOnlineChecksPanel' }).vm.$emit('details-open', true);
+		await flushPromises();
+		expect(wrapper.classes().some((name) => name.includes('evalReviewOpen'))).toBe(true);
+		wrapper.getComponent({ name: 'AgentOnlineChecksPanel' }).vm.$emit('details-open', false);
+		await flushPromises();
+		expect(wrapper.classes().some((name) => name.includes('evalReviewOpen'))).toBe(false);
+	});
 	it('gives the evals section the agent it should read', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals' });
 		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });

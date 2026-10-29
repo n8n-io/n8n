@@ -44,4 +44,46 @@ describe('AgentRepository', () => {
 			expect(result).toEqual([{ id: whatsApp.id, integrations: whatsApp.integrations }]);
 		});
 	});
+	describe('saveOnlineRubric', () => {
+		it('saves the rubric and reads it back from the agent', async () => {
+			const project = await createTeamProject();
+			const agent = await agents.save(
+				agents.create({
+					id: randomUUID(),
+					name: 'Rubric agent',
+					projectId: project.id,
+					tools: {},
+					skills: {},
+					integrations: [],
+				}),
+			);
+			const rubric = { checks: [], generatedAt: new Date().toISOString() };
+			expect(await agents.saveOnlineRubric(agent.id, project.id, rubric)).toBe(true);
+			expect((await agents.findByIdAndProjectId(agent.id, project.id))?.onlineRubric).toEqual(
+				rubric,
+			);
+		});
+
+		it('does not save a rubric through a different project', async () => {
+			const project = await createTeamProject();
+			const other = await createTeamProject();
+			const agent = await agents.save(
+				agents.create({
+					id: randomUUID(),
+					name: 'Rubric agent',
+					projectId: project.id,
+					tools: {},
+					skills: {},
+					integrations: [],
+				}),
+			);
+			expect(
+				await agents.saveOnlineRubric(agent.id, other.id, {
+					checks: [],
+					generatedAt: new Date().toISOString(),
+				}),
+			).toBe(false);
+			expect((await agents.findByIdAndProjectId(agent.id, project.id))?.onlineRubric).toBeNull();
+		});
+	});
 });

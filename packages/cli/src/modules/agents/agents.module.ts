@@ -309,7 +309,18 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-version-skill-dependency.entity.js'
 		);
 
+		const { AgentOnlineCheckCase } = await import(
+			'../agent-evals/online-checks/agent-online-check-case.entity.js'
+		);
+		const { AgentOnlineCheckResult } = await import(
+			'../agent-evals/online-checks/agent-online-check-result.entity.js'
+		);
+
+		const { AgentOnlineCheckReview } = await import(
+			'../agent-evals/online-checks/agent-online-check-review.entity.js'
+		);
 		return [
+			AgentOnlineCheckReview,
 			Agent,
 			AgentFile,
 			AgentChatAttachment,
@@ -344,6 +355,8 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntrySourceEntity,
 			AgentSkillDependency,
 			AgentVersionSkillDependency,
+			AgentOnlineCheckCase,
+			AgentOnlineCheckResult,
 		];
 	}
 

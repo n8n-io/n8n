@@ -453,6 +453,7 @@ describe('AgentContextService', () => {
 			sessionDetail: {
 				thread: {
 					id: 'thread-1',
+					accessScope: 'user',
 					agentId: 'agent-1',
 					agentName: 'Support Agent',
 					title: ' Failed request ',

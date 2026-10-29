@@ -4,6 +4,7 @@ import {
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
+	type AgentOnlineRubric,
 	type AgentActor,
 	type AgentCreationState,
 	type AgentCapabilityTool,
@@ -343,6 +344,16 @@ export class AgentsService {
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
 		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+	}
+
+	async saveOnlineRubric(
+		agentId: string,
+		projectId: string,
+		rubric: AgentOnlineRubric,
+	): Promise<void> {
+		if (!(await this.agentRepository.saveOnlineRubric(agentId, projectId, rubric))) {
+			throw new UserError('Agent not found');
+		}
 	}
 
 	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {

@@ -69,6 +69,7 @@ const props = defineProps<{
 	saveDescription?: (description: string) => Promise<void>;
 }>();
 
+const evalReviewOpen = ref(false);
 const childrenDisabled = computed(() => !props.canEditAgent);
 provideAgentPersonalisation(
 	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
@@ -114,6 +115,7 @@ const emit = defineEmits<{
 	'preview-task': [instructions: string];
 	'agent-changed': [];
 	'generate-eval-cases': [];
+	'publish-changes': [];
 	'open-preview': [source: 'icon'];
 	'publish-agent': [];
 	'setup-task-action': [task: SetupTask];
@@ -166,7 +168,13 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
+		:class="[
+			$style.editorColumn,
+			{
+				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
+				[$style.evalReviewOpen]: evalReviewOpen && activeMainTab === 'evals' && !artifactMode,
+			},
+		]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -415,6 +423,8 @@ defineExpose({ onSetupTaskAction });
 						:can-run="canExecuteAgent"
 						:generating="generatingEvalCases"
 						@generate="emit('generate-eval-cases')"
+						@publish-changes="emit('publish-changes')"
+						@details-open="evalReviewOpen = $event"
 					/>
 				</AgentBuilderTabPanel>
 			</div>
@@ -469,6 +479,13 @@ defineExpose({ onSetupTaskAction });
 	min-height: 0;
 	min-width: 0;
 	container: agent-editor / inline-size;
+}
+
+// 80rem is five 16rem spacing steps. Keep narrower layouts as an overlay.
+@media (min-width: 80rem) {
+	.evalReviewOpen {
+		margin-right: min(40vw, calc(var(--spacing--5xl) * 3));
+	}
 }
 
 .panelArea {

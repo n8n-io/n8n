@@ -1011,3 +1011,22 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export { RunAgentOnlineChecksDto, MAX_AGENT_ONLINE_SESSIONS } from './agent-online-rubric';
+export type {
+	AgentOnlineCheck,
+	AgentOnlineRubric,
+	AgentOnlineSession,
+	AgentOnlineVerdictStatus,
+	AgentOnlineVerdict,
+	AgentOnlineCase,
+	AgentOnlineCaseResult,
+	AgentOnlineCasePage,
+	AgentOnlineResultPage,
+} from './agent-online-rubric';
+
+export { UpdateAgentOnlineCheckDto, ReviewAgentOnlineCheckDto } from './agent-online-rubric';
+export type { AgentOnlineActivityItem, AgentOnlineActivityPage } from './agent-online-rubric';
+export type {
+	AgentOnlineReplayComparison,
+	AgentOnlineReplayTurn,
+} from './agent-online-rubric';

@@ -174,6 +174,18 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 */
 	const focusedEvalResult = ref<{ agentId: string; resultId: string } | null>(null);
 
+	/** The agent whose Tests tab should open on the replay setup, set by the publish warning. */
+	const replaySetupAgentId = ref<string | null>(null);
+	const requestReplaySetup = (agentId: string) => {
+		replaySetupAgentId.value = agentId;
+		requestEvalsFocus(agentId);
+	};
+	/** Version IDs whose replay the user already reviewed, so publishing them skips the warning. */
+	const replayReviewedVersionIds = ref<string[]>([]);
+	const markReplayReviewed = (versionId: string) => {
+		replayReviewedVersionIds.value = [...replayReviewedVersionIds.value, versionId];
+	};
+
 	const requestEvalsFocus = (agentId: string, generate = false, resultId?: string) => {
 		pendingEvalsFocus.value = { agentId, generate, resultId };
 	};
@@ -1351,6 +1363,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		deleteCase,
 		pendingEvalsFocus,
 		requestEvalsFocus,
+		replaySetupAgentId,
+		requestReplaySetup,
+		replayReviewedVersionIds,
+		markReplayReviewed,
 		consumeEvalsFocus,
 		focusedEvalResult,
 		consumeFocusedEvalResult,

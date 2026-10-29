@@ -27,6 +27,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
+| [agent_online_check_case](agent_online_check_case.md) | 7 |  | table |
+| [agent_online_check_result](agent_online_check_result.md) | 6 |  | table |
+| [agent_online_check_review](agent_online_check_review.md) | 6 |  | table |
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
 | [agent_skill_dependency](agent_skill_dependency.md) | 4 |  | table |
@@ -36,7 +39,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
 | [agent_version_skill_dependency](agent_version_skill_dependency.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
-| [agents](agents.md) | 15 |  | table |
+| [agents](agents.md) | 16 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -219,6 +222,12 @@ erDiagram
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_online_check_case" }o--o| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_online_check_case" }o--o| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_online_check_case" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_online_check_result" }o--|| "agent_online_check_case" : "FOREIGN KEY (caseId) REFERENCES agent_online_check_case (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_online_check_review" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agent_online_check_review" }o--|| "agent_online_check_result" : "FOREIGN KEY (resultId) REFERENCES agent_online_check_result (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_plan_history" |o--|| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_skill_dependency" }o--o| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
@@ -708,6 +717,31 @@ erDiagram
   varchar_128_ threadId FK
   datetime_3_ updatedAt
 }
+"agent_online_check_case" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  INTEGER id
+  varchar ownerId FK
+  varchar_36_ threadId FK
+  TEXT title
+  TEXT turns
+}
+"agent_online_check_result" {
+  INTEGER caseId FK
+  TEXT configHash
+  datetime_3_ createdAt
+  INTEGER id
+  TEXT rubric
+  TEXT verdicts
+}
+"agent_online_check_review" {
+  TEXT checkId
+  datetime_3_ createdAt
+  varchar_4_ feedback
+  INTEGER id
+  INTEGER resultId FK
+  varchar userId FK
+}
 "agent_plan" {
   datetime_3_ closedAt
   datetime_3_ createdAt
@@ -785,6 +819,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
+  TEXT onlineRubric
   varchar_255_ projectId FK
   INTEGER revision
   TEXT schema

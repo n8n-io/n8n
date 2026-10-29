@@ -5,6 +5,7 @@ export function toAgentSessionDetail({ thread, executions }: ThreadDetail): Agen
 	return {
 		thread: {
 			id: thread.id,
+			accessScope: thread.accessScope,
 			agentId: thread.agentId,
 			agentName: thread.agentName,
 			title: thread.title,

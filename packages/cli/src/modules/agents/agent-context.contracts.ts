@@ -33,6 +33,7 @@ export interface AgentContextReader {
 }
 
 export interface AgentContextResult extends Record<string, unknown> {
+	sessions?: AgentSessionSummary[];
 	sessionDetail?: AgentSessionDetail;
 }
 
@@ -53,6 +54,7 @@ export interface AgentSessionSummary {
 }
 
 export interface AgentSessionThread {
+	accessScope: 'user' | 'project';
 	id: string;
 	agentId: string;
 	agentName: string;

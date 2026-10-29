@@ -1,5 +1,10 @@
 import {
 	AgentEvalRunDetailQueryDto,
+	type AgentOnlineRubric,
+	type AgentOnlineSession,
+	RunAgentOnlineChecksDto,
+	UpdateAgentOnlineCheckDto,
+	ReviewAgentOnlineCheckDto,
 	ApplyAgentEvalSuggestionsDto,
 	ApplyPreviewSuggestionDto,
 	CreateAgentEvalRatingDto,
@@ -400,16 +405,156 @@ export class AgentEvalsController {
 
 	// ---- online checks (spike) ----
 
+	@Get('/:agentId/evals/online-checks/rubric')
+	@ProjectScope('agent:read')
+	async getOnlineRubric(req: AuthenticatedRequest<AgentParam>): Promise<AgentOnlineRubric | null> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.getRubric(req.user, projectId, agentId);
+	}
+
+	@Get('/:agentId/evals/online-checks/sessions')
+	@ProjectScope('agent:read')
+	async listOnlineSessions(req: AuthenticatedRequest<AgentParam>): Promise<AgentOnlineSession[]> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.listSessions(req.user, projectId, agentId);
+	}
+
+	@Patch('/:agentId/evals/online-checks/rubric/checks/:checkId')
+	@ProjectScope('agent:update')
+	async updateOnlineCheck(
+		req: AuthenticatedRequest<AgentParam & { checkId: string }>,
+		_res: unknown,
+		@Body input: UpdateAgentOnlineCheckDto,
+	) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, checkId } = req.params;
+		return await this.onlineChecksService.updateCheck(req.user, projectId, agentId, checkId, input);
+	}
+	@Get('/:agentId/evals/online-checks/activity')
+	@ProjectScope('agent:read')
+	async listOnlineActivity(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Query query: PaginationDto,
+	) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.listActivity(
+			req.user,
+			projectId,
+			agentId,
+			query.take,
+			query.skip,
+		);
+	}
+	@Post('/:agentId/evals/online-checks/assessments/:resultId/checks/:checkId/reviews')
+	@ProjectScope('agent:update')
+	async reviewOnlineCheck(
+		req: AuthenticatedRequest<AgentParam & { resultId: string; checkId: string }>,
+		_res: unknown,
+		@Body input: ReviewAgentOnlineCheckDto,
+	) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId, checkId } = req.params;
+		return await this.onlineChecksService.reviewCheck(
+			req.user,
+			projectId,
+			agentId,
+			this.onlineCaseId(resultId),
+			checkId,
+			input.feedback,
+		);
+	}
+
+	@Get('/:agentId/evals/online-checks/cases')
+	@ProjectScope('agent:read')
+	async listOnlineCases(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Query query: PaginationDto,
+	) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.listCases(
+			req.user,
+			projectId,
+			agentId,
+			query.take,
+			query.skip,
+		);
+	}
+	@Get('/:agentId/evals/online-checks/cases/:caseId/results')
+	@ProjectScope('agent:read')
+	async listOnlineCaseResults(
+		req: AuthenticatedRequest<AgentParam & { caseId: string }>,
+		_res: unknown,
+		@Query query: PaginationDto,
+	) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, caseId } = req.params;
+		return await this.onlineChecksService.listCaseResults(
+			req.user,
+			projectId,
+			agentId,
+			this.onlineCaseId(caseId),
+			query.take,
+			query.skip,
+		);
+	}
+	@Post('/:agentId/evals/online-checks/cases/:caseId/check')
+	@ProjectScope('agent:update')
+	async recheckOnlineCase(req: AuthenticatedRequest<AgentParam & { caseId: string }>) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, caseId } = req.params;
+		return await this.onlineChecksService.recheckCase(
+			req.user,
+			projectId,
+			agentId,
+			this.onlineCaseId(caseId),
+		);
+	}
+	/** Replays a saved case on the draft with tools mocked. Spends model credits. */
+	@Post('/:agentId/evals/online-checks/cases/:caseId/replay')
+	@ProjectScope('agent:update')
+	async replayOnlineCase(req: AuthenticatedRequest<AgentParam & { caseId: string }>) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, caseId } = req.params;
+		return await this.onlineChecksService.replayCase(
+			req.user,
+			projectId,
+			agentId,
+			this.onlineCaseId(caseId),
+		);
+	}
+	private onlineCaseId(value: string) {
+		const id = Number(value);
+		if (!Number.isSafeInteger(id) || id < 1) throw new BadRequestError('Invalid test case ID');
+		return id;
+	}
+
+	@Post('/:agentId/evals/online-checks/rubric')
+	@ProjectScope('agent:update')
+	async generateOnlineRubric(req: AuthenticatedRequest<AgentParam>): Promise<AgentOnlineRubric> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.generateRubric(req.user, projectId, agentId);
+	}
+
 	/**
 	 * Spike: generate checks from the agent's definition and judge its recent
-	 * sessions. Spends the builder's model credits, so `agent:update`. Nothing
-	 * is stored.
+	 * sessions with the saved rubric. Spends model credits, so `agent:update`.
 	 */
 	@Post('/:agentId/evals/online-checks')
 	@ProjectScope('agent:update')
-	async runOnlineChecks(req: AuthenticatedRequest<AgentParam>): Promise<OnlineChecksReport> {
+	async runOnlineChecks(
+		req: AuthenticatedRequest<AgentParam>,
+		_res?: unknown,
+		@Body payload?: RunAgentOnlineChecksDto,
+	): Promise<OnlineChecksReport> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
-		return await this.onlineChecksService.run(req.user, projectId, agentId);
+		return await this.onlineChecksService.run(req.user, projectId, agentId, payload?.sessionIds);
 	}
 }

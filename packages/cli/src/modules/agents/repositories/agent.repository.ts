@@ -1,5 +1,5 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentIntegrationConfig, ListAgentsQueryDto, AgentOnlineRubric } from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -57,6 +57,19 @@ export type AgentSummaryFilters = {
 
 @Service()
 export class AgentRepository extends BaseRepository<Agent> {
+	async saveOnlineRubric(
+		agentId: string,
+		projectId: string,
+		rubric: AgentOnlineRubric,
+	): Promise<boolean> {
+		const result = await this.createQueryBuilder()
+			.update(Agent)
+			.set({ onlineRubric: () => ':rubric' })
+			.setParameter('rubric', JSON.stringify(rubric))
+			.where({ id: agentId, projectId, scope: projectScope })
+			.execute();
+		return result.affected === 1;
+	}
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(Agent, dataSource.manager, transactionRunner);
 	}

@@ -1,5 +1,13 @@
 import type {
 	AgentEvalDatasetRecord,
+	AgentOnlineActivityPage,
+	UpdateAgentOnlineCheckDto,
+	AgentOnlineCasePage,
+	AgentOnlineResultPage,
+	AgentOnlineCaseResult,
+	AgentOnlineReplayComparison,
+	AgentOnlineRubric,
+	AgentOnlineSession,
 	ApplyAgentEvalSuggestionsOptions,
 	ApplyPreviewSuggestionOptions,
 	ApplyPreviewSuggestionResult,
@@ -21,7 +29,7 @@ import type {
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { OnlineChecksReport } from './agentEvals.types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { ResponseError, makeRestApiRequest } from '@n8n/rest-api-client';
 
 // REST path helper, kept inline so callers can't build a URL that drifts from
 // the routes in the agent-evals controller. Every route below it is gated
@@ -323,16 +331,191 @@ export const cancelRun = async (
 	);
 };
 
-// Spike: generates checks from the agent's config and judges its recent sessions
-// with the agent's own model. Spends model credits and stores nothing.
+// Judge recent sessions with the saved rubric and the agent's model.
 export const runOnlineChecks = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	sessionIds?: string[],
 ) => {
 	return await makeRestApiRequest<OnlineChecksReport>(
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/online-checks`,
+		{ sessionIds },
 	);
 };
+
+export const getOnlineRubric = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+) =>
+	await makeRestApiRequest<AgentOnlineRubric | null>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/online-checks/rubric`,
+	);
+
+export const generateOnlineRubric = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+) =>
+	await makeRestApiRequest<AgentOnlineRubric>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/online-checks/rubric`,
+	);
+
+export const listOnlineSessions = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+) =>
+	await makeRestApiRequest<AgentOnlineSession[]>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/online-checks/sessions`,
+	);
+
+export const listOnlineCases = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skip = 0,
+) =>
+	await makeRestApiRequest<AgentOnlineCasePage>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/online-checks/cases`,
+		{ take: 20, skip },
+	);
+export const listOnlineCaseResults = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	caseId: number,
+	skip = 0,
+) =>
+	await makeRestApiRequest<AgentOnlineResultPage>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/online-checks/cases/${caseId}/results`,
+		{ take: 20, skip },
+	);
+export const recheckOnlineCase = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	caseId: number,
+) =>
+	await makeRestApiRequest<AgentOnlineCaseResult>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/online-checks/cases/${caseId}/check`,
+	);
+
+// Replay a saved case on the draft, with tools mocked, and compare with the recorded run.
+export const replayOnlineCase = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	caseId: number,
+): Promise<AgentOnlineReplayComparison> => {
+	try {
+		return await makeRestApiRequest<AgentOnlineReplayComparison>(
+			context,
+			'POST',
+			`${evalsPath(projectId, agentId)}/online-checks/cases/${caseId}/replay`,
+		);
+	} catch (error) {
+		if (isNotFound(error)) {
+			return await mockReplayComparison(context, projectId, agentId, caseId);
+		}
+		throw error;
+	}
+};
+
+/** A 404 arrives as a `ResponseError`, or as a raw Axios error when the body is not JSON. */
+function isNotFound(error: unknown): boolean {
+	if (error instanceof ResponseError) return error.httpStatusCode === 404;
+	if (typeof error !== 'object' || error === null || !('response' in error)) return false;
+	const { response } = error;
+	return typeof response === 'object' && response !== null && 'status' in response
+		? response.status === 404
+		: false;
+}
+
+/**
+ * Prototype stand-in for a backend without the replay endpoint. It uses the
+ * recorded result as "before" and the same checks with failures passed as
+ * "after". Remove it once every demo backend serves the replay route.
+ */
+async function mockReplayComparison(
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	caseId: number,
+): Promise<AgentOnlineReplayComparison> {
+	const page = await listOnlineCaseResults(context, projectId, agentId, caseId);
+	const before = page.items[0];
+	if (!before) throw new Error('This test case has no recorded result to replay.');
+	await new Promise((resolve) => setTimeout(resolve, 1500));
+	return {
+		caseId,
+		title: '',
+		before,
+		after: {
+			configHash: 'draft',
+			rubric: before.rubric,
+			verdicts: before.verdicts.map((verdict) =>
+				verdict.status === 'fail' || verdict.status === 'unsure' || verdict.status === 'not_run'
+					? { ...verdict, status: 'pass', reason: 'Passed on the replayed session.' }
+					: verdict,
+			),
+			turns: page.conversation.map((turn) => ({ ...turn, toolCalls: 0, runFailed: false })),
+			errors: [],
+		},
+	};
+}
+
+export const listOnlineActivity = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skip = 0,
+) =>
+	await makeRestApiRequest<AgentOnlineActivityPage>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/online-checks/activity`,
+		{ take: 20, skip },
+	);
+export const updateOnlineCheck = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	checkId: string,
+	input: UpdateAgentOnlineCheckDto,
+) =>
+	await makeRestApiRequest<AgentOnlineRubric>(
+		context,
+		'PATCH',
+		`${evalsPath(projectId, agentId)}/online-checks/rubric/checks/${encodeURIComponent(checkId)}`,
+		input,
+	);
+export const reviewOnlineCheck = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	resultId: number,
+	checkId: string,
+	feedback: 'good' | 'bad',
+) =>
+	await makeRestApiRequest<{ checkId: string; feedback: 'good' | 'bad' }>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/online-checks/assessments/${resultId}/checks/${encodeURIComponent(checkId)}/reviews`,
+		{ feedback },
+	);
