@@ -527,6 +527,8 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
 	};
 
 	'credentials-shared': {
@@ -549,6 +551,8 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
 	};
 
 	'credentials-deleted': {

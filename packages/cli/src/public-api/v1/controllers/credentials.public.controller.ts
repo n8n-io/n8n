@@ -361,6 +361,10 @@ export class CredentialsPublicController {
 				updatedCredential.type,
 				credentialData,
 			),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				updatedCredential.type,
+				credentialData,
+			),
 		});
 
 		return toCredentialPublicDto(updatedCredential, includeDescription);
