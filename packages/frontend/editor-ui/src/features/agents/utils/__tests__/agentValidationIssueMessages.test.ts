@@ -12,6 +12,7 @@ describe('resolveAgentValidationIssueMessageKey', () => {
 		['incompatible_credential', 'incompatibleCredential'],
 		['missing_reference', 'missingReference'],
 		['incompatible_reference', 'incompatibleReference'],
+		['restricted_node_type', 'restrictedNodeType'],
 	] satisfies Array<[AgentConfigValidationIssue['code'], string]>)(
 		'uses the generic message for %s',
 		(code, key) => {
