@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_0124dfca07eaee::t_2995ba461ac99e 514-517,519-520
+  s_0124dfca07eaee::t_bd4b4f5a4e68f8 143
+  s_0124dfca07eaee::t_afd58e5f7161d5 486
+  s_0124dfca07eaee::t_4605948c74403f 518
+  s_0124dfca07eaee::t_19f5b1d2b361c1 505
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_0124dfca07eaee::t_48a588f49d3d67 1231-1341
+  s_0124dfca07eaee::t_c3db28f5418675 270,273,276,624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9b04a10b1725e42201a63f1c87bfcf50f6f5582a",
+  "prompts": {},
+  "sessions": {
+    "s_0124dfca07eaee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4432e389-b611-4d01-a0b8-3b2bacf20633",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

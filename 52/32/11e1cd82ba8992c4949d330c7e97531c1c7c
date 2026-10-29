@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_482f48320b007f::t_bff7bf20aabcdc 111-124,126-131,133-134,141
+  s_482f48320b007f::t_fc10d57a65d2d4 17-18,20,29-30,32-40,43-60
+  s_482f48320b007f::t_9a431153dbe3f1 61
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_482f48320b007f::t_1c95958f05ebac 44,50-53,61,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "523211e1cd82ba8992c4949d330c7e97531c1c7c",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

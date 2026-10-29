@@ -1,0 +1,65 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 171,177,188,194,211,233,240,250,252,511,514,516,519
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_82789c69de1855::t_89282135a0c4c0 437
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_82789c69de1855::t_0689f2c58fad8b 118
+  s_82789c69de1855::t_56a7400b04deb5 30,37,39,46,52,58,64,72,88,99,101,104,107,109,111,119,122,126,136,145,154,163
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_82789c69de1855::t_89282135a0c4c0 62,65,67,129,208
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_82789c69de1855::t_89282135a0c4c0 47,53
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 3100,3104,3122,4194,4201,4210
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_82789c69de1855::t_89282135a0c4c0 147,239,250,261,323
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_82789c69de1855::t_89282135a0c4c0 225,227,230,242,244,251,650
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 16,21,39,42,54,60,66,70,72,75,87,91,93,95,100,104,110,113,115,117,120,126,130,136,149,156,158,160,165,167,177,189,192,194,196,200,208,212,214,216,219,221,224
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_542d305206a12d 1765
+  s_82789c69de1855::t_298508f89beedb 1791,1811-1826,1828-1832
+  s_82789c69de1855::t_bdb33832e20e3f 2292-2300
+  s_82789c69de1855::t_047a1908772f52 2311,2320,2322,2324,2327,2334,2337,2341,2344,2353,2355,2361,2364,2366,2561,2566,2568,2571,2573,2575,2578,2580,2627,2636,2640,2642,2645
+  s_82789c69de1855::t_228fb425de8566 2316-2319,2346-2351
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 14,17,37,41,52,56,79,82,85,109,111,113,115,126,128,130,132,136,138,144,153,163,166,201,204,206,220,222,224,226,237,239,350,353,364,377,403,636,638,640,647,669,681,687,694,708,717,723,725,727
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 177,179,182,190
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 184,199
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPlan.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 12,17,28,31,41,48,50,56,59,61,70,73,76,80,84,86,89,92,96,100,103,106,115,118,122,124,126,128,130,132,135,138,144,147,151,154,157,163,167,169
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_82789c69de1855::t_89282135a0c4c0 652,1021,1336,1339,1342,1350,1352,1403,1537,1543,1623,1625
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  s_82789c69de1855::t_89282135a0c4c0 30,33,36,38,44,53,56,64,74,76,79,82,85,98,103,118,130,134,140
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPlan.ts
+  s_82789c69de1855::t_89282135a0c4c0 28,31,33,35,44,47,50,56,66,76,80,86
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_89282135a0c4c0 723
+  s_82789c69de1855::t_bdb33832e20e3f 801,804,806,809,290,302,315,323,327,333,335,364,577,585,595,601,616,618,620,625,628,637,640,656,659,663,674,683,687,690,696,699,708,714,716,720,732,734,741,745,747,753,933,935,939,942,944,946,948,950,958,960,962,974,977
+  s_82789c69de1855::t_54d66b9cbc7730 1924,2154-2155
+  s_82789c69de1855::t_d6b616fdf44d36 1925-1929,1938-1952,1954-1955,1962
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_82789c69de1855::t_89282135a0c4c0 77,221
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_82789c69de1855::t_89282135a0c4c0 192,194,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c10ff2c648028716ebadabe0a24093cc47cb4e0c",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  h_21437a83314767 918
+  h_21437a83314767 44,912-917,919-924
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_1846b2775c62ad::t_af8b5b7735f971 13,1244-1246,1310-1331
+packages/cli/test/integration/folder/folder.controller.test.ts
+  h_21437a83314767 33,1880-1911
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13f31f5df25b4833c6861da64d64581a047669ee",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1846b2775c62ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ba7efea-ee8f-4ee1-b780-73cd9b83ced1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

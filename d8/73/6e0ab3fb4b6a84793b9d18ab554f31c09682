@@ -1,0 +1,71 @@
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_c32ac2cf3a1c3f::t_978ba794ace308 33,72,99-105,208,241-243,250,270-271
+  s_565818c1363886::t_4d66a0392922d5 70
+  s_565818c1363886::t_ebe88835dc5eda 34-35
+  s_e33c697cb16d0a::t_040fb1c6cd74f9 272
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_565818c1363886::t_94bfc83bedc9e0 771,780-783
+  s_565818c1363886::t_aec98eecf01e35 544,549-566
+packages/cli/src/metrics/prometheus/database-metric-query.service.ts
+  s_c32ac2cf3a1c3f::t_5fe37c48c3c85c 28,92,98,103-106
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_565818c1363886::t_771ad8e44653e0 1347-1354,1360
+  s_565818c1363886::t_b3cfc5ef60453b 78-88
+  s_565818c1363886::t_3c810d33a2c341 750,759-764
+  s_565818c1363886::t_91231f5767511d 765-766
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_565818c1363886::t_e1b1c91d33db6c 122,124-130,137,139-141,149
+  s_122c352d9bbc34::t_0d0fdad16eaec7 158-172
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_565818c1363886::t_56b43588702b6b 176,178,182
+  s_e33c697cb16d0a::t_30deed9ea4cdc0 21-27
+  s_e33c697cb16d0a::t_6f71f5d75a4973 173
+  s_565818c1363886::t_b474321e3c2c2f 20
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_c32ac2cf3a1c3f::t_e08ca0b6b414a1 387-388,390-395,400,407,410-442,499,514-522,527,529,539-544,591,607-636
+  s_e33c697cb16d0a::t_cb51c85889149c 637
+packages/cli/test/integration/database/repositories/scheduled-job.repository.test.ts
+  s_565818c1363886::t_c9a619140593d7 4,56-59,67-68
+  s_e33c697cb16d0a::t_dd741dfde68584 55,60-66,69-70
+  s_e33c697cb16d0a::t_413970ae947b68 1-3,5-54,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d8736e0ab3fb4b6a84793b9d18ab554f31c09682",
+  "prompts": {},
+  "sessions": {
+    "s_122c352d9bbc34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85dd6495-03bc-44d8-8c1c-c118edc05fd0",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_c32ac2cf3a1c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fa22ee8-4dd2-47ed-a525-9430c1f08152",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_e33c697cb16d0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "374d5610-1ad0-45c7-94a8-3ca730f4d487",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

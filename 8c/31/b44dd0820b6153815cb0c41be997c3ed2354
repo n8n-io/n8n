@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_bccf3616ba1e3f::t_b20ab71f2db64d 13,1009-1010
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_bccf3616ba1e3f::t_3bf26667330655 11731-11742,11751,11757-11777,11779-11781,11785-11789,11796-11813
+  s_bccf3616ba1e3f::t_4c0dc3b8a6c8cf 11790-11795,11814-11815
+  s_bccf3616ba1e3f::t_59189a0659332a 28,40
+packages/@n8n/agents/src/runtime/loop/hydrate-file-parts.ts
+  s_bccf3616ba1e3f::t_b20ab71f2db64d 16-18,39-44,48-53
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_bccf3616ba1e3f::t_ebcb2f337a62b0 20
+  s_bccf3616ba1e3f::t_b20ab71f2db64d 277-284,288,297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c31b44dd0820b6153815cb0c41be997c3ed2354",
+  "prompts": {},
+  "sessions": {
+    "s_bccf3616ba1e3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b57198ee-528d-418e-810c-e4b7c30fb793",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

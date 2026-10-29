@@ -1,0 +1,28 @@
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_d00cf175ed42d2::t_2d486a2bf68792 331-338
+  s_d00cf175ed42d2::t_45e60ac1d074ec 351
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d00cf175ed42d2::t_d55ec7e3ed7b1c 853-881,2492,2509,2519-2543
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_d00cf175ed42d2::t_c44155d54855a3 323-330
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_d00cf175ed42d2::t_d55ec7e3ed7b1c 698-710
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d00cf175ed42d2::t_994a2503dccb89 1105-1106,1113-1114,1120-1127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b62b4a32202d54e4399692b7503e72a65115b74",
+  "prompts": {},
+  "sessions": {
+    "s_d00cf175ed42d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b248cf81-ccac-49c4-853d-d4acffb5451a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

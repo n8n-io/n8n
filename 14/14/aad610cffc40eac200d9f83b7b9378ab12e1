@@ -1,0 +1,21 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_02f30e88687580::t_befdecf7ea6086 1119,1125-1126
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_02f30e88687580::t_befdecf7ea6086 1801-1802,1839-1849
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1414aad610cffc40eac200d9f83b7b9378ab12e1",
+  "prompts": {},
+  "sessions": {
+    "s_02f30e88687580": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1688e-5ff5-76a0-a4b7-22494ec8b06c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

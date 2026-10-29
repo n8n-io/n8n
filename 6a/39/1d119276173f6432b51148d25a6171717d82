@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue
+  s_6af1cc15263b33::t_52362ed1a1730e 24,79
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_6af1cc15263b33::t_52362ed1a1730e 455,581-583,588-590
+  s_6af1cc15263b33::t_e85f2ec9c5c00a 591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a391d119276173f6432b51148d25a6171717d82",
+  "prompts": {},
+  "sessions": {
+    "s_6af1cc15263b33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a91bec98-e1c7-4bc7-b59e-8acac6e606be",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

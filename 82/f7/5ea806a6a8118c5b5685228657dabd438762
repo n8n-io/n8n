@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMcpConnectCard.vue
+  s_a3c0e367641a29::t_96a97a469c926b 2
+  s_a3c0e367641a29::t_812f2a7c68b2d2 186,260,265-266
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiDebugWorkflowCodeSnapshot.vue
+  s_7697af894b7e28::t_01482002fa203d 100-103
+  s_7697af894b7e28::t_6d6ca95db342d7 3,96-99,104-113,115-128,193-200
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_a3c0e367641a29::t_d20f16356002c5 13,400-401
+  s_a3c0e367641a29::t_0885d529d58c71 402-404
+  s_a3c0e367641a29::t_6c2860c222260f 405-438,440-463,468-490,492-523,525-571,574-599,620-622,628-631
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiFixWithAiPanel.vue
+  s_a3c0e367641a29::t_61380ea5fd3230 4
+  s_a3c0e367641a29::t_c2f2e6c449cc23 43,84,89-90
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/GatewayResourceDecision.vue
+  s_a3c0e367641a29::t_a38302bceb0e3e 2
+  s_a3c0e367641a29::t_30283def55d7e5 95,131,136-137
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_a3c0e367641a29::t_ec8198af71c8ba 20
+  s_7697af894b7e28::t_01482002fa203d 690-694
+  s_7697af894b7e28::t_199cc64207ef1d 695-701,703-706,708,710-711,713,715-767,769-828,847,854-859
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82f75ea806a6a8118c5b5685228657dabd438762",
+  "prompts": {},
+  "sessions": {
+    "s_7697af894b7e28": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18278-bbae-7797-835a-71590a3e3e5c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a3c0e367641a29": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18241-d905-7110-b50e-ea08bc6055d1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

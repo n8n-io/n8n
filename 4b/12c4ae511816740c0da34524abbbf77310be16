@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 33
+packages/modules/insights/frontend/src/components/__snapshots__/InsightsSummary.test.ts.snap
+  ai_agent 65,162
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 26
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 38,73,75-77,99-103,107-112,234,264-269,278,285,297,310,334-335,401,409,452,493-495,504,512,558,589,1312-1331
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  ai_agent 216
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  ai_agent 614-623,776-778,806-827,1084-1088,1226-1259,1440-1472,1684
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b12c4ae511816740c0da34524abbbf77310be16",
+  "prompts": {}
+}

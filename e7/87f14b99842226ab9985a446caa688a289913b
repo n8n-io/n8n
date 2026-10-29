@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.test.ts
+  s_e139647844d156::t_1df50ee4e8a025 304,309,311,330,336-341
+  s_e139647844d156::t_dcba3222f21e3d 3,294-303,305-308,310,312-329,331-335,342-344
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.vue
+  s_e139647844d156::t_a8152a92cc128b 9,79-89,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e787f14b99842226ab9985a446caa688a289913b",
+  "prompts": {},
+  "sessions": {
+    "s_e139647844d156": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b82e85a9-9cd1-44c0-ba18-2bb6d09b871c",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

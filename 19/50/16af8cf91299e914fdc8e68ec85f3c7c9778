@@ -1,0 +1,31 @@
+packages/cli/src/binary-data/binary-data-access.service.ts
+  s_99145703dfbb4a::t_dc6529e3f35c68 23,40
+packages/cli/src/evaluation.ee/__tests__/evaluation-dataset.service.test.ts
+  s_99145703dfbb4a::t_bd3801fd3e9aeb 330-342,344-346,355-370,372-374
+packages/cli/src/evaluation.ee/evaluation-dataset.service.ts
+  s_99145703dfbb4a::t_e00a7413a1a8ee 147-155
+packages/cli/src/executions/execution.service.ts
+  s_99145703dfbb4a::t_eb33e626d1082a 208-214
+packages/cli/src/binary-data/__tests__/binary-data-access.service.test.ts
+  s_99145703dfbb4a::t_70c174161525a5 43
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_99145703dfbb4a::t_3057d42980b485 581-596
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_99145703dfbb4a::t_a4e12952ee72e3 5937-5966
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "195016af8cf91299e914fdc8e68ec85f3c7c9778",
+  "prompts": {},
+  "sessions": {
+    "s_99145703dfbb4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d069055-3d82-4ec9-9f7c-5d5f94d1b3ca",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

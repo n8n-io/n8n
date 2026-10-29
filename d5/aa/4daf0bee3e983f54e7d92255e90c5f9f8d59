@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/telemetry/__tests__/model-request-tracing.test.ts
+  s_b58def8bfaa5ac::t_984e3819afc376 110
+  s_b58def8bfaa5ac::t_86496fdb8fe119 112
+packages/@n8n/agents/src/runtime/telemetry/model-request-tracing.ts
+  s_b58def8bfaa5ac::t_984e3819afc376 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5aa4daf0bee3e983f54e7d92255e90c5f9f8d59",
+  "prompts": {},
+  "sessions": {
+    "s_b58def8bfaa5ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15f4e-f2c9-7461-b685-b0553dd0cc7d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

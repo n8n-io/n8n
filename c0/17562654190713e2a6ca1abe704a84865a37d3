@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/ssh-clients-manager.ts
+  s_0c621b403cea60::t_de24a97329e184 124,127,130-133
+packages/core/src/execution-engine/__tests__/ssh-clients-manager.test.ts
+  s_0c621b403cea60::t_05f212947d7d53 152-154,159-168
+  s_0c621b403cea60::t_09c5c7762f2f78 155-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c017562654190713e2a6ca1abe704a84865a37d3",
+  "prompts": {},
+  "sessions": {
+    "s_0c621b403cea60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c3846d2-bf04-4a3d-a7e1-7bfabe3924c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
