@@ -204,7 +204,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							</N8nBadge>
 						</N8nTooltip>
 						<N8nTooltip
-							v-if="props.showMcpAvailability && item.scope !== 'agent' && item.availableToMCP"
+							v-if="props.showMcpAvailability && item.availableToMCP"
 							placement="right"
 							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
 						>

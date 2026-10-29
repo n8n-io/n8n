@@ -816,9 +816,9 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().availableToMCP).toBeUndefined();
 		});
 
-		it('passes the MCP availability of an agent skill, so a move can turn it on', async () => {
+		it('passes the MCP availability of a skill that has it off, so the editor can turn it on', async () => {
 			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
-			await openSkill(detail({ scope: 'agent', agentId: 'a1', availableToMCP: false }));
+			await openSkill(detail({ scope: 'project', projectId: 'p1', availableToMCP: false }));
 
 			expect(lastModalData().availableToMCP).toBe(false);
 		});

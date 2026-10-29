@@ -2000,17 +2000,23 @@ describe('Assistant availability', () => {
 	});
 
 	it.each([
-		['Marketing', 'project:p1'],
-		['Global', 'instance'],
-	])('shows the MCP toggle before saving a move to %s', async (label, scope) => {
+		['instance', 'Marketing', 'project:p1'],
+		['project:p1', 'Global', 'instance'],
+	])('sends the MCP toggle with a move from %s to %s', async (initialScope, label, scope) => {
 		const onConfirm = vi.fn();
-		const { getByTestId, queryByTestId } = renderModal({
+		const { getByTestId } = renderModal({
 			skill: savedSkill,
 			skillId: 'skill-1',
 			onConfirm,
-			settings: { ...agentSettings, availableToMCP: false },
+			settings: {
+				scopeOptions: [
+					{ value: 'instance', label: 'Global', icon: 'globe' as const },
+					{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
+				],
+				initialScope,
+				availableToMCP: false,
+			},
 		});
-		expect(queryByTestId('skill-available-to-mcp')).not.toBeInTheDocument();
 		await selectScope(label);
 		await userEvent.click(getByTestId('skill-available-to-mcp'));
 		await userEvent.click(getByTestId('agent-skill-create-save'));
