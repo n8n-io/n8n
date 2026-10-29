@@ -106,22 +106,15 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
-			await this.endedAsFailed(execution, step);
+			if (execution.parent?.awaited) {
+				await resumeAwaitingParent(this.resumeDeps(), execution, {
+					status: 'failed',
+					error: await this.failureOf(execution, step),
+				});
+			}
 		}
 
 		await this.stepStore.cancelPendingSteps(execution.id);
-	}
-
-	/**
-	 * What a failed execution owes beyond its own rows: a parent step that
-	 * waits for it fails with the error.
-	 */
-	private async endedAsFailed(execution: ExecutionRecord, step: StepRecord): Promise<void> {
-		if (!execution.parent?.awaited) return;
-		await resumeAwaitingParent(this.resumeDeps(), execution, {
-			status: 'failed',
-			error: await this.failureOf(execution, step),
-		});
 	}
 
 	private resumeDeps(): SubExecutionResumeDeps {
@@ -253,16 +246,20 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
-			if (failed) {
-				await this.endedAsFailed(execution, step);
-			} else if (execution.parent?.awaited) {
-				await resumeAwaitingParent(this.resumeDeps(), execution, {
-					status: 'completed',
-					result: collectSubExecutionResult(
-						execution.graph,
-						await this.stepStore.loadAllSteps(execution.id),
-					),
-				});
+			if (execution.parent?.awaited) {
+				await resumeAwaitingParent(
+					this.resumeDeps(),
+					execution,
+					failed
+						? { status: 'failed', error: await this.failureOf(execution, step) }
+						: {
+								status: 'completed',
+								result: collectSubExecutionResult(
+									execution.graph,
+									await this.stepStore.loadAllSteps(execution.id),
+								),
+							},
+				);
 			}
 		}
 	}
