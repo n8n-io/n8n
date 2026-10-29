@@ -15,6 +15,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
+import { createSkill } from '../../testing';
 import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -643,6 +644,36 @@ describe('SkillsController', () => {
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Second.', baseSkillHash: skillHash })
 				.expect(409);
+		});
+
+		it('refuses a content change to a synced skill', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			const { skillHash } = (await editor.get(`/skills/${id}`).expect(200)).body.data;
+
+			const refused = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(400);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(refused.body.message).toBe(
+				'"Brand voice" is synced from GitHub, so it is read-only in n8n. Change it in GitHub.',
+			);
+			expect(read.body.data).toMatchObject({ source: 'github', latestVersion: 1 });
+		});
+
+		it('moves a synced skill, because a move does not change its content', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
+
+			const moved = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(moved.body.data).toMatchObject({ version: 1, created: false });
+			expect(read.body.data).toMatchObject({ scope: 'instance', projectId: null });
 		});
 
 		it('refuses a save without a base hash', async () => {

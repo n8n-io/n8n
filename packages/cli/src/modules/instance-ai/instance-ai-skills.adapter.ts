@@ -53,7 +53,7 @@ export class InstanceAiSkillsAdapterService {
 					});
 					if (!refusal) throw error;
 					throw new UserError(
-						refusal.code === 'skill_name_taken' ? refusal.message : STALE_SKILL_TOOL_MESSAGE,
+						refusal.code === 'stale_skill' ? STALE_SKILL_TOOL_MESSAGE : refusal.message,
 					);
 				}
 			},

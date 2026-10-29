@@ -24,7 +24,7 @@ skills/
   database/
     entities/          Skill, SkillVersion, SkillFile
     repositories/      SkillRepository
-  errors/              SkillNameTakenError
+  errors/              SkillNameTakenError, SkillParseError, SkillSyncedError
   utils/               shared types, content helpers, hashes, name rules
   sources/             (Skill Sync) source clients and their registry
   __tests__/           unit tests, integration/, test-utils/
@@ -38,7 +38,7 @@ Put a file in the folder of its role. Keep the n8n file infixes: `.service.ts`, 
 | `services/`, `sources/` | services, repositories, utils, errors | controllers |
 | `database/repositories/` | entities, types from utils, `@n8n/db`, `@n8n/typeorm` | services |
 | `database/entities/` | `@n8n/db`, `@n8n/typeorm`, types from `@n8n/api-types` | other files of the module |
-| `utils/`, `errors/` | `@n8n/api-types`, shared packages, entity types with `import type` | DI, I/O, repositories |
+| `utils/`, `errors/` | `@n8n/api-types`, shared packages, entity types with `import type`, each other | DI, I/O, repositories |
 
 The layer table is a convention for review. Lint does not enforce it.
 
@@ -81,6 +81,7 @@ These rules keep the module ready to move to `packages/modules/skills/backend`, 
 Split services by capability, never by caller.
 
 - `SkillService`: list, get, create, update and delete. A user action takes the `User` and checks access through `SkillAccessService`. The writes `createTrusted`, `saveTrusted` and `moveTrusted` check no access. A caller that checked access itself uses them inside its own transaction. After a trusted write commits, the caller calls `trackCreated` or `trackUpdated`.
+  A synced skill (`skill.source` is a synced source, such as `github`) is read-only. `saveTrusted` refuses a content change to it with `SkillSyncedError`, unless the caller passes `allowSynced`. Only Skill Sync passes it, with content that it fetched from the source. A field that a `SkillUpdate` leaves out keeps its stored value, so Skill Sync sends every field: `references: []` removes all files, and `frontmatter: null` removes the frontmatter. A frontmatter change needs `baseVersionId`, because `baseSkillHash` does not cover the frontmatter. The package import uses the same update with `checkedTarget`.
 - `SkillAccessService`: the project of a skill, access to one skill or to a list, and the checks for edit, move and the create target.
 - `SkillRuntimeService`: what a draft runs, runtime names, the publish snapshot, the targets and versions that agents read, and the reads of n8n Assistant. Agent reads have no permission check. The agents module checked access at attach time. The n8n Assistant reads check the project scopes of the session and access to each skill.
 

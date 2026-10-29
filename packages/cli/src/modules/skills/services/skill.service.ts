@@ -35,9 +35,11 @@ import {
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
+import { SkillSyncedError } from '../errors/skill-synced.error';
 import {
 	isSameSkillTarget,
 	skillScopeOf,
+	syncedSourceLabel,
 	toAgentSkill,
 	toLatestSkill,
 	toSkillContent,
@@ -388,7 +390,8 @@ export class SkillService {
 	/**
 	 * Creates a skill with its v1. Returns the new id. `checkNameTaken` is for a name that a
 	 * user or the builder chose. A copy of an agent skill for a new agent keeps the name of
-	 * the skill it copies, so it skips the check.
+	 * the skill it copies, so it skips the check. `frontmatter` holds the SKILL.md keys
+	 * other than name and description, stored as given.
 	 */
 	async createTrusted(
 		input: {
@@ -426,13 +429,16 @@ export class SkillService {
 	 *
 	 * When `ctx` has a transaction, the caller calls `refreshFollowingAgents` after its
 	 * commit. `pushRef` is the tab that saved: it gets no reload push.
+	 *
+	 * The content of a synced skill changes only with `allowSynced`. Only Skill Sync passes
+	 * it, with content that it fetched from the source and the user accepted.
 	 */
 	async saveTrusted(
 		skillId: string,
 		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
-		pushRef?: string,
+		{ pushRef, allowSynced = false }: { pushRef?: string; allowSynced?: boolean } = {},
 	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -466,6 +472,12 @@ export class SkillService {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
+			}
+			// Only Skill Sync changes the content of a synced skill. A save with unchanged
+			// content passes above, so a synced skill still accepts a no-op save.
+			const sourceLabel = syncedSourceLabel(latest.skill.source);
+			if (sourceLabel && !allowSynced) {
+				throw new SkillSyncedError(latest.version.name, sourceLabel);
 			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);

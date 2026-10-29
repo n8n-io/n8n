@@ -222,7 +222,7 @@ export class McpSkillToolsService {
 							currentHash: async () => (await this.skillService.get(user, skillId)).skillHash,
 						});
 						if (!refusal) throw error;
-						if (refusal.code === 'skill_name_taken') return { ok: false, skillId, ...refusal };
+						if (refusal.code !== 'stale_skill') return { ok: false, skillId, ...refusal };
 						return {
 							ok: false,
 							skillId,
