@@ -166,6 +166,18 @@ describe('SkillSourceConnectDialog', () => {
 		});
 	});
 
+	it('sends a repository link with a query or a fragment to the server', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills?tab=readme-ov-file#skills');
+
+		expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+			url: 'https://github.com/acme/skills?tab=readme-ov-file#skills',
+			scope: 'instance',
+		});
+	});
+
 	it('refuses a link that is not a GitHub link without asking the server', async () => {
 		const view = render();
 
@@ -337,6 +349,57 @@ describe('SkillSourceConnectDialog', () => {
 		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
 	});
 
+	it('drops a discover answer when the dialog closed while n8n read the link', async () => {
+		let answer: (value: SkillSourceDiscovery) => void = () => {};
+		skillsStore.discoverSource.mockReturnValueOnce(
+			new Promise<SkillSourceDiscovery>((resolve) => {
+				answer = resolve;
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await view.rerender({ open: false });
+		await view.rerender({ open: true });
+		const field = view.getByTestId('skill-source-url-input');
+		const input = field instanceof HTMLInputElement ? field : field.querySelector('input')!;
+		await userEvent.type(input, 'https://github.com/acme/skills');
+		answer(discovery());
+		await new Promise(process.nextTick);
+
+		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
+		expect(view.getByTestId('skill-source-next')).toBeEnabled();
+	});
+
+	it('names a skill that could not come in by its name in the list', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const response = {
+			sourceId: 'src-1',
+			imported: [{ key: 'skills/brand-voice', skillId: 'k1', name: 'brand-voice' }],
+			failed: [{ key: 'skills/seo-check', name: null, reason: 'parse_error' as const }],
+		};
+		skillsStore.connectSource.mockResolvedValue(response);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await userEvent.click(await view.findByTestId('skill-source-add'));
+
+		await waitFor(() =>
+			expect(view.emitted('connected')).toEqual([
+				[
+					{
+						response: {
+							...response,
+							failed: [{ key: 'skills/seo-check', name: 'seo-check', reason: 'parse_error' }],
+						},
+						sourceLabel: 'acme/skills',
+						scopeLabel: 'Global',
+					},
+				],
+			]),
+		);
+	});
+
 	it('stays open until the import answers', async () => {
 		skillsStore.discoverSource.mockResolvedValue(discovery());
 		let answer: (value: SkillSourceConnectResponse) => void = () => {};
@@ -351,6 +414,7 @@ describe('SkillSourceConnectDialog', () => {
 		await userEvent.click(await view.findByTestId('skill-source-add'));
 
 		expect(view.getByTestId('skill-source-cancel')).toBeDisabled();
+		expect(view.getByTestId('skill-source-back')).toBeDisabled();
 		expect(view.emitted('update:open')).toBeUndefined();
 		answer({ sourceId: 'src-1', imported: [], failed: [] });
 		await waitFor(() => expect(view.emitted('update:open')).toEqual([[false]]));

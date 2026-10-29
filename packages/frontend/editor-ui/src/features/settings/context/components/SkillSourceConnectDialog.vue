@@ -50,7 +50,7 @@ const emit = defineEmits<{
 }>();
 
 /** A loose check only: the server reads the link and answers with the exact reason. */
-const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+(\/.*)?$/i;
+const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+([/?#].*)?$/i;
 
 const i18n = useI18n();
 const { showError } = useToast();
@@ -64,11 +64,15 @@ const connecting = ref(false);
 const linkError = ref('');
 const discovery = ref<SkillSourceDiscovery | null>(null);
 const selected = ref<string[]>([]);
+/** Counts the reads of a link, so the answer of a read from before a close is dropped. */
+let discoverRun = 0;
 
 watch(
 	() => props.open,
 	(open) => {
 		if (!open) return;
+		discoverRun += 1;
+		discovering.value = false;
 		step.value = 'link';
 		url.value = '';
 		scope.value = props.scopeOptions[0]?.value ?? '';
@@ -168,8 +172,10 @@ async function onNext() {
 		return;
 	}
 	const requestedScope = scope.value;
-	// The user may have changed the link or the scope while n8n was reading it.
-	const isCurrent = () => link === url.value.trim() && requestedScope === scope.value;
+	const run = ++discoverRun;
+	// The user may have changed the link or the scope, or closed the dialog, while n8n read it.
+	const isCurrent = () =>
+		run === discoverRun && link === url.value.trim() && requestedScope === scope.value;
 	discovering.value = true;
 	try {
 		const result = await skillsStore.discoverSource({ url: link, ...parseScope(requestedScope) });
@@ -181,7 +187,7 @@ async function onNext() {
 	} catch (error) {
 		if (isCurrent()) linkError.value = discoverErrorText(error);
 	} finally {
-		discovering.value = false;
+		if (run === discoverRun) discovering.value = false;
 	}
 }
 
@@ -233,6 +239,15 @@ const addLabel = computed(() =>
 		: i18n.baseText('generic.add'),
 );
 
+/** A skill that n8n could not read has no name in the answer, so it gets the name in the list. */
+function withSkillName(
+	failure: SkillSourceConnectResponse['failed'][number],
+): SkillSourceConnectResponse['failed'][number] {
+	if (failure.name) return failure;
+	const skill = discovery.value?.skills.find((item) => item.key === failure.key);
+	return { ...failure, name: skill ? (skill.name ?? skill.location) : null };
+}
+
 async function onAdd() {
 	const source = discovery.value?.source;
 	if (!source || selected.value.length === 0) return;
@@ -244,7 +259,7 @@ async function onAdd() {
 			skillKeys: selected.value,
 		});
 		emit('connected', {
-			response,
+			response: { ...response, failed: response.failed.map(withSkillName) },
 			sourceLabel: source.label,
 			scopeLabel: selectedScope.value?.label ?? '',
 		});
@@ -424,6 +439,7 @@ const title = computed(() =>
 				v-if="step === 'choose'"
 				variant="ghost"
 				:label="i18n.baseText('generic.back')"
+				:disabled="connecting"
 				data-test-id="skill-source-back"
 				@click="onBack"
 			/>

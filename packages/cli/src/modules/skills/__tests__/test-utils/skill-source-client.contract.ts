@@ -155,6 +155,10 @@ export function describeSkillSourceClientContract(subject: () => SkillSourceClie
 			if (page.revision !== undefined) {
 				expect(fetched.content).toEqual(skill('Pinned'));
 				expect(fetched.revision).toBe(page.revision);
+			} else {
+				expect(fetched.content).toEqual(
+					skill('Pinned', { instructions: 'Edited after discover.' }),
+				);
 			}
 		});
 

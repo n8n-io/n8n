@@ -114,7 +114,7 @@ describe('SkillsTelemetry', () => {
 			scope_type: 'team' as const,
 			duplicate_result: 'blocked' as const,
 			status: 'failure' as const,
-			reason: 'duplicate_source',
+			reason: 'duplicate_source' as const,
 		};
 
 		await service.connectedSource(props, 'user-1');

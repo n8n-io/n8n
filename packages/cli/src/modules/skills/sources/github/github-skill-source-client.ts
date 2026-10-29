@@ -60,8 +60,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	readonly capabilities: SkillSourceCapabilities = {
 		discovery: 'listing',
 		changeDetection: 'source',
-		pinnedFetch: false,
+		pinnedFetch: true,
 		history: false,
+		// The files of a skill come in unchanged. Files a skill cannot hold are listed in
+		// `skippedFiles`, not converted.
 		importFidelity: 'lossless',
 	};
 

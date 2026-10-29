@@ -48,7 +48,10 @@ export async function readRepositoryArchive(archive: Buffer): Promise<Repository
 			bytes += entry.size;
 			if (entries > MAX_ENTRIES || bytes > MAX_UNCOMPRESSED_BYTES) {
 				entry.resume();
-				fail(new SkillSourceReadError('archive_too_large', ARCHIVE_TOO_LARGE));
+				const error = new SkillSourceReadError('archive_too_large', ARCHIVE_TOO_LARGE);
+				fail(error);
+				// Stops the decompression, so the rest of the archive is not read.
+				parser.abort(error);
 				return;
 			}
 			const path = withoutTopFolder(entry.path);

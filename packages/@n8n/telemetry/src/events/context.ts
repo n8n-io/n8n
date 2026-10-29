@@ -1,3 +1,4 @@
+import { SKILL_SOURCE_REASONS } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -50,7 +51,10 @@ const skillProjectId = z
 		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
 	);
 
-/** The surface that wrote the skill. The same values as `skill.source`. */
+/**
+ * The surface that wrote the skill: the values of `skill.source` without `import`, as a
+ * package import reports no skill telemetry.
+ */
 const skillSource = z
 	.enum(['ui', 'agent', 'mcp', 'assistant', 'github'])
 	.describe(
@@ -77,7 +81,7 @@ const skillSourceStatus = z
 	.describe('Whether the action succeeded. A failure carries a reason code');
 
 const skillSourceReason = z
-	.string()
+	.enum(SKILL_SOURCE_REASONS)
 	.optional()
 	.describe(
 		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. Absent on success',

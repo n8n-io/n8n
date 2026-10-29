@@ -82,6 +82,12 @@ function parseSkillMd(text: string): { data: Record<string, unknown>; instructio
 		throw new SkillParseError('The SKILL.md frontmatter is not valid YAML.');
 	}
 	if (!isRecord(data)) throw new SkillParseError('The SKILL.md frontmatter must be a map of keys.');
+	// A YAML alias can make a map hold itself, which no hash or JSON column can store.
+	try {
+		JSON.stringify(data);
+	} catch {
+		throw new SkillParseError('The SKILL.md frontmatter cannot refer to itself.');
+	}
 	const instructions = (match[2] ?? '').trim();
 	if (!instructions) {
 		throw new SkillParseError('SKILL.md needs instructions after the frontmatter.');

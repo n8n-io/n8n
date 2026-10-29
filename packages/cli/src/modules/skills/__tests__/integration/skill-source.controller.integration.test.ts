@@ -309,7 +309,7 @@ describe('SkillSourceController', () => {
 			return await connect(agent, { url: REPO, ...scope, skillKeys: keysOf(discovery, ['pdf']) });
 		};
 
-		it('blocks a second source in Global, and lets an admin add skills to the first', async () => {
+		it('blocks a second source in Global, and gives an admin the ID of the first', async () => {
 			const { data: first } = await connectPdf(owner, { scope: 'instance' });
 
 			const { data } = await discover(admin, { url: `${REPO}.git`, scope: 'instance' });
