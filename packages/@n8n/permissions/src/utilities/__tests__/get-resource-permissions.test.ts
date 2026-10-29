@@ -60,6 +60,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		});
@@ -201,6 +202,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		};
