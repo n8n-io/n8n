@@ -33,7 +33,11 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ getNodeType: () => null }),
 }));
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ resolve: () => ({ href: '/workflow/new' }) }),
+	useRouter: () => ({
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/workflow/${params.workflowId}`,
+		}),
+	}),
 }));
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
@@ -137,8 +141,13 @@ it('explains the disabled Save on focus until a workflow is selected', async () 
 	expect(trigger.attributes('tabindex')).toBe('0');
 	expect(await saveHint(wrapper)).toBe('Select a workflow');
 	const picker = wrapper.getComponent(N8nCombobox2);
+	expect(wrapper.find('[data-testid="agent-hitl-workflow-open"]').exists()).toBe(false);
 	picker.vm.$emit('update:modelValue', 'review');
 	await wrapper.vm.$nextTick();
+	const openWorkflow = wrapper.get('[data-testid="agent-hitl-workflow-open"]');
+	expect(openWorkflow.attributes('href')).toBe('/workflow/review');
+	expect(openWorkflow.attributes('target')).toBe('_blank');
+	expect(openWorkflow.attributes('aria-label')).toBe('Open workflow in a new tab');
 	expect(save.attributes('disabled')).toBeUndefined();
 	expect(trigger.attributes('tabindex')).toBeUndefined();
 	expect(wrapper.getComponent(N8nTooltip).props('disabled')).toBe(true);

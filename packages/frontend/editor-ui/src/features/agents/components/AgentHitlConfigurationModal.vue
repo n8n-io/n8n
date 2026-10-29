@@ -6,6 +6,7 @@ import {
 	N8nButton,
 	N8nCombobox2,
 	N8nIcon,
+	N8nIconButton,
 	type ComboboxItem,
 	N8nInput,
 	N8nInputLabel,
@@ -63,6 +64,11 @@ const expirySeconds = ref<AgentHitlConfiguration['expirySeconds'] | 'none'>(
 const method = ref<'workflow' | 'channel'>(props.configuration?.method ?? 'workflow');
 const workflowId = ref(
 	props.configuration?.method === 'workflow' ? props.configuration.workflowId : '',
+);
+const workflowHref = computed(() =>
+	workflowId.value
+		? router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId: workflowId.value } }).href
+		: undefined,
 );
 const workflows = ref<Array<{ id: string; name: string }>>([]);
 const channels = ref<AgentHitlChannelDescriptor[]>([]);
@@ -362,20 +368,35 @@ function save() {
 				</N8nSelect2>
 			</N8nInputLabel>
 			<N8nInputLabel v-if="method === 'workflow'" :label="i18n.baseText('agents.hitl.workflow')">
-				<N8nCombobox2
-					size="large"
-					:model-value="workflowId || undefined"
-					v-model:open="workflowSelectOpen"
-					:items="workflowItems"
-					:loading="loading || creating"
-					:disabled="creating"
-					:teleported="false"
-					:aria-label="i18n.baseText('agents.hitl.workflow')"
-					:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
-					:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
-					data-testid="agent-hitl-workflow"
-					@update:model-value="updateWorkflow"
-				/>
+				<div :class="$style.workflowRow">
+					<N8nCombobox2
+						:class="$style.workflowSelect"
+						size="large"
+						:model-value="workflowId || undefined"
+						v-model:open="workflowSelectOpen"
+						:items="workflowItems"
+						:loading="loading || creating"
+						:disabled="creating"
+						:teleported="false"
+						:aria-label="i18n.baseText('agents.hitl.workflow')"
+						:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
+						:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
+						data-testid="agent-hitl-workflow"
+						@update:model-value="updateWorkflow"
+					/>
+					<N8nIconButton
+						v-if="workflowHref"
+						icon="external-link"
+						variant="ghost"
+						size="small"
+						:href="workflowHref"
+						target="_blank"
+						rel="noopener noreferrer"
+						:title="i18n.baseText('agents.toolConfig.workflow.target.open')"
+						:aria-label="i18n.baseText('agents.toolConfig.workflow.target.open')"
+						data-testid="agent-hitl-workflow-open"
+					/>
+				</div>
 			</N8nInputLabel>
 			<template v-if="method === 'channel'">
 				<N8nInputLabel :label="i18n.baseText('agents.hitl.channel')">
@@ -517,6 +538,15 @@ function save() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+}
+.workflowRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+.workflowSelect {
+	flex: 1;
+	min-width: 0;
 }
 .saveTrigger {
 	display: inline-flex;
