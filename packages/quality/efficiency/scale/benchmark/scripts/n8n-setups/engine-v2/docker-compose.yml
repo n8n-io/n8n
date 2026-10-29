@@ -30,8 +30,8 @@ services:
       # Creates the separate engine v2 database on the first start
       - ./init-engine-db.sql:/docker-entrypoint-initdb.d/init-engine-db.sql:ro
     healthcheck:
-      # Over TCP, so the check fails while the init script runs on the socket-only
-      # temporary server
+      # Check over TCP. On the first start, a socket-only temporary server runs the
+      # init script, so a socket check would pass before n8n_engine exists
       test: ['CMD-SHELL', 'pg_isready -U postgres -h 127.0.0.1']
       interval: 5s
       timeout: 5s
