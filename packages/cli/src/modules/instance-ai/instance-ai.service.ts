@@ -1705,7 +1705,7 @@ export class InstanceAiService {
 			if (run.abortController.signal.aborted) continue;
 
 			// Runs holding an inline HITL confirmation (for example
-			// `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
+			// `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -5179,7 +5179,8 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
-							modelFetch: this.modelService.getModelFetch(),
+							modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
+							requestLabels: this.instanceAiConfig.modelRequestLabels,
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -5199,7 +5200,8 @@ export class InstanceAiService {
 				}
 			} else {
 				llmTitle = await generateTitleForRun(modelId, userText, {
-					modelFetch: this.modelService.getModelFetch(),
+					modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
+					requestLabels: this.instanceAiConfig.modelRequestLabels,
 				});
 			}
 			if (!llmTitle) return;

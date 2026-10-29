@@ -235,6 +235,12 @@ export class TelemetryEventRelay extends EventRelay {
 		await this.telemetry.init();
 
 		this.setupListeners({
+			'data-table-storage-limit-reached': ({ totalBytes, maxBytes }) => {
+				this.telemetry.track('User hit data table storage limit', {
+					total_bytes: totalBytes,
+					max_bytes: maxBytes,
+				});
+			},
 			'team-project-updated': (event) => this.teamProjectUpdated(event),
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
@@ -994,6 +1000,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && {
@@ -1016,6 +1023,7 @@ export class TelemetryEventRelay extends EventRelay {
 			jwe_enabled: jweEnabled ?? false,
 			credential_supports_managed_auth: supportsManagedAuth ?? false,
 			credential_uses_managed_auth: usesManagedAuth ?? false,
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
@@ -1039,6 +1047,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private credentialsUpdated({
+		descriptionOnly,
 		user,
 		credentialId,
 		credentialType,
@@ -1048,6 +1057,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && { source: 'backend' }),
@@ -1060,10 +1070,17 @@ export class TelemetryEventRelay extends EventRelay {
 				description_length: credentialDescriptionLength,
 			}),
 			is_private: isDynamic ?? false,
-			uses_external_secrets: usesExternalSecrets ?? false,
-			jwe_enabled: jweEnabled ?? false,
-			credential_supports_managed_auth: supportsManagedAuth ?? false,
-			credential_uses_managed_auth: usesManagedAuth ?? false,
+			...(!descriptionOnly || usesExternalSecrets !== undefined
+				? { uses_external_secrets: usesExternalSecrets ?? false }
+				: {}),
+			...(!descriptionOnly || jweEnabled !== undefined ? { jwe_enabled: jweEnabled ?? false } : {}),
+			...(!descriptionOnly || supportsManagedAuth !== undefined
+				? { credential_supports_managed_auth: supportsManagedAuth ?? false }
+				: {}),
+			...(!descriptionOnly || usesManagedAuth !== undefined
+				? { credential_uses_managed_auth: usesManagedAuth ?? false }
+				: {}),
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 

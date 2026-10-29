@@ -1873,6 +1873,40 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('always allow for workflow actions', () => {
+		it('keeps the always-allow scope of a resume', () => {
+			expect(workflowsResumeSchema.parse({ approved: true, scope: 'session' })).toMatchObject({
+				scope: 'session',
+			});
+		});
+
+		it.each([
+			['delete', 'archive'],
+			['unarchive', 'unarchive'],
+			['unpublish', 'unpublish'],
+		] as const)(
+			'stores a per-workflow grant for %s and skips the next approval',
+			async (action, serviceMethod) => {
+				const context = createMockContext();
+				context.grantSessionToolApproval = vi.fn(async () => {});
+				const tool = toolFor(context, action);
+
+				await executeTool(tool, { action, workflowId: 'wf1' }, {
+					resumeData: { approved: true, scope: 'session' },
+				} as never);
+
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(`workflows:${action}:wf1`);
+				expect(context.workflowService[serviceMethod]).toHaveBeenCalledWith('wf1');
+
+				context.sessionApprovedToolKeys = new Set([`workflows:${action}:wf1`]);
+				const suspend = vi.fn();
+				await executeTool(tool, { action, workflowId: 'wf1' }, { suspend } as never);
+
+				expect(suspend).not.toHaveBeenCalled();
+			},
+		);
+	});
+
 	describe('unarchive action', () => {
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({
@@ -2133,6 +2167,77 @@ describe('workflows tool', () => {
 				versionId: undefined,
 			});
 			expect(result).toMatchObject({ success: true, activeVersionId: 'v2' });
+		});
+
+		describe('always allow', () => {
+			const verifiedClaim = { ...partialClaim, level: 'verified', publishReady: true };
+
+			it('skips the approval for a workflow that the user always allowed in this thread', async () => {
+				const context = contextWithClaim(verifiedClaim);
+				context.sessionApprovedToolKeys = new Set(['workflows:publish:wf1']);
+				(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+				const suspend = vi.fn();
+
+				const tool = toolFor(context, 'publish', 'full');
+				const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+					suspend,
+				} as never);
+
+				expect(suspend).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ success: true });
+			});
+
+			it('still asks for another workflow', async () => {
+				const context = contextWithClaim(verifiedClaim);
+				context.sessionApprovedToolKeys = new Set(['workflows:publish:wf-other']);
+				const suspend = vi.fn();
+
+				const tool = toolFor(context, 'publish', 'full');
+				await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, { suspend } as never);
+
+				expect(suspend).toHaveBeenCalled();
+			});
+
+			it('still asks for an unverified workflow, even with a grant', async () => {
+				const context = contextWithClaim(partialClaim);
+				context.sessionApprovedToolKeys = new Set(['workflows:publish:wf1']);
+				const suspend = vi.fn();
+
+				const tool = toolFor(context, 'publish', 'full');
+				await executeTool(
+					tool,
+					{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+					{ suspend } as never,
+				);
+
+				expect(suspend).toHaveBeenCalled();
+			});
+
+			it('stores a grant when the user always allows the publish', async () => {
+				const context = contextWithClaim(verifiedClaim);
+				context.grantSessionToolApproval = vi.fn(async () => {});
+				(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+				const tool = toolFor(context, 'publish', 'full');
+				await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+					resumeData: { approved: true, scope: 'session' },
+				} as never);
+
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith('workflows:publish:wf1');
+			});
+
+			it('stores no grant for a one-time approval', async () => {
+				const context = contextWithClaim(verifiedClaim);
+				context.grantSessionToolApproval = vi.fn(async () => {});
+				(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+				const tool = toolFor(context, 'publish', 'full');
+				await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+					resumeData: { approved: true },
+				} as never);
+
+				expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should not gate a fully verified workflow', async () => {

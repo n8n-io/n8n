@@ -6,7 +6,13 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
-import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INodeExecutionData,
+	IRunData,
+	ITaskData,
+	TerminalExecutionStatus,
+} from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -79,36 +85,42 @@ export function settlementStatusForExecution(
 	return 'failed';
 }
 
-/** Extract the JSON items produced by the last run of a node. */
-function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
+/** Extract the items produced by the last run of a node. */
+function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): INodeExecutionData[] {
 	const lastRun = nodeRuns[nodeRuns.length - 1];
 	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
+	return lastRun.data.main.flatMap((items) => items ?? []);
+}
+
+/** Build a map from node name to output items. Items keep their binary data. */
+export function collectResultItems(
+	runData: IRunData,
+	allOutputs: boolean,
+): Record<string, INodeExecutionData[]> {
+	const nodeNames = allOutputs ? Object.keys(runData) : Object.keys(runData).slice(-1);
+	const resultItems: Record<string, INodeExecutionData[]> = {};
+	for (const nodeName of nodeNames) {
+		const outputItems = outputItemsFromNodeRuns(runData[nodeName]);
+		if (outputItems.length > 0) resultItems[nodeName] = outputItems;
+	}
+	return resultItems;
+}
+
+/** Map each node's output items to their JSON. */
+export function toResultData(
+	resultItems: Record<string, INodeExecutionData[]>,
+): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(resultItems).map(([nodeName, items]) => [
+			nodeName,
+			items.map((item) => item.json),
+		]),
+	);
 }
 
 /** Build the resultData map from an execution's runData. */
 export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
-	const resultData: Record<string, unknown> = {};
-
-	if (allOutputs) {
-		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-			const outputItems = outputItemsFromNodeRuns(nodeRuns);
-			if (outputItems.length > 0) {
-				resultData[nodeName] = outputItems;
-			}
-		}
-		return resultData;
-	}
-
-	const nodeNames = Object.keys(runData);
-	const lastNodeName = nodeNames[nodeNames.length - 1];
-	if (lastNodeName) {
-		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
-		if (outputItems.length > 0) {
-			resultData[lastNodeName] = outputItems;
-		}
-	}
-	return resultData;
+	return toResultData(collectResultItems(runData, allOutputs));
 }
 
 /**
