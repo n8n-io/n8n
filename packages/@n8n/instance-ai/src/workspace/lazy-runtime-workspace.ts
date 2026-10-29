@@ -64,6 +64,7 @@ export function createLazyRuntimeWorkspace({
 		name,
 		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
+		prewarm: () => resolver.prewarm(),
 	});
 
 	const baseGetTools = workspace.getTools.bind(workspace);
@@ -93,6 +94,15 @@ class LazyRuntimeWorkspaceResolver {
 
 	onDestroyed(listener: WorkspaceDestroyedListener): void {
 		this.destroyedListeners.add(listener);
+	}
+
+	/**
+	 * Starts creating the workspace without waiting for it. The next tool call
+	 * joins the creation in progress. A failure clears it, so that call retries
+	 * and reports the error.
+	 */
+	prewarm(): void {
+		this.getWorkspace().catch(() => {});
 	}
 
 	async getWorkspace(): Promise<Workspace> {

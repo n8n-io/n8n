@@ -167,6 +167,50 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
 	});
 
+	it('starts workspace creation on prewarm and reuses it for the first tool call', async () => {
+		const { workspace } = createMockWorkspace();
+		const creation = createDeferredPromise<Workspace>();
+		const ensureWorkspace = vi.fn(async () => await creation.promise);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		lazyWorkspace.prewarm();
+		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+
+		const read = readFile?.handler?.({ path: '/workspace/report.md' }, {});
+		creation.resolve(workspace);
+
+		await expect(read).resolves.toEqual({ content: 'hello' });
+		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+	});
+
+	it('creates the workspace again in the tool call after a failed prewarm', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('setup failed'))
+			.mockResolvedValueOnce(workspace);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		lazyWorkspace.prewarm();
+		await vi.waitFor(() => expect(ensureWorkspace).toHaveBeenCalledTimes(1));
+
+		await expect(readFile?.handler?.({ path: '/workspace/report.md' }, {})).resolves.toEqual({
+			content: 'hello',
+		});
+		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('marks the workspace tools as needing the workspace', () => {
+		const { workspace } = createMockWorkspace();
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
+		});
+
+		expect(lazyWorkspace.getTools().every((tool) => tool.requiresWorkspace)).toBe(true);
+	});
+
 	it('reflects resolved provider statuses and instructions', async () => {
 		const { workspace } = createMockWorkspace();
 		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));

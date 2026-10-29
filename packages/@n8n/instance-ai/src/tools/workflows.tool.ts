@@ -2320,6 +2320,8 @@ export function createWorkflowTool(
 	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
 		tool.legacyActions(legacyName, ...actions);
 	}
+	// get-as-code writes the workflow source into the workspace.
+	if (action === 'get-as-code') tool.requiresWorkspace();
 	// The input schema omits `action`, so restore it for the shared handlers.
 	const withAction = (input: unknown) => ({ ...(isRecord(input) ? input : {}), action }) as Input;
 

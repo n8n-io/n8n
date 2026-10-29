@@ -17,6 +17,7 @@ export class Workspace {
 	private _status: ProviderStatus = 'pending';
 	private filesystemInstance?: WorkspaceFilesystem;
 	private sandboxInstance?: WorkspaceSandbox;
+	private readonly prewarmHook?: () => void;
 
 	private initPromise?: Promise<void>;
 	private destroyPromise?: Promise<void>;
@@ -26,6 +27,7 @@ export class Workspace {
 		this.name = config.name ?? `workspace-${this.id}`;
 		this.filesystemInstance = config.filesystem;
 		this.sandboxInstance = config.sandbox;
+		this.prewarmHook = config.prewarm;
 	}
 
 	get status(): ProviderStatus {
@@ -75,6 +77,11 @@ export class Workspace {
 		} finally {
 			this.destroyPromise = undefined;
 		}
+	}
+
+	/** Start preparing the workspace in the background. No-op without a `prewarm` hook. */
+	prewarm(): void {
+		this.prewarmHook?.();
 	}
 
 	getInstructions(): string {
