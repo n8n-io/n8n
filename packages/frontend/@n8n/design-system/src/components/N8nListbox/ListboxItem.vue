@@ -87,15 +87,22 @@ function onSelect(event: Event) {
 	box-sizing: border-box;
 	width: 100%;
 	min-width: 0;
-	border-radius: var(--radius);
+	border-radius: var(--listbox-item--radius, var(--radius));
 	outline: none;
 	cursor: pointer;
 	text-align: start;
 
-	&:hover:not([data-disabled]),
-	&[data-highlighted],
+	// The fill follows data-highlighted. :not([data-state='checked']) keeps this
+	// rule from beating the selected fill when both states are on one row.
+	&:not([data-disabled]):not([data-state='checked'])[data-highlighted] {
+		background-color: var(
+			--listbox-item--color--background--highlight,
+			var(--color--background--light-1)
+		);
+	}
+
 	&[data-state='checked'] {
-		background-color: var(--color--background--light-1);
+		background-color: var(--listbox-item--color--background--selected, var(--background--active));
 	}
 
 	&:focus-visible,
@@ -117,6 +124,7 @@ function onSelect(event: Event) {
 	}
 
 	&[data-disabled] {
+		color: var(--listbox-item--color--text--disabled, var(--text-color--disabled));
 		cursor: not-allowed;
 	}
 }

@@ -4,7 +4,7 @@ defineOptions({ name: 'N8nVersionHistoryRail' });
 defineProps<{
 	/**
 	 * `dot` stops the line at the status dot.
-	 * `icon` stops the line at the small chevron.
+	 * `icon` stops the line at the xsmall chevron.
 	 */
 	mark: 'dot' | 'icon';
 	/** Line from the top of this row's content to the mark. */
@@ -82,13 +82,14 @@ defineSlots<{
 	margin-top: calc(var(--spacing--2xs) / 2);
 }
 
-// The group chevron is 12px. Keep 4px clear of the track.
+// The group chevron is 10px. Keep 4px clear of the track.
+// Half of 10px has no spacing token.
 .above.icon {
-	margin-bottom: calc(var(--spacing--xs) / 2 + var(--spacing--4xs));
+	margin-bottom: calc(5px + var(--spacing--4xs));
 }
 
 .below.icon {
-	margin-top: calc(var(--spacing--xs) / 2 + var(--spacing--4xs));
+	margin-top: calc(5px + var(--spacing--4xs));
 }
 
 .mark {

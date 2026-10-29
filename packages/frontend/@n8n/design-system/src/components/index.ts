@@ -187,6 +187,7 @@ export type {
 	VersionHistoryProps,
 	VersionHistoryStatus,
 	VersionHistoryTogglePayload,
+	VersionHistoryTooltip,
 } from './N8nVersionHistory';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';

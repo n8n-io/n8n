@@ -9,4 +9,5 @@ export type {
 	VersionHistoryProps,
 	VersionHistoryStatus,
 	VersionHistoryTogglePayload,
+	VersionHistoryTooltip,
 } from './VersionHistory.types';

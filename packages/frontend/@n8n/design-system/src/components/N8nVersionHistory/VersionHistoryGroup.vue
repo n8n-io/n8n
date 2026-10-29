@@ -24,10 +24,9 @@ function onSelect(event: Event) {
 	emit('toggle');
 }
 
-// The chevron stays small so the timeline meets a 12px mark.
+// The chevron stays at the smallest icon size so the timeline meets a 10px mark.
 const iconProps = {
-	size: 'small' as const,
-	color: 'text-base' as const,
+	size: 'xsmall' as const,
 };
 </script>
 
@@ -40,7 +39,9 @@ const iconProps = {
 		@select="onSelect"
 	>
 		<VersionHistoryRail mark="icon" :connect-above="connectAbove" :connect-below="connectBelow">
-			<N8nIcon v-bind="iconProps" :icon="expanded ? 'chevron-down' : 'chevron-right'" />
+			<span :class="$style.chevron">
+				<N8nIcon v-bind="iconProps" :icon="expanded ? 'chevron-down' : 'chevron-right'" />
+			</span>
 		</VersionHistoryRail>
 		<N8nText size="small" color="text-base" :class="$style.label">{{ label }}</N8nText>
 	</N8nListboxItem>
@@ -66,5 +67,14 @@ const iconProps = {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.chevron {
+	display: flex;
+	color: var(--icon-color);
+}
+
+.group[data-highlighted] .chevron {
+	color: var(--color--text--shade-1);
 }
 </style>

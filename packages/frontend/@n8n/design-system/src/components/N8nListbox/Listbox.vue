@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, nextTick, onMounted, ref, useAttrs } from 'vue';
+import { computed, getCurrentInstance, nextTick, onMounted, ref, useAttrs } from 'vue';
 
-import type { ListboxProps, ListboxSlots } from './Listbox.types';
+import type { ListboxProps, ListboxSlots, ListboxValue } from './Listbox.types';
 import { ListboxContent, ListboxRoot, useForwardProps } from './reka-ui';
 
 defineOptions({ name: 'N8nListbox', inheritAttrs: false });
@@ -11,27 +11,32 @@ const attrs = useAttrs();
 const rootClass = computed(() => attrs.class);
 const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 
-const props = withDefaults(defineProps<Omit<ListboxProps, 'modelValue'>>(), {
+const props = withDefaults(defineProps<ListboxProps>(), {
 	selectionBehavior: 'replace',
 	orientation: 'vertical',
 	disabled: false,
-	highlightOnHover: false,
+	highlightOnHover: true,
 });
+
+const emit = defineEmits<{
+	'update:modelValue': [value: ListboxValue | undefined];
+}>();
 
 defineSlots<ListboxSlots>();
 
-const modelValue = defineModel<ListboxProps['modelValue']>('modelValue');
+// vnode.props records a passed model, including when the value is undefined.
+const vnodeProps = getCurrentInstance()?.vnode.props ?? {};
+const isModelControlled = 'modelValue' in vnodeProps || 'model-value' in vnodeProps;
+const internalValue = ref<ListboxValue | undefined>(props.defaultValue);
+const rootModelValue = computed(() => (isModelControlled ? props.modelValue : internalValue.value));
+
+function onModelUpdate(value: ListboxValue | undefined) {
+	if (!isModelControlled) internalValue.value = value;
+	emit('update:modelValue', value);
+}
 
 const rootProps = useForwardProps(
-	reactivePick(
-		props,
-		'disabled',
-		'orientation',
-		'dir',
-		'selectionBehavior',
-		'highlightOnHover',
-		'defaultValue',
-	),
+	reactivePick(props, 'disabled', 'orientation', 'dir', 'selectionBehavior', 'highlightOnHover'),
 );
 
 const contentRef = ref<HTMLElement | null>(null);
@@ -83,6 +88,33 @@ function focusStop(stop: ListStop) {
 	else stop.option.focus();
 }
 
+const NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
+
+// Arrow keys move the highlight. A pointermove at the same point would put it back
+// on the row under the pointer, so that row would keep the fill.
+let suspendPointerHighlight = false;
+let pointerX = 0;
+let pointerY = 0;
+
+function onListKeydown(event: KeyboardEvent) {
+	if (NAVIGATION_KEYS.has(event.key) && !event.altKey && !event.ctrlKey && !event.metaKey) {
+		suspendPointerHighlight = true;
+	}
+	onTab(event);
+}
+
+function onPointerMoveCapture(event: PointerEvent) {
+	const moved = Math.hypot(event.clientX - pointerX, event.clientY - pointerY) > 2;
+	pointerX = event.clientX;
+	pointerY = event.clientY;
+	if (!suspendPointerHighlight) return;
+	if (!moved) {
+		event.stopPropagation();
+		return;
+	}
+	suspendPointerHighlight = false;
+}
+
 // Tab walks the buttons inside the focused item, then moves to the next item.
 function onTab(event: KeyboardEvent) {
 	if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey || props.disabled) {
@@ -125,13 +157,19 @@ onMounted(() => {
 
 <template>
 	<div :class="[$style.root, rootClass]" v-bind="rootAttrs">
-		<ListboxRoot ref="rootRef" v-bind="rootProps" v-model="modelValue">
+		<ListboxRoot
+			ref="rootRef"
+			v-bind="rootProps"
+			:model-value="rootModelValue"
+			@update:model-value="onModelUpdate"
+		>
 			<ListboxContent as-child>
 				<div
 					ref="contentRef"
 					:class="$style.content"
 					:aria-label="label"
-					@keydown="onTab"
+					@keydown.capture="onListKeydown"
+					@pointermove.capture="onPointerMoveCapture"
 					@focusout="onFocusOut"
 				>
 					<slot />
@@ -166,5 +204,16 @@ onMounted(() => {
 	min-height: 0;
 	min-width: 0;
 	outline: none;
+
+	// Reka sets data-orientation. A horizontal list lays its items in a row.
+	&[data-orientation='horizontal'] {
+		flex-direction: row;
+		flex-wrap: wrap;
+
+		:global([role='option']) {
+			width: auto;
+			flex: none;
+		}
+	}
 }
 </style>

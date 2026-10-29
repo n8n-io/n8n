@@ -35,11 +35,17 @@ const props = withDefaults(defineProps<VersionHistoryProps>(), {
 	loading: false,
 	hasMore: false,
 	loadingMore: false,
+	showCompare: true,
 });
 
 const emit = defineEmits<{
 	/** The user opens a version. */
 	select: [id: string];
+	/**
+	 * The user opens a version with Command or Control held.
+	 * The open version stays the same.
+	 */
+	selectSeparate: [id: string];
 	/** The user compares a version. */
 	compare: [id: string];
 	/** The user chooses an action from a version menu. */
@@ -57,6 +63,8 @@ defineSlots<{
 	actions?: (props: { item: VersionHistoryRow }) => unknown;
 	/** Replaces the heading label. The pinned copy uses the same slot. */
 	heading?: (props: { id: string; label: string }) => unknown;
+	/** Content after the last row. It scrolls with the list. */
+	footer?: () => unknown;
 }>();
 
 const SKELETON_ROWS = [
@@ -73,8 +81,8 @@ const ESTIMATED_ROW_HEIGHT = 48;
 const listboxProps = {
 	// One version stays open. A second activation keeps that version.
 	selectionBehavior: 'replace' as const,
-	// Hover paints the row through the item style.
-	highlightOnHover: false,
+	// Pointer movement moves the highlight. Arrow keys take it from the row under the pointer.
+	highlightOnHover: true,
 	// Up and down move between rows.
 	orientation: 'vertical' as const,
 };
@@ -207,6 +215,30 @@ function onToggle(id: string) {
 	emit('toggle', { id, expanded });
 }
 
+// Command or Control with Enter or Space opens the version without replacing the open one.
+// A click with those keys is handled on the row.
+function onModifiedActivation(event: KeyboardEvent) {
+	if (event.key !== 'Enter' && event.key !== ' ') return;
+	if (!event.metaKey && !event.ctrlKey) return;
+	if (!(event.target instanceof Element)) return;
+
+	const option = event.target.closest('[role="option"]');
+	if (!(option instanceof HTMLElement) || option.hasAttribute('aria-expanded')) return;
+
+	const id = option.dataset.value;
+	if (!id) return;
+
+	event.preventDefault();
+	event.stopPropagation();
+	emit('selectSeparate', id);
+}
+
+function onListKeydown(event: KeyboardEvent) {
+	onModifiedActivation(event);
+	if (event.defaultPrevented) return;
+	onGroupKeydown(event);
+}
+
 // The listbox handles Left and Right after the row.
 // A group handles those keys first.
 function onGroupKeydown(event: KeyboardEvent) {
@@ -275,13 +307,93 @@ function flushScroll() {
 	scrollerRef.value?.scrollTo(top);
 	pendingScrollId.value = undefined;
 
-	// The scroller measures the rows it just mounted on the next tick.
-	// Place the row again when that changes the heading height.
-	void nextTick(() => {
-		if (pendingScrollId.value) return;
-		const settled = scrollTopFor(id);
-		if (settled === undefined || settled === listScrollTop.value) return;
-		scrollerRef.value?.scrollTo(settled);
+	// The first scroll uses estimated row heights. A group that just opened
+	// is still short. Place the rendered row on the following frame.
+	alignScroll(id, 0, 0);
+}
+
+const ALIGN_LIMIT = 6;
+
+function scrollerElement(): HTMLElement | undefined {
+	const element = scrollerRef.value?.$el;
+	return element instanceof HTMLElement ? element : undefined;
+}
+
+function rowElement(root: HTMLElement, id: string): HTMLElement | undefined {
+	const row = root.querySelector(`[data-row-id="${CSS.escape(id)}"]`);
+	return row instanceof HTMLElement ? row : undefined;
+}
+
+function headingBefore(row: HTMLElement): HTMLElement | undefined {
+	const container = row.closest('.recycle-scroller');
+	if (!container) return undefined;
+
+	let heading: HTMLElement | undefined;
+	for (const candidate of container.querySelectorAll('[data-row-id]')) {
+		if (candidate === row) return heading;
+		if (!(candidate instanceof HTMLElement)) continue;
+		if (candidate.querySelector('[data-test-id="version-history-heading"]')) heading = candidate;
+	}
+
+	return heading;
+}
+
+/** Distance from the scroller top to where this row should start. */
+function rowClearance(row: HTMLElement, root: HTMLElement, isHeading: boolean): number {
+	if (isHeading) return 0;
+
+	const rootTop = root.getBoundingClientRect().top;
+	const heading = headingBefore(row);
+	if (heading) {
+		const bottom = heading.getBoundingClientRect().bottom - rootTop;
+		if (bottom > 1) return bottom;
+	}
+
+	const panel = root.closest('[data-test-id="version-history"]');
+	const pin = panel?.querySelector('[data-test-id="version-history-sticky-heading"]');
+	if (pin instanceof HTMLElement && pin.offsetHeight > 0) return pin.offsetHeight;
+
+	return 0;
+}
+
+/** Move the scroll so the rendered row sits below its heading. Returns false when it is already there. */
+function nudgeToward(id: string): boolean {
+	const scroller = scrollerRef.value;
+	const root = scrollerElement();
+	if (!scroller || !root || root.clientHeight === 0) return false;
+
+	const row = rowElement(root, id);
+	if (!row) {
+		const cached = scrollTopFor(id);
+		if (cached === undefined) return false;
+		const before = listScrollTop.value;
+		const direction = cached >= before ? 1 : -1;
+		scroller.scrollTo(before + direction * root.clientHeight);
+		return listScrollTop.value !== before;
+	}
+
+	const historyRow = rows.value.find((entry) => entry.key === id);
+	if (!historyRow) return false;
+
+	const offset = row.getBoundingClientRect().top - root.getBoundingClientRect().top;
+	const delta = offset - rowClearance(row, root, historyRow.kind === 'heading');
+	if (Math.abs(delta) <= 1) return false;
+
+	const before = listScrollTop.value;
+	scroller.scrollTo(before + delta);
+	return listScrollTop.value !== before;
+}
+
+function alignScroll(id: string, attempt: number, stable: number) {
+	requestAnimationFrame(() => {
+		void nextTick(() => {
+			if (pendingScrollId.value) return;
+			// Row heights settle a frame after the list opens a group.
+			// Wait for two frames with no movement before stopping.
+			const nextStable = nudgeToward(id) ? 0 : stable + 1;
+			if (nextStable >= 2 || attempt >= ALIGN_LIMIT) return;
+			alignScroll(id, attempt + 1, nextStable);
+		});
 	});
 }
 
@@ -427,7 +539,7 @@ defineExpose({ scrollTo });
 			:model-value="activeId"
 			:label="listLabel"
 			@update:model-value="onSelect"
-			@keydown.capture="onGroupKeydown"
+			@keydown.capture="onListKeydown"
 		>
 			<N8nRecycleScroller
 				ref="scrollerRef"
@@ -448,6 +560,7 @@ defineExpose({ scrollTo });
 							!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
 						]"
 						data-test-id="version-history-row"
+						:data-row-id="item.key"
 					>
 						<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
 						<span
@@ -462,11 +575,13 @@ defineExpose({ scrollTo });
 						<VersionHistoryItem
 							v-else-if="item.kind === 'version'"
 							:item="item.item"
+							:show-compare="showCompare"
 							:connect-above="item.connectAbove"
 							:connect-below="item.connectBelow"
 							:aria-setsize="rows.length"
 							:aria-posinset="item.position"
 							@compare="emit('compare', $event)"
+							@select-separate="emit('selectSeparate', $event)"
 							@action="onAction(item.item.id, $event)"
 						>
 							<template v-if="$slots.actions" #actions="slotProps">
@@ -486,8 +601,9 @@ defineExpose({ scrollTo });
 						/>
 					</div>
 				</template>
-				<template v-if="hasMore || loadingMore" #footer>
+				<template v-if="hasMore || loadingMore || $slots.footer" #footer>
 					<div
+						v-if="hasMore || loadingMore"
 						ref="loadMoreSentinel"
 						:class="[$style.loadMore, loadingMore ? $style.loadingMore : $style.sentinel]"
 						data-test-id="version-history-load-more"
@@ -512,6 +628,9 @@ defineExpose({ scrollTo });
 								</span>
 							</span>
 						</div>
+					</div>
+					<div v-if="$slots.footer" :class="$style.footer" data-test-id="version-history-footer">
+						<slot name="footer" />
 					</div>
 				</template>
 			</N8nRecycleScroller>
@@ -590,8 +709,8 @@ defineExpose({ scrollTo });
 
 // Space with no line. The track ends, the heading shows, and the next track starts.
 .headingRow {
-	padding-top: var(--spacing--sm);
-	padding-bottom: var(--spacing--sm);
+	padding-top: var(--spacing--2xs);
+	padding-bottom: var(--spacing--2xs);
 }
 
 // The heading row already holds the space before this track.
@@ -703,5 +822,9 @@ defineExpose({ scrollTo });
 
 .loadingMore {
 	padding: 0 var(--spacing--2xs) var(--spacing--3xs);
+}
+
+.footer {
+	padding: var(--spacing--sm) var(--spacing--2xs);
 }
 </style>

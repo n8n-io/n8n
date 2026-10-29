@@ -2,6 +2,14 @@ import type { ActionToggleItem } from '../N8nActionToggle/ActionToggle.types';
 
 export type VersionHistoryStatus = 'published' | 'latest' | 'default';
 
+/** Tooltip shown for a version row. The caller writes both lines. */
+export interface VersionHistoryTooltip {
+	/** First line. The status dot sits before this text. */
+	title: string;
+	/** Second line, such as who published the version and when. */
+	detail?: string;
+}
+
 export interface VersionHistoryItem {
 	/** Stable id for the version. Unique across versions and groups in the list. */
 	id: string;
@@ -29,6 +37,17 @@ export interface VersionHistoryItem {
 	disabled?: boolean;
 	/** Disable the compare control for this row. */
 	compareDisabled?: boolean;
+	/**
+	 * Tooltip for the compare control.
+	 * A line break starts a second line.
+	 * The accessible name stays "Compare".
+	 */
+	compareTooltip?: string;
+	/**
+	 * Tooltip for the row.
+	 * The list shows it to the left of the row.
+	 */
+	tooltip?: VersionHistoryTooltip;
 	/** Disable the menu for this row. */
 	actionsDisabled?: boolean;
 }
@@ -126,4 +145,9 @@ export interface VersionHistoryProps {
 	loadingMore?: boolean;
 	/** Accessible name for the status at the end of the list. */
 	loadingMoreLabel?: string;
+	/**
+	 * Show the compare control on each version.
+	 * Set this to false to hide compare and keep the menu.
+	 */
+	showCompare?: boolean;
 }

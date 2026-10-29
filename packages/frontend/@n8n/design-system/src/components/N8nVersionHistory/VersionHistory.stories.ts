@@ -11,7 +11,9 @@ import N8nInputLabel from '../N8nInputLabel';
 import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';
 import N8nSwitch from '../N8nSwitch';
+import N8nTabs from '../N8nTabs';
 import N8nText from '../N8nText/Text.vue';
+import N8nIconButton from '../N8nIconButton/IconButton.vue';
 import {
 	isVersionHistoryGroup,
 	isVersionHistoryHeading,
@@ -391,27 +393,121 @@ function useHistory(initialId = 'v3') {
 		action('select')(id);
 	}
 
+	function onSelectSeparate(id: string) {
+		action('selectSeparate')(id);
+	}
+
 	return {
 		selectedId,
 		onSelect,
+		onSelectSeparate,
 		onCompare: action('compare'),
 		onAction: action('action'),
 		onToggle: action('toggle'),
 	};
 }
 
+function flattenVersions(entries: VersionHistoryEntry[]): VersionHistoryItem[] {
+	const flat: VersionHistoryItem[] = [];
+	for (const entry of entries) {
+		if (isVersionHistoryHeading(entry)) continue;
+		if (isVersionHistoryGroup(entry)) {
+			flat.push(...entry.items);
+			continue;
+		}
+		flat.push(entry);
+	}
+	return flat;
+}
+
+function versionTitle(item: VersionHistoryItem): string {
+	return item.detail ? `${item.label} · ${item.detail}` : item.label;
+}
+
+/** Published rows show who published them. A caller-supplied tooltip stays. */
+function publishedTooltip(item: VersionHistoryItem): VersionHistoryItem['tooltip'] {
+	if (item.tooltip) return item.tooltip;
+	if (item.status !== 'published' || !item.author) return undefined;
+
+	const when = item.createdAt ? `, ${item.createdAt}` : '';
+	return {
+		title: `${item.label} (Published)`,
+		detail: `Published by ${item.author}${when}`,
+	};
+}
+
+/**
+ * Compare text follows the open version, including versions inside a closed group.
+ * The open row compares with the next version. Every other row compares with the open one.
+ */
+function decorateItem(
+	item: VersionHistoryItem,
+	flat: VersionHistoryItem[],
+	selected: VersionHistoryItem | undefined,
+): VersionHistoryItem {
+	const tooltip = publishedTooltip(item);
+	if (!selected) return { ...item, tooltip };
+
+	const index = flat.findIndex((entry) => entry.id === item.id);
+	const isSelected = item.id === selected.id;
+	const partner = isSelected ? flat[index + 1] : selected;
+	if (!partner || partner.id === item.id) {
+		return { ...item, tooltip, compareDisabled: true };
+	}
+
+	const compareName = isSelected ? versionTitle(item) : versionTitle(selected);
+	const withName = isSelected ? versionTitle(partner) : versionTitle(item);
+	return {
+		...item,
+		tooltip,
+		compareTooltip: `Compare “${compareName}”\nwith “${withName}”`,
+		compareDisabled: item.compareDisabled === true,
+	};
+}
+
+function decorateVersions(
+	entries: VersionHistoryEntry[],
+	selectedId: string | undefined,
+): VersionHistoryEntry[] {
+	const flat = flattenVersions(entries);
+	const selected = flat.find((item) => item.id === selectedId);
+
+	return entries.map((entry) => {
+		if (isVersionHistoryHeading(entry)) return entry;
+		if (isVersionHistoryGroup(entry)) {
+			return {
+				...entry,
+				items: entry.items.map((item) => decorateItem(item, flat, selected)),
+			};
+		}
+		return decorateItem(entry, flat, selected);
+	});
+}
+
+function itemsFor(entries: VersionHistoryEntry[] | undefined, selectedId: string | undefined) {
+	return decorateVersions(entries ?? [], selectedId);
+}
+
+function presentedHistory(entries: VersionHistoryEntry[] | undefined, initialId?: string) {
+	const history = useHistory(initialId);
+	const items = computed(() => itemsFor(entries, history.selectedId.value));
+	return { items, ...history };
+}
+
 export const Default: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory },
 		setup() {
-			return { args, ...useHistory() };
+			return { args, ...presentedHistory(args.items) };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nVersionHistory
 					v-bind="args"
+					:items="items"
 					:selected-id="selectedId"
 					@select="onSelect"
+					@select-separate="onSelectSeparate"
 					@compare="onCompare"
 					@action="onAction"
 					@toggle="onToggle"
@@ -430,14 +526,16 @@ export const Selected: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory },
 		setup() {
-			return { args, ...useHistory('v2b') };
+			return { args, ...presentedHistory(args.items, 'v2b') };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nVersionHistory
 					v-bind="args"
+					:items="items"
 					:selected-id="selectedId"
 					@select="onSelect"
+					@select-separate="onSelectSeparate"
 					@compare="onCompare"
 					@action="onAction"
 					@toggle="onToggle"
@@ -489,14 +587,16 @@ export const CustomHeading: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nText },
 		setup() {
-			return { args, ...useHistory() };
+			return { args, ...presentedHistory(args.items) };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nVersionHistory
 					v-bind="args"
+					:items="items"
 					:selected-id="selectedId"
 					@select="onSelect"
+					@select-separate="onSelectSeparate"
 					@compare="onCompare"
 					@action="onAction"
 					@toggle="onToggle"
@@ -513,18 +613,58 @@ export const CustomHeading: Story = {
 	},
 };
 
-export const CustomActions: Story = {
+export const Details: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Open another version and the Compare tooltip names that pair. Hover a published version to read who published it. The footer sits at the end of the list. Command-click or Control-click keeps the open version.',
+			},
+		},
+	},
 	render: (args) => ({
-		components: { N8nVersionHistory, N8nButton },
+		components: { N8nVersionHistory, N8nText },
 		setup() {
-			return { args, ...useHistory(), onOpen: action('open') };
+			return { args, ...presentedHistory(args.items) };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nVersionHistory
 					v-bind="args"
+					:items="items"
 					:selected-id="selectedId"
 					@select="onSelect"
+					@select-separate="onSelectSeparate"
+					@compare="onCompare"
+					@action="onAction"
+					@toggle="onToggle"
+				>
+					<template #footer>
+						<N8nText size="small" color="text-base">Older versions are hidden.</N8nText>
+					</template>
+				</N8nVersionHistory>
+			</div>
+		`,
+	}),
+	args: {
+		items: versions,
+	},
+};
+
+export const CustomActions: Story = {
+	render: (args) => ({
+		components: { N8nVersionHistory, N8nButton },
+		setup() {
+			return { args, ...presentedHistory(args.items), onOpen: action('open') };
+		},
+		template: `
+			<div style="${frameStyle}">
+				<N8nVersionHistory
+					v-bind="args"
+					:items="items"
+					:selected-id="selectedId"
+					@select="onSelect"
+					@select-separate="onSelectSeparate"
 				>
 					<template #actions="{ item }">
 						<N8nButton
@@ -577,14 +717,16 @@ export const ManyVersions: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory },
 		setup() {
-			return { args, ...useHistory('v40') };
+			return { args, ...presentedHistory(args.items, 'v40') };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nVersionHistory
 					v-bind="args"
+					:items="items"
 					:selected-id="selectedId"
 					@select="onSelect"
+					@select-separate="onSelectSeparate"
 					@compare="onCompare"
 					@action="onAction"
 					@toggle="onToggle"
@@ -641,6 +783,7 @@ export const ScrollToVersion: Story = {
 			const history = useHistory('v40');
 			const scrollToId = ref<string | undefined>();
 			const choices = versionChoices(manyVersions);
+			const items = computed(() => itemsFor(args.items, history.selectedId.value));
 
 			function onScrollTarget(value: unknown) {
 				if (typeof value !== 'string' || value.length === 0) return;
@@ -650,6 +793,7 @@ export const ScrollToVersion: Story = {
 
 			return {
 				args,
+				items,
 				...history,
 				scrollToId,
 				choices,
@@ -678,9 +822,11 @@ export const ScrollToVersion: Story = {
 				<div style="${frameStyle}">
 					<N8nVersionHistory
 						v-bind="args"
+						:items="items"
 						:scroll-to-id="scrollToId"
 						:selected-id="selectedId"
 						@select="onSelect"
+						@select-separate="onSelectSeparate"
 						@compare="onCompare"
 						@action="onAction"
 						@toggle="onToggle"
@@ -706,14 +852,16 @@ export const GroupedByMonth: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory },
 		setup() {
-			return { args, ...useHistory('v90') };
+			return { args, ...presentedHistory(args.items, 'v90') };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nVersionHistory
 					v-bind="args"
+					:items="items"
 					:selected-id="selectedId"
 					@select="onSelect"
+					@select-separate="onSelectSeparate"
 					@compare="onCompare"
 					@action="onAction"
 					@toggle="onToggle"
@@ -746,7 +894,10 @@ export const Loading: Story = {
 				if (timer) clearTimeout(timer);
 			});
 
-			return { args, loading, reset, ...useHistory() };
+			const history = useHistory();
+			const items = computed(() => itemsFor(args.items, history.selectedId.value));
+
+			return { args, items, loading, reset, ...history };
 		},
 		template: `
 			<div>
@@ -756,9 +907,13 @@ export const Loading: Story = {
 				<div style="${frameStyle}">
 					<N8nVersionHistory
 						v-bind="args"
+						:items="items"
 						:loading="loading"
 						:selected-id="selectedId"
 						@select="onSelect"
+						@select-separate="onSelectSeparate"
+						@compare="onCompare"
+						@action="onAction"
 					/>
 				</div>
 			</div>
@@ -829,7 +984,7 @@ export const InPanel: Story = {
 		docs: {
 			description: {
 				story:
-					'The history sits in a side panel next to a content area. The header uses a switch. The content card uses the card radius.',
+					'The history sits in a side panel next to a content area. The switch keeps named versions. Compare text follows the open version, including after that switch. Command-click or Control-click keeps the open version.',
 			},
 		},
 	},
@@ -839,7 +994,10 @@ export const InPanel: Story = {
 			const namedOnly = ref(false);
 			const history = useHistory('v40');
 			const visibleItems = computed(() =>
-				namedOnly.value ? namedVersions(manyVersions) : manyVersions,
+				itemsFor(
+					namedOnly.value ? namedVersions(manyVersions) : manyVersions,
+					history.selectedId.value,
+				),
 			);
 			const selected = computed(() => findVersion(manyVersions, history.selectedId.value));
 			const selectedTitle = computed(() => {
@@ -882,6 +1040,7 @@ export const InPanel: Story = {
 							:items="visibleItems"
 							:selected-id="selectedId"
 							@select="onSelect"
+							@select-separate="onSelectSeparate"
 							@compare="onCompare"
 							@action="onAction"
 							@toggle="onToggle"
@@ -897,12 +1056,23 @@ export const InPanel: Story = {
 };
 
 export const Search: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Search keeps the Compare tooltip and the published tooltip on the rows that remain. Command-click or Control-click keeps the open version.',
+			},
+		},
+	},
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nInput, N8nIcon, N8nText },
 		setup() {
 			const query = ref('');
-			const visibleItems = computed(() => filterVersions(versions, query.value));
-			return { args, query, visibleItems, ...useHistory() };
+			const history = useHistory();
+			const visibleItems = computed(() =>
+				itemsFor(filterVersions(versions, query.value), history.selectedId.value),
+			);
+			return { args, query, visibleItems, ...history };
 		},
 		template: `
 			<div style="${panelStyle}">
@@ -919,6 +1089,7 @@ export const Search: Story = {
 						:items="visibleItems"
 						:selected-id="selectedId"
 						@select="onSelect"
+						@select-separate="onSelectSeparate"
 						@compare="onCompare"
 						@action="onAction"
 						@toggle="onToggle"
@@ -981,7 +1152,7 @@ export const LoadMore: Story = {
 		docs: {
 			description: {
 				story:
-					'The list loads the first page from a mock API. Scroll to the end to load the next page. Each page returns 12 versions. There are 400 versions in total. The request waits before it resolves.',
+					'The list loads the first page from a mock API. Scroll to the end to load the next page. Each page returns 12 versions. There are 400 versions in total. The request waits before it resolves. Compare text follows the open version as pages arrive. The retention note stays at the end of the loaded rows.',
 			},
 		},
 	},
@@ -1032,9 +1203,14 @@ export const LoadMore: Story = {
 				requestId += 1;
 			});
 
+			const visibleItems = computed(() => itemsFor(items.value, selectedId.value));
+			const showFooter = computed(() => !loading.value && items.value.length > 0);
+
 			return {
 				args,
 				items,
+				visibleItems,
+				showFooter,
 				hasMore,
 				loading,
 				loadingMore,
@@ -1045,6 +1221,9 @@ export const LoadMore: Story = {
 				onSelect(id: string) {
 					selectedId.value = id;
 					action('select')(id);
+				},
+				onSelectSeparate(id: string) {
+					action('selectSeparate')(id);
 				},
 				onCompare: action('compare'),
 				onAction: action('action'),
@@ -1059,21 +1238,368 @@ export const LoadMore: Story = {
 				<div style="${frameStyle}">
 					<N8nVersionHistory
 						v-bind="args"
-						:items="items"
+						:items="visibleItems"
 						:loading="loading"
 						:loading-more="loadingMore"
 						:has-more="hasMore"
 						:selected-id="selectedId"
 						@select="onSelect"
+						@select-separate="onSelectSeparate"
 						@compare="onCompare"
 						@action="onAction"
 						@load-more="onLoadMore"
-					/>
+					>
+						<template v-if="showFooter" #footer>
+							<N8nText size="small" color="text-base" align="center">
+								Version history is limited to 24 hours
+							</N8nText>
+						</template>
+					</N8nVersionHistory>
 				</div>
 			</div>
 		`,
 	}),
 	args: {
 		items: [],
+	},
+};
+
+interface WorkflowHistorySource {
+	id: string;
+	name?: string;
+	authors: string[];
+	createdAt: string;
+	createdAtIso: string;
+	published?: boolean;
+	publishedBy?: string;
+	publishedAt?: string;
+}
+
+const workflowSources: WorkflowHistorySource[] = [
+	{
+		id: 'current001',
+		authors: ['Alex', 'Sam'],
+		createdAt: 'Oct 28 at 09:14:02',
+		createdAtIso: '2026-10-28T09:14:02',
+	},
+	{
+		id: 'aa11bb22cc33',
+		authors: ['Sam'],
+		createdAt: 'Oct 27 at 18:41:09',
+		createdAtIso: '2026-10-27T18:41:09',
+	},
+	{
+		id: 'bb22cc33dd44',
+		authors: ['Sam', 'Alex', 'Jordan'],
+		createdAt: 'Oct 27 at 11:02:33',
+		createdAtIso: '2026-10-27T11:02:33',
+	},
+	{
+		id: 'cc33dd44ee55',
+		authors: ['Alex'],
+		createdAt: 'Oct 26 at 16:02:41',
+		createdAtIso: '2026-10-26T16:02:41',
+	},
+	{
+		id: 'checkout001',
+		name: 'Checkout flow',
+		authors: ['Alex'],
+		createdAt: 'Oct 24 at 14:28:10',
+		createdAtIso: '2026-10-24T14:28:10',
+		published: true,
+		publishedBy: 'Alex',
+		publishedAt: 'Oct 24 at 16:02:18',
+	},
+	{
+		id: 'dd44ee55ff66',
+		authors: ['Sam'],
+		createdAt: 'Oct 20 at 09:12:44',
+		createdAtIso: '2026-10-20T09:12:44',
+	},
+	{
+		id: 'ee55ff660011',
+		authors: ['Alex'],
+		createdAt: 'Oct 18 at 15:40:02',
+		createdAtIso: '2026-10-18T15:40:02',
+	},
+	{
+		id: 'welcome001',
+		name: 'Welcome email',
+		authors: ['Sam'],
+		createdAt: 'Oct 12 at 11:02:18',
+		createdAtIso: '2026-10-12T11:02:18',
+		publishedBy: 'Sam',
+		publishedAt: 'Oct 12 at 11:05:40',
+	},
+];
+
+function authorLabel(authors: string[]): string {
+	const [first, ...rest] = authors;
+	if (!first) return '';
+	if (rest.length === 0) return first;
+	return `${first} + ${rest.length}`;
+}
+
+function workflowMenu(index: number, published: boolean) {
+	return [
+		...(index === 0 ? [] : [{ id: 'restore', label: 'Restore version' }]),
+		published
+			? { id: 'unpublish', label: 'Unpublish workflow' }
+			: { id: 'publish', label: 'Publish version' },
+		{ id: 'name', label: 'Name version' },
+		{ id: 'clone', label: 'Clone to new workflow' },
+		{ id: 'open', label: 'Open version in new tab' },
+		{ id: 'download', label: 'Download' },
+	];
+}
+
+function workflowBaseLabel(source: WorkflowHistorySource, isCurrent: boolean): string {
+	if (source.name?.trim()) return source.name;
+	if (isCurrent) return 'Current changes';
+	return `Version ${source.id.slice(0, 8)}`;
+}
+
+function buildWorkflowEntries(sources: WorkflowHistorySource[]): VersionHistoryEntry[] {
+	const currentId = sources[0]?.id;
+	const entries: VersionHistoryEntry[] = [];
+	let group: VersionHistoryItem[] = [];
+	let groupIndex = 0;
+
+	function flushGroup() {
+		if (group.length === 0) return;
+		const count = group.length;
+		entries.push({
+			type: 'group',
+			id: `unnamed-${groupIndex}`,
+			label: count === 1 ? '1 version' : `${count} versions`,
+			items: group,
+		});
+		group = [];
+		groupIndex += 1;
+	}
+
+	sources.forEach((source, index) => {
+		const isCurrent = source.id === currentId;
+		const baseLabel = workflowBaseLabel(source, isCurrent);
+		const item: VersionHistoryItem = {
+			id: source.id,
+			label: source.published ? `${baseLabel} (Published)` : baseLabel,
+			author: authorLabel(source.authors),
+			createdAt: source.createdAt,
+			createdAtIso: source.createdAtIso,
+			status: source.published ? 'published' : isCurrent ? 'latest' : 'default',
+			statusLabel: source.published
+				? 'Published version'
+				: isCurrent
+					? 'Latest version'
+					: undefined,
+			actions: workflowMenu(index, source.published === true),
+			tooltip: source.publishedBy
+				? {
+						title: source.published ? `${baseLabel} (Published)` : baseLabel,
+						detail: `Published by ${source.publishedBy}, ${source.publishedAt ?? source.createdAt}`,
+					}
+				: undefined,
+		};
+
+		// The first row stays visible. Later unnamed rows collapse together.
+		if (index > 0 && !source.name?.trim()) {
+			group.push(item);
+			return;
+		}
+
+		flushGroup();
+		entries.push(item);
+	});
+
+	flushGroup();
+	return entries;
+}
+
+const workflowEntries = buildWorkflowEntries(workflowSources);
+
+const workflowTabs = [
+	{ label: 'Versions', value: 'history' },
+	{ label: 'Publish Timeline', value: 'timeline' },
+] as const;
+
+// The workflow history column is 330px wide. No spacing token matches that width.
+const workflowFrameStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'width: 20.625rem',
+	'height: 36rem',
+	'max-width: 100%',
+	'overflow: hidden',
+	'border: var(--border)',
+	'border-radius: var(--radius)',
+	'background-color: var(--background--surface)',
+].join('; ');
+
+const workflowHeaderStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'gap: var(--spacing--2xs)',
+	'flex-shrink: 0',
+	'padding: var(--spacing--xs) var(--spacing--2xs) var(--spacing--2xs) var(--spacing--sm)',
+	'border-bottom: var(--border)',
+].join('; ');
+
+const workflowTabRowStyle = [
+	'display: flex',
+	'align-items: center',
+	'gap: var(--spacing--2xs)',
+	'min-width: 0',
+].join('; ');
+
+const workflowToolbarStyle = [
+	'display: flex',
+	'align-items: center',
+	'justify-content: space-between',
+	'gap: var(--spacing--2xs)',
+	'min-width: 0',
+].join('; ');
+
+const workflowPaywallStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'align-items: center',
+	'gap: var(--spacing--xs)',
+	'width: 100%',
+	'box-sizing: border-box',
+	'padding: var(--spacing--sm)',
+	'border: var(--border)',
+	'border-radius: var(--radius)',
+	'background-color: var(--background--surface)',
+	'text-align: center',
+].join('; ');
+
+const workflowPaywallIconStyle = [
+	'display: flex',
+	'align-items: center',
+	'justify-content: center',
+	'flex-shrink: 0',
+	'width: var(--height--xl)',
+	'height: var(--height--xl)',
+	'border-radius: var(--radius)',
+	'background-color: var(--color--foreground--tint-1)',
+].join('; ');
+
+const timelineEmptyStyle = [
+	'display: flex',
+	'align-items: center',
+	'justify-content: center',
+	'flex: 1',
+	'min-height: 0',
+	'padding: var(--spacing--lg)',
+	'text-align: center',
+].join('; ');
+
+export const WorkflowEditor: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'This is the workflow editor history list. The newest row is Current changes and has no Restore action. Unnamed rows collapse. A published row adds (Published), and hover shows who published it. Compare names the open version and the other version, and it follows a new selection. Turn Compare off to hide that control. Command-click or Control-click keeps the open version and reports the row. A lock and an Upgrade button sit at the end.',
+			},
+		},
+	},
+	render: () => ({
+		components: {
+			N8nVersionHistory,
+			N8nTabs,
+			N8nSwitch,
+			N8nText,
+			N8nIcon,
+			N8nIconButton,
+			N8nButton,
+		},
+		setup() {
+			const tab = ref<(typeof workflowTabs)[number]['value']>('history');
+			const showCompare = ref(true);
+			const openedLabel = ref('');
+			const history = useHistory(workflowSources[0]?.id ?? '');
+			const items = computed(() => itemsFor(workflowEntries, history.selectedId.value));
+
+			function onSelectSeparate(id: string) {
+				const item = flattenVersions(workflowEntries).find((entry) => entry.id === id);
+				openedLabel.value = item?.label ?? id;
+				action('selectSeparate')(id);
+			}
+
+			function onUpgrade() {
+				action('upgrade')();
+			}
+
+			function onClose() {
+				action('close')();
+			}
+
+			return {
+				tab,
+				tabs: workflowTabs,
+				showCompare,
+				openedLabel,
+				items,
+				...history,
+				onSelectSeparate,
+				onUpgrade,
+				onClose,
+			};
+		},
+		template: `
+			<div style="${workflowFrameStyle}">
+				<header style="${workflowHeaderStyle}">
+					<div style="${workflowTabRowStyle}">
+						<N8nTabs v-model="tab" :options="tabs" size="small" />
+						<N8nIconButton
+							variant="ghost"
+							icon="x"
+							size="small"
+							aria-label="Close"
+							@click="onClose"
+						/>
+					</div>
+					<div style="${workflowToolbarStyle}">
+						<N8nSwitch v-model="showCompare" label="Compare" size="small" />
+						<N8nText v-if="openedLabel" size="small" color="text-light">
+							Opened {{ openedLabel }} in a new tab
+						</N8nText>
+					</div>
+				</header>
+				<div v-if="tab === 'timeline'" style="${timelineEmptyStyle}">
+					<N8nText size="small" color="text-light" align="center">No publish events yet.</N8nText>
+				</div>
+				<div v-else style="${panelBodyStyle}">
+					<N8nVersionHistory
+						:items="items"
+						:selected-id="selectedId"
+						:show-compare="showCompare"
+						@select="onSelect"
+						@select-separate="onSelectSeparate"
+						@compare="onCompare"
+						@action="onAction"
+						@toggle="onToggle"
+					>
+						<template #footer>
+							<div style="${workflowPaywallStyle}">
+								<div style="${workflowPaywallIconStyle}">
+									<N8nIcon icon="lock" size="large" color="text-base" />
+								</div>
+								<N8nText size="small" color="text-base" align="center" bold>
+									Version history is limited to 24 hours
+								</N8nText>
+								<N8nButton size="small" variant="solid" style="width: 100%" @click="onUpgrade">
+									Upgrade
+								</N8nButton>
+							</div>
+						</template>
+					</N8nVersionHistory>
+				</div>
+			</div>
+		`,
+	}),
+	args: {
+		items: workflowEntries,
 	},
 };

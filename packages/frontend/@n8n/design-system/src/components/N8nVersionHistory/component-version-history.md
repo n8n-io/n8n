@@ -20,10 +20,12 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 - `hasMore?: boolean` - More versions can be loaded. The list emits `loadMore` when the end is near the bottom of the scroll area. | `default: false`
 - `loadingMore?: boolean` - A later page is loading. The rows stay visible. A status appears at the end of the list. | `default: false`
 - `loadingMoreLabel?: string` - Accessible name for that status. Defaults to "Loading more versions".
+- `showCompare?: boolean` - Show the compare control on each version. Set this to false to hide compare and keep the menu. | `default: true`
 
 **Events**
 
 - `select(id: string)` - The user opens a version.
+- `selectSeparate(id: string)` - The user opens a version with Command or Control held. The open version stays the same.
 - `compare(id: string)` - The user compares a version. This does not select the row.
 - `action(value: VersionHistoryActionPayload)` - The user chooses an action from a version menu.
 - `toggle(value: VersionHistoryTogglePayload)` - The user opens or closes a group.
@@ -33,7 +35,8 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 
 - `empty` - Content shown when `items` is empty. The panel centers it.
 - `actions` - Replaces the compare control and the menu. Receives `{ item }`.
-- `heading` - Replaces the heading label. Receives `{ id, label }`. The pinned copy uses the same slot. The padding stays, so the label stays lined up with the version text.
+- `heading` - Replaces the heading label. Receives `{ id, label }`. The pinned copy uses the same slot. The padding stays, so the label stays lined up with the status dots.
+- `footer` - Content after the last row. It scrolls with the list.
 
 **Methods**
 
@@ -43,6 +46,11 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 
 ```typescript
 type VersionHistoryStatus = 'published' | 'latest' | 'default';
+
+interface VersionHistoryTooltip {
+	title: string;
+	detail?: string;
+}
 
 type ActionToggleItem<T extends string = string> = {
 	label: string;
@@ -66,6 +74,8 @@ interface VersionHistoryItem {
 	actions?: Array<ActionToggleItem<string>>;
 	disabled?: boolean;
 	compareDisabled?: boolean;
+	compareTooltip?: string;
+	tooltip?: VersionHistoryTooltip;
 	actionsDisabled?: boolean;
 }
 
@@ -104,13 +114,20 @@ interface VersionHistoryTogglePayload {
 - A heading stays at the top of the list while its versions scroll. The next heading pushes it up. Set `--version-history--heading--color--background` to the surface behind the list. The pinned heading uses that color. The rows under it stay hidden. Leave the variable unset to use `--background--surface`. The heading in the list stays available to assistive technology.
 - A group starts collapsed. The toggle shows the caller's label, such as "4 versions". Activating the toggle shows or hides that group's versions. A group at the end of the list stays closed until the user opens it.
 - `published` is a filled success dot. `latest` is a filled warning dot. `default`, and a missing status, is a neutral ring.
-- Each version row has a compare control and a menu. The menu is hidden when `actions` is empty. The compare control stays.
+- Each version row has a compare control and a menu. The menu is hidden when `actions` is empty. The compare control stays unless `showCompare` is false.
 - Each action is an `ActionToggleItem`, exported from `@n8n/design-system`. Set `icon` to an icon name to show an icon before the label.
 - `disabled` stops selection for that row. Compare and the menu stay available.
 - `compareDisabled` disables the compare control. `actionsDisabled` disables the menu.
+- `compareTooltip` replaces the compare tooltip. A line break starts a second line. The accessible name stays "Compare".
+- `tooltip` shows a tooltip to the left of the row. The caller writes the title and the detail. The status dot sits before the title.
+- Set `showCompare` to false to hide the compare control. The menu stays.
+- The `footer` slot renders after the last row. It scrolls with the list.
 - A click on the row emits `select`. A click on compare emits `compare`. A menu choice emits `action`.
+- A click or key press with Command or Control held emits `selectSeparate`. The open version stays the same. Enter, Space, and a click all do this.
 - A click on compare or the menu does not select the version.
 - Arrow keys move the highlight across the whole row. Enter or Space on a version emits `select`.
+- Pointer movement moves the highlight. Arrow keys take the highlight from the row under the pointer. That row loses the highlight fill.
+- The open version uses a stronger background than the highlight. The highlight can sit on another row. The open version keeps its background.
 - Tab moves from the row to Compare, then to the menu, then to the next row. Shift+Tab moves back.
 - Up and Down move between rows when the row has focus. Compare and the menu keep those keys.
 - Enter or Space on a group emits `toggle`. ArrowRight opens a closed group. ArrowLeft closes an open group. That keeps the open version.

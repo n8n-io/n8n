@@ -1,6 +1,6 @@
 import { useIntersectionObserver } from '@n8n/composables/useIntersectionObserver';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, render } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
@@ -69,6 +69,7 @@ describe('N8nVersionHistory', () => {
 		expect(latest).toHaveTextContent('Alex');
 		expect(latest).toHaveTextContent('Oct 28 at 09:14');
 		expect(getByRole('option', { name: /v1/ })).toHaveAttribute('aria-selected', 'true');
+		expect(getByRole('option', { name: /v1/ })).toHaveAttribute('data-state', 'checked');
 	});
 
 	it('emits select when a version is opened', async () => {
@@ -194,6 +195,105 @@ describe('N8nVersionHistory', () => {
 
 		expect(toggle).toHaveAttribute('aria-expanded', 'false');
 		expect(queryByRole('option', { name: /v2/ })).toBeNull();
+	});
+
+	it('emits selectSeparate when Command or Control is held', async () => {
+		const { getByRole, emitted } = renderHistory({ selectedId: 'v1' });
+		const next = getByRole('option', { name: /v2/ });
+
+		await fireEvent.click(next, { metaKey: true });
+
+		expect(emitted('selectSeparate')).toEqual([['v2']]);
+		expect(emitted('select')).toBeUndefined();
+		expect(getByRole('option', { name: /v1/ })).toHaveAttribute('aria-selected', 'true');
+		expect(next).toHaveAttribute('aria-selected', 'false');
+	});
+
+	it('emits selectSeparate when Control is held on the keyboard', async () => {
+		const { getByRole, emitted } = renderHistory({ selectedId: 'v1' });
+		const next = getByRole('option', { name: /v2/ });
+
+		// Dispatch on the row. A programmatic selection focuses the open version.
+		await fireEvent.keyDown(next, { key: 'Enter', ctrlKey: true });
+
+		expect(emitted('selectSeparate')).toEqual([['v2']]);
+		expect(emitted('select')).toBeUndefined();
+		expect(getByRole('option', { name: /v1/ })).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('hides compare and keeps the menu', () => {
+		const { queryByTestId, getAllByTestId } = renderHistory({ showCompare: false });
+
+		expect(queryByTestId('version-history-compare')).toBeNull();
+		expect(getAllByTestId('action-toggle').length).toBeGreaterThan(0);
+	});
+
+	it('shows the compare tooltip from the version', async () => {
+		const withTooltip = items.map((item) =>
+			item.id === 'v2' ? { ...item, compareTooltip: 'Compare v2\nwith v1' } : item,
+		);
+		const { getAllByTestId } = renderHistory({ items: withTooltip, selectedId: 'v1' });
+		const [compare] = getAllByTestId('version-history-compare');
+
+		compare.dispatchEvent(
+			new PointerEvent('pointermove', {
+				bubbles: true,
+				cancelable: true,
+				pointerType: 'mouse',
+			}),
+		);
+
+		const tooltip = await waitFor(() => {
+			const content = document.querySelector('[data-dismissable-layer]');
+			if (!content) throw new Error('Tooltip not found');
+			return content;
+		});
+		expect(tooltip).toHaveTextContent('Compare v2');
+		expect(tooltip).toHaveTextContent('with v1');
+	});
+
+	it('shows a tooltip for the row', async () => {
+		const withTooltip = items.map((item) =>
+			item.id === 'v1'
+				? {
+						...item,
+						tooltip: { title: 'v1 (Published)', detail: 'Published by Alex, Oct 24 at 14:28' },
+					}
+				: item,
+		);
+		const { getByRole } = renderHistory({ items: withTooltip, selectedId: 'v2' });
+		const option = getByRole('option', { name: /v1/ });
+		const trigger = option.firstElementChild ?? option;
+
+		trigger.dispatchEvent(
+			new PointerEvent('pointermove', {
+				bubbles: true,
+				cancelable: true,
+				pointerType: 'mouse',
+			}),
+		);
+
+		const tooltip = await waitFor(() => {
+			const content = [...document.querySelectorAll('[data-dismissable-layer]')].find((node) =>
+				node.textContent?.includes('Published by Alex'),
+			);
+			if (!content) throw new Error('Tooltip not found');
+			return content;
+		});
+		expect(tooltip).toHaveTextContent('v1 (Published)');
+		expect(tooltip).toHaveTextContent('Published by Alex, Oct 24 at 14:28');
+		expect(getByRole('option', { name: /v1/ })).toHaveAttribute('data-state', 'unchecked');
+		expect(getByRole('option', { name: /v2/ })).toHaveAttribute('data-state', 'checked');
+	});
+
+	it('renders the footer after the rows', () => {
+		const { getByTestId, getByText } = renderHistory(
+			{},
+			{ footer: '<p>Older versions are hidden</p>' },
+		);
+
+		expect(getByTestId('version-history-footer')).toBeTruthy();
+		expect(getByText('Older versions are hidden')).toBeTruthy();
 	});
 
 	it('emits compare without selecting the row', async () => {

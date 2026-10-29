@@ -3,7 +3,7 @@ import type { ListboxValue } from './Listbox.types';
 export type ListboxItemProps = {
 	/** Value this item selects. Unique among the items in the list. */
 	value: ListboxValue;
-	/** The user cannot highlight or select this item. */
+	/** The user cannot highlight or select this item. Arrow keys skip it. */
 	disabled?: boolean;
 };
 
@@ -16,6 +16,6 @@ export type ListboxItemEmits = {
 };
 
 export type ListboxItemSlots = {
-	/** Row content. The highlight and the focus ring cover this content. */
+	/** Row content. The item has no padding. The highlight and the focus ring cover this content. */
 	default(): unknown;
 };

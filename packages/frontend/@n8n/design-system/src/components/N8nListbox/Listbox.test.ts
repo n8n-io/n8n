@@ -57,6 +57,92 @@ const Harness = defineComponent({
 	`,
 });
 
+const ControlledFrozen = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	template: `
+		<N8nListbox model-value="v1" label="Versions">
+			<N8nListboxItem value="v2">v2</N8nListboxItem>
+			<N8nListboxItem value="v1">v1</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
+const ControlledExternal = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('v1');
+		return { value };
+	},
+	template: `
+		<div>
+			<button type="button" @click="value = 'v2'">Set v2</button>
+			<N8nListbox v-model="value" label="Versions">
+				<N8nListboxItem value="v2">v2</N8nListboxItem>
+				<N8nListboxItem value="v1">v1</N8nListboxItem>
+			</N8nListbox>
+		</div>
+	`,
+});
+
+const Uncontrolled = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	template: `
+		<N8nListbox default-value="v1" label="Versions">
+			<N8nListboxItem value="v2">v2</N8nListboxItem>
+			<N8nListboxItem value="v1">v1</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
+const SelectionHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	props: {
+		selectionBehavior: { type: String, required: true },
+	},
+	setup() {
+		const value = ref<string | undefined>('v2');
+		return { value };
+	},
+	template: `
+		<N8nListbox v-model="value" :selection-behavior="selectionBehavior" label="Versions">
+			<N8nListboxItem value="v2">v2</N8nListboxItem>
+			<N8nListboxItem value="v1">v1</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
+const HoverHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	props: {
+		highlightOnHover: { type: Boolean, required: true },
+	},
+	setup() {
+		const value = ref('v2');
+		return { value };
+	},
+	template: `
+		<N8nListbox v-model="value" :highlight-on-hover="highlightOnHover" label="Versions">
+			<N8nListboxItem value="v2">v2</N8nListboxItem>
+			<N8nListboxItem value="v1">v1</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
+const HorizontalHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('compact');
+		return { value };
+	},
+	template: `
+		<N8nListbox v-model="value" orientation="horizontal" label="Density">
+			<N8nListboxItem value="compact">Compact</N8nListboxItem>
+			<N8nListboxItem value="comfortable">Comfortable</N8nListboxItem>
+			<N8nListboxItem value="spacious">Spacious</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
 describe('N8nListbox', () => {
 	it('selects an item and paints the whole option', async () => {
 		const { getByRole, getByTestId, emitted } = render(Harness, { props: { modelValue: 'v1' } });
@@ -154,5 +240,117 @@ describe('N8nListbox', () => {
 		expect(emitted('select')).toHaveLength(1);
 		expect(emitted('update:modelValue')).toBeUndefined();
 		expect(getByRole('option', { name: 'v2' })).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('keeps the parent value until the parent accepts the update', async () => {
+		const { getByRole } = render(ControlledFrozen);
+
+		await userEvent.click(getByRole('option', { name: 'v2' }));
+
+		expect(getByRole('option', { name: 'v1' })).toHaveAttribute('aria-selected', 'true');
+		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('follows a value set from outside the list', async () => {
+		const { getByRole } = render(ControlledExternal);
+
+		await userEvent.click(getByRole('button', { name: 'Set v2' }));
+
+		expect(getByRole('option', { name: 'v2' })).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('uses defaultValue when the parent does not bind a value', async () => {
+		const { getByRole } = render(Uncontrolled);
+
+		expect(getByRole('option', { name: 'v1' })).toHaveAttribute('aria-selected', 'true');
+
+		await userEvent.click(getByRole('option', { name: 'v2' }));
+
+		expect(getByRole('option', { name: 'v2' })).toHaveAttribute('aria-selected', 'true');
+		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('keeps the value when the user activates the selected item again', async () => {
+		const { getByRole } = render(SelectionHarness, { props: { selectionBehavior: 'replace' } });
+
+		await userEvent.click(getByRole('option', { name: 'v2' }));
+
+		expect(getByRole('option', { name: 'v2' })).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('clears the value when selection behavior is toggle', async () => {
+		const { getByRole } = render(SelectionHarness, { props: { selectionBehavior: 'toggle' } });
+
+		await userEvent.click(getByRole('option', { name: 'v2' }));
+
+		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('aria-selected', 'true');
+		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('moves the highlight with the pointer when highlightOnHover is set', async () => {
+		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
+		await nextTick();
+
+		await userEvent.hover(getByRole('option', { name: 'v1' }));
+
+		expect(getByRole('option', { name: 'v1' })).toHaveAttribute('data-highlighted');
+		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('data-highlighted');
+	});
+
+	it('clears the hovered row when arrow keys move and the pointer stays', async () => {
+		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
+		await nextTick();
+		const current = getByRole('option', { name: 'v2' });
+		const next = getByRole('option', { name: 'v1' });
+		const point = { bubbles: true, clientX: 40, clientY: 20, pointerType: 'mouse' as const };
+
+		next.dispatchEvent(new PointerEvent('pointermove', point));
+		await nextTick();
+
+		expect(next).toHaveAttribute('data-highlighted');
+		expect(current).not.toHaveAttribute('data-highlighted');
+
+		next.focus();
+		await userEvent.keyboard('{ArrowUp}');
+
+		expect(current).toHaveAttribute('data-highlighted');
+		expect(next).not.toHaveAttribute('data-highlighted');
+
+		next.dispatchEvent(new PointerEvent('pointermove', point));
+		await nextTick();
+
+		expect(current).toHaveAttribute('data-highlighted');
+		expect(next).not.toHaveAttribute('data-highlighted');
+	});
+
+	it('does not move the highlight on hover when highlightOnHover is off', async () => {
+		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: false } });
+		await nextTick();
+		const current = getByRole('option', { name: 'v2' });
+		current.focus();
+
+		await userEvent.hover(getByRole('option', { name: 'v1' }));
+
+		expect(current).toHaveAttribute('data-highlighted');
+		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
+	});
+
+	it('moves the highlight with Left and Right when orientation is horizontal', async () => {
+		const { getByRole } = render(HorizontalHarness);
+		await nextTick();
+		const list = getByRole('listbox', { name: 'Density' });
+
+		expect(list).toHaveAttribute('aria-orientation', 'horizontal');
+		expect(list).toHaveAttribute('data-orientation', 'horizontal');
+
+		getByRole('option', { name: 'Compact' }).focus();
+		await userEvent.keyboard('{ArrowRight}');
+
+		expect(getByRole('option', { name: 'Comfortable' })).toHaveAttribute('data-highlighted');
+
+		await userEvent.keyboard('{ArrowDown}');
+
+		expect(getByRole('option', { name: 'Comfortable' })).toHaveAttribute('data-highlighted');
+		expect(getByRole('option', { name: 'Spacious' })).not.toHaveAttribute('data-highlighted');
 	});
 });
