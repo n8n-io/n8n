@@ -43,6 +43,7 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentSandboxFilesService, usedWorkspace } from '../agent-sandbox-files.service';
 import type { StartExecutionParams } from '../agent-execution.service';
 import {
 	AgentExecutionRepository,
@@ -196,6 +197,7 @@ export class SubAgentRunner {
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly usageRelay: SystemAgentUsageRelay,
 		private readonly attachmentService: AgentChatAttachmentService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	async run(
@@ -516,6 +518,17 @@ export class SubAgentRunner {
 				}
 			}
 
+			// The child has no next turn, so store its outputs/ before they go to the parent.
+			const workspace = usedWorkspace(recorder.getMessageRecord().timeline)
+				? reconstructed.agent.getWorkspace()
+				: undefined;
+			if (workspace) {
+				await this.sandboxFiles.syncOutputs(workspace, {
+					agentId: recording.agentId,
+					projectId: context.projectId,
+					threadId,
+				});
+			}
 			const returned = await this.returnFilesToParent(
 				operation.request.parentThreadId,
 				threadId,

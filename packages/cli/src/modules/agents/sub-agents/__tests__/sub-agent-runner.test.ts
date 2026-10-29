@@ -10,6 +10,8 @@ import {
 	type StreamChunk,
 	type StreamResult,
 	type ToolApprovalContext,
+	type Agent as RuntimeAgent,
+	type Workspace,
 } from '@n8n/agents';
 import type {
 	ResolvedSubAgentSource,
@@ -46,6 +48,7 @@ import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const aiConfigMock = mock<AiConfig>();
 const toolApprovalService = mock<AgentToolApprovalService>();
@@ -141,6 +144,7 @@ describe('SubAgentRunner', () => {
 	let executionRepository: Mocked<AgentExecutionRepository>;
 	let usageRelay: Mocked<SystemAgentUsageRelay>;
 	let attachmentService: Mocked<AgentChatAttachmentService>;
+	let sandboxFiles: Mocked<AgentSandboxFilesService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -166,6 +170,7 @@ describe('SubAgentRunner', () => {
 		usageRelay = mock<SystemAgentUsageRelay>();
 		attachmentService = mock<AgentChatAttachmentService>();
 		attachmentService.returnToParent.mockResolvedValue([]);
+		sandboxFiles = mock<AgentSandboxFilesService>();
 		executionRepository.findLinksForChildOf.mockResolvedValue(null);
 		executionRepository.findFirstLinksInThread.mockResolvedValue(null);
 		runner = new SubAgentRunner(
@@ -178,6 +183,7 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
 				knowledgeUsageTracker,
+				mock<AgentSandboxFilesService>(),
 			),
 			checkpointStorage,
 			logger,
@@ -186,6 +192,7 @@ describe('SubAgentRunner', () => {
 			executionRepository,
 			usageRelay,
 			attachmentService,
+			sandboxFiles,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -254,6 +261,34 @@ describe('SubAgentRunner', () => {
 			childThreadId: result.threadId,
 		});
 		expect(result.files).toEqual([made]);
+	});
+
+	it('stores the outputs of a child that used the workspace before it returns its files', async () => {
+		const workspace = mock<Workspace>();
+		(childAgent as unknown as Mocked<RuntimeAgent>).getWorkspace.mockReturnValue(workspace);
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'tool-call', toolCallId: 'c-1', toolName: 'workspace_write_file', input: {} },
+				{ type: 'tool-result', toolCallId: 'c-1', toolName: 'workspace_write_file', output: 'ok' },
+				...defaultStreamChunks,
+			]),
+		);
+
+		const result = await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'test',
+		});
+
+		expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+			agentId: runtimeSource.source.sourceId,
+			projectId,
+			threadId: result.threadId,
+		});
+		expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
+			attachmentService.returnToParent.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('does not run the child when a passed file cannot be granted', async () => {

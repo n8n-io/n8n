@@ -1,5 +1,7 @@
-import type { Workspace } from '@n8n/agents';
+import { CORE_WORKSPACE_TOOL_NAMES, type Workspace } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { extension, lookup } from 'mime-types';
@@ -12,6 +14,7 @@ import {
 	hashFileContent,
 } from './agent-chat-attachment.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import type { TimelineEvent } from './execution-recorder';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Directory in the workspace root where an agent puts the files that it makes. */
@@ -42,6 +45,16 @@ const LIST_OUTPUTS_SCRIPT = [
 ].join('; ');
 const SHA256SUM_LINE = /^([0-9a-f]{64}) {2}(.+)$/;
 
+/** The end-of-turn sync stops after this time. The next turn stores the rest. */
+const SYNC_BUDGET_MS = 30 * Time.seconds.toMilliseconds;
+
+/** Only a turn that used the workspace can have changed `outputs/`. Other turns leave the sandbox asleep. */
+export function usedWorkspace(timeline: TimelineEvent[]): boolean {
+	return timeline.some(
+		(event) => event.type === 'tool-call' && CORE_WORKSPACE_TOOL_NAMES.has(event.name),
+	);
+}
+
 /**
  * Normalise a path relative to `outputs/`. Return undefined for a path that
  * leaves `outputs/`.
@@ -60,7 +73,50 @@ export function normalizeOutputPath(path: string): string | undefined {
  */
 @Service()
 export class AgentSandboxFilesService {
-	constructor(private readonly attachmentService: AgentChatAttachmentService) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly attachmentService: AgentChatAttachmentService,
+	) {}
+
+	/**
+	 * Store the new files of `outputs/` at the end of a turn. A file is new
+	 * when the thread cannot read a file with the same bytes. Never throws:
+	 * a file that fails is logged, and the next turn tries it again.
+	 */
+	async syncOutputs(workspace: Workspace, scope: SandboxFileScope): Promise<void> {
+		const signal = AbortSignal.timeout(SYNC_BUDGET_MS);
+		try {
+			const files = await this.list(workspace, signal);
+			const known = await this.attachmentService.findReadableByHashes(
+				files.map((file) => file.hash),
+				scope,
+			);
+			const seen = new Set(known.keys());
+			for (const file of files) {
+				if (seen.has(file.hash)) continue;
+				if (signal.aborted) {
+					this.logger.warn('Stopped storing agent sandbox files: the time budget ran out', {
+						threadId: scope.threadId,
+					});
+					return;
+				}
+				seen.add(file.hash);
+				// ponytail: a file over a count or total cap still gets read before the cap check. The time budget limits the cost.
+				await this.store(workspace, file.path, scope, signal).catch((error: unknown) => {
+					this.logger.warn('Failed to store an agent sandbox file', {
+						threadId: scope.threadId,
+						path: file.path,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+			}
+		} catch (error) {
+			this.logger.warn('Failed to sync agent sandbox files', {
+				threadId: scope.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
 
 	/** Files in `outputs/` with their hashes. Empty when `outputs/` does not exist. */
 	async list(workspace: Workspace, abortSignal?: AbortSignal): Promise<SandboxOutputFile[]> {

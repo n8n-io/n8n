@@ -90,6 +90,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -317,6 +318,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentMessageSteeringService>(),
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
+				mock<AgentSandboxFilesService>(),
 			),
 			telemetry,
 			runtimeCacheService,
