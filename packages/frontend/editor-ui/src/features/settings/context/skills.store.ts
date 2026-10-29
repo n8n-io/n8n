@@ -15,7 +15,7 @@ import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as api from './skills.api';
-import type { SkillListQuery } from './skills.api';
+import type { SkillListQuery, SkillSourceScopeQuery } from './skills.api';
 
 /** The skills list in Settings > Context > Skills. */
 export const useSkillsStore = defineStore('contextSkills', () => {
@@ -79,6 +79,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.deleteSkill(rootStore.restApiContext, id);
 	}
 
+	/** The credentials that can read a private source in the scope. */
+	async function fetchSourceCredentials(query: SkillSourceScopeQuery) {
+		return await api.getSkillSourceCredentials(rootStore.restApiContext, query);
+	}
+
+	/** The repositories that a credential can read, to pick one in place of a link. */
+	async function fetchSourceRepositories(query: SkillSourceScopeQuery & { credentialId: string }) {
+		return await api.getSkillSourceRepositories(rootStore.restApiContext, query);
+	}
+
 	/** Lists the skills that a GitHub link holds, for the "Choose skills" picker. */
 	async function discoverSource(payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
 		return await api.discoverSkillSource(rootStore.restApiContext, payload);
@@ -109,6 +119,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		createSkill,
 		saveSkill,
 		deleteSkill,
+		fetchSourceCredentials,
+		fetchSourceRepositories,
 		discoverSource,
 		connectSource,
 		stopSyncingSkill,

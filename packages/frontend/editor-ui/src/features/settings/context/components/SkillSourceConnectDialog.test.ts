@@ -4,13 +4,18 @@ import { createTestingPinia } from '@pinia/testing';
 import type {
 	DiscoveredSkill,
 	SkillSourceConnectResponse,
+	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
+	SkillSourceRepositoryList,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 
+import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 import SkillSourceConnectDialog from './SkillSourceConnectDialog.vue';
 import { useSkillsStore } from '../skills.store';
@@ -79,10 +84,38 @@ function discovery(overrides: Partial<SkillSourceDiscovery> = {}): SkillSourceDi
 
 const renderDialog = createComponentRenderer(SkillSourceConnectDialog);
 
-let skillsStore: MockedStore<typeof useSkillsStore>;
+const TOKEN: SkillSourceCredentialOption = { id: 'cred-1', name: 'Ada token', type: 'githubApi' };
+const APP: SkillSourceCredentialOption = { id: 'cred-2', name: 'Acme app', type: 'githubAppApi' };
+const OAUTH: SkillSourceCredentialOption = {
+	id: 'cred-3',
+	name: 'Ada OAuth',
+	type: 'githubOAuth2Api',
+};
 
-function render() {
-	return renderDialog({ props: { open: true, scopeOptions: SCOPES } });
+const REPOSITORIES: SkillSourceRepositoryList = {
+	repositories: [
+		{ owner: 'acme', name: 'skills', private: true, url: 'https://github.com/acme/skills' },
+		{ owner: 'acme', name: 'playbooks', private: false, url: 'https://github.com/acme/playbooks' },
+		{ owner: 'ada', name: 'notes', private: true, url: 'https://github.com/ada/notes' },
+	],
+	truncated: false,
+};
+
+let skillsStore: MockedStore<typeof useSkillsStore>;
+let uiStore: MockedStore<typeof useUIStore>;
+
+function render(scopeOptions = SCOPES) {
+	return renderDialog({ props: { open: true, scopeOptions } });
+}
+
+async function startLinkMode(view: ReturnType<typeof render>) {
+	await userEvent.click(view.getByTestId('skill-source-mode-url'));
+}
+
+async function pick(view: ReturnType<typeof render>, testId: string, text: string) {
+	await userEvent.click(view.getByTestId(testId));
+	const options = await view.findAllByText(text);
+	await userEvent.click(options[options.length - 1]);
 }
 
 async function selectScope(view: ReturnType<typeof render>, label: string) {
@@ -91,6 +124,7 @@ async function selectScope(view: ReturnType<typeof render>, label: string) {
 }
 
 async function pasteLink(view: ReturnType<typeof render>, link: string) {
+	if (view.queryByTestId('skill-source-mode-url')) await startLinkMode(view);
 	const field = view.getByTestId('skill-source-url-input');
 	const input = field instanceof HTMLInputElement ? field : field.querySelector('input')!;
 	await userEvent.type(input, link);
@@ -101,11 +135,33 @@ describe('SkillSourceConnectDialog', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSourceCredentials.mockResolvedValue([]);
+		skillsStore.fetchSourceRepositories.mockResolvedValue({ repositories: [], truncated: false });
+		uiStore = mockedStore(useUIStore);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = {
+			id: 'personal-1',
+			scopes: ['credential:create'],
+		} as Project;
+		projectsStore.myProjects = [
+			{ id: 'team-1', type: 'team', scopes: ['credential:create'] },
+			{ id: 'team-2', type: 'team', scopes: ['credential:read'] },
+		] as ProjectListItem[];
 		showErrorMock.mockClear();
 	});
 
-	it('starts on "Paste a GitHub link" with the first scope the user can create in', () => {
+	it('starts on "Connect a source" with the two ways to connect', () => {
 		const view = render();
+
+		expect(view.getByTestId('dialog-title')).toHaveTextContent('Connect a source');
+		expect(view.getByTestId('skill-source-mode-account')).toHaveTextContent('Connect to GitHub');
+		expect(view.getByTestId('skill-source-mode-url')).toHaveTextContent('paste URL manually');
+		expect(skillsStore.fetchSourceCredentials).not.toHaveBeenCalled();
+	});
+
+	it('opens "Paste a GitHub link" with the first scope the user can create in', async () => {
+		const view = render();
+		await startLinkMode(view);
 
 		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
 		expect(view.getByTestId('skill-source-scope-hint')).toHaveTextContent(
@@ -155,9 +211,8 @@ describe('SkillSourceConnectDialog', () => {
 
 	it('sends the project of a project scope', async () => {
 		skillsStore.discoverSource.mockResolvedValue(discovery());
-		const view = renderDialog({
-			props: { open: true, scopeOptions: [SCOPES[2]] },
-		});
+		const view = render([SCOPES[2]]);
+		await startLinkMode(view);
 
 		expect(view.getByTestId('skill-source-scope-hint')).toHaveTextContent(
 			'Members of Marketing can use the skills.',
@@ -477,6 +532,7 @@ describe('SkillSourceConnectDialog', () => {
 		await pasteLink(view, 'https://github.com/acme/skills');
 		await view.rerender({ open: false });
 		await view.rerender({ open: true });
+		await startLinkMode(view);
 		const field = view.getByTestId('skill-source-url-input');
 		const input = field instanceof HTMLInputElement ? field : field.querySelector('input')!;
 		await userEvent.type(input, 'https://github.com/acme/skills');
@@ -553,5 +609,256 @@ describe('SkillSourceConnectDialog', () => {
 			),
 		);
 		expect(view.emitted('update:open')).toBeUndefined();
+	});
+
+	describe('credentials', () => {
+		it('lists the token credentials of the scope and never an OAuth2 credential', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP, OAUTH]);
+			const view = render();
+			await startLinkMode(view);
+
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledWith({ scope: 'instance' });
+			await userEvent.click(view.getByTestId('skill-source-credential-select'));
+			expect(await view.findByText('None, the repository is public')).toBeInTheDocument();
+			expect(view.getByText('Ada token')).toBeInTheDocument();
+			expect(view.getByText('Acme app')).toBeInTheDocument();
+			expect(view.queryByText('Ada OAuth')).not.toBeInTheDocument();
+			expect(view.getByText('+ Connect a new GitHub account')).toBeInTheDocument();
+			expect(view.getByTestId('skill-source-credential-hint')).toHaveTextContent(
+				'Global sources use a credential that admins own.',
+			);
+		});
+
+		it('names the project in the credential hint of a project scope', async () => {
+			const view = render([SCOPES[2]]);
+			await startLinkMode(view);
+
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledWith({
+				scope: 'project',
+				projectId: 'team-1',
+			});
+			expect(view.getByTestId('skill-source-credential-hint')).toHaveTextContent(
+				'Only credentials that Marketing owns or that are shared with it.',
+			);
+		});
+
+		it('reads a link without a credential when "None" stays picked', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = render();
+
+			await pasteLink(view, 'https://github.com/acme/skills');
+
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: 'https://github.com/acme/skills',
+				scope: 'instance',
+			});
+		});
+
+		it('reads and connects a link with the picked credential', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue({ sourceId: 's', imported: [], failed: [] });
+			const view = render();
+			await startLinkMode(view);
+
+			await pick(view, 'skill-source-credential-select', 'Ada token');
+			await pasteLink(view, 'https://github.com/acme/skills');
+
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: 'https://github.com/acme/skills',
+				scope: 'instance',
+				credentialId: 'cred-1',
+			});
+			await userEvent.click(await view.findByTestId('skill-source-add'));
+			expect(skillsStore.connectSource).toHaveBeenCalledWith({
+				url: 'https://github.com/acme/skills',
+				scope: 'instance',
+				credentialId: 'cred-1',
+				skillKeys: ['skills/brand-voice', 'skills/seo-check'],
+			});
+		});
+
+		it('picks a credential, then an owner, then a repository in the account mode', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockResolvedValue({ sourceId: 's', imported: [], failed: [] });
+			const view = render();
+
+			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+
+			expect(view.getByTestId('dialog-title')).toHaveTextContent('Choose a repository');
+			expect(view.queryByTestId('skill-source-url-input')).not.toBeInTheDocument();
+			// The account mode needs a credential, so it starts on the first one.
+			await waitFor(() =>
+				expect(skillsStore.fetchSourceRepositories).toHaveBeenCalledWith({
+					scope: 'instance',
+					credentialId: 'cred-1',
+				}),
+			);
+			expect(
+				view.getByTestId('skill-source-repository-select').querySelector('input'),
+			).toBeDisabled();
+			expect(view.getByTestId('skill-source-next')).toBeDisabled();
+
+			await pick(view, 'skill-source-owner-select', 'acme');
+			await userEvent.click(view.getByTestId('skill-source-repository-select'));
+			expect(await view.findByText('playbooks')).toBeInTheDocument();
+			expect(view.queryByText('notes')).not.toBeInTheDocument();
+			await userEvent.click(view.getAllByText('skills').at(-1)!);
+			await userEvent.click(view.getByTestId('skill-source-next'));
+
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: 'https://github.com/acme/skills',
+				scope: 'instance',
+				credentialId: 'cred-1',
+			});
+			await userEvent.click(await view.findByTestId('skill-source-add'));
+			expect(skillsStore.connectSource).toHaveBeenCalledWith(
+				expect.objectContaining({ url: 'https://github.com/acme/skills', credentialId: 'cred-1' }),
+			);
+		});
+
+		it('lists the repositories of another credential when the user picks it', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			const view = render();
+			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+
+			await pick(view, 'skill-source-credential-select', 'Acme app');
+
+			await waitFor(() =>
+				expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith({
+					scope: 'instance',
+					credentialId: 'cred-2',
+				}),
+			);
+		});
+
+		it.each([
+			{
+				scopeOptions: [SCOPES[0]],
+				projectId: 'personal-1',
+				scopeText: 'your personal project',
+			},
+			{ scopeOptions: [SCOPES[2]], projectId: 'team-1', scopeText: 'Marketing' },
+		])(
+			'creates a credential in $projectId and picks it',
+			async ({ scopeOptions, projectId, scopeText }) => {
+				skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+				const view = render(scopeOptions);
+				await startLinkMode(view);
+
+				await pick(view, 'skill-source-credential-select', '+ Connect a new GitHub account');
+
+				expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+					'githubApi',
+					false,
+					false,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					expect.objectContaining({ closeOnSave: true, onCredentialCreated: expect.any(Function) }),
+				);
+				const created = { id: 'cred-9', name: 'New token', type: 'githubApi' };
+				skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, created]);
+				const options = uiStore.openNewCredential.mock.calls[0][7];
+				options?.onCredentialCreated?.({ id: 'cred-9' });
+
+				expect(await view.findByTestId('skill-source-credential-created')).toHaveTextContent(
+					`A credential was created in ${scopeText} and is reused for later checks.`,
+				);
+				skillsStore.discoverSource.mockResolvedValue(discovery());
+				await pasteLink(view, 'https://github.com/acme/skills');
+				expect(skillsStore.discoverSource).toHaveBeenCalledWith(
+					expect.objectContaining({ credentialId: 'cred-9' }),
+				);
+			},
+		);
+
+		it('opens the credential modal for a GitHub App installation too', async () => {
+			const view = render();
+			await startLinkMode(view);
+
+			await pick(view, 'skill-source-credential-select', '+ Connect a GitHub App installation');
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'githubAppApi',
+				false,
+				false,
+				'personal-1',
+				undefined,
+				undefined,
+				undefined,
+				expect.any(Object),
+			);
+		});
+
+		it('does not offer a new credential in a project where the user cannot create one', async () => {
+			const view = render([{ value: 'project:team-2', label: 'Sales', icon: 'layers' }]);
+			await startLinkMode(view);
+
+			await userEvent.click(view.getByTestId('skill-source-credential-select'));
+
+			expect(await view.findByText('None, the repository is public')).toBeInTheDocument();
+			expect(view.queryByText('+ Connect a new GitHub account')).not.toBeInTheDocument();
+		});
+
+		it.each([
+			{
+				reason: 'credential_invalid',
+				status: 400,
+				text: 'GitHub rejected this credential. The token is wrong or has expired.',
+			},
+			{
+				reason: 'credential_missing',
+				status: 404,
+				text: 'This credential no longer exists. Pick another one.',
+			},
+			{
+				reason: 'credential_out_of_scope',
+				status: 403,
+				text: 'This scope cannot use this credential. Pick one that it owns or that is shared with it.',
+			},
+			{
+				reason: 'not_found',
+				status: 404,
+				text: 'This credential cannot read this repository, or the repository does not exist.',
+			},
+		])(
+			'says why the credential cannot read the link: $reason',
+			async ({ reason, status, text }) => {
+				skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+				skillsStore.discoverSource.mockRejectedValue(
+					new ResponseError('Server text', { httpStatusCode: status, meta: { reason } }),
+				);
+				const view = render();
+				await startLinkMode(view);
+
+				await pick(view, 'skill-source-credential-select', 'Ada token');
+				await pasteLink(view, 'https://github.com/acme/skills');
+
+				expect(await view.findByTestId('skill-source-link-error')).toHaveTextContent(text);
+			},
+		);
+
+		it('says why the credential cannot list the repositories', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.fetchSourceRepositories.mockRejectedValue(
+				new ResponseError('Bad credentials', {
+					httpStatusCode: 400,
+					meta: { reason: 'credential_invalid' },
+				}),
+			);
+			const view = render();
+
+			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+
+			expect(await view.findByTestId('skill-source-link-error')).toHaveTextContent(
+				'GitHub rejected this credential. The token is wrong or has expired.',
+			);
+		});
 	});
 });

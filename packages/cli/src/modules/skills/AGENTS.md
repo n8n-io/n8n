@@ -59,6 +59,8 @@ Other modules call the services that `index.ts` exports. A contract (an abstract
 
 It does not export the controller (an import registers its routes), the module class, the repository or the entities. `__tests__/index.test.ts` checks the export list. If another module needs a new symbol, export it. Do not export symbols that no other module uses.
 
+The skills module also owns `SkillSourceCredentials`: which n8n credentials a skill source may use, decrypted with a fresh token. It cannot import the credential services of cli, so the agents module implements it in `AgentSkillSourceCredentials`, with the same credential rules as the agents credential provider, and registers a factory on `SkillSourceCredentialsProxy` on init. A project source accepts the credentials its project can use. A Global source accepts a credential whose owner has the global `skill:create` scope. A route that takes a credential checks both the scope and that the user can use it.
+
 The skills module cannot import the agents module, because the agents module imports skills. So the skills module owns `SkillUsage`: which agents use a skill, the projects of those agents, and the side effects of a save on them. The agents module implements it in `AgentSkillUsage` and registers it on `SkillUsageProxy` on init.
 
 ## Import rules

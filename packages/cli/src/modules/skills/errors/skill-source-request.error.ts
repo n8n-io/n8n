@@ -19,6 +19,9 @@ const STATUS: Record<SkillSourceReason, number> = {
 	name_taken: 409,
 	duplicate_source: 409,
 	rate_limited: 429,
+	credential_invalid: 400,
+	credential_missing: 404,
+	credential_out_of_scope: 403,
 	unreachable: 503,
 };
 

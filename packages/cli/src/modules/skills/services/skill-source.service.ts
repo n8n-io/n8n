@@ -9,6 +9,10 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceDuplicate,
 	type SkillSourceReason,
+	type ListSkillSourceCredentialsQueryDto,
+	type ListSkillSourceRepositoriesQueryDto,
+	type SkillSourceCredentialOption,
+	type SkillSourceRepositoryList,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -33,12 +37,15 @@ import {
 	skillSourceIdentityKey,
 	type FetchedSkill,
 	type RemoteSkillRef,
+	type SkillSourceAuth,
 	type SkillSourceClient,
 	type SkillSourceLocator,
 } from '../sources/skill-source-client';
 import { contentToAgentSkill, toSkillContent, type SkillTarget } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
 import { SkillAccessService } from './skill-access.service';
+import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
+import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
 import { isNameTaken } from './skill.policy';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -63,6 +70,9 @@ type ParsedSource = {
 	type: SkillSourceType;
 	locator: SkillSourceLocator;
 	identityKey: string;
+	/** The access of the credential for a private source. Undefined for a public one. */
+	auth?: SkillSourceAuth;
+	credentialId: string | null;
 };
 
 /** The skills of a source at one revision. */
@@ -107,6 +117,7 @@ export class SkillSourceService {
 		private readonly clients: SkillSourceClientRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly credentials: SkillSourceCredentialsProxy,
 	) {}
 
 	/**
@@ -117,9 +128,9 @@ export class SkillSourceService {
 	async discover(user: User, payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType);
+		const report = connectReport(scopeType, payload.credentialId);
 		try {
-			const source = await this.parse(payload.url);
+			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
@@ -168,9 +179,9 @@ export class SkillSourceService {
 	async connect(user: User, payload: ConnectSkillSourceDto): Promise<SkillSourceConnectResponse> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType);
+		const report = connectReport(scopeType, payload.credentialId);
 		try {
-			const source = await this.parse(payload.url);
+			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
@@ -250,6 +261,7 @@ export class SkillSourceService {
 							locator: source.locator,
 							identityKey: source.identityKey,
 							projectId: target.projectId,
+							credentialId: source.credentialId,
 							createdById: user.id,
 						},
 						ctx,
@@ -340,8 +352,78 @@ export class SkillSourceService {
 		return { target, scopeType: project?.type === 'personal' ? 'personal' : 'team' };
 	}
 
+	/** The credentials that can read a private source in the scope, for the credential select. */
+	async listCredentials(
+		user: User,
+		query: ListSkillSourceCredentialsQueryDto,
+	): Promise<SkillSourceCredentialOption[]> {
+		await this.flagGate.assertEnabled(user);
+		const { target } = await this.resolveScope(user, query);
+		return await this.credentials.listUsable(user, target.projectId, this.credentialTypes());
+	}
+
+	/** The repositories that a credential can read, to pick one in place of a link. */
+	async listRepositories(
+		user: User,
+		query: ListSkillSourceRepositoriesQueryDto,
+	): Promise<SkillSourceRepositoryList> {
+		await this.flagGate.assertEnabled(user);
+		const { target } = await this.resolveScope(user, query);
+		const credential = await this.resolveCredential(user, query.credentialId, target.projectId);
+		const client = this.clients
+			.types()
+			.map((type) => this.clients.get(type))
+			.find((candidate) => candidate?.credentialTypes.includes(credential.type));
+		if (!client?.listRepositories) {
+			throw new SkillSourceRequestError(
+				'credential_invalid',
+				'This credential cannot list repositories.',
+			);
+		}
+		try {
+			return await client.listRepositories(client.authFrom(credential));
+		} catch (error) {
+			throw toSkillSourceRequestError(error);
+		}
+	}
+
+	/**
+	 * The credential for a source in the scope. The scope must accept it, and the user must be
+	 * able to use it. One answer covers a credential that is out of scope, that the user cannot
+	 * use, and that does not exist, so the answer never tells that a credential exists.
+	 */
+	private async resolveCredential(
+		user: User,
+		credentialId: string,
+		projectId: string | null,
+	): Promise<ResolvedSkillSourceCredential> {
+		const credential = await this.credentials.resolve(credentialId, {
+			projectId,
+			user,
+			types: this.credentialTypes(),
+		});
+		if (!credential) {
+			throw new SkillSourceRequestError(
+				'credential_out_of_scope',
+				projectId
+					? 'This project cannot use that credential. Pick a GitHub credential that the project owns or that is shared with it.'
+					: 'A Global source needs a GitHub credential that an admin owns.',
+			);
+		}
+		return credential;
+	}
+
+	private credentialTypes(): string[] {
+		return this.clients.types().flatMap((type) => this.clients.get(type)?.credentialTypes ?? []);
+	}
+
 	/** The client that handles the link, and the source it points to. */
-	private async parse(url: string): Promise<ParsedSource> {
+	private async parse(
+		payload: { url: string; credentialId?: string },
+		user: User,
+		projectId: string | null,
+	): Promise<ParsedSource> {
+		const { url, credentialId } = payload;
 		const client = this.clients
 			.types()
 			.map((type) => this.clients.get(type))
@@ -358,14 +440,20 @@ export class SkillSourceService {
 				'This is not a GitHub repository link. Use https://github.com/owner/repo.',
 			);
 		}
+		const credential = credentialId
+			? await this.resolveCredential(user, credentialId, projectId)
+			: undefined;
 		try {
-			const locator = await client.parseLocator(url);
+			const auth = credential ? client.authFrom(credential) : undefined;
+			const locator = await client.parseLocator(url, auth);
 			return {
 				client,
 				// The registry holds only the clients of stored source types.
 				type: client.type as SkillSourceType,
 				locator,
 				identityKey: skillSourceIdentityKey(client.identity(locator)),
+				auth,
+				credentialId: credentialId ?? null,
 			};
 		} catch (error) {
 			throw toSkillSourceRequestError(error);
@@ -415,7 +503,7 @@ export class SkillSourceService {
 		let cursor: string | undefined;
 		try {
 			do {
-				const page = await source.client.discover(source.locator, undefined, cursor);
+				const page = await source.client.discover(source.locator, source.auth, cursor);
 				refs.push(...page.items);
 				truncated ||= page.truncated === true;
 				tooDeep += page.tooDeep ?? 0;
@@ -465,7 +553,7 @@ export class SkillSourceService {
 		const key = refKey(ref);
 		let fetched: FetchedSkill;
 		try {
-			fetched = await source.client.fetchLatest(source.locator, ref, undefined, revision);
+			fetched = await source.client.fetchLatest(source.locator, ref, source.auth, revision);
 		} catch (error) {
 			const reason = skillSourceReasonOf(error);
 			if (reason !== 'parse_error' && reason !== 'not_found') {
@@ -488,8 +576,13 @@ export class SkillSourceService {
 	}
 }
 
-function connectReport(scopeType: ScopeType): ConnectReport {
-	return { provider: 'github', access: 'public', scope_type: scopeType, duplicate_result: 'none' };
+function connectReport(scopeType: ScopeType, credentialId?: string): ConnectReport {
+	return {
+		provider: 'github',
+		access: credentialId ? 'credential' : 'public',
+		scope_type: scopeType,
+		duplicate_result: 'none',
+	};
 }
 
 /** A failure always carries a reason, so a bug shows in telemetry as `unexpected`. */

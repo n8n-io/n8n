@@ -107,6 +107,9 @@ const SKILL_SOURCE_REASON_KEYS = {
 	parse_error: 'settings.context.skills.connect.error.parseError',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
+	credential_invalid: 'settings.context.skills.connect.error.credentialInvalid',
+	credential_missing: 'settings.context.skills.connect.error.credentialMissing',
+	credential_out_of_scope: 'settings.context.skills.connect.error.credentialOutOfScope',
 } satisfies Record<SkillSourceReason, BaseTextKey>;
 
 /** The short form in the import toast, as in "Could not add seo-check (reason)". */
@@ -133,10 +136,19 @@ export function useSkillSourceReasons() {
 	/**
 	 * A full sentence for why n8n cannot read a link or one skill in it. `link` is the link the
 	 * user pasted: a well-formed branch link with `invalid_url` means the branch is missing.
+	 * `withCredential` says that the read used a credential.
 	 */
-	function reasonText(reason: unknown, link?: string): string {
+	function reasonText(
+		reason: unknown,
+		link?: string,
+		{ withCredential = false }: { withCredential?: boolean } = {},
+	): string {
 		if (!isKnownReason(reason)) {
 			return i18n.baseText('settings.context.skills.connect.error.discover');
+		}
+		// With a credential, a missing repository means the credential cannot read it.
+		if (reason === 'not_found' && withCredential) {
+			return i18n.baseText('settings.context.skills.connect.error.notFoundWithCredential');
 		}
 		if (reason === 'invalid_url' && link && GITHUB_BRANCH_LINK.test(link)) {
 			return i18n.baseText('settings.context.skills.connect.error.branchNotFound');
