@@ -53,6 +53,4 @@ WORKDIR /home/node
 # `npm install -g` modules resolve through the same NODE_PATH.
 ENV NPM_CONFIG_PREFIX=/usr/local
 ENV NODE_PATH=/usr/local/lib/node_modules
-# glibc malloc arenas add idle RSS over musl. Two arenas recover about a third.
-ENV MALLOC_ARENA_MAX=2
 EXPOSE 5678/tcp
