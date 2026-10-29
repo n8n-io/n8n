@@ -1,13 +1,18 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
+
 import type { StatusDotProps } from './StatusDot.types';
 
 defineOptions({ name: 'N8nStatusDot' });
 
-withDefaults(defineProps<StatusDotProps>(), {
+const props = withDefaults(defineProps<StatusDotProps>(), {
 	variant: 'success',
 	appearance: 'fill',
 	pulse: false,
 });
+
+// An outline ring stays still. The pulse is for a solid dot.
+const showPulse = computed(() => props.pulse && props.appearance === 'fill');
 </script>
 
 <template>
@@ -15,7 +20,7 @@ withDefaults(defineProps<StatusDotProps>(), {
 		:class="[
 			$style[variant],
 			appearance === 'outline' && $style.outline,
-			{ [$style.pulse]: pulse },
+			{ [$style.pulse]: showPulse },
 		]"
 		aria-hidden="true"
 	/>

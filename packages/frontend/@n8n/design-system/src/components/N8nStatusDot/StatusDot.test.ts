@@ -39,6 +39,31 @@ describe('components/N8nStatusDot', () => {
 		},
 	);
 
+	it.each(['success', 'warning', 'danger', 'neutral'] as const)(
+		'should render a pulse for %s',
+		(variant) => {
+			const wrapper = render(N8nStatusDot, {
+				props: { variant, pulse: true },
+			});
+			const dot = wrapper.container.firstElementChild;
+			expect(dot?.className).toContain(variant);
+			expect(dot?.className).toContain('pulse');
+		},
+	);
+
+	it.each(['success', 'warning', 'danger', 'neutral'] as const)(
+		'should keep an outline ring still when pulse is set for %s',
+		(variant) => {
+			const wrapper = render(N8nStatusDot, {
+				props: { variant, appearance: 'outline', pulse: true },
+			});
+			const dot = wrapper.container.firstElementChild;
+			expect(dot?.className).toContain(variant);
+			expect(dot?.className).toContain('outline');
+			expect(dot?.className).not.toContain('pulse');
+		},
+	);
+
 	it('should render pulse class when pulse is enabled', () => {
 		const wrapper = render(N8nStatusDot, {
 			props: { pulse: true },
