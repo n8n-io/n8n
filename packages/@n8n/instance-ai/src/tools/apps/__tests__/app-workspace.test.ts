@@ -19,7 +19,7 @@ vi.mock('../../../workspace/sandbox-fs', async (importOriginal) => ({
 
 const APP_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
 const DIR = `/home/user/workspace/apps/${APP_ID}`;
-const workspace = mock<Workspace>();
+const workspace = mock<Workspace>({ filesystem: { readFile: vi.fn() } });
 
 describe('app workspace', () => {
 	beforeEach(() => {
@@ -36,23 +36,31 @@ describe('app workspace', () => {
 
 		expect(writeFileViaSandbox).toHaveBeenCalledWith(workspace, `${DIR}.tgz`, archive);
 		const [, command] = vi.mocked(runInSandbox).mock.calls[0];
-		expect(command).toContain(`rm -rf '${DIR}'`);
+		expect(command).toContain(
+			`find '${DIR}' -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} +`,
+		);
 		expect(command).toContain(`tar -xzf '${DIR}.tgz' --no-same-owner -C '${DIR}'`);
 		expect(writeFileViaSandbox).toHaveBeenCalledWith(workspace, `${DIR}.base-version`, 'v1');
 	});
 
-	it('packs the folder without dependencies and build output', async () => {
-		vi.mocked(runInSandbox).mockResolvedValue({
-			exitCode: 0,
-			stdout: `${Buffer.from('archive').toString('base64')}\n`,
-			stderr: '',
-		});
+	it('packs the folder without dependencies and build output and reads the archive as a file', async () => {
+		vi.mocked(workspace.filesystem!.readFile).mockResolvedValue(Buffer.from('archive'));
 
 		expect(await packAppFolder(workspace, APP_ID)).toEqual(Buffer.from('archive'));
 
-		const [, command] = vi.mocked(runInSandbox).mock.calls[0];
-		expect(command).toContain('--exclude=./node_modules --exclude=./dist');
-		expect(command).toContain(`-C '${DIR}' .`);
+		expect(workspace.filesystem!.readFile).toHaveBeenCalledWith(`${DIR}.tgz`);
+		const commands = vi.mocked(runInSandbox).mock.calls.map(([, command]) => command);
+		expect(commands[0]).toContain('--exclude=./node_modules --exclude=./dist');
+		expect(commands[0]).toContain(`-C '${DIR}' .`);
+		expect(commands[1]).toBe(`rm -f '${DIR}.tgz'`);
+	});
+
+	it('removes the archive when it cannot be read', async () => {
+		vi.mocked(workspace.filesystem!.readFile).mockRejectedValue(new Error('Not found'));
+
+		await expect(packAppFolder(workspace, APP_ID)).rejects.toThrow('Not found');
+
+		expect(vi.mocked(runInSandbox).mock.calls.at(-1)?.[1]).toBe(`rm -f '${DIR}.tgz'`);
 	});
 
 	it('fails when a sandbox command fails', async () => {

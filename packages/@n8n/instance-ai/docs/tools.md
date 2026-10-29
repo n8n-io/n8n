@@ -1302,10 +1302,11 @@ carries *what* it does.
 
 ## `apps` *(conditional)*
 
-Build n8n Apps. Present only when the apps module is active and the run has a
-bound project (the adapter wires `appService`). Deferred: the `app-builder`
-skill lists it in `recommended_tools`, and the skill is available only when the
-sandbox is available.
+Build n8n Apps. Present only when the apps module is active, the run has a
+bound project and the sandbox is available. The adapter wires `appService`, and
+the turn setup removes it without a sandbox, so the tool, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the skill lists
+the tool in `recommended_tools`.
 
 | Action | Scope | Description |
 |--------|-------|-------------|
@@ -1314,11 +1315,12 @@ sandbox is available.
 | `get` | `app:read` | App state |
 | `open` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
 | `commit` | `app:update` | Save the folder as one version and wait for its build |
-| `discard` | `app:read` | Replace the folder with the current draft |
+| `discard` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
 
 The model edits the folder with the workspace tools and runs `npm ci` and
 `npm run build` there before it commits. The source moves in and out of the
-sandbox as one archive (`AppSourceArchiveService` in the apps module).
+sandbox as one archive (`AppSourceArchiveService` in the apps module). The
+commit archive is read back as a file, not through command output.
 `apps/<appId>.base-version` holds the draft version the folder started from. A
 commit is based on that version, so a draft that changed since then fails the
 commit with a conflict and the folder stays. A commit leaves out

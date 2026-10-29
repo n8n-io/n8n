@@ -106,8 +106,8 @@ async function commit(
 		await packAppFolder(workspace, appId),
 		label,
 	);
+	await writeBaseVersion(workspace, appId, build.versionId);
 	const app = await apps.getApp(appId);
-	await writeBaseVersion(workspace, appId, app.draftVersionId);
 	await reportChangedApp(context, app);
 	context.trackTelemetry?.('instance_ai_app_change_committed', {
 		thread_id: context.threadId,

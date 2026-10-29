@@ -71,7 +71,8 @@ Add components under `src/`. Keep files small and focused.
 
 If a commit reports that the app draft changed, someone else saved a newer
 version. Your folder is kept. Note your changes, call `discard` to load the
-newer draft, and apply your changes again.
+newer draft, and apply your changes again. `discard` keeps `node_modules`, so
+you do not need to run `npm ci` again.
 
 ## Several apps
 

@@ -173,7 +173,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 		});
 
 		it.each([true, false])(
-			'enables app building only with the sandbox (sandbox available: %s)',
+			'keeps the app service, tool and skill only with the sandbox (sandbox available: %s)',
 			async (workflowBuilderAvailable) => {
 				const { factory, fields } = createSetupFactory();
 				fields.adapterService.createContext.mockReturnValue(
@@ -181,12 +181,13 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				);
 				fields.settingsService.getSandboxStatus.mockReturnValue({ workflowBuilderAvailable });
 
-				await factory.create(params, createRuntime());
+				const { context } = await factory.create(params, createRuntime());
 
 				expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
 					expect.objectContaining({ appBuildingEnabled: workflowBuilderAvailable }),
 					expect.anything(),
 				);
+				expect(context.appService !== undefined).toBe(workflowBuilderAvailable);
 			},
 		);
 

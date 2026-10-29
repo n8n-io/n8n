@@ -50,7 +50,12 @@ function createThread(metadata: Record<string, unknown> = {}) {
 }
 
 function app(id: string, projectId = 'project-1') {
-	return mock<AppResponse>({ id, name: 'Todos', projectId, draftVersionId: 'v2' });
+	return mock<AppResponse>({
+		id,
+		name: 'Todos',
+		projectId,
+		draftVersionId: 'someone-elses-version',
+	});
 }
 
 const ARCHIVE = Buffer.from('archive');
@@ -194,7 +199,7 @@ describe('apps tool', () => {
 		expect(appService.commit).not.toHaveBeenCalled();
 	});
 
-	it('commits the folder on its base, moves the base and shows the app', async () => {
+	it('commits the folder on its base, moves the base to the committed version and shows the app', async () => {
 		const { tool, appService, thread, trackTelemetry, onArtifactChanged } = setup();
 		vi.mocked(readBaseVersion).mockResolvedValue('v1');
 		appService.getApp.mockResolvedValue(app(SERVER_ID));

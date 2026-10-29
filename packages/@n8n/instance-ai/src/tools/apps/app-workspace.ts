@@ -25,7 +25,6 @@ async function run(workspace: Workspace, command: string) {
 	if (result.exitCode !== 0) {
 		throw new Error(`Sandbox command failed: ${(result.stderr || result.stdout).trim()}`);
 	}
-	return result.stdout;
 }
 
 /**
@@ -50,7 +49,7 @@ export async function writeBaseVersion(
 	);
 }
 
-/** Replace the app folder with the draft source of the app. */
+/** Replace the app folder with the draft source of the app. Installed dependencies stay. */
 export async function checkOutDraft(
 	workspace: Workspace,
 	apps: InstanceAiAppService,
@@ -62,7 +61,7 @@ export async function checkOutDraft(
 	const tarball = escapeSingleQuotes(paths.archive);
 	await run(
 		workspace,
-		`rm -rf '${paths.dir}' && mkdir -p '${paths.dir}' && tar -xzf '${tarball}' --no-same-owner -C '${paths.dir}' && rm -f '${tarball}'`,
+		`mkdir -p '${paths.dir}' && find '${paths.dir}' -mindepth 1 -maxdepth 1 ! -name node_modules -exec rm -rf {} + && tar -xzf '${tarball}' --no-same-owner -C '${paths.dir}' && rm -f '${tarball}'`,
 	);
 	await writeBaseVersion(workspace, appId, baseVersionId);
 	return baseVersionId;
@@ -72,9 +71,15 @@ export async function checkOutDraft(
 export async function packAppFolder(workspace: Workspace, appId: string) {
 	const paths = await appPaths(workspace, appId);
 	const tarball = escapeSingleQuotes(paths.archive);
-	const base64 = await run(
+	await run(
 		workspace,
-		`tar -czf '${tarball}' --exclude=./node_modules --exclude=./dist -C '${paths.dir}' . && base64 '${tarball}'; rc=$?; rm -f '${tarball}'; exit $rc`,
+		`tar -czf '${tarball}' --exclude=./node_modules --exclude=./dist -C '${paths.dir}' .`,
 	);
-	return Buffer.from(base64, 'base64');
+	try {
+		const archive = await workspace.filesystem?.readFile(paths.archive);
+		if (!Buffer.isBuffer(archive)) throw new Error('The sandbox returned an invalid app archive.');
+		return archive;
+	} finally {
+		await run(workspace, `rm -f '${tarball}'`);
+	}
 }
