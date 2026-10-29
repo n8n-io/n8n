@@ -99,8 +99,8 @@ the credential checks read control-plane state.
 - The sub-execution row carries a parent link that the engine alone sets. The read path can show
   parent execution and sub-execution links.
 - A parent execution that awaits a sub-execution reports `waiting`. Engine v1 reports `running`.
-- Fire-and-forget sub-executions stop when the parent execution is cancelled. Engine v1 lets them run
-  on.
+- Fire-and-forget sub-executions stop when the parent execution is cancelled. Engine v1 lets them
+  run on.
 - Reconciliation repairs a waiting step whose sub-execution never started, and an ended
   sub-execution whose parent step still waits.
 - Engine v2 has no timeout yet, so a sub-execution outlives a parent execution that v1 would have
