@@ -112,6 +112,16 @@ describe('N8nVersionHistory', () => {
 		expect(queryByText('No versions yet')).toBeNull();
 	});
 
+	it('draws a filled mark for published and latest, and a ring otherwise', () => {
+		const { getAllByTestId } = renderHistory({
+			items: [...items, { id: 'v0', label: 'v0' }],
+		});
+
+		expect(
+			getAllByTestId('version-history-status').map((mark) => mark.getAttribute('data-status')),
+		).toEqual(['latest', 'published', 'default']);
+	});
+
 	it('connects the marks and leaves the ends open', () => {
 		const { getAllByTestId } = renderHistory();
 		const rows = getAllByTestId('version-history-row');

@@ -6,7 +6,6 @@ import VersionHistoryRail from './VersionHistoryRail.vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
-import N8nStatusDot, { type StatusDotAppearance, type StatusDotVariant } from '../N8nStatusDot';
 import N8nText from '../N8nText/Text.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
@@ -30,16 +29,6 @@ defineSlots<{
 	actions?: (props: { item: VersionHistoryItem }) => unknown;
 }>();
 
-// Published and latest are filled. Every other row uses a neutral ring.
-const STATUS_DOT: Record<
-	VersionHistoryStatus,
-	{ variant: StatusDotVariant; appearance: StatusDotAppearance }
-> = {
-	published: { variant: 'success', appearance: 'fill' },
-	latest: { variant: 'warning', appearance: 'fill' },
-	default: { variant: 'neutral', appearance: 'outline' },
-};
-
 /**
  * The compare control is this icon button on every row.
  * A custom actions slot replaces it.
@@ -52,7 +41,8 @@ const compareButtonProps = {
 
 const { t } = useI18n();
 
-const statusDot = computed(() => STATUS_DOT[props.item.status ?? 'default']);
+// Local mark until N8nStatusDot can draw a neutral outline.
+const status = computed<VersionHistoryStatus>(() => props.item.status ?? 'default');
 const actions = computed(() => props.item.actions ?? []);
 const compareLabel = computed(() => t('versionHistory.compare'));
 const accessibleName = computed(() =>
@@ -93,7 +83,11 @@ function onAction(action: string) {
 			:connect-below="connectBelow"
 			@click="onSelect"
 		>
-			<N8nStatusDot :variant="statusDot.variant" :appearance="statusDot.appearance" />
+			<span
+				:class="[$style.status, $style[status]]"
+				data-test-id="version-history-status"
+				:data-status="status"
+			/>
 		</VersionHistoryRail>
 		<button
 			type="button"
@@ -234,5 +228,28 @@ button.select {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+// Same size as N8nStatusDot so the rail gap stays aligned.
+.status {
+	box-sizing: border-box;
+	flex: 0 0 auto;
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+}
+
+.published {
+	background-color: var(--color--success);
+}
+
+.latest {
+	background-color: var(--color--warning);
+}
+
+.default {
+	background-color: transparent;
+	border: var(--border);
+	border-color: var(--color--text--tint-2);
 }
 </style>
