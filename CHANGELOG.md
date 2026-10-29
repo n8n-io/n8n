@@ -1,3 +1,12 @@
+## [2.45.6](https://github.com/n8n-io/n8n/compare/n8n@2.45.5...n8n@2.45.6) (2026-10-29)
+
+
+### Bug Fixes
+
+* **core:** Record dynamic time saved for executions in queue mode ([#42482](https://github.com/n8n-io/n8n/issues/42482)) ([f2f0c2f](https://github.com/n8n-io/n8n/commit/f2f0c2f63da718e8b258f9fc694f4d3d3502dc0b))
+* **editor:** Match compact sidebar icon sizes ([#42378](https://github.com/n8n-io/n8n/issues/42378)) ([56eec49](https://github.com/n8n-io/n8n/commit/56eec49704b4cc21c544ea69b8fecd461462ddcf))
+
+
 ## [2.45.5](https://github.com/n8n-io/n8n/compare/n8n@2.45.4...n8n@2.45.5) (2026-10-28)
 
 
