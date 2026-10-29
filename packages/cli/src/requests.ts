@@ -193,8 +193,9 @@ export declare namespace OAuthRequest {
 			{},
 			{},
 			{},
-			// `admin_consent` and its error pair arrive when an administrator approves
-			// the app for an organisation, which reuses the same reply URL.
+			// `admin_consent` arrives when an administrator approves the app for an
+			// organisation, which reuses the same reply URL. The error pair arrives with
+			// it, or when the authorization server refuses the request (RFC 6749 4.1.2.1).
 			{
 				code: string;
 				state: string;

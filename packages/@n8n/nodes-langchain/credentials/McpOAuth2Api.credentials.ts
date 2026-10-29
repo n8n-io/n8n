@@ -11,7 +11,7 @@ export class McpOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Use Dynamic Client Registration',
+			displayName: 'Register Client Automatically',
 			name: 'useDynamicClientRegistration',
 			type: 'boolean',
 			default: true,
