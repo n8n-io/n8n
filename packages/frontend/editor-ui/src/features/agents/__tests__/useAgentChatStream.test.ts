@@ -74,7 +74,6 @@ import {
 	useAgentChatStream,
 	type UseAgentChatStreamParams,
 } from '../composables/useAgentChatStream';
-import { createAgentChatTraceRecorder } from '../agentChatTrace';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
@@ -236,7 +235,7 @@ function buildHook(
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
-		traceRecorder?: UseAgentChatStreamParams['traceRecorder'];
+		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -401,40 +400,22 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		});
 	});
 
-	it('records the loaded history and every received stream event for a trace', async () => {
-		getChatMessagesMock.mockResolvedValue({
-			messages: [],
-			openSuspensions: [],
-			activeExecutionId: null,
-		});
-		const traceRecorder = createAgentChatTraceRecorder();
-		const hook = buildHook('thread-1', { traceRecorder });
-		await hook.loadHistory();
+	it('passes on every received stream event, in order', async () => {
+		const onStreamEvent = vi.fn();
+		const events: AgentSseEvent[] = [
+			{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'Hel' },
+			{ type: 'text-delta', id: 'text-1', delta: 'lo' },
+			{ type: 'finish', finishReason: 'stop' },
+			{ type: 'done', executionId: 'execution-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events));
+		const hook = buildHook('thread-1', { onStreamEvent });
 
-		globalThis.fetch = vi.fn(async () =>
-			makeSseResponse([
-				{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' },
-				{ type: 'text-delta', id: 'text-1', delta: 'Hel' },
-				{ type: 'text-delta', id: 'text-1', delta: 'lo' },
-				{ type: 'finish', finishReason: 'stop' },
-				{ type: 'done', executionId: 'execution-1' },
-			]),
-		);
 		await hook.sendMessage('hello');
 		await flushPromises();
 
-		const trace = traceRecorder.snapshot({
-			threadId: 'thread-1',
-			agentId: 'a1',
-			messages: hook.messages.value,
-		});
-		expect(trace.history).toMatchObject({ messages: [], activeExecutionId: null });
-		expect(trace.events.map(({ event }) => event)).toEqual([
-			{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' },
-			{ type: 'text-delta', id: 'text-1', delta: 'Hello' },
-			{ type: 'finish', finishReason: 'stop' },
-			{ type: 'done', executionId: 'execution-1' },
-		]);
+		expect(onStreamEvent.mock.calls.map(([event]) => event)).toEqual(events);
 	});
 
 	it('renders nested approval while preserving delegated tool input', async () => {

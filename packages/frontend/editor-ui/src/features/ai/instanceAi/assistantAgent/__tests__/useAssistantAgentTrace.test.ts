@@ -41,11 +41,15 @@ describe('useAssistantAgentTrace', () => {
 		showError.mockReset();
 	});
 
-	it('does not record without the debug flag', () => {
+	it('keeps no events without the debug flag', async () => {
 		const trace = setUp();
+		trace.recordEvent({ type: 'text-delta', id: 't1', delta: 'Sure' });
+
+		await trace.runAction('copy');
 
 		expect(trace.isEnabled).toBe(false);
-		expect(trace.recorder).toBeUndefined();
+		const copied: unknown = JSON.parse(clipboardCopy.mock.calls[0][0] as string);
+		expect(copied).toMatchObject({ events: [] });
 	});
 
 	describe('with the debug flag', () => {
@@ -55,7 +59,7 @@ describe('useAssistantAgentTrace', () => {
 
 		it('copies the shown messages and the recorded events as JSON', async () => {
 			const trace = setUp();
-			trace.recorder?.recordEvent({ type: 'text-delta', id: 't1', delta: 'Sure' });
+			trace.recordEvent({ type: 'text-delta', id: 't1', delta: 'Sure' });
 
 			await trace.runAction('copy');
 

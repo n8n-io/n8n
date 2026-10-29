@@ -1,3 +1,4 @@
+import type { AgentSseEvent } from '@n8n/api-types';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import type { ActionDropdownItem } from '@n8n/design-system';
@@ -5,9 +6,9 @@ import { useI18n } from '@n8n/i18n';
 import { saveAs } from 'file-saver';
 import type { DeepReadonly } from 'vue';
 
-import { createAgentChatTraceRecorder } from '@/features/agents/agentChatTrace';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
+import { appendTraceEvent, type AssistantAgentTraceEvent } from './assistantAgentTrace';
 import { ASSISTANT_AGENT_ID } from './assistantAgentThreads';
 
 export type AssistantAgentTraceAction = 'copy' | 'download';
@@ -28,8 +29,13 @@ export function useAssistantAgentTrace({
 	const { showMessage, showError } = useToast();
 
 	const isEnabled = localStorage.getItem('instanceAi.debugMode') === 'true';
-	// The stream records only when the flag is on, so other users keep no extra data.
-	const recorder = isEnabled ? createAgentChatTraceRecorder() : undefined;
+	// A plain array, not a ref: nothing renders it, and a long turn sends many events.
+	const events: AssistantAgentTraceEvent[] = [];
+
+	/** Keeps the event only with the flag on, so other users keep no extra data. */
+	function recordEvent(event: AgentSseEvent): void {
+		if (isEnabled) appendTraceEvent(events, event);
+	}
 
 	const menuItems: Array<ActionDropdownItem<AssistantAgentTraceAction>> = [
 		{ id: 'copy', label: i18n.baseText('instanceAi.assistantAgent.trace.copy'), icon: 'copy' },
@@ -41,12 +47,15 @@ export function useAssistantAgentTrace({
 	];
 
 	function serialize(): string {
-		if (!recorder) return '';
-		const trace = recorder.snapshot({
+		const trace = {
 			threadId,
 			agentId: ASSISTANT_AGENT_ID,
+			exportedAt: new Date().toISOString(),
+			// The chat as the browser shows it.
 			messages: messages(),
-		});
+			// The stream events that this page received, with the deltas of each part joined.
+			events,
+		};
 		return JSON.stringify(trace, null, 2);
 	}
 
@@ -72,5 +81,5 @@ export function useAssistantAgentTrace({
 		else download();
 	}
 
-	return { isEnabled, recorder, menuItems, runAction };
+	return { isEnabled, menuItems, recordEvent, runAction };
 }

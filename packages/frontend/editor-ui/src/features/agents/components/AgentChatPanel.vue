@@ -27,6 +27,7 @@ import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
 	type AgentBuilderOpenSuspension,
+	type AgentSseEvent,
 	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
@@ -48,7 +49,6 @@ import type {
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import type { AgentChatTraceRecorder } from '../agentChatTrace';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -148,8 +148,6 @@ const props = withDefaults(
 		 * list is read once, when the panel is set up.
 		 */
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
-		/** Records what the chat receives, for a debug export. Read once, like the extensions. */
-		traceRecorder?: AgentChatTraceRecorder;
 	}>(),
 	{
 		visible: true,
@@ -195,6 +193,8 @@ const emit = defineEmits<{
 	'message-accepted': [
 		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
 	];
+	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
+	'stream-event': [event: AgentSseEvent];
 }>();
 
 defineSlots<{
@@ -279,7 +279,7 @@ const {
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
-	traceRecorder: props.traceRecorder,
+	onStreamEvent: (event) => emit('stream-event', event),
 });
 
 provide(

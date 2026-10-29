@@ -420,17 +420,16 @@ describe('AssistantAgentThreadView', () => {
 			localStorage.removeItem('instanceAi.debugMode');
 		});
 
-		it('hides the trace menu and does not record without the debug flag', async () => {
+		it('hides the trace menu without the debug flag', async () => {
 			const { queryByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
 
 			expect(queryByTestId('assistant-agent-trace-button')).not.toBeInTheDocument();
-			expect(panelProps.current['trace-recorder']).toBeUndefined();
 		});
 
-		it('shows the trace menu and records the chat with the debug flag', async () => {
+		it('shows the trace menu and listens to the chat stream with the debug flag', async () => {
 			localStorage.setItem('instanceAi.debugMode', 'true');
 			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
@@ -438,9 +437,7 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
-			expect(panelProps.current['trace-recorder']).toEqual(
-				expect.objectContaining({ recordEvent: expect.any(Function) }),
-			);
+			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
 		});
 	});
 
