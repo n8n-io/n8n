@@ -55,7 +55,7 @@ const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
-const { reasonText, findingsText } = useSkillSourceReasons();
+const { reasonText, findingsText, linkedDomainsText } = useSkillSourceReasons();
 
 const step = ref<'link' | 'choose'>('link');
 const url = ref('');
@@ -157,6 +157,11 @@ const needsReview = computed(
 		) ?? false,
 );
 
+// A tick covers the warnings that the user saw, so it goes when no picked skill needs review.
+watch(needsReview, (needed) => {
+	if (!needed) reviewed.value = false;
+});
+
 const canAdd = computed(() => selected.value.length > 0 && (!needsReview.value || reviewed.value));
 
 const CHECK_BADGES = {
@@ -172,6 +177,12 @@ const CHECK_BADGES = {
 function checkFindings(skill: DiscoveredSkill): string {
 	if (!skill.check || skill.nameTaken) return '';
 	return findingsText(skill.check.findings);
+}
+
+/** The domains of a skill that can come in. A blocked row shows only why it is blocked. */
+function linkedDomains(skill: DiscoveredSkill): string {
+	if (!skill.check || skill.nameTaken || skill.check.verdict === 'blocked') return '';
+	return linkedDomainsText(skill.check.findings);
 }
 
 async function onNext() {
@@ -409,6 +420,14 @@ const title = computed(() =>
 							data-test-id="skill-source-skill-findings"
 						>
 							{{ checkFindings(item) }}
+						</N8nText>
+						<N8nText
+							v-if="linkedDomains(item)"
+							size="small"
+							color="text-light"
+							data-test-id="skill-source-skill-domains"
+						>
+							{{ linkedDomains(item) }}
 						</N8nText>
 						<N8nText
 							v-if="item.nameTaken"

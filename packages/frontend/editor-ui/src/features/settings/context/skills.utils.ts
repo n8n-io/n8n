@@ -192,5 +192,21 @@ export function useSkillSourceReasons() {
 		return [...new Set(texts)].join('. ');
 	}
 
-	return { reasonText, failedSkillReason, findingsText };
+	/**
+	 * The domains that a skill links to. At import a link needs no review, but the user still
+	 * sees where the skill can send an agent.
+	 */
+	function linkedDomainsText(findings: SkillScanFinding[]): string {
+		const domains = new Set(
+			findings.flatMap((finding) =>
+				finding.rule === 'new_url' && finding.domain ? [finding.domain] : [],
+			),
+		);
+		if (domains.size === 0) return '';
+		return i18n.baseText('settings.context.skills.connect.check.linksTo', {
+			interpolate: { domains: [...domains].join(', ') },
+		});
+	}
+
+	return { reasonText, failedSkillReason, findingsText, linkedDomainsText };
 }

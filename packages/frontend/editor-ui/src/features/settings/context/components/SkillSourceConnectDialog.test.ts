@@ -365,7 +365,20 @@ describe('SkillSourceConnectDialog', () => {
 									file: 'SKILL.md',
 									detail: 'Server text',
 								},
-								{ rule: 'new_url', severity: 'info', file: 'SKILL.md', detail: 'Server text' },
+								{
+									rule: 'new_url',
+									severity: 'info',
+									file: 'SKILL.md',
+									domain: 'scraper.example.com',
+									detail: 'Server text',
+								},
+								{
+									rule: 'new_url',
+									severity: 'info',
+									file: 'references/api.md',
+									domain: 'api.example.com',
+									detail: 'Server text',
+								},
 							],
 						},
 					}),
@@ -383,6 +396,13 @@ describe('SkillSourceConnectDialog', () => {
 									detail: 'Server text',
 								},
 								{ rule: 'lossy_conversion', severity: 'needs_review', detail: 'Server text' },
+								{
+									rule: 'new_url',
+									severity: 'info',
+									file: 'SKILL.md',
+									domain: 'shell.example.com',
+									detail: 'Server text',
+								},
 							],
 						},
 					}),
@@ -403,6 +423,9 @@ describe('SkillSourceConnectDialog', () => {
 		expect(reviewFindings).toHaveTextContent('Hidden Unicode characters in SKILL.md');
 		expect(reviewFindings).not.toHaveTextContent('domain');
 		expect(reviewFindings).not.toHaveTextContent('Server text');
+		expect(within(review).getByTestId('skill-source-skill-domains')).toHaveTextContent(
+			'Links to scraper.example.com, api.example.com',
+		);
 		expect(within(review).getByRole('checkbox')).not.toBeDisabled();
 
 		const blocked = view.getByTestId('skill-source-skill-skills/shell-runner');
@@ -410,6 +433,7 @@ describe('SkillSourceConnectDialog', () => {
 		expect(within(blocked).getByTestId('skill-source-skill-findings')).toHaveTextContent(
 			'Over the size limits in references/big.md. Content that n8n cannot convert exactly',
 		);
+		expect(within(blocked).queryByTestId('skill-source-skill-domains')).not.toBeInTheDocument();
 		expect(within(blocked).getByRole('checkbox')).toBeDisabled();
 		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 2');
 	});
@@ -476,6 +500,32 @@ describe('SkillSourceConnectDialog', () => {
 			skillKeys: ['skills/brand-voice', 'skills/web-scraper'],
 			reviewedWarnings: true,
 		});
+	});
+
+	it('clears "I reviewed the warnings" when the user unpicks every skill that needs review', async () => {
+		const review = discovered({
+			key: 'skills/web-scraper',
+			location: 'skills/web-scraper',
+			name: 'web-scraper',
+			check: {
+				verdict: 'needs_review',
+				findings: [
+					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
+				],
+			},
+		});
+		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		await userEvent.click(await view.findByRole('checkbox', { name: 'I reviewed the warnings' }));
+		const row = view.getByTestId('skill-source-skill-skills/web-scraper');
+		await userEvent.click(within(row).getByRole('checkbox'));
+		await userEvent.click(within(row).getByRole('checkbox'));
+
+		expect(view.getByRole('checkbox', { name: 'I reviewed the warnings' })).not.toBeChecked();
+		expect(view.getByTestId('skill-source-add')).toBeDisabled();
 	});
 
 	it('asks for no review when the user unpicks every skill that needs it', async () => {

@@ -3849,6 +3849,7 @@
 	"settings.context.skills.connect.check.blocked": "Blocked",
 	"settings.context.skills.connect.check.reviewed": "I reviewed the warnings",
 	"settings.context.skills.connect.check.findingInFile": "{finding} in {file}",
+	"settings.context.skills.connect.check.linksTo": "Links to {domains}",
 	"settings.context.skills.connect.check.rule.invalidSkill": "Not a valid skill",
 	"settings.context.skills.connect.check.rule.overLimit": "Over the size limits",
 	"settings.context.skills.connect.check.rule.fileSkipped": "A file that n8n leaves out",
