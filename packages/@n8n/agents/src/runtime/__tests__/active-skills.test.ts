@@ -708,3 +708,119 @@ describe('active skills', () => {
 		]);
 	});
 });
+
+describe('active skill context observations', () => {
+	it.each([
+		{ freshRun: true, idleMs: FIVE_MINUTES + 1, carried: ['builder'] },
+		{ freshRun: true, idleMs: 1, carried: ['router', 'builder'] },
+		{ freshRun: false, idleMs: FIVE_MINUTES + 1, carried: ['router', 'builder'] },
+	])(
+		'reports carry-forward without revocation for freshRun=$freshRun and idleMs=$idleMs',
+		async ({ freshRun, idleMs, carried }) => {
+			const memory = new InMemoryMemory();
+			const onContext = vi.fn();
+			const current = { ...turnSource, onContext };
+			const active = new ActiveSkills(current, 'assistant', memory.skillState);
+			await active.restore(threadWithLoads(idleMs, 'router', 'builder'), scope, {
+				freshRun,
+				cacheTtlMs: FIVE_MINUTES,
+				now: NOW,
+			});
+			active.instructions();
+			active.reportContext();
+			expect(onContext).toHaveBeenCalledExactlyOnceWith(
+				carried.map((skillId) => expect.objectContaining({ skillId, kind: 'carried' })),
+			);
+		},
+	);
+
+	it('reports revocation only after the changed selections are saved', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save(
+			{ ...scope, agentName: 'assistant' },
+			{ skillIds: ['hub-test'], versions: { 'hub-test': 'v1' } },
+		);
+		vi.spyOn(memory.skillState, 'save').mockRejectedValueOnce(new Error('Save failed'));
+		const current = createRuntimeSkillSource([]);
+		const onContext = vi.fn();
+		current.onContext = onContext;
+		const active = new ActiveSkills(current, 'assistant', memory.skillState);
+		await expect(active.restore(new AgentMessageList(), scope)).rejects.toThrow('Save failed');
+		expect(onContext).not.toHaveBeenCalled();
+
+		const retried = new ActiveSkills(current, 'assistant', memory.skillState);
+		await retried.restore(new AgentMessageList(), scope);
+		expect(onContext).toHaveBeenCalledExactlyOnceWith([{ skillId: 'hub-test', kind: 'revoked' }]);
+	});
+
+	it('reports fresh carry-forward and refresh without a new load call', async () => {
+		const memory = new InMemoryMemory();
+		const current = createRuntimeSkillSource([
+			{ id: 'hub-test', name: 'test', description: 'test', instructions: 'version one' },
+		]);
+		current.shouldAppendSkillUpdates = () => true;
+		const onContext = vi.fn();
+		current.onContext = onContext;
+		const first = new ActiveSkills(current, 'assistant', memory.skillState);
+		await first.restore(new AgentMessageList(), scope);
+		await first.load('hub-test');
+		const next = new ActiveSkills(current, 'assistant', memory.skillState);
+		await next.restore(new AgentMessageList(), scope);
+		next.instructions();
+		next.takeUpdates();
+		next.reportContext();
+		expect(onContext).toHaveBeenLastCalledWith([
+			{ skillId: 'hub-test', version: current.registry.skills[0].hash, kind: 'carried' },
+		]);
+		const changed = createRuntimeSkillSource([
+			{ id: 'hub-test', name: 'renamed', description: 'test', instructions: 'version two' },
+		]);
+		changed.shouldAppendSkillUpdates = () => true;
+		changed.onContext = onContext;
+		const edited = new ActiveSkills(changed, 'assistant', memory.skillState);
+		await edited.restore(new AgentMessageList(), scope);
+		expect(edited.instructions()).toBeUndefined();
+		edited.reportContext();
+		expect(onContext).toHaveBeenLastCalledWith([
+			{ skillId: 'hub-test', version: changed.registry.skills[0].hash, kind: 'refreshed' },
+		]);
+		expect(JSON.stringify(onContext.mock.calls)).not.toContain('version two');
+	});
+
+	it.each([true, false])(
+		'distinguishes retryable=%s from confirmed revocation',
+		async (retryable) => {
+			const memory = new InMemoryMemory();
+			await memory.skillState.save(
+				{ ...scope, agentName: 'assistant' },
+				{ skillIds: ['hub-test'], versions: { 'hub-test': 'v1' } },
+			);
+			const current = createRuntimeSkillSource([]);
+			current.shouldAppendSkillUpdates = () => true;
+			current.getLoadError = () => ({ message: 'Private error', retryable });
+			const onContext = vi.fn();
+			current.onContext = onContext;
+			const active = new ActiveSkills(current, 'assistant', memory.skillState);
+			await active.restore(new AgentMessageList(), scope);
+			if (retryable) expect(onContext).not.toHaveBeenCalled();
+			else {
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([
+					{ skillId: 'hub-test', kind: 'revoked' },
+				]);
+				onContext.mockClear();
+			}
+			active.instructions();
+			// Later reads must not change the already-applied eligibility decision.
+			current.getLoadError = () => ({ message: 'Later error', retryable: !retryable });
+			active.reportContext();
+			expect(onContext).toHaveBeenCalledExactlyOnceWith(
+				retryable ? [{ skillId: 'hub-test', version: 'v1', kind: 'unavailable' }] : [],
+			);
+			const next = new ActiveSkills(current, 'assistant', memory.skillState);
+			await next.restore(new AgentMessageList(), scope);
+			next.instructions();
+			next.reportContext();
+			if (!retryable) expect(onContext).toHaveBeenLastCalledWith([]);
+		},
+	);
+});
