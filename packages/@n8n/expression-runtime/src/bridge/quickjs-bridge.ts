@@ -476,7 +476,8 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	/** Load and instantiate the shared WASM module, so a later initialize() does not wait for it. */
 	static async loadWasm(): Promise<void> {
-		await loadQuickJSWasm();
+		const { getQuickJS } = await getQuickJSModule();
+		_quickjsWasm = await getQuickJS();
 	}
 
 	constructor(config: BridgeConfig = {}) {
