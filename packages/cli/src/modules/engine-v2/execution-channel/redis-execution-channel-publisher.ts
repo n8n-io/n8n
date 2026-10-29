@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 
 import type { ExecutionChannelPublisher, ExecutionChannelTopic } from './execution-channel';
-import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
+import type { RedisExecutionChannelNameGenerator } from './redis-execution-channel';
 
 /**
  * How long (in ms) shutdown waits for in-flight publishes. Redis queues commands
