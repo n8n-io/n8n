@@ -132,13 +132,18 @@ export class SkillSourceService {
 			const discovered = await this.discoverAll(source);
 			const skills = await this.readAll(source, discovered);
 			const names = await this.skillRepository.findLatestNamesInTarget(target);
-			await this.trackFlagged(user, source.type, skills);
+			const nameTaken = (read: ReadSkill) =>
+				read.skill !== undefined && isNameTaken(read.skill.name, names);
 			const { client, locator } = source;
 			if (duplicate.kind === 'blocked') {
 				await this.skillsTelemetry.connectedSource(
 					{ ...report, status: 'failure', reason: 'duplicate_source' },
 					user.id,
 				);
+			} else {
+				// A row with a taken name shows that, and not the verdict.
+				const shown = skills.filter((read) => !nameTaken(read));
+				await this.trackFlagged(user, source.type, shown);
 			}
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
@@ -150,7 +155,7 @@ export class SkillSourceService {
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
 						description: read.skill?.description ?? read.fetched?.content.description ?? null,
 						skippedFiles: read.fetched?.skippedFiles ?? [],
-						nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
+						nameTaken: nameTaken(read),
 						error: read.error ?? null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
@@ -247,15 +252,16 @@ export class SkillSourceService {
 			const reads = await this.readAll(source, { ...discovered, refs: picked });
 			const importable: ReadSkill[] = [];
 			for (const read of reads) {
-				if (read.error) {
-					failed.push({ key: read.key, name: null, reason: read.error.reason });
-				} else if (read.check?.verdict === 'blocked') {
-					// The source can change after discover, so connect checks the content it imports.
+				// The source can change after discover, so connect checks the content it imports.
+				// A SKILL.md that n8n cannot read is also blocked, and the check names the cause.
+				if (read.check?.verdict === 'blocked') {
 					failed.push({
 						key: read.key,
 						name: read.skill?.name ?? null,
 						reason: 'blocked_by_check',
 					});
+				} else if (read.error) {
+					failed.push({ key: read.key, name: null, reason: read.error.reason });
 				} else if (read.check?.verdict === 'needs_review' && !reviewedWarnings) {
 					failed.push({ key: read.key, name: read.skill?.name ?? null, reason: 'review_required' });
 				} else {
