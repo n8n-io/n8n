@@ -50,7 +50,7 @@ export class RateLimitsPublicController {
 	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Retrieve the Public API rate-limit settings')
 	@ApiDescription(
-		'Retrieve the configured Public API rate limits and windows, including fields controlled by environment variables. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. Session requests are not limited.',
+		"Retrieve the Public API rate-limit settings. `envManagedFields` lists the fields that are set by environment variables and can't be changed through the API. Requires the `securitySettings:manage` scope. Requests to this route count against the rate limits.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, RateLimitSettingsPublicDto)
@@ -67,7 +67,7 @@ export class RateLimitsPublicController {
 	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Set the Public API rate-limit settings')
 	@ApiDescription(
-		'Replace the stored Public API rate-limit settings. Send every writable field. Set a limit to 0 for no limit. When rate limiting is enabled, at least one limit must be greater than 0. Changing a field controlled by an environment variable returns 409 without saving any changes. Repeating its current value is accepted. The read-only `envManagedFields` array is ignored on writes, so a GET response can be sent back as a PUT body. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. If a limit blocks access, use a session request or change the environment variables and restart the instance.',
+		"Set the Public API rate-limit settings. You can send a GET response back as the body, and `envManagedFields` is ignored. When rate limiting is enabled, at least one limit must be greater than `0`. Fields set by environment variables can't be changed: a different value is rejected with 409, but sending the current value is accepted. Requires the `securitySettings:manage` scope. Requests to this route count against the rate limits.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, RateLimitSettingsPublicDto)

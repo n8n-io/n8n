@@ -2,7 +2,7 @@ operationId: getRateLimitSettings
 tags:
   - SettingsRateLimits
 summary: Retrieve the Public API rate-limit settings
-description: Retrieve the configured Public API rate limits and windows, including fields controlled by environment variables. Requires the `securitySettings:manage` scope. API-key requests to this route count against the rate limits. Session requests are not limited.
+description: Retrieve the Public API rate-limit settings. `envManagedFields` lists the fields that are set by environment variables and can't be changed through the API. Requires the `securitySettings:manage` scope. Requests to this route count against the rate limits.
 x-required-scope: securitySettings:manage
 responses:
   '200':
