@@ -797,6 +797,7 @@ export class AgentChatController {
 
 	private async requireTaskThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		requireTaskFeatures = true,
 	) {
 		const { projectId, agentId, threadId } = req.params;
 
@@ -812,7 +813,11 @@ export class AgentChatController {
 		)
 			throw new NotFoundError('Session not found');
 
-		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled)
+		if (
+			requireTaskFeatures &&
+			!this.agentsConfig.backgroundTasksEnabled &&
+			!this.agentsConfig.planToolsEnabled
+		)
 			throw new BadRequestError('Background tasks are not enabled');
 	}
 
@@ -834,7 +839,8 @@ export class AgentChatController {
 	async getPlan(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
-		await this.requireTaskThread(req);
+		// Reading a plan stays available when the flags are off, so the UI can still show earlier plans.
+		await this.requireTaskThread(req, false);
 
 		return presentPlan(await this.plans.findLatestPlan(req.params.threadId, {}));
 	}

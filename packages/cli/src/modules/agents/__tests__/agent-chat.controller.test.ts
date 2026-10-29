@@ -1,4 +1,4 @@
-import { AgentPlanService } from '../agent-plan.service';
+import type { AgentPlanService } from '../agent-plan.service';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
@@ -1821,6 +1821,23 @@ describe('AgentChatController current plan', () => {
 		await expect(controller.getPlan(request as never)).rejects.toThrow('Session not found');
 		expect(plans.findLatestPlan).not.toHaveBeenCalled();
 	});
+
+	it.each(['getPlan', 'getProductionPlan'] as const)(
+		'%s reads the plan when task features are off',
+		async (method) => {
+			const { controller, agentsConfig, agentsService, agentExecutionService, plans } =
+				makeController();
+			agentsConfig.backgroundTasksEnabled = false;
+			agentsConfig.planToolsEnabled = false;
+			agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+			plans.findLatestPlan.mockResolvedValue(null);
+
+			expect(await controller[method](request as never)).toBeNull();
+			expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+		},
+	);
 
 	it('checks published chat and thread access before reading its plan', async () => {
 		const { controller, agentsService, plans, agentExecutionService } = makeController();
