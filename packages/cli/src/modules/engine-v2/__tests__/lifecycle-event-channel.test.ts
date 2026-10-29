@@ -1,9 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import {
-	MAX_LIFECYCLE_EVENTS_PER_BATCH,
-	type LifecycleEvent,
-	type LifecycleEventBatch,
-} from '@n8n/engine';
+import type { LifecycleEvent } from '@n8n/engine';
 
 import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
 import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
@@ -54,84 +50,33 @@ const setup = (maxFrameBytes?: number) => {
 		publisher,
 		publish: vi.spyOn(publisher, 'publish'),
 		sender: new LifecycleEventChannelSender(publisher, logger, maxFrameBytes),
-		receiver: new ExecutionChannelReceiver(subscriber, createLifecycleEventCodec(logger), logger),
+		receiver: new ExecutionChannelReceiver(
+			subscriber,
+			createLifecycleEventCodec(logger, maxFrameBytes),
+			logger,
+		),
 	};
 };
 
 const signal = new AbortController().signal;
 
 describe('LifecycleEventChannelSender', () => {
-	it('publishes the events of each execution on its own lifecycle channel, in order', async () => {
+	it('publishes each event in its own frame on the lifecycle channel of its execution', async () => {
 		const { sender, publish } = setup();
 
 		await sender.send(
-			[
-				stepStarted('exec-1', 'step-1'),
-				stepStarted('exec-2', 'step-1'),
-				stepCompleted('exec-1', 'step-1', []),
-				completed('exec-1'),
-			],
+			[stepStarted('exec-1', 'step-1'), stepStarted('exec-2', 'step-1'), completed('exec-1')],
 			signal,
 		);
 
-		expect(publish).toHaveBeenCalledTimes(2);
-		expect(publish).toHaveBeenNthCalledWith(
-			1,
-			'lifecycle',
-			'exec-1',
-			JSON.stringify({
-				events: [
-					stepStarted('exec-1', 'step-1'),
-					stepCompleted('exec-1', 'step-1', []),
-					completed('exec-1'),
-				],
-			}),
-		);
-		expect(publish).toHaveBeenNthCalledWith(
-			2,
-			'lifecycle',
-			'exec-2',
-			JSON.stringify({ events: [stepStarted('exec-2', 'step-1')] }),
-		);
-	});
-
-	it('splits the events of one execution into frames that fit the size limit', async () => {
-		const events = [
-			stepCompleted('exec-1', 'step-1', ['x'.repeat(200)]),
-			stepCompleted('exec-1', 'step-2', ['x'.repeat(200)]),
-			stepCompleted('exec-1', 'step-3', ['x'.repeat(200)]),
-		];
-		const eventBytes = Buffer.byteLength(JSON.stringify(events[0]));
-		// Room for two events and their separator, but not for three.
-		const maxFrameBytes = '{"events":[]}'.length + 2 * eventBytes + 1;
-		const { sender, publish } = setup(maxFrameBytes);
-
-		await sender.send(events, signal);
-
-		const frames = publish.mock.calls.map(([, , frame]) => frame);
-		expect(frames).toEqual([
-			JSON.stringify({ events: events.slice(0, 2) }),
-			JSON.stringify({ events: events.slice(2) }),
+		expect(publish.mock.calls).toEqual([
+			['lifecycle', 'exec-1', JSON.stringify(stepStarted('exec-1', 'step-1'))],
+			['lifecycle', 'exec-2', JSON.stringify(stepStarted('exec-2', 'step-1'))],
+			['lifecycle', 'exec-1', JSON.stringify(completed('exec-1'))],
 		]);
-		for (const frame of frames) expect(Buffer.byteLength(frame)).toBeLessThanOrEqual(maxFrameBytes);
 	});
 
-	it('splits a frame that would hold more events than a batch allows', async () => {
-		const events = Array.from({ length: MAX_LIFECYCLE_EVENTS_PER_BATCH + 1 }, (_, i) =>
-			stepStarted('exec-1', `step-${i}`),
-		);
-		const { sender, publish } = setup();
-
-		await sender.send(events, signal);
-
-		expect(publish).toHaveBeenCalledTimes(2);
-		expect(JSON.parse(publish.mock.calls[0][2]).events).toHaveLength(
-			MAX_LIFECYCLE_EVENTS_PER_BATCH,
-		);
-		expect(JSON.parse(publish.mock.calls[1][2]).events).toHaveLength(1);
-	});
-
-	it('drops an event that is larger than the size limit by itself and keeps the others', async () => {
+	it('drops an event that exceeds the frame size limit and keeps the others', async () => {
 		const { sender, publish, logger } = setup(512);
 
 		await sender.send(
@@ -143,35 +88,29 @@ describe('LifecycleEventChannelSender', () => {
 			signal,
 		);
 
-		expect(publish).toHaveBeenCalledExactlyOnceWith(
-			'lifecycle',
-			'exec-1',
-			JSON.stringify({ events: [stepStarted('exec-1', 'step-1'), completed('exec-1')] }),
-		);
+		expect(publish.mock.calls).toEqual([
+			['lifecycle', 'exec-1', JSON.stringify(stepStarted('exec-1', 'step-1'))],
+			['lifecycle', 'exec-1', JSON.stringify(completed('exec-1'))],
+		]);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Dropped a lifecycle event that exceeds the frame size limit',
 			expect.objectContaining({ executionId: 'exec-1', type: 'step:completed' }),
 		);
-	});
-
-	it('publishes nothing when every event is dropped', async () => {
-		const { sender, publish } = setup(64);
-
-		await sender.send([stepCompleted('exec-1', 'step-1', ['x'.repeat(1000)])], signal);
-
-		expect(publish).not.toHaveBeenCalled();
 	});
 });
 
 describe('receiving lifecycle events', () => {
 	it('delivers the events that the sender publishes for the execution', async () => {
 		const { sender, receiver } = setup();
-		const seen: LifecycleEventBatch[] = [];
-		await receiver.receive('exec-1', (batch) => seen.push(batch));
+		const seen: LifecycleEvent[] = [];
+		await receiver.receive('exec-1', (event) => seen.push(event));
 
-		await sender.send([stepStarted('exec-1', 'step-1'), stepStarted('exec-2', 'step-1')], signal);
+		await sender.send(
+			[stepStarted('exec-1', 'step-1'), stepStarted('exec-2', 'step-1'), completed('exec-1')],
+			signal,
+		);
 
-		expect(seen).toEqual([{ events: [stepStarted('exec-1', 'step-1')] }]);
+		expect(seen).toEqual([stepStarted('exec-1', 'step-1'), completed('exec-1')]);
 	});
 
 	it('does not deliver frames from the responses topic', async () => {
@@ -179,11 +118,7 @@ describe('receiving lifecycle events', () => {
 		const handler = vi.fn();
 		await receiver.receive('exec-1', handler);
 
-		publisher.publish(
-			'responses',
-			'exec-1',
-			JSON.stringify({ events: [stepStarted('exec-1', 'step-1')] }),
-		);
+		publisher.publish('responses', 'exec-1', JSON.stringify(completed('exec-1')));
 
 		expect(handler).not.toHaveBeenCalled();
 	});
@@ -194,31 +129,11 @@ describe('receiving lifecycle events', () => {
 		await receiver.receive('exec-1', handler);
 
 		publisher.publish('lifecycle', 'exec-1', 'not JSON');
-		publisher.publish('lifecycle', 'exec-1', JSON.stringify({ events: [] }));
-		publisher.publish('lifecycle', 'exec-1', JSON.stringify({ events: [{ type: 'unknown' }] }));
+		publisher.publish('lifecycle', 'exec-1', JSON.stringify({ type: 'unknown' }));
+		publisher.publish('lifecycle', 'exec-1', JSON.stringify({ events: [completed('exec-1')] }));
 
 		expect(handler).not.toHaveBeenCalled();
 		expect(logger.error).toHaveBeenCalledTimes(3);
-	});
-
-	it('discards a frame with events of more than one execution', async () => {
-		const { publisher, receiver, logger } = setup();
-		const handler = vi.fn();
-		await receiver.receive('exec-1', handler);
-
-		publisher.publish(
-			'lifecycle',
-			'exec-1',
-			JSON.stringify({
-				events: [stepStarted('exec-1', 'step-1'), stepStarted('exec-2', 'step-1')],
-			}),
-		);
-
-		expect(handler).not.toHaveBeenCalled();
-		expect(logger.error).toHaveBeenCalledWith(
-			'Discarding a lifecycle event frame with events of more than one execution',
-			{ executionId: 'exec-1' },
-		);
 	});
 
 	it('stops delivery after the subscriber leaves', async () => {
@@ -234,40 +149,36 @@ describe('receiving lifecycle events', () => {
 });
 
 describe('createLifecycleEventCodec', () => {
-	it('serializes a batch of one execution and reads it back', () => {
+	it('serializes an event and reads it back', () => {
 		const codec = createLifecycleEventCodec(mockLogger());
-		const batch = { events: [stepStarted('exec-1', 'step-1'), completed('exec-1')] };
+		const event = stepCompleted('exec-1', 'step-1', [[{ json: { a: 1 } }]]);
 
-		const frameResult = codec.serialize(batch);
+		const frameResult = codec.serialize(event);
 
 		expect(codec.topic).toBe('lifecycle');
-		expect(codec.executionIdOf(batch)).toBe('exec-1');
-		expect(frameResult).toEqual({ ok: true, frame: JSON.stringify(batch) });
-		expect(codec.deserialize(JSON.stringify(batch))).toEqual({ ok: true, result: batch });
+		expect(codec.executionIdOf(event)).toBe('exec-1');
+		expect(frameResult).toEqual({ ok: true, frame: JSON.stringify(event) });
+		expect(codec.deserialize(JSON.stringify(event))).toEqual({ ok: true, result: event });
 	});
 
-	it.each([
-		['no events', { events: [] }],
-		['events of more than one execution', { events: [completed('exec-1'), completed('exec-2')] }],
-		[
-			'a frame over the size limit',
-			{ events: [stepCompleted('exec-1', 'step-1', ['x'.repeat(1000)])] },
-		],
-	])('has no frame for a batch with %s', (_label, batch) => {
+	it('has no frame for an event over the size limit', () => {
 		const codec = createLifecycleEventCodec(mockLogger(), 512);
 
-		const frameResult = codec.serialize(batch);
+		const frameResult = codec.serialize(stepCompleted('exec-1', 'step-1', ['x'.repeat(1000)]));
 
 		expect(frameResult.ok).toBe(false);
 		expect(frameResult.frame).toBeUndefined();
 	});
 
-	it('makes the sender publish nothing for a batch it cannot encode', () => {
+	it('makes the sender publish nothing for an event it cannot encode', () => {
 		const { publisher } = createInMemoryExecutionChannel();
 		const publish = vi.spyOn(publisher, 'publish');
-		const sender = new ExecutionChannelSender(publisher, createLifecycleEventCodec(mockLogger()));
+		const sender = new ExecutionChannelSender(
+			publisher,
+			createLifecycleEventCodec(mockLogger(), 512),
+		);
 
-		const result = sender.send({ events: [completed('exec-1'), completed('exec-2')] });
+		const result = sender.send(stepCompleted('exec-1', 'step-1', ['x'.repeat(1000)]));
 
 		expect(result.ok).toBe(false);
 		expect(publish).not.toHaveBeenCalled();

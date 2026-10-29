@@ -131,7 +131,7 @@ describe('EngineV2Module', () => {
 
 			await lifecycleEventSender?.send([event], new AbortController().signal);
 
-			expect(handler).toHaveBeenCalledExactlyOnceWith({ events: [event] });
+			expect(handler).toHaveBeenCalledExactlyOnceWith(event);
 		});
 
 		it('generates a secret when unset', async () => {
