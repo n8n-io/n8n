@@ -40,11 +40,12 @@ describe('SkillService', () => {
 		users,
 		assistantGate,
 		links,
+		skillSyncGate,
 		service,
 	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner, links }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner, links, skillSyncGate }));
 
 	describe('createTrusted', () => {
 		it('creates the skill with an id in the agent skill format', async () => {

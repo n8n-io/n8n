@@ -84,6 +84,7 @@ describe('SkillService user actions', () => {
 		assistantGate: rollout,
 		access,
 		links,
+		skillSyncGate,
 		service,
 	} = createSkillServices();
 	let canAccess: MockInstance<SkillAccessService['canAccess']>;
@@ -97,7 +98,7 @@ describe('SkillService user actions', () => {
 	let visible: Skill[];
 
 	beforeEach(async () => {
-		await resetSkillMocks({ skills: repository, usage, txRunner, links });
+		await resetSkillMocks({ skills: repository, usage, txRunner, links, skillSyncGate });
 		// Support bot is the only agent, in project-1, and uses no skill.
 		await usage.seed({
 			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
@@ -397,6 +398,40 @@ describe('SkillService user actions', () => {
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
+		});
+
+		it.each([
+			{
+				case: 'a synced skill the user may change',
+				on: true,
+				linked: true,
+				update: true,
+				can: true,
+			},
+			{
+				case: 'a skill with the Skill Sync flag off',
+				on: false,
+				linked: true,
+				update: true,
+				can: false,
+			},
+			{ case: 'a skill that is not synced', on: true, linked: false, update: true, can: false },
+			{
+				case: 'a synced skill the user may only read',
+				on: true,
+				linked: true,
+				update: false,
+				can: false,
+			},
+		])('offers Stop syncing only for $case', async ({ on, linked, update, can }) => {
+			visible = [skill('skill_a', { projectId: 'project-1' })];
+			skillSyncGate.isEnabled.mockResolvedValue(on);
+			links.findLinkedSkillIds.mockResolvedValue(new Set(linked ? ['skill_a'] : []));
+			accessCheck.mockImplementation(async (_user, op) => () => op === 'update' && update);
+
+			const [item] = (await service.list(user, query())).data;
+
+			expect(item).toMatchObject({ canStopSyncing: can, canEdit: update && !linked });
 		});
 
 		it('describes an agent skill with its agent and the project of the agent', async () => {

@@ -94,8 +94,7 @@ export function createSkillServices() {
 	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const syncedFrom = mock<SkillSyncedFromService>();
 	const links = mock<SkillSourceLinkRepository>();
-	// Skill Sync is off unless a test turns it on.
-	const skillSyncGate = mock<SkillSyncFlagGate>({ isEnabled: async () => false });
+	const skillSyncGate = mock<SkillSyncFlagGate>();
 	const access = new SkillAccessService(skills, projectScope, skillUsage);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
@@ -124,6 +123,7 @@ export function createSkillServices() {
 		assistantGate,
 		syncedFrom,
 		links,
+		skillSyncGate,
 		access,
 		runtime,
 		service,
@@ -136,9 +136,9 @@ export async function resetSkillMocks({
 	usage,
 	txRunner,
 	links,
-}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'> & {
-	links?: ReturnType<typeof createSkillServices>['links'];
-}) {
+	skillSyncGate,
+}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'> &
+	Partial<Pick<ReturnType<typeof createSkillServices>, 'links' | 'skillSyncGate'>>) {
 	vi.restoreAllMocks();
 	vi.resetAllMocks();
 	await usage.seed({ agents: [], skills: [] });
@@ -151,4 +151,6 @@ export async function resetSkillMocks({
 	// No skill is synced unless a test links it.
 	links?.isLinked.mockResolvedValue(false);
 	links?.findLinkedSkillIds.mockResolvedValue(new Set());
+	// Skill Sync is off unless a test turns it on.
+	skillSyncGate?.isEnabled.mockResolvedValue(false);
 }
