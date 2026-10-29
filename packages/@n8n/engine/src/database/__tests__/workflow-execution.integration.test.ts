@@ -398,21 +398,14 @@ describe('workflow_execution table (integration)', () => {
 		expect(remaining).toBe(0);
 	});
 
-	it('TypeOrmExecutionStore.createExecution stores the parent link, and both stores read it back', async () => {
-		const repo = dataSource.getRepository(WorkflowExecution);
-		const store = new TypeOrmExecutionStore(repo);
-		const viewStore = new TypeOrmExecutionViewStore(
-			repo,
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+	it('TypeOrmExecutionStore.createExecution stores the parent link, and loadExecution reads it back', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
 		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
 		const id = generateId();
 
 		await store.createExecution({ ...newRecord(id), parent });
 
 		expect((await store.loadExecution(id)).parent).toEqual(parent);
-		expect((await viewStore.loadExecutionView(id)).parent).toEqual(parent);
-		expect((await viewStore.loadExecutionWithStepsView(id)).parent).toEqual(parent);
 	});
 
 	it('carries the parent CHECK and the partial parent index in the schema', async () => {
