@@ -191,12 +191,35 @@ describe('stripHydratedFileData', () => {
 });
 
 describe('toAiMessages — file parts', () => {
-	it('emits hydrated file blocks as AI SDK file parts', () => {
+	it('labels hydrated file blocks with their fileId before the file part', () => {
 		const input: Message[] = [{ role: 'user', content: [refFileBlock({ data: bytes })] }];
 
 		const [message] = toAiMessages(input);
 
+		expect(message.content).toEqual([
+			{ type: 'text', text: expect.stringContaining('fileId: att-1') },
+			{ type: 'file', data: bytes, mediaType: 'image/png' },
+		]);
+	});
+
+	it('does not label a file part without a fileRef', () => {
+		const input: Message[] = [
+			{ role: 'user', content: [{ type: 'file', data: bytes, mediaType: 'image/png' }] },
+		];
+
+		const [message] = toAiMessages(input);
+
 		expect(message.content).toEqual([{ type: 'file', data: bytes, mediaType: 'image/png' }]);
+	});
+
+	it('keeps one text part for a file the model cannot view', () => {
+		const input: Message[] = [{ role: 'user', content: [refFileBlock()] }];
+
+		const [message] = toAiMessages(input);
+
+		expect(message.content).toEqual([
+			{ type: 'text', text: expect.stringContaining('fileId: att-1') },
+		]);
 	});
 
 	it('degrades reference-only file blocks to a text metadata part', () => {
