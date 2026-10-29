@@ -75,6 +75,7 @@ test.describe(
 				await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 				await n8n.start.fromBlankCanvas();
 				await n8n.sideBar.expand();
+				await n8n.sideBar.openAccountMenu();
 
 				await expect(n8n.sideBar.getAdminPanel()).toBeVisible();
 			});

@@ -12,6 +12,17 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 			variant: z.union([z.string(), z.boolean()]).describe('Variant assigned to the user'),
 		}),
 	},
+	USER_CLICKED_ACCOUNT_MENU_ITEM: {
+		name: 'User clicked account menu item',
+		description:
+			"User chose a row in the account menu that opens from the user row at the bottom of the main sidebar. Help links report 'User clicked help resource' instead.",
+		properties: z.object({
+			item: z
+				.enum(['cloud_console', 'personal_settings', 'whats_new', 'sign_out'])
+				.describe('Row the user chose'),
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
+		}),
+	},
 	TASK_RUNNER_DISCONNECTED: {
 		name: 'Task runner disconnected',
 		description:
