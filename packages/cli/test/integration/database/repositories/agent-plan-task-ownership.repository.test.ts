@@ -150,6 +150,23 @@ describe('Plan task ownership and continuation', () => {
 		await expect(plans.validateTask(thread.id, ref())).resolves.toBeUndefined();
 	});
 
+	it('stops the inherited owner lookup at a parent cycle', async () => {
+		const threads = db.getRepository(AgentExecutionThread);
+		const first = await threads.save({ id: randomUUID(), agentId, projectId, agentName: 'A' });
+		const second = await threads.save({
+			id: randomUUID(),
+			parentThreadId: first.id,
+			agentId,
+			projectId,
+			agentName: 'B',
+		});
+		await threads.update(first.id, { parentThreadId: second.id });
+
+		await expect(plans.validateTask(first.id, ref(), {}, true)).rejects.toThrow(
+			'another conversation',
+		);
+	});
+
 	it('binds one job in the registration transaction and resolves changes without a new revision', async () => {
 		const job = await register();
 		const current = await snapshot();

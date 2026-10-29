@@ -1,3 +1,4 @@
+import { AgentPlanValidationError } from '../plans/agent-plan.schema';
 import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
@@ -861,7 +862,9 @@ async function backgroundWaitingExecution(
 				' Use check_background_jobs for the result and cancel_background_job to stop it. Do not start it again.',
 		};
 	} catch (error) {
-		Container.get(Logger).error('Failed to background a waiting workflow execution', {
+		// A closed plan or a finished task rejects the job. The inline wait handles that case.
+		const level = error instanceof AgentPlanValidationError ? 'debug' : 'error';
+		Container.get(Logger)[level]('Failed to background a waiting workflow execution', {
 			executionId: result.executionId,
 			workflowId: reference.workflowId,
 			error: error instanceof Error ? error.message : String(error),

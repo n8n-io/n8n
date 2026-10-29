@@ -304,7 +304,11 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		let owner = threadId;
 
 		if (inherited) {
-			while (owner !== plan?.threadId) {
+			const visited = new Set<string>();
+
+			// Stop on a parent cycle so the walk cannot hold the thread lock forever.
+			while (owner !== plan?.threadId && !visited.has(owner)) {
+				visited.add(owner);
 				const thread = await manager.findOneBy(AgentExecutionThread, { id: owner });
 
 				if (!thread?.parentThreadId) break;

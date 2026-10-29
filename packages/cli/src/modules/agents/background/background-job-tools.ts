@@ -93,13 +93,16 @@ export function createBackgroundSubAgentHandler(
 			};
 		}
 		const parentExecutionId = hostMetadataExecutionId(ctx.persistence?.hostMetadata);
+		const inheritedPlanTask = readPlanTaskContext(ctx.persistence?.hostMetadata);
+		// Without plan tools no plan exists, so a model-supplied reference can only be stale.
+		const planTask = inheritedPlanTask ?? (options.planTasksEnabled ? input.planTask : undefined);
 		const receipt = await options.backgroundRunner
 			.spawn(
 				{
 					subAgentId: source.agentId,
-					planTask: readPlanTaskContext(ctx.persistence?.hostMetadata) ?? input.planTask,
+					planTask,
 					validatePlanTask: options.planTasksEnabled,
-					inheritedPlanTask: Boolean(readPlanTaskContext(ctx.persistence?.hostMetadata)),
+					inheritedPlanTask: Boolean(inheritedPlanTask),
 					source,
 					taskName: input.taskName,
 					goal: input.goal,
@@ -139,7 +142,7 @@ export function createBackgroundSubAgentHandler(
 			return {
 				status: 'started',
 				jobId: receipt.jobId,
-				planTask: readPlanTaskContext(ctx.persistence?.hostMetadata) ?? input.planTask,
+				planTask,
 				note: 'Job dispatched. Continue independent work or end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or poll for completion.',
 			};
 		}

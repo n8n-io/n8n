@@ -124,6 +124,27 @@ describe('delegate_subagent background mode', () => {
 		);
 	});
 
+	it.each([
+		[true, true],
+		[false, false],
+	])('forwards a model task reference only with plan tasks enabled: %s', async (enabled, sent) => {
+		const { backgroundRunner, options } = setup();
+		const planTask = { planId: randomUUID(), planTaskId: randomUUID() };
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool({ ...options, planTasksEnabled: enabled });
+
+		const receipt = await tool.handler!(
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'Research', goal: 'Research', planTask },
+			{ persistence },
+		);
+
+		expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+			expect.objectContaining({ planTask: sent ? planTask : undefined }),
+			expect.anything(),
+		);
+		expect(receipt).toMatchObject({ status: 'started', planTask: sent ? planTask : undefined });
+	});
+
 	it.each(['execution-1', 42, undefined])(
 		'forwards string source execution metadata: %s',
 		async (id) => {
