@@ -40,6 +40,31 @@ const preview = (count: number): PromotionPreview => ({
 	})),
 });
 
+describe('usePromotionChangeCount blocker', () => {
+	beforeEach(() => {
+		vi.mocked(api.getPromotionPreview).mockReset();
+	});
+
+	it('should keep the blocker of the preview and clear it on the next check', async () => {
+		const blocker = { code: 'reviewOpen' as const, reviewId: 'review-1' };
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce({ ...preview(0), blocker })
+			.mockResolvedValueOnce(preview(1));
+		const {
+			blocker: current,
+			changeCount,
+			refetch,
+		} = usePromotionChangeCount(ref('project-a'), 'promote', ref(true));
+
+		await waitAllPromises();
+		expect(current.value).toEqual(blocker);
+		expect(changeCount.value).toBe(0);
+
+		await refetch();
+		expect(current.value).toBeNull();
+	});
+});
+
 describe('usePromotionChangeCount', () => {
 	// One entry per request, in call order, so a test can answer them out of order.
 	let pending: Pending[];

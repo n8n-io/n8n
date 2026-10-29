@@ -83,6 +83,7 @@ function onInput(event: Event) {
 			:loading="loading"
 			filterable
 			remote
+			remote-show-suffix
 			:placeholder="
 				i18n.baseText(
 					kind === 'repository'

@@ -251,6 +251,8 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
+			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
+			traceOutput?: unknown;
 	  }
 	| {
 			type: 'suspension';
@@ -270,6 +272,15 @@ export type TimelineEvent =
 			type: 'guardrail';
 			code: string;
 			timestamp: number;
+	  }
+	| {
+			/** A custom event that a system-agent provider emitted during the turn. */
+			type: 'host-event';
+			name: string;
+			/** A later event with the same name and key replaces this one. */
+			key?: string;
+			payload: unknown;
+			timestamp: number;
 	  };
 
 /**
@@ -282,6 +293,10 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
+	/** Input tokens read from the prompt cache. A subset of `usage.promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `usage.promptTokens`. */
+	cacheWriteTokens: number | null;
 	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
@@ -334,6 +349,10 @@ export class ExecutionRecorder {
 
 	private totalCost: number | null = null;
 
+	private cacheReadTokens: number | null = null;
+
+	private cacheWriteTokens: number | null = null;
+
 	private timeline: TimelineEvent[] = [];
 
 	/** Wall-clock when the first text-delta of the current segment arrived. */
@@ -373,6 +392,48 @@ export class ExecutionRecorder {
 			response: sanitizeExecutionLogValue(response),
 			timestamp: Date.now(),
 		});
+	}
+
+	/**
+	 * Record a custom host event at its position in the turn. The payload is
+	 * stored as the host sent it. Host code builds it, not the model, and the
+	 * secret heuristics of the other recorded values damage ordinary fields
+	 * such as `credentialType`. When the turn already has an event with the
+	 * same name and key, the new payload replaces the old one in its position.
+	 * Returns the recorded event, so that the live stream can send the same
+	 * payload.
+	 */
+	recordHostEvent(
+		name: string,
+		payload: unknown,
+		key?: string,
+	): Extract<TimelineEvent, { type: 'host-event' }> {
+		// Copy, so a host that changes the object later does not change the record.
+		const recorded = structuredClone(payload);
+		if (key !== undefined) {
+			const index = this.timeline.findIndex(
+				(item) => item.type === 'host-event' && item.name === name && item.key === key,
+			);
+			const existing = this.timeline[index];
+			if (existing?.type === 'host-event') {
+				const replaced = { ...existing, payload: recorded };
+				this.timeline[index] = replaced;
+				// Text or reasoning can still stream here, so keep it in the snapshot.
+				this.emitTimelineSnapshot(this.activeBlock());
+				return replaced;
+			}
+		}
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		const event: Extract<TimelineEvent, { type: 'host-event' }> = {
+			type: 'host-event',
+			name,
+			...(key !== undefined ? { key } : {}),
+			payload: recorded,
+			timestamp: Date.now(),
+		};
+		this.appendCompletedEvent(event);
+		return event;
 	}
 
 	/** Feed a stream chunk into the recorder. */
@@ -433,13 +494,16 @@ export class ExecutionRecorder {
 				break;
 			}
 			case 'tool-result':
-				this.recordToolResult(
-					chunk.toolCallId,
-					chunk.toolName,
-					chunk.output,
-					chunk.isError === true,
-					chunk.canceled === true,
-				);
+				this.recordToolResult(chunk);
+				break;
+			case 'usage':
+				this.usage = {
+					promptTokens: chunk.usage.promptTokens,
+					completionTokens: chunk.usage.completionTokens,
+					totalTokens: chunk.usage.totalTokens,
+				};
+				this.model = chunk.model;
+				this.totalCost = chunk.usage.cost ?? null;
 				break;
 			case 'finish':
 				this.flushReasoningBuffer();
@@ -459,9 +523,11 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
+					this.totalCost = chunk.usage.cost ?? null;
+					this.cacheReadTokens = chunk.usage.inputTokenDetails?.cacheRead ?? null;
+					this.cacheWriteTokens = chunk.usage.inputTokenDetails?.cacheWrite ?? null;
 				}
-				this.model = chunk.model ?? null;
-				this.totalCost = chunk.usage?.cost ?? null;
+				this.model = chunk.model ?? this.model;
 				break;
 			case 'tool-call-suspended':
 				this.flushReasoningBuffer();
@@ -510,6 +576,8 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
+			cacheReadTokens: this.cacheReadTokens,
+			cacheWriteTokens: this.cacheWriteTokens,
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
@@ -569,24 +637,7 @@ export class ExecutionRecorder {
 		if (this.timelineSnapshotTimer) return;
 		this.timelineSnapshotTimer = setTimeout(() => {
 			this.timelineSnapshotTimer = undefined;
-			const now = Date.now();
-			if (this.textStartTime !== null && this.textBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'text',
-					content: this.textBuffer.join(''),
-					timestamp: this.textStartTime,
-					endTime: now,
-				});
-			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
-				this.emitTimelineSnapshot({
-					type: 'reasoning',
-					content: this.reasoningBuffer.join(''),
-					timestamp: this.reasoningStartTime,
-					endTime: now,
-				});
-			} else {
-				this.emitTimelineSnapshot();
-			}
+			this.emitTimelineSnapshot(this.activeBlock());
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
 		this.timelineSnapshotTimer.unref();
 	}
@@ -687,16 +738,15 @@ export class ExecutionRecorder {
 	 * timeline entry to close. In that case we synthesize one from the
 	 * registry so workflow rows and execution-log links still render.
 	 */
-	private recordToolResult(
-		toolCallId: string,
-		name: string,
-		output: unknown,
-		isError: boolean,
-		canceled: boolean,
-	): void {
+	private recordToolResult(chunk: StreamChunk & { type: 'tool-result' }): void {
+		const { toolCallId, toolName: name, output } = chunk;
+		const isError = chunk.isError === true;
+		const canceled = chunk.canceled === true;
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
 		);
+		const traceOutput =
+			chunk.traceOutput !== undefined ? sanitizeExecutionLogValue(chunk.traceOutput) : undefined;
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
@@ -709,6 +759,7 @@ export class ExecutionRecorder {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
 			if (canceled) pendingTimeline.canceled = true;
+			if (traceOutput !== undefined) pendingTimeline.traceOutput = traceOutput;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -741,6 +792,7 @@ export class ExecutionRecorder {
 			endTime: now,
 			success: !isError,
 			...(canceled ? { canceled: true } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,
@@ -764,6 +816,28 @@ export class ExecutionRecorder {
 	private appendCompletedEvent(event: TimelineEvent): void {
 		this.timeline.push(event);
 		this.emitTimelineSnapshot();
+	}
+
+	/** The text or reasoning block that still streams, as it would be flushed now. */
+	private activeBlock(): TimelineEvent | undefined {
+		const now = Date.now();
+		if (this.textStartTime !== null && this.textBuffer.length > 0) {
+			return {
+				type: 'text',
+				content: this.textBuffer.join(''),
+				timestamp: this.textStartTime,
+				endTime: now,
+			};
+		}
+		if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+			return {
+				type: 'reasoning',
+				content: this.reasoningBuffer.join(''),
+				timestamp: this.reasoningStartTime,
+				endTime: now,
+			};
+		}
+		return undefined;
 	}
 
 	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {

@@ -29,7 +29,7 @@ import { v4 as uuid } from 'uuid';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
-import { withExpressionIsolate } from '@/utils';
+import { stripToolSuffix, withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
 import {
@@ -57,7 +57,7 @@ export interface InlineNodeExecutionRequest {
 	/** Credential type name → credential instance display name (resolved at execution). */
 	credentials?: Record<string, string>;
 	/**
-	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from agent_builder_list_credentials).
+	 * Pre-resolved credential ids (e.g. from ToolFromNode which has { id, name } from credentials setup).
 	 */
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
@@ -103,17 +103,9 @@ export const AGENT_TOOL_NODE_DENYLIST = new Set<string>([
 	'n8n-nodes-base.executeCommand',
 	'n8n-nodes-base.ssh',
 	'n8n-nodes-base.readWriteFile',
+	'n8n-nodes-base.readBinaryFile',
+	'n8n-nodes-base.readBinaryFiles',
 ]);
-
-/**
- * The node-types resolver may hand us the `*Tool` variant of a node
- * (e.g. `executeCommand` -> `executeCommandTool`, see `resolveToolNodeType`
- * in `resolve-tool-node-type.ts`). Strip that suffix before checking the denylist
- * so both the base and tool-wrapped forms are caught.
- */
-function stripAgentToolSuffix(nodeType: string): string {
-	return nodeType.endsWith('Tool') ? nodeType.slice(0, -'Tool'.length) : nodeType;
-}
 
 /**
  * Vendor-API nodes the agent runtime can execute even though they aren't
@@ -283,7 +275,8 @@ export class EphemeralNodeExecutor {
 		typeVersion: number,
 		nodeParameters: INodeParameters,
 	): void {
-		if (AGENT_TOOL_NODE_DENYLIST.has(stripAgentToolSuffix(nodeType))) {
+		// Strip `Tool` / `HitlTool` so the tool-wrapped forms of a denylisted node are caught too.
+		if (AGENT_TOOL_NODE_DENYLIST.has(stripToolSuffix(nodeType))) {
 			throw new UserError('Node type is not permitted for agent tool execution', {
 				extra: { nodeType },
 			});

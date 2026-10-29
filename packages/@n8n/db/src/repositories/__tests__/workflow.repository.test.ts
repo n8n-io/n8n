@@ -10,7 +10,6 @@ import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
-import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
 describe('WorkflowRepository', () => {
@@ -20,14 +19,12 @@ describe('WorkflowRepository', () => {
 	});
 	const folderRepository = mockInstance(FolderRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
-	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 	const transactionRunner = mock<TransactionRunner>();
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
 		sharedWorkflowRepository,
-		workflowHistoryRepository,
 		transactionRunner,
 	);
 
@@ -155,7 +152,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -416,7 +412,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -446,7 +441,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -606,6 +600,28 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findSettings', () => {
+		it('selects only the settings column', async () => {
+			const settings: IWorkflowSettings = { engineType: 'v2' };
+			const findOneSpy = vi
+				.spyOn(workflowRepository, 'findOne')
+				.mockResolvedValue(Object.assign(new WorkflowEntity(), { settings }));
+
+			await expect(workflowRepository.findSettings('workflow1')).resolves.toEqual(settings);
+
+			expect(findOneSpy).toHaveBeenCalledWith({
+				select: ['settings'],
+				where: { id: 'workflow1' },
+			});
+		});
+
+		it('returns undefined for a workflow that does not exist', async () => {
+			vi.spyOn(workflowRepository, 'findOne').mockResolvedValue(null);
+
+			await expect(workflowRepository.findSettings('missing')).resolves.toBeUndefined();
+		});
+	});
+
 	describe('getIdsAfter', () => {
 		it('should return the first ids when no cursor is given', async () => {
 			const findSpy = vi
@@ -761,7 +777,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -823,7 +838,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);

@@ -82,6 +82,39 @@ describe('Breadcrumbs', async () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
+	it('keeps the icon and label in the same link', async () => {
+		const item: PathItem = {
+			id: 'project',
+			label: 'My project',
+			href: '/project',
+			icon: { type: 'icon', value: 'folder', color: '--color--primary' },
+		};
+		const { getByRole, emitted } = render(Breadcrumbs, {
+			props: { items: [item] },
+			global: { plugins: [router] },
+		});
+		const link = getByRole('link', { name: 'My project' });
+		const icon = getByRole('img', { hidden: true });
+
+		expect(link).toContainElement(icon);
+		expect(icon).toHaveAttribute('aria-hidden', 'true');
+		expect(icon).toHaveStyle({ color: 'var(--color--primary)' });
+		await userEvent.click(icon);
+		expect(emitted().itemSelected).toEqual([[item]]);
+	});
+
+	it.each(['small', 'medium'] as const)('renders a decorative emoji in the %s theme', (theme) => {
+		const { getByText, getByTestId } = render(Breadcrumbs, {
+			props: {
+				items: [{ id: 'project', label: 'My project', icon: { type: 'emoji', value: '🚀' } }],
+				theme,
+			},
+		});
+
+		expect(getByText('🚀')).toHaveAttribute('aria-hidden', 'true');
+		expect(getByTestId('breadcrumbs-item')).toHaveTextContent('My project');
+	});
+
 	it('renders small version correctly', () => {
 		const wrapper = render(Breadcrumbs, {
 			props: {

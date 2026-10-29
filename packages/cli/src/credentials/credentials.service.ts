@@ -17,6 +17,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import type {
+	CredentialUsageScope,
 	ListQueryDb,
 	SlimProject,
 	User,
@@ -617,6 +618,17 @@ export class CredentialsService {
 		);
 	}
 
+	/** The usage scope of each credential in `ids` that exists. Does not check access. */
+	async findUsageScopes(ids: string[]): Promise<Map<string, CredentialUsageScope>> {
+		if (ids.length === 0) return new Map();
+		const [existingIds, nonProject] = await Promise.all([
+			this.credentialsRepository.findExistingIds(ids),
+			this.credentialsRepository.findNonProjectCredentialsByIds(ids),
+		]);
+		const instanceIds = new Set(nonProject.map(({ id }) => id));
+		return new Map(existingIds.map((id) => [id, instanceIds.has(id) ? 'instance' : 'project']));
+	}
+
 	/**
 	 * Returns credentials the user can use in this workflow or project: shared
 	 * with it directly, global, or owned by the user's own personal project while
@@ -632,11 +644,13 @@ export class CredentialsService {
 	 * member of. Agents set this because they do not support it yet. The
 	 * instance-wide shortcut for owners and admins in their personal project
 	 * stays in place.
+	 * @param options.excludeResolvable Skip credentials that need an end-user identity.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
+			excludeResolvable?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -662,7 +676,8 @@ export class CredentialsService {
 		// workflow or project
 		const usableCredentials = allCredentials.filter(
 			(c) =>
-				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
+				(!options.excludeResolvable || !c.isResolvable) &&
+				(credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal),
 		);
 
 		if (usableCredentials.length > 0) {
@@ -1526,6 +1541,11 @@ export class CredentialsService {
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
 		return await this.credentialsTester.testCredentials(userId, credentials.type, credentials);
+	}
+
+	/** Whether n8n can run a connection test for this credential type at all. */
+	hasConnectionTest(credentialType: string): boolean {
+		return this.credentialsTester.getCredentialTestFunction(credentialType) !== undefined;
 	}
 
 	/**

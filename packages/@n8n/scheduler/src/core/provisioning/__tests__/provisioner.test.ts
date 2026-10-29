@@ -186,7 +186,10 @@ describe('createJobProvisioner', () => {
 			const { provisioner } = makeProvisioner();
 
 			await expect(
-				provisioner.provision({ owner: owner('thing-1', 'm'.repeat(37)) }, desired),
+				provisioner.provision(
+					{ owner: owner('thing-1', 'm'.repeat(SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH + 1)) },
+					desired,
+				),
 			).rejects.toThrow('Scheduled job owner member id must be non-empty and fit its length limit');
 		});
 
@@ -194,7 +197,15 @@ describe('createJobProvisioner', () => {
 			const { provisioner } = makeProvisioner();
 
 			await expect(
-				provisioner.provision({ owner: owner('a'.repeat(255), 'm'.repeat(36)) }, desired),
+				provisioner.provision(
+					{
+						owner: owner(
+							'a'.repeat(SCHEDULED_JOB_OWNER_ID_MAX_LENGTH),
+							'm'.repeat(SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH),
+						),
+					},
+					desired,
+				),
 			).resolves.toMatchObject({ inserted: [{ id: 1, name: 'wf:node:0' }] });
 		});
 

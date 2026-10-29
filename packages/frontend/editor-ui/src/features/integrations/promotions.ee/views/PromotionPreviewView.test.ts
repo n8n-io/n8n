@@ -1,5 +1,7 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
+import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { render as renderToast, waitFor, within } from '@testing-library/vue';
@@ -7,7 +9,7 @@ import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { waitAllPromises } from '@/__tests__/utils';
+import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
@@ -15,6 +17,7 @@ import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import type { ApplyCheckResult } from '../promotions.types';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
 
@@ -37,7 +40,7 @@ vi.mock('../promotionsSettings.api');
 vi.mock('@/features/collaboration/projects/projects.api');
 // The editors are modals of the app. The test answers for them.
 vi.mock('../composables/usePromotionBindingCreation', () => ({
-	usePromotionBindingCreation: () => ({ createBinding, updatePreflight: vi.fn() }),
+	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
 }));
 vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
 vi.mock('@n8n/composables/useToast', () => ({
@@ -59,6 +62,7 @@ const router = createRouter({
 			name: PROMOTION_PREVIEW_VIEWS.apply,
 			component: stub,
 		},
+		{ path: '/inbox', name: INBOX_VIEW, component: stub },
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
@@ -71,6 +75,8 @@ const environment = (direction: 'promote' | 'apply') =>
 		scope: 'instance',
 		direction,
 		remote: { schemaVersion: 1, remoteUrl: 'git@github.com:acme/workflows.git' },
+		provider: { type: 'git' },
+		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 	}) as unknown as settingsApi.PromotionEnvironmentSummary;
 
 async function render(
@@ -86,29 +92,43 @@ async function render(
 	return result;
 }
 
+/** Promote opens a dialog for the optional commit message. */
+async function promote(getByTestId: (id: string) => HTMLElement, commitMessage?: string) {
+	await userEvent.click(getByTestId('promotion-preview-submit'));
+	if (commitMessage !== undefined) {
+		await userEvent.type(getByTestId('promote-commit-message'), commitMessage);
+	}
+	await userEvent.click(getByTestId('promote-confirm-button'));
+}
+
 const consumers = (...ids: string[]) => [
 	{ project: { id: 'p1', name: 'Billing' }, workflows: ids.map((id) => ({ id, name: id })) },
 ];
 
-const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
+const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-apply',
 	git: { branchName: 'main', commitSha: COMMIT_SHA },
-	preflight: {
-		missingProjects: [],
-		missingBindings: [],
-		accessRequirements: [],
-		conflicts: [],
-		warnings: [],
-		...preflight,
-	},
+	missingProjects: [],
+	missingBindings: [],
+	accessRequirements: [],
+	conflicts: [],
+	warnings: [],
 	movedWorkflows: [],
+	movedFolders: [],
+	...fields,
 });
 
-const expectedSource = {
-	environmentId: 'environment-apply',
-	branchName: 'main',
-	commitSha: COMMIT_SHA,
-};
+const REVISION = 'a'.repeat(64);
+
+/** The Apply preview carries its blockers and its revision. */
+const previewWithCheck = ({ environmentId, git, ...previewCheck } = check()) => ({
+	...billingPreview(),
+	check: previewCheck,
+	revision: REVISION,
+});
+
+// Apply names the source of the preview it shows.
+const expectedSource = { ...billingPreview().source, commitSha: COMMIT_SHA };
 
 async function renderApply() {
 	vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('apply')]);
@@ -163,10 +183,9 @@ describe('PromotionPreviewView', () => {
 		invalidateInstancePromotionConnection();
 		Element.prototype.scrollIntoView = vi.fn();
 		vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('promote')]);
-		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(previewWithCheck());
 		vi.mocked(api.getPromotionResourceDetails).mockReset();
 		vi.mocked(api.getPromotionResourceDetails).mockResolvedValue({ details: [], missingKeys: [] });
-		vi.mocked(api.getApplyBlockers).mockResolvedValue(check());
 		confirm.mockResolvedValue(MODAL_CONFIRM);
 	});
 
@@ -184,16 +203,39 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.query.resource).toBe('dataTable:t1');
 	});
 
-	it('should load the changed resources and only the active workflow with the preview', async () => {
+	it('should share one selection between the card headers and the tree', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'main', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+		const { getAllByTestId, getByTestId } = await render();
+		const cardCheckbox = (key: string) =>
+			card(getAllByTestId, key).getByTestId('promotion-preview-card-checkbox');
+
+		// The folder card clears the workflows inside the folder, and the card stays open.
+		await userEvent.click(cardCheckbox('folder:f1'));
+		expect(cardToggle(getAllByTestId, 'folder:f1')).toHaveAttribute('aria-expanded', 'true');
+		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
+		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
+		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('2 of 5');
+
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		expect(cardCheckbox('workflow:w1')).toBeChecked();
+		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
+
+		await promote(getByTestId);
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+		});
+	});
+
+	it('should load the changed resources and only the active workflow at the commit of the preview', async () => {
 		await render();
 
 		expect(api.getPromotionResourceDetails).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3].keys).toEqual([
-			'folder:f1',
-			'workflow:w1',
-			'dataTable:t1',
-			'variable:global:API_URL',
-		]);
+		expect(vi.mocked(api.getPromotionResourceDetails).mock.calls[0][3]).toEqual({
+			commitSha: COMMIT_SHA,
+			keys: ['folder:f1', 'workflow:w1', 'dataTable:t1', 'variable:global:API_URL'],
+		});
 	});
 
 	it('should switch the active diff without collapsing or scrolling cards', async () => {
@@ -339,6 +381,60 @@ describe('PromotionPreviewView', () => {
 		expect(getByTestId('promotion-preview-tree')).toBeInTheDocument();
 	});
 
+	describe('with an open review', () => {
+		const blocked = () =>
+			billingPreview({
+				resources: [],
+				changes: [],
+				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+			});
+
+		async function renderBlocked(canReadReviews: boolean, inboxEnabled = true) {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(blocked());
+			await router.push('/projects/p1/promotions/promote');
+			const pinia = createTestingPinia();
+			mockedStore(useRBACStore).hasScope.mockReturnValue(canReadReviews);
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = {
+				...settingsStore.settings,
+				inbox: { enabled: inboxEnabled, availableTypes: [], failedTypes: [] },
+			};
+			const result = renderComponent({ pinia, props: { projectId: 'p1', direction: 'promote' } });
+			await waitAllPromises();
+			return result;
+		}
+
+		it('should show the blocker with a link to the Inbox and no changes to promote', async () => {
+			const { getByTestId, queryByTestId, getByText } = await renderBlocked(true);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent('A review is open');
+			expect(queryByTestId('promotion-preview-tree')).not.toBeInTheDocument();
+			expect(queryByTestId('promotion-preview-empty')).not.toBeInTheDocument();
+			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+
+			await userEvent.click(getByText('Open the Inbox'));
+			await waitFor(() => expect(router.currentRoute.value.name).toBe(INBOX_VIEW));
+		});
+
+		it('should ask for an admin when the user cannot read reviews', async () => {
+			const { getByTestId, queryByText } = await renderBlocked(false);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
+				'Ask an admin to merge or close the review.',
+			);
+			expect(queryByText('Open the Inbox')).not.toBeInTheDocument();
+		});
+
+		it('should not link to the Inbox when the Inbox is off', async () => {
+			const { getByTestId, queryByText } = await renderBlocked(true, false);
+
+			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(
+				'Ask an admin to merge or close the review.',
+			);
+			expect(queryByText('Open the Inbox')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should show the error when the refresh of an empty preview fails', async () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValueOnce(billingPreview({ resources: [] }));
 		const { getByTestId } = await render();
@@ -359,7 +455,7 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
@@ -372,6 +468,84 @@ describe('PromotionPreviewView', () => {
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
+	it('should leave out a workflow that moved to another project and say where it went', async () => {
+		const preview = billingPreview();
+		vi.mocked(api.getPromotionPreview).mockResolvedValue({
+			...preview,
+			resources: preview.resources.map((resource) =>
+				resource.key === 'workflow:w2'
+					? { ...resource, change: 'deleted', movedToProject: { id: 'p2', name: 'Ops' } }
+					: resource,
+			),
+		});
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getAllByTestId, getByTestId, getAllByLabelText } = await render();
+		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
+		expect(moved).not.toBeChecked();
+		expect(moved).toBeDisabled();
+		expect(getAllByLabelText(/This workflow moved to Ops on this instance/).length).toBeGreaterThan(
+			0,
+		);
+
+		await promote(getByTestId);
+
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+		});
+	});
+
+	it('should send the trimmed commit message from the promote dialog', async () => {
+		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+			git: { branchName: 'main', commitSha: COMMIT_SHA },
+		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+		const { getByTestId } = await render();
+		await promote(getByTestId, '  Route leads by region  ');
+
+		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			commitMessage: 'Route leads by region',
+		});
+	});
+
+	it('should keep the typed commit message after a failed promote', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('Route leads by region');
+	});
+
+	it('should clear the typed commit message when the project changes', async () => {
+		vi.mocked(api.promoteProjectSelection).mockRejectedValueOnce(new Error('offline'));
+
+		const { getByTestId, queryByTestId, rerender } = await render();
+		await promote(getByTestId, 'Route leads by region');
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+
+		await rerender({ projectId: 'p2', direction: 'promote' });
+		await waitAllPromises();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promote-commit-message')).toHaveValue('');
+	});
+
+	it('should not promote when the promote dialog is canceled', async () => {
+		const { getByTestId, queryByTestId } = await render();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await userEvent.click(getByTestId('promote-cancel-button'));
+
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+		expect(api.promoteProjectSelection).not.toHaveBeenCalled();
+	});
+
 	it('should keep the promotion toast open and link the merge request', async () => {
 		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
 			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
@@ -379,7 +553,7 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'Changes promoted', type: 'success', duration: 0 }),
@@ -399,7 +573,7 @@ describe('PromotionPreviewView', () => {
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 
 		const { getByTestId } = await render();
-		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await promote(getByTestId);
 
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'Changes promoted', type: 'warning', duration: 0 }),
@@ -412,8 +586,10 @@ describe('PromotionPreviewView', () => {
 
 	it('should apply only the workflows without blockers, once, at the commit of the check', async () => {
 		// "Weekly KPI report" needs a variable that this instance does not have.
-		vi.mocked(api.getApplyBlockers).mockResolvedValue(
-			check({ missingBindings: [{ ...variable, name: 'API_URL', consumers: consumers('w3') }] }),
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck(
+				check({ missingBindings: [{ ...variable, name: 'API_URL', consumers: consumers('w3') }] }),
+			),
 		);
 		let answer: (value: string) => void = () => {};
 		confirm.mockReturnValue(new Promise((resolve) => (answer = resolve)));
@@ -434,14 +610,19 @@ describe('PromotionPreviewView', () => {
 		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
 			expectedSource,
+			expectedPreviewRevision: REVISION,
 		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
 	});
 
 	it('should confirm a data table change only when the selection imports it, and keep the selection when the branch moves', async () => {
 		// Both invoice workflows include the "Invoices" table. The apply removes a column.
-		vi.mocked(api.getApplyBlockers).mockResolvedValue(
-			check({ conflicts: [{ ...destructiveChange, id: 't1', consumers: consumers('w1', 'w2') }] }),
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck(
+				check({
+					conflicts: [{ ...destructiveChange, id: 't1', consumers: consumers('w1', 'w2') }],
+				}),
+			),
 		);
 		const { environmentId, git } = check();
 		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
@@ -463,6 +644,7 @@ describe('PromotionPreviewView', () => {
 		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
 			expectedSource,
+			expectedPreviewRevision: REVISION,
 		});
 		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
 			'The branch changed',
@@ -479,6 +661,7 @@ describe('PromotionPreviewView', () => {
 			{
 				workflowIds: ['w1', 'w3', 'w4'],
 				expectedSource,
+				expectedPreviewRevision: REVISION,
 				confirmDestructiveChanges: true,
 			},
 		);
@@ -490,29 +673,79 @@ describe('PromotionPreviewView', () => {
 		);
 	});
 
-	it('should not apply any selection while a folder on the branch moved, and say why', async () => {
-		// The branch holds "Payments" under "Reports". This instance holds it at the project root.
-		const preview = billingPreview();
-		vi.mocked(api.getPromotionPreview).mockResolvedValue({
-			...preview,
-			resources: preview.resources.map((resource) =>
-				resource.key === 'folder:f1'
-					? { ...resource, parentKey: 'folder:f2', previousParentKey: 'project:p1' }
-					: resource,
-			),
+	it('should say why when this instance changed after the page loaded', async () => {
+		const { environmentId, git } = check();
+		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
+			environmentId,
+			git,
+			status: 'preview-changed',
 		});
+
+		const { getAllByTestId, getByTestId } = await renderApply();
+		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+
+		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
+			'This instance changed',
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+	});
+
+	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck({
+				...check(),
+				// The branch holds "Payments" in this project, while this instance holds it in Ops.
+				movedFolders: [
+					{
+						id: 'f1',
+						name: 'Payments',
+						project: { id: 'p1', name: 'Billing' },
+						projectExists: true,
+						instanceProject: { id: 'p2', name: 'Ops' },
+					},
+				],
+			}),
+		);
 
 		const { getByTestId } = await renderApply();
 
 		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 		expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
-			'Apply is disabled. The folder "Payments" moved on the branch',
+			'Apply is disabled. The branch and this instance hold the folder "Payments" in different projects',
 		);
 	});
 
-	it('should leave out a workflow that the branch holds in another folder, because Apply cannot move it', async () => {
+	it('should offer only the source fix when the branch project of a moved workflow does not exist here', async () => {
+		vi.mocked(api.getPromotionPreview).mockResolvedValue(
+			previewWithCheck({
+				...check(),
+				movedWorkflows: [
+					{
+						id: 'w2',
+						name: 'Payment reminders',
+						project: { id: 'p3', name: 'Archive' },
+						projectExists: false,
+						instanceProject: { id: 'p1', name: 'Billing' },
+					},
+				],
+			}),
+		);
+
+		const { getByTestId, getByRole } = await renderApply();
+		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
+			name: /Payment reminders/,
+		});
+
+		expect(row).toHaveTextContent('Archive, which does not exist on this instance yet');
+		expect(row).toHaveTextContent('Move it back on the source instance, then promote again.');
+		expect(row).not.toHaveTextContent('Move it on this instance');
+	});
+
+	it('should apply a workflow that the branch holds in another folder of the project', async () => {
 		// The branch holds "Payment reminders" at the project root. This instance holds it in "Payments".
-		const preview = billingPreview();
+		const preview = previewWithCheck();
 		vi.mocked(api.getPromotionPreview).mockResolvedValue({
 			...preview,
 			resources: preview.resources.map((resource) =>
@@ -525,15 +758,15 @@ describe('PromotionPreviewView', () => {
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
-		expect(moved).not.toBeChecked();
-		expect(moved).toBeDisabled();
+		expect(moved).not.toBeDisabled();
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 
-		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
-			workflowIds: ['w1', 'w3', 'w4'],
-			expectedSource,
-		});
+		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			expect.objectContaining({ workflowIds: expect.arrayContaining(['w2']) }),
+		);
 	});
 
 	it('should tell users whether to retry, resolve a conflict or check the changes after a failed apply', async () => {
@@ -562,9 +795,9 @@ describe('PromotionPreviewView', () => {
 
 	it('should apply a blocked workflow after the user adds the missing variable', async () => {
 		const missing = { ...variable, name: 'API_URL', consumers: consumers('w3') };
-		vi.mocked(api.getApplyBlockers)
-			.mockResolvedValueOnce(check({ missingBindings: [missing] }))
-			.mockResolvedValue(check());
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce(previewWithCheck(check({ missingBindings: [missing] })))
+			.mockResolvedValue(previewWithCheck());
 		createBinding.mockResolvedValue({
 			kind: 'variable',
 			id: 'v1',

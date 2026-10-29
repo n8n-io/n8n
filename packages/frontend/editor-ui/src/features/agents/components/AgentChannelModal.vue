@@ -732,7 +732,18 @@ watch(
 					@connected="handlePlatformConnected"
 					@done="finishSetup"
 					@restart="removeCurrentChannel"
-				/>
+				>
+					<template
+						v-if="isEditMode && currentIntegration.type === 'slack' && approvableActions.length > 0"
+						#additionalSettings
+					>
+						<AgentChannelApprovalSetting
+							v-model="channelApproval"
+							:actions="approvableActions"
+							@update:valid="channelApprovalValid = $event"
+						/>
+					</template>
+				</component>
 				<N8nText
 					v-if="saveAttempted && !currentChannelCredentialId"
 					size="small"
@@ -743,7 +754,7 @@ watch(
 				</N8nText>
 
 				<AgentChannelApprovalSetting
-					v-if="isEditMode && approvableActions.length > 0"
+					v-if="isEditMode && currentIntegration.type !== 'slack' && approvableActions.length > 0"
 					v-model="channelApproval"
 					:actions="approvableActions"
 					@update:valid="channelApprovalValid = $event"

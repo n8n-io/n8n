@@ -103,6 +103,17 @@ describe('GitLabMergeRequestClient', () => {
 		});
 	});
 
+	it('reads a merge request with the default timeout, or with a shorter one', async () => {
+		respond(200, mergeRequest);
+		respond(200, mergeRequest);
+
+		await client.getMergeRequest(access, { projectId: 7, iid: 3 });
+		expect(lastRequest()).toMatchObject({ method: 'GET', timeout: 15_000 });
+
+		await client.getMergeRequest(access, { projectId: 7, iid: 3 }, { timeoutMs: 3_000 });
+		expect(lastRequest()).toMatchObject({ timeout: 3_000 });
+	});
+
 	it('shortens a title to the GitLab limit', async () => {
 		respond(201, mergeRequest);
 
@@ -134,6 +145,22 @@ describe('GitLabMergeRequestClient', () => {
 
 		expect(created.has_conflicts).toBe(false);
 		expect(created.diff_refs).toBeUndefined();
+	});
+
+	it('keeps the users who merged or closed the merge request', async () => {
+		respond(201, {
+			...mergeRequest,
+			state: 'merged',
+			merge_user: { name: 'Ada Lovelace', username: 'ada' },
+			merged_by: { name: 'Ada Lovelace' },
+			closed_by: null,
+		});
+
+		const created = await openMergeRequest();
+
+		expect(created.merge_user).toEqual({ name: 'Ada Lovelace' });
+		expect(created.merged_by).toEqual({ name: 'Ada Lovelace' });
+		expect(created.closed_by).toBeNull();
 	});
 
 	it('rejects a merge request response that misses required fields', async () => {

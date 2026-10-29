@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { NodeTypes } from '@/node-types';
 import {
 	AUTH_PROBE_ACCEPTED_MESSAGE,
@@ -138,6 +139,22 @@ describe('CredentialsTester', () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				{} as IWorkflowExecuteAdditionalData,
 			);
+		});
+
+		it('reports that the user must reconnect when the managed app is no longer available', async () => {
+			credentialsHelper.applyDefaultsAndOverwrites.mockRejectedValue(
+				new ManagedAppUnavailableError('Reconnect the credential to continue.'),
+			);
+
+			const result = await credentialsTester.testCredentials('user-id', 'testCredentials', {
+				id: 'credential-id',
+				name: 'credential-name',
+				type: 'oAuth2Api',
+				data: {},
+			});
+
+			expect(result).toEqual({ status: 'Error', message: 'Reconnect the credential to continue.' });
+			expect(mockTestFunction).not.toHaveBeenCalled();
 		});
 
 		it('should redact secrets in error messages', async () => {

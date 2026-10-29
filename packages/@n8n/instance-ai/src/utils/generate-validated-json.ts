@@ -8,7 +8,7 @@
  * helper's own tests mock `eval-agents`.
  */
 
-import type { ModelConfig } from '@n8n/agents';
+import type { AnthropicThinkingEffort, FetchFn, ModelConfig } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { z } from 'zod';
 
@@ -26,11 +26,15 @@ export type ValidatedJsonResult<T> =
 
 export interface GenerateValidatedJsonOptions<T> {
 	model?: string;
+	/** Thinking effort for a pinned `model`. */
+	effort?: AnthropicThinkingEffort;
 	instructions: string;
 	userText: string;
 	schema: z.ZodType<T>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 }
 
 /** Tracing must never block a model call: when it fails, the call runs without spans. */
@@ -53,8 +57,10 @@ export async function generateValidatedJson<T>(
 		const llm = createEvalAgent(agentName, {
 			telemetry,
 			model: options.model,
+			effort: options.effort,
 			instructions: options.instructions,
 			fallbackModelConfig: options.fallbackModelConfig,
+			modelFetch: options.modelFetch,
 		});
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },

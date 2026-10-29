@@ -11,6 +11,8 @@ export type PublishedFilter = 'any' | 'published' | 'notPublished';
 export type StateFilter = 'any' | MigrationFindingTriageStatus;
 /** `any`, `unassigned`, or the id of the owner. */
 export type OwnerFilter = string;
+/** `any`, `personal` for all personal projects, or the id of a team project. */
+export type ProjectFilter = string;
 
 export interface WorkflowFilters {
 	lastRun: AgeFilter;
@@ -18,6 +20,7 @@ export interface WorkflowFilters {
 	executions: ExecutionsFilter;
 	published: PublishedFilter;
 	owner: OwnerFilter;
+	project: ProjectFilter;
 	state: StateFilter;
 }
 
@@ -27,10 +30,12 @@ export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
 	executions: 'any',
 	published: 'any',
 	owner: 'any',
+	project: 'any',
 	state: 'any',
 };
 
 export const UNASSIGNED_OWNER = 'unassigned';
+export const PERSONAL_PROJECTS = 'personal';
 
 /** The number of filters that differ from the default. */
 export function countActiveFilters(filters: WorkflowFilters): number {
@@ -62,6 +67,15 @@ function matchesOwner(workflow: BreakingChangeRuleDetailWorkflow, filter: OwnerF
 	return workflow.owner?.id === filter;
 }
 
+function matchesProject(
+	workflow: BreakingChangeRuleDetailWorkflow,
+	filter: ProjectFilter,
+): boolean {
+	if (filter === 'any') return true;
+	if (filter === PERSONAL_PROJECTS) return workflow.homeProjectType === 'personal';
+	return workflow.homeProjectId === filter;
+}
+
 // A notified finding still needs a fix, so it filters as open.
 function matchesState(
 	state: MigrationFindingListedStatus | 'migrated',
@@ -87,6 +101,7 @@ export function matchesWorkflowFilters(
 		matchesAge(workflow.lastUpdatedAt, filters.lastUpdated, now) &&
 		matchesExecutions(workflow.numberOfExecutions, filters.executions) &&
 		(filters.published === 'any' || workflow.active === (filters.published === 'published')) &&
-		matchesOwner(workflow, filters.owner)
+		matchesOwner(workflow, filters.owner) &&
+		matchesProject(workflow, filters.project)
 	);
 }

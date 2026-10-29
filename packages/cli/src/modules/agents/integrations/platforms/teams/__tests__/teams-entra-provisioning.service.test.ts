@@ -470,7 +470,7 @@ describe('TeamsEntraProvisioningService', () => {
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				options.user,
-				expect.objectContaining({ excludePersonalRoute: true }),
+				expect.objectContaining({ excludePersonalRoute: true, excludeResolvable: true }),
 			);
 		});
 

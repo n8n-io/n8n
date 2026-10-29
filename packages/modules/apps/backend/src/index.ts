@@ -1,12 +1,15 @@
 export { App } from './app.entity';
-export { AppVersion } from './app-version.entity';
-export { AppArtifact, type AppArtifactRef } from './app-artifact.entity';
+export { AppVersion } from './versions/app-version.entity';
+export { AppArtifact, type AppArtifactRef } from './storage/app-artifact.entity';
 export { AppRepository } from './app.repository';
 export { AppsService } from './apps.service';
-export { AppVersionService } from './app-version.service';
-export { AppVersionRepository } from './app-version.repository';
-export { AppArtifactService } from './app-artifact.service';
-export { AppArtifactRepository } from './app-artifact.repository';
+export { AppVersionService } from './versions/app-version.service';
+export { AppBuildService } from './build/app-build.service';
+export { AppChangeService } from './versions/app-change.service';
+export { AppSandboxSettings, type AppSandboxResolveOptions } from './build/app-sandbox-settings';
+export { AppVersionRepository } from './versions/app-version.repository';
+export { AppArtifactService } from './storage/app-artifact.service';
+export { AppArtifactRepository } from './storage/app-artifact.repository';
 export {
 	AppSourceVersionStore,
 	AppBuildResultStore,

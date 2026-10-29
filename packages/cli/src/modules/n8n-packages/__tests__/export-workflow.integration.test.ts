@@ -113,12 +113,12 @@ describe('workflow package export', () => {
 			expect(entries[0].name).toBe('manifest.json');
 			expect(manifest).toMatchObject({
 				packageFormatVersion: FORMAT_VERSION,
-				exportedAt: expect.any(String),
 				sourceN8nVersion: expect.any(String),
 				sourceId: expect.any(String),
 			});
+			expect(manifest).not.toHaveProperty('exportedAt');
 			expect(manifest.workflows).toEqual([
-				{ id: workflow.id, name: 'My Workflow', target: expect.any(String) },
+				{ id: workflow.id, name: 'My Workflow', target: expect.any(String), isArchived: false },
 			]);
 
 			const workflowFile = entries.find(
@@ -178,7 +178,7 @@ describe('workflow package export', () => {
 			const exportedPackage = await readExport(exported.stream);
 
 			expect(exportedPackage.manifest.workflows).toEqual([
-				{ id: workflow.id, name: workflow.name, target: expect.any(String) },
+				{ id: workflow.id, name: workflow.name, target: expect.any(String), isArchived: true },
 			]);
 			const content = workflowJson(
 				exportedPackage.entries,
@@ -751,7 +751,7 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportReferenceOnly(owner, [parent.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+				{ id: parent.id, name: 'Parent', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{ id: child.id, name: child.name, usedBy: [{ kind: 'workflow', id: parent.id }] },
@@ -852,7 +852,7 @@ describe('workflow package export', () => {
 			const { manifest, entries } = await exportReferenceOnly(owner, [cheddar.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String) },
+				{ id: cheddar.id, name: 'CHEDDAR', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{ id: brie.id, name: 'BRIE', usedBy: [{ kind: 'workflow', id: cheddar.id }] },
@@ -949,7 +949,7 @@ describe('workflow package export', () => {
 			const { manifest } = await exportReferenceOnly(owner, [parent.id]);
 
 			expect(manifest.workflows).toEqual([
-				{ id: parent.id, name: 'Parent', target: expect.any(String) },
+				{ id: parent.id, name: 'Parent', target: expect.any(String), isArchived: false },
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{

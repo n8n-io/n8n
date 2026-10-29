@@ -20,7 +20,10 @@ import {
 	getSubtreeTotalConsumedTokens,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
-import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
+import {
+	LOG_DETAILS_PANEL_STATE,
+	MIN_IO_PANEL_WIDTH,
+} from '@/features/execution/logs/logs.constants';
 import { getRespondingModelName } from '@/features/ndv/runData/components/ai/utils';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -38,7 +41,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useMessageAgentSessionLink } from '@/features/agents/composables/useMessageAgentSessionLink';
-const MIN_IO_PANEL_WIDTH = 200;
 
 const {
 	isOpen,

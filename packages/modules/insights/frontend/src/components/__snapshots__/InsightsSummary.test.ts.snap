@@ -62,7 +62,7 @@ exports[`InsightsSummary > should render the summary correctly 3`] = `
         <!--v-if-->
       </li>
       <li data-test-id="insights-summary-tab-timeSaved"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="" data-state="closed" data-grace-area-trigger=""> Time saved</span>
-        <!--v-if--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-stub icon="info" size="medium" spin="false" class="icon"></n8n-icon-stub></span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-stub icon="info" size="medium" spin="false"></n8n-icon-stub></span>
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>
@@ -159,7 +159,7 @@ exports[`InsightsSummary > should render the summary correctly 6`] = `
         <!--v-if-->
       </li>
       <li data-test-id="insights-summary-tab-timeSaved"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><a to="[object Object]" exact-active-class="activeTab"><strong><span class="" data-state="closed" data-grace-area-trigger=""> Time saved</span>
-        <!--v-if--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-stub icon="info" size="medium" spin="false" class="icon"></n8n-icon-stub></span>
+        <!--v-if--></strong><small class="days">Last 7 days</small><span class="empty"><em>--</em><small><span class="" data-state="closed" data-grace-area-trigger=""><n8n-icon-stub icon="info" size="medium" spin="false"></n8n-icon-stub></span>
         <!--v-if--></small></span></a></span>
         <!--v-if-->
       </li>

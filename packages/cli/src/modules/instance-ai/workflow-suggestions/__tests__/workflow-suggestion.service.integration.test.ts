@@ -24,7 +24,6 @@ import { License } from '@/license';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createUser } from '@test-integration/db/users';
 
-import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
@@ -40,7 +39,6 @@ beforeAll(async () => {
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
-	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
 });
 

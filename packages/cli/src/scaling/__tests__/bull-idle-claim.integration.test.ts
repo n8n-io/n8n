@@ -11,9 +11,8 @@ const QUEUE_NAME = 'jobs';
 
 /** Bull internals the tests drive directly. Bull's type declarations leave them out. */
 type RawQueue = JobQueue & {
-	bclient: Redis;
 	getNextJob(): Promise<Job | null | undefined>;
-	moveToActive(jobId?: string): Promise<Job | null>;
+	moveToActive(jobId?: string, fromKey?: string): Promise<Job | null>;
 	moveUnlockedJobsToWait(): Promise<void>;
 };
 
@@ -70,7 +69,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 		await control.quit();
 	});
 
-	it('should leave a job in the queue while a blocked worker has not claimed it yet', async () => {
+	it('should return a job to the queue when a blocked worker has not claimed it yet', async () => {
 		const blocked = createQueue();
 		const producer = createQueue();
 		const sweeper = createQueue();
@@ -82,7 +81,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 		const job = await addJob(producer);
 		await vi.waitFor(() => expect(claim).toHaveBeenCalled());
 
-		expect(await control.lrange(key('wait'), 0, -1)).toEqual([String(job.id)]);
+		expect(await control.lrange(key('claiming'), 0, -1)).toEqual([String(job.id)]);
 		expect(await control.lrange(key('active'), 0, -1)).toEqual([]);
 
 		await sweepTwice(sweeper);
@@ -93,22 +92,37 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 		expect(await control.exists(key(`${job.id}:lock`))).toBe(1);
 	});
 
-	it('should fall back to BRPOPLPUSH when Redis has no BLMOVE', async () => {
-		const worker = createQueue();
+	it('should remove a job that a blocked worker has not claimed yet', async () => {
+		const blocked = createQueue();
 		const producer = createQueue();
 		await Promise.all(queues.map(async (queue) => await queue.isReady()));
-		const blmove = vi
-			.spyOn(worker.bclient, 'blmove')
-			.mockRejectedValue(new Error("ERR unknown command 'blmove'"));
+		const claim = vi.spyOn(blocked, 'moveToActive').mockReturnValue(new Promise(() => {}));
+
+		void blocked.getNextJob();
 		const job = await addJob(producer);
+		await vi.waitFor(() => expect(claim).toHaveBeenCalled());
 
-		const claimed = await worker.getNextJob();
-		expect(claimed?.id).toBe(job.id);
-		expect(await job.getState()).toBe('active');
+		await job.remove();
 
-		await addJob(producer);
-		await worker.getNextJob();
-		expect(blmove).toHaveBeenCalledTimes(1);
+		expect(await control.lrange(key('claiming'), 0, -1)).toEqual([]);
+	});
+
+	it('should list a job that a blocked worker has not claimed yet as waiting', async () => {
+		const blocked = createQueue();
+		const producer = createQueue();
+		await Promise.all(queues.map(async (queue) => await queue.isReady()));
+		const claim = vi.spyOn(blocked, 'moveToActive').mockReturnValue(new Promise(() => {}));
+
+		void blocked.getNextJob();
+		const job = await addJob(producer);
+		await vi.waitFor(() => expect(claim).toHaveBeenCalled());
+		expect(await control.lrange(key('wait'), 0, -1)).toEqual([]);
+		expect(await control.lrange(key('active'), 0, -1)).toEqual([]);
+
+		// Queue recovery reads these job lists, and marks executions without a job as crashed
+		const listed = await producer.getJobs(['active', 'waiting']);
+
+		expect(listed.map((listedJob) => listedJob?.id)).toEqual([job.id]);
 	});
 
 	describe('idle slots of one worker', () => {
@@ -119,9 +133,9 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 			let started = 0;
 			for (const worker of workers) {
 				const claim = worker.moveToActive.bind(worker);
-				worker.moveToActive = async (jobId?: string) => {
+				worker.moveToActive = async (jobId?: string, fromKey?: string) => {
 					claims++;
-					return await claim(jobId);
+					return await claim(jobId, fromKey);
 				};
 				void worker.process(JOB_TYPE_NAME, concurrency, async () => {
 					started++;
@@ -142,7 +156,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 			};
 		};
 
-		it('should make one claim in each idle worker for a new job', async () => {
+		it('should make one claim for a new job', async () => {
 			const idle = await startIdleWorkers(3, 5);
 			const producer = createQueue();
 			idle.reset();
@@ -151,7 +165,35 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('idle worker job claim (real Redis)'
 			await vi.waitFor(() => expect(idle.started()).toBe(1));
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
-			expect(idle.claims()).toBe(3);
+			expect(idle.claims()).toBe(1);
+		});
+
+		it('should give each new job to the worker that runs the fewest jobs', async () => {
+			const workers = [createQueue(), createQueue()];
+			const runs = [0, 0];
+			// Jobs run until the test ends, so each worker keeps its load
+			let finishJobs = () => {};
+			const jobsFinished = new Promise<void>((resolve) => (finishJobs = resolve));
+			workers.forEach((worker, index) => {
+				void worker.process(JOB_TYPE_NAME, 5, async () => {
+					runs[index]++;
+					await jobsFinished;
+				});
+			});
+			const producer = createQueue();
+			await Promise.all(queues.map(async (queue) => await queue.isReady()));
+			await new Promise((resolve) => setTimeout(resolve, 300));
+
+			try {
+				for (let i = 1; i <= 6; i++) {
+					await addJob(producer);
+					await vi.waitFor(() => expect(runs[0] + runs[1]).toBe(i));
+				}
+
+				expect(runs).toEqual([3, 3]);
+			} finally {
+				finishJobs();
+			}
 		});
 
 		it('should start a burst of jobs on all idle slots', async () => {

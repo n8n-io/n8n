@@ -55,6 +55,10 @@ import {
 	TOOL_CALL_STATE,
 } from '../constants';
 
+import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
+
+const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
+
 const props = defineProps<{
 	messages: ChatMessage[];
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
@@ -70,8 +74,13 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	openBuild: [];
 	retry: [messageId: string];
-	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+	/** `onAccepted` comes from the card and runs once the server accepts the answer. */
+	resume: [
+		payload: { runId: string; toolCallId: string; resumeData: unknown },
+		onAccepted?: () => void,
+	];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
 	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
 }>();
@@ -94,11 +103,16 @@ function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistant
 	emit('sendToAssistant', { executionId, failures });
 }
 
-function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
+function onInteractiveSubmit(
+	payload: InteractivePayload,
+	resumeData: unknown,
+	onAccepted?: () => void,
+) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
 	// This guard is a defensive belt-and-braces for the type narrowing.
 	if (!payload.runId) return;
-	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
+	const resume = { runId: payload.runId, toolCallId: payload.toolCallId, resumeData };
+	emit('resume', resume, onAccepted);
 }
 
 function isIntegrationActionSuspend(value: unknown): value is { type: 'integration_action' } {
@@ -383,6 +397,21 @@ const changeRequestGroupId = computed(() =>
 
 function onEditWithAssistant(changeRequest: string) {
 	emit('sendToAssistant', { changeRequest });
+}
+
+function onBuildLink(edit: boolean, message: ChatMessage) {
+	if (!standaloneBuilder || !canSendToAssistant.value) return;
+	if (!edit) {
+		emit('openBuild');
+		return;
+	}
+	const index = props.messages.findIndex((entry) => entry.id === message.id);
+	const request =
+		index < 0
+			? undefined
+			: props.messages.slice(0, index).findLast((entry) => entry.role === CHAT_MESSAGE_ROLE.USER)
+					?.content;
+	emit('sendToAssistant', request ? { changeRequest: request } : undefined);
 }
 
 function isThinkingActive(message: ChatMessage): boolean {
@@ -688,7 +717,9 @@ watch(
 							v-for="payload in group.interactives.filter(shouldRenderInteractive)"
 							:key="payload.toolCallId"
 							:payload="payload"
-							@submit="onInteractiveSubmit(payload, $event)"
+							@submit="
+								(resumeData, onAccepted) => onInteractiveSubmit(payload, resumeData, onAccepted)
+							"
 						/>
 					</div>
 					<AgentChatRetryError
@@ -708,7 +739,11 @@ watch(
 						]"
 					>
 						<div :class="$style.markdownContent">
-							<AgentMarkdownChunk :source="group.finalMessage.content" />
+							<AgentMarkdownChunk
+								:source="group.finalMessage.content"
+								:can-open-build="standaloneBuilder && canSendToAssistant"
+								@open-build="onBuildLink($event, group.finalMessage)"
+							/>
 						</div>
 					</div>
 					<AgentBudgetNoticeCard
@@ -853,13 +888,20 @@ watch(
 								]"
 							>
 								<div :class="$style.markdownContent">
-									<AgentMarkdownChunk :source="item.text" />
+									<AgentMarkdownChunk
+										:source="item.text"
+										:can-open-build="standaloneBuilder && canSendToAssistant"
+										@open-build="onBuildLink($event, group.message)"
+									/>
 								</div>
 							</div>
 							<div v-else :class="$style.interactives">
 								<InteractiveCard
 									:payload="item.payload"
-									@submit="onInteractiveSubmit(item.payload, $event)"
+									@submit="
+										(resumeData, onAccepted) =>
+											onInteractiveSubmit(item.payload, resumeData, onAccepted)
+									"
 								/>
 							</div>
 						</template>
@@ -985,7 +1027,7 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
-	max-width: 800px;
+	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
 
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);

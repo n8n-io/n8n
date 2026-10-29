@@ -205,13 +205,9 @@ describe('createRouteWatcher', () => {
 		const watcher = createRouteWatcher(judge);
 
 		expect(await watcher.beforeToolCall(pending('load_skill'), [])).toBe(false);
-		expect(
-			await watcher.beforeToolCall(pending('workflow_builder_nodes', { action: 'search' }), []),
-		).toBe(false);
+		expect(await watcher.beforeToolCall(pending('search_nodes'), [])).toBe(false);
 		expect(judge).not.toHaveBeenCalled();
-		expect(
-			await watcher.beforeToolCall(pending('workflow_builder_nodes', { action: 'execute' }), []),
-		).toBe(true);
+		expect(await watcher.beforeToolCall(pending('execute_node'), [])).toBe(true);
 		expect(await watcher.beforeToolCall(pending('load_skill'), [])).toBe(true);
 		expect(judge).toHaveBeenCalledTimes(1);
 	});
@@ -221,7 +217,7 @@ describe('createRouteWatcher', () => {
 		const watcher = createRouteWatcher(judge);
 
 		const results = await Promise.all([
-			watcher.beforeToolCall(pending('workflow_builder_create_tasks'), []),
+			watcher.beforeToolCall(pending('workflow_builder_build_workflow'), []),
 			watcher.beforeToolCall(pending('search-nodes'), []),
 		]);
 

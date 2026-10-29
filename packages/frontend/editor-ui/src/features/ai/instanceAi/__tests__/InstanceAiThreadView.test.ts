@@ -9,7 +9,6 @@ import type {
 	AgentEvalVerdict,
 	InstanceAiAgentNode,
 	InstanceAiHandoffContext,
-	InstanceAiMessage,
 } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
@@ -41,7 +40,6 @@ import {
 	inputSetTextSpy,
 	inputState,
 	makeThread,
-	planEditSubmitState,
 } from './createThreadComponentRenderer';
 
 const mockWindowSizeState = vi.hoisted(() => ({
@@ -379,56 +377,6 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 	},
 });
 
-function makePlanReviewMessage(): InstanceAiMessage {
-	const orchestrator: InstanceAiAgentNode = {
-		agentId: 'root',
-		role: 'orchestrator',
-		status: 'completed',
-		textContent: '',
-		reasoning: '',
-		toolCalls: [
-			{
-				toolCallId: 'tc-plan',
-				toolName: 'workflow_builder_create_tasks',
-				args: {},
-				isLoading: true,
-				confirmationStatus: 'pending',
-				confirmation: {
-					requestId: 'req-plan',
-					inputThreadId: 'input-thread-1',
-					severity: 'info',
-					message: 'Review the plan',
-					inputType: 'plan-review',
-					planItems: [
-						{
-							id: 'workflow',
-							title: "Build 'Lead routing' workflow",
-							kind: 'build-workflow',
-							spec: 'Route qualified leads to sales.',
-							deps: [],
-						},
-					],
-				},
-			},
-		],
-		children: [],
-		timeline: [{ type: 'tool-call', toolCallId: 'tc-plan' }],
-	};
-
-	return {
-		id: 'msg-plan',
-		role: 'assistant',
-		content: '',
-		reasoning: '',
-		isStreaming: true,
-		createdAt: '2026-04-01T00:00:00.000Z',
-		agentTree: {
-			...orchestrator,
-			status: 'active',
-		},
-	};
-}
-
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let recentWorkflowsStore: ReturnType<typeof mockedStore<typeof useRecentWorkflowsStore>>;
@@ -446,7 +394,6 @@ describe('InstanceAiThreadView', () => {
 		workflowPreviewEmit = null;
 
 		thread = makeThread();
-		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
 		recentWorkflowsStore = mockedStore(useRecentWorkflowsStore);
@@ -477,7 +424,6 @@ describe('InstanceAiThreadView', () => {
 		telemetryTrackSpy.mockClear();
 		routerPushSpy.mockClear();
 		routerReplaceSpy.mockClear();
-		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
@@ -1936,7 +1882,6 @@ describe('InstanceAiThreadView', () => {
 		const header = getByTestId('instance-ai-builder-chat-header');
 		const content = getByTestId('instance-ai-content-area');
 		expect(previewPanel.style.width).toBe('400px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('200px');
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
@@ -1945,12 +1890,13 @@ describe('InstanceAiThreadView', () => {
 
 		expect(threadArea).toHaveClass('agentPreviewDockOpen');
 		expect(previewPanel.style.width).toBe('400px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('200px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 
 		expect(threadArea).not.toHaveClass('agentPreviewDockOpen');
+		expect(header).not.toHaveAttribute('inert');
+		expect(content).not.toHaveAttribute('inert');
 		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
@@ -1959,7 +1905,6 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
 		await moveResize({ clientX: 720 });
 		expect(previewPanel.style.width).toBe('480px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
 		await fireEvent.mouseUp(window);
 
@@ -1974,14 +1919,13 @@ describe('InstanceAiThreadView', () => {
 
 		expect(threadArea).toHaveClass('agentPreviewDockOpen');
 		expect(header).not.toHaveAttribute('hidden');
-		expect(header).not.toHaveAttribute('inert');
-		expect(header).not.toHaveAttribute('aria-hidden');
+		expect(header).toHaveAttribute('inert');
+		expect(header).toHaveAttribute('aria-hidden', 'true');
 		expect(content).not.toHaveAttribute('hidden');
-		expect(content).not.toHaveAttribute('inert');
-		expect(content).not.toHaveAttribute('aria-hidden');
+		expect(content).toHaveAttribute('inert');
+		expect(content).toHaveAttribute('aria-hidden', 'true');
 		expect(previewPanel).toBeVisible();
 		expect(previewPanel.style.width).toBe('480px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
 	});
@@ -2061,7 +2005,7 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-preview-panel').style.width).toBe('400px');
 	});
 
-	it('keeps expanded preview state independent from the agent dock', async () => {
+	it('reveals the Assistant column when the agent dock opens from an expanded artifact', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
 		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
@@ -2071,11 +2015,8 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
-		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
-		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
-
-		await user.click(expandToggle);
 		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
@@ -2443,6 +2384,21 @@ describe('InstanceAiThreadView', () => {
 			expect(prompt).toContain('Extract Emails');
 			expect(prompt).toContain('Intentional break');
 			expect(prompt).toContain('My Workflow');
+		});
+
+		it('attaches the failed execution to the fix prompt', async () => {
+			seedThreadArtifact('wf-1', 'My Workflow');
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
+
+			await emitFailure();
+			await user.click(await findByTestId('instance-ai-fix-with-ai-button'));
+
+			const [, options] = vi.mocked(thread.sendMessage).mock.calls[0];
+			expect(options?.attachments).toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow', executionId: 'exec-1' },
+			]);
 		});
 
 		it('hides the card while the chat is busy', async () => {
@@ -3121,145 +3077,6 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-preview-try-agent-stub')).toBeInTheDocument();
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
-	});
-
-	/** Put the thread in the suspended-on-plan-review state the runtime derives. */
-	function seedPendingPlanReview() {
-		thread.messages = [makePlanReviewMessage()];
-		thread.isStreaming = true;
-		thread.pendingPlanReview = {
-			requestId: 'req-plan',
-			inputThreadId: 'input-thread-1',
-			taskCount: 1,
-		};
-	}
-
-	it('hands the composer a live plan-review state while the run is suspended', async () => {
-		seedPendingPlanReview();
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-review');
-		});
-	});
-
-	// The live composer is the one way to ask for edits, so the card must not
-	// offer a second one that only points back at it.
-	it('renders the plan card without an ask-for-edits action', async () => {
-		seedPendingPlanReview();
-
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-approve')).toBeInTheDocument();
-		});
-
-		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
-	});
-
-	it('routes a typed message to the plan without any prior click', async () => {
-		seedPendingPlanReview();
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		expect(thread.requestPlanChanges).toHaveBeenCalledWith('req-plan', 'Make the plan simpler');
-		expect(thread.sendMessage).not.toHaveBeenCalled();
-	});
-
-	it('scrubs credential patterns from plan feedback telemetry but sends the raw text on', async () => {
-		seedPendingPlanReview();
-		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		expect(telemetryTrackSpy).toHaveBeenCalledWith(
-			'User finished providing input',
-			expect.objectContaining({
-				feedback: 'use [REDACTED] to call the API',
-				plan_feedback_type: 'changes_requested',
-				num_tasks: 1,
-				input_thread_id: 'input-thread-1',
-			}),
-		);
-		expect(thread.requestPlanChanges).toHaveBeenCalledWith(
-			'req-plan',
-			'use sk-proj-abcdef1234567890XYZ to call the API',
-		);
-	});
-
-	it('restores the draft when the plan change request fails', async () => {
-		seedPendingPlanReview();
-		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
-		});
-	});
-
-	// A submission the run never saw is not feedback. It reports one revision per
-	// accepted request, so a dropped or failed submit must record nothing.
-	it('reports no plan feedback telemetry when the change request is not sent', async () => {
-		seedPendingPlanReview();
-		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-input-submit').click();
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
-		});
-		expect(telemetryTrackSpy).not.toHaveBeenCalledWith(
-			'User finished providing input',
-			expect.objectContaining({ plan_feedback_type: 'changes_requested' }),
-		);
-	});
-
-	// `confirmAction` never touches the send counter, so without this the composer
-	// stays live through the round trip and a second Enter is silently dropped.
-	it('holds the composer busy while a plan change request is in flight', async () => {
-		seedPendingPlanReview();
-		thread.updatingPlanRequestIds = new Set(['req-plan']);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-busy')).toHaveTextContent('busy');
-		});
-	});
-
-	// The runtime refuses to route feedback into a card a newer turn stranded, so
-	// the card must not offer to approve that same abandoned run either.
-	it('renders a plan card stranded by a newer turn without its actions', async () => {
-		seedPendingPlanReview();
-		thread.pendingPlanReview = null;
-
-		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		expect(await findByTestId('instance-ai-plan-review')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
 	describe('runtime disposal on unmount', () => {

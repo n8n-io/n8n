@@ -4,6 +4,7 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
@@ -155,6 +156,7 @@ describe('install_community_node registration', () => {
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig, { communityNodeDiscoveryEnabled: true }),
 			mockInstance(ExecutionRedactionServiceProxy),
+			mockInstance(InstanceWriteAccessService),
 		);
 
 	beforeEach(() => {

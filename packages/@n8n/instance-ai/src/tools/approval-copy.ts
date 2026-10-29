@@ -6,12 +6,11 @@ export const approvalSummarySchema = z
 	.min(1)
 	.max(300)
 	.optional()
+	// The communication-style prompt carries the full rule. Keep this short: the
+	// field repeats in every tool that shows an approval card.
 	.describe(
-		'Always provide a short, plain-language summary for the approval card. ' +
-			'Describe the concrete changes or effects of this call, including affected nodes or external actions. ' +
-			'Use the same language as the user. Use one line. Do not repeat the workflow name or ID. Do not include unrelated future actions. ' +
-			'For example: "Add a Slack notification after the payment check". ' +
-			'For a live execution, describe what it will do, not just "test the workflow".',
+		'One plain-language line for the approval card: the concrete change or effect of this call. ' +
+			'Do not repeat the workflow name or ID. Do not include unrelated future actions.',
 	);
 
 /**

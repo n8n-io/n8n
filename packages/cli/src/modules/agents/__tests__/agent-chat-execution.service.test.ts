@@ -12,6 +12,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { PARENT_TASK_CANCELLED_REASON } from '../background/sub-agent-background-state';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecution } from '../entities/agent-execution.entity';
@@ -111,6 +112,101 @@ function makeService(isMultiMain = true) {
 }
 
 beforeEach(() => Container.reset());
+
+describe('session stop cleanup', () => {
+	it('aborts the registered chat and cancels its background jobs', async () => {
+		const { service, backgroundJobs } = makeService(false);
+		const controller = new AbortController();
+		service.register(context, controller);
+
+		service.stopSessionExecutions(context.agentId, context.threadId, [context.executionId]);
+		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		expect(controller.signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(backgroundJobs.cancelForSession).toHaveBeenCalledExactlyOnceWith(
+			context.agentId,
+			context.threadId,
+		);
+	});
+
+	it('signals local work without querying shared state', () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		const controller = new AbortController();
+		service.register(context, controller);
+
+		service.stopSessionExecutions(context.agentId, context.threadId, [context.executionId]);
+
+		expect(controller.signal.reason).toBe(SESSION_STOPPED_REASON);
+		expect(backgroundJobs.requestCancelForSession).toHaveBeenCalledExactlyOnceWith(
+			context.agentId,
+			context.threadId,
+		);
+		expect(repository.findLatestByThreadId).not.toHaveBeenCalled();
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+
+	it('clears a late suspension without repeating background cleanup', async () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({ ...running, hitlStatus: 'suspended', status: 'cancelled' }),
+		);
+
+		await service.cancelSessionSuspension(context.agentId, context.threadId, context.executionId);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledExactlyOnceWith(
+			'run-1',
+			checkpoint,
+			context.agentId,
+		);
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+
+	it('removes a suspension recorded by a selected execution', async () => {
+		const { service, repository, checkpointStorage, updates } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({
+				...running,
+				hitlStatus: 'suspended',
+				status: 'cancelled',
+			}),
+		);
+
+		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledExactlyOnceWith(
+			'run-1',
+			checkpoint,
+			context.agentId,
+		);
+		expect(checkpointStorage.delete).toHaveBeenCalledExactlyOnceWith('run-1', context.agentId);
+		expect(updates.notify).toHaveBeenCalledWith({
+			projectId: context.projectId,
+			agentId: context.agentId,
+			threadId: context.threadId,
+			executionId: context.executionId,
+		});
+	});
+
+	it('retains the checkpoint and background jobs of a later execution', async () => {
+		const { service, repository, checkpointStorage, backgroundJobs } = makeService(false);
+		repository.findLatestByThreadId.mockResolvedValue(
+			mock<AgentExecution>({
+				...running,
+				id: 'new-execution',
+				hitlStatus: 'suspended',
+			}),
+		);
+
+		await service.cancelSessionWork(context.agentId, context.threadId, [context.executionId]);
+
+		await service.cancelSessionSuspension(context.agentId, context.threadId, context.executionId);
+
+		expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
+		expect(backgroundJobs.cancelForSession).not.toHaveBeenCalled();
+	});
+});
 
 it('closes steering admission before signaling Stop', async () => {
 	const { service, steering } = makeService();

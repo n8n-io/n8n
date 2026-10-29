@@ -58,7 +58,7 @@ const toast = useToast();
 const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
-const { canClone, connect } = usePromotionCheckout();
+const { canConnect, connect } = usePromotionCheckout();
 
 const overview = { name: PROMOTIONS_SETTINGS_VIEW };
 
@@ -189,9 +189,11 @@ function onDialogOpenChange(open: boolean) {
 }
 
 function selectRepository(repository: PromotionRepository) {
+	const isSameRepository =
+		repository.fullPath === form.repositoryPath || repository.remoteUrl === form.remoteUrl;
 	form.remoteUrl = repository.remoteUrl;
 	form.repositoryPath = repository.fullPath;
-	form.branch = repository.defaultBranch ?? '';
+	if (!isSameRepository) form.branch = repository.defaultBranch ?? '';
 }
 
 async function save() {
@@ -231,7 +233,7 @@ async function save() {
 		}
 		isSaved = true;
 		invalidateInstancePromotionConnection();
-		if (canClone.value && !saved.checkout.matchesEnvironment) connected = await connect(saved.id);
+		if (canConnect.value && !saved.checkout.matchesEnvironment) connected = await connect(saved.id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.promotions.environment.toast.error.save'));
 		return;
@@ -271,6 +273,7 @@ onBeforeRouteLeave(() => {
 
 <template>
 	<N8nSettingsLayout
+		:class="$style.layout"
 		show-back
 		:back-label="i18n.baseText('settings.promotions.environment.back')"
 		@back="router.push(overview)"
@@ -333,6 +336,7 @@ onBeforeRouteLeave(() => {
 								:focus-initially="!loaded"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-name-input"
+								@enter="save"
 							/>
 
 							<N8nFormInput
@@ -371,7 +375,7 @@ onBeforeRouteLeave(() => {
 										data-test-id="promotion-environment-edit-credentials"
 										@click="dialogOpen = true"
 									>
-										{{ i18n.baseText('settings.promotions.environment.editCredentials') }}
+										{{ i18n.baseText('settings.promotions.environment.editProvider') }}
 									</N8nButton>
 								</div>
 							</N8nFormInput>
@@ -411,6 +415,7 @@ onBeforeRouteLeave(() => {
 								:show-required-asterisk="false"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-remote-url-input"
+								@enter="save"
 							/>
 
 							<N8nFormInput
@@ -441,6 +446,7 @@ onBeforeRouteLeave(() => {
 								:show-required-asterisk="false"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-branch-input"
+								@enter="save"
 							/>
 
 							<N8nCheckbox
@@ -494,6 +500,18 @@ onBeforeRouteLeave(() => {
 </template>
 
 <style lang="scss" module>
+.layout {
+	padding-top: 0;
+}
+
+/* Pin the back action to the top-left of the settings area so the heading lines up with the overview. */
+.layout > div:first-child {
+	position: absolute;
+	top: var(--spacing--lg);
+	left: var(--spacing--lg);
+	width: auto;
+}
+
 .settings {
 	display: flex;
 	flex-direction: column;

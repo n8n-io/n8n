@@ -353,6 +353,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			const result = await service.readKnowledge(projectId, agentId, { file: 'file.txt' });
 
 			expect(result.ranges[0].text).toBe('1|hello');
+			expect(result.createdAt).toBe('2024-01-01T00:00:00.000Z');
 		});
 
 		it('runs a queued mirror sync with a newer file snapshot after an in-flight sync', async () => {

@@ -15,10 +15,6 @@ class TrustedSourceTable extends BaseRepository<TrustedSourceEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(TrustedSourceEntity, dataSource.manager, transactionRunner);
 	}
-
-	override managerFor(ctx: OperationContext) {
-		return super.managerFor(ctx);
-	}
 }
 
 export type NewTrustedSourceRow = Pick<
@@ -79,15 +75,15 @@ export class TrustedSourceRepository {
 		this.isPostgres = config.type === 'postgresdb';
 	}
 
-	async findById(id: string, ctx: OperationContext = {}) {
+	async findById(id: string, ctx: OperationContext) {
 		return await this.table.managerFor(ctx).findOneBy(TrustedSourceEntity, { id });
 	}
 
-	async findByIssuer(issuer: string, ctx: OperationContext = {}) {
+	async findByIssuer(issuer: string, ctx: OperationContext) {
 		return await this.table.managerFor(ctx).findOneBy(TrustedSourceEntity, { issuer });
 	}
 
-	async findAll(ctx: OperationContext = {}) {
+	async findAll(ctx: OperationContext) {
 		return await this.table.managerFor(ctx).find(TrustedSourceEntity, { order: { name: 'ASC' } });
 	}
 
@@ -98,7 +94,7 @@ export class TrustedSourceRepository {
 	 */
 	async findDue(
 		{ errorRetrySeconds, healthyRefreshSeconds, limit }: DueQuery,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<TrustedSourceEntity[]> {
 		const errorCutoff = dbNowPlusMsLiteral(this.isPostgres, -errorRetrySeconds * 1000);
 		const healthyCutoff = dbNowPlusMsLiteral(this.isPostgres, -healthyRefreshSeconds * 1000);
@@ -119,7 +115,7 @@ export class TrustedSourceRepository {
 	}
 
 	/** `save`, not `insert`: the `@BeforeInsert` id generator only runs on an entity instance. */
-	async insertRow(row: NewTrustedSourceRow, ctx: OperationContext = {}) {
+	async insertRow(row: NewTrustedSourceRow, ctx: OperationContext) {
 		return await this.table.managerFor(ctx).save(TrustedSourceEntity, this.table.create(row));
 	}
 
@@ -130,7 +126,7 @@ export class TrustedSourceRepository {
 	 */
 	async insertIfAbsent(
 		row: NewTrustedSourceRow & Pick<TrustedSourceEntity, 'id'>,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	) {
 		await this.table
 			.managerFor(ctx)
@@ -142,11 +138,11 @@ export class TrustedSourceRepository {
 			.execute();
 	}
 
-	async updateById(id: string, changes: TrustedSourceRowChanges, ctx: OperationContext = {}) {
+	async updateById(id: string, changes: TrustedSourceRowChanges, ctx: OperationContext) {
 		await this.table.managerFor(ctx).update(TrustedSourceEntity, { id }, changes);
 	}
 
-	async deleteById(id: string, ctx: OperationContext = {}) {
+	async deleteById(id: string, ctx: OperationContext) {
 		await this.table.managerFor(ctx).delete(TrustedSourceEntity, { id });
 	}
 
@@ -155,7 +151,7 @@ export class TrustedSourceRepository {
 		id: string,
 		token: string,
 		leaseSeconds: number,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<boolean> {
 		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
 		const result = await this.table
@@ -179,7 +175,7 @@ export class TrustedSourceRepository {
 		id: string,
 		token: string,
 		changes: DiscoveryRowChanges,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<boolean> {
 		const result = await this.table
 			.managerFor(ctx)

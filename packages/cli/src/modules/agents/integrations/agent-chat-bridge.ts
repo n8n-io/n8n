@@ -11,6 +11,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	type AgentIntegrationConfig,
 	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -35,6 +36,7 @@ import type {
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentSessionMode } from '../utils/agent-thread-access';
@@ -55,6 +57,7 @@ import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
+	ReplyDeliveryError,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
@@ -63,7 +66,8 @@ import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import { resolveEpisodicScopeDecision } from './episodic-scope-resolver';
-import { buildIntegrationOrigin } from './integration-origin';
+import { buildIntegrationOrigin, recordIntegrationOriginNames } from './integration-origin';
+import type { OriginInput } from './integration-origin-support';
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
@@ -189,6 +193,9 @@ function errorText(error: unknown): string {
 	if (error instanceof UserError) {
 		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
 	}
+	if (error instanceof ReplyDeliveryError) {
+		return "⚠️ The agent's reply couldn't be posted here in full. Please try again.";
+	}
 	return '⚠️ Something went wrong while processing your request. Please try again.';
 }
 
@@ -266,6 +273,7 @@ export class AgentChatBridge {
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
 			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
+			maxMessageLength: this.integrationImpl?.maxMessageLength,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
@@ -787,6 +795,14 @@ export class AgentChatBridge {
 		message: Message,
 		options: InboundOptions,
 	): Promise<void> {
+		if (
+			this.integrationImpl?.shouldHandleInboundMessage?.({
+				message,
+				integration: this.integration,
+			}) === false
+		) {
+			return;
+		}
 		const inbound = await this.readInboundMessage(thread, message);
 		if (!inbound) return;
 		if (isResetCommand(inbound)) {
@@ -924,7 +940,7 @@ export class AgentChatBridge {
 					replyExpectation,
 				}),
 				subjectPromise,
-				// The origin lookup overlaps the other fetches so it adds little delay.
+				// The origin needs the subject. Names are looked up after enqueue.
 				subjectPromise.then(
 					async (subject) =>
 						this.integrationImpl &&
@@ -986,11 +1002,35 @@ export class AgentChatBridge {
 				},
 			});
 			accepted = result.status === 'accepted';
+			if (result.status === 'accepted' && integrationOrigin) {
+				this.recordOriginNames(
+					{ thread, message, subject },
+					integrationOrigin,
+					result.item.messageId,
+				);
+			}
 		} finally {
 			if (!accepted) {
 				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 			}
 		}
+	}
+
+	/** Runs in the background so a slow name lookup never delays the turn. */
+	private recordOriginNames(
+		input: OriginInput,
+		origin: AgentMessageIntegrationOrigin,
+		messageId: string,
+	): void {
+		if (!this.integrationImpl) return;
+		void recordIntegrationOriginNames(
+			this.integrationImpl,
+			input,
+			origin,
+			async (named) =>
+				await Container.get(AgentMessageRepository).updateIntegrationOrigin(messageId, named),
+			this.logger,
+		);
 	}
 
 	async consumeQueuedMessage(

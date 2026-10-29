@@ -933,7 +933,7 @@ export const ApiKeys: Story = {
 						</template>
 						<template #[slotActions]>
 							<div style="display: flex; justify-content: flex-end">
-								<N8nButton variant="ghost" size="small" icon-only icon="ellipsis-vertical" aria-label="API key actions" />
+								<N8nButton variant="ghost" size="small" icon-only icon="ellipsis" aria-label="API key actions" />
 							</div>
 						</template>
 					</N8nDataTableServer>
