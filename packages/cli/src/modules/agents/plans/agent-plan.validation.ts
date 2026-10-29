@@ -226,6 +226,10 @@ export function prepareAgentPlan(
 			if (old.item.status === 'paused' && item.status !== 'paused')
 				fail(id, 'Use resume_background_jobs to continue this task');
 
+			// Only Stop pauses parent-run work. No model edit can resume it, so the task stays stuck.
+			if (old.item.status !== 'paused' && item.status === 'paused')
+				fail(id, 'Only Stop can pause a task. Keep it Pending or In progress, or cancel it');
+
 			if (isFinal(old.item.status) && item.status !== old.item.status) {
 				if (old.item.status !== 'done' || item.status !== 'in_progress')
 					fail(id, 'Create a new task for further work');

@@ -403,6 +403,26 @@ describe('Agent plan changes', () => {
 		).toMatchObject({ jobId: delegated.jobId, status: 'done' });
 	});
 
+	it.each(['pending', 'in_progress'] as const)(
+		'rejects a model change from %s to Paused for a parent-run task',
+		(status) => {
+			const initial = prepare(plan(task()));
+			const previous = setStatuses(initial, { [initial.items[0].id]: status });
+
+			expect(() =>
+				prepare(setStatuses(previous, { [initial.items[0].id]: 'paused' }), previous),
+			).toThrow('Only Stop can pause a task');
+		},
+	);
+
+	it('keeps a paused parent-run task unchanged on metadata edits', () => {
+		const paused = task({ status: 'paused', startedAt: started.toISOString() });
+
+		expect(
+			prepare(plan({ ...paused, title: 'Clearer title' }), plan(paused)).items[0],
+		).toMatchObject({ status: 'paused', title: 'Clearer title' });
+	});
+
 	it('calculates group status from its children', () => {
 		const child = task();
 		const initial = prepare(plan(group([child])));

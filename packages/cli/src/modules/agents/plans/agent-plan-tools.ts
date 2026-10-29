@@ -394,6 +394,7 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'For a task status change, send document.items with only the task id, status, and any changed title or resultSummary. ' +
 					'For a child task, include its group id and put the child update in tasks. Omitted fields and items stay unchanged. ' +
 					'If an update is rejected, correct it and retry before reporting progress. Read the plan again if the revision changed. ' +
+					'Do not set a task to Paused. Only Stop pauses tasks. ' +
 					'A paused task stays paused until the user asks to continue it. A new message does not resume tasks. ' +
 					'For an explicit continuation request, call resume_background_jobs with planId and only the requested taskIds. Omit taskIds only when the user requests the whole plan. ' +
 					'Pass planTask with planId and the permanent leaf task ID when you delegate background plan work. ' +
