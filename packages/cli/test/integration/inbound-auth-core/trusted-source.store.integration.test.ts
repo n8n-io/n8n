@@ -392,6 +392,51 @@ describe('TrustedSourceStore (integration)', () => {
 		});
 	});
 
+	describe('first authentication', () => {
+		it('stamps the row once from the database clock and reports the win to the first caller only', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			expect(source.firstAuthenticatedAt).toBeNull();
+
+			expect(await store.recordFirstAuthentication(source)).toBe(true);
+			expect(await store.recordFirstAuthentication(source)).toBe(false);
+
+			const updated = await rows.findOneByOrFail({ id: row.id });
+			expect(updated.firstAuthenticatedAt).toBeInstanceOf(Date);
+			expect(Math.abs(Date.now() - (updated.firstAuthenticatedAt?.getTime() ?? 0))).toBeLessThan(
+				5000,
+			);
+			// The win invalidates the cache, so the next read carries the stamp.
+			expect((await loadSource(row.id)).firstAuthenticatedAt).toBe(
+				updated.firstAuthenticatedAt?.toISOString(),
+			);
+		});
+
+		it('lets exactly one of two concurrent callers win', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+
+			const results = await Promise.all([
+				store.recordFirstAuthentication(source),
+				store.recordFirstAuthentication(source),
+			]);
+
+			expect(results.filter(Boolean)).toHaveLength(1);
+		});
+
+		it('returns false without touching the row when the snapshot already carries the stamp', async () => {
+			const row = await seedRow();
+			const stamped = {
+				...(await loadSource(row.id)),
+				firstAuthenticatedAt: '2026-10-01T12:00:00.000Z',
+			};
+
+			expect(await store.recordFirstAuthentication(stamped)).toBe(false);
+
+			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeNull();
+		});
+	});
+
 	describe('discovery lease', () => {
 		const metadata: TrustedSourceMetadata = {
 			version: 1,

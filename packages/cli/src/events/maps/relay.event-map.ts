@@ -53,7 +53,7 @@ import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
-import type { TrustedSourceFacets } from '@n8n/inbound-auth';
+import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
 
 export type WorkflowActionSource =
 	| 'ui'
@@ -1078,6 +1078,8 @@ export type RelayEventMap = DataTableEventMap & {
 	'trusted-source-healthy': {
 		sourceId: string;
 	};
+
+	'trusted-source-first-authenticated': { sourceId: string; surface: SurfaceId };
 
 	// #endregion
 

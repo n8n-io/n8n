@@ -205,6 +205,8 @@ export abstract class TrustedSourceStore {
 	abstract getByIssuer(issuer: string): Promise<TrustedSource | undefined>;
 
 	abstract listBySurface(surface: SurfaceId): Promise<TrustedSource[]>;
+
+	abstract recordFirstAuthentication(source: TrustedSource): Promise<boolean>;
 }
 
 /** The running instance's own OAuth2 server, read in process so its source is discovered like any other. */

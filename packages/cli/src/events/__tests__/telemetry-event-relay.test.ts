@@ -302,6 +302,10 @@ describe('TelemetryEventRelay', () => {
 			ownEventService.emit('trusted-source-updated', { user, sourceId: 's', issuer: 'i', facets });
 			ownEventService.emit('trusted-source-deleted', { user, sourceId: 's', issuer: 'i' });
 			ownEventService.emit('trusted-source-healthy', { sourceId: 's' });
+			ownEventService.emit('trusted-source-first-authenticated', {
+				sourceId: 's',
+				surface: 'public-api',
+			});
 
 			const tracked = telemetry.track.mock.calls.map(([entry]) => entry);
 			expect(tracked).toEqual([
@@ -309,6 +313,7 @@ describe('TelemetryEventRelay', () => {
 				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE,
 				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
 				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
 			]);
 		});
 
@@ -6172,6 +6177,18 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
 				{ source_id: 'source-1' },
+			);
+		});
+
+		it('should track on `trusted-source-first-authenticated` event with the surface', () => {
+			eventService.emit('trusted-source-first-authenticated', {
+				sourceId: 'source-1',
+				surface: 'instance-mcp',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+				{ source_id: 'source-1', surface: 'instance-mcp' },
 			);
 		});
 

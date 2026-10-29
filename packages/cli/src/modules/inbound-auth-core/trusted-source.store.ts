@@ -112,6 +112,17 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return (await this.trustedSourceRepository.findById(id, {}))?.status;
 	}
 
+	/**
+	 * `true` for the one caller that stamps the row; the database decides between instances. A
+	 * snapshot that already carries the stamp skips the write, so the steady state costs no query.
+	 */
+	async recordFirstAuthentication(source: TrustedSource): Promise<boolean> {
+		if (source.firstAuthenticatedAt !== null) return false;
+		const first = await this.trustedSourceRepository.markFirstAuthenticated(source.id, {});
+		if (first) await this.invalidateCache(source);
+		return first;
+	}
+
 	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
 	async listDue(limit: number): Promise<TrustedSource[]> {
 		const rows = await this.trustedSourceRepository.findDue(
@@ -372,6 +383,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			status: row.status,
 			lastError: row.lastError,
 			lastCheckedAt: row.lastCheckedAt?.toISOString() ?? null,
+			firstAuthenticatedAt: row.firstAuthenticatedAt?.toISOString() ?? null,
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			config,
