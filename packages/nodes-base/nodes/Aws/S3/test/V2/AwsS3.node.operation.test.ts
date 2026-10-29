@@ -626,3 +626,251 @@ describe('AWS S3 V2 Node - File Copy', () => {
 		expect(copySourceHeader()).toBe('/test-bucket/r%C3%A9sum%C3%A9.pdf?versionId=3HL4kqt');
 	});
 });
+
+describe('AWS S3 V2 Node - Get Presigned URL', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: MockInstance;
+	let getPresignedS3UrlSpy: MockInstance;
+	let node: AwsS3V2;
+
+	const mockPresignedUrl =
+		'https://test-bucket.s3.eu-central-1.amazonaws.com/path/to/file.txt?X-Amz-Expires=3600&X-Amz-Signature=abc123';
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		getPresignedS3UrlSpy = vi.spyOn(GenericFunctions, 'getPresignedS3Url');
+
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'eu-central-1',
+		});
+
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+
+		awsApiRequestRESTSpy.mockResolvedValue(mockLocationResponse);
+		getPresignedS3UrlSpy.mockResolvedValue(mockPresignedUrl);
+	});
+
+	function setupParams(
+		overrides: {
+			bucketName?: string;
+			fileKey?: string;
+			setUrlExpiryTime?: boolean;
+			expiresIn?: number;
+			options?: Record<string, unknown>;
+		} = {},
+	) {
+		const {
+			bucketName = 'test-bucket',
+			fileKey = 'path/to/file.txt',
+			setUrlExpiryTime = false,
+			expiresIn = 3600,
+			options = {},
+		} = overrides;
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return bucketName;
+				case 'fileKey':
+					return fileKey;
+				case 'urlExpiryTime':
+					return expiresIn;
+				case 'setUrlExpiryTime':
+					return setUrlExpiryTime;
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+	}
+
+	describe('successful presigned URL generation', () => {
+		it('should return a presigned URL and expiresIn value', async () => {
+			setupParams();
+
+			const result = await node.execute.call(executeFunctionsMock);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json).toEqual({ url: mockPresignedUrl, expectedExpirationTime: expect.any(String) });
+		});
+
+		it('should fetch bucket region before generating the URL', async () => {
+			setupParams();
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(awsApiRequestRESTSpy).toHaveBeenCalledWith('test-bucket.s3', 'GET', '', '', {
+				location: '',
+			});
+		});
+
+		it('should call getPresignedS3Url with correct arguments', async () => {
+			setupParams({ setUrlExpiryTime: true, expiresIn: 7200 });
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				'GET',
+				'test-bucket',
+				'path/to/file.txt',
+				'eu-central-1',
+				7200,
+				'attachment; filename="file.txt"',
+			);
+		});
+
+		it('should call getPresignedS3Url with correct arguments when switch is unset', async () => {
+			setupParams({ expiresIn: 7200 });
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				'GET',
+				'test-bucket',
+				'path/to/file.txt',
+				'eu-central-1',
+				3600,
+				'attachment; filename="file.txt"',
+			);
+		});
+
+		it('should handle bucket names with dots (path-style addressing)', async () => {
+			setupParams({ bucketName: 'my.bucket.com' });
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(awsApiRequestRESTSpy).toHaveBeenCalledWith('s3', 'GET', '/my.bucket.com', '', {
+				location: '',
+			});
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				'GET',
+				'my.bucket.com',
+				'path/to/file.txt',
+				'eu-central-1',
+				3600,
+				'attachment; filename="file.txt"',
+			);
+		});
+
+		it('should respect custom urlExpiryTime', async () => {
+			setupParams({ setUrlExpiryTime: true, expiresIn: 604800 });
+
+			const result = await node.execute.call(executeFunctionsMock);
+
+			expect(result[0][0].json).toMatchObject({ expectedExpirationTime: expect.any(String) });
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(String),
+				expect.any(String),
+				expect.any(String),
+				604800,
+				'attachment; filename="file.txt"',
+			);
+		});
+
+		it('should strip contentDisposition when noContentDisposition is true', async () => {
+			setupParams({
+				setUrlExpiryTime: true,
+				expiresIn: 604800,
+				options: { noContentDisposition: true },
+			});
+
+			const result = await node.execute.call(executeFunctionsMock);
+
+			expect(result[0][0].json).toMatchObject({ expectedExpirationTime: expect.any(String) });
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(String),
+				expect.any(String),
+				expect.any(String),
+				604800,
+				undefined,
+			);
+		});
+	});
+
+	describe('error handling', () => {
+		it('should throw NodeOperationError when fileKey ends with "/"', async () => {
+			setupParams({ fileKey: 'path/to/directory/' });
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Presigned url for a whole directory is not supported, please provide a file key',
+			);
+		});
+
+		it('should throw NodeOperationError when bucket is not specified', async () => {
+			setupParams({ bucketName: '' });
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Bucket name is required to generate a presigned URL',
+			);
+		});
+
+		it('should return error data when continueOnFail is true and the request fails', async () => {
+			setupParams();
+			executeFunctionsMock.continueOnFail.mockReturnValue(true);
+			getPresignedS3UrlSpy.mockRejectedValue(new Error('Signing failed'));
+
+			const result = await node.execute.call(executeFunctionsMock);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[0][0].json).toEqual({ error: 'Signing failed' });
+		});
+
+		it('should rethrow error when continueOnFail is false and the request fails', async () => {
+			setupParams();
+			executeFunctionsMock.continueOnFail.mockReturnValue(false);
+			getPresignedS3UrlSpy.mockRejectedValue(new Error('Signing failed'));
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow('Signing failed');
+		});
+		
+		it('should throw NodeOperationError when a custom S3 endpoint is configured', async () => {
+			setupParams();
+
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				accessKeyId: 'test-key',
+				secretAccessKey: 'test-secret',
+				region: 'eu-central-1',
+				customEndpoint: true,
+				s3Endpoint: 'https://s3.example.com',
+			});
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Presigned URLs are not supported with a custom S3 endpoint. Clear the S3 Endpoint setting to use the default AWS S3 Endpoint.'
+			);
+
+			expect(awsApiRequestRESTSpy).not.toHaveBeenCalled();
+			expect(getPresignedS3UrlSpy).not.toHaveBeenCalled();
+		});
+	});
+});
