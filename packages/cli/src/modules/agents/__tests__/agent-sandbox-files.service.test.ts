@@ -1,4 +1,5 @@
 import type { Workspace, WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -17,7 +18,7 @@ describe('AgentSandboxFilesService', () => {
 	const executeCommand = vi.fn<NonNullable<WorkspaceSandbox['executeCommand']>>();
 	const sandbox = mock<WorkspaceSandbox>({ executeCommand });
 	const workspace = mock<Workspace>({ filesystem, sandbox });
-	const service = new AgentSandboxFilesService(attachmentService);
+	const service = new AgentSandboxFilesService(mock<Logger>(), attachmentService);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -82,6 +83,67 @@ describe('AgentSandboxFilesService', () => {
 			});
 
 			await expect(service.list(workspace)).rejects.toThrow('Failed to list');
+		});
+	});
+
+	describe('syncOutputs', () => {
+		const listed = (lines: string[]) =>
+			executeCommand.mockResolvedValue({
+				success: true,
+				exitCode: 0,
+				stdout: lines.join('\n'),
+				stderr: '',
+				executionTimeMs: 1,
+			});
+
+		beforeEach(() => {
+			filesystem.stat.mockResolvedValue({
+				name: 'x',
+				path: 'x',
+				type: 'file',
+				size: 1,
+				createdAt: new Date(),
+				modifiedAt: new Date(),
+			});
+			filesystem.readFile.mockResolvedValue(Buffer.from('x'));
+		});
+
+		it('stores only the files whose bytes the thread does not have', async () => {
+			const known = 'b'.repeat(64);
+			listed([
+				`${HASH}  outputs/new.txt`,
+				`${HASH}  outputs/copy.txt`,
+				`${known}  outputs/old.txt`,
+			]);
+			attachmentService.findReadableByHashes.mockResolvedValueOnce(
+				new Map([[known, mock<AgentChatAttachment>()]]),
+			);
+
+			await service.syncOutputs(workspace, scope);
+
+			expect(attachmentService.findReadableByHashes).toHaveBeenNthCalledWith(
+				1,
+				[HASH, HASH, known],
+				scope,
+			);
+			expect(filesystem.readFile).toHaveBeenCalledTimes(1);
+			expect(filesystem.readFile).toHaveBeenCalledWith('outputs/new.txt', expect.anything());
+		});
+
+		it('goes on after a file fails and never throws', async () => {
+			listed([`${HASH}  outputs/a.txt`, `${'c'.repeat(64)}  outputs/b.txt`]);
+			filesystem.readFile.mockRejectedValueOnce(new Error('gone'));
+
+			await service.syncOutputs(workspace, scope);
+
+			expect(filesystem.readFile).toHaveBeenCalledTimes(2);
+			expect(attachmentService.storeInbound).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not throw when the listing fails', async () => {
+			executeCommand.mockRejectedValue(new Error('sandbox down'));
+
+			await expect(service.syncOutputs(workspace, scope)).resolves.toBeUndefined();
 		});
 	});
 
