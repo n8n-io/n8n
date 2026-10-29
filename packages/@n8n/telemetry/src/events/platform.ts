@@ -12,6 +12,34 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 			variant: z.union([z.string(), z.boolean()]).describe('Variant assigned to the user'),
 		}),
 	},
+	USER_OPENED_ACCOUNT_MENU: {
+		name: 'User opened account menu',
+		description:
+			'User opened the account menu from the user row at the bottom of the main sidebar, by click or keyboard. Reported once per open, not on close.',
+		properties: z.object({
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
+		}),
+	},
+	USER_CLICKED_ACCOUNT_MENU_ITEM: {
+		name: 'User clicked account menu item',
+		description:
+			"User chose a row in the account menu that opens from the user row at the bottom of the main sidebar. Help links report 'User clicked help resource' instead.",
+		properties: z.object({
+			item: z
+				.enum(['cloud_console', 'personal_settings', 'whats_new', 'sign_out'])
+				.describe('Row the user chose'),
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
+		}),
+	},
+	USER_CLICKED_INSTANCE_SETTINGS_LINK: {
+		name: 'User clicked instance settings link',
+		description:
+			"User clicked the Instance settings link, which opens the settings area on its first instance page. Personal settings reached through the account menu report 'User clicked account menu item' instead.",
+		properties: z.object({
+			source: z.enum(['side_menu']).describe('Surface that held the link'),
+			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
+		}),
+	},
 	TASK_RUNNER_DISCONNECTED: {
 		name: 'Task runner disconnected',
 		description:

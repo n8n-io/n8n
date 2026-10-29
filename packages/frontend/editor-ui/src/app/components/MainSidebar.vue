@@ -4,21 +4,17 @@ import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDisc
 // EOF Experiment cleanup
 
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
-import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
+import { ABOUT_MODAL_KEY, VIEWS } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useBugReporting } from '@/app/composables/useBugReporting';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import {
 	MAX_SIDEBAR_WIDTH,
@@ -26,31 +22,25 @@ import {
 	useSidebarLayout,
 } from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
-import { useAiGateway } from '@/app/composables/useAiGateway';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
+import MainSidebarAccountMenu from '@/app/components/MainSidebarAccountMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
-import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
-const versionsStore = useVersionsStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
-const router = useRouter();
 const telemetry = useTelemetry();
-const pageRedirectionHelper = usePageRedirectionHelper();
-const { getReportingURL } = useBugReporting();
 
 const { applyExperiment: applySidebarExpandedExperiment } = useSidebarExpandedExperiment();
 applySidebarExpandedExperiment();
@@ -74,8 +64,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems, settingsSections, handleSettingsItemSelect } = useSettingsItems();
-const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
+const { settingsItems } = useSettingsItems();
 
 // Component data
 const basePath = ref('');
@@ -84,24 +73,14 @@ const hasOverflow = ref(false);
 const hasScrolledFromTop = ref(false);
 let resizeObserver: ResizeObserver | null = null;
 
-const showWhatsNewNotification = computed(
-	() =>
-		versionsStore.hasVersionUpdates ||
-		versionsStore.whatsNewArticles.some(
-			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
-		),
-);
-
 const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
 
+// The user's own pages open from the account menu; the row is for the pages about the instance.
+const hasInstanceSettings = computed(() =>
+	settingsItems.value.some((item) => item.section !== 'personal'),
+);
+
 const mainMenuItems = computed<IMenuItem[]>(() => [
-	{
-		id: 'cloud-admin',
-		position: 'bottom',
-		label: i18n.baseText('mainSidebar.cloudConsole'),
-		icon: 'cloud',
-		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
-	},
 	{
 		// Resource Center - replaces Templates when experiment is enabled
 		id: 'resource-center',
@@ -149,81 +128,13 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
-		id: 'help',
-		icon: 'circle-help',
-		label: i18n.baseText('mainSidebar.help'),
-		notification: showWhatsNewNotification.value,
-		position: 'bottom',
-		children: [
-			{
-				id: 'quickstart',
-				icon: 'video',
-				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
-				link: {
-					href: EXTERNAL_LINKS.QUICKSTART_VIDEO,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'docs',
-				icon: 'book-open',
-				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
-				link: {
-					href: EXTERNAL_LINKS.DOCUMENTATION,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'forum',
-				icon: 'book',
-				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
-				link: {
-					href: EXTERNAL_LINKS.FORUM,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'examples',
-				icon: 'graduation-cap',
-				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
-				link: {
-					href: EXTERNAL_LINKS.COURSES,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'contact-support',
-				icon: 'life-buoy',
-				label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
-				available: settingsStore.isCloudDeployment,
-				link: {
-					href: EXTERNAL_LINKS.SUPPORT,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'report-bug',
-				icon: 'bug',
-				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
-				link: {
-					href: getReportingURL(),
-					target: '_blank',
-				},
-			},
-			{
-				id: 'about',
-				icon: 'info',
-				label: i18n.baseText('mainSidebar.aboutN8n'),
-				position: 'bottom',
-			},
-		],
-	},
-	{
+		// A plain link: the settings layout has its own left nav for the individual pages.
 		id: 'settings',
-		label: i18n.baseText('mainSidebar.settings'),
+		label: i18n.baseText('mainSidebar.instanceSettings'),
 		icon: 'wrench',
-		available: true,
-		children: settingsItems.value,
+		position: 'bottom',
+		available: hasInstanceSettings.value,
+		route: { to: { name: VIEWS.SETTINGS } },
 	},
 ]);
 
@@ -256,7 +167,6 @@ watch(isCollapsed, () => {
 
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
-	if (isAiGatewayEnabled.value) void fetchWallet();
 
 	void nextTick(() => {
 		checkOverflow();
@@ -283,13 +193,6 @@ onBeforeUnmount(() => {
 	window.removeEventListener('resize', checkOverflow);
 });
 
-const trackHelpItemClick = (itemType: string) => {
-	telemetry.track('User clicked help resource', {
-		type: itemType,
-		workflow_id: workflowDocumentStore.value.workflowId,
-	});
-};
-
 function openCommandBar(event: MouseEvent) {
 	event.stopPropagation();
 
@@ -307,58 +210,25 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
-		case 'about': {
-			trackHelpItemClick('about');
-			uiStore.openModal(ABOUT_MODAL_KEY);
-			break;
-		}
-		case 'cloud-admin': {
-			void pageRedirectionHelper.goToDashboard();
-			break;
-		}
-		case 'settings-n8n-connect': {
-			void handleSettingsItemSelect(key);
-			break;
-		}
-		case 'contact-support':
-		case 'quickstart':
-		case 'docs':
-		case 'forum':
-		case 'examples': {
-			trackHelpItemClick(key);
-			break;
-		}
 		case 'templates':
 			trackTemplatesClick(TemplateClickSource.sidebarButton);
 			break;
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 			break;
+		case 'settings':
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK, {
+				source: 'side_menu',
+				sidebar_collapsed: isCollapsed.value,
+			});
+			break;
 		default:
-			if (key.startsWith('whats-new-article-')) {
-				const articleId = Number(key.replace('whats-new-article-', ''));
-
-				telemetry.track("User clicked on what's new section", {
-					article_id: articleId,
-				});
-				uiStore.openModalWithData({
-					name: WHATS_NEW_MODAL_KEY,
-					data: {
-						articleId,
-					},
-				});
-			}
-
 			break;
 	}
 };
 
-const onLogout = () => {
-	void router.push({ name: VIEWS.SIGNOUT });
-};
-
 useKeybindings({
-	ctrl_alt_o: () => handleSelect('about'),
+	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 	['bracketleft']: () => toggleCollapse(),
 });
 </script>
@@ -403,14 +273,9 @@ useKeybindings({
 		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 		<ClaudeEntryPoint placement="sidebar" :collapsed="isCollapsed" />
 		<!-- EOF Experiment cleanup -->
-		<BottomMenu
-			:items="visibleMenuItems"
-			:settings-sections="settingsSections"
-			:is-collapsed="isCollapsed"
-			@logout="onLogout"
-			@select="handleSelect"
-		/>
+		<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @select="handleSelect" />
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<MainSidebarAccountMenu :is-collapsed="isCollapsed" />
 	</N8nResizeWrapper>
 </template>
 

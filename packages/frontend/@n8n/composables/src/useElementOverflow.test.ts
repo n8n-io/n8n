@@ -90,4 +90,43 @@ describe('useElementOverflow', () => {
 		unmount();
 		expect(observer.disconnect).toHaveBeenCalled();
 	});
+
+	it('follows the element when it mounts later or is swapped', async () => {
+		const show = ref(false);
+		const TestComponent = defineComponent({
+			setup() {
+				const el = ref<HTMLElement | null>(null);
+				const { isOverflowing } = useElementOverflow(el, 'x');
+				return () =>
+					h('div', [
+						show.value ? h('span', { ref: el, 'data-test-id': 'target' }, 'text') : null,
+						h('span', { 'data-test-id': 'state' }, String(isOverflowing.value)),
+					]);
+			},
+		});
+		const { getByTestId, queryByTestId } = render(TestComponent);
+
+		expect(queryByTestId('target')).toBeNull();
+		expect(getByTestId('state').textContent).toBe('false');
+		const observer = ResizeObserverStub.instances[0];
+		expect(observer).toBeUndefined();
+
+		show.value = true;
+		await nextTick();
+		await nextTick();
+
+		const mounted = ResizeObserverStub.instances[0];
+		expect(mounted.observe).toHaveBeenCalledWith(getByTestId('target'));
+
+		setSizes(getByTestId('target'), { scrollWidth: 300, clientWidth: 100 });
+		mounted.onResize([], mounted as unknown as ResizeObserver);
+		await nextTick();
+		expect(getByTestId('state').textContent).toBe('true');
+
+		show.value = false;
+		await nextTick();
+		await nextTick();
+		expect(mounted.disconnect).toHaveBeenCalled();
+		expect(getByTestId('state').textContent).toBe('false');
+	});
 });

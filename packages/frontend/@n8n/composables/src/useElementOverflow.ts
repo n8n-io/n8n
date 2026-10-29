@@ -2,7 +2,10 @@ import { onBeforeUnmount, onMounted, ref, watch, type Ref, type WatchSource } fr
 
 export type OverflowAxis = 'x' | 'y';
 
-/** Whether the content is clipped along one axis. Re-checks on resize and when `sources` change. */
+/**
+ * Whether the content is clipped along one axis. Re-checks on resize and when `sources` change.
+ * The element may mount later or be swapped (`v-if`): the observer follows the ref.
+ */
 export function useElementOverflow(
 	element: Ref<HTMLElement | null>,
 	axis: OverflowAxis,
@@ -14,17 +17,26 @@ export function useElementOverflow(
 
 	const update = () => {
 		const el = element.value;
-		if (!el) return;
+		if (!el) {
+			isOverflowing.value = false;
+			return;
+		}
 		isOverflowing.value =
 			axis === 'x' ? el.scrollWidth > el.clientWidth : el.scrollHeight > el.clientHeight;
 	};
 
-	onMounted(() => {
-		update();
-		if (element.value && typeof ResizeObserver !== 'undefined') {
-			observer = new ResizeObserver(update);
-			observer.observe(element.value);
+	const observe = (el: HTMLElement | null) => {
+		observer?.disconnect();
+		if (el && typeof ResizeObserver !== 'undefined') {
+			observer ??= new ResizeObserver(update);
+			observer.observe(el);
 		}
+		update();
+	};
+
+	onMounted(() => {
+		observe(element.value);
+		watch(element, observe, { flush: 'post' });
 	});
 
 	if (sources.length > 0) {
