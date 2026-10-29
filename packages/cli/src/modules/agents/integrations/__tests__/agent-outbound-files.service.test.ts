@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { UrlService } from '@n8n/backend-services';
 import type { SentMessage, Thread } from 'chat';
+import { UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,6 +13,7 @@ import { AgentOutboundFiles } from '../agent-outbound-files.service';
 import { DiscordIntegration } from '../platforms/discord/discord-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const scope = { projectId: 'project-1', threadId: 'agent-thread-1' };
 const chartFile = {
@@ -61,7 +63,9 @@ function createService() {
 	);
 	const thread = mock<Thread<unknown, unknown>>();
 	return {
-		service: new AgentOutboundFiles(attachmentService, registry),
+		service: new AgentOutboundFiles(attachmentService, registry, {
+			resolveFileRefs: async (refs: string[]) => refs,
+		} as unknown as AgentSandboxFilesService),
 		attachmentService,
 		thread,
 	};
@@ -360,5 +364,27 @@ describe('AgentOutboundFiles.check', () => {
 			}),
 		});
 		expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentOutboundFiles.check', () => {
+	it('returns FILE_NOT_FOUND when a sandbox path cannot be stored', async () => {
+		const service = new AgentOutboundFiles(
+			mock<AgentChatAttachmentService>(),
+			createService().service['integrationRegistry'],
+			{
+				resolveFileRefs: async () => {
+					throw new UserError('"sandbox:x" could not be read from outputs/');
+				},
+			} as unknown as AgentSandboxFilesService,
+		);
+
+		await expect(service.check('slack', ['sandbox:x'], scope)).resolves.toEqual({
+			ok: false,
+			error: {
+				code: 'FILE_NOT_FOUND',
+				message: '"sandbox:x" could not be read from outputs/',
+			},
+		});
 	});
 });

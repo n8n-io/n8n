@@ -70,6 +70,7 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -1963,7 +1964,9 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				chatIntegrationService,
 				registry,
 				new ChannelRateLimitGuard(),
-				new AgentOutboundFiles(attachmentService, registry),
+				new AgentOutboundFiles(attachmentService, registry, {
+					resolveFileRefs: async (refs: string[]) => refs,
+				} as unknown as AgentSandboxFilesService),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([integration], 'agent-1')[0];
 			return { executor, descriptor, thread, channel, attachmentService };
