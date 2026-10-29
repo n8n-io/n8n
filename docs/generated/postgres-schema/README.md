@@ -52,7 +52,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.ai_preference](public.ai_preference.md) | 8 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
-| [public.app](public.app.md) | 9 |  | BASE TABLE |
+| [public.app](public.app.md) | 10 |  | BASE TABLE |
 | [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
 | [public.app_version](public.app_version.md) | 10 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
@@ -974,6 +974,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
+  json bindings
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id

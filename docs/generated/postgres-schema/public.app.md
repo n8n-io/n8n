@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| bindings | json | '[]'::json | false |  |  | Resources the app can use: array of { key, kind, resource id, permissions } |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | draftVersionId | uuid |  | true |  | [public.app_version](public.app_version.md) | Current working app version |
 | id | uuid |  | false | [public.app_version](public.app_version.md) |  |  |
@@ -21,6 +22,7 @@
 | CHK_app_visibility | CHECK | CHECK (((visibility)::text = ANY ((ARRAY['public'::character varying, 'project'::character varying, 'instance'::character varying])::text[]))) |
 | FK_f84dd7eb539e46e0c233fa09b20 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9478629fc093d229df09e560aea | PRIMARY KEY | PRIMARY KEY (id) |
+| app_bindings_not_null | n | NOT NULL bindings |
 | app_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_draftVersionId_foreign | FOREIGN KEY | FOREIGN KEY ("draftVersionId") REFERENCES app_version(id) ON DELETE SET NULL |
 | app_id_not_null | n | NOT NULL id |
@@ -52,6 +54,7 @@ erDiagram
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 
 "public.app" {
+  json bindings
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id

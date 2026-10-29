@@ -65,6 +65,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
+  json bindings
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id

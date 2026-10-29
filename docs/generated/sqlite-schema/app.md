@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "visibility" varchar(16) NOT NULL DEFAULT ('project'), "projectId" varchar(36) NOT NULL, "draftVersionId" varchar, "publishedVersionId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_visibility" CHECK (("visibility" IN ('public', 'project', 'instance'))), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_draftVersionId_foreign" FOREIGN KEY ("draftVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL, CONSTRAINT "app_publishedVersionId_foreign" FOREIGN KEY ("publishedVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
+CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "visibility" varchar(16) NOT NULL DEFAULT ('project'), "projectId" varchar(36) NOT NULL, "draftVersionId" varchar, "publishedVersionId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "bindings" text NOT NULL DEFAULT '[]', CONSTRAINT "CHK_app_visibility" CHECK (("visibility" IN ('public', 'project', 'instance'))), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_draftVersionId_foreign" FOREIGN KEY ("draftVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL, CONSTRAINT "app_publishedVersionId_foreign" FOREIGN KEY ("publishedVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| bindings | TEXT | '[]' | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | draftVersionId | varchar |  | true |  | [app_version](app_version.md) |  |
 | id | varchar |  | false | [app_version](app_version.md) |  |  |
@@ -57,6 +58,7 @@ erDiagram
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "app" {
+  TEXT bindings
   datetime_3_ createdAt
   varchar draftVersionId FK
   varchar id PK
