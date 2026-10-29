@@ -255,12 +255,12 @@ describe('AppPreviewService', () => {
 			expect(ctx.res.cookie).not.toHaveBeenCalled();
 		});
 
-		it('renews the cookie after half of its lifetime', async () => {
+		it('keeps the session expiry close to its end', async () => {
 			const ctx = setup();
 
 			await authenticate(ctx, session({ exp: now + 1000 }));
 
-			expect(ctx.res.cookie).toHaveBeenCalledOnce();
+			expect(ctx.res.cookie).not.toHaveBeenCalled();
 		});
 
 		it.each<[string, (ctx: ReturnType<typeof setup>) => string]>([

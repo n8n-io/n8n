@@ -27,7 +27,6 @@ const sessionSchema = z.object({
 	sub: z.string(),
 	appId: z.string(),
 	versionId: z.string(),
-	exp: z.number(),
 });
 type PreviewSession = z.infer<typeof sessionSchema>;
 
@@ -97,7 +96,6 @@ export class AppPreviewService {
 			});
 			return;
 		}
-		if (session.exp - Date.now() / 1000 < SESSION_TTL_SECONDS / 2) this.setSession(res, session);
 		req.appContext = { app, versionId: session.versionId, preview: true };
 		next();
 	}
@@ -111,7 +109,7 @@ export class AppPreviewService {
 		return app;
 	}
 
-	private setSession(res: Response, { sub, appId, versionId }: Omit<PreviewSession, 'exp'>) {
+	private setSession(res: Response, { sub, appId, versionId }: PreviewSession) {
 		const token = this.jwt.sign(
 			'appPreview',
 			{ sub, appId, versionId },

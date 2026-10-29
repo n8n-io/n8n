@@ -210,8 +210,11 @@ describe('AppHostService', () => {
 			expect(hosts.origin('abc')).toBeNull();
 		});
 
-		it('rejects an instance name that cannot form an app host', () => {
-			expect(() => setup({ ...cloud, host: 'invalid_name.app.n8n.cloud' })).toThrow('Set N8N_HOST');
-		});
+		it.each(['invalid_name', 'preview--foo'])(
+			'rejects an instance name that cannot form an app host: %s',
+			(name) => {
+				expect(() => setup({ ...cloud, host: `${name}.app.n8n.cloud` })).toThrow('Set N8N_HOST');
+			},
+		);
 	});
 });

@@ -53,7 +53,7 @@ export class AppHostService {
 		}
 		if (globalConfig.deployment.type === 'cloud') {
 			const instanceName = globalConfig.host.split('.')[0].toLowerCase();
-			if (!DNS_LABEL_PATTERN.test(instanceName)) {
+			if (!DNS_LABEL_PATTERN.test(instanceName) || instanceName.includes('--')) {
 				throw new BadRequestError(
 					'Set N8N_HOST to a valid instance hostname before enabling apps on Cloud.',
 				);
