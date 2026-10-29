@@ -130,14 +130,14 @@ export class StartExecutionService {
 	 * running when it does not. A step starts nothing once it has settled.
 	 */
 	private async validateParent(parent: ParentLink): Promise<void> {
-		const [execution, step] = await Promise.all([
-			this.executionStore.loadExecution(parent.executionId).catch(absentAsInvalid),
+		const [status, step] = await Promise.all([
+			this.executionStore.loadExecutionStatus(parent.executionId).catch(absentAsInvalid),
 			this.stepStore.loadStep(parent.stepId).catch(absentAsInvalid),
 		]);
-		if (!isLiveExecutionStatus(execution.status)) {
+		if (!isLiveExecutionStatus(status)) {
 			throw new InvalidParentLinkError(
 				'execution-ended',
-				`execution ${parent.executionId} is ${execution.status}`,
+				`execution ${parent.executionId} is ${status}`,
 			);
 		}
 		if (step.executionId !== parent.executionId) {

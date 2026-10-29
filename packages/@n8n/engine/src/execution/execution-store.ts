@@ -65,6 +65,9 @@ export interface ExecutionStore {
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
 
+	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
+	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
+
 	/**
 	 * The outputs the caller seeded for the given steps, by step key id. A key
 	 * with no seeded outputs is absent from the result.

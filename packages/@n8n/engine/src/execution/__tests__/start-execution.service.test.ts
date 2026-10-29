@@ -3,11 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import {
-	ExecutionNotFoundError,
-	type ExecutionRecord,
-	type ExecutionStore,
-} from '../execution-store';
+import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus, StepStatus, WorkflowDocument } from '../execution.types';
 import { StartExecutionService, type InvalidParentLinkReason } from '../start-execution.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
@@ -32,6 +28,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -47,10 +44,9 @@ function makeStepStore(loadStep = vi.fn()): StepStore {
 }
 
 function parentRows(executionStatus: ExecutionStatus, stepStatus: StepStatus) {
-	const execution = { id: 'exec-parent', status: executionStatus } as ExecutionRecord;
 	const step = { id: 'step-1', executionId: 'exec-parent', status: stepStatus } as StepRecord;
 	return {
-		store: makeStore({ loadExecution: vi.fn().mockResolvedValue(execution) }),
+		store: makeStore({ loadExecutionStatus: vi.fn().mockResolvedValue(executionStatus) }),
 		stepStore: makeStepStore(vi.fn().mockResolvedValue(step)),
 	};
 }
@@ -125,7 +121,7 @@ describe('StartExecutionService', () => {
 
 			await service.start({ ...base, parent });
 
-			expect(store.loadExecution).toHaveBeenCalledWith('exec-parent');
+			expect(store.loadExecutionStatus).toHaveBeenCalledWith('exec-parent');
 			expect(stepStore.loadStep).toHaveBeenCalledWith('step-1');
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
 		});
@@ -207,7 +203,7 @@ describe('StartExecutionService', () => {
 		])('rejects the link when the $name does not exist', async ({ error, reason }) => {
 			const { store, stepStore } = parentRows('running', 'waiting');
 			if (error instanceof ExecutionNotFoundError) {
-				vi.mocked(store.loadExecution).mockRejectedValue(error);
+				vi.mocked(store.loadExecutionStatus).mockRejectedValue(error);
 			} else {
 				vi.mocked(stepStore.loadStep).mockRejectedValue(error);
 			}

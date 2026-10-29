@@ -191,6 +191,17 @@ describe('workflow_execution table (integration)', () => {
 		expect(runningForWf2).toBe(1);
 	});
 
+	it('TypeOrmExecutionStore.loadExecutionStatus reads the status, and throws for an unknown id', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const id = generateId();
+		await store.createExecution(newRecord(id));
+
+		expect(await store.loadExecutionStatus(id)).toBe('queued');
+		await expect(store.loadExecutionStatus(generateId())).rejects.toBeInstanceOf(
+			ExecutionNotFoundError,
+		);
+	});
+
 	it('TypeOrmExecutionStore.finishExecution ends a waiting execution', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const created = await repo.save(
