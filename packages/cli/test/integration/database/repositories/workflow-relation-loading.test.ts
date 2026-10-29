@@ -578,6 +578,19 @@ describe('Workflow relation loading', () => {
 			);
 			expect(result.find(({ id }) => id === untaggedWorkflow.id)?.tags).toEqual([]);
 		});
+
+		it('returns a workflow once when its id repeats in different batches', async () => {
+			// The first and last ids are the same and would otherwise land in different batches.
+			const ids = [workflow.id, ...Array.from({ length: 10_000 }, () => uuid()), workflow.id];
+
+			const result = await Container.get(WorkflowFinderService).findWorkflowsByIdsForUser(
+				ids,
+				owner,
+				['workflow:read'],
+			);
+
+			expect(result.map(({ id }) => id)).toEqual([workflow.id]);
+		});
 	});
 
 	describe('a workflow shared with many projects', () => {

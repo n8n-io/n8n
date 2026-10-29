@@ -119,16 +119,10 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			}
 		}
 
-		const workflows = await Container.get(WorkflowRepository).findWithCollections(
-			{ where: this.getWhereFilter(flags) },
-			{
-				tags: true,
-				shared: { project: true },
-				// The project filter used to read shares through the same join, so a project export
-				// has always included only that project's share. Keep that.
-				sharedProjectId: flags.projectId,
-			},
-		);
+		const workflows = await Container.get(WorkflowRepository).findForExport({
+			workflowId: flags.id,
+			projectId: flags.projectId,
+		});
 
 		if (workflows.length === 0) {
 			throw new UserError('No workflows found with specified filters');
@@ -192,18 +186,6 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	async catch(error: Error) {
 		this.logger.error('Error exporting workflows. See log messages for details.');
 		this.logger.debug(error.message);
-	}
-
-	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {
-		if (flags.id) {
-			return { id: flags.id };
-		}
-
-		if (flags.projectId) {
-			return { shared: { projectId: flags.projectId } };
-		}
-
-		return {};
 	}
 }
 

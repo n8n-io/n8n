@@ -248,11 +248,28 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
+	 * Workflows to export, with their tags and shares, in one statement. `projectId` keeps the
+	 * workflows shared with that project and, as the export always has, only that project's
+	 * share.
+	 */
+	async findForExport({ workflowId, projectId }: { workflowId?: string; projectId?: string } = {}) {
+		const where: FindOptionsWhere<WorkflowEntity> = workflowId
+			? { id: workflowId }
+			: projectId
+				? { shared: { projectId } }
+				: {};
+		return await this.findWithCollections(
+			{ where },
+			{ tags: true, shared: { project: true }, sharedProjectId: projectId },
+		);
+	}
+
+	/**
 	 * Workflows matching `options`, with the requested tags and shares, in one statement. Tags
 	 * and shares come back as JSON arrays instead of joined: a join would repeat each workflow
 	 * row, with its nodes JSON, once per tag and share.
 	 */
-	async findWithCollections(
+	private async findWithCollections(
 		options: Pick<FindManyOptions<WorkflowEntity>, 'where' | 'select' | 'relations'>,
 		collections: WorkflowCollections & { sharedProjectId?: string },
 		ctx: OperationContext = {},
@@ -284,7 +301,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const collections = { tags: options.includeTags };
 		const workflows: WorkflowEntity[] = [];
 
-		for (const chunk of chunkIds(workflowIds)) {
+		// Unique ids, so a repeated id in two batches does not return the workflow twice.
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
 			const accessible = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
 				...sharingOptions,
 				globalScopes: sharingOptions.scopes,
