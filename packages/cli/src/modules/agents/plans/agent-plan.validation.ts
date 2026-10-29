@@ -1,12 +1,11 @@
 import isEqual from 'lodash/isEqual';
-import { derivePlanGroups } from './agent-plan-state';
+import { derivePlanGroups, isFinal } from './agent-plan-state';
 
 import {
 	AgentPlanValidationError,
 	parseAgentPlan,
 	type AgentPlanDocument,
 	type AgentPlanItem,
-	type AgentPlanStatus,
 } from './agent-plan.schema';
 
 type Entry = { item: AgentPlanItem; parentId: string | null };
@@ -16,8 +15,7 @@ export type AgentPlanReadiness = {
 	blocked: Array<{ id: string; blockedBy: string[] }>;
 };
 
-export const isFinal = (status: AgentPlanStatus) =>
-	status === 'done' || status === 'failed' || status === 'cancelled';
+export { isFinal };
 
 function fail(id: string, message: string): never {
 	throw new AgentPlanValidationError(`Plan item ${id}: ${message}`);

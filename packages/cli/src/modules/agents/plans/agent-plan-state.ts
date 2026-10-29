@@ -13,6 +13,9 @@ export type PlanJobState = Pick<
 	'id' | 'status' | 'createdAt' | 'settledAt' | 'pauseRequestId' | 'notifiedAt'
 >;
 
+export const isFinal = (status: AgentPlanStatus) =>
+	status === 'done' || status === 'failed' || status === 'cancelled';
+
 export function jobTaskStatus(job: PlanJobState): AgentPlanStatus {
 	if (job.status === 'completed') return 'done';
 
@@ -39,7 +42,7 @@ export function jobTaskStatus(job: PlanJobState): AgentPlanStatus {
  *
  * 3. Calculates timestamps:
  * startedAt: the earliest child start time.
- * endedAt: null for pending or in_progress; otherwise, the latest child end time.
+ * endedAt: null for an unfinished status; otherwise, the latest child end time.
  */
 export function derivePlanGroups(document: AgentPlanDocument): AgentPlanDocument {
 	return {
@@ -72,7 +75,7 @@ export function derivePlanGroups(document: AgentPlanDocument): AgentPlanDocument
 				status,
 				startedAt:
 					item.tasks.flatMap((task) => (task.startedAt ? [task.startedAt] : [])).sort()[0] ?? null,
-				endedAt: ['pending', 'in_progress'].includes(status)
+				endedAt: !isFinal(status)
 					? null
 					: (item.tasks
 							.flatMap((task) => (task.endedAt ? [task.endedAt] : []))

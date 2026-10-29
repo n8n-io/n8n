@@ -87,6 +87,16 @@ it.each([
 	);
 });
 
+it('keeps the end time empty for a paused group', () => {
+	const done = task('done', { endedAt: '2026-10-15T10:00:00.000Z' });
+	const paused = task('paused', { endedAt: '2026-10-15T10:01:00.000Z' });
+
+	expect(derivePlanGroups(plan(done, paused)).items[0]).toMatchObject({
+		status: 'paused',
+		endedAt: null,
+	});
+});
+
 it('uses successful fallback work instead of the failed original', () => {
 	const first = task('failed');
 	const fallback = task('done', { fallbackFor: first.id });
