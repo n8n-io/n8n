@@ -19,6 +19,7 @@ import {
 	type SharedWorkflowRepository,
 	type TagRepository,
 	type WorkflowTagMappingRepository,
+	type Person,
 	type PersonRepository,
 	User,
 	type UserRepository,
@@ -4443,7 +4444,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('resolves a known personal owner to their personal project', async () => {
-			personRepository.findByEmail.mockResolvedValue({ id: 'user1' } as any);
+			personRepository.findByEmail.mockResolvedValue(mock<Person>({ id: 'user1' }));
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'pp1' } as any);
 
 			await expect(

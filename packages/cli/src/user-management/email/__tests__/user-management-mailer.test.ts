@@ -133,23 +133,45 @@ describe('UserManagementMailer', () => {
 			});
 		});
 
-		it('should name a service account sharer by its name', async () => {
-			const sharer = mockServiceAccount();
+		it.each([
+			[
+				'a workflow',
+				async (sharer: User) =>
+					await userManagementMailer.notifyWorkflowShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						workflow: mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' }),
+					}),
+				'Deploy bot has shared an n8n workflow with you',
+			],
+			[
+				'a credential',
+				async (sharer: User) =>
+					await userManagementMailer.notifyCredentialsShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						credentialsName: 'Test Credentials',
+					}),
+				'Deploy bot has shared an n8n credential with you',
+			],
+			[
+				'a project',
+				async (sharer: User) =>
+					await userManagementMailer.notifyProjectShared({
+						sharer,
+						newSharees: [{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG }],
+						project: { id: 'project1', name: 'Test Project' },
+					}),
+				'Deploy bot has invited you to a project',
+			],
+		])('should name a service account that shares %s by its name', async (_, share, subject) => {
 			personRepository.getEmailsByIds.mockResolvedValue([
 				{ id: 'recipient1', email: 'recipient1@user.com' },
 			] as User[]);
 
-			await userManagementMailer.notifyWorkflowShared({
-				sharer,
-				newShareeIds: ['recipient1'],
-				workflow: mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' }),
-			});
+			await share(mockServiceAccount());
 
-			expect(nodeMailer.sendMail).toHaveBeenCalledWith(
-				expect.objectContaining({
-					subject: 'Deploy bot has shared an n8n workflow with you',
-				}),
-			);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({ subject }));
 		});
 
 		it('should send credentials share notifications', async () => {

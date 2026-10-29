@@ -1,45 +1,12 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import type { Role, User } from '@n8n/db';
-import {
-	GLOBAL_ADMIN_ROLE,
-	GLOBAL_MEMBER_ROLE,
-	Project,
-	ProjectRelation,
-	ProjectRepository,
-	ServiceAccountRepository,
-} from '@n8n/db';
+import type { User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { DataSource } from '@n8n/typeorm';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { createCredentials } from '../shared/db/credentials';
-import { createAdmin, createMember } from '../shared/db/users';
-
-/** A service account with its own personal project, as the user setup gives a person. */
-async function createServiceAccountWithProject(role: Role): Promise<User> {
-	const manager = Container.get(DataSource).manager;
-	const serviceAccount = await Container.get(ServiceAccountRepository).create({
-		name: 'Deploy bot',
-		role,
-	});
-	const project = await manager.save(
-		manager.create(Project, {
-			type: 'personal',
-			name: 'Service account project',
-			creatorId: serviceAccount.id,
-		}),
-	);
-	await manager.save(
-		manager.create(ProjectRelation, {
-			projectId: project.id,
-			userId: serviceAccount.id,
-			role: { slug: PROJECT_OWNER_ROLE_SLUG },
-		}),
-	);
-	return serviceAccount;
-}
+import { createAdmin, createMember, createServiceAccountWithProject } from '../shared/db/users';
 
 describe('CredentialsService with a service account as the personal owner', () => {
 	let credentialsService: CredentialsService;
@@ -52,7 +19,15 @@ describe('CredentialsService with a service account as the personal owner', () =
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['SharedCredentials', 'CredentialsEntity', 'SharedWorkflow', 'User']);
+		await testDb.truncate([
+			'SharedCredentials',
+			'CredentialsEntity',
+			'SharedWorkflow',
+			'WorkflowEntity',
+			'ProjectRelation',
+			'Project',
+			'User',
+		]);
 	});
 
 	afterAll(async () => {
