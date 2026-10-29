@@ -70,10 +70,15 @@ export function isRecoverablePlanError(call: ToolCall): boolean {
 export type AgentPlanView = z.infer<typeof planSchema>;
 export type AgentPlanItemStatus = AgentPlanView['document']['items'][number]['status'];
 
-export function isAgentPlanFinished(plan: AgentPlanView): boolean {
-	const tasks = plan.document.items.flatMap((item) =>
+/** Lists the tasks that count for plan progress. A group without tasks counts as one task. */
+export function getAgentPlanTasks(plan: AgentPlanView) {
+	return plan.document.items.flatMap((item) =>
 		item.kind === 'group' && item.tasks.length ? item.tasks : [item],
 	);
+}
+
+export function isAgentPlanFinished(plan: AgentPlanView): boolean {
+	const tasks = getAgentPlanTasks(plan);
 
 	return (
 		plan.closed ||

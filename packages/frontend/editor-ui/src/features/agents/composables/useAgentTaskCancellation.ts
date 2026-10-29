@@ -4,7 +4,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { cancelAgentTasks, getAgentTaskCancellation } from './useAgentApi';
+import { getAgentTaskCancellation } from './useAgentApi';
 
 export function useAgentTaskCancellation(target: {
 	projectId: () => string;
@@ -12,7 +12,7 @@ export function useAgentTaskCancellation(target: {
 	threadId: () => string | undefined;
 	active: () => boolean;
 	planId: () => string | null;
-	requestStop?: (planId: string | null) => Promise<void>;
+	requestStop: (planId: string | null) => Promise<void>;
 }) {
 	const root = useRootStore();
 	const push = usePushConnectionStore();
@@ -78,25 +78,9 @@ export function useAgentTaskCancellation(target: {
 		const current = ++revision;
 
 		try {
-			let result: AgentTaskCancellationState | undefined;
+			await target.requestStop(target.planId());
 
-			if (target.requestStop) {
-				await target.requestStop(target.planId());
-
-				if (!disposed && current === revision) awaitingState.value = true;
-			} else {
-				result = await cancelAgentTasks(
-					root.restApiContext,
-					target.projectId(),
-					target.agentId(),
-					threadId,
-					{
-						planId: target.planId(),
-					},
-				);
-			}
-
-			if (!disposed && current === revision && result !== undefined) applyState(result);
+			if (!disposed && current === revision) awaitingState.value = true;
 		} finally {
 			if (!disposed && current === revision) {
 				await refresh(true);

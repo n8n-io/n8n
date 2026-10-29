@@ -12,7 +12,11 @@ import {
 	N8nVisuallyHidden,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
+import {
+	getAgentPlanTasks,
+	type AgentPlanItemStatus,
+	type AgentPlanView,
+} from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import ChatCollapsibleContainer from '@/features/ai/shared/components/ChatCollapsibleContainer.vue';
 import { TIME } from '@/app/constants/durations';
@@ -50,11 +54,7 @@ const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
 const startTime = computed(() => Date.parse(props.plan.startedAt ?? ''));
 
-const tasks = computed(() =>
-	props.plan.document.items.flatMap((item) =>
-		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
-	),
-);
+const tasks = computed(() => getAgentPlanTasks(props.plan));
 
 const isFinished = computed(
 	() =>
@@ -131,13 +131,6 @@ const stopLabel = computed(() => {
 	return i18n.baseText('agents.chat.tasks.stopAll');
 });
 
-type PlanItem = AgentPlanView['document']['items'][number];
-type DisplayStatus = AgentPlanItemStatus;
-
-function displayStatus(item: PlanItem): DisplayStatus {
-	return item.status;
-}
-
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
@@ -145,10 +138,10 @@ const isRunning = computed(
 		!isStopped.value &&
 		props.plan.document.items
 			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
-			.some((item) => displayStatus(item) === 'in_progress'),
+			.some((item) => item.status === 'in_progress'),
 );
 
-const statusLabels: Record<DisplayStatus, BaseTextKey> = {
+const statusLabels: Record<AgentPlanItemStatus, BaseTextKey> = {
 	pending: 'agents.chat.plan.status.pending',
 	in_progress: 'agents.chat.plan.status.inProgress',
 	paused: 'agents.chat.tasks.stopped',
@@ -166,7 +159,7 @@ const statusIcons = {
 	cancelled: 'x',
 } as const;
 
-const statusIconColors: Record<DisplayStatus, IconColor> = {
+const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 	pending: 'text-light',
 	in_progress: 'text-light',
 	paused: 'text-light',
@@ -257,14 +250,14 @@ const summary = computed(() => {
 								<span
 									:class="$style.parentIcon"
 									role="img"
-									:aria-label="i18n.baseText(statusLabels[displayStatus(item)])"
-									:title="i18n.baseText(statusLabels[displayStatus(item)])"
-									:data-status="displayStatus(item)"
+									:aria-label="i18n.baseText(statusLabels[item.status])"
+									:title="i18n.baseText(statusLabels[item.status])"
+									:data-status="item.status"
 								>
 									<N8nIcon
-										:icon="statusIcons[displayStatus(item)]"
-										:spin="displayStatus(item) === 'in_progress'"
-										:color="statusIconColors[displayStatus(item)]"
+										:icon="statusIcons[item.status]"
+										:spin="item.status === 'in_progress'"
+										:color="statusIconColors[item.status]"
 										size="medium"
 										aria-hidden="true"
 									/>
@@ -273,10 +266,10 @@ const summary = computed(() => {
 								<N8nText
 									bold
 									step="xs"
-									:color="displayStatus(item) === 'done' ? undefined : 'text-light'"
+									:color="item.status === 'done' ? undefined : 'text-light'"
 									:class="[
 										$style.itemTitle,
-										{ [$style.inProgress]: displayStatus(item) === 'in_progress' },
+										{ [$style.inProgress]: item.status === 'in_progress' },
 									]"
 									:title="item.title"
 									>{{ item.title }}</N8nText
@@ -296,14 +289,14 @@ const summary = computed(() => {
 									</svg>
 									<span
 										role="img"
-										:aria-label="i18n.baseText(statusLabels[displayStatus(task)])"
-										:title="i18n.baseText(statusLabels[displayStatus(task)])"
-										:data-status="displayStatus(task)"
+										:aria-label="i18n.baseText(statusLabels[task.status])"
+										:title="i18n.baseText(statusLabels[task.status])"
+										:data-status="task.status"
 									>
 										<N8nIcon
-											:icon="statusIcons[displayStatus(task)]"
-											:color="statusIconColors[displayStatus(task)]"
-											:spin="displayStatus(task) === 'in_progress'"
+											:icon="statusIcons[task.status]"
+											:color="statusIconColors[task.status]"
+											:spin="task.status === 'in_progress'"
 											size="medium"
 											aria-hidden="true"
 										/>
@@ -311,10 +304,10 @@ const summary = computed(() => {
 									<N8nText
 										bold
 										step="xs"
-										:color="displayStatus(task) === 'done' ? undefined : 'text-light'"
+										:color="task.status === 'done' ? undefined : 'text-light'"
 										:class="[
 											$style.itemTitle,
-											{ [$style.inProgress]: displayStatus(task) === 'in_progress' },
+											{ [$style.inProgress]: task.status === 'in_progress' },
 										]"
 										:title="task.title"
 										>{{ task.title }}</N8nText

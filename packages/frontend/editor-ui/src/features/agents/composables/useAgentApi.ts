@@ -1,4 +1,4 @@
-import type { AgentTaskCancellationState, AgentTaskCancellationDto } from '@n8n/api-types';
+import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
 	AgentPlanSnapshotDto,
 	AgentApproval,
@@ -1152,20 +1152,6 @@ export const getAgentTaskCancellation = async (
 		context,
 		'GET',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
-	);
-
-export const cancelAgentTasks = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	threadId: string,
-	payload: AgentTaskCancellationDto,
-): Promise<AgentTaskCancellationState> =>
-	await makeRestApiRequest(
-		context,
-		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
-		payload,
 	);
 
 export const getAgentPlan = async (

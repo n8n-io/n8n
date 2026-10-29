@@ -5,10 +5,9 @@ import { flushPromises } from '@vue/test-utils';
 import { effectScope, reactive, ref, type EffectScope } from 'vue';
 
 import { useAgentTaskCancellation } from '../composables/useAgentTaskCancellation';
-import { cancelAgentTasks, getAgentTaskCancellation } from '../composables/useAgentApi';
+import { getAgentTaskCancellation } from '../composables/useAgentApi';
 
 vi.mock('../composables/useAgentApi', () => ({
-	cancelAgentTasks: vi.fn(),
 	getAgentTaskCancellation: vi.fn(),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext: {} }) }));
@@ -23,6 +22,7 @@ const push = reactive({
 	},
 });
 let onEvent: (event: PushMessage) => void;
+const requestStop = vi.fn<(planId: string | null) => Promise<void>>();
 const stopped: AgentTaskCancellationState = {
 	planId: null,
 	status: 'stopped',
@@ -37,7 +37,7 @@ const event: PushMessage = {
 let scope: EffectScope;
 const thread = ref('thread');
 
-function create(requestStop?: (planId: string | null) => Promise<void>) {
+function create() {
 	scope = effectScope();
 
 	return scope.run(() =>
@@ -65,7 +65,7 @@ it('ignores a stale read after a cancellation response', async () => {
 	vi.mocked(getAgentTaskCancellation).mockReturnValueOnce(read.promise);
 
 	const state = create();
-	vi.mocked(cancelAgentTasks).mockResolvedValue(stopped);
+	requestStop.mockResolvedValue();
 	vi.mocked(getAgentTaskCancellation).mockResolvedValue(stopped);
 
 	await state.stopAll();
@@ -77,7 +77,7 @@ it('ignores a stale read after a cancellation response', async () => {
 });
 
 it('disables repeated clicks and sends a fresh Stop without a cancellation identity', async () => {
-	const response = createDeferredPromise<AgentTaskCancellationState>();
+	const response = createDeferredPromise<void>();
 	const failed: AgentTaskCancellationState = {
 		...stopped,
 		status: 'failed',
@@ -87,19 +87,17 @@ it('disables repeated clicks and sends a fresh Stop without a cancellation ident
 
 	const state = create();
 	await flushPromises();
-	vi.mocked(cancelAgentTasks).mockReturnValue(response.promise);
+	requestStop.mockReturnValue(response.promise);
 
 	const pending = state.stopAll();
 
 	await state.stopAll();
 
 	expect(state.isStopping.value).toBe(true);
-	expect(cancelAgentTasks).toHaveBeenCalledExactlyOnceWith({}, 'project', 'agent', 'thread', {
-		planId: null,
-	});
+	expect(requestStop).toHaveBeenCalledExactlyOnceWith(null);
 
 	vi.mocked(getAgentTaskCancellation).mockResolvedValue(stopped);
-	response.resolve(stopped);
+	response.resolve();
 	await pending;
 
 	expect(state.isStopping.value).toBe(false);
@@ -122,16 +120,16 @@ it('restores cancellation from server state and refreshes on push', async () => 
 });
 
 it('does not apply an old cancellation response to another conversation', async () => {
-	const response = createDeferredPromise<AgentTaskCancellationState>();
+	const response = createDeferredPromise<void>();
 
 	const state = create();
 	await flushPromises();
-	vi.mocked(cancelAgentTasks).mockReturnValue(response.promise);
+	requestStop.mockReturnValue(response.promise);
 
 	const pending = state.stopAll();
 	thread.value = 'new-thread';
 	await flushPromises();
-	response.resolve(stopped);
+	response.resolve();
 	await pending;
 
 	expect(state.state.value).toBeNull();
@@ -169,11 +167,9 @@ it('rejects a lower plan revision and an older stop from later reads', async () 
 });
 
 it('keeps a newer stop pending after leaving and returning to the same conversation', async () => {
-	const first = createDeferredPromise<AgentTaskCancellationState>();
-	const second = createDeferredPromise<AgentTaskCancellationState>();
-	vi.mocked(cancelAgentTasks)
-		.mockReturnValueOnce(first.promise)
-		.mockReturnValueOnce(second.promise);
+	const first = createDeferredPromise<void>();
+	const second = createDeferredPromise<void>();
+	requestStop.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
 
 	const state = create();
 	await flushPromises();
@@ -184,7 +180,7 @@ it('keeps a newer stop pending after leaving and returning to the same conversat
 	await flushPromises();
 	const newStop = state.stopAll();
 	const reads = vi.mocked(getAgentTaskCancellation).mock.calls.length;
-	first.resolve(stopped);
+	first.resolve();
 	await oldStop;
 
 	expect(state.isStopping.value).toBe(true);
@@ -192,10 +188,10 @@ it('keeps a newer stop pending after leaving and returning to the same conversat
 
 	await state.stopAll();
 
-	expect(cancelAgentTasks).toHaveBeenCalledTimes(2);
+	expect(requestStop).toHaveBeenCalledTimes(2);
 
 	vi.mocked(getAgentTaskCancellation).mockResolvedValue(stopped);
-	second.resolve(stopped);
+	second.resolve();
 	await newStop;
 
 	expect(state.isStopping.value).toBe(false);
@@ -206,7 +202,8 @@ it('keeps Stop feedback visible until the accepted state arrives', async () => {
 	const accepted = createDeferredPromise<void>();
 	const read = createDeferredPromise<AgentTaskCancellationState | null>();
 
-	const state = create(() => accepted.promise);
+	requestStop.mockReturnValue(accepted.promise);
+	const state = create();
 	await flushPromises();
 	vi.mocked(getAgentTaskCancellation).mockReturnValueOnce(read.promise);
 
@@ -224,5 +221,4 @@ it('keeps Stop feedback visible until the accepted state arrives', async () => {
 
 	expect(state.state.value).toEqual(stopped);
 	expect(state.isStopping.value).toBe(false);
-	expect(cancelAgentTasks).not.toHaveBeenCalled();
 });
