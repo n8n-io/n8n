@@ -5,6 +5,10 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+<<<<<<< HEAD
+=======
+import { HostDataResolver } from './host-data-resolver';
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 import {
 	dispatchHostCall,
 	escapeHostResult,
@@ -307,10 +311,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
+<<<<<<< HEAD
 	private createGetValueAtPathRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
 				return getValueAtPath(data, pathArr);
+=======
+	private createGetValueAtPathRef(resolver: HostDataResolver): ivm.Callback {
+		return new (getIvm().Callback)((pathArr: string[]) => {
+			try {
+				return getValueAtPath(resolver, pathArr);
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -327,10 +338,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
+<<<<<<< HEAD
 	private createGetArrayElementRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
 				return getArrayElement(data, pathArr, index);
+=======
+	private createGetArrayElementRef(resolver: HostDataResolver): ivm.Callback {
+		return new (getIvm().Callback)((pathArr: string[], index: number) => {
+			try {
+				return getArrayElement(resolver, pathArr, index);
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -354,10 +372,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data
 	 * @private
 	 */
+<<<<<<< HEAD
 	private createCallHostRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
 				return escapeHostResult(dispatchHostCall(rawMsg, data));
+=======
+	private createCallHostRef(resolver: HostDataResolver): ivm.Callback {
+		return new (getIvm().Callback)((rawMsg: unknown) => {
+			try {
+				return escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -408,6 +433,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Host callbacks are ivm.Callback instances: inside the isolate they
 		// arrive as plain functions with structured-clone marshaling, so the
+<<<<<<< HEAD
 		// runtime invokes them directly. Callbacks are GC-managed; there is no
 		// release() to call in `finally`.
 		const getValueAtPath = this.createGetValueAtPathRef(data);
@@ -415,6 +441,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		const callHost = this.createCallHostRef(data);
 
 		try {
+=======
+		// runtime invokes them directly. isolated-vm frees a callback only at the
+		// next isolated-vm call in the process, even after the isolate is disposed.
+		// So the callbacks read the data from a resolver that `finally` disposes.
+		const resolver = new HostDataResolver(data);
+
+		try {
+			const getValueAtPath = this.createGetValueAtPathRef(resolver);
+			const getArrayElement = this.createGetArrayElementRef(resolver);
+			const callHost = this.createCallHostRef(resolver);
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
@@ -493,6 +530,11 @@ try {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+<<<<<<< HEAD
+=======
+		} finally {
+			resolver.dispose();
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 		}
 	}
 
