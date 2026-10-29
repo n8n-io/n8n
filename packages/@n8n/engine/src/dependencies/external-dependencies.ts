@@ -85,7 +85,7 @@ export type SubExecutionMode =
 	| {
 			/** Nothing waits for the sub-execution. */
 			awaited: false;
-			/** The step completes with these once the sub-execution has started. */
+			/** The step completes with these. */
 			outputs: StepSlots;
 	  };
 
