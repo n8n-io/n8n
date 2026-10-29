@@ -52,11 +52,7 @@ export interface StartExecutionResult {
 	executionId: string;
 }
 
-/**
- * The parent link names an execution or a step that cannot have asked for
- * this one. The engine builds the link from rows it holds, so this is a bug
- * in the caller, not a request to refuse politely.
- */
+/** The parent link names a missing row, or a row that cannot start a sub-execution now. */
 export class InvalidParentLinkError extends Error {
 	constructor(
 		readonly reason: InvalidParentLinkReason,
