@@ -119,6 +119,7 @@ export const delegateSubAgentOutputSchema = z.object({
 	finishReason: z.string().optional(),
 	error: z.string().optional(),
 	files: z.array(delegateSubAgentFileSchema).optional(),
+	filesError: z.string().optional(),
 	resumeContext: jsonValueSchema.optional(),
 	pendingSuspend: z
 		.array(
@@ -248,6 +249,8 @@ export interface DelegateSubAgentToolOutput {
 	error?: string;
 	/** Files that the child made. The host lets the parent read them. */
 	files?: DelegateSubAgentFile[];
+	/** Set when the host could not list the files that the child made. */
+	filesError?: string;
 	/** Host-owned, serializable context required to reconstruct this exact child. */
 	resumeContext?: JSONValue;
 	/** Present when status is 'suspended' — child run paused awaiting tool resume. */

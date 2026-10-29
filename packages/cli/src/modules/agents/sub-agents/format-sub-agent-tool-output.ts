@@ -23,5 +23,6 @@ export function formatSubAgentToolOutput(result: SubAgentRunResult): DelegateSub
 			? { resumeContext: result.resumeContext }
 			: {}),
 		...(result.files?.length ? { files: result.files } : {}),
+		...(result.filesError ? { filesError: result.filesError } : {}),
 	};
 }

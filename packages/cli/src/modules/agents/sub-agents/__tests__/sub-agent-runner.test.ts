@@ -282,6 +282,7 @@ describe('SubAgentRunner', () => {
 
 		expect(result.status).toBe('completed');
 		expect(result.files).toBeUndefined();
+		expect(result.filesError).toBe('The files of the sub-agent could not be listed');
 	});
 
 	it.each([
