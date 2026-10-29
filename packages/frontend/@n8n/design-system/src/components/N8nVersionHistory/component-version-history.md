@@ -4,7 +4,7 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 
 - **Component Name:** N8nVersionHistory
 - **Figma Component:** TBD
-- **Current Implementation:** Custom component. Rows use `N8nMenuItem`, `N8nStatusDot`, and `N8nRecycleScroller`.
+- **Current Implementation:** Custom component. Rows use `N8nStatusDot` and `N8nRecycleScroller`.
 
 
 ## Public API Definition

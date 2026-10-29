@@ -4,10 +4,8 @@ import { computed } from 'vue';
 import type { VersionHistoryItem, VersionHistoryStatus } from './VersionHistory.types';
 import VersionHistoryRail from './VersionHistoryRail.vue';
 import { useI18n } from '../../composables/useI18n';
-import type { IMenuItem } from '../../types';
 import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
-import N8nMenuItem from '../N8nMenuItem';
 import N8nStatusDot, { type StatusDotAppearance, type StatusDotVariant } from '../N8nStatusDot';
 import N8nText from '../N8nText/Text.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
@@ -57,10 +55,6 @@ const { t } = useI18n();
 const statusDot = computed(() => STATUS_DOT[props.item.status ?? 'default']);
 const actions = computed(() => props.item.actions ?? []);
 const compareLabel = computed(() => t('versionHistory.compare'));
-const menuItem = computed<IMenuItem>(() => ({
-	id: props.item.id,
-	label: props.item.label,
-}));
 const accessibleName = computed(() =>
 	[
 		props.item.label,
@@ -101,37 +95,35 @@ function onAction(action: string) {
 		>
 			<N8nStatusDot :variant="statusDot.variant" :appearance="statusDot.appearance" />
 		</VersionHistoryRail>
-		<N8nMenuItem
+		<button
+			type="button"
 			:class="$style.select"
-			flush
-			:item="menuItem"
-			:active="selected"
+			role="menuitem"
 			:aria-label="accessibleName"
 			:aria-current="selected ? 'true' : undefined"
+			data-test-id="version-history-select"
 			@click="onSelect"
 		>
-			<template #label>
-				<span :class="$style.content">
-					<span :class="$style.mainRow">
-						<N8nText bold size="small" color="text-dark" :class="$style.label">
-							{{ item.label }}
-						</N8nText>
-						<N8nText v-if="item.detail" size="small" color="text-light" :class="$style.detail">
-							<span aria-hidden="true">· </span>{{ item.detail }}
-						</N8nText>
-					</span>
-					<span v-if="item.author || item.createdAt" :class="$style.metaRow">
-						<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
-							{{ item.author }}<template v-if="item.createdAt">, </template>
-						</N8nText>
-						<time v-if="item.createdAt" :datetime="item.createdAtIso" :class="$style.time">
-							<N8nText size="small" color="text-base">{{ item.createdAt }}</N8nText>
-						</time>
-					</span>
+			<span :class="$style.content">
+				<span :class="$style.mainRow">
+					<N8nText bold size="small" color="text-dark" :class="$style.label">
+						{{ item.label }}
+					</N8nText>
+					<N8nText v-if="item.detail" size="small" color="text-light" :class="$style.detail">
+						<span aria-hidden="true">· </span>{{ item.detail }}
+					</N8nText>
 				</span>
-			</template>
-		</N8nMenuItem>
-		<!-- Actions stay outside the menu item. A click on them does not select the version. -->
+				<span v-if="item.author || item.createdAt" :class="$style.metaRow">
+					<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
+						{{ item.author }}<template v-if="item.createdAt">, </template>
+					</N8nText>
+					<time v-if="item.createdAt" :datetime="item.createdAtIso" :class="$style.time">
+						<N8nText size="small" color="text-base">{{ item.createdAt }}</N8nText>
+					</time>
+				</span>
+			</span>
+		</button>
+		<!-- Actions stay outside the select control. A click on them does not select the version. -->
 		<div :class="$style.actions">
 			<slot name="actions" :item="item">
 				<N8nTooltip placement="top" :content="compareLabel" :disabled="item.compareDisabled">
@@ -156,6 +148,8 @@ function onAction(action: string) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/_focus.scss';
+
 .body {
 	display: flex;
 	align-items: center;
@@ -171,9 +165,25 @@ function onAction(action: string) {
 	}
 }
 
-.select {
+button.select {
+	display: flex;
+	align-items: center;
 	flex: 1;
 	min-width: 0;
+	margin: 0;
+	padding: var(--spacing--4xs);
+	border: none;
+	border-radius: var(--radius);
+	appearance: none;
+	background-color: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .content {
