@@ -286,8 +286,10 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 			.where('history.agentId = :agentId', { agentId })
 			.select('pin.skillId', 'skillId')
 			.distinct(true)
-			.getRawMany<{ skillId: string }>();
-		return unique([...drafts, ...pins].map((row) => row.skillId));
+			.getRawMany<{ skillId?: string; skillid?: string }>();
+		return unique(
+			[...drafts, ...pins].map((row) => row.skillId ?? (row as { skillid?: string }).skillid ?? ''),
+		).filter(Boolean);
 	}
 
 	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
@@ -313,8 +315,14 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 				.select('pin.skillId', 'skillId')
 				.addSelect('history.agentId', 'agentId')
 				.distinct(true)
-				.getRawMany<{ skillId: string; agentId: string }>();
-			return [...drafts, ...pins];
+				.getRawMany<{ skillId?: string; skillid?: string; agentId?: string; agentid?: string }>();
+			return [
+				...drafts,
+				...pins.map((row) => ({
+					skillId: row.skillId ?? row.skillid ?? '',
+					agentId: row.agentId ?? row.agentid ?? '',
+				})),
+			];
 		});
 		const agentsBySkill = new Map<string, Set<string>>();
 		for (const { skillId, agentId } of pairs) {
