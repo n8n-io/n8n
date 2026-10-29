@@ -490,7 +490,7 @@ function splitData(
 			keyValuee = JSON.stringify(keyValuee);
 		}
 
-		if (options.skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
+		if (options.skipEmptySplitFields && isEmpty(keyValuee)) {
 			return acc;
 		}
 
