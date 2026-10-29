@@ -30,9 +30,8 @@ export async function withSavepoint<T>(
 		return result;
 	} catch (stepError) {
 		try {
+			// ROLLBACK TO keeps the savepoint open. COMMIT releases it, so no RELEASE can fail here.
 			await manager.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-			// ROLLBACK TO keeps the savepoint open.
-			await manager.query(`RELEASE SAVEPOINT ${savepoint}`);
 		} catch (rollbackError) {
 			throw new FoldTransactionLostError(savepoint, stepError, rollbackError);
 		}
