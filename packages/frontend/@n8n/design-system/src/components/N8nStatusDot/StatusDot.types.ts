@@ -1,7 +1,5 @@
-/** Color of the dot. */
 export type StatusDotVariant = 'success' | 'warning' | 'danger' | 'neutral';
 
-/** `fill` paints the dot. `outline` draws a ring in the same color. */
 export type StatusDotAppearance = 'fill' | 'outline';
 
 export interface StatusDotProps {
