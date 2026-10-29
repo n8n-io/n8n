@@ -1041,6 +1041,7 @@ export {
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
 export {
+	EXECUTION_LIMIT_MAX_PAUSE_AFTER,
 	EXECUTION_LIMIT_PERIOD_UNITS,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
